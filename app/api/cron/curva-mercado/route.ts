@@ -1,108 +1,70 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Meses de vencimento CME por cultura
+// Meses de vencimento CME
 const SOJA_MESES:  Record<number, string> = { 1:"F", 3:"H", 5:"K", 7:"N", 8:"Q", 9:"U", 11:"X" };
 const MILHO_MESES: Record<number, string> = { 3:"H", 5:"K", 7:"N", 9:"U", 12:"Z" };
 
-interface Simbolo { yahoo: string; instrumento: string; vencimento: string; }
+const MES_NUM: Record<string, number> = {
+  JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,
+  JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12,
+};
 
-function gerarSimbolos(): Simbolo[] {
-  const now  = new Date();
-  const res: Simbolo[] = [];
-  const seen = new Set<string>();
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36";
 
-  for (let i = 0; i <= 18; i++) {
-    const d   = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const mes = d.getMonth() + 1;
-    const yy  = String(d.getFullYear()).slice(-2);
-
-    const letraSoja = SOJA_MESES[mes];
-    if (letraSoja) {
-      const venc = `${letraSoja}${yy}`;
-      if (!seen.has(`S${venc}`)) {
-        seen.add(`S${venc}`);
-        res.push({ yahoo: `ZS${venc}=F`, instrumento: "CBOT_SOJA", vencimento: venc });
-      }
-    }
-
-    const letraMilho = MILHO_MESES[mes];
-    if (letraMilho) {
-      const venc = `${letraMilho}${yy}`;
-      if (!seen.has(`C${venc}`)) {
-        seen.add(`C${venc}`);
-        res.push({ yahoo: `ZC${venc}=F`, instrumento: "CBOT_MILHO", vencimento: venc });
-      }
-    }
-  }
-
-  return res;
-}
-
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-
-// Obtém crumb + cookie para autenticar no Yahoo Finance v7
-async function getYahooCrumb(): Promise<{ crumb: string; cookies: string } | null> {
-  try {
-    const res1 = await fetch("https://fc.yahoo.com", {
-      headers: { "User-Agent": UA },
-      redirect: "follow",
-      signal: AbortSignal.timeout(8000),
-      cache: "no-store",
-    });
-    const rawCookies: string[] = [];
-    // Headers.getSetCookie() retorna array; fallback para get() se não disponível
-    const setCookie = res1.headers.get("set-cookie") ?? "";
-    if (setCookie) rawCookies.push(...setCookie.split(/,(?=[^;]+=[^;]+)/));
-    const cookies = rawCookies.map(c => c.split(";")[0]).join("; ");
-
-    const res2 = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
-      headers: { "User-Agent": UA, "Cookie": cookies },
-      signal: AbortSignal.timeout(8000),
-      cache: "no-store",
-    });
-    const crumb = await res2.text();
-    if (!crumb || crumb.length > 30 || crumb.includes("<")) return null;
-    console.log("[curva-mercado] crumb ok:", crumb.trim().slice(0, 6) + "...");
-    return { crumb: crumb.trim(), cookies };
-  } catch (e) {
-    console.log("[curva-mercado] crumb falhou:", String(e));
-    return null;
-  }
-}
-
-// Busca cotações via Yahoo v7/quote com crumb (aceita contratos específicos como ZSX26=F)
-async function fetchYahooV7(symbols: string[], crumb: string, cookies: string): Promise<Record<string, number>> {
-  const syms = symbols.join(",");
-  const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&crumb=${encodeURIComponent(crumb)}&fields=regularMarketPrice&formatted=false`;
+// CME Group settlement prices — endpoint público sem autenticação
+// productId: 5 = Soybeans (ZS), 2 = Corn (ZC)
+async function fetchCMESettlement(
+  productId: number,
+  meses: Record<number, string>
+): Promise<Record<string, number>> {
+  const url = `https://www.cmegroup.com/CmeWS/mvc/Quotes/Settlement/${productId}/G`;
   const r = await fetch(url, {
     headers: {
       "User-Agent": UA,
-      "Cookie": cookies,
-      "Referer": "https://finance.yahoo.com/",
-      "Accept": "application/json",
+      "Accept": "application/json, text/plain, */*",
+      "Referer": "https://www.cmegroup.com/",
+      "Origin": "https://www.cmegroup.com",
     },
     signal: AbortSignal.timeout(12000),
     cache: "no-store",
   });
-  if (!r.ok) throw new Error(`Yahoo v7 HTTP ${r.status}`);
-  const json = await r.json() as { quoteResponse?: { result?: { symbol: string; regularMarketPrice?: number }[] } };
+  if (!r.ok) throw new Error(`CME HTTP ${r.status}`);
+  const json = await r.json() as { quotes?: { expirationMonth?: string; settlement?: string; last?: string }[] };
+
   const result: Record<string, number> = {};
-  for (const q of json?.quoteResponse?.result ?? []) {
-    if (q.regularMarketPrice && q.regularMarketPrice > 0) result[q.symbol] = q.regularMarketPrice;
+  for (const q of json?.quotes ?? []) {
+    // expirationMonth: "NOV 2026" ou "NOV26" dependendo da versão da API
+    const exp = (q.expirationMonth ?? "").trim();
+    const rawPrice = q.settlement ?? q.last ?? "";
+    const price = parseFloat(rawPrice.replace(/[^0-9.]/g, ""));
+    if (!exp || !price || price <= 0) continue;
+
+    // Suporta "NOV 2026" e "NOV26"
+    const parts = exp.split(/\s+/);
+    const monthStr = parts[0].slice(0, 3).toUpperCase();
+    const yearStr  = (parts[1] ?? parts[0].slice(3)).replace(/\D/g, "");
+    const monthNum = MES_NUM[monthStr];
+    if (!monthNum || yearStr.length < 2) continue;
+
+    const yy   = yearStr.length === 4 ? yearStr.slice(-2) : yearStr.slice(-2);
+    const letra = meses[monthNum];
+    if (!letra) continue;
+
+    result[`${letra}${yy}`] = price; // e.g. "X26" → 1024.60
   }
   return result;
 }
 
-// Fallback: v8/chart (funciona apenas para contratos líquidos com histórico)
-async function fetchYahooV8Chart(symbol: string): Promise<number> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1mo`;
+// Fallback: Yahoo Finance v8/chart (funciona para símbolos com histórico recente)
+async function fetchYahooChart(symbol: string): Promise<number> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
   const r = await fetch(url, {
     headers: { "User-Agent": UA },
     signal: AbortSignal.timeout(10000),
     cache: "no-store",
   });
-  if (!r.ok) throw new Error(`Yahoo v8 HTTP ${r.status}`);
+  if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
   const json = await r.json() as { chart?: { result?: { meta?: { regularMarketPrice?: number } }[] } };
   return json?.chart?.result?.[0]?.meta?.regularMarketPrice ?? 0;
 }
@@ -118,94 +80,96 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const hoje     = new Date().toISOString().slice(0, 10);
-  const simbolos = gerarSimbolos();
-  const inicio   = Date.now();
-  console.log("[curva-mercado] inicio", { hoje, total: simbolos.length });
+  const hoje   = new Date().toISOString().slice(0, 10);
+  const inicio = Date.now();
+  console.log("[curva-mercado] inicio", { hoje });
 
   // Limpa dados globais de hoje antes de reinserir
   await sb.from("curva_mercado")
     .delete()
     .is("fazenda_id", null)
     .eq("data_referencia", hoje)
-    .in("fonte", ["YAHOO", "BARCHART"]);
+    .in("fonte", ["CME", "YAHOO", "BARCHART"]);
 
   let inseridos = 0;
-  const semCotacao: string[] = [];
   const erros:      string[] = [];
-  let fonte = "YAHOO";
+  const semCotacao: string[] = [];
 
-  // Tenta crumb para usar v7/quote (suporta contratos específicos)
-  const auth = await getYahooCrumb();
-  let precos: Record<string, number> = {};
+  // === Tenta CME Group Settlement (primary) ===
+  let sojaPrecos: Record<string, number>  = {};
+  let milhoPrecos: Record<string, number> = {};
+  let fonte = "CME";
 
-  const isDebug = req.nextUrl.searchParams.get("debug") === "1";
+  try {
+    [sojaPrecos, milhoPrecos] = await Promise.all([
+      fetchCMESettlement(5, SOJA_MESES),
+      fetchCMESettlement(2, MILHO_MESES),
+    ]);
+    console.log("[curva-mercado] CME soja:", Object.keys(sojaPrecos).length, "milho:", Object.keys(milhoPrecos).length);
+  } catch (e) {
+    console.log("[curva-mercado] CME falhou, tentando Yahoo:", String(e));
+    erros.push(`CME: ${String(e)}`);
 
-  if (auth) {
-    // v7/quote em lotes de 10
-    const chunks: Simbolo[][] = [];
-    for (let i = 0; i < simbolos.length; i += 10) chunks.push(simbolos.slice(i, i + 10));
-
-    for (const chunk of chunks) {
-      try {
-        const lote = await fetchYahooV7(chunk.map(s => s.yahoo), auth.crumb, auth.cookies);
-        Object.assign(precos, lote);
-        if (isDebug && chunk === chunks[0]) {
-          // Retorna raw response do primeiro lote para diagnóstico
-          const syms = chunk.map(s => s.yahoo).join(",");
-          const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&crumb=${encodeURIComponent(auth.crumb)}&fields=regularMarketPrice,regularMarketTime,marketState&formatted=false`;
-          const raw  = await fetch(url, { headers: { "User-Agent": UA, "Cookie": auth.cookies, "Referer": "https://finance.yahoo.com/" }, cache: "no-store" });
-          const rawJson = await raw.json();
-          console.log("[curva-mercado] debug raw:", JSON.stringify(rawJson).slice(0, 800));
-          if (isDebug) return NextResponse.json({ debug: true, crumb: auth.crumb.slice(0,6)+"...", lote0: rawJson });
-        }
-      } catch (e) {
-        erros.push(`v7 lote ${chunk.map(s => s.yahoo).join(",")}: ${String(e)}`);
-      }
+    // Fallback: Yahoo v8/chart para frente contínua
+    fonte = "YAHOO";
+    try {
+      const [sojaPx, milhoPx] = await Promise.all([
+        fetchYahooChart("ZS=F"),
+        fetchYahooChart("ZC=F"),
+      ]);
+      if (sojaPx > 0)  sojaPrecos["ZS"]  = sojaPx;  // vencimento especial para contínuo
+      if (milhoPx > 0) milhoPrecos["ZC"] = milhoPx;
+    } catch (e2) {
+      erros.push(`Yahoo fallback: ${String(e2)}`);
     }
-    console.log("[curva-mercado] v7 precos obtidos:", Object.keys(precos).length);
-  } else {
-    // Fallback: v8/chart em paralelo (sem crumb; falha para contratos sem histórico)
-    console.log("[curva-mercado] sem crumb, tentando v8/chart paralelo");
-    fonte = "YAHOO_CHART";
-    const resultados = await Promise.allSettled(simbolos.map(s => fetchYahooV8Chart(s.yahoo)));
-    for (let i = 0; i < simbolos.length; i++) {
-      const res = resultados[i];
-      if (res.status === "fulfilled" && res.value > 0) precos[simbolos[i].yahoo] = res.value;
-      else if (res.status === "rejected") erros.push(`v8 ${simbolos[i].yahoo}: ${String(res.reason)}`);
-    }
-    console.log("[curva-mercado] v8/chart precos obtidos:", Object.keys(precos).length);
   }
 
-  // Insere no banco
-  for (const sim of simbolos) {
-    const preco = precos[sim.yahoo];
-    if (!preco || preco <= 0) { semCotacao.push(sim.yahoo); continue; }
-
+  // Insere soja
+  for (const [venc, preco] of Object.entries(sojaPrecos)) {
     const { error } = await sb.from("curva_mercado").insert({
       fazenda_id:      null,
-      instrumento:     sim.instrumento,
-      vencimento:      sim.vencimento,
+      instrumento:     "CBOT_SOJA",
+      vencimento:      venc,
       data_referencia: hoje,
       valor:           preco,
       unidade:         "cents_bu",
       fonte,
       boletim:         "fechamento",
     });
-
-    if (error) erros.push(`${sim.yahoo}: ${error.message}`);
+    if (error) erros.push(`SOJA ${venc}: ${error.message}`);
     else inseridos++;
   }
 
+  // Insere milho
+  for (const [venc, preco] of Object.entries(milhoPrecos)) {
+    const { error } = await sb.from("curva_mercado").insert({
+      fazenda_id:      null,
+      instrumento:     "CBOT_MILHO",
+      vencimento:      venc,
+      data_referencia: hoje,
+      valor:           preco,
+      unidade:         "cents_bu",
+      fonte,
+      boletim:         "fechamento",
+    });
+    if (error) erros.push(`MILHO ${venc}: ${error.message}`);
+    else inseridos++;
+  }
+
+  if (Object.keys(sojaPrecos).length === 0 && Object.keys(milhoPrecos).length === 0) {
+    semCotacao.push("todas");
+  }
+
   const resultado = {
-    ok:           erros.length === 0 && inseridos > 0,
-    data:         hoje,
+    ok:        erros.length === 0 && inseridos > 0,
+    data:      hoje,
     fonte,
     inseridos,
+    soja:      Object.keys(sojaPrecos).length,
+    milho:     Object.keys(milhoPrecos).length,
     semCotacao,
     erros,
-    totalSimbolos: simbolos.length,
-    duracaoMs:    Date.now() - inicio,
+    duracaoMs: Date.now() - inicio,
   };
   console.log("[curva-mercado] fim", resultado);
   return NextResponse.json(resultado);
