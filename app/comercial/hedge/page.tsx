@@ -200,13 +200,19 @@ export default function HedgePage() {
 
   // Auto-fill CBOT quando bloco ou cultura mudam
   useEffect(() => {
-    if (!blocoVenc || !curvas.length) return;
+    if (!curvas.length) return;
     const inst = `CBOT_${pCultura.toUpperCase()}`;
-    const dataVenc = blocoToDate(blocoVenc);
-    const encontrado = [...curvas]
-      .filter(c => c.instrumento === inst && c.vencimento === dataVenc)
+    // 1. Tenta mês específico (vencimento = data ISO)
+    const dataVenc = blocoVenc ? blocoToDate(blocoVenc) : "";
+    const especifico = dataVenc
+      ? [...curvas].filter(c => c.instrumento === inst && c.vencimento === dataVenc)
+          .sort((a, b) => b.data_referencia.localeCompare(a.data_referencia))[0]
+      : null;
+    if (especifico) { setPCbot(String(especifico.valor)); return; }
+    // 2. Fallback: spot/front-month (vencimento=null, inserido pelo cron diário)
+    const spot = [...curvas].filter(c => c.instrumento === inst && !c.vencimento)
       .sort((a, b) => b.data_referencia.localeCompare(a.data_referencia))[0];
-    if (encontrado) setPCbot(String(encontrado.valor));
+    if (spot) setPCbot(String(spot.valor));
   }, [blocoVenc, curvas, pCultura]);
 
   // Auto-fill frete + porto quando rota muda
