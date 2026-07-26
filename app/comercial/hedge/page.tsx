@@ -581,13 +581,20 @@ export default function HedgePage() {
                   <option value="">— Manual (sem auto-fill CBOT) —</option>
                   {gerarBlocos(pCultura).map(b => <option key={b.code} value={b.code}>{b.label}</option>)}
                 </select>
-                {blocoVenc && (
-                  <div style={{ fontSize: 10, marginTop: 2, color: curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoToDate(blocoVenc)) ? "#16A34A" : "#888" }}>
-                    {curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoToDate(blocoVenc))
-                      ? `Cotação do histórico preenchida automaticamente`
-                      : `Sem histórico para ${blocoVenc} — insira CBOT manualmente`}
-                  </div>
-                )}
+                {blocoVenc && (() => {
+                  const inst  = `CBOT_${pCultura.toUpperCase()}`;
+                  const temEspecifico = curvas.some(c => c.instrumento === inst && c.vencimento === blocoToDate(blocoVenc));
+                  const temSpot       = curvas.some(c => c.instrumento === inst && !c.vencimento);
+                  return (
+                    <div style={{ fontSize: 10, marginTop: 2, color: temEspecifico ? "#16A34A" : temSpot ? "#C9921B" : "#888" }}>
+                      {temEspecifico
+                        ? `Cotação específica de ${blocoVenc} preenchida automaticamente`
+                        : temSpot
+                          ? `Usando front-month como referência (sem dado específico para ${blocoVenc})`
+                          : `Sem dados — insira CBOT manualmente ou aguarde o cron noturno`}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Rota / Região */}
