@@ -170,6 +170,9 @@ export default function HedgePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .then(({ data }: { data: any[] | null }) => { if (data) setCiclos(data.map((c: any) => ({ ...c, ano_safra: c.anos_safra?.[0] }))); });
     sb.from("estrutura_despesa_hedge").select("*").eq("fazenda_id", fazId).eq("ativo", true).then(({ data }) => { if (data) setDespesas(data); });
+    // Carrega curva_mercado globalmente (independente de ciclo) para auto-fill do Precificador
+    sb.from("curva_mercado").select("*").or(`fazenda_id.eq.${fazId},fazenda_id.is.null`).order("data_referencia", { ascending: false }).limit(500)
+      .then(({ data }) => { if (data) setCurvas(data); });
   }, [fazId]);
 
   const carregarCiclo = useCallback(async (id: string) => {
