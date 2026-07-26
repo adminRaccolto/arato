@@ -40,22 +40,17 @@ function gerarSimbolos(): Simbolo[] {
   return res;
 }
 
-async function fetchYahoo(symbols: string[]): Promise<Record<string, number>> {
-  // Yahoo Finance v7 aceita até ~10 símbolos por chamada
-  const syms = symbols.join(",");
-  const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice`;
+// Yahoo v8/chart — mesmo endpoint que funciona no /api/precos
+async function fetchYahooChart(symbol: string): Promise<number> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
   const r = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0" },
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(12000),
     cache:  "no-store",
   });
   if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
-  const json = await r.json() as { quoteResponse?: { result?: { symbol: string; regularMarketPrice?: number }[] } };
-  const result: Record<string, number> = {};
-  for (const q of json?.quoteResponse?.result ?? []) {
-    if (q.regularMarketPrice && q.regularMarketPrice > 0) result[q.symbol] = q.regularMarketPrice;
-  }
-  return result;
+  const json = await r.json() as { chart?: { result?: { meta?: { regularMarketPrice?: number } }[] } };
+  return json?.chart?.result?.[0]?.meta?.regularMarketPrice ?? 0;
 }
 
 export async function GET(req: NextRequest) {
@@ -82,39 +77,38 @@ export async function GET(req: NextRequest) {
     .eq("data_referencia", hoje)
     .in("fonte", ["YAHOO", "BARCHART"]);
 
-  // Busca em lotes de 10 (Yahoo suporta bem até esse limite)
+  // Busca todos em paralelo via v8/chart (mesmo endpoint do /api/precos)
   let inseridos = 0;
   const semCotacao: string[] = [];
   const erros:      string[] = [];
 
-  const chunks: Simbolo[][] = [];
-  for (let i = 0; i < simbolos.length; i += 10) chunks.push(simbolos.slice(i, i + 10));
+  const resultados = await Promise.allSettled(simbolos.map(s => fetchYahooChart(s.yahoo)));
 
-  for (const chunk of chunks) {
-    try {
-      const precos = await fetchYahoo(chunk.map(s => s.yahoo));
+  for (let i = 0; i < simbolos.length; i++) {
+    const sim = simbolos[i];
+    const res = resultados[i];
 
-      for (const sim of chunk) {
-        const preco = precos[sim.yahoo];
-        if (!preco) { semCotacao.push(sim.yahoo); continue; }
-
-        const { error } = await sb.from("curva_mercado").insert({
-          fazenda_id:      null,
-          instrumento:     sim.instrumento,
-          vencimento:      sim.vencimento,
-          data_referencia: hoje,
-          valor:           preco,
-          unidade:         "cents_bu",
-          fonte:           "YAHOO",
-          boletim:         "fechamento",
-        });
-
-        if (error) erros.push(`${sim.yahoo}: ${error.message}`);
-        else inseridos++;
-      }
-    } catch (e) {
-      erros.push(`Lote ${chunk.map(s => s.yahoo).join(",")}: ${String(e)}`);
+    if (res.status === "rejected") {
+      erros.push(`${sim.yahoo}: ${String(res.reason)}`);
+      continue;
     }
+
+    const preco = res.value;
+    if (!preco || preco <= 0) { semCotacao.push(sim.yahoo); continue; }
+
+    const { error } = await sb.from("curva_mercado").insert({
+      fazenda_id:      null,
+      instrumento:     sim.instrumento,
+      vencimento:      sim.vencimento,
+      data_referencia: hoje,
+      valor:           preco,
+      unidade:         "cents_bu",
+      fonte:           "YAHOO",
+      boletim:         "fechamento",
+    });
+
+    if (error) erros.push(`${sim.yahoo}: ${error.message}`);
+    else inseridos++;
   }
 
   const resultado = {
