@@ -22,7 +22,6 @@ function gerarSimbolos(): Simbolo[] {
       const venc = `${letraSoja}${yy}`;
       if (!seen.has(`S${venc}`)) {
         seen.add(`S${venc}`);
-        // Yahoo Finance: ZSX26=F, ZSH27=F …
         res.push({ yahoo: `ZS${venc}=F`, instrumento: "CBOT_SOJA", vencimento: venc });
       }
     }
@@ -40,21 +39,75 @@ function gerarSimbolos(): Simbolo[] {
   return res;
 }
 
-// Yahoo v8/chart — mesmo endpoint que funciona no /api/precos
-async function fetchYahooChart(symbol: string): Promise<number> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+// Obtém crumb + cookie para autenticar no Yahoo Finance v7
+async function getYahooCrumb(): Promise<{ crumb: string; cookies: string } | null> {
+  try {
+    const res1 = await fetch("https://fc.yahoo.com", {
+      headers: { "User-Agent": UA },
+      redirect: "follow",
+      signal: AbortSignal.timeout(8000),
+      cache: "no-store",
+    });
+    const rawCookies: string[] = [];
+    // Headers.getSetCookie() retorna array; fallback para get() se não disponível
+    const setCookie = res1.headers.get("set-cookie") ?? "";
+    if (setCookie) rawCookies.push(...setCookie.split(/,(?=[^;]+=[^;]+)/));
+    const cookies = rawCookies.map(c => c.split(";")[0]).join("; ");
+
+    const res2 = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { "User-Agent": UA, "Cookie": cookies },
+      signal: AbortSignal.timeout(8000),
+      cache: "no-store",
+    });
+    const crumb = await res2.text();
+    if (!crumb || crumb.length > 30 || crumb.includes("<")) return null;
+    console.log("[curva-mercado] crumb ok:", crumb.trim().slice(0, 6) + "...");
+    return { crumb: crumb.trim(), cookies };
+  } catch (e) {
+    console.log("[curva-mercado] crumb falhou:", String(e));
+    return null;
+  }
+}
+
+// Busca cotações via Yahoo v7/quote com crumb (aceita contratos específicos como ZSX26=F)
+async function fetchYahooV7(symbols: string[], crumb: string, cookies: string): Promise<Record<string, number>> {
+  const syms = symbols.join(",");
+  const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&crumb=${encodeURIComponent(crumb)}&fields=regularMarketPrice&formatted=false`;
   const r = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" },
+    headers: {
+      "User-Agent": UA,
+      "Cookie": cookies,
+      "Referer": "https://finance.yahoo.com/",
+      "Accept": "application/json",
+    },
     signal: AbortSignal.timeout(12000),
-    cache:  "no-store",
+    cache: "no-store",
   });
-  if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
+  if (!r.ok) throw new Error(`Yahoo v7 HTTP ${r.status}`);
+  const json = await r.json() as { quoteResponse?: { result?: { symbol: string; regularMarketPrice?: number }[] } };
+  const result: Record<string, number> = {};
+  for (const q of json?.quoteResponse?.result ?? []) {
+    if (q.regularMarketPrice && q.regularMarketPrice > 0) result[q.symbol] = q.regularMarketPrice;
+  }
+  return result;
+}
+
+// Fallback: v8/chart (funciona apenas para contratos líquidos com histórico)
+async function fetchYahooV8Chart(symbol: string): Promise<number> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1mo`;
+  const r = await fetch(url, {
+    headers: { "User-Agent": UA },
+    signal: AbortSignal.timeout(10000),
+    cache: "no-store",
+  });
+  if (!r.ok) throw new Error(`Yahoo v8 HTTP ${r.status}`);
   const json = await r.json() as { chart?: { result?: { meta?: { regularMarketPrice?: number } }[] } };
   return json?.chart?.result?.[0]?.meta?.regularMarketPrice ?? 0;
 }
 
 export async function GET(req: NextRequest) {
-  // Autorização (Vercel injeta header automaticamente em produção)
   const secret = req.headers.get("authorization")?.replace("Bearer ", "");
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -68,7 +121,7 @@ export async function GET(req: NextRequest) {
   const hoje     = new Date().toISOString().slice(0, 10);
   const simbolos = gerarSimbolos();
   const inicio   = Date.now();
-  console.log("[curva-mercado] inicio", { hoje, fonte: "YAHOO", total: simbolos.length });
+  console.log("[curva-mercado] inicio", { hoje, total: simbolos.length });
 
   // Limpa dados globais de hoje antes de reinserir
   await sb.from("curva_mercado")
@@ -77,23 +130,45 @@ export async function GET(req: NextRequest) {
     .eq("data_referencia", hoje)
     .in("fonte", ["YAHOO", "BARCHART"]);
 
-  // Busca todos em paralelo via v8/chart (mesmo endpoint do /api/precos)
   let inseridos = 0;
   const semCotacao: string[] = [];
   const erros:      string[] = [];
+  let fonte = "YAHOO";
 
-  const resultados = await Promise.allSettled(simbolos.map(s => fetchYahooChart(s.yahoo)));
+  // Tenta crumb para usar v7/quote (suporta contratos específicos)
+  const auth = await getYahooCrumb();
+  let precos: Record<string, number> = {};
 
-  for (let i = 0; i < simbolos.length; i++) {
-    const sim = simbolos[i];
-    const res = resultados[i];
+  if (auth) {
+    // v7/quote em lotes de 10
+    const chunks: Simbolo[][] = [];
+    for (let i = 0; i < simbolos.length; i += 10) chunks.push(simbolos.slice(i, i + 10));
 
-    if (res.status === "rejected") {
-      erros.push(`${sim.yahoo}: ${String(res.reason)}`);
-      continue;
+    for (const chunk of chunks) {
+      try {
+        const lote = await fetchYahooV7(chunk.map(s => s.yahoo), auth.crumb, auth.cookies);
+        Object.assign(precos, lote);
+      } catch (e) {
+        erros.push(`v7 lote ${chunk.map(s => s.yahoo).join(",")}: ${String(e)}`);
+      }
     }
+    console.log("[curva-mercado] v7 precos obtidos:", Object.keys(precos).length);
+  } else {
+    // Fallback: v8/chart em paralelo (sem crumb; falha para contratos sem histórico)
+    console.log("[curva-mercado] sem crumb, tentando v8/chart paralelo");
+    fonte = "YAHOO_CHART";
+    const resultados = await Promise.allSettled(simbolos.map(s => fetchYahooV8Chart(s.yahoo)));
+    for (let i = 0; i < simbolos.length; i++) {
+      const res = resultados[i];
+      if (res.status === "fulfilled" && res.value > 0) precos[simbolos[i].yahoo] = res.value;
+      else if (res.status === "rejected") erros.push(`v8 ${simbolos[i].yahoo}: ${String(res.reason)}`);
+    }
+    console.log("[curva-mercado] v8/chart precos obtidos:", Object.keys(precos).length);
+  }
 
-    const preco = res.value;
+  // Insere no banco
+  for (const sim of simbolos) {
+    const preco = precos[sim.yahoo];
     if (!preco || preco <= 0) { semCotacao.push(sim.yahoo); continue; }
 
     const { error } = await sb.from("curva_mercado").insert({
@@ -103,7 +178,7 @@ export async function GET(req: NextRequest) {
       data_referencia: hoje,
       valor:           preco,
       unidade:         "cents_bu",
-      fonte:           "YAHOO",
+      fonte,
       boletim:         "fechamento",
     });
 
@@ -112,14 +187,14 @@ export async function GET(req: NextRequest) {
   }
 
   const resultado = {
-    ok:          erros.length === 0,
-    data:        hoje,
-    fonte:       "YAHOO",
+    ok:           erros.length === 0 && inseridos > 0,
+    data:         hoje,
+    fonte,
     inseridos,
     semCotacao,
     erros,
     totalSimbolos: simbolos.length,
-    duracaoMs:   Date.now() - inicio,
+    duracaoMs:    Date.now() - inicio,
   };
   console.log("[curva-mercado] fim", resultado);
   return NextResponse.json(resultado);
