@@ -139,6 +139,8 @@ export async function GET(req: NextRequest) {
   const auth = await getYahooCrumb();
   let precos: Record<string, number> = {};
 
+  const isDebug = req.nextUrl.searchParams.get("debug") === "1";
+
   if (auth) {
     // v7/quote em lotes de 10
     const chunks: Simbolo[][] = [];
@@ -148,6 +150,15 @@ export async function GET(req: NextRequest) {
       try {
         const lote = await fetchYahooV7(chunk.map(s => s.yahoo), auth.crumb, auth.cookies);
         Object.assign(precos, lote);
+        if (isDebug && chunk === chunks[0]) {
+          // Retorna raw response do primeiro lote para diagnóstico
+          const syms = chunk.map(s => s.yahoo).join(",");
+          const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&crumb=${encodeURIComponent(auth.crumb)}&fields=regularMarketPrice,regularMarketTime,marketState&formatted=false`;
+          const raw  = await fetch(url, { headers: { "User-Agent": UA, "Cookie": auth.cookies, "Referer": "https://finance.yahoo.com/" }, cache: "no-store" });
+          const rawJson = await raw.json();
+          console.log("[curva-mercado] debug raw:", JSON.stringify(rawJson).slice(0, 800));
+          if (isDebug) return NextResponse.json({ debug: true, crumb: auth.crumb.slice(0,6)+"...", lote0: rawJson });
+        }
       } catch (e) {
         erros.push(`v7 lote ${chunk.map(s => s.yahoo).join(",")}: ${String(e)}`);
       }
