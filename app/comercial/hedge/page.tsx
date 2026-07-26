@@ -17,6 +17,18 @@ const FATOR_MILHO = 2.3621;  // sc 60kg / bushel 25,4012kg
 const FUNRURAL_PF = 0.015;
 const SENAR       = 0.002;
 
+// Converte código CME "X26" → "2026-11-01" (formato date do banco)
+const LETRA_MES: Record<string, number> = {
+  F:1, G:2, H:3, J:4, K:5, M:6, N:7, Q:8, U:9, V:10, X:11, Z:12,
+};
+function blocoToDate(bloco: string): string {
+  if (!bloco || bloco.length < 3) return "";
+  const mes = LETRA_MES[bloco[0]];
+  const yy  = bloco.slice(1);
+  if (!mes || !yy) return "";
+  return `20${yy}-${String(mes).padStart(2,"0")}-01`;
+}
+
 const MILESTONES = [
   { key: "pre_plantio",  label: "Pré-plantio",   pct_default: 20 },
   { key: "plantio",      label: "Plantio",        pct_default: 35 },
@@ -190,8 +202,9 @@ export default function HedgePage() {
   useEffect(() => {
     if (!blocoVenc || !curvas.length) return;
     const inst = `CBOT_${pCultura.toUpperCase()}`;
+    const dataVenc = blocoToDate(blocoVenc);
     const encontrado = [...curvas]
-      .filter(c => c.instrumento === inst && c.vencimento === blocoVenc)
+      .filter(c => c.instrumento === inst && c.vencimento === dataVenc)
       .sort((a, b) => b.data_referencia.localeCompare(a.data_referencia))[0];
     if (encontrado) setPCbot(String(encontrado.valor));
   }, [blocoVenc, curvas, pCultura]);
@@ -563,8 +576,8 @@ export default function HedgePage() {
                   {gerarBlocos(pCultura).map(b => <option key={b.code} value={b.code}>{b.label}</option>)}
                 </select>
                 {blocoVenc && (
-                  <div style={{ fontSize: 10, marginTop: 2, color: curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoVenc) ? "#16A34A" : "#888" }}>
-                    {curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoVenc)
+                  <div style={{ fontSize: 10, marginTop: 2, color: curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoToDate(blocoVenc)) ? "#16A34A" : "#888" }}>
+                    {curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoToDate(blocoVenc))
                       ? `Cotação do histórico preenchida automaticamente`
                       : `Sem histórico para ${blocoVenc} — insira CBOT manualmente`}
                   </div>
