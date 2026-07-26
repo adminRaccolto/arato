@@ -8134,3 +8134,60 @@ CREATE INDEX IF NOT EXISTS idx_fixacoes_hedge_contrato ON fixacoes_hedge(contrat
 -- Para habilitar para uma conta: INSERT INTO conta_modulos(conta_id, modulo, habilitado) VALUES (..., 'protecao_margem', true)
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════
+-- Seção 86: RLS Policies — módulo Hedge / Proteção de Margem
+-- ═══════════════════════════════════════════════════════════
+
+ALTER TABLE curva_mercado         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE estrutura_despesa_hedge ENABLE ROW LEVEL SECURITY;
+ALTER TABLE comercializacao_metas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fixacoes_hedge        ENABLE ROW LEVEL SECURITY;
+
+-- curva_mercado: SELECT inclui registros globais (fazenda_id IS NULL = cron noturno)
+CREATE POLICY "curva_mercado_select" ON curva_mercado FOR SELECT USING (
+  fazenda_id IS NULL
+  OR fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+CREATE POLICY "curva_mercado_insert" ON curva_mercado FOR INSERT WITH CHECK (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+CREATE POLICY "curva_mercado_update" ON curva_mercado FOR UPDATE USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+CREATE POLICY "curva_mercado_delete" ON curva_mercado FOR DELETE USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+-- estrutura_despesa_hedge
+CREATE POLICY "desp_hedge_all" ON estrutura_despesa_hedge FOR ALL USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+) WITH CHECK (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+-- comercializacao_metas
+CREATE POLICY "com_metas_all" ON comercializacao_metas FOR ALL USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+) WITH CHECK (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+-- fixacoes_hedge
+CREATE POLICY "fix_hedge_all" ON fixacoes_hedge FOR ALL USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+) WITH CHECK (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+NOTIFY pgrst, 'reload schema';
