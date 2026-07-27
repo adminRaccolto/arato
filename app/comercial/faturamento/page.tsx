@@ -12,39 +12,54 @@ import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio, Insumo } from ".
 import ProdutorCombo from "../../../components/ProdutorCombo";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
-// NOTA: os textos de infCpl usam legislação federal. Para ICMS estadual, complete no campo
-// Obs./Adic. com o fundamento legal específico da UF do emitente (ex: MT → Decreto 4.540/2004;
-// SP → art. 260-A RICMS-SP; GO → art. 95 RICMS-GO).
+// cfop_tipo liga cada natureza à tabela textos_legais_uf no banco.
+// null = texto único federal (não varia por estado).
+// obs = fallback quando o banco ainda não tem texto para a UF.
 const NATUREZAS_VENDA = [
-  { codigo: "6.501",    descricao: "Venda com Fim Específico de Exportação — Produtor PF (CFOP 6.501)",
-    obs: "Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual aplicável. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991." },
-  { codigo: "6.501.PJ", descricao: "Venda com Fim Específico de Exportação — Produtor PJ (CFOP 6.501)",
-    obs: "Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual aplicável. PIS/COFINS imunes conforme art. 149-A da CF/88." },
-  { codigo: "6.101",    descricao: "Venda de Produção — Interestadual / Produtor PF (CFOP 6.101)",
-    obs: "ICMS diferido conforme legislação estadual aplicável ao produtor rural. Operação isenta de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
-  { codigo: "6.101.PJ", descricao: "Venda de Produção — Interestadual / Produtor PJ (CFOP 6.101)",
-    obs: "ICMS diferido conforme legislação estadual aplicável ao produtor rural. Operação isenta de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004." },
-  { codigo: "5.101",    descricao: "Venda de Produção — Interna (mesma UF) / Produtor PF (CFOP 5.101)",
+  { codigo: "6.501",    cfop_tipo: "exportacao_fim_espec_pf",
+    descricao: "Venda com Fim Específico de Exportação — Produtor PF (CFOP 6.501)",
+    obs: "Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991." },
+  { codigo: "6.501.PJ", cfop_tipo: "exportacao_fim_espec_pj",
+    descricao: "Venda com Fim Específico de Exportação — Produtor PJ (CFOP 6.501)",
+    obs: "Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88." },
+  { codigo: "6.101",    cfop_tipo: "venda_interestadual_pf",
+    descricao: "Venda de Produção — Interestadual / Produtor PF (CFOP 6.101)",
+    obs: "ICMS diferido conforme legislação estadual aplicável ao produtor rural. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
+  { codigo: "6.101.PJ", cfop_tipo: "venda_interestadual_pj",
+    descricao: "Venda de Produção — Interestadual / Produtor PJ (CFOP 6.101)",
+    obs: "ICMS diferido conforme legislação estadual aplicável ao produtor rural. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004." },
+  { codigo: "5.101",    cfop_tipo: "venda_interna_pf",
+    descricao: "Venda de Produção — Interna (mesma UF) / Produtor PF (CFOP 5.101)",
     obs: "ICMS diferido conforme legislação estadual aplicável ao produtor rural. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
-  { codigo: "5.101.PJ", descricao: "Venda de Produção — Interna (mesma UF) / Produtor PJ (CFOP 5.101)",
+  { codigo: "5.101.PJ", cfop_tipo: "venda_interna_pj",
+    descricao: "Venda de Produção — Interna (mesma UF) / Produtor PJ (CFOP 5.101)",
     obs: "ICMS diferido conforme legislação estadual aplicável ao produtor rural." },
-  { codigo: "5.501",    descricao: "Venda com Fim Específico de Exportação — Interna (mesma UF) (CFOP 5.501)",
+  { codigo: "5.501",    cfop_tipo: "exportacao_fim_espec_interna",
+    descricao: "Venda com Fim Específico de Exportação — Interna (mesma UF) (CFOP 5.501)",
     obs: "Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88." },
-  { codigo: "7.101",    descricao: "Exportação Direta pelo Produtor (CFOP 7.101)",
+  { codigo: "7.101",    cfop_tipo: null,
+    descricao: "Exportação Direta pelo Produtor (CFOP 7.101)",
     obs: "Exportação direta. Operação imune de ICMS, PIS, COFINS e Funrural conforme art. 149-A da CF/88 e art. 14 da Lei 11.945/2009." },
-  { codigo: "6.905",    descricao: "Remessa para Armazém Geral — Interestadual (CFOP 6.905)",
+  { codigo: "6.905",    cfop_tipo: null,
+    descricao: "Remessa para Armazém Geral — Interestadual (CFOP 6.905)",
     obs: "Remessa para depósito em armazém geral de terceiros. Operação não configura venda. Não incide ICMS, PIS, COFINS nem Funrural." },
-  { codigo: "5.905",    descricao: "Remessa para Armazém Geral — Interna (mesma UF) (CFOP 5.905)",
+  { codigo: "5.905",    cfop_tipo: null,
+    descricao: "Remessa para Armazém Geral — Interna (mesma UF) (CFOP 5.905)",
     obs: "Remessa para depósito em armazém geral no mesmo estado. Operação não configura venda. Não incide ICMS, PIS, COFINS nem Funrural." },
-  { codigo: "6.906",    descricao: "Retorno de Armazém Geral — Interestadual (CFOP 6.906)",
+  { codigo: "6.906",    cfop_tipo: null,
+    descricao: "Retorno de Armazém Geral — Interestadual (CFOP 6.906)",
     obs: "Retorno de mercadoria depositada em armazém geral. Natureza espelho da remessa. Não incide tributo." },
-  { codigo: "5.906",    descricao: "Retorno de Armazém Geral — Interna (mesma UF) (CFOP 5.906)",
+  { codigo: "5.906",    cfop_tipo: null,
+    descricao: "Retorno de Armazém Geral — Interna (mesma UF) (CFOP 5.906)",
     obs: "Retorno de mercadoria depositada em armazém geral no mesmo estado. Não incide tributo." },
-  { codigo: "6.117",    descricao: "Remessa Simbólica — Entrega Futura (CFOP 6.117)",
+  { codigo: "6.117",    cfop_tipo: "faturamento_antecipado",
+    descricao: "Remessa Simbólica — Entrega Futura (CFOP 6.117)",
     obs: "Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme legislação estadual aplicável ao produtor rural." },
-  { codigo: "6.119",    descricao: "Remessa para Venda à Ordem (CFOP 6.119)",
+  { codigo: "6.119",    cfop_tipo: "venda_a_ordem",
+    descricao: "Remessa para Venda à Ordem (CFOP 6.119)",
     obs: "Venda à ordem — operação triangular. ICMS diferido conforme legislação estadual aplicável ao produtor rural." },
-  { codigo: "6.923",    descricao: "Remessa por Conta e Ordem de Terceiros — Venda à Ordem (CFOP 6.923)",
+  { codigo: "6.923",    cfop_tipo: "remessa_ordem",
+    descricao: "Remessa por Conta e Ordem de Terceiros — Venda à Ordem (CFOP 6.923)",
     obs: "Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. Esta NF acompanha o transporte fisicamente e deve referenciar a chave da NF de venda simbólica (CFOP 6.101/6.501). ICMS diferido conforme legislação estadual aplicável ao produtor rural." },
 ];
 const NATUREZAS_DEVOLUCAO = [
@@ -175,12 +190,18 @@ function FaturamentoInner() {
   const [erroForm,    setErroForm]    = useState<string|null>(null);
   const [nfEmitida,   setNfEmitida]   = useState<{numero:string;chave?:string;cfop:string;venda_a_ordem:boolean;entrega_futura:boolean}|null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
+  const [fazendaUF,   setFazendaUF]   = useState("");
+  const [textosUF,    setTextosUF]    = useState<Record<string, string>>({});
   // IDs vindos via URL (?romaneio_id=&contrato_id=) para deep-link do botão "Faturar"
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
 
   // totais em tempo real
   const totalItens     = nfeItens.reduce((s, i) => s + i.valor_total, 0);
   const totalFinanceiro= nfeItens.reduce((s, i) => s + i.valor_financeiro, 0);
+
+  // Retorna o texto legal correto para a UF da fazenda; cai para nat.obs se não existir no banco
+  const textoNat = (nat: { cfop_tipo?: string | null; obs: string }) =>
+    (nat.cfop_tipo && textosUF[nat.cfop_tipo]) ? textosUF[nat.cfop_tipo] : nat.obs;
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -197,13 +218,23 @@ function FaturamentoInner() {
       listarContratos(fazendaId),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome"),
-    ]).then(([n, p, pe, c, as_, pa]) => {
+      supabase.from("fazendas").select("estado").eq("id", fazendaId).single(),
+      supabase.from("textos_legais_uf").select("uf, cfop_tipo, texto"),
+    ]).then(([n, p, pe, c, as_, pa, faz, tlu]) => {
       setNotas(n);
       setProdutores(p);
       setPessoas(pe);
       setContratos(c.filter(c => c.tipo === "venda" || !c.tipo));
       setAnosSafra(as_.data ?? []);
       setProdAgricolas((pa.data ?? []) as Insumo[]);
+      const uf = (faz as {data?: {estado?: string}}).data?.estado ?? "";
+      setFazendaUF(uf);
+      // Constrói mapa cfop_tipo → texto: BR primeiro (fallback), depois UF específica
+      const mapa: Record<string, string> = {};
+      const rows = (tlu as {data?: {uf: string; cfop_tipo: string; texto: string}[]}).data ?? [];
+      rows.filter(r => r.uf === "BR").forEach(r => { mapa[r.cfop_tipo] = r.texto; });
+      if (uf) rows.filter(r => r.uf === uf).forEach(r => { mapa[r.cfop_tipo] = r.texto; });
+      setTextosUF(mapa);
     }).catch(console.error).finally(() => setLoading(false));
   }, [fazendaId, searchParams]);
 
@@ -296,7 +327,7 @@ function FaturamentoInner() {
       dest_uf:         comprador?.estado ?? "",
       cfop:            cfopNorm,
       natureza_texto:  contrato.natureza_operacao ?? nat?.descricao ?? "",
-      observacao:      nat?.obs ?? contrato.observacao ?? "",
+      observacao:      nat ? textoNat(nat) : (contrato.observacao ?? ""),
       grupo_vendedor:  contrato.grupo_vendedor ?? "",
       comprador:       comprador?.nome ?? contrato.comprador ?? "",
       propriedade:     contrato.propriedade ?? "",
@@ -344,7 +375,7 @@ function FaturamentoInner() {
       ...p,
       cfop,
       natureza_texto: nat?.descricao ?? "",
-      observacao:     nat?.obs ?? "",
+      observacao:     nat ? textoNat(nat) : "",
       data_emissao:   hoje,
       data_saida:     hoje,
       hora_saida:     agora,
@@ -628,7 +659,7 @@ function FaturamentoInner() {
             <select style={inp} value={fVenda.cfop}
               onChange={e => {
                 const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === e.target.value);
-                fv({ cfop: e.target.value, natureza_texto: nat?.descricao ?? "", observacao: nat?.obs ?? "" });
+                fv({ cfop: e.target.value, natureza_texto: nat?.descricao ?? "", observacao: nat ? textoNat(nat) : "" });
               }}>
               <optgroup label="Vendas">
                 {NATUREZAS_VENDA.filter(n => n.codigo.startsWith("6") || n.codigo.startsWith("5.1") || n.codigo.startsWith("5.5") || n.codigo.startsWith("7")).map(n => (

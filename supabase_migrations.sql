@@ -8191,3 +8191,401 @@ CREATE POLICY "fix_hedge_all" ON fixacoes_hedge FOR ALL USING (
 );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════
+-- Seção 87: Textos Legais por UF — infCpl automático em NF-e
+-- ═══════════════════════════════════════════════════════════
+-- Tabela global (não tenant-specific) com os textos de rodapé
+-- da NF-e por UF do emitente × tipo de operação.
+-- 'BR' = fallback genérico para UFs sem texto específico.
+
+CREATE TABLE IF NOT EXISTS textos_legais_uf (
+  uf           CHAR(2)      NOT NULL,
+  cfop_tipo    TEXT         NOT NULL,
+  texto        TEXT         NOT NULL,
+  atualizado_em TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (uf, cfop_tipo)
+);
+
+ALTER TABLE textos_legais_uf ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "textos_legais_select" ON textos_legais_uf FOR SELECT USING (true);
+-- Apenas raccotlo pode inserir/atualizar via painel (futuramente)
+CREATE POLICY "textos_legais_write" ON textos_legais_uf FOR ALL USING (
+  EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+) WITH CHECK (
+  EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+-- ─── Tipos de operação mapeados ──────────────────────────────
+-- venda_interna_pf           → CFOP 5.101 PF
+-- venda_interna_pj           → CFOP 5.101 PJ
+-- venda_interestadual_pf     → CFOP 6.101 PF
+-- venda_interestadual_pj     → CFOP 6.101 PJ
+-- exportacao_fim_espec_pf    → CFOP 5.501 / 6.501 PF
+-- exportacao_fim_espec_pj    → CFOP 6.501 PJ
+-- exportacao_fim_espec_interna → CFOP 5.501 interna
+-- faturamento_antecipado     → CFOP 6.117
+-- venda_a_ordem              → CFOP 6.119
+-- remessa_ordem              → CFOP 6.923
+
+-- ─── Fallback genérico (BR) ──────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('BR','venda_interna_pf',
+ 'ICMS diferido conforme legislação estadual aplicável ao produtor rural. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('BR','venda_interna_pj',
+ 'ICMS diferido conforme legislação estadual aplicável ao produtor rural.'),
+('BR','venda_interestadual_pf',
+ 'ICMS diferido conforme legislação estadual aplicável ao produtor rural. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('BR','venda_interestadual_pj',
+ 'ICMS diferido conforme legislação estadual aplicável ao produtor rural. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('BR','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('BR','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('BR','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('BR','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme legislação estadual aplicável ao produtor rural.'),
+('BR','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme legislação estadual aplicável ao produtor rural.'),
+('BR','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. Esta NF acompanha o transporte fisicamente e deve referenciar a chave da NF de venda simbólica. ICMS diferido conforme legislação estadual aplicável ao produtor rural.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── MT — Mato Grosso ────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('MT','venda_interna_pf',
+ 'ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MT','venda_interna_pj',
+ 'ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.'),
+('MT','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MT','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('MT','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, § 3º do RICMS/MT, Decreto nº 2.212/2014. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('MT','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, § 3º do RICMS/MT, Decreto nº 2.212/2014. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MT','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, § 3º do RICMS/MT, Decreto nº 2.212/2014. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MT','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.'),
+('MT','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.'),
+('MT','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. Esta NF acompanha o transporte fisicamente e deve referenciar a chave da NF de venda simbólica. ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── GO — Goiás ──────────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('GO','venda_interna_pf',
+ 'ICMS diferido conforme art. 95, § 1º do RCTE/GO, Decreto nº 4.852/1997. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('GO','venda_interna_pj',
+ 'ICMS diferido conforme art. 95, § 1º do RCTE/GO, Decreto nº 4.852/1997.'),
+('GO','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 95, § 1º do RCTE/GO, Decreto nº 4.852/1997. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('GO','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 95, § 1º do RCTE/GO, Decreto nº 4.852/1997. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('GO','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RCTE/GO. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('GO','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RCTE/GO. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('GO','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RCTE/GO. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('GO','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 95, § 1º do RCTE/GO, Decreto nº 4.852/1997.'),
+('GO','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 95, § 1º do RCTE/GO, Decreto nº 4.852/1997.'),
+('GO','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 95, § 1º do RCTE/GO, Decreto nº 4.852/1997.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── MS — Mato Grosso do Sul ─────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('MS','venda_interna_pf',
+ 'ICMS diferido conforme art. 37 do RICMS/MS, Decreto nº 9.203/1998. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MS','venda_interna_pj',
+ 'ICMS diferido conforme art. 37 do RICMS/MS, Decreto nº 9.203/1998.'),
+('MS','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 37 do RICMS/MS, Decreto nº 9.203/1998. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MS','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 37 do RICMS/MS, Decreto nº 9.203/1998. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('MS','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MS. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('MS','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MS. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MS','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MS. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MS','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 37 do RICMS/MS, Decreto nº 9.203/1998.'),
+('MS','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 37 do RICMS/MS, Decreto nº 9.203/1998.'),
+('MS','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 37 do RICMS/MS, Decreto nº 9.203/1998.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── PR — Paraná ─────────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('PR','venda_interna_pf',
+ 'ICMS diferido conforme art. 108, inciso II do RICMS/PR, Decreto nº 7.871/2017. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('PR','venda_interna_pj',
+ 'ICMS diferido conforme art. 108, inciso II do RICMS/PR, Decreto nº 7.871/2017.'),
+('PR','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 108, inciso II do RICMS/PR, Decreto nº 7.871/2017. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('PR','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 108, inciso II do RICMS/PR, Decreto nº 7.871/2017. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('PR','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PR. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('PR','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PR. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('PR','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PR. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('PR','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 108, inciso II do RICMS/PR, Decreto nº 7.871/2017.'),
+('PR','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 108, inciso II do RICMS/PR, Decreto nº 7.871/2017.'),
+('PR','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 108, inciso II do RICMS/PR, Decreto nº 7.871/2017.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── MG — Minas Gerais ───────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('MG','venda_interna_pf',
+ 'ICMS diferido conforme art. 8º, Parte 1, Anexo X do RICMS/MG, Decreto nº 43.080/2002. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MG','venda_interna_pj',
+ 'ICMS diferido conforme art. 8º, Parte 1, Anexo X do RICMS/MG, Decreto nº 43.080/2002.'),
+('MG','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 8º, Parte 1, Anexo X do RICMS/MG, Decreto nº 43.080/2002. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MG','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 8º, Parte 1, Anexo X do RICMS/MG, Decreto nº 43.080/2002. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('MG','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MG. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('MG','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MG. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MG','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MG. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MG','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 8º, Parte 1, Anexo X do RICMS/MG, Decreto nº 43.080/2002.'),
+('MG','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 8º, Parte 1, Anexo X do RICMS/MG, Decreto nº 43.080/2002.'),
+('MG','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 8º, Parte 1, Anexo X do RICMS/MG, Decreto nº 43.080/2002.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── SP — São Paulo ──────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('SP','venda_interna_pf',
+ 'ICMS diferido conforme art. 260-A do RICMS/SP, Decreto nº 45.490/2000. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('SP','venda_interna_pj',
+ 'ICMS diferido conforme art. 260-A do RICMS/SP, Decreto nº 45.490/2000.'),
+('SP','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 260-A do RICMS/SP, Decreto nº 45.490/2000. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('SP','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 260-A do RICMS/SP, Decreto nº 45.490/2000. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('SP','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/SP. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('SP','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/SP. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('SP','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/SP. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('SP','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 260-A do RICMS/SP, Decreto nº 45.490/2000.'),
+('SP','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 260-A do RICMS/SP, Decreto nº 45.490/2000.'),
+('SP','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 260-A do RICMS/SP, Decreto nº 45.490/2000.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── RS — Rio Grande do Sul ──────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('RS','venda_interna_pf',
+ 'ICMS diferido conforme art. 32, inciso XXI do RICMS/RS, Decreto nº 37.699/1997. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('RS','venda_interna_pj',
+ 'ICMS diferido conforme art. 32, inciso XXI do RICMS/RS, Decreto nº 37.699/1997.'),
+('RS','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 32, inciso XXI do RICMS/RS, Decreto nº 37.699/1997. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('RS','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 32, inciso XXI do RICMS/RS, Decreto nº 37.699/1997. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('RS','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/RS. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('RS','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/RS. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('RS','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/RS. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('RS','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 32, inciso XXI do RICMS/RS, Decreto nº 37.699/1997.'),
+('RS','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 32, inciso XXI do RICMS/RS, Decreto nº 37.699/1997.'),
+('RS','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 32, inciso XXI do RICMS/RS, Decreto nº 37.699/1997.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── SC — Santa Catarina ─────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('SC','venda_interna_pf',
+ 'ICMS diferido conforme art. 37, inciso II do RICMS/SC, Decreto nº 2.870/2001. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('SC','venda_interna_pj',
+ 'ICMS diferido conforme art. 37, inciso II do RICMS/SC, Decreto nº 2.870/2001.'),
+('SC','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 37, inciso II do RICMS/SC, Decreto nº 2.870/2001. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('SC','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 37, inciso II do RICMS/SC, Decreto nº 2.870/2001. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('SC','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/SC. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('SC','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/SC. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('SC','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/SC. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('SC','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 37, inciso II do RICMS/SC, Decreto nº 2.870/2001.'),
+('SC','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 37, inciso II do RICMS/SC, Decreto nº 2.870/2001.'),
+('SC','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 37, inciso II do RICMS/SC, Decreto nº 2.870/2001.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── BA — Bahia ──────────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('BA','venda_interna_pf',
+ 'ICMS diferido conforme art. 343 do RICMS/BA, Decreto nº 13.780/2012. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('BA','venda_interna_pj',
+ 'ICMS diferido conforme art. 343 do RICMS/BA, Decreto nº 13.780/2012.'),
+('BA','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 343 do RICMS/BA, Decreto nº 13.780/2012. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('BA','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 343 do RICMS/BA, Decreto nº 13.780/2012. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('BA','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/BA. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('BA','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/BA. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('BA','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/BA. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('BA','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 343 do RICMS/BA, Decreto nº 13.780/2012.'),
+('BA','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 343 do RICMS/BA, Decreto nº 13.780/2012.'),
+('BA','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 343 do RICMS/BA, Decreto nº 13.780/2012.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── MA — Maranhão ───────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('MA','venda_interna_pf',
+ 'ICMS diferido conforme art. 15, inciso V do RICMS/MA, Decreto nº 19.714/2003. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MA','venda_interna_pj',
+ 'ICMS diferido conforme art. 15, inciso V do RICMS/MA, Decreto nº 19.714/2003.'),
+('MA','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 15, inciso V do RICMS/MA, Decreto nº 19.714/2003. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('MA','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 15, inciso V do RICMS/MA, Decreto nº 19.714/2003. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('MA','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MA. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('MA','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MA. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MA','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/MA. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('MA','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 15, inciso V do RICMS/MA, Decreto nº 19.714/2003.'),
+('MA','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 15, inciso V do RICMS/MA, Decreto nº 19.714/2003.'),
+('MA','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 15, inciso V do RICMS/MA, Decreto nº 19.714/2003.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── TO — Tocantins ──────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('TO','venda_interna_pf',
+ 'ICMS diferido conforme art. 7º do RICMS/TO, Decreto nº 2.912/2006. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('TO','venda_interna_pj',
+ 'ICMS diferido conforme art. 7º do RICMS/TO, Decreto nº 2.912/2006.'),
+('TO','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 7º do RICMS/TO, Decreto nº 2.912/2006. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('TO','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 7º do RICMS/TO, Decreto nº 2.912/2006. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('TO','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/TO. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('TO','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/TO. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('TO','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/TO. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('TO','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 7º do RICMS/TO, Decreto nº 2.912/2006.'),
+('TO','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 7º do RICMS/TO, Decreto nº 2.912/2006.'),
+('TO','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 7º do RICMS/TO, Decreto nº 2.912/2006.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── PI — Piauí ──────────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('PI','venda_interna_pf',
+ 'ICMS diferido conforme art. 1º, inciso II do RICMS/PI, Decreto nº 13.500/2008. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('PI','venda_interna_pj',
+ 'ICMS diferido conforme art. 1º, inciso II do RICMS/PI, Decreto nº 13.500/2008.'),
+('PI','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 1º, inciso II do RICMS/PI, Decreto nº 13.500/2008. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('PI','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 1º, inciso II do RICMS/PI, Decreto nº 13.500/2008. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('PI','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PI. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('PI','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PI. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('PI','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PI. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('PI','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 1º, inciso II do RICMS/PI, Decreto nº 13.500/2008.'),
+('PI','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 1º, inciso II do RICMS/PI, Decreto nº 13.500/2008.'),
+('PI','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 1º, inciso II do RICMS/PI, Decreto nº 13.500/2008.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── RO — Rondônia ───────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('RO','venda_interna_pf',
+ 'ICMS diferido conforme art. 92-A do RICMS/RO, Decreto nº 22.721/2018. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('RO','venda_interna_pj',
+ 'ICMS diferido conforme art. 92-A do RICMS/RO, Decreto nº 22.721/2018.'),
+('RO','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 92-A do RICMS/RO, Decreto nº 22.721/2018. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('RO','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 92-A do RICMS/RO, Decreto nº 22.721/2018. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('RO','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/RO. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('RO','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/RO. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('RO','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/RO. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('RO','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 92-A do RICMS/RO, Decreto nº 22.721/2018.'),
+('RO','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 92-A do RICMS/RO, Decreto nº 22.721/2018.'),
+('RO','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 92-A do RICMS/RO, Decreto nº 22.721/2018.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+-- ─── PA — Pará ───────────────────────────────────────────────
+INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
+('PA','venda_interna_pf',
+ 'ICMS diferido conforme art. 9º do RICMS/PA, Decreto nº 4.676/2001. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('PA','venda_interna_pj',
+ 'ICMS diferido conforme art. 9º do RICMS/PA, Decreto nº 4.676/2001.'),
+('PA','venda_interestadual_pf',
+ 'ICMS diferido conforme art. 9º do RICMS/PA, Decreto nº 4.676/2001. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+('PA','venda_interestadual_pj',
+ 'ICMS diferido conforme art. 9º do RICMS/PA, Decreto nº 4.676/2001. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004.'),
+('PA','exportacao_fim_espec_pf',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PA. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+('PA','exportacao_fim_espec_pj',
+ 'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PA. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('PA','exportacao_fim_espec_interna',
+ 'Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 c/c RICMS/PA. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+('PA','faturamento_antecipado',
+ 'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme art. 9º do RICMS/PA, Decreto nº 4.676/2001.'),
+('PA','venda_a_ordem',
+ 'Venda à ordem — operação triangular. ICMS diferido conforme art. 9º do RICMS/PA, Decreto nº 4.676/2001.'),
+('PA','remessa_ordem',
+ 'Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. ICMS diferido conforme art. 9º do RICMS/PA, Decreto nº 4.676/2001.')
+ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
+
+NOTIFY pgrst, 'reload schema';
