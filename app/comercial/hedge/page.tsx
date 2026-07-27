@@ -126,6 +126,12 @@ export default function HedgePage() {
   const [rotaId,     setRotaId]     = useState("");  // id de estrutura_despesa_hedge
   const [portoDest,  setPortoDest]  = useState("");  // ex: "Paranaguá (PNG)"
 
+  // BOARD — estado do fetch ao vivo
+  const [cbotFetching, setCbotFetching] = useState(false);
+  const [cbotFonte, setCbotFonte]       = useState<"cme_live"|"front_month"|"manual">("manual");
+  const [cbotRefTs, setCbotRefTs]       = useState("");   // horário ou data_referencia
+  const [cbotTrigger, setCbotTrigger]   = useState(0);   // incrementar para forçar re-fetch
+
   // Sensibilidade
   const [sensiEixoX, setSensiEixoX] = useState<"cbot"|"cambio"|"premio">("cbot");
   const [sensiEixoY, setSensiEixoY] = useState<"cambio"|"cbot"|"frete">("cambio");
@@ -201,22 +207,59 @@ export default function HedgePage() {
     }
   }, [cicloId, ciclos, carregarCiclo]);
 
-  // Auto-fill CBOT quando bloco ou cultura mudam
+  // ─── BOARD — fetch ao vivo quando bloco/cultura muda ────────────────────
+  const CME_ROOT: Record<string, string> = { soja: "ZS", milho: "ZC", algodao: "CT" };
+
   useEffect(() => {
-    if (!curvas.length) return;
-    const inst = `CBOT_${pCultura.toUpperCase()}`;
-    // 1. Tenta mês específico (vencimento = data ISO)
-    const dataVenc = blocoVenc ? blocoToDate(blocoVenc) : "";
-    const especifico = dataVenc
-      ? [...curvas].filter(c => c.instrumento === inst && c.vencimento === dataVenc)
-          .sort((a, b) => b.data_referencia.localeCompare(a.data_referencia))[0]
-      : null;
-    if (especifico) { setPCbot(String(especifico.valor)); return; }
-    // 2. Fallback: spot/front-month (vencimento=null, inserido pelo cron diário)
-    const spot = [...curvas].filter(c => c.instrumento === inst && !c.vencimento)
-      .sort((a, b) => b.data_referencia.localeCompare(a.data_referencia))[0];
-    if (spot) setPCbot(String(spot.valor));
-  }, [blocoVenc, curvas, pCultura]);
+    if (!blocoVenc) {
+      setCbotFonte("manual");
+      return;
+    }
+
+    const root   = CME_ROOT[pCultura] ?? "ZS";
+    const symbol = `${root}${blocoVenc}=F`;   // ex: ZSH27=F
+    const inst   = `CBOT_${pCultura.toUpperCase()}`;
+
+    setCbotFetching(true);
+    setCbotFonte("manual");
+
+    // Requisição direta do browser para o Yahoo Finance — usa IP do usuário, não Vercel
+    fetch(
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
+      { signal: AbortSignal.timeout(8000) }
+    )
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json: unknown) => {
+        const price = (json as { chart?: { result?: { meta?: { regularMarketPrice?: number } }[] } })
+          ?.chart?.result?.[0]?.meta?.regularMarketPrice;
+        if (price && price > 0) {
+          setPCbot(String(price));
+          setCbotFonte("cme_live");
+          setCbotRefTs(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+          return;
+        }
+        throw new Error("sem preço");
+      })
+      .catch(() => {
+        // Fallback: front-month do cron (curva_mercado, vencimento=null)
+        const spot = [...curvas]
+          .filter(c => c.instrumento === inst && !c.vencimento)
+          .sort((a, b) => b.data_referencia.localeCompare(a.data_referencia))[0];
+        if (spot) {
+          setPCbot(String(spot.valor));
+          setCbotFonte("front_month");
+          setCbotRefTs(new Date(spot.data_referencia + "T12:00:00").toLocaleDateString("pt-BR"));
+        } else {
+          setCbotFonte("manual");
+          setCbotRefTs("");
+        }
+      })
+      .finally(() => setCbotFetching(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocoVenc, pCultura, curvas, cbotTrigger]);
 
   // Auto-fill frete + porto quando rota muda
   useEffect(() => {
@@ -584,20 +627,15 @@ export default function HedgePage() {
                   <option value="">— Manual (sem auto-fill CBOT) —</option>
                   {gerarBlocos(pCultura).map(b => <option key={b.code} value={b.code}>{b.label}</option>)}
                 </select>
-                {blocoVenc && (() => {
-                  const inst  = `CBOT_${pCultura.toUpperCase()}`;
-                  const temEspecifico = curvas.some(c => c.instrumento === inst && c.vencimento === blocoToDate(blocoVenc));
-                  const temSpot       = curvas.some(c => c.instrumento === inst && !c.vencimento);
-                  return (
-                    <div style={{ fontSize: 10, marginTop: 2, color: temEspecifico ? "#16A34A" : temSpot ? "#C9921B" : "#888" }}>
-                      {temEspecifico
-                        ? `Cotação específica de ${blocoVenc} preenchida automaticamente`
-                        : temSpot
-                          ? `Usando front-month como referência (sem dado específico para ${blocoVenc})`
-                          : `Sem dados — insira CBOT manualmente ou aguarde o cron noturno`}
-                    </div>
-                  );
-                })()}
+                {blocoVenc && (
+                  <div style={{ fontSize: 10, marginTop: 2, color: cbotFetching ? "#C9921B" : cbotFonte === "cme_live" ? "#16A34A" : "#C9921B" }}>
+                    {cbotFetching
+                      ? `Buscando preço do contrato ${CME_ROOT[pCultura] ?? "ZS"}${blocoVenc}=F…`
+                      : cbotFonte === "cme_live"
+                        ? `✓ Preço ao vivo obtido da CME`
+                        : `Preço ao vivo buscado automaticamente ao selecionar o bloco`}
+                  </div>
+                )}
               </div>
 
               {/* Rota / Região */}
@@ -632,9 +670,38 @@ export default function HedgePage() {
               {/* BOARD */}
               <div style={{ marginBottom: 10 }}>
                 <label style={lbl}>BOARD — CBOT Futuro (¢/bu)</label>
-                <input type="number" step="10" style={inp} value={pCbot} onChange={e => setPCbot(e.target.value)} />
-                <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
-                  {blocoVenc ? `Bloco ${blocoVenc}` : "Spot"}{precoAoVivo ? ` · Referência: ${precoAoVivo.cbot_soja.toFixed(0)} ¢` : ""}
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    type="number" step="0.25"
+                    style={{ ...inp, flex: 1, opacity: cbotFetching ? 0.6 : 1 }}
+                    value={pCbot}
+                    onChange={e => { setPCbot(e.target.value); setCbotFonte("manual"); }}
+                  />
+                  {blocoVenc && (
+                    <button
+                      onClick={() => setCbotTrigger(t => t + 1)}
+                      disabled={cbotFetching}
+                      title={`Buscar ${CME_ROOT[pCultura] ?? "ZS"}${blocoVenc}=F na CME agora`}
+                      style={{ padding: "8px 11px", background: "transparent", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 7, fontSize: 14, cursor: "pointer", color: cbotFetching ? "#aaa" : "#1A4870" }}
+                    >
+                      {cbotFetching ? "…" : "↻"}
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 10, marginTop: 3,
+                  color: cbotFetching ? "#C9921B"
+                       : cbotFonte === "cme_live" ? "#16A34A"
+                       : cbotFonte === "front_month" ? "#C9921B"
+                       : "#888" }}>
+                  {cbotFetching
+                    ? `Buscando ${CME_ROOT[pCultura] ?? "ZS"}${blocoVenc}=F na CME…`
+                    : cbotFonte === "cme_live"
+                      ? `✓ CME ao vivo — ${CME_ROOT[pCultura] ?? "ZS"}${blocoVenc}=F — ${cbotRefTs}`
+                      : cbotFonte === "front_month"
+                        ? `Ref. front-month ${cbotRefTs} · contrato específico indisponível neste momento`
+                        : blocoVenc
+                          ? `Bloco ${blocoVenc} · insira BOARD ou clique ↻`
+                          : "Manual — selecione um bloco para buscar na CME"}
                 </div>
               </div>
 
