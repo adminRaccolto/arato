@@ -8612,3 +8612,69 @@ WHERE conta_id IS NULL
 ORDER BY role, nome;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 155 — Fix cirúrgico: Marcus (client) + fazenda sem conta_id
+-- A fazenda 5cb6e014 tem conta_id = NULL, então o backfill da 154 não alcançou.
+-- Estratégia:
+--   1. Tenta resolver conta_id via owner_user_id da fazenda (perfis ou irmãs)
+--   2. Se ainda NULL, cria uma conta nova para esta fazenda
+--   3. Atualiza fazendas.conta_id e perfis.conta_id do Marcus
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+DO $$
+DECLARE
+  v_fazenda_id  UUID := '5cb6e014-4f2e-4823-bfb2-2c66a85c8401';
+  v_marcus_id   UUID := '8a3b25b7-c3e5-416e-9a82-d21ff0868108';
+  v_owner_uid   UUID;
+  v_conta_id    UUID;
+  v_faz_nome    TEXT;
+BEGIN
+  -- Pega owner_user_id e nome da fazenda
+  SELECT owner_user_id, nome INTO v_owner_uid, v_faz_nome
+  FROM fazendas WHERE id = v_fazenda_id;
+
+  -- Tenta resolver conta via perfil do owner
+  IF v_owner_uid IS NOT NULL THEN
+    SELECT conta_id INTO v_conta_id
+    FROM perfis WHERE user_id = v_owner_uid AND conta_id IS NOT NULL
+    LIMIT 1;
+  END IF;
+
+  -- Tenta resolver via outra fazenda do mesmo owner
+  IF v_conta_id IS NULL AND v_owner_uid IS NOT NULL THEN
+    SELECT conta_id INTO v_conta_id
+    FROM fazendas
+    WHERE owner_user_id = v_owner_uid AND conta_id IS NOT NULL
+    LIMIT 1;
+  END IF;
+
+  -- Se ainda NULL, cria uma conta nova
+  IF v_conta_id IS NULL THEN
+    INSERT INTO contas (nome, tipo, created_at)
+    VALUES (COALESCE(v_faz_nome, 'Conta Marcus'), 'pf', NOW())
+    RETURNING id INTO v_conta_id;
+    RAISE NOTICE 'Conta criada: % para fazenda %', v_conta_id, v_faz_nome;
+  ELSE
+    RAISE NOTICE 'Conta encontrada: % para fazenda %', v_conta_id, v_faz_nome;
+  END IF;
+
+  -- Atualiza a fazenda
+  UPDATE fazendas SET conta_id = v_conta_id WHERE id = v_fazenda_id;
+
+  -- Atualiza o perfil do Marcus
+  UPDATE perfis SET conta_id = v_conta_id WHERE user_id = v_marcus_id;
+
+  -- Atualiza produtores com fazenda_id desta fazenda (se houver)
+  UPDATE produtores SET conta_id = v_conta_id
+  WHERE fazenda_id = v_fazenda_id AND conta_id IS NULL;
+
+  RAISE NOTICE 'Fix completo: conta_id = %', v_conta_id;
+END $$;
+
+-- Verificação final: deve retornar 0 linhas (sem client com conta_id NULL)
+SELECT user_id, nome, role, fazenda_id, conta_id
+FROM perfis
+WHERE conta_id IS NULL AND role = 'client';
+
+NOTIFY pgrst, 'reload schema';
