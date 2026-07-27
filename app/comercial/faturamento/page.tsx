@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
   listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe,
-  listarProdutores, listarPessoas, listarContratos,
+  listarProdutoresViaFazenda, listarPessoas, listarContratos,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -100,6 +100,12 @@ const aplicarMascara = (raw: string) => {
   if (!nums) return "";
   return (Number(nums) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
+// 4 casas decimais — para valor unitário em R$/kg (ex: 0,1523)
+const aplicarMascara4 = (raw: string) => {
+  const nums = raw.replace(/\D/g, "");
+  if (!nums) return "";
+  return (Number(nums) / 10000).toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+};
 const desmascarar = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0;
 
 const corStatus = (s: string) => (({
@@ -167,7 +173,7 @@ function FaturamentoInner() {
 
     Promise.all([
       listarNotasFiscais(fazendaId),
-      listarProdutores(fazendaId),
+      listarProdutoresViaFazenda(fazendaId),
       listarPessoas(fazendaId),
       listarContratos(fazendaId),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
@@ -1265,7 +1271,7 @@ function FaturamentoInner() {
                           </td>
                           <td style={{ padding:"5px 8px", width:110 }}>
                             <input style={{ ...inp, textAlign:"right", fontSize:12 }} value={it.valor_unitario}
-                              onChange={e => atualizarItem(idx, "valor_unitario", aplicarMascara(e.target.value.replace(/\D/g,"")))} placeholder="0,00" />
+                              onChange={e => atualizarItem(idx, "valor_unitario", aplicarMascara4(e.target.value.replace(/\D/g,"")))} placeholder="0,0000" />
                           </td>
                           <td style={{ padding:"5px 8px", width:120 }}>
                             <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }} value={fmtR$(it.valor_total)} readOnly />
