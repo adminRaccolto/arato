@@ -190,8 +190,10 @@ function FaturamentoInner() {
   const [erroForm,    setErroForm]    = useState<string|null>(null);
   const [nfEmitida,   setNfEmitida]   = useState<{numero:string;chave?:string;cfop:string;venda_a_ordem:boolean;entrega_futura:boolean}|null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
-  const [fazendaUF,   setFazendaUF]   = useState("");
-  const [textosUF,    setTextosUF]    = useState<Record<string, string>>({});
+  const [fazendaUF,    setFazendaUF]    = useState("");
+  const [fazendaNome,  setFazendaNome]  = useState("");
+  const [fazendaCidade,setFazendaCidade]= useState("");
+  const [textosUF,    setTextosUF]     = useState<Record<string, string>>({});
   // IDs vindos via URL (?romaneio_id=&contrato_id=) para deep-link do botão "Faturar"
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
 
@@ -218,7 +220,7 @@ function FaturamentoInner() {
       listarContratos(fazendaId),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome"),
-      supabase.from("fazendas").select("estado").eq("id", fazendaId).single(),
+      supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazendaId).single(),
       supabase.from("textos_legais_uf").select("uf, cfop_tipo, texto"),
     ]).then(([n, p, pe, c, as_, pa, faz, tlu]) => {
       setNotas(n);
@@ -227,8 +229,11 @@ function FaturamentoInner() {
       setContratos(c.filter(c => c.tipo === "venda" || !c.tipo));
       setAnosSafra(as_.data ?? []);
       setProdAgricolas((pa.data ?? []) as Insumo[]);
-      const uf = (faz as {data?: {estado?: string}}).data?.estado ?? "";
+      const fazData = (faz as {data?: {estado?: string; nome?: string; municipio?: string}}).data;
+      const uf = fazData?.estado ?? "";
       setFazendaUF(uf);
+      setFazendaNome(fazData?.nome ?? "");
+      setFazendaCidade(fazData?.municipio ?? "");
       // Constrói mapa cfop_tipo → texto: BR primeiro (fallback), depois UF específica
       const mapa: Record<string, string> = {};
       const rows = (tlu as {data?: {uf: string; cfop_tipo: string; texto: string}[]}).data ?? [];
@@ -573,6 +578,14 @@ function FaturamentoInner() {
     switch (tabNFe) {
       case "produtor": return (
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+          {/* Banner de emitente — sempre visível */}
+          <div style={{ gridColumn:"1/-1" }}>
+            <div style={{ background:"#F4F6FA", border:"0.5px solid #DDE2EE", borderRadius:8, padding:"10px 14px", fontSize:12, color:"#0B2D50", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontWeight:700, color:"#1A4870" }}>Emitente (Fazenda):</span>
+              <span>{fazendaNome || "Fazenda ativa"}{fazendaCidade ? ` · ${fazendaCidade}` : ""}{fazendaUF ? `/${fazendaUF}` : ""}</span>
+              <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>Para trocar a fazenda emitente, use o seletor no menu superior</span>
+            </div>
+          </div>
           <div>
             <label style={lbl}>Tipo de Nota</label>
             <select style={inp} value={fVenda.tipo_nota} onChange={e => fv({ tipo_nota: e.target.value as "propria"|"terceiros" })}>
@@ -608,6 +621,32 @@ function FaturamentoInner() {
 
       case "destinatario": return (
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+          {/* Select de clientes do cadastro */}
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={lbl}>Selecionar do Cadastro de Clientes</label>
+            <select style={inp} value=""
+              onChange={e => {
+                const p = pessoas.find(x => x.id === e.target.value);
+                if (!p) return;
+                fv({
+                  destinatario:     p.nome,
+                  cnpj:             p.cpf_cnpj ?? "",
+                  dest_tipo_pessoa: p.tipo === "pf" ? "fisica" : "juridica",
+                  dest_ie:          p.inscricao_est ?? "",
+                  dest_endereco:    (p as unknown as Record<string,string>).logradouro ?? "",
+                  dest_numero:      (p as unknown as Record<string,string>).numero ?? "",
+                  dest_cidade:      p.municipio ?? "",
+                  dest_uf:          p.estado ?? "",
+                });
+              }}>
+              <option value="">— selecione para preencher automaticamente —</option>
+              {pessoas.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}{p.cpf_cnpj ? ` · ${p.cpf_cnpj}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
           <div style={{ gridColumn:"1/3" }}>
             <label style={lbl}>Destinatário (Razão Social / Nome) *</label>
             <input style={inp} value={fVenda.destinatario} onChange={e => fv({ destinatario: e.target.value })} placeholder="Nome ou razão social" />
