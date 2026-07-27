@@ -8589,3 +8589,26 @@ INSERT INTO textos_legais_uf (uf, cfop_tipo, texto) VALUES
 ON CONFLICT (uf, cfop_tipo) DO UPDATE SET texto = EXCLUDED.texto, atualizado_em = NOW();
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 154 — Backfill conta_id em perfis com fazenda_id mas conta_id NULL
+-- Problema: usuários criados via Supabase Auth direto (sem passar pela API
+--   /api/admin/criar-usuario) ficam com perfis.conta_id = NULL.
+--   Com RLS de produtores/fazendas filtrando por conta_id, esses usuários
+--   não conseguem ver dados de outros membros da mesma conta.
+-- Solução: propagar o conta_id da fazenda vinculada ao perfil.
+-- ═══════════════════════════════════════════════════════════════════════════════
+UPDATE perfis p
+SET conta_id = f.conta_id
+FROM fazendas f
+WHERE p.fazenda_id = f.id
+  AND p.conta_id IS NULL
+  AND f.conta_id IS NOT NULL;
+
+-- Diagnóstico: mostrar perfis ainda sem conta_id após o fix
+SELECT user_id, nome, role, fazenda_id, conta_id
+FROM perfis
+WHERE conta_id IS NULL
+ORDER BY role, nome;
+
+NOTIFY pgrst, 'reload schema';
