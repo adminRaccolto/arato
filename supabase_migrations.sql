@@ -8685,3 +8685,15 @@ ALTER TABLE centros_custo_contrato
   ADD COLUMN IF NOT EXISTS centro_custo_id UUID REFERENCES centros_custo(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Migration 157 — Adiciona FATURA e BOLETO à constraint tipo_documento_lcdpr
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_tipo_documento_lcdpr_check;
+
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_tipo_documento_lcdpr_check
+  CHECK (tipo_documento_lcdpr IS NULL OR tipo_documento_lcdpr IN (
+    'RECIBO', 'NF', 'FATURA', 'BOLETO', 'DUPLICATA', 'CHEQUE', 'PIX', 'TED', 'OUTROS'
+  ));
+
+NOTIFY pgrst, 'reload schema';

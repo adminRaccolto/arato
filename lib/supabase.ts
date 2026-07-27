@@ -234,7 +234,7 @@ export type Lancamento = {
   total_parcelas?: number;
   agrupador?: string;
   // LCDPR — Livro Caixa Digital do Produtor Rural
-  tipo_documento_lcdpr?: "RECIBO" | "NF" | "DUPLICATA" | "CHEQUE" | "PIX" | "TED" | "OUTROS";
+  tipo_documento_lcdpr?: "RECIBO" | "NF" | "FATURA" | "BOLETO" | "DUPLICATA" | "CHEQUE" | "PIX" | "TED" | "OUTROS";
   // Encargos
   juros_pct?: number;
   multa_pct?: number;
