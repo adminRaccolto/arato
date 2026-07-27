@@ -1287,6 +1287,8 @@ export type CentroCustoContrato = {
   id: string;
   contrato_id: string;
   descricao: string;
+  ciclo_id?: string | null;
+  centro_custo_id?: string | null;
   percentual: number;
   valor: number;
   created_at?: string;

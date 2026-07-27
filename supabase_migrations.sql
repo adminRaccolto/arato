@@ -8678,3 +8678,10 @@ FROM perfis
 WHERE conta_id IS NULL AND role = 'client';
 
 NOTIFY pgrst, 'reload schema';
+
+-- Migration 156 — Adiciona ciclo_id e centro_custo_id em centros_custo_contrato
+ALTER TABLE centros_custo_contrato
+  ADD COLUMN IF NOT EXISTS ciclo_id UUID REFERENCES ciclos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS centro_custo_id UUID REFERENCES centros_custo(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';

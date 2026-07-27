@@ -15,6 +15,7 @@ import {
   listarContas,
   listarImoveisUrbanos,
   listarFazendas,
+  listarCentrosCustoGeralDaConta,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -23,6 +24,7 @@ import type {
   ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento,
   GarantiaContrato, CentroCustoContrato, MatriculaImovel,
   ContaBancaria, Pessoa, Maquina, AditivoContrato, ImovelUrbano, Produtor,
+  CentroCusto,
 } from "../../../lib/supabase";
 
 // ── estilos base ──────────────────────────────────────────
@@ -592,6 +594,9 @@ export default function ContratosFinanceiros() {
   const [parcelasPagamento, setParcelasPagamento] = useState<ParcelaPagamento[]>([]);
   const [garantias, setGarantias]                 = useState<GarantiaContrato[]>([]);
   const [centrosCusto, setCentrosCusto]           = useState<CentroCustoContrato[]>([]);
+  const [ccAnosSafra, setCcAnosSafra]             = useState<{ id: string; descricao: string }[]>([]);
+  const [ccCiclos, setCcCiclos]                   = useState<{ id: string; descricao?: string; cultura?: string; ano_safra_id?: string }[]>([]);
+  const [ccOptions, setCcOptions]                 = useState<CentroCusto[]>([]);
   const [aditivos, setAditivos]                   = useState<AditivoContrato[]>([]);
   const [matriculas, setMatriculas]               = useState<MatriculaImovel[]>([]);
   const [maquinas, setMaquinas]                   = useState<Maquina[]>([]);
@@ -600,7 +605,7 @@ export default function ContratosFinanceiros() {
   // forms das abas
   const [fLib, setFLib]   = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
   const [fGar, setFGar]   = useState({ tipo_garantia: "alienacao_fiduciaria" as GarantiaContrato["tipo_garantia"], grau: "" as "" | "1_grau" | "2_grau" | "3_grau", tipo_bem: "imovel" as GarantiaContrato["tipo_bem"], matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
-  const [centrosForm, setCentrosForm] = useState<{ descricao: string; percentual: string; valor: string }[]>([{ descricao: "", percentual: "100", valor: "" }]);
+  const [centrosForm, setCentrosForm] = useState<{ ciclo_id: string; centro_custo_id: string; percentual: string; valor: string }[]>([{ ciclo_id: "", centro_custo_id: "", percentual: "100", valor: "" }]);
   const [fCalc, setFCalc] = useState({ nParcelas: "12", taxaMensal: "1.5", dataPrimeiro: "", periodicidade: "1", acessorios: "0" });
   const [fAdit, setFAdit] = useState({ ...FA_VAZIO });
 
@@ -647,10 +652,23 @@ export default function ContratosFinanceiros() {
       listarMaquinas(fazendaId!).then(m => setMaquinas(m.filter(x => x.ativa))).catch(() => {});
       listarImoveisUrbanos(fazendaId!).then(setImoveisUrbanos).catch(() => {});
     }
-    if (abaModal === "centrocusto") listarCentrosCusto(id).then(cc => {
-      setCentrosCusto(cc);
-      setCentrosForm(cc.length > 0 ? cc.map(c => ({ descricao: c.descricao, percentual: String(c.percentual), valor: String(c.valor) })) : [{ descricao: "", percentual: "100", valor: "" }]);
-    }).catch(() => {});
+    if (abaModal === "centrocusto") {
+      listarCentrosCusto(id).then(cc => {
+        setCentrosCusto(cc);
+        setCentrosForm(cc.length > 0
+          ? cc.map(c => ({ ciclo_id: c.ciclo_id ?? "", centro_custo_id: c.centro_custo_id ?? "", percentual: String(c.percentual), valor: String(c.valor) }))
+          : [{ ciclo_id: "", centro_custo_id: "", percentual: "100", valor: "" }]);
+      }).catch(() => {});
+      Promise.all([
+        supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao"),
+        supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("descricao"),
+        listarCentrosCustoGeralDaConta(fazendaId),
+      ]).then(([as_, ci, cc]) => {
+        setCcAnosSafra(as_.data ?? []);
+        setCcCiclos(ci.data ?? []);
+        setCcOptions(cc);
+      }).catch(() => {});
+    }
     if (abaModal === "aditivos") listarAditivos(id).then(setAditivos).catch(() => {});
     if (abaModal === "movimentacoes") {
       listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
@@ -1012,11 +1030,21 @@ export default function ContratosFinanceiros() {
   // ── Centro de custo ──
   const salvarCentroCusto = () => salvar(async () => {
     if (!contratoModal) return;
-    const itens: Omit<CentroCustoContrato, "id" | "created_at">[] = centrosForm.filter(c => c.descricao.trim()).map(c => ({
-      contrato_id: contratoModal.id, descricao: c.descricao.trim(),
-      percentual: parseFloat(c.percentual.replace(",", ".")) || 0,
-      valor: parseFloat(c.valor.replace(",", ".")) || 0,
-    }));
+    const itens: Omit<CentroCustoContrato, "id" | "created_at">[] = centrosForm
+      .filter(c => c.ciclo_id || c.centro_custo_id)
+      .map(c => {
+        const cicloLabel = ccCiclos.find(x => x.id === c.ciclo_id);
+        const ccLabel = ccOptions.find(x => x.id === c.centro_custo_id);
+        const partes = [cicloLabel ? `${cicloLabel.cultura ?? ""} ${cicloLabel.descricao ?? ""}`.trim() : "", ccLabel?.nome ?? ""].filter(Boolean);
+        return {
+          contrato_id: contratoModal.id,
+          descricao: partes.join(" — ") || "Rateio",
+          ciclo_id: c.ciclo_id || null,
+          centro_custo_id: c.centro_custo_id || null,
+          percentual: parseFloat(c.percentual.replace(",", ".")) || 0,
+          valor: parseFloat(c.valor.replace(",", ".")) || 0,
+        };
+      });
     await salvarCentrosCusto(contratoModal.id, itens);
     setCentrosCusto(await listarCentrosCusto(contratoModal.id));
   });
@@ -2224,35 +2252,86 @@ export default function ContratosFinanceiros() {
               ))}
 
               {/* ── Centro de Custo ── */}
-              {abaModal === "centrocusto" && (!contratoModal ? <AbaDisabled nome="Centro de Custo" /> : (
-                <div>
-                  <div style={{ marginBottom: 10, fontSize: 12, color: "var(--text-2)" }}>Defina como o valor captado é rateado entre centros de custo / safras (deve totalizar 100%).</div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
-                    <thead><tr style={{ background: "var(--bg-page)" }}>{["Centro de Custo / Safra", "%", "Valor (R$)", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {centrosForm.map((c, i) => (
-                        <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                          <td style={{ padding: "6px 8px" }}><input style={inp} placeholder="Ex: Soja 2026/27 — Talhão A" value={c.descricao} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, descricao: e.target.value } : x))} /></td>
-                          <td style={{ padding: "6px 8px", width: 80 }}><InputMonetario style={{ ...inp, textAlign: "center" }} value={c.percentual} onChange={v => { const pct = Number(v) || 0; setCentrosForm(p => p.map((x, j) => j === i ? { ...x, percentual: String(v), valor: fmtNum((pct / 100) * (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado), 2) } : x)); }} /></td>
-                          <td style={{ padding: "6px 8px", width: 140 }}><InputMonetario style={inp} value={c.valor} onChange={v => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, valor: String(v) } : x))} /></td>
-                          <td style={{ padding: "6px 8px", width: 40 }}>{centrosForm.length > 1 && <button style={btnX} onClick={() => setCentrosForm(p => p.filter((_, j) => j !== i))}>✕</button>}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <button style={{ ...btnR, fontSize: 12 }} onClick={() => setCentrosForm(p => [...p, { descricao: "", percentual: "", valor: "" }])}>+ Adicionar linha</button>
-                    <div style={{ fontSize: 12 }}>
-                      Total: <strong style={{ color: Math.abs(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0) - 100) < 0.01 ? "#1A4870" : "#E24B4A" }}>{fmtNum(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0), 2)}%</strong>
-                      {Math.abs(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0) - 100) >= 0.01 && <span style={{ color: "#E24B4A", marginLeft: 4 }}>⚠ deve ser 100%</span>}
+              {abaModal === "centrocusto" && (!contratoModal ? <AbaDisabled nome="Centro de Custo" /> : (() => {
+                const totalPct = centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0);
+                const ok100 = Math.abs(totalPct - 100) < 0.01;
+                return (
+                  <div>
+                    <div style={{ marginBottom: 12, fontSize: 12, color: "var(--text-2)" }}>Defina como o valor captado é rateado entre safras/ciclos e centros de custo (deve totalizar 100%).</div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12, minWidth: 560 }}>
+                        <thead>
+                          <tr style={{ background: "var(--bg-page)" }}>
+                            {["Safra / Ciclo", "Centro de Custo", "%", "Valor (R$)", ""].map((h, i) => (
+                              <th key={i} style={{ padding: "7px 10px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {centrosForm.map((c, i) => (
+                            <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                              <td style={{ padding: "6px 6px", minWidth: 180 }}>
+                                <select style={inp} value={c.ciclo_id} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value } : x))}>
+                                  <option value="">— Safra / Ciclo —</option>
+                                  {ccAnosSafra.map(as => {
+                                    const cis = ccCiclos.filter(ci => ci.ano_safra_id === as.id);
+                                    if (cis.length === 0) return null;
+                                    return (
+                                      <optgroup key={as.id} label={as.descricao}>
+                                        {cis.map(ci => (
+                                          <option key={ci.id} value={ci.id}>{ci.cultura ? `${ci.cultura} — ` : ""}{ci.descricao ?? ""}</option>
+                                        ))}
+                                      </optgroup>
+                                    );
+                                  })}
+                                  {ccCiclos.filter(ci => !ci.ano_safra_id).map(ci => (
+                                    <option key={ci.id} value={ci.id}>{ci.cultura ? `${ci.cultura} — ` : ""}{ci.descricao ?? ""}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={{ padding: "6px 6px", minWidth: 180 }}>
+                                <select style={inp} value={c.centro_custo_id} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, centro_custo_id: e.target.value } : x))}>
+                                  <option value="">— Centro de Custo —</option>
+                                  {ccOptions.map(cc => (
+                                    <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} — ` : ""}{cc.nome}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={{ padding: "6px 6px", width: 80 }}>
+                                <InputMonetario style={{ ...inp, textAlign: "center" }} value={c.percentual} onChange={v => {
+                                  const pct = Number(v) || 0;
+                                  setCentrosForm(p => p.map((x, j) => j === i ? { ...x, percentual: String(v), valor: fmtNum((pct / 100) * (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado), 2) } : x));
+                                }} />
+                              </td>
+                              <td style={{ padding: "6px 6px", width: 130 }}>
+                                <InputMonetario style={inp} value={c.valor} onChange={v => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, valor: String(v) } : x))} />
+                              </td>
+                              <td style={{ padding: "6px 6px", width: 36, textAlign: "center" }}>
+                                {centrosForm.length > 1 && <button style={btnX} onClick={() => setCentrosForm(p => p.filter((_, j) => j !== i))}>✕</button>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <button style={{ ...btnR, fontSize: 12 }} onClick={() => setCentrosForm(p => [...p, { ciclo_id: "", centro_custo_id: "", percentual: "", valor: "" }])}>+ Adicionar linha</button>
+                      <div style={{ fontSize: 12 }}>
+                        Total: <strong style={{ color: ok100 ? "#1A4870" : "#E24B4A" }}>{fmtNum(totalPct, 2)}%</strong>
+                        {!ok100 && <span style={{ color: "#E24B4A", marginLeft: 4 }}>⚠ deve ser 100%</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+                      <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCentroCusto}>Salvar Rateio</button>
+                    </div>
+                    {centrosCusto.length > 0 && (
+                      <div style={{ marginTop: 14, fontSize: 11, color: "var(--text-2)" }}>
+                        Último rateio salvo: {centrosCusto.map(c => `${c.descricao} (${fmtNum(c.percentual, 1)}%)`).join(" · ")}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-                    <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCentroCusto}>Salvar Rateio</button>
-                  </div>
-                  {centrosCusto.length > 0 && <div style={{ marginTop: 14, fontSize: 11, color: "var(--text-2)" }}>Último rateio salvo: {centrosCusto.map(c => `${c.descricao} (${fmtNum(c.percentual, 1)}%)`).join(" · ")}</div>}
-                </div>
-              ))}
+                );
+              })())}
 
               {/* ── Aditivos ── */}
               {abaModal === "aditivos" && (!contratoModal ? <AbaDisabled nome="Aditivos" /> : (() => {
