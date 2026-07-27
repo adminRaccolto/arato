@@ -62,7 +62,7 @@ export async function validateFazendaAccess(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (perfil?.role === "raccotlo") return { ok: true, userId };
+  if (perfil?.role?.startsWith("raccotlo")) return { ok: true, userId };
 
   if (!perfil?.conta_id) return { ok: false, status: 403, error: "Perfil sem conta vinculada" };
 
