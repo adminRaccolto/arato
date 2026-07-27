@@ -28,13 +28,18 @@ export async function buscarConfEmitente(
   fazendaId: string,
   moduloKey: string   // ex: "fiscal_pf_abc" ou "fiscal_emp_xyz"
 ): Promise<Record<string, string> | null> {
-  const { data } = await sb()
-    .from("configuracoes_modulo")
-    .select("config")
-    .eq("fazenda_id", fazendaId)
-    .eq("modulo", moduloKey)
-    .single();
-  return data?.config ?? null;
+  // Carrega em paralelo: config do emitente + ambiente global (fiscal_global)
+  const [{ data: emitData }, { data: globalData }] = await Promise.all([
+    sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).single(),
+    sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "fiscal_global").single(),
+  ]);
+  if (!emitData?.config) return null;
+  // Ambiente global sobrepõe o ambiente do emitente — é o "master switch"
+  const ambienteGlobal = globalData?.config?.ambiente as string | undefined;
+  return {
+    ...emitData.config,
+    ...(ambienteGlobal ? { ambiente: ambienteGlobal } : {}),
+  };
 }
 
 // ─── Carrega PFX do Supabase Storage ─────────────────────────────────────────
