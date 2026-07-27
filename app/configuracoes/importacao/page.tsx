@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
+import { listarFazendasDaConta } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ type LancRow = {
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type InsumoRow = {
+  fazenda_nome: string;
   nome: string; categoria: string; unidade: string; estoque: string;
   estoque_minimo: string; valor_unitario: string; fabricante: string; subgrupo: string;
   _status?: "ok" | "aviso" | "erro" | "duplicado"; _msg?: string;
@@ -119,10 +121,10 @@ const TEMPLATE_CR = [
   ["Prestação de Serviço", "Outros", "2026-02-01", "2026-03-01", "8500.00", "", "BRL", "1", "1", "RECIBO", "", "Receita Serviços", ""],
 ];
 const TEMPLATE_INSUMOS = [
-  ["nome*", "categoria*", "unidade*", "estoque", "estoque_minimo", "valor_unitario", "fabricante", "subgrupo"],
-  ["Roundup WG", "defensivo", "kg", "500", "100", "42.50", "Monsanto", "Herbicida"],
-  ["Uréia 45% N", "fertilizante", "sc", "200", "50", "185.00", "Yara", "Nitrogênio"],
-  ["TMG 7062 IPRO", "semente", "sc", "80", "20", "335.00", "TMG Sementes", "Soja"],
+  ["fazenda_nome*", "nome*", "categoria*", "unidade*", "estoque", "estoque_minimo", "valor_unitario", "fabricante", "subgrupo"],
+  ["Rancho Alegre", "Roundup WG", "defensivo", "kg", "500", "100", "42.50", "Monsanto", "Herbicida"],
+  ["Rancho Alegre", "Uréia 45% N", "fertilizante", "sc", "200", "50", "185.00", "Yara", "Nitrogênio"],
+  ["Fazenda Dois Irmãos", "TMG 7062 IPRO", "semente", "sc", "80", "20", "335.00", "TMG Sementes", "Soja"],
 ];
 const TEMPLATE_PRODUTOS = [
   ["nome*", "categoria*", "unidade*", "codigo_interno", "ncm", "estoque", "estoque_minimo", "valor_unitario", "valor_venda", "fabricante", "marca", "subgrupo"],
@@ -540,7 +542,26 @@ function downloadTemplate(aba: Aba) {
       pessoas:          instrBase,
       cp:               INSTRUCOES_CP_CR,
       cr:               INSTRUCOES_CP_CR,
-      insumos:          instrBase,
+      insumos:          [
+        ["INSTRUÇÕES — IMPORTAÇÃO DE INSUMOS"],
+        [""],
+        ["• Campos com * são obrigatórios"],
+        ["• fazenda_nome*: nome EXATO da fazenda conforme cadastrado no sistema (ex: Rancho Alegre)"],
+        ["  O sistema usa esse nome para identificar a qual fazenda o estoque pertence."],
+        ["  Um mesmo insumo pode ser importado para fazendas diferentes em linhas separadas."],
+        ["• nome*: nome do insumo"],
+        ["• categoria*: semente, fertilizante, defensivo, inoculante, combustivel, peca, material, uso_consumo, escritorio, outros"],
+        ["• unidade*: kg, g, L, mL, sc, t, un, m, m2, cx, pc, par, bag, outros"],
+        ["• estoque: quantidade atual em estoque (padrão 0)"],
+        ["• estoque_minimo: quantidade mínima para alerta de estoque baixo (padrão 0)"],
+        ["• valor_unitario: custo unitário sem R$ (ex: 42.50)"],
+        ["• fabricante: nome do fabricante/fornecedor (opcional)"],
+        ["• subgrupo: subgrupo do insumo (ex: Herbicida, Nitrogênio, Soja)"],
+        [""],
+        ["• SEMENTES: unidade é sempre kg — se informar 'bag' ou outra, o sistema converte para kg e emite aviso"],
+        ["• Insumo com mesmo nome na mesma fazenda é marcado como duplicado"],
+        ["  Se 'Modo Atualização' estiver ativo, o registro existente é atualizado em vez de duplicado"],
+      ],
       produtos:         INSTRUCOES_PRODUTOS,
       maquinas:         INSTRUCOES_MAQUINAS,
       contratos_fin:    INSTRUCOES_CONTRATOS_FIN,
@@ -620,9 +641,10 @@ const UNIDADES_NAO_KG_SEMENTE = ["bag","sc","t","g","L","mL","un","cx","fardo","
 
 function validarInsumo(r: Record<string, string>): InsumoRow {
   const row = r as unknown as InsumoRow;
-  if (!row.nome?.trim())      return { ...row, _status: "erro", _msg: "nome obrigatório" };
-  if (!row.categoria?.trim()) return { ...row, _status: "erro", _msg: "categoria obrigatória" };
-  if (!row.unidade?.trim())   return { ...row, _status: "erro", _msg: "unidade obrigatória" };
+  if (!row.fazenda_nome?.trim()) return { ...row, _status: "erro", _msg: "fazenda_nome obrigatório — informe o nome exato da fazenda cadastrada" };
+  if (!row.nome?.trim())         return { ...row, _status: "erro", _msg: "nome obrigatório" };
+  if (!row.categoria?.trim())    return { ...row, _status: "erro", _msg: "categoria obrigatória" };
+  if (!row.unidade?.trim())      return { ...row, _status: "erro", _msg: "unidade obrigatória" };
 
   const catNorm = row.categoria.trim().toLowerCase();
   const unNorm  = row.unidade.trim().toLowerCase();
@@ -1028,11 +1050,17 @@ function ImportacaoInner() {
   const { fazendaId, contaId, userRole } = useAuth();
   const searchParams = useSearchParams();
   const [aba, setAba] = useState<Aba>((searchParams.get("aba") as Aba) ?? "pessoas");
+  const [fazendas, setFazendas] = useState<{id:string;nome:string}[]>([]);
 
   useEffect(() => {
     const a = searchParams.get("aba") as Aba | null;
     if (a) setAba(a);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(setFazendas).catch(console.error);
+  }, [fazendaId, contaId]);
 
   // Estados por aba
   const [pessoasRows,  setPessoasRows]  = useState<PessoaRow[]>([]);
@@ -1185,26 +1213,34 @@ function ImportacaoInner() {
   async function handleFileInsumos(file: File) {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarInsumo(r));
-    // Duplicados dentro do arquivo
-    const nomesVisto = new Set<string>();
+    // Duplicados dentro do arquivo — chave: fazenda_nome + nome
+    const chavesVistas = new Set<string>();
     rows.forEach(r => {
       if (r._status === "ok" && r.nome) {
-        const n = r.nome.toLowerCase().trim();
-        if (!n) return;
-        if (nomesVisto.has(n)) r._status = "duplicado";
-        else nomesVisto.add(n);
+        const chave = `${(r.fazenda_nome || "").toLowerCase().trim()}:${r.nome.toLowerCase().trim()}`;
+        if (!chave) return;
+        if (chavesVistas.has(chave)) { r._status = "duplicado"; r._msg = "insumo duplicado no arquivo para esta fazenda"; }
+        else chavesVistas.add(chave);
       }
     });
-    // Duplicados já existentes no banco
-    if (fazendaId) {
-      const { data: existentes } = await supabase
-        .from("insumos").select("nome").eq("fazenda_id", fazendaId).eq("tipo", "insumo");
-      const nomesExistentes = new Set((existentes ?? []).map((x: { nome: string }) => x.nome.toLowerCase().trim()));
-      rows.forEach(r => {
-        if (r._status === "ok" && r.nome) {
-          if (nomesExistentes.has(r.nome.toLowerCase().trim())) r._status = "duplicado";
-        }
-      });
+    // Duplicados já existentes no banco — para cada fazenda citada no arquivo
+    const fazNomesCitadas = [...new Set(rows.filter(r => r._status === "ok").map(r => r.fazenda_nome?.trim()).filter(Boolean))];
+    if (fazNomesCitadas.length && fazendas.length) {
+      const ids = fazendas.filter(f => fazNomesCitadas.includes(f.nome)).map(f => f.id);
+      if (ids.length) {
+        const { data: existentes } = await supabase
+          .from("insumos").select("nome, fazenda_id").in("fazenda_id", ids).eq("tipo", "insumo");
+        const chavesBanco = new Set((existentes ?? []).map((x: { nome: string; fazenda_id: string }) => {
+          const faz = fazendas.find(f => f.id === x.fazenda_id);
+          return `${(faz?.nome || "").toLowerCase().trim()}:${x.nome.toLowerCase().trim()}`;
+        }));
+        rows.forEach(r => {
+          if (r._status === "ok" && r.nome) {
+            const chave = `${(r.fazenda_nome || "").toLowerCase().trim()}:${r.nome.toLowerCase().trim()}`;
+            if (chavesBanco.has(chave)) { r._status = "duplicado"; r._msg = "já cadastrado nesta fazenda"; }
+          }
+        });
+      }
     }
     setInsumosRows(rows); setResultInsumos(null);
   }
@@ -1342,14 +1378,20 @@ function ImportacaoInner() {
 
   // ─── Importar Insumos ─────────────────────────────────────
   async function importarInsumos() {
-    if (!fazendaId || !insumosRows.length) return;
+    if (!insumosRows.length) return;
     setLoadingInsumos(true);
     let ok = 0, erros = 0, duplicados = 0;
     for (const r of insumosRows) {
       if (r._status === "erro") { erros++; continue; }
       if (r._status === "duplicado" && !modoAtualizacaoInsumos) { duplicados++; continue; }
+      // Resolve fazenda_id a partir do nome informado na linha
+      const fazLinha = fazendas.find(f => f.nome.trim().toLowerCase() === (r.fazenda_nome || "").trim().toLowerCase());
+      if (!fazLinha) {
+        r._status = "erro"; r._msg = `fazenda "${r.fazenda_nome}" não encontrada no cadastro`;
+        erros++; continue;
+      }
       const payload = {
-        fazenda_id:     fazendaId,
+        fazenda_id:     fazLinha.id,
         tipo:           "insumo",
         nome:           r.nome.trim(),
         categoria:      r.categoria.trim(),
@@ -1363,7 +1405,7 @@ function ImportacaoInner() {
       if (r._status === "duplicado" && modoAtualizacaoInsumos) {
         const { error } = await supabase.from("insumos")
           .update(payload)
-          .eq("fazenda_id", fazendaId)
+          .eq("fazenda_id", fazLinha.id)
           .eq("tipo", "insumo")
           .eq("nome", r.nome.trim());
         if (error) { r._status = "erro"; r._msg = error.message; erros++; }
