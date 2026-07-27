@@ -3,8 +3,9 @@ import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
-  listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe,
+  criarNotaFiscal, atualizarStatusNFe,
   listarProdutoresViaFazenda, listarPessoas, listarContratos,
+  listarFazendasDaConta,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -158,7 +159,7 @@ const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(
 
 // ═══════════════════════════════════════════════════════════════════════════════
 function FaturamentoInner() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
   const searchParams   = useSearchParams();
 
   const [notas,        setNotas]        = useState<NotaFiscal[]>([]);
@@ -190,9 +191,12 @@ function FaturamentoInner() {
   const [erroForm,    setErroForm]    = useState<string|null>(null);
   const [nfEmitida,   setNfEmitida]   = useState<{numero:string;chave?:string;cfop:string;venda_a_ordem:boolean;entrega_futura:boolean}|null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
+  const [fazendas,     setFazendas]     = useState<{id:string;nome:string;municipio?:string;estado?:string}[]>([]);
+  const [fazNFe,       setFazNFe]       = useState<string>("");
   const [fazendaUF,    setFazendaUF]    = useState("");
   const [fazendaNome,  setFazendaNome]  = useState("");
   const [fazendaCidade,setFazendaCidade]= useState("");
+  const [allTextos,   setAllTextos]    = useState<{uf:string;cfop_tipo:string;texto:string}[]>([]);
   const [textosUF,    setTextosUF]     = useState<Record<string, string>>({});
   // IDs vindos via URL (?romaneio_id=&contrato_id=) para deep-link do botão "Faturar"
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
@@ -207,23 +211,23 @@ function FaturamentoInner() {
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazendaId && !contaId) return;
     // Captura deep-link antes de carregar (URL params ficam disponíveis só no client)
     const romId  = searchParams.get("romaneio_id");
     const contrId = searchParams.get("contrato_id");
     if (romId && contrId) setDeepLinkPendente({ romaneio_id: romId, contrato_id: contrId });
 
     Promise.all([
-      listarNotasFiscais(fazendaId),
-      listarProdutoresViaFazenda(fazendaId),
-      listarPessoas(fazendaId),
-      listarContratos(fazendaId),
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-      supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome"),
-      supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazendaId).single(),
+      listarFazendasDaConta(contaId, fazendaId),  // todas as fazendas da conta
+      listarProdutoresViaFazenda(fazendaId ?? ""),
+      listarPessoas(fazendaId ?? ""),
+      listarContratos(fazendaId ?? ""),
+      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId ?? "").order("descricao", { ascending: false }),
+      supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId ?? "").eq("categoria","produto_agricola").order("nome"),
+      supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazendaId ?? "").single(),
       supabase.from("textos_legais_uf").select("uf, cfop_tipo, texto"),
-    ]).then(([n, p, pe, c, as_, pa, faz, tlu]) => {
-      setNotas(n);
+    ]).then(([fzs, p, pe, c, as_, pa, faz, tlu]) => {
+      setFazendas(fzs);
       setProdutores(p);
       setPessoas(pe);
       setContratos(c.filter(c => c.tipo === "venda" || !c.tipo));
@@ -234,14 +238,50 @@ function FaturamentoInner() {
       setFazendaUF(uf);
       setFazendaNome(fazData?.nome ?? "");
       setFazendaCidade(fazData?.municipio ?? "");
-      // Constrói mapa cfop_tipo → texto: BR primeiro (fallback), depois UF específica
-      const mapa: Record<string, string> = {};
+      // Textos legais: guarda tudo e constrói mapa com fallback BR → UF específica
       const rows = (tlu as {data?: {uf: string; cfop_tipo: string; texto: string}[]}).data ?? [];
+      setAllTextos(rows);
+      const mapa: Record<string, string> = {};
       rows.filter(r => r.uf === "BR").forEach(r => { mapa[r.cfop_tipo] = r.texto; });
       if (uf) rows.filter(r => r.uf === uf).forEach(r => { mapa[r.cfop_tipo] = r.texto; });
       setTextosUF(mapa);
+      // NF-es de todas as fazendas da conta
+      const allIds = fzs.map((f: {id:string}) => f.id);
+      if (allIds.length) {
+        supabase.from("notas_fiscais").select("*").in("fazenda_id", allIds).eq("tipo","saida")
+          .order("created_at", { ascending: false })
+          .then(({ data }) => setNotas(data ?? []));
+      }
     }).catch(console.error).finally(() => setLoading(false));
-  }, [fazendaId, searchParams]);
+  }, [fazendaId, contaId, searchParams]);
+
+  // ── Recarregar dados quando usuário troca a fazenda no modal ──────────────
+  useEffect(() => {
+    if (!fazNFe) return;
+    Promise.all([
+      listarProdutoresViaFazenda(fazNFe),
+      listarContratos(fazNFe),
+      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazNFe).order("descricao", { ascending: false }),
+      supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazNFe).eq("categoria","produto_agricola").order("nome"),
+      supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazNFe).single(),
+    ]).then(([p, c, as_, pa, faz]) => {
+      setProdutores(p);
+      setContratos((c as Contrato[]).filter(c => c.tipo === "venda" || !c.tipo));
+      setAnosSafra(as_.data ?? []);
+      setProdAgricolas((pa.data ?? []) as Insumo[]);
+      const fazData = (faz as {data?: {estado?: string; nome?: string; municipio?: string}}).data;
+      const uf = fazData?.estado ?? "";
+      setFazendaUF(uf);
+      setFazendaNome(fazData?.nome ?? "");
+      setFazendaCidade(fazData?.municipio ?? "");
+      // Reconstrói mapa textosUF para a UF da fazenda selecionada
+      const mapa: Record<string, string> = {};
+      allTextos.filter(r => r.uf === "BR").forEach(r => { mapa[r.cfop_tipo] = r.texto; });
+      if (uf) allTextos.filter(r => r.uf === uf).forEach(r => { mapa[r.cfop_tipo] = r.texto; });
+      setTextosUF(mapa);
+    }).catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazNFe]);
 
   // ── Deep-link: abrir direto no romaneio passado via URL ──────────────────
   const preencherDeRomaneioCallback = useCallback(preencherDeRomaneio, [pessoas, contratoSelecionado]); // eslint-disable-line
@@ -284,6 +324,7 @@ function FaturamentoInner() {
     setContratoSelecionado(null);
     setRomaneios([]);
     setErroForm(null);
+    setFazNFe(fazendaId ?? ""); // sugestão inicial; usuário troca no seletor da aba Produtor
     setModalAberto(true);
   }
 
@@ -412,7 +453,8 @@ function FaturamentoInner() {
 
   // ── Emitir nota ───────────────────────────────────────────────────────────
   async function emitirNota() {
-    if (!fazendaId) return;
+    const fazEmissao = fazNFe || fazendaId || "";
+    if (!fazEmissao) { setErroForm("Selecione a fazenda emitente."); return; }
     if (!fVenda.produtor_id) { setErroForm("Selecione o produtor."); return; }
     if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
     if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
@@ -426,13 +468,13 @@ function FaturamentoInner() {
       const { data: cfgFiscal } = await supabase
         .from("configuracoes_modulo")
         .select("configuracoes")
-        .eq("fazenda_id", fazendaId)
+        .eq("fazenda_id", fazEmissao)
         .eq("modulo", "fiscal")
         .maybeSingle();
       const emit = cfgFiscal?.configuracoes ?? {};
 
       const payload: Omit<NotaFiscal, "id" | "created_at"> = {
-        fazenda_id:        fazendaId,
+        fazenda_id:        fazEmissao,
         tipo:              "saida",
         status:            "em_digitacao",
         numero:            String(notas.filter(n => n.tipo === "saida").length + 1).padStart(6, "0"),
@@ -498,7 +540,7 @@ function FaturamentoInner() {
       const { data: config } = await supabase
         .from("configuracoes_modulo")
         .select("configuracoes")
-        .eq("fazenda_id", fazendaId)
+        .eq("fazenda_id", fazEmissao)
         .eq("modulo", "fiscal")
         .maybeSingle();
 
@@ -578,13 +620,18 @@ function FaturamentoInner() {
     switch (tabNFe) {
       case "produtor": return (
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
-          {/* Banner de emitente — sempre visível */}
+          {/* Seletor de fazenda emitente — explícito, obrigatório */}
           <div style={{ gridColumn:"1/-1" }}>
-            <div style={{ background:"#F4F6FA", border:"0.5px solid #DDE2EE", borderRadius:8, padding:"10px 14px", fontSize:12, color:"#0B2D50", display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontWeight:700, color:"#1A4870" }}>Emitente (Fazenda):</span>
-              <span>{fazendaNome || "Fazenda ativa"}{fazendaCidade ? ` · ${fazendaCidade}` : ""}{fazendaUF ? `/${fazendaUF}` : ""}</span>
-              <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>Para trocar a fazenda emitente, use o seletor no menu superior</span>
-            </div>
+            <label style={lbl}>Fazenda Emitente *</label>
+            <select style={{ ...inp, fontWeight:600, color:"#1A4870" }} value={fazNFe}
+              onChange={e => setFazNFe(e.target.value)}>
+              <option value="">— selecione a fazenda que emite a nota —</option>
+              {fazendas.map(f => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}{f.municipio ? ` — ${f.municipio}` : ""}{f.estado ? `/${f.estado}` : ""}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label style={lbl}>Tipo de Nota</label>
