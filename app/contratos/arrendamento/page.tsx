@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarAnosSafra, criarLancamento, listarProdutoresDaConta, listarProdutoresViaFazenda } from "../../../lib/db";
+import { listarAnosSafra, criarLancamento, listarProdutoresDaConta } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import type { AnoSafra } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
@@ -186,7 +186,7 @@ export default function Arrendamentos() {
       listarAnosSafra(fazendaId!),
       supabase.from("pessoas").select("id,nome").in("fazenda_id", fids).order("nome").limit(5000),
       supabase.from("fazendas").select("id,nome,produtor_id").in("id", fids),
-      contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutoresViaFazenda(fazendaId!),
+      listarProdutoresDaConta(contaId ?? "", fazendaId),
       supabase.from("insumos").select("id,nome").eq("fazenda_id", fazendaId!).eq("categoria","produto_agricola").order("nome"),
     ]).then(([arrR, pagR, anos, pesR, fazR, prods, paR]) => {
       setArrendamentos((arrR.data ?? []) as Arrendamento[]);

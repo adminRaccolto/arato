@@ -8,7 +8,7 @@ import {
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas, criarContrato,
-  listarProdutoresViaFazenda,
+  listarProdutoresDaConta,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -158,7 +158,7 @@ const PEDIDO_VAZIO: FormPedido = {
 };
 
 export default function ComprasPage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
 
   const [pedidos,         setPedidos]         = useState<PedidoCompra[]>([]);
   const [pessoas,         setPessoas]         = useState<Pessoa[]>([]);
@@ -206,7 +206,7 @@ export default function ComprasPage() {
         listarCentrosCustoGeral(fazendaId),
         listarOperacoesGerenciais(fazendaId),
         listarFazendas(fazendaId),
-        listarProdutoresViaFazenda(fazendaId),
+        listarProdutoresDaConta(contaId ?? "", fazendaId),
       ]);
       setPedidos(fazendaFiltro ? allPed.filter(p => p.fazenda_id === fazendaFiltro) : allPed);
       setPessoas(pes);

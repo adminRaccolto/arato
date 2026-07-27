@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
   criarNotaFiscal, atualizarStatusNFe,
-  listarProdutoresViaFazenda, listarPessoas, listarContratos,
+  listarProdutoresDaConta, listarPessoas, listarContratos,
   listarFazendasDaConta,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
@@ -219,7 +219,7 @@ function FaturamentoInner() {
 
     Promise.all([
       listarFazendasDaConta(contaId, fazendaId),  // todas as fazendas da conta
-      listarProdutoresViaFazenda(fazendaId ?? ""),
+      listarProdutoresDaConta(contaId ?? "", fazendaId ?? ""),
       listarPessoas(fazendaId ?? ""),
       listarContratos(fazendaId ?? ""),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId ?? "").order("descricao", { ascending: false }),
@@ -259,7 +259,7 @@ function FaturamentoInner() {
   useEffect(() => {
     if (!fazNFe) return;
     Promise.all([
-      listarProdutoresViaFazenda(fazNFe),
+      listarProdutoresDaConta(contaId ?? "", fazNFe),
       listarContratos(fazNFe),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazNFe).order("descricao", { ascending: false }),
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazNFe).eq("categoria","produto_agricola").order("nome"),
