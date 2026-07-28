@@ -168,12 +168,11 @@ input, select, textarea, button {
 
 /* ── Tabelas ─────────────────────────────────────────────────── */
 
-/* Fonte compacta global (≈ 9pt Word) para todos os grids do sistema */
-table td   { font-size: 9px !important; }
-table th   { font-size: 10px !important; }
-
-/* Exceções: badges e sub-textos inline podem sobrescrever com font-size menor no span */
-table td span, table th span { font-size: inherit; }
+/* Fonte compacta global (9px dados / 10px cabeçalho) — afeta td E todos os filhos */
+table td,
+table td *  { font-size: 9px !important; }
+table th,
+table th *  { font-size: 10px !important; }
 
 .data-table {
   width: 100%;
