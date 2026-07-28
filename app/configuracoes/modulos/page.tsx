@@ -816,8 +816,8 @@ function ParametrosSistemaContent() {
   // ── Aba Fiscal — por emitente ─────────────────────────────────────────────
   const renderFiscalTab = () => {
     const emitters: EmitterEntry[] = [
-      ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cnpj, moduloKey: `fiscal_emp_${e.id}` })),
-      ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${p.id}` })),
+      ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cnpj, moduloKey: `fiscal_emp_${(e.cnpj ?? "").replace(/\D/g, "")}` })),
+      ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${(p.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
     ];
 
     const ambienteGlobal = (cfgs["fiscal_global"]?.ambiente as string) || "homologacao";
@@ -1532,8 +1532,8 @@ function ParametrosSistemaContent() {
               {/* modulo_fiscal_ref — select dos emissores cadastrados */}
               {(() => {
                 const emitters: EmitterEntry[] = [
-                  ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cnpj, moduloKey: `fiscal_emp_${e.id}` })),
-                  ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${p.id}` })),
+                  ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cnpj, moduloKey: `fiscal_emp_${(e.cnpj ?? "").replace(/\D/g, "")}` })),
+                  ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${(p.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
                 ];
                 const cteC = cfgs["cte"] ?? {};
                 const currentRef = String(cteC.modulo_fiscal_ref ?? "");
