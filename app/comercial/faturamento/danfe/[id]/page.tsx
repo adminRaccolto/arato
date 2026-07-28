@@ -48,9 +48,14 @@ function gerarTextoComplementar(params: {
   senarBase?: number;
   funruralRetido?: boolean;
   uf?: string;
+  localEntrega?: string;
   observacaoManual?: string;
 }): string {
   const linhas: string[] = [];
+
+  if (params.localEntrega) {
+    linhas.push(`LOCAL DE ENTREGA: ${params.localEntrega.toUpperCase()}`);
+  }
 
   if (params.motorista) {
     linhas.push(`MOTORISTA: ${params.motorista.toUpperCase()}`);
@@ -222,6 +227,7 @@ export default function DanfePage() {
     senarBase: nota.valor_total,
     funruralRetido: true,
     uf: emitUF,
+    localEntrega: d.local_entrega ? String(d.local_entrega) : undefined,
     observacaoManual: nota.observacao ?? undefined,
   });
 

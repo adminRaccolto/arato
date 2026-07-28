@@ -568,7 +568,8 @@ export type NotaFiscal = {
   dados_nf_json?: {
     // emitente
     emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
-    emit_endereco?: string; emit_municipio?: string; emit_uf?: string;
+    emit_endereco?: string; emit_numero?: string; emit_bairro?: string;
+    emit_municipio?: string; emit_uf?: string; emit_cep?: string; emit_fone?: string;
     // destinatário
     dest_tipo_pessoa?: string; dest_ie?: string;
     dest_endereco?: string; dest_numero?: string; dest_cidade?: string; dest_uf?: string;
@@ -580,6 +581,13 @@ export type NotaFiscal = {
     data_saida?: string; hora_saida?: string;
     // NF referenciada (NFref — obrigatória em 6.923 e entrega futura 6.117)
     nf_ref_chave?: string; nf_ref_numero?: string;
+    // local de entrega (informações complementares)
+    local_entrega?: string;
+    // campos adicionais do DANFE
+    dest_razao?: string; motorista?: string;
+    protocolo_autorizacao?: string; dup_numero?: string; dup_vencimento?: string; dup_valor?: number;
+    emit_tipo_doc?: string;
+    [key: string]: unknown;
   };
   created_at?: string;
 };

@@ -200,6 +200,8 @@ function FaturamentoInner() {
   const [textosUF,    setTextosUF]     = useState<Record<string, string>>({});
   // IDs vindos via URL (?romaneio_id=&contrato_id=) para deep-link do botão "Faturar"
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
+  // Módulos fiscais disponíveis para a fazenda emitente (fiscal_pf_xxx / fiscal_emp_xxx)
+  const [fiscalModulos, setFiscalModulos] = useState<{modulo: string; config: Record<string,string>}[]>([]);
 
   // totais em tempo real
   const totalItens     = nfeItens.reduce((s, i) => s + i.valor_total, 0);
@@ -226,7 +228,8 @@ function FaturamentoInner() {
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId ?? "").eq("categoria","produto_agricola").order("nome"),
       supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazendaId ?? "").single(),
       supabase.from("textos_legais_uf").select("uf, cfop_tipo, texto"),
-    ]).then(([fzs, p, pe, c, as_, pa, faz, tlu]) => {
+      supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId ?? "").or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
+    ]).then(([fzs, p, pe, c, as_, pa, faz, tlu, fm]) => {
       setFazendas(fzs);
       setProdutores(p);
       setPessoas(pe);
@@ -245,6 +248,7 @@ function FaturamentoInner() {
       rows.filter(r => r.uf === "BR").forEach(r => { mapa[r.cfop_tipo] = r.texto; });
       if (uf) rows.filter(r => r.uf === uf).forEach(r => { mapa[r.cfop_tipo] = r.texto; });
       setTextosUF(mapa);
+      setFiscalModulos((fm as {data?: {modulo: string; config: Record<string,string>}[]}).data ?? []);
       // NF-es de todas as fazendas da conta
       const allIds = fzs.map((f: {id:string}) => f.id);
       if (allIds.length) {
@@ -264,7 +268,8 @@ function FaturamentoInner() {
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazNFe).order("descricao", { ascending: false }),
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazNFe).eq("categoria","produto_agricola").order("nome"),
       supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazNFe).single(),
-    ]).then(([p, c, as_, pa, faz]) => {
+      supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazNFe).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
+    ]).then(([p, c, as_, pa, faz, fm]) => {
       setProdutores(p);
       setContratos((c as Contrato[]).filter(c => c.tipo === "venda" || !c.tipo));
       setAnosSafra(as_.data ?? []);
@@ -279,6 +284,7 @@ function FaturamentoInner() {
       allTextos.filter(r => r.uf === "BR").forEach(r => { mapa[r.cfop_tipo] = r.texto; });
       if (uf) allTextos.filter(r => r.uf === uf).forEach(r => { mapa[r.cfop_tipo] = r.texto; });
       setTextosUF(mapa);
+      setFiscalModulos((fm as {data?: {modulo: string; config: Record<string,string>}[]}).data ?? []);
     }).catch(console.error);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazNFe]);
@@ -461,17 +467,12 @@ function FaturamentoInner() {
     setEmitindo(true); setErroForm(null);
     try {
       const produtor = produtores.find(p => p.id === fVenda.produtor_id);
-      const qtdTotal = nfeItens.reduce((s, i) => s + (parseFloat(i.quantidade) || 0), 0);
       const valorTotal = nfeItens.reduce((s, i) => s + i.valor_total, 0);
 
-      // Busca dados do emitente para salvar no DANFE
-      const { data: cfgFiscal } = await supabase
-        .from("configuracoes_modulo")
-        .select("configuracoes")
-        .eq("fazenda_id", fazEmissao)
-        .eq("modulo", "fiscal")
-        .maybeSingle();
-      const emit = cfgFiscal?.configuracoes ?? {};
+      // Encontra o módulo fiscal do emitente (match pelo CPF/CNPJ do produtor, senão usa o primeiro)
+      const cpfCnpjDigits = produtor?.cpf_cnpj?.replace(/\D/g, "") ?? "";
+      const moduloFiscal = fiscalModulos.find(m => cpfCnpjDigits && m.modulo.endsWith(cpfCnpjDigits)) ?? fiscalModulos[0];
+      const emit = moduloFiscal?.config ?? {};
 
       const payload: Omit<NotaFiscal, "id" | "created_at"> = {
         fazenda_id:        fazEmissao,
@@ -497,12 +498,16 @@ function FaturamentoInner() {
           valor_total:    i.valor_total,
         })),
         dados_nf_json: {
-          emit_razao:      emit.razao_social ?? emit.nome_emitente ?? "",
-          emit_cnpj:       emit.cnpj ?? "",
-          emit_ie:         emit.inscricao_estadual ?? emit.ie ?? "",
-          emit_endereco:   emit.logradouro ?? emit.endereco ?? "",
-          emit_municipio:  emit.municipio ?? "",
-          emit_uf:         emit.uf ?? "",
+          emit_razao:      emit.razao_social ?? "",
+          emit_cnpj:       emit.cpf_cnpj_emitente ?? "",
+          emit_ie:         emit.ie_emitente ?? "",
+          emit_endereco:   emit.logradouro ?? "",
+          emit_numero:     emit.numero ?? "",
+          emit_bairro:     emit.bairro ?? "",
+          emit_municipio:  emit.municipio_nome ?? "",
+          emit_uf:         emit.uf_emitente ?? "",
+          emit_cep:        emit.cep ?? "",
+          emit_fone:       emit.fone ?? "",
           dest_tipo_pessoa: fVenda.dest_tipo_pessoa,
           dest_ie:         fVenda.dest_ie,
           dest_endereco:   fVenda.dest_endereco,
@@ -523,6 +528,7 @@ function FaturamentoInner() {
           hora_saida:      fVenda.hora_saida,
           nf_ref_chave:    fVenda.nf_ref_chave || undefined,
           nf_ref_numero:   fVenda.nf_ref_numero || undefined,
+          local_entrega:   fVenda.local_entrega || undefined,
         },
       };
 
@@ -536,33 +542,52 @@ function FaturamentoInner() {
         }).eq("id", fVenda.romaneio_id);
       }
 
-      // Se tem API de SEFAZ configurada, tenta transmitir
-      const { data: config } = await supabase
-        .from("configuracoes_modulo")
-        .select("configuracoes")
-        .eq("fazenda_id", fazEmissao)
-        .eq("modulo", "fiscal")
-        .maybeSingle();
-
-      if (config?.configuracoes?.api_url && config?.configuracoes?.token) {
+      // Transmite para o SEFAZ via /api/fiscal/emitir-nfe
+      let erroSefaz: string | null = null;
+      if (moduloFiscal) {
         try {
-          const resp = await fetch("/api/fiscal/emitir", {
+          const resp = await fetch("/api/fiscal/emitir-nfe", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              nota_id: nova.id,
-              emitente: config.configuracoes,
-              destinatario: { nome: fVenda.destinatario, cpf_cnpj: fVenda.cnpj, ie: fVenda.dest_ie, endereco: { logradouro: fVenda.dest_endereco, numero: fVenda.dest_numero, municipio: fVenda.dest_cidade, uf: fVenda.dest_uf } },
-              transporte: { transportadora: fVenda.transportadora, frete_conta: fVenda.frete_conta, placa: fVenda.placa, uf_placa: fVenda.uf_placa, peso_bruto: desmascarar(fVenda.peso_bruto), peso_liquido: desmascarar(fVenda.peso_liquido) },
-              itens: nfeItens.map(i => ({ descricao: i.item, ncm: i.ncm, cfop: fVenda.cfop, unidade: i.unidade.toUpperCase(), quantidade: parseFloat(i.quantidade)||0, valor_unitario: desmascarar(i.valor_unitario) })),
+              fazenda_id: fazEmissao,
+              modulo_key: moduloFiscal.modulo,
+              destinatario: {
+                nome:           fVenda.destinatario,
+                cpf_cnpj:       fVenda.cnpj || undefined,
+                ie:             fVenda.dest_ie || undefined,
+                logradouro:     fVenda.dest_endereco || undefined,
+                numero:         fVenda.dest_numero || undefined,
+                municipio_nome: fVenda.dest_cidade || undefined,
+                uf:             fVenda.dest_uf || undefined,
+              },
+              itens: nfeItens.map(i => ({
+                descricao:      i.item,
+                ncm:            i.ncm,
+                cfop:           fVenda.cfop,
+                unidade:        i.unidade.toUpperCase(),
+                quantidade:     parseFloat(i.quantidade) || 0,
+                valor_unitario: desmascarar(i.valor_unitario),
+              })),
+              natureza:  fVenda.natureza_texto,
+              inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
+              frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
+              nfe_ref:   fVenda.nf_ref_chave || undefined,
+              tipo:      "1" as const,
             }),
           });
-          if (resp.ok) {
-            const res = await resp.json();
-            if (res.status === "autorizada") {
-              await atualizarStatusNFe(nova.id, "autorizada", res.chave_acesso);
+          if (resp.ok || resp.status === 422) {
+            const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; cStat: string; xMotivo: string };
+            if (res.sucesso && res.chave) {
+              const novoNumero = res.numero ?? nova.numero;
+              await supabase.from("notas_fiscais").update({ status: "autorizada", chave_acesso: res.chave, numero: novoNumero }).eq("id", nova.id);
               nova.status = "autorizada";
-              nova.chave_acesso = res.chave_acesso;
+              nova.chave_acesso = res.chave;
+              nova.numero = novoNumero;
+            } else {
+              await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nova.id);
+              nova.status = "rejeitada";
+              erroSefaz = `SEFAZ [${res.cStat}]: ${res.xMotivo}`;
             }
           }
         } catch { /* SEFAZ unavailable — nota salva em rascunho */ }
@@ -572,7 +597,10 @@ function FaturamentoInner() {
       const ehVendaOrdem    = contratoSelecionado?.venda_a_ordem === true;
       const ehEntregaFutura = fVenda.cfop === "6.117";
       setNfEmitida({ numero: nova.numero, chave: nova.chave_acesso ?? undefined, cfop: fVenda.cfop, venda_a_ordem: ehVendaOrdem, entrega_futura: ehEntregaFutura });
-      if (ehVendaOrdem || ehEntregaFutura) {
+
+      if (erroSefaz) {
+        setErroForm(erroSefaz); // mantém modal aberto para mostrar o erro do SEFAZ
+      } else if (ehVendaOrdem || ehEntregaFutura) {
         setPasso("nf_vinculada");
       } else {
         setModalAberto(false);
