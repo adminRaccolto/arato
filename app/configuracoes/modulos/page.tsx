@@ -108,8 +108,6 @@ const FISCAL_CFOP: FieldDef[] = [
 ];
 
 const FISCAL_CERT: FieldDef[] = [
-  { key: "cert_a1_path",   label: "Certificado A1 — Caminho (Supabase Storage)", type: "text",     placeholder: "certificados/meu-certificado.pfx" },
-  { key: "cert_a1_senha",  label: "Senha do Certificado A1",                     type: "password", placeholder: "••••••" },
   { key: "ibs_cbs_ativo",  label: "Destacar IBS/CBS na NF-e",                    type: "select",   options: ["nao","sim"], labels: ["Não (padrão atual)","Sim — fase de transição"] },
 ];
 
@@ -1051,13 +1049,30 @@ function ParametrosSistemaContent() {
                         </div>
                       )}
 
-                      {/* Upload de certificado A1 embutido */}
+                      {/* Upload de certificado A1 */}
                       {(() => {
                         const cs = getCertState(emitter.moduloKey);
+                        // Nome amigável do arquivo atual (última parte do path)
+                        const certNomeAtual = certPath ? certPath.split("/").pop() ?? certPath : "";
+                        const certVenc = String((cfgs[emitter.moduloKey] as Record<string,unknown>)?.cert_a1_vencimento ?? (certMeta as Record<string,unknown>)?.data_vencimento ?? "");
                         return (
                           <div style={{ marginBottom: 14, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>Upload do Certificado A1 (.pfx)</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
+                            {/* Status atual */}
+                            {hasCert && !certPathInvalid ? (
+                              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 6, display: "flex", alignItems: "center", gap: 10 }}>
+                                <span style={{ fontSize: 18 }}>✓</span>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>Certificado configurado</div>
+                                  <div style={{ fontSize: 11, color: "#166534" }}>{certNomeAtual}{certVenc ? ` · válido até ${certVenc}` : ""}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 6, fontSize: 12, color: "#92400E", fontWeight: 600 }}>
+                                Certificado não configurado — NF-e não pode ser emitida.
+                              </div>
+                            )}
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>{hasCert ? "Atualizar certificado" : "Enviar certificado A1 (.pfx)"}</div>
+                            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
                               <div>
                                 <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Arquivo .pfx / .p12</div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1066,7 +1081,7 @@ function ParametrosSistemaContent() {
                                     <input type="file" accept=".pfx,.p12,.cer" style={{ display: "none" }}
                                       onChange={e => setCertField(emitter.moduloKey, { file: e.target.files?.[0] ?? null })} />
                                   </label>
-                                  <span style={{ fontSize: 12, color: cs.file ? "#166534" : "#888" }}>{cs.file ? cs.file.name : "Nenhum arquivo selecionado"}</span>
+                                  <span style={{ fontSize: 12, color: cs.file ? "#166534" : "#888" }}>{cs.file ? cs.file.name : "Nenhum selecionado"}</span>
                                 </div>
                               </div>
                               <div>
@@ -1075,20 +1090,15 @@ function ParametrosSistemaContent() {
                                   placeholder="Senha do .pfx"
                                   style={{ padding: "7px 10px", border: "0.5px solid #CBD5E1", borderRadius: 6, fontSize: 13, width: 180 }} />
                               </div>
-                            </div>
-                            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
                               <button
                                 disabled={!cs.file || !cs.senha.trim() || cs.loading}
                                 onClick={() => fazerUploadCert({ id: emitter.id, moduloKey: emitter.moduloKey, cpf_cnpj: emitter.cpf_cnpj, nome: emitter.nome })}
-                                style={{ padding: "7px 20px", background: cs.loading ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: cs.loading ? "not-allowed" : "pointer" }}>
-                                {cs.loading ? "Enviando..." : "Enviar certificado"}
+                                style={{ padding: "7px 20px", background: cs.loading ? "#94A3B8" : (!cs.file || !cs.senha.trim() ? "#CBD5E1" : "#1A4870"), color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: cs.loading || !cs.file || !cs.senha.trim() ? "not-allowed" : "pointer" }}>
+                                {cs.loading ? "Enviando..." : "Enviar"}
                               </button>
-                              {cs.ok && <span style={{ color: "#16A34A", fontSize: 12, fontWeight: 600 }}>✓ Certificado salvo com sucesso!</span>}
-                              {cs.erro && <span style={{ color: "#DC2626", fontSize: 12 }}>{cs.erro}</span>}
                             </div>
-                            {hasCert && !certPathInvalid && (
-                              <div style={{ marginTop: 8, fontSize: 11, color: "#666" }}>Certificado atual: <code>{certPath}</code></div>
-                            )}
+                            {cs.ok && <div style={{ marginTop: 8, color: "#16A34A", fontSize: 12, fontWeight: 600 }}>✓ Certificado atualizado com sucesso!</div>}
+                            {cs.erro && <div style={{ marginTop: 8, color: "#DC2626", fontSize: 12 }}>{cs.erro}</div>}
                           </div>
                         );
                       })()}
