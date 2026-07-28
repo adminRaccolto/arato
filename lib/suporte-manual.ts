@@ -550,7 +550,7 @@ Se um recebimento não ocorreu na data prevista e a data deve ser alterada:
 2. Informe a **Nova Data de Vencimento**
 3. (Opcional) Informe uma observação explicando o motivo
 4. Clique em **Confirmar Reprogramação**
-- A observação do lançamento recebe automaticamente o prefixo `[Reprogramado para DD/MM/AAAA]`
+- A observação do lançamento recebe automaticamente o prefixo "[Reprogramado para DD/MM/AAAA]"
 - A data original fica registrada na observação para rastreio
 
 ### Parcelamento
@@ -620,7 +620,7 @@ Se um pagamento não ocorreu na data prevista e a data deve ser alterada:
 2. Informe a **Nova Data de Vencimento**
 3. (Opcional) Informe uma observação explicando o motivo
 4. Clique em **Confirmar Reprogramação**
-- A observação recebe automaticamente o prefixo `[Reprogramado para DD/MM/AAAA]`
+- A observação recebe automaticamente o prefixo "[Reprogramado para DD/MM/AAAA]"
 - A data original fica registrada na observação para rastreio
 
 ### Baixa em lote (borderô de pagamentos)
@@ -1323,8 +1323,8 @@ Demonstração do Resultado do Exercício adaptada para fazenda: mostra receitas
 
 ### Fontes de custo no DRE
 O DRE agrega custos de duas fontes:
-- **Contas a Pagar oficiais** (tabela `contas_pagar`) com `ciclo_id` correspondente ao ciclo selecionado
-- **Lançamentos do Apoio Financeiro** (tabela `apoio_lancamentos`) do tipo "pagar" que tenham `ciclo_id` preenchido
+- **Contas a Pagar oficiais** (tabela 'contas_pagar') com 'ciclo_id' correspondente ao ciclo selecionado
+- **Lançamentos do Apoio Financeiro** (tabela 'apoio_lancamentos') do tipo "pagar" que tenham 'ciclo_id' preenchido
 
 Isso significa que estimativas de custo lançadas pelo consultor no Apoio Financeiro **já contribuem ao DRE** desde que vinculadas ao ciclo correto.
 
@@ -1709,7 +1709,7 @@ Salva em \`monitoramento_pragas\`. Nível 4 (Crítico) gera alerta no Dashboard 
 
 **Caminho:** Menu superior → **Financeiro** → **Apoio Financeiro**
 
-> **Acesso exclusivo Raccotlo:** Apenas usuários com perfil `raccotlo` têm acesso. Clientes fazendeiros não enxergam esta tela.
+> **Acesso exclusivo Raccotlo:** Apenas usuários com perfil 'raccotlo' têm acesso. Clientes fazendeiros não enxergam esta tela.
 
 ### O que faz
 Ferramenta de trabalho interno do consultor Raccotlo para organizar lançamentos e previsões financeiras **paralelas** ao sistema oficial da fazenda. Permite:
@@ -1761,7 +1761,7 @@ Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção
 ### Erros comuns
 - **"Permissão negada"**: Usuário não tem perfil raccotlo. Confirme o role no painel admin.
 - **Ciclo não aparece**: Selecione primeiro o Ano Safra — o select de Ciclo só mostra os ciclos do ano escolhido.
-- **Valor aceita vírgula**: No campo valor, use vírgula como separador decimal (ex: `1.234,56`).
+- **Valor aceita vírgula**: No campo valor, use vírgula como separador decimal (ex: 1.234,56).
 
 ---
 
