@@ -8697,3 +8697,9 @@ ALTER TABLE lancamentos
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 121 — produtor_id em pedidos_compra ──────────────────────────────
+alter table pedidos_compra
+  add column if not exists produtor_id uuid references produtores(id) on delete set null;
+
+NOTIFY pgrst, 'reload schema';
