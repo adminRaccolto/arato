@@ -656,6 +656,14 @@ export default function BI() {
 
   // ── Posição de grãos (usa filtro de ciclos) ──────────────────
   function calcPosicao(comm: string) {
+    // Match by keyword: "Soja Convencional" → "Soja", "Milho Safrinha" → "Milho"
+    const prodMatchesComm = (produto: string) => {
+      const n = produto.toLowerCase();
+      if (comm === "Soja")    return n.includes("soja");
+      if (comm === "Milho")   return n.includes("milho");
+      if (comm === "Algodão") return n.includes("algodã") || n.includes("algodao");
+      return produto === comm;
+    };
     const cIds = new Set(
       ciclosFiltrados.filter(c => culturaToCommodity(c.cultura) === comm).map(c => c.id)
     );
@@ -670,7 +678,8 @@ export default function BI() {
       .filter(l => l.moeda === "barter" && l.cultura_barter === comm && l.status !== "baixado")
       .reduce((s, l) => s + (l.sacas || 0), 0);
     const fixadoSacas = contratos
-      .filter(c => !c.is_arrendamento && c.produto === comm && c.status !== "cancelado")
+      .filter(c => !c.is_arrendamento && prodMatchesComm(c.produto) && c.status !== "cancelado" &&
+        (anoSafraIdsFiltSet.size === 0 || !c.ano_safra_id || anoSafraIdsFiltSet.has(c.ano_safra_id)))
       .reduce((s, c) => s + (c.quantidade_sc || 0), 0);
     const ciclosComm = ciclosFiltrados.filter(c => culturaToCommodity(c.cultura) === comm && (c as any).preco_esperado_sc);
     const precoCiclo = ciclosComm.length > 0
@@ -1179,6 +1188,9 @@ export default function BI() {
           const COMM_COR = (nome: string) => commColor(nome).cor;
           const COMM_BG  = (nome: string) => commColor(nome).bg;
 
+          // Contratos sem ciclo_id: alocados por produto + ano_safra_id (evita dupla contagem)
+          const orphanAllocated = new Set<string>();
+
           // Per-ciclo metrics para Posição Comercial
           const todasRows = ciclosFiltrados.map(c => {
             const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? c.fazenda_id;
@@ -1196,7 +1208,16 @@ export default function BI() {
               ? (c as Ciclo & { preco_esperado_sc?: number }).preco_esperado_sc!
               : comm === "Soja" ? (precos?.soja?.brl ?? 0) : comm === "Milho" ? (precos?.milho?.brl ?? 0) : (precos?.algodao?.brl ?? 0);
             const fatPrev = volPrev * preco;
-            const ctrs    = contratos.filter(x => x.ciclo_id === c.id && !x.is_arrendamento && x.status !== "cancelado");
+            // Contratos diretamente vinculados ao ciclo
+            const directCtrs = contratos.filter(x => x.ciclo_id === c.id && !x.is_arrendamento && x.status !== "cancelado");
+            // Contratos órfãos (sem ciclo_id) que têm mesmo produto e ano_safra_id
+            const orphanCtrs = contratos.filter(x => {
+              if (x.ciclo_id || x.is_arrendamento || x.status === "cancelado") return false;
+              if (orphanAllocated.has(x.id)) return false;
+              return x.produto === comm && x.ano_safra_id === c.ano_safra_id;
+            });
+            orphanCtrs.forEach(x => orphanAllocated.add(x.id));
+            const ctrs    = [...directCtrs, ...orphanCtrs];
             const venda   = ctrs.reduce((s, x) => s + (x.quantidade_sc || 0), 0);
             const entregue= ctrs.reduce((s, x) => s + (x.entregue_sc  || 0), 0);
             const colhido = colheitas.filter(x => x.ciclo_id === c.id).reduce((s, x) => s + (x.sacas_liquidas ?? (x.peso_liquido_kg ?? 0) / 60), 0);
@@ -2964,8 +2985,9 @@ export default function BI() {
                    (c.ano_safra_id && anoSafraIdsFiltSet.has(c.ano_safra_id));
           });
 
-          const recSc = (c: Contrato) => (c.quantidade_sc || 0) / unidProd(c.produto, cultMap).div;
-          const entSc = (c: Contrato) => (c.entregue_sc   || 0) / unidProd(c.produto, cultMap).div;
+          // quantidade_sc e entregue_sc são armazenados em sacas (ou @ para algodão) — sem divisão
+          const recSc = (c: Contrato) => c.quantidade_sc || 0;
+          const entSc = (c: Contrato) => c.entregue_sc   || 0;
           const ptax = precos?.usdBrl ?? 5.10;
 
           // ── KPIs globais ─────────────────────────────────────────────────
