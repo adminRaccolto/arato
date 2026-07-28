@@ -897,16 +897,28 @@ function FinanceiroRelatoriosInner() {
                                           <td style={{ padding: "6px 14px", color: "#444", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descricao || "—"}</td>
                                           <td style={{ padding: "6px 14px" }}>
                                             {isSim  && <span style={{ fontSize: 10, background: "#EDE9FE", color: "#7C3AED", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Simulação</span>}
-                                            {isPrev && (() => {
+                                            {!isSim && (() => {
                                               const orig = r.origem_lancamento;
-                                              if (orig === "pedido_compra")   return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Pedido de Compra</span>;
-                                              if (orig === "contrato")        return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Contrato</span>;
-                                              if (orig === "arrendamento")    return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Arrendamento</span>;
-                                              if (orig === "nf_entrada")      return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>NF Entrada</span>;
-                                              return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Previsão</span>;
+                                              const ORIG_MAP: Record<string, { label: string; bg: string; color: string }> = {
+                                                pedido_compra:       { label: "Pedido de Compra",    bg: "#FBF3E0", color: "#7A5A12" },
+                                                nf_entrada:          { label: "NF de Entrada",       bg: "#EFF6FF", color: "#1E40AF" },
+                                                nf_saida:            { label: "NF de Saída",          bg: "#EFF6FF", color: "#1E40AF" },
+                                                contrato:            { label: "Contrato de Venda",   bg: "#DCFCE7", color: "#166534" },
+                                                arrendamento:        { label: "Arrendamento",         bg: "#FFF7ED", color: "#9A3412" },
+                                                contrato_financeiro: { label: "Contrato Financeiro",  bg: "#F3E8FF", color: "#6B21A8" },
+                                                manual:              { label: "Manual",               bg: "#F1F5F9", color: "#475569" },
+                                                cron:                { label: "Automático",           bg: "#DCFCE7", color: "#166534" },
+                                                transporte:          { label: "Transporte",           bg: "#F0F9FF", color: "#0369A1" },
+                                              };
+                                              if (orig && ORIG_MAP[orig]) {
+                                                const o = ORIG_MAP[orig];
+                                                return <span style={{ fontSize: 10, background: o.bg, color: o.color, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>{o.label}</span>;
+                                              }
+                                              if (isPrev) return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Previsão</span>;
+                                              if (isPend) return <span style={{ fontSize: 10, background: "#F1F5F9", color: "#475569", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
+                                              if (isReal) return <span style={{ fontSize: 10, background: "#F1F5F9", color: "#475569", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
+                                              return null;
                                             })()}
-                                            {isPend && <span style={{ fontSize: 10, background: "#FEF3E2", color: "#7A4300", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Em Aberto</span>}
-                                            {isReal && <span style={{ fontSize: 10, background: "var(--bg-tag)", color: "#1A4870", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Realizado</span>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
                                             {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada, 2)}</div>}

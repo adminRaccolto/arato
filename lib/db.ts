@@ -1600,6 +1600,7 @@ export async function processarNfEntrada(
     cicloId?: string;
     operacaoGerencialId?: string;
     centroCustoId?: string;
+    pedidoCompraId?: string;
   },
 ): Promise<void> {
   for (const item of itens) {
@@ -1772,34 +1773,62 @@ export async function processarNfEntrada(
   if (pessoaId) nfUpdates.pessoa_id = pessoaId;
 
   if (!temRemessa || temOutros || temVef) {
-    const categoriaCP =
-      opts?.tipoEntrada === "vef"          ? "Insumos — Sementes" :
-      opts?.tipoEntrada === "custo_direto" ? "Serviços Agrícolas" :
-      opts?.tipoEntrada === "insumos"      ? "Insumos — Fertilizantes" :
-      "Outros";
+    // Se NF está vinculada a um pedido que já tem lançamento → atualiza em vez de duplicar
+    let lancamentoIdPedido: string | null = null;
+    if (opts?.pedidoCompraId) {
+      const { data: ped } = await supabase
+        .from("pedidos_compra")
+        .select("lancamento_id")
+        .eq("id", opts.pedidoCompraId)
+        .maybeSingle();
+      lancamentoIdPedido = ped?.lancamento_id ?? null;
+    }
 
-    const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
-      fazenda_id,
-      tipo:                    "pagar",
-      moeda:                   "BRL",
-      descricao:               `NF ${opts?.nfeNumero ? `${opts.nfeNumero} — ` : ""}${emitente}${temVef ? " (VEF)" : ""}`,
-      categoria:               categoriaCP,
-      data_lancamento:         dataEntrada,
-      data_vencimento:         opts?.dataVencimentoCp ?? dataEntrada,
-      valor:                   valorTotal,
-      status:                  "em_aberto",
-      auto:                    true,
-      pessoa_id:               pessoaId ?? undefined,
-      nfe_numero:              opts?.nfeNumero ?? undefined,
-      origem_lancamento:       "nf_entrada",
-      ano_safra_id:            opts?.anoSafraId ?? undefined,
-      ciclo_id:                opts?.cicloId ?? undefined,
-      operacao_gerencial_id:   opts?.operacaoGerencialId ?? undefined,
-      centro_custo_id:         opts?.centroCustoId ?? undefined,
-    }).select("id").single();
+    if (lancamentoIdPedido) {
+      // Atualiza o lançamento existente do pedido com os dados reais da NF
+      await supabase.from("lancamentos").update({
+        descricao:             `NF ${opts?.nfeNumero ? `${opts.nfeNumero} — ` : ""}${emitente}${temVef ? " (VEF)" : ""}`,
+        valor:                 valorTotal,
+        data_vencimento:       opts?.dataVencimentoCp ?? dataEntrada,
+        nfe_numero:            opts?.nfeNumero ?? undefined,
+        origem_lancamento:     "nf_entrada",
+        pessoa_id:             pessoaId ?? undefined,
+        ano_safra_id:          opts?.anoSafraId ?? undefined,
+        ciclo_id:              opts?.cicloId ?? undefined,
+        operacao_gerencial_id: opts?.operacaoGerencialId ?? undefined,
+        centro_custo_id:       opts?.centroCustoId ?? undefined,
+      }).eq("id", lancamentoIdPedido);
+      nfUpdates.lancamento_id = lancamentoIdPedido;
+    } else {
+      const categoriaCP =
+        opts?.tipoEntrada === "vef"          ? "Insumos — Sementes" :
+        opts?.tipoEntrada === "custo_direto" ? "Serviços Agrícolas" :
+        opts?.tipoEntrada === "insumos"      ? "Insumos — Fertilizantes" :
+        "Outros";
 
-    if (lancErr) throw new Error(`Erro ao criar CP da NF: ${lancErr.message} (code: ${lancErr.code})`);
-    if (lancDB?.id) nfUpdates.lancamento_id = lancDB.id;
+      const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
+        fazenda_id,
+        tipo:                    "pagar",
+        moeda:                   "BRL",
+        descricao:               `NF ${opts?.nfeNumero ? `${opts.nfeNumero} — ` : ""}${emitente}${temVef ? " (VEF)" : ""}`,
+        categoria:               categoriaCP,
+        data_lancamento:         dataEntrada,
+        data_vencimento:         opts?.dataVencimentoCp ?? dataEntrada,
+        valor:                   valorTotal,
+        status:                  "em_aberto",
+        auto:                    true,
+        pessoa_id:               pessoaId ?? undefined,
+        nfe_numero:              opts?.nfeNumero ?? undefined,
+        origem_lancamento:       "nf_entrada",
+        ano_safra_id:            opts?.anoSafraId ?? undefined,
+        ciclo_id:                opts?.cicloId ?? undefined,
+        operacao_gerencial_id:   opts?.operacaoGerencialId ?? undefined,
+        centro_custo_id:         opts?.centroCustoId ?? undefined,
+      }).select("id").single();
+
+      if (lancErr) throw new Error(`Erro ao criar CP da NF: ${lancErr.message} (code: ${lancErr.code})`);
+      if (lancDB?.id) nfUpdates.lancamento_id = lancDB.id;
+    }
   }
 
   // Marca NF como processada (e vincula pessoa + lancamento em um único update)

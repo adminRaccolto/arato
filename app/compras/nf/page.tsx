@@ -797,6 +797,7 @@ export default function NfCompraPage() {
           cicloId:             nfEdit.ciclo_id,
           operacaoGerencialId: nfEdit.operacao_gerencial_id,
           centroCustoId:       nfEdit.centro_custo_id,
+          pedidoCompraId:      nfEdit.pedido_compra_id || undefined,
         },
       );
 
