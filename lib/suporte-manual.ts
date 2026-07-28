@@ -513,6 +513,9 @@ Visão consolidada de todas as entradas e saídas de dinheiro da fazenda, com pr
 ### Simulações
 Clique em **+ Simulação** para criar um lançamento hipotético e ver o impacto no fluxo sem salvar como real.
 
+### FC Previsto — Apoio Financeiro
+Lançamentos em aberto (não baixados) do **Apoio Financeiro** (ferramenta Raccotlo) também aparecem na seção de FC Previsto, com badge laranja "Apoio Financeiro". Isso permite que o consultor veja o impacto projetado de suas estimativas no fluxo de caixa da fazenda, sem que esses valores sejam parte do sistema oficial. O badge de origem identifica a fonte de cada linha.
+
 ---
 
 ## MÓDULO 14 — CONTAS A RECEBER
@@ -540,6 +543,15 @@ Gerencia todas as receitas previstas e realizadas: vendas de grãos, prestação
 2. Clique em **Baixar**
 3. Informe a data de recebimento real
 4. Confirme
+
+### Reprogramar vencimento
+Se um recebimento não ocorreu na data prevista e a data deve ser alterada:
+1. Clique no ícone 📅 (calendário) na linha do lançamento
+2. Informe a **Nova Data de Vencimento**
+3. (Opcional) Informe uma observação explicando o motivo
+4. Clique em **Confirmar Reprogramação**
+- A observação do lançamento recebe automaticamente o prefixo `[Reprogramado para DD/MM/AAAA]`
+- A data original fica registrada na observação para rastreio
 
 ### Parcelamento
 1. No modal de criação, marque **Parcelado**
@@ -601,6 +613,15 @@ Gerencia todas as despesas da fazenda: insumos, combustível, frete, arrendament
 
 ### Parcelamento
 Marque **Parcelado**, informe número de parcelas e data da primeira. O sistema gera todas as parcelas.
+
+### Reprogramar vencimento
+Se um pagamento não ocorreu na data prevista e a data deve ser alterada:
+1. Clique no ícone 📅 (calendário) na linha do lançamento
+2. Informe a **Nova Data de Vencimento**
+3. (Opcional) Informe uma observação explicando o motivo
+4. Clique em **Confirmar Reprogramação**
+- A observação recebe automaticamente o prefixo `[Reprogramado para DD/MM/AAAA]`
+- A data original fica registrada na observação para rastreio
 
 ### Baixa em lote (borderô de pagamentos)
 1. Filtre por fornecedor ou período
@@ -860,7 +881,8 @@ rascunho → aprovado → parcialmente_entregue → entregue / cancelado
 
 **Aba Principal:**
 - Fazenda (*), Data (*), Fornecedor (*), Tipo (produto / serviço / ambos)
-- Fiscal: emite NF? Sim/Não
+- **Nº do Pedido** — campo editável (identificador do pedido)
+- Fiscal: emite NF? Sim/Não (pedidos fiscais têm aba "NFs Vinculadas" em vez de "Entregas")
 - Cotação da moeda (para pedidos em USD), Possui Ordem de Compra, Entrega única ou fracionada
 
 **Aba Itens / Serviços / CC:**
@@ -874,17 +896,27 @@ rascunho → aprovado → parcialmente_entregue → entregue / cancelado
 - Desconto adicional (% ou valor fixo)
 - Frete
 
-**Aba Entrega:**
+**Aba Entregas** (pedidos não-fiscais):
 - Data prevista, endereço de entrega
 - Após criação: registre entrega item a item com quantidade efetiva recebida
 - Barra de progresso por item
 - Status muda automaticamente conforme entrega acumulada
+
+**Aba NFs Vinculadas** (pedidos fiscais):
+- Lista todas as NFs de entrada já lançadas vinculadas a este pedido
+- A baixa do CP de um pedido fiscal ocorre automaticamente ao processar a NF de entrada, não há botão de baixa manual
 
 **Aba Cobrança:**
 - Forma de pagamento, suporte a barter, data de vencimento
 
 **Aba Documentos:**
 - Anexo de cotações, ordens de compra, etc.
+
+### Busca na lista
+A busca na lista filtra por **descrição**, **fornecedor** e **número do pedido** (campo nr_pedido). Útil para localizar um pedido pelo número informado na nota do fornecedor.
+
+### Exclusão de pedido
+Pedidos com NFs de entrada vinculadas **não podem ser excluídos**. Para cancelar, use o status "Cancelado" em vez de excluir.
 
 ---
 
@@ -1289,6 +1321,13 @@ Demonstração do Resultado do Exercício adaptada para fazenda: mostra receitas
    - Juros Outros
 9. **Resultado Líquido**
 
+### Fontes de custo no DRE
+O DRE agrega custos de duas fontes:
+- **Contas a Pagar oficiais** (tabela `contas_pagar`) com `ciclo_id` correspondente ao ciclo selecionado
+- **Lançamentos do Apoio Financeiro** (tabela `apoio_lancamentos`) do tipo "pagar" que tenham `ciclo_id` preenchido
+
+Isso significa que estimativas de custo lançadas pelo consultor no Apoio Financeiro **já contribuem ao DRE** desde que vinculadas ao ciclo correto.
+
 ### KPI Cards
 - Receita Total, Custo Total, Resultado Líquido, Margem (%), Produtividade (sc/ha), EBITDA
 
@@ -1666,6 +1705,66 @@ Salva em \`monitoramento_pragas\`. Nível 4 (Crítico) gera alerta no Dashboard 
 
 ---
 
+## MÓDULO 39 — APOIO FINANCEIRO (Ferramenta Raccotlo)
+
+**Caminho:** Menu superior → **Financeiro** → **Apoio Financeiro**
+
+> **Acesso exclusivo Raccotlo:** Apenas usuários com perfil `raccotlo` têm acesso. Clientes fazendeiros não enxergam esta tela.
+
+### O que faz
+Ferramenta de trabalho interno do consultor Raccotlo para organizar lançamentos e previsões financeiras **paralelas** ao sistema oficial da fazenda. Permite:
+- Criar estimativas de CP/CR que ainda não estão no sistema oficial
+- Baixar lançamentos do sistema oficial dentro do contexto do Apoio (marcação separada)
+- Ter uma visão financeira consolidada (oficial + estimativas) sem contaminar os dados do cliente
+
+### Abas
+
+**Aba Exclusivo (lançamentos próprios do Apoio):**
+- Lista de CP/CR criadas diretamente no Apoio Financeiro (não existem no sistema oficial)
+- Badge por status: em_aberto, baixado_apoio
+
+**Aba Compartilhado (lançamentos oficiais gerenciados via Apoio):**
+- Lista de CP/CR do sistema oficial que foram "baixadas" dentro do contexto do Apoio
+- Badge: baixado_apoio ou baixado_oficial
+- Permite "Reabrir baixa" tanto para lançamentos baixados no Apoio quanto no sistema oficial
+
+### Como criar um lançamento exclusivo
+1. Clique em **+ Novo Lançamento**
+2. Preencha:
+   - **Tipo** (*): A Pagar ou A Receber
+   - **Descrição** (*): texto livre
+   - **Valor** (*) e **Data de Vencimento** (*)
+   - **Pessoa / Fornecedor**: select do cadastro de Pessoas
+   - **Ano Safra**: select dos anos safra da fazenda
+   - **Ciclo**: select dos ciclos, filtrado pelo Ano Safra selecionado
+   - **Operação Gerencial**: select do plano de contas (OG)
+   - **Categoria** e **Observação** (opcionais)
+3. Salvar
+
+> Lançamentos com **Ciclo preenchido** e **tipo = pagar** contribuem automaticamente ao custo da safra no DRE Agrícola.
+
+### Como dar baixa em um lançamento exclusivo
+1. Clique em **Baixar** na linha do lançamento
+2. Modal abre com:
+   - **Data da Baixa** (*) — padrão: hoje
+   - **Conta Bancária** — select das contas bancárias cadastradas (opcional)
+   - **Observação** (opcional)
+3. Clique em **Confirmar Baixa**
+
+### Como reabrir uma baixa
+- Lançamento com badge **baixado_apoio**: clique em **Reabrir** → remove a baixa do Apoio, volta para em_aberto
+- Lançamento com badge **baixado_oficial** (na aba Compartilhado): clique em **Reabrir (Oficial)** → reverte o status do lançamento oficial para em_aberto no sistema
+
+### Lançamentos abertos no Fluxo de Caixa
+Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção FC Previsto** do Fluxo de Caixa com badge laranja "Apoio Financeiro", dentro do intervalo de datas selecionado.
+
+### Erros comuns
+- **"Permissão negada"**: Usuário não tem perfil raccotlo. Confirme o role no painel admin.
+- **Ciclo não aparece**: Selecione primeiro o Ano Safra — o select de Ciclo só mostra os ciclos do ano escolhido.
+- **Valor aceita vírgula**: No campo valor, use vírgula como separador decimal (ex: `1.234,56`).
+
+---
+
 ## REFERÊNCIA RÁPIDA — CAMINHOS DO MENU
 
 | O que fazer | Caminho |
@@ -1693,6 +1792,7 @@ Salva em \`monitoramento_pragas\`. Nível 4 (Crítico) gera alerta no Dashboard 
 | Lançar contas a pagar | Financeiro → Contas a Pagar |
 | Gerenciar financiamentos | Financeiro → Contratos Financeiros |
 | Lançamentos de tesouraria | Financeiro → Tesouraria |
+| Estimativas financeiras (consultor) | Financeiro → Apoio Financeiro |
 | Gerenciar seguros | Financeiro → Seguros |
 | Gerenciar consórcios | Financeiro → Consórcios |
 | Ver endividamento total | Financeiro → Endividamento |
