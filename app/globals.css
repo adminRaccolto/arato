@@ -169,7 +169,7 @@ input, select, textarea, button {
 /* ── Tabelas ─────────────────────────────────────────────────── */
 
 /* Fonte compacta global (≈ 9pt Word) para todos os grids do sistema */
-table td   { font-size: 11px !important; }
+table td   { font-size: 9px !important; }
 table th   { font-size: 10px !important; }
 
 /* Exceções: badges e sub-textos inline podem sobrescrever com font-size menor no span */
