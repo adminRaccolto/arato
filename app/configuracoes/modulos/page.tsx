@@ -775,7 +775,7 @@ function ParametrosSistemaContent() {
         fone:               e.telefone ?? "",
       };
     }
-    setCfgs(prev => ({ ...prev, [emitter.moduloKey]: { ...seed, ...(prev[emitter.moduloKey] ?? {}) } }));
+    setCfgs(prev => ({ ...prev, [emitter.moduloKey]: { ...seed, ...(prev[emitter.moduloKey] ?? {}) } as CfgModulo }));
   }
 
   // ── Aba Fiscal — por emitente ─────────────────────────────────────────────
@@ -927,9 +927,11 @@ function ParametrosSistemaContent() {
                       </span>
                       <button
                         onClick={() => {
-                          // Força recarregamento (remove bloqueio de cpf_cnpj_emitente existente)
-                          const current = cfgs[emitter.moduloKey] ?? {};
-                          setCfgs(prev => ({ ...prev, [emitter.moduloKey]: { ...current, cpf_cnpj_emitente: undefined as unknown as string } }));
+                          // Força recarregamento: limpa CPF para permitir auto-fill mesmo já configurado
+                          setCfgs(prev => {
+                            const current = prev[emitter.moduloKey] ?? {} as CfgModulo;
+                            return { ...prev, [emitter.moduloKey]: { ...current, cpf_cnpj_emitente: "" } };
+                          });
                           setTimeout(() => autoPreencherDoCadastro(emitter), 0);
                         }}
                         style={{ padding: "5px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
