@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     data_vencimento: dataVencimento,
   };
 
-  // Chave única por produtor — preserva certificados de outros produtores
+  // 1. Chave de metadados por produtor — preserva info de certificados de outros produtores
   const modulo = `certificado_a1_${produtorId ?? "geral"}`;
 
   const { error: dbErr } = await supabase
@@ -89,6 +89,36 @@ export async function POST(req: Request) {
 
   if (dbErr) {
     return NextResponse.json({ error: "Banco: " + dbErr.message }, { status: 500 });
+  }
+
+  // 2. Atualiza também o módulo fiscal (fiscal_pf_XXX ou fiscal_emp_XXX) com cert_a1_path e cert_a1_senha
+  // Isso conecta o upload ao emitirNFe que lê de fiscal_pf/fiscal_emp
+  if (cpfCnpj) {
+    const digits = cpfCnpj.replace(/\D/g, "");
+    // Tenta PF primeiro, depois PJ (empresa)
+    const isPJ = digits.length === 14;
+    const fiscalModulo = isPJ ? `fiscal_emp_${digits}` : `fiscal_pf_${digits}`;
+
+    // Lê config existente para não sobrescrever outros campos
+    const { data: existente } = await supabase
+      .from("configuracoes_modulo")
+      .select("config")
+      .eq("fazenda_id", fazendaId)
+      .eq("modulo", fiscalModulo)
+      .single();
+
+    const cfgAtual = (existente?.config as Record<string, string>) ?? {};
+    await supabase
+      .from("configuracoes_modulo")
+      .upsert(
+        {
+          fazenda_id: fazendaId,
+          modulo: fiscalModulo,
+          config: { ...cfgAtual, cert_a1_path: path, cert_a1_senha: senha },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "fazenda_id,modulo" }
+      );
   }
 
   return NextResponse.json({

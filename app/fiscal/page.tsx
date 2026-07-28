@@ -397,12 +397,13 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir }: {
   notas: NotaFiscal[];
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
   onConsultarSefaz?: (n: NotaFiscal) => void;
   onImprimirDanfe?: (n: NotaFiscal) => void;
+  onRetransmitir?: (n: NotaFiscal) => void;
 }) {
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -505,8 +506,24 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                       )}
                       {(nota.status === "rejeitada" || nota.status === "denegada") && (
                         <>
-                          <button style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Corrigir e retransmitir</button>
-                          <button style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 11 }}>Ver XML de retorno</button>
+                          {onRetransmitir && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
+                              style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                              ↺ Corrigir e retransmitir
+                            </button>
+                          )}
+                          {nota.observacao && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const erroInfo = (nota.dados_nf_json as Record<string,unknown>)?.sefaz_erro as string | undefined;
+                                alert(`Motivo da rejeição:\n\n${erroInfo ?? nota.observacao ?? "Sem detalhes disponíveis."}`);
+                              }}
+                              style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 11 }}>
+                              Ver motivo da rejeição
+                            </button>
+                          )}
                         </>
                       )}
                       {nota.status === "em_digitacao" && onConsultarSefaz && (
@@ -547,6 +564,7 @@ function FiscalInner() {
   // Modais
   const [modalVenda, setModalVenda] = useState(false);
   const [modalDevolucao, setModalDevolucao] = useState(false);
+  const [retransmitindoNota, setRetransmitindoNota] = useState<NotaFiscal | null>(null);
   const [modalCancelamento, setModalCancelamento] = useState<NotaFiscal | null>(null);
   const [modalComplemento, setModalComplemento] = useState<NotaFiscal | null>(null);
 
@@ -788,6 +806,52 @@ function FiscalInner() {
     return `${String(Math.floor(n / 1000)).padStart(3, "0")}.${String(n % 1000).padStart(3, "0")}`;
   };
 
+  // Corrigir e retransmitir — abre o modal pré-preenchido com os dados da nota rejeitada
+  function abrirRetransmit(nota: NotaFiscal) {
+    const hoje  = new Date().toISOString().slice(0, 10);
+    const agora = new Date().toTimeString().slice(0, 8);
+    const dj    = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    const moduloSalvo = dj.modulo_key as string | undefined;
+
+    setRetransmitindoNota(nota);
+    setFVenda({
+      ...FVENDA_INICIAL,
+      data_emissao:      hoje,
+      data_saida:        hoje,
+      hora_saida:        agora,
+      destinatario:      nota.destinatario ?? "",
+      cnpj:              nota.cnpj_destinatario ?? "",
+      cfop:              nota.cfop ?? "6.101",
+      natureza_texto:    nota.natureza ?? "",
+      serie:             nota.serie ?? "1",
+      observacao:        nota.observacao ?? NATUREZAS_VENDA[0].obs,
+      dest_ie:           (dj.dest_ie as string) ?? "",
+      dest_endereco:     (dj.dest_endereco as string) ?? "",
+      dest_numero:       (dj.dest_numero as string) ?? "",
+      dest_cidade:       (dj.dest_cidade as string) ?? "",
+      dest_uf:           (dj.dest_uf as string) ?? "",
+    });
+    // Pré-seleciona o mesmo emitente que foi usado originalmente (se disponível)
+    if (moduloSalvo) setModuloKeyAtivo(moduloSalvo);
+    // Restaura itens se estiverem salvos
+    if (nota.itens_json && nota.itens_json.length > 0) {
+      setNfeItens(nota.itens_json.map((i, idx) => ({
+        id: String(idx),
+        tipo_item: "Produto" as const,
+        item: i.item,
+        ncm: i.ncm,
+        quantidade: String(i.quantidade),
+        unidade: i.unidade,
+        valor_unitario: String(i.valor_unitario).replace(".", ","),
+        cclass_trib: "040",
+        valor_total: i.valor_total,
+        valor_financeiro: i.valor_total,
+      })));
+    }
+    setTabNFe("produtor");
+    setModalVenda(true);
+  }
+
   // Emitir NF-e de Venda — build → sign → transmit SEFAZ
   const emitirVenda = async () => {
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
@@ -864,6 +928,16 @@ function FiscalInner() {
         xml_url:           resultado.xmlUrl   ?? undefined,
         observacao:        fVenda.observacao  || undefined,
         auto:              false,
+        itens_json:        itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100 })),
+        dados_nf_json:     {
+          modulo_key:    moduloKeyAtivo,
+          dest_ie:       fVenda.dest_ie       || undefined,
+          dest_endereco: fVenda.dest_endereco || undefined,
+          dest_numero:   fVenda.dest_numero   || undefined,
+          dest_cidade:   fVenda.dest_cidade   || undefined,
+          dest_uf:       fVenda.dest_uf       || undefined,
+          ...(!resultado.sucesso && { sefaz_erro: `cStat ${resultado.cStat}: ${resultado.xMotivo}` }),
+        },
         ...(modoContingencia && {
           tipo_emissao:         5,
           contingencia_dh:      contingenciaDh,
@@ -1152,6 +1226,7 @@ function FiscalInner() {
                     onComplementar={n => { setModalComplemento(n); setAba("complemento"); }}
                     onConsultarSefaz={consultarSefaz}
                     onImprimirDanfe={n => imprimirDanfe(n, danfeCfg, logoCliente)}
+                    onRetransmitir={abrirRetransmit}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>
@@ -1709,10 +1784,23 @@ function FiscalInner() {
                   )}
                   {emissores.length === 1 && <span style={{ fontSize: 11, background: "var(--border)", padding: "3px 8px", borderRadius: 5 }}>{emissores[0].label}</span>}
                   {emissores.length === 0 && <span style={{ fontSize: 11, background: "#E24B4A50", padding: "3px 8px", borderRadius: 5 }}>⚠ Configure Parâmetros Fiscais</span>}
-                  <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setModalVenda(false); }}
+                  <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
                     style={{ background: "var(--border)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</button>
                 </div>
               </div>
+
+              {/* Banner de retransmissão */}
+              {retransmitindoNota && (
+                <div style={{ background: "#FEF3C7", borderBottom: "0.5px solid #D97706", padding: "7px 16px", fontSize: 12, color: "#92400E", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontWeight: 700 }}>↺ Retransmissão — NF-e {retransmitindoNota.numero} (Série {retransmitindoNota.serie})</span>
+                  <span>Dados pré-carregados. Corrija o que precisar e clique "Emitir NF-e".</span>
+                  {((retransmitindoNota.dados_nf_json as Record<string,unknown>)?.sefaz_erro as string) && (
+                    <span style={{ marginLeft: "auto", fontFamily: "monospace", fontSize: 11, color: "#7C2D12" }}>
+                      {(retransmitindoNota.dados_nf_json as Record<string,unknown>).sefaz_erro as string}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Abas */}
               <div style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
@@ -2074,7 +2162,7 @@ function FiscalInner() {
 
               {/* Barra de ações */}
               <div style={{ background: "#E8EBF2", borderTop: "1px solid #C8CDD8", padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
-                <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setModalVenda(false); }}
+                <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
                   style={{ padding: "7px 18px", border: "0.5px solid #C8CDD8", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
                 </button>
