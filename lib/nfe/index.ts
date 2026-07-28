@@ -28,16 +28,36 @@ export async function buscarConfEmitente(
   fazendaId: string,
   moduloKey: string   // ex: "fiscal_pf_abc" ou "fiscal_emp_xyz"
 ): Promise<Record<string, string> | null> {
-  // Carrega em paralelo: config do emitente + ambiente global (fiscal_global)
-  const [{ data: emitData }, { data: globalData }] = await Promise.all([
+  // Carrega em paralelo: config do emitente + ambiente global + todos os certs cadastrados
+  const [{ data: emitData }, { data: globalData }, { data: certRows }] = await Promise.all([
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).single(),
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "fiscal_global").single(),
+    sb().from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId).like("modulo", "certificado_a1_%"),
   ]);
   if (!emitData?.config) return null;
+
+  const cfg = { ...emitData.config } as Record<string, string>;
+
+  // Corrige cert_a1_path se for URL inválida (URL do dashboard Supabase ou sem extensão .pfx/.p12)
+  const certPath = cfg.cert_a1_path ?? "";
+  const certPathInvalid = certPath.startsWith("http") || (certPath.length > 0 && !/\.(pfx|p12|cer|crt)$/i.test(certPath));
+  if (certPathInvalid && certRows?.length) {
+    // Tenta achar o certificado_a1_* pelo CPF/CNPJ do emitente
+    const cpfDigits = (cfg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
+    const found = certRows.find(r => {
+      const c = r.config as Record<string, string>;
+      return (c.cpf_cnpj ?? "").replace(/\D/g, "") === cpfDigits && c.storage_path;
+    });
+    if (found) {
+      const c = found.config as Record<string, string>;
+      cfg.cert_a1_path = c.storage_path;
+    }
+  }
+
   // Ambiente global sobrepõe o ambiente do emitente — é o "master switch"
   const ambienteGlobal = globalData?.config?.ambiente as string | undefined;
   return {
-    ...emitData.config,
+    ...cfg,
     ...(ambienteGlobal ? { ambiente: ambienteGlobal } : {}),
   };
 }
