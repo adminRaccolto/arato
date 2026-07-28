@@ -8,9 +8,9 @@ import {
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas, criarContrato,
-  listarProdutoresDaConta, listarNfEntradasPorPedido,
+  listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
 } from "../../lib/db";
-import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem } from "../../lib/supabase";
+import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
@@ -198,6 +198,7 @@ type FormPedido = {
   data_vencimento: string;
   meio_pagamento: string; barter_ano_safra_id: string; barter_ciclo_id: string; barter_preco_saca: string;
   produtor_id: string;
+  ie_produtor: string;
   aprovador: string; nr_pedido: string; nr_solicitacao: string;
   fornecedor_id: string; nr_pedido_fornecedor: string; variacao_cambial: string;
   deposito_previsao: string; contato_fornecedor: string;
@@ -217,7 +218,7 @@ const PEDIDO_VAZIO: FormPedido = {
   ano_safra_id: "", ciclo_id: "",
   data_vencimento: "",
   meio_pagamento: "", barter_ano_safra_id: "", barter_ciclo_id: "", barter_preco_saca: "",
-  produtor_id: "",
+  produtor_id: "", ie_produtor: "",
   aprovador: "", nr_pedido: "", nr_solicitacao: "",
   fornecedor_id: "", nr_pedido_fornecedor: "", variacao_cambial: "",
   deposito_previsao: "", contato_fornecedor: "",
@@ -238,6 +239,7 @@ export default function ComprasPage() {
   const [operacoes,       setOperacoes]       = useState<OperacaoGerencial[]>([]);
   const [fazendas,        setFazendas]        = useState<Fazenda[]>([]);
   const [produtores,      setProdutores]      = useState<Produtor[]>([]);
+  const [ieOpcoes,        setIeOpcoes]        = useState<ProdutorIE[]>([]);
   const [fazendaFiltro,   setFazendaFiltro]   = useState("");
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
@@ -332,6 +334,7 @@ export default function ComprasPage() {
   const abrirNovo = () => {
     setF({ ...PEDIDO_VAZIO });
     setItens([{ ...ITEM_VAZIO }]);
+    setIeOpcoes([]);
     setPedidoEdit(null);
     setAbaModal("principal");
     setAbaItens("itens");
@@ -359,7 +362,7 @@ export default function ComprasPage() {
       data_vencimento: ped.data_vencimento ?? "",
       meio_pagamento: ped.meio_pagamento ?? "",
       barter_ano_safra_id: ped.barter_ano_safra_id ?? "", barter_ciclo_id: ped.barter_ciclo_id ?? "", barter_preco_saca: String(ped.barter_preco_saca ?? ""),
-      produtor_id: ped.produtor_id ?? "",
+      produtor_id: ped.produtor_id ?? "", ie_produtor: "",
       aprovador: ped.aprovador ?? "", nr_pedido: ped.nr_pedido ?? "",
       nr_solicitacao: ped.nr_solicitacao ?? "",
       fornecedor_id: ped.fornecedor_id ?? "", nr_pedido_fornecedor: ped.nr_pedido_fornecedor ?? "",
@@ -371,7 +374,10 @@ export default function ComprasPage() {
       previsao_entrega_unica: ped.previsao_entrega_unica ?? "",
       data_entrega_total: ped.data_entrega_total ?? "", observacao: ped.observacao ?? "",
     });
-    const itensSalvos = await listarPedidoCompraItens(ped.id);
+    const [itensSalvos, iesProdutor] = await Promise.all([
+      listarPedidoCompraItens(ped.id),
+      ped.produtor_id ? listarIEsDoProdutor(ped.produtor_id) : Promise.resolve([]),
+    ]);
     setItens(itensSalvos.length > 0 ? itensSalvos.map(it => ({
       id: it.id, tipo_item: it.tipo_item, insumo_id: it.insumo_id ?? "",
       nome_item: it.nome_item, unidade: it.unidade,
@@ -379,6 +385,7 @@ export default function ComprasPage() {
       qtd_cancelada: String(it.qtd_cancelada ?? 0), qtd_entregue: it.qtd_entregue ?? 0,
       centro_custo_id: it.centro_custo_id ?? "",
     })) : [{ ...ITEM_VAZIO }]);
+    setIeOpcoes(iesProdutor);
     setPedidoEdit(ped.id);
     setAbaModal("principal");
     setAbaItens("itens");
@@ -1023,18 +1030,50 @@ export default function ComprasPage() {
                     </label>
                     <ProdutorSelect
                       value={f.produtor_id}
-                      onChange={id => setF(p => ({ ...p, produtor_id: id }))}
+                      onChange={async id => {
+                        const pr = produtores.find(p => p.id === id);
+                        const ies = id ? await listarIEsDoProdutor(id) : [];
+                        setIeOpcoes(ies);
+                        const ieDefault = ies.find(ie => ie.ativa)?.inscricao_estadual
+                          ?? ies[0]?.inscricao_estadual
+                          ?? pr?.inscricao_est ?? "";
+                        setF(p => ({ ...p, produtor_id: id, ie_produtor: ieDefault }));
+                      }}
                       produtores={produtores}
                     />
                   </div>
                   <div>
-                    <label style={lbl}>Inscrição Estadual</label>
-                    <input
-                      style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }}
-                      readOnly
-                      value={produtores.find(pr => pr.id === f.produtor_id)?.inscricao_est ?? ""}
-                      placeholder="—"
-                    />
+                    <label style={{ ...lbl, display: "flex", alignItems: "center", gap: 6 }}>
+                      Inscrição Estadual
+                      {ieOpcoes.length > 1 && (
+                        <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>
+                          {ieOpcoes.length} IEs
+                        </span>
+                      )}
+                    </label>
+                    {ieOpcoes.length > 1 ? (
+                      <select
+                        style={inp}
+                        value={f.ie_produtor}
+                        onChange={e => setF(p => ({ ...p, ie_produtor: e.target.value }))}
+                      >
+                        <option value="">— Selecionar IE —</option>
+                        {ieOpcoes.map(ie => (
+                          <option key={ie.id} value={ie.inscricao_estadual}>
+                            {ie.inscricao_estadual}{ie.estado ? ` (${ie.estado})` : ""}
+                            {ie.municipio ? ` — ${ie.municipio}` : ""}
+                            {!ie.ativa ? " [inativa]" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        style={inp}
+                        value={f.ie_produtor || (produtores.find(pr => pr.id === f.produtor_id)?.inscricao_est ?? "")}
+                        onChange={e => setF(p => ({ ...p, ie_produtor: e.target.value }))}
+                        placeholder="—"
+                      />
+                    )}
                   </div>
                   <div>
                     <label style={lbl}>Município / Estado</label>

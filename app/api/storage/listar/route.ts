@@ -49,27 +49,25 @@ export async function GET(req: NextRequest) {
     return { ...doc, url: signed?.signedUrl ?? null };
   }));
 
-  // Uso de storage da conta
+  // Uso de storage da conta — lê pacote diretamente de contas.pacote
+  const STORAGE_GB: Record<string, number> = { essencial: 0, gestao: 1, performance: 3 };
+
   let usado_bytes = 0;
   let cota_bytes  = 0;
   let plano_id    = "essencial";
-  if (perfil?.conta_id) {
-    const { data: conta } = await db.from("contas")
-      .select("storage_usado_bytes").eq("id", perfil.conta_id).single();
-    usado_bytes = Number(conta?.storage_usado_bytes ?? 0);
 
-    const { data: assinatura } = await db
-      .from("assinaturas")
-      .select("plano_id, planos(storage_gb)")
-      .eq("conta_id", perfil.conta_id)
-      .in("status", ["ativa", "trial"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  const { data: conta } = await db.from("contas")
+    .select("storage_usado_bytes, pacote, status")
+    .eq("id", perfil.conta_id).single();
 
-    plano_id        = (assinatura?.plano_id as string) ?? "essencial";
-    const storageGb = ((assinatura?.planos as { storage_gb?: number } | null)?.storage_gb) ?? 0;
-    cota_bytes      = storageGb * 1024 * 1024 * 1024;
+  usado_bytes = Number((conta as { storage_usado_bytes?: number } | null)?.storage_usado_bytes ?? 0);
+  const pacote = (conta as { pacote?: string } | null)?.pacote ?? "essencial";
+  const statusConta = (conta as { status?: string } | null)?.status ?? "trial";
+
+  // Contas canceladas perdem acesso ao storage
+  if (statusConta !== "cancelado") {
+    plano_id  = pacote;
+    cota_bytes = (STORAGE_GB[pacote] ?? 0) * 1024 * 1024 * 1024;
   }
 
   return NextResponse.json({ data: docs, usado_bytes, cota_bytes, plano_id });
