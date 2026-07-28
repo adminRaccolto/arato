@@ -315,7 +315,7 @@ export default function ComprasPage() {
   const nomeOp = (idOrText?: string) => {
     if (!idOrText) return "—";
     const op = operacoes.find(o => o.id === idOrText);
-    return op ? `${op.classificacao} — ${op.descricao}` : idOrText;
+    return op ? op.descricao : idOrText;
   };
   const ciclosFiltrados = (anoSafraId: string) =>
     anoSafraId ? ciclos.filter(c => c.ano_safra_id === anoSafraId) : ciclos;
@@ -823,7 +823,7 @@ export default function ComprasPage() {
                     const st = STATUS_MAP[ped.status];
                     return (
                       <tr key={ped.id} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                        <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontSize: 11 }}>#{ped.numero ?? "—"}</td>
+                        <td style={{ padding: "6px 6px", textAlign: "center", fontWeight: 400, color: "var(--text-3)", fontSize: 10 }}>#{ped.numero ?? "—"}</td>
                         <td style={{ padding: "6px 10px", fontSize: 11, color: ped.nr_pedido ? "var(--text-1)" : "#bbb", fontWeight: ped.nr_pedido ? 600 : 400, whiteSpace: "nowrap" }}>
                           {ped.nr_pedido || "—"}
                         </td>
@@ -864,10 +864,6 @@ export default function ComprasPage() {
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>
                               {ped.fiscal ? "NFs Vinculadas" : "Entregas"}
                             </button>
-                            <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={async () => {
-                              const [its, ents] = await Promise.all([listarPedidoCompraItens(ped.id), listarPedidoCompraEntregas(ped.id)]);
-                              setModalRelatorio({ pedido: ped, itens: its, entregas: ents });
-                            }}>Relatório</button>
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped)}>Editar</button>
                             <button style={btnX} onClick={async () => {
                               try {
