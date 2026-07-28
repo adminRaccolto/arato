@@ -86,7 +86,8 @@ function FinanceiroRelatoriosInner() {
   const [contas,       setContas]       = useState<ContaBancaria[]>([]);
   const [produtores,   setProdutores]   = useState<Produtor[]>([]);
   const [operacoesGer, setOperacoesGer] = useState<OperacaoGerencial[]>([]);
-  const [apoioBaixasIds, setApoioBaixasIds] = useState<Set<string>>(new Set());
+  const [apoioBaixasIds,  setApoioBaixasIds]  = useState<Set<string>>(new Set());
+  const [apoioLancsAbertos, setApoioLancsAbertos] = useState<{ id: string; tipo: string; descricao: string; valor: number; data_vencimento: string; categoria: string | null; pessoa_nome: string | null }[]>([]);
   const [incluirApoio,   setIncluirApoio]   = useState(true);
   const [carregando,  setCarregando]  = useState(true);
   const [cotacaoUSD,  setCotacaoUSD]  = useState<number>(5.90);
@@ -165,11 +166,15 @@ function FinanceiroRelatoriosInner() {
       temApoio
         ? sb.from("apoio_baixas").select("lancamento_id").eq("fazenda_id", fazendaId)
         : Promise.resolve({ data: [] }),
-    ]).then(([lans, ops, apoioRes]) => {
+      temApoio
+        ? sb.from("apoio_lancamentos").select("id,tipo,descricao,valor,data_vencimento,categoria,pessoa_nome").eq("fazenda_id", fazendaId).eq("baixado", false)
+        : Promise.resolve({ data: [] }),
+    ]).then(([lans, ops, apoioRes, apoioLancsRes]) => {
       setLancamentos(lans);
       setOperacoesGer(ops);
       const ids = ((apoioRes as { data: { lancamento_id: string }[] | null }).data ?? []).map(b => b.lancamento_id);
       setApoioBaixasIds(new Set(ids));
+      setApoioLancsAbertos((apoioLancsRes as { data: { id: string; tipo: string; descricao: string; valor: number; data_vencimento: string; categoria: string | null; pessoa_nome: string | null }[] | null }).data ?? []);
     }).catch(() => {})
       .finally(() => setCarregando(false));
     listarEmpresas(fazendaId).then(setEmpresas).catch(() => setEmpresas([]));
@@ -498,6 +503,15 @@ function FinanceiroRelatoriosInner() {
                   for (const l of lanPendentes) {
                     const brl = paraBRLRel(l, cotacaoUSD);
                     rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "pendente", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
+                  }
+                  // Lançamentos exclusivos do Apoio Financeiro em aberto → FC previsto
+                  if (temApoio && incluirApoio) {
+                    for (const a of apoioLancsAbertos) {
+                      const dt = a.data_vencimento ?? "";
+                      if (filtro.inicio && dt < filtro.inicio) continue;
+                      if (filtro.fim   && dt > filtro.fim)   continue;
+                      rows.push({ data: dt, fornecedor: a.descricao, descricao: a.categoria ?? "Apoio Financeiro", tipo_row: "pendente", entrada: a.tipo === "receber" ? a.valor : 0, saida: a.tipo === "pagar" ? a.valor : 0, origem_lancamento: "apoio_financeiro" });
+                    }
                   }
                   // Previsões (natureza = previsao) — somente se toggle ativo
                   if (incluirPrevisoes) {
@@ -909,6 +923,7 @@ function FinanceiroRelatoriosInner() {
                                                 manual:              { label: "Manual",               bg: "#F1F5F9", color: "#475569" },
                                                 cron:                { label: "Automático",           bg: "#DCFCE7", color: "#166534" },
                                                 transporte:          { label: "Transporte",           bg: "#F0F9FF", color: "#0369A1" },
+                                                apoio_financeiro:    { label: "Apoio Financeiro",     bg: "#FEF3C7", color: "#92400E" },
                                               };
                                               if (orig && ORIG_MAP[orig]) {
                                                 const o = ORIG_MAP[orig];
