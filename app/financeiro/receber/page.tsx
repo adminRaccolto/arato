@@ -8,7 +8,7 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -146,8 +146,10 @@ export default function ContasReceber() {
     return d.toISOString().split("T")[0];
   });
 
-  const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
-  const [modalNovo,  setModalNovo]  = useState(false);
+  const [modalBaixa,  setModalBaixa]  = useState<Lancamento | null>(null);
+  const [modalReprog, setModalReprog] = useState<Lancamento | null>(null);
+  const [reprogForm,  setReprogForm]  = useState({ nova_data: "", novo_valor: "", obs: "" });
+  const [modalNovo,   setModalNovo]   = useState(false);
   const [modalTab,   setModalTab]   = useState<"principal"|"adicionais">("principal");
 
   // ── Edição: reutiliza o modal de Nova CR com editandoId marcado ──
@@ -452,6 +454,46 @@ export default function ContasReceber() {
       ));
     } catch (e: unknown) {
       alert("Erro: " + (e instanceof Error ? e.message : e));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const abrirReprog = (l: Lancamento) => {
+    setReprogForm({
+      nova_data:  l.data_vencimento ?? "",
+      novo_valor: l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
+      obs:        "",
+    });
+    setModalReprog(l);
+  };
+
+  const salvarReprog = async () => {
+    if (!modalReprog) return;
+    const novaData = reprogForm.nova_data;
+    if (!novaData) { alert("Informe a nova data de vencimento."); return; }
+    try {
+      setSalvando(true);
+      const hoje = new Date().toISOString().slice(0, 10);
+      const novoStatus: Lancamento["status"] = novaData < hoje ? "vencido" : "em_aberto";
+      const novoValor = reprogForm.novo_valor
+        ? Number(reprogForm.novo_valor.replace(/\./g, "").replace(",", "."))
+        : modalReprog.valor;
+      const novaObs = reprogForm.obs.trim()
+        ? `[Reprogramado para ${new Date(novaData + "T12:00:00").toLocaleDateString("pt-BR")}] ${reprogForm.obs.trim()}`
+        : `[Reprogramado para ${new Date(novaData + "T12:00:00").toLocaleDateString("pt-BR")}]`;
+      await atualizarLancamento(modalReprog.id, {
+        data_vencimento: novaData,
+        valor:           novoValor,
+        status:          novoStatus,
+        observacao:      novaObs,
+      });
+      setLancamentos(prev => prev.map(x =>
+        x.id !== modalReprog.id ? x : { ...x, data_vencimento: novaData, valor: novoValor!, status: novoStatus, observacao: novaObs }
+      ));
+      setModalReprog(null);
+    } catch (e: unknown) {
+      alert("Erro ao reprogramar: " + (e instanceof Error ? e.message : e));
     } finally {
       setSalvando(false);
     }
@@ -957,6 +999,12 @@ export default function ContasReceber() {
                                   <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de recebimento"
                                     style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "rgba(251,191,36,0.08)", color: "#FBBF24", border: "0.5px solid rgba(251,191,36,0.25)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↺</button>
                                 )}
+                                {l.status !== "baixado" && (
+                                  <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
+                                    style={{ fontSize: 11, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "#EFF6FF", color: "#1E40AF", border: "0.5px solid #BFDBFE", lineHeight: 1, fontWeight: 600, whiteSpace: "nowrap" }}>
+                                    📅 Reprog.
+                                  </button>
+                                )}
                                 {!l.auto && (
                                   <button onClick={() => abrirEditar(l)} title="Editar lançamento"
                                     style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border)", lineHeight: 1 }}>✏</button>
@@ -1030,6 +1078,48 @@ export default function ContasReceber() {
           </div>
         );
       })()}
+
+      {/* ── Modal Reprogramar ───────────────────────────────────── */}
+      {modalReprog && (
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: "24px 28px", width: 420, boxShadow: "var(--shadow-modal)", border: "0.5px solid var(--border)" }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 2 }}>📅 Reprogramar Vencimento</div>
+              <div style={{ fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{modalReprog.descricao}</div>
+            </div>
+
+            <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", gap: 16, fontSize: 11, color: "var(--text-2)" }}>
+              <div><span style={{ color: "var(--text-3)" }}>Data atual:</span> <strong style={{ color: "#E24B4A" }}>{modalReprog.data_vencimento ? new Date(modalReprog.data_vencimento + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</strong></div>
+              <div><span style={{ color: "var(--text-3)" }}>Valor atual:</span> <strong>{modalReprog.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong></div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>Nova data de vencimento *</label>
+                <input type="date" value={reprogForm.nova_data} onChange={e => setReprogForm(p => ({ ...p, nova_data: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>Novo valor (deixe em branco para manter)</label>
+                <input type="text" placeholder={modalReprog.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? ""} value={reprogForm.novo_valor} onChange={e => setReprogForm(p => ({ ...p, novo_valor: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>Motivo / Observação</label>
+                <input type="text" placeholder="Ex.: Acordado com cliente em 28/07/2026" value={reprogForm.obs} onChange={e => setReprogForm(p => ({ ...p, obs: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" }} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+              <button onClick={() => setModalReprog(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-input)", color: "var(--text-2)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={salvarReprog} disabled={salvando || !reprogForm.nova_data} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A5CB8", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando || !reprogForm.nova_data ? "not-allowed" : "pointer", opacity: salvando || !reprogForm.nova_data ? 0.5 : 1 }}>
+                {salvando ? "Salvando..." : "Confirmar Reprogramação"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal Baixa ─────────────────────────────────────────── */}
       {modalBaixa && (() => {
