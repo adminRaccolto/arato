@@ -8706,3 +8706,17 @@ alter table produtores
   add column if not exists inscricao_est text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 121 — Apoio Financeiro: novas colunas ──────────────────────────────
+-- apoio_lancamentos: pessoa, safra, ciclo, operação gerencial
+ALTER TABLE apoio_lancamentos
+  ADD COLUMN IF NOT EXISTS pessoa_id               uuid REFERENCES pessoas(id),
+  ADD COLUMN IF NOT EXISTS ano_safra_id            uuid REFERENCES anos_safra(id),
+  ADD COLUMN IF NOT EXISTS ciclo_id                uuid REFERENCES ciclos(id),
+  ADD COLUMN IF NOT EXISTS operacao_gerencial_id   uuid REFERENCES operacoes_gerenciais(id);
+
+-- apoio_baixas: conta bancária usada na baixa
+ALTER TABLE apoio_baixas
+  ADD COLUMN IF NOT EXISTS conta_bancaria_id       uuid REFERENCES contas_bancarias(id);
+
+NOTIFY pgrst, 'reload schema';
