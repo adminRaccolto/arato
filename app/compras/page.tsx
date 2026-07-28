@@ -24,6 +24,75 @@ const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", 
 const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
+function ProdutorSelect({
+  value, onChange, produtores,
+}: {
+  value: string; onChange: (id: string) => void; produtores: Produtor[];
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen]   = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = produtores.find(pr => pr.id === value);
+  const filtered = query.trim() === ""
+    ? produtores
+    : produtores.filter(pr => pr.nome.toLowerCase().includes(query.toLowerCase())
+        || (pr.inscricao_est ?? "").toLowerCase().includes(query.toLowerCase())
+        || (pr.municipio ?? "").toLowerCase().includes(query.toLowerCase()));
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery(""); }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const colStyle: React.CSSProperties = { fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <input
+        style={{ ...inp, paddingRight: 26 }}
+        value={open ? query : (selected?.nome ?? "")}
+        placeholder="— Todos / não identificado —"
+        onFocus={() => { setOpen(true); setQuery(""); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        autoComplete="off"
+      />
+      <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#999", pointerEvents: "none" }}>▾</span>
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 999, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 8px 8px", maxHeight: 240, overflowY: "auto", boxShadow: "0 6px 18px rgba(0,0,0,0.13)", minWidth: "100%", width: "max-content" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, padding: "5px 10px", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)" }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Nome</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>I.E.</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Município</span>
+          </div>
+          <div
+            style={{ padding: "6px 10px", fontSize: 12, color: "var(--text-muted)", cursor: "pointer", borderBottom: "0.5px solid #F0F0F0" }}
+            onMouseDown={() => { onChange(""); setOpen(false); setQuery(""); }}
+          >— Todos / não identificado —</div>
+          {filtered.length === 0 && (
+            <div style={{ padding: "8px 10px", fontSize: 12, color: "#bbb" }}>Nenhum produtor cadastrado</div>
+          )}
+          {filtered.map(pr => (
+            <div
+              key={pr.id}
+              style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, padding: "7px 10px", cursor: "pointer", background: pr.id === value ? "#D5E8F5" : "var(--bg-card)", color: pr.id === value ? "#0B2D50" : "var(--text-1)" }}
+              onMouseDown={() => { onChange(pr.id); setOpen(false); setQuery(""); }}
+              onMouseEnter={e => { if (pr.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-page)"; }}
+              onMouseLeave={e => { if (pr.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-card)"; }}
+            >
+              <span style={{ ...colStyle, fontWeight: pr.id === value ? 600 : 400 }}>{pr.nome}</span>
+              <span style={{ ...colStyle, color: pr.id === value ? "#0B2D50" : "var(--text-2)" }}>{pr.inscricao_est || "—"}</span>
+              <span style={{ ...colStyle, color: pr.id === value ? "#0B2D50" : "var(--text-2)" }}>{pr.municipio || "—"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SearchableSelect({
   value, onChange, options, placeholder = "— Selecionar —", emptyMessage, style: extraStyle,
 }: {
@@ -503,7 +572,12 @@ export default function ComprasPage() {
         setTimeout(() => setBarterContratoNum(null), 8000);
       }
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao salvar");
+      const msg = e instanceof Error
+        ? e.message
+        : (typeof e === "object" && e !== null && "message" in e)
+          ? String((e as { message: unknown }).message)
+          : String(e);
+      setErro(msg || "Erro ao salvar");
     } finally {
       setSalvando(false);
     }
@@ -796,7 +870,7 @@ export default function ComprasPage() {
               {/* ── ABA PRINCIPAL ── */}
               {abaModal === "principal" && (<>
                 {/* Linha 1: Operação + Safra + Pedido + Datas */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                   <div>
                     <label style={lbl}>Operação</label>
                     <SearchableSelect
@@ -822,16 +896,6 @@ export default function ComprasPage() {
                     <select style={inp} value={f.ano_safra_id} onChange={e => setF(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
                       <option value="">— Todos —</option>
                       {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={lbl}>Ciclo</label>
-                    <select style={inp} value={f.ciclo_id} onChange={e => setF(p => ({ ...p, ciclo_id: e.target.value }))}>
-                      <option value="">— Selecionar —</option>
-                      {ciclosFiltrados(f.ano_safra_id).map(c => {
-                        const CULT: Record<string,string> = { soja:"Soja", milho1:"Milho 1ª", milho2:"Milho 2ª", algodao:"Algodão", sorgo:"Sorgo", trigo:"Trigo" };
-                        return <option key={c.id} value={c.id}>{CULT[c.cultura] ?? c.cultura}</option>;
-                      })}
                     </select>
                   </div>
                   <div>
@@ -929,27 +993,39 @@ export default function ComprasPage() {
                   </div>
                 </div>
 
-                {/* Linha 3b: Produtor responsável */}
+                {/* Linha 3b: Produtor responsável + IE + Município */}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                   <div>
                     <label style={lbl}>
                       Produtor responsável
                       <span style={{ marginLeft: 6, fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>— a quem o custo pertence</span>
                     </label>
-                    <select style={inp} value={f.produtor_id} onChange={e => setF(p => ({ ...p, produtor_id: e.target.value }))}>
-                      <option value="">— Todos / não identificado —</option>
-                      {produtores.map(pr => (
-                        <option key={pr.id} value={pr.id}>{pr.nome}</option>
-                      ))}
-                    </select>
+                    <ProdutorSelect
+                      value={f.produtor_id}
+                      onChange={id => setF(p => ({ ...p, produtor_id: id }))}
+                      produtores={produtores}
+                    />
                   </div>
                   <div>
-                    <label style={lbl}>Aprovador</label>
-                    <input style={inp} value={f.aprovador} onChange={e => setF(p => ({ ...p, aprovador: e.target.value }))} />
+                    <label style={lbl}>Inscrição Estadual</label>
+                    <input
+                      style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }}
+                      readOnly
+                      value={produtores.find(pr => pr.id === f.produtor_id)?.inscricao_est ?? ""}
+                      placeholder="—"
+                    />
                   </div>
                   <div>
-                    <label style={lbl}>Nº Solicitação</label>
-                    <input style={inp} value={f.nr_solicitacao} onChange={e => setF(p => ({ ...p, nr_solicitacao: e.target.value }))} />
+                    <label style={lbl}>Município / Estado</label>
+                    <input
+                      style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }}
+                      readOnly
+                      value={[
+                        produtores.find(pr => pr.id === f.produtor_id)?.municipio,
+                        produtores.find(pr => pr.id === f.produtor_id)?.estado,
+                      ].filter(Boolean).join(" — ") || ""}
+                      placeholder="—"
+                    />
                   </div>
                 </div>
 
