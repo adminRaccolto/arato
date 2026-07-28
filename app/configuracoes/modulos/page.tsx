@@ -8,8 +8,8 @@ import TopNav from "../../../components/TopNav";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface CfgModulo { [key: string]: string | number | boolean }
 
-interface EmpresaMin { id: string; razao_social?: string; nome?: string; cnpj?: string; }
-interface ProdutorMin { id: string; nome: string; cpf_cnpj?: string; }
+interface EmpresaMin { id: string; razao_social?: string; nome?: string; cnpj?: string; inscricao_est?: string; logradouro?: string; numero?: string; bairro?: string; municipio?: string; estado?: string; cep?: string; telefone?: string; }
+interface ProdutorMin { id: string; nome: string; cpf_cnpj?: string; inscricao_est?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; municipio?: string; estado?: string; cep?: string; telefone?: string; }
 interface EmitterEntry { type: "empresa" | "produtor"; id: string; nome: string; cpf_cnpj?: string; moduloKey: string; }
 
 interface NcmTributacao {
@@ -407,10 +407,10 @@ function ParametrosSistemaContent() {
         data.forEach(r => { if (r.config) map[r.modulo] = r.config as CfgModulo; });
         setCfgs(map);
       });
-    supabase.from("empresas").select("id, razao_social, nome, cnpj").eq("fazenda_id", fazendaId)
-      .then(({ data }) => data && setEmpresas(data));
-    supabase.from("produtores").select("id, nome, cpf_cnpj").eq("fazenda_id", fazendaId)
-      .then(({ data }) => data && setProdutores(data));
+    supabase.from("empresas").select("id, razao_social, nome, cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
+      .then(({ data }) => data && setEmpresas(data as EmpresaMin[]));
+    supabase.from("produtores").select("id, nome, cpf_cnpj, inscricao_est, logradouro, numero, complemento, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
+      .then(({ data }) => data && setProdutores(data as ProdutorMin[]));
     supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm")
       .then(({ data }) => data && setNcms(data as NcmTributacao[]));
     supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome")
@@ -737,6 +737,47 @@ function ParametrosSistemaContent() {
     </div>
   );
 
+  // Preenche automaticamente o config fiscal a partir do cadastro do produtor/empresa
+  function autoPreencherDoCadastro(emitter: EmitterEntry) {
+    const existente = cfgs[emitter.moduloKey] ?? {};
+    // Só auto-preenche se CPF/CNPJ ainda não foi configurado manualmente
+    if (existente.cpf_cnpj_emitente) return;
+    let seed: Partial<CfgModulo> = {};
+    if (emitter.type === "produtor") {
+      const p = produtores.find(x => x.id === emitter.id);
+      if (!p) return;
+      seed = {
+        cpf_cnpj_emitente: p.cpf_cnpj ?? "",
+        razao_social:       p.nome,
+        ie_emitente:        p.inscricao_est ?? "",
+        logradouro:         p.logradouro ?? "",
+        numero:             p.numero ?? "S/N",
+        complemento:        p.complemento ?? "",
+        bairro:             p.bairro ?? "",
+        municipio_nome:     p.municipio ?? "",
+        uf_emitente:        p.estado ?? "MT",
+        cep:                (p.cep ?? "").replace(/\D/g, ""),
+        fone:               p.telefone ?? "",
+      };
+    } else {
+      const e = empresas.find(x => x.id === emitter.id);
+      if (!e) return;
+      seed = {
+        cpf_cnpj_emitente: e.cnpj ?? "",
+        razao_social:       e.razao_social ?? e.nome ?? "",
+        ie_emitente:        e.inscricao_est ?? "",
+        logradouro:         e.logradouro ?? "",
+        numero:             e.numero ?? "S/N",
+        bairro:             e.bairro ?? "",
+        municipio_nome:     e.municipio ?? "",
+        uf_emitente:        e.estado ?? "MT",
+        cep:                (e.cep ?? "").replace(/\D/g, ""),
+        fone:               e.telefone ?? "",
+      };
+    }
+    setCfgs(prev => ({ ...prev, [emitter.moduloKey]: { ...seed, ...(prev[emitter.moduloKey] ?? {}) } }));
+  }
+
   // ── Aba Fiscal — por emitente ─────────────────────────────────────────────
   const renderFiscalTab = () => {
     const emitters: EmitterEntry[] = [
@@ -829,7 +870,7 @@ function ParametrosSistemaContent() {
 
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", background: isOpen ? "#F0F5FF" : "var(--bg-card)", cursor: "pointer", userSelect: "none" }}
-                  onClick={() => setExpandedEmitter(isOpen ? null : emitter.moduloKey)}>
+                  onClick={() => { const opening = !isOpen; setExpandedEmitter(opening ? emitter.moduloKey : null); if (opening) autoPreencherDoCadastro(emitter); }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 10, background: emitter.type === "empresa" ? "#EFF6FF" : "#F0FDF4", color: emitter.type === "empresa" ? "#1A5CB8" : "#16A34A", border: `0.5px solid ${emitter.type === "empresa" ? "#BFDBFE" : "#BBF7D0"}` }}>
                       {emitter.type === "empresa" ? "PJ — e-CNPJ" : "PF — e-CPF"}
@@ -878,6 +919,23 @@ function ParametrosSistemaContent() {
                 {/* Body */}
                 {isOpen && (
                   <div style={{ padding: "22px 18px", borderTop: "0.5px solid var(--border)" }}>
+
+                    {/* Banner de preenchimento automático */}
+                    <div style={{ marginBottom: 18, padding: "9px 14px", background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <span style={{ fontSize: 12, color: "#1A4870" }}>
+                        Os dados de identificação e endereço podem ser preenchidos automaticamente a partir do cadastro do {emitter.type === "produtor" ? "produtor" : "empresa"}.
+                      </span>
+                      <button
+                        onClick={() => {
+                          // Força recarregamento (remove bloqueio de cpf_cnpj_emitente existente)
+                          const current = cfgs[emitter.moduloKey] ?? {};
+                          setCfgs(prev => ({ ...prev, [emitter.moduloKey]: { ...current, cpf_cnpj_emitente: undefined as unknown as string } }));
+                          setTimeout(() => autoPreencherDoCadastro(emitter), 0);
+                        }}
+                        style={{ padding: "5px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        ↺ Preencher do Cadastro
+                      </button>
+                    </div>
 
                     {/* Identificação */}
                     <div style={{ marginBottom: 24 }}>
