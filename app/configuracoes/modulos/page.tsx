@@ -820,7 +820,9 @@ function ParametrosSistemaContent() {
             const isOpen = expandedEmitter === emitter.moduloKey;
             const c = cfgs[emitter.moduloKey] ?? {};
             const isConfigured = !!(c.cpf_cnpj_emitente);
-            const hasCert = !!(c.cert_a1_path);
+            const certPath = String(c.cert_a1_path ?? "");
+            const certPathIsEmail = certPath.includes("@");
+            const hasCert = !!(c.cert_a1_path) && !certPathIsEmail;
 
             return (
               <div key={emitter.moduloKey} style={{ border: `0.5px solid ${isOpen ? "#1A4870" : "var(--border)"}`, borderRadius: 10, marginBottom: 10, overflow: "hidden", boxShadow: isOpen ? "0 2px 8px rgba(26,72,112,0.08)" : "none" }}>
@@ -839,7 +841,7 @@ function ParametrosSistemaContent() {
                     </span>
                     {isConfigured && (
                       <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, fontWeight: 600, background: hasCert ? "#DCFCE7" : "#FEE2E2", color: hasCert ? "#16A34A" : "#E24B4A" }}>
-                        {hasCert ? "Certificado vinculado" : "Sem certificado"}
+                        {hasCert ? "Certificado vinculado" : certPathIsEmail ? "Caminho inválido (e-mail?)" : "Sem certificado"}
                       </span>
                     )}
                   </div>
@@ -933,6 +935,17 @@ function ParametrosSistemaContent() {
                     {/* Certificado e Reforma */}
                     <div style={{ marginBottom: 24 }}>
                       {secHeader("Certificado Digital e Reforma Tributária")}
+                      {certPathIsEmail && (
+                        <div style={{ marginBottom: 14, padding: "12px 16px", background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                          <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+                          <div style={{ fontSize: 13, color: "#991B1B" }}>
+                            <strong>Caminho do certificado inválido.</strong> O campo contém um e-mail ({certPath}) em vez do caminho do arquivo <code>.pfx</code> no Supabase Storage.<br />
+                            <span style={{ color: "#7F1D1D" }}>
+                              Para corrigir: acesse o Supabase → Storage → bucket <strong>certificados</strong> → faça upload do arquivo <code>.pfx</code> → copie o caminho (ex: <code>meu-cert.pfx</code>) → cole aqui e salve.
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       {renderFieldsGrid(emitter.moduloKey, FISCAL_CERT)}
                     </div>
 
