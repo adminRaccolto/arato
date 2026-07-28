@@ -170,9 +170,9 @@ input, select, textarea, button {
 
 /* Fonte compacta global (9px dados / 10px cabeçalho) — afeta td E todos os filhos */
 table td,
-table td *  { font-size: 10px !important; }
+table td *  { font-size: 11px !important; }
 table th,
-table th *  { font-size: 10px !important; }
+table th *  { font-size: 11px !important; }
 
 .data-table {
   width: 100%;
