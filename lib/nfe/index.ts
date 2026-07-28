@@ -102,7 +102,8 @@ export interface ResultadoEmissao {
 export async function emitirNFe(
   fazendaId: string,
   moduloKey: string,
-  input: Omit<NFeInput, "emitente">   // emitente vem do banco
+  input: Omit<NFeInput, "emitente">,  // emitente vem do banco
+  emitIeOverride?: string             // IE específica do produtor (multi-IE)
 ): Promise<ResultadoEmissao> {
 
   // 1. Configuração do emitente
@@ -129,7 +130,7 @@ export async function emitirNFe(
   const emitente: EmitenteCfg = {
     cpf_cnpj:       confg.cpf_cnpj_emitente ?? "",
     razao_social:   confg.razao_social ?? "",
-    ie:             confg.ie_emitente ?? "",
+    ie:             emitIeOverride ?? confg.ie_emitente ?? "",
     im:             confg.im_emitente,
     crt:            (confg.crt as EmitenteCfg["crt"]) ?? "3",
     logradouro:     confg.logradouro ?? "",

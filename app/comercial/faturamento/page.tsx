@@ -5,11 +5,11 @@ import TopNav from "../../../components/TopNav";
 import {
   criarNotaFiscal, atualizarStatusNFe,
   listarProdutoresDaConta, listarPessoas, listarContratos,
-  listarFazendasDaConta,
+  listarFazendasDaConta, listarIEsDoProdutor,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio, Insumo } from "../../../lib/supabase";
+import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio, Insumo, ProdutorIE } from "../../../lib/supabase";
 import ProdutorCombo from "../../../components/ProdutorCombo";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ type TipoAvulsa = "venda" | "remessa" | "devolucao" | "retorno" | "";
 
 // ── Estado inicial do formulário ───────────────────────────────────────────────
 const FVENDA_INICIAL = {
-  tipo_nota: "propria" as "propria" | "terceiros", produtor_id: "", safra_id: "",
+  tipo_nota: "propria" as "propria" | "terceiros", produtor_id: "", ie_id: "", safra_id: "",
   destinatario: "", cnpj: "",
   dest_endereco: "", dest_numero: "", dest_cidade: "", dest_uf: "",
   dest_tipo_pessoa: "juridica" as "fisica" | "juridica", dest_ie: "", dest_deposito: false,
@@ -202,6 +202,8 @@ function FaturamentoInner() {
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
   // Módulos fiscais disponíveis para a fazenda emitente (fiscal_pf_xxx / fiscal_emp_xxx)
   const [fiscalModulos, setFiscalModulos] = useState<{modulo: string; config: Record<string,string>}[]>([]);
+  // IEs do produtor selecionado (produtor rural pode ter múltiplas IEs — uma por propriedade)
+  const [iesProdutor, setIesProdutor] = useState<ProdutorIE[]>([]);
 
   // totais em tempo real
   const totalItens     = nfeItens.reduce((s, i) => s + i.valor_total, 0);
@@ -316,6 +318,17 @@ function FaturamentoInner() {
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deepLinkPendente, loading, contratos]);
+
+  // Carrega IEs do produtor selecionado (pode ter múltiplas — uma por propriedade no MT)
+  useEffect(() => {
+    if (!fVenda.produtor_id) { setIesProdutor([]); return; }
+    listarIEsDoProdutor(fVenda.produtor_id).then(list => {
+      setIesProdutor(list);
+      if (list.length === 1) fv({ ie_id: list[0].id });
+      else fv({ ie_id: "" });
+    }).catch(() => setIesProdutor([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fVenda.produtor_id]);
 
   // ── Abrir modal ───────────────────────────────────────────────────────────
   function abrirModal() {
@@ -552,6 +565,9 @@ function FaturamentoInner() {
             body: JSON.stringify({
               fazenda_id: fazEmissao,
               modulo_key: moduloFiscal.modulo,
+              emit_ie_override: fVenda.ie_id
+                ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual
+                : undefined,
               destinatario: {
                 nome:           fVenda.destinatario,
                 cpf_cnpj:       fVenda.cnpj || undefined,
@@ -673,9 +689,28 @@ function FaturamentoInner() {
             <ProdutorCombo
               produtores={produtores}
               value={fVenda.produtor_id}
-              onChange={id => fv({ produtor_id: id })}
+              onChange={id => fv({ produtor_id: id, ie_id: "" })}
               placeholder="— selecione —"
             />
+            {iesProdutor.length > 0 && (
+              <div style={{ marginTop: 6 }}>
+                <label style={{ ...lbl, color: iesProdutor.length > 1 ? "#C9921B" : "#555" }}>
+                  IE do Produtor{iesProdutor.length > 1 ? " *" : ""}
+                </label>
+                <select
+                  style={{ ...inp, borderColor: iesProdutor.length > 1 && !fVenda.ie_id ? "#E24B4A" : undefined }}
+                  value={fVenda.ie_id}
+                  onChange={e => fv({ ie_id: e.target.value })}
+                >
+                  {iesProdutor.length > 1 && <option value="">— selecione a IE —</option>}
+                  {iesProdutor.map(ie => (
+                    <option key={ie.id} value={ie.id}>
+                      {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <div>
             <label style={lbl}>Safra / Ano</label>

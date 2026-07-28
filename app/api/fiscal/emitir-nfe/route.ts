@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
       fazenda_id: string;
       modulo_key: string;   // "fiscal_pf_xxx" ou "fiscal_emp_yyy"
+      emit_ie_override?: string;  // IE específica do produtor (quando tem múltiplas IEs)
       destinatario: {
         nome: string;
         cpf_cnpj?: string;
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
       tipo:     body.tipo ?? "1",
     };
 
-    const resultado = await emitirNFe(body.fazenda_id, body.modulo_key, input);
+    const resultado = await emitirNFe(body.fazenda_id, body.modulo_key, input, body.emit_ie_override);
 
     return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
   } catch (err) {
