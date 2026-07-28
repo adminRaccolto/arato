@@ -532,6 +532,11 @@ export async function excluirLancamento(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function atualizarLancamento(id: string, campos: Partial<Omit<Lancamento, "id" | "created_at">>): Promise<void> {
+  const { error } = await supabase.from("lancamentos").update(campos).eq("id", id);
+  if (error) throw error;
+}
+
 // Cria múltiplas parcelas do mesmo lançamento com agrupador único
 export async function criarParcelamento(
   base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador">,

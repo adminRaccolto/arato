@@ -7,7 +7,7 @@ import {
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
-  listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas, criarContrato,
+  listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE } from "../../lib/supabase";
@@ -575,6 +575,20 @@ export default function ComprasPage() {
         }
       }
 
+      // Sincroniza dados do lançamento existente (número, fornecedor, valor, vencimento)
+      if (!deveGerarLancamento && pedidoExistente?.lancamento_id && !isBarter && f.status === "aprovado") {
+        try {
+          const fornecedorNome = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
+          const vencimento = f.data_vencimento || f.previsao_entrega_unica || f.data_registro;
+          await atualizarLancamento(pedidoExistente.lancamento_id, {
+            descricao:       `Pedido de Compra nº ${f.nr_pedido || pedidoId.slice(0, 8)} — ${fornecedorNome}`,
+            valor:           totalItens,
+            data_vencimento: vencimento,
+            pessoa_id:       f.fornecedor_id || undefined,
+          });
+        } catch { /* não bloqueia o save */ }
+      }
+
       setModal(false);
       await carregar();
       if (barterContratoGerado) {
@@ -653,7 +667,9 @@ export default function ComprasPage() {
       const forn = nomePessoa(p.fornecedor_id).toLowerCase();
       const ciclo = nomeCiclo(p.ciclo_id).toLowerCase();
       const nr = String(p.numero ?? "").toLowerCase();
-      if (!forn.includes(q) && !ciclo.includes(q) && !nr.includes(q)) return false;
+      const nrPed = String(p.nr_pedido ?? "").toLowerCase();
+      const nrPedForn = String(p.nr_pedido_fornecedor ?? "").toLowerCase();
+      if (!forn.includes(q) && !ciclo.includes(q) && !nr.includes(q) && !nrPed.includes(q) && !nrPedForn.includes(q)) return false;
     }
     return true;
   });
@@ -789,8 +805,8 @@ export default function ComprasPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Nº", "Fornecedor", "Produtor", "Cidade", "IE", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "6px 10px", textAlign: i === 0 || i === 8 || i === 9 || i === 10 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                    {["Nº", "Nº Pedido", "Fornecedor", "Produtor", "Cidade", "IE", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "6px 10px", textAlign: i === 0 || i === 9 || i === 10 || i === 11 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -800,9 +816,11 @@ export default function ComprasPage() {
                     return (
                       <tr key={ped.id} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontSize: 11 }}>#{ped.numero ?? "—"}</td>
+                        <td style={{ padding: "6px 10px", fontSize: 11, color: ped.nr_pedido ? "var(--text-1)" : "#bbb", fontWeight: ped.nr_pedido ? 600 : 400, whiteSpace: "nowrap" }}>
+                          {ped.nr_pedido || "—"}
+                        </td>
                         <td style={{ padding: "6px 10px", fontSize: 11 }}>
                           <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{nomePessoa(ped.fornecedor_id)}</div>
-                          {ped.nr_pedido && <div style={{ fontSize: 10, color: "var(--text-2)" }}>Ped.: {ped.nr_pedido}</div>}
                         </td>
                         <td style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                           {(() => { const pr = produtores.find(p => p.id === ped.produtor_id); return pr ? pr.nome : <span style={{ color: "#bbb" }}>—</span>; })()}
@@ -843,7 +861,23 @@ export default function ComprasPage() {
                               setModalRelatorio({ pedido: ped, itens: its, entregas: ents });
                             }}>Relatório</button>
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped)}>Editar</button>
-                            <button style={btnX} onClick={async () => { if (confirm("Excluir pedido?")) { await excluirPedidoCompra(ped.id); await carregar(); } }}>✕</button>
+                            <button style={btnX} onClick={async () => {
+                              try {
+                                const { nfs } = await listarNfEntradasPorPedido(ped.id);
+                                if (nfs.length > 0) {
+                                  alert(`Este pedido possui ${nfs.length} NF(s) de entrada vinculada(s) e não pode ser excluído.`);
+                                  return;
+                                }
+                                if (!confirm("Excluir pedido? Esta ação também excluirá o lançamento financeiro vinculado.")) return;
+                                if (ped.lancamento_id) {
+                                  try { await excluirLancamento(ped.lancamento_id); } catch { /* ignora */ }
+                                }
+                                await excluirPedidoCompra(ped.id);
+                                await carregar();
+                              } catch (e: unknown) {
+                                alert((e as { message?: string })?.message ?? "Erro ao excluir pedido");
+                              }
+                            }}>✕</button>
                           </div>
                         </td>
                       </tr>
