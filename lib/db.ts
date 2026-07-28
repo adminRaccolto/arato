@@ -1503,6 +1503,17 @@ export async function listarNfEntradaItens(nf_entrada_id: string): Promise<NfEnt
   if (error) throw error;
   return data ?? [];
 }
+export async function listarNfEntradasPorPedido(pedido_id: string): Promise<{ nfs: NfEntrada[]; itens: NfEntradaItem[] }> {
+  const { data: nfs, error: e1 } = await supabase
+    .from("nf_entradas").select("*").eq("pedido_compra_id", pedido_id).order("data_emissao", { ascending: false });
+  if (e1) throw e1;
+  const allNfs = (nfs ?? []) as NfEntrada[];
+  if (allNfs.length === 0) return { nfs: [], itens: [] };
+  const { data: itens, error: e2 } = await supabase
+    .from("nf_entrada_itens").select("*").in("nf_entrada_id", allNfs.map(n => n.id));
+  if (e2) throw e2;
+  return { nfs: allNfs, itens: (itens ?? []) as NfEntradaItem[] };
+}
 export async function criarNfEntradaItem(i: Omit<NfEntradaItem, "id" | "created_at">): Promise<NfEntradaItem> {
   const { data, error } = await supabase.from("nf_entrada_itens").insert(i).select().single();
   if (error) throw error;

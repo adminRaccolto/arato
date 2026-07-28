@@ -8,9 +8,9 @@ import {
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas, criarContrato,
-  listarProdutoresDaConta,
+  listarProdutoresDaConta, listarNfEntradasPorPedido,
 } from "../../lib/db";
-import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor } from "../../lib/supabase";
+import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
@@ -256,6 +256,9 @@ export default function ComprasPage() {
   const [modalEntrega,  setModalEntrega]  = useState<{ pedido: PedidoCompra; itens: PedidoCompraItem[] } | null>(null);
   const [entregas,      setEntregas]      = useState<PedidoCompraEntrega[]>([]);
   const [formEntrega,   setFormEntrega]   = useState({ item_id: "", data_entrega: hoje(), quantidade_entregue: "", observacao: "" });
+  // NFs vinculadas (modal fiscal)
+  const [nfsFiscais,      setNfsFiscais]      = useState<NfEntrada[]>([]);
+  const [nfsFiscaisItens, setNfsFiscaisItens] = useState<NfEntradaItem[]>([]);
 
   // Modal relatório NFs
   const [modalRelatorio, setModalRelatorio] = useState<{ pedido: PedidoCompra; itens: PedidoCompraItem[]; entregas: PedidoCompraEntrega[] } | null>(null);
@@ -586,13 +589,20 @@ export default function ComprasPage() {
   // ── Abrir modal entregas ──────────────────────────────────────
 
   const abrirEntregas = async (ped: PedidoCompra) => {
-    const [its, ents] = await Promise.all([
-      listarPedidoCompraItens(ped.id),
-      listarPedidoCompraEntregas(ped.id),
-    ]);
+    const its = await listarPedidoCompraItens(ped.id);
     setModalEntrega({ pedido: ped, itens: its });
-    setEntregas(ents);
-    setFormEntrega({ item_id: its[0]?.id ?? "", data_entrega: hoje(), quantidade_entregue: "", observacao: "" });
+    if (ped.fiscal) {
+      const { nfs, itens: nfItens } = await listarNfEntradasPorPedido(ped.id);
+      setNfsFiscais(nfs);
+      setNfsFiscaisItens(nfItens);
+      setEntregas([]);
+    } else {
+      const ents = await listarPedidoCompraEntregas(ped.id);
+      setEntregas(ents);
+      setNfsFiscais([]);
+      setNfsFiscaisItens([]);
+      setFormEntrega({ item_id: its[0]?.id ?? "", data_entrega: hoje(), quantidade_entregue: "", observacao: "" });
+    }
   };
 
   const salvarEntrega = async () => {
@@ -818,7 +828,9 @@ export default function ComprasPage() {
                         </td>
                         <td style={{ padding: "6px 10px" }}>
                           <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
-                            <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>Entregas</button>
+                            <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>
+                              {ped.fiscal ? "NFs Vinculadas" : "Entregas"}
+                            </button>
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={async () => {
                               const [its, ents] = await Promise.all([listarPedidoCompraItens(ped.id), listarPedidoCompraEntregas(ped.id)]);
                               setModalRelatorio({ pedido: ped, itens: its, entregas: ents });
@@ -1390,107 +1402,202 @@ export default function ComprasPage() {
         </div>
       )}
 
-      {/* ── MODAL ENTREGAS ── */}
-      {modalEntrega && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalEntrega(null); }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 720, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>Entregas — {nomePessoa(modalEntrega.pedido.fornecedor_id)}</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido #{modalEntrega.pedido.numero} · {fmtData(modalEntrega.pedido.data_registro)}</div>
+      {/* ── MODAL ENTREGAS / NFs VINCULADAS ── */}
+      {modalEntrega && (() => {
+        const ehFiscal = modalEntrega.pedido.fiscal ?? false;
+
+        // Agregar qtd entregue por insumo_id (modo fiscal)
+        const qtdByInsumo = new Map<string, number>();
+        nfsFiscaisItens.forEach(it => {
+          if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
+        });
+
+        const NF_STATUS: Record<string, { label: string; bg: string; color: string }> = {
+          digitando:  { label: "Digitando",  bg: "#F4F6FA",  color: "#555"     },
+          pendente:   { label: "Pendente",    bg: "#FBF3E0",  color: "#7A5200"  },
+          processada: { label: "Processada",  bg: "#DCFCE7",  color: "#166534"  },
+          cancelada:  { label: "Cancelada",   bg: "#FCEBEB",  color: "#791F1F"  },
+        };
+
+        const totalNFs    = nfsFiscais.filter(n => n.status !== "cancelada").reduce((s, n) => s + (n.valor_total ?? 0), 0);
+        const totalPedido = modalEntrega.pedido.total_financeiro ?? 0;
+
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+            onClick={e => { if (e.target === e.currentTarget) setModalEntrega(null); }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 820, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
+                    {ehFiscal ? "NFs Vinculadas" : "Entregas"} — {nomePessoa(modalEntrega.pedido.fornecedor_id)}
+                    {ehFiscal && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>Fiscal</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido #{modalEntrega.pedido.numero} · {fmtData(modalEntrega.pedido.data_registro)}</div>
+                </div>
+                <button onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
               </div>
-              <button onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
-            </div>
-            <div style={{ padding: 22 }}>
+              <div style={{ padding: 22 }}>
 
-              {/* Situação dos itens */}
-              <div style={secTit}>Situação dos Itens</div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
-                <thead><tr style={{ background: "var(--bg-page)" }}>
-                  {["Item","Un.","Qtd. Pedida","Qtd. Entregue","Saldo","Status"].map((h, i) => (
-                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {modalEntrega.itens.map(it => {
-                    const entregue = it.qtd_entregue ?? 0;
-                    const cancelada = it.qtd_cancelada ?? 0;
-                    const pendente = Math.max(0, it.quantidade - cancelada - entregue);
-                    const pct = it.quantidade > 0 ? (entregue / (it.quantidade - cancelada)) * 100 : 0;
-                    return (
-                      <tr key={it.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
-                        <td style={{ padding: "8px 10px" }}>{it.nome_item}</td>
-                        <td style={{ padding: "8px 10px" }}>{it.unidade}</td>
-                        <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtN(it.quantidade)}</td>
-                        <td style={{ padding: "8px 10px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{fmtN(entregue)}</td>
-                        <td style={{ padding: "8px 10px", textAlign: "right", color: pendente > 0 ? "#C9921B" : "#16A34A", fontWeight: 600 }}>{fmtN(pendente)}</td>
-                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
-                            <div style={{ width: 60, height: 6, background: "var(--border-table)", borderRadius: 3, overflow: "hidden" }}>
-                              <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#1A5CB8", borderRadius: 3 }} />
-                            </div>
-                            <span style={{ fontSize: 10, color: "var(--text-2)" }}>{Math.round(pct)}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {/* Registrar nova entrega */}
-              <div style={secTit}>Registrar Nova Entrega</div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr", gap: 12, alignItems: "end" }}>
-                <div>
-                  <label style={lbl}>Item</label>
-                  <select style={inp} value={formEntrega.item_id} onChange={e => setFormEntrega(p => ({ ...p, item_id: e.target.value }))}>
-                    {modalEntrega.itens.map(it => <option key={it.id} value={it.id}>{it.nome_item} ({it.unidade})</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>Data Entrega</label>
-                  <input style={inp} type="date" value={formEntrega.data_entrega} onChange={e => setFormEntrega(p => ({ ...p, data_entrega: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={lbl}>Qtd. Entregue</label>
-                  <InputNumerico style={inp} decimais={3} value={formEntrega.quantidade_entregue} onChange={v => setFormEntrega(p => ({ ...p, quantidade_entregue: v }))} placeholder="0,000" />
-                </div>
-                <div>
-                  <label style={lbl}>Obs.</label>
-                  <input style={inp} value={formEntrega.observacao} onChange={e => setFormEntrega(p => ({ ...p, observacao: e.target.value }))} placeholder="Ex: NF 1234" />
-                </div>
-              </div>
-              <button style={{ ...btnV, marginTop: 12, opacity: salvando || !formEntrega.quantidade_entregue ? 0.5 : 1 }}
-                disabled={salvando || !formEntrega.quantidade_entregue} onClick={salvarEntrega}>
-                {salvando ? "Salvando…" : "Confirmar Entrega"}
-              </button>
-
-              {/* Histórico de entregas */}
-              {entregas.length > 0 && (<>
-                <div style={{ ...secTit, marginTop: 20 }}>Histórico de Entregas</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                {/* Situação dos itens */}
+                <div style={secTit}>Situação dos Itens</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
                   <thead><tr style={{ background: "var(--bg-page)" }}>
-                    {["Item","Data","Qtd. Entregue","Obs."].map((h, i) => (
+                    {["Item","Un.","Qtd. Pedida","Qtd. Entregue","Saldo","Status"].map((h, i) => (
                       <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>
-                    {entregas.map((e, i) => (
-                      <tr key={e.id} style={{ borderBottom: i < entregas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                        <td style={{ padding: "7px 10px" }}>{modalEntrega.itens.find(it => it.id === e.item_id)?.nome_item ?? "—"}</td>
-                        <td style={{ padding: "7px 10px" }}>{fmtData(e.data_entrega)}</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#16A34A" }}>{fmtN(e.quantidade_entregue)}</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)" }}>{e.observacao ?? "—"}</td>
-                      </tr>
-                    ))}
+                    {modalEntrega.itens.map(it => {
+                      const entregue = ehFiscal
+                        ? (it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0)
+                        : (it.qtd_entregue ?? 0);
+                      const cancelada = it.qtd_cancelada ?? 0;
+                      const pendente  = Math.max(0, it.quantidade - cancelada - entregue);
+                      const pct       = it.quantidade > 0 ? (entregue / Math.max(1, it.quantidade - cancelada)) * 100 : 0;
+                      return (
+                        <tr key={it.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                          <td style={{ padding: "8px 10px" }}>{it.nome_item}</td>
+                          <td style={{ padding: "8px 10px" }}>{it.unidade}</td>
+                          <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtN(it.quantidade)}</td>
+                          <td style={{ padding: "8px 10px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{fmtN(entregue)}</td>
+                          <td style={{ padding: "8px 10px", textAlign: "right", color: pendente > 0 ? "#C9921B" : "#16A34A", fontWeight: 600 }}>{fmtN(pendente)}</td>
+                          <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                              <div style={{ width: 60, height: 6, background: "var(--border-table)", borderRadius: 3, overflow: "hidden" }}>
+                                <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#1A5CB8", borderRadius: 3 }} />
+                              </div>
+                              <span style={{ fontSize: 10, color: "var(--text-2)" }}>{Math.round(pct)}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
-              </>)}
+
+                {/* ── MODO FISCAL: lista de NFs ── */}
+                {ehFiscal && (<>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                    <div style={secTit}>Notas Fiscais de Entrada Vinculadas</div>
+                    {nfsFiscais.length > 0 && (
+                      <span style={{ fontSize: 11, color: "var(--text-2)" }}>
+                        Total recebido:{" "}
+                        <strong style={{ color: "#1A4870" }}>{fmtBRL(totalNFs)}</strong>
+                        {totalPedido > 0 && (
+                          <span style={{ marginLeft: 6, color: totalNFs >= totalPedido ? "#16A34A" : "#C9921B", fontWeight: 600 }}>
+                            ({Math.round((totalNFs / totalPedido) * 100)}% do pedido)
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+
+                  {nfsFiscais.length === 0 ? (
+                    <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "16px 20px", marginBottom: 14 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#1A4870", marginBottom: 6 }}>Nenhuma NF vinculada ainda</div>
+                      <div style={{ fontSize: 12, color: "#0B2D50", lineHeight: 1.6 }}>
+                        Para registrar uma entrega fiscal, dê entrada da Nota Fiscal pelo menu{" "}
+                        <strong>Compras &amp; Estoque → NF de Produtos</strong> e selecione{" "}
+                        <strong>Pedido de Compra #{ modalEntrega.pedido.numero}</strong> no campo correspondente.
+                        As quantidades serão somadas automaticamente aqui.
+                      </div>
+                    </div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 14 }}>
+                      <thead><tr style={{ background: "var(--bg-page)" }}>
+                        {["Nº NF","Data Emissão","Emitente","Valor Total","Status",""].map((h, i) => (
+                          <th key={i} style={{ padding: "6px 10px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                        ))}
+                      </tr></thead>
+                      <tbody>
+                        {nfsFiscais.map((nf, i) => {
+                          const st = NF_STATUS[nf.status] ?? NF_STATUS.pendente;
+                          return (
+                            <tr key={nf.id} style={{ borderBottom: i < nfsFiscais.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                              <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1A4870" }}>{nf.numero}/{nf.serie}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{fmtData(nf.data_emissao)}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{nf.emitente_nome}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: nf.status === "cancelada" ? "#bbb" : "#1A4870", textDecoration: nf.status === "cancelada" ? "line-through" : "none" }}>{fmtBRL(nf.valor_total)}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                                <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
+                              </td>
+                              <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                                <a href="/estoque?tab=nf_entrada" style={{ fontSize: 11, color: "#1A5CB8", textDecoration: "none", fontWeight: 600 }}>Ver NF →</a>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
+                          <td colSpan={3} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL RECEBIDO (NFs processadas/pendentes)</td>
+                          <td style={{ padding: "6px 10px", textAlign: "right", color: "#1A4870" }}>{fmtBRL(totalNFs)}</td>
+                          <td colSpan={2} />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
+
+                  <div style={{ padding: "10px 14px", background: "#F4F6FA", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 11, color: "var(--text-2)" }}>
+                    As quantidades entregues são calculadas a partir das NFs de entrada processadas. Para ajustes, edite a NF correspondente em <strong>NF de Produtos</strong>.
+                  </div>
+                </>)}
+
+                {/* ── MODO NÃO-FISCAL: entrada manual ── */}
+                {!ehFiscal && (<>
+                  <div style={secTit}>Registrar Nova Entrega</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr", gap: 12, alignItems: "end" }}>
+                    <div>
+                      <label style={lbl}>Item</label>
+                      <select style={inp} value={formEntrega.item_id} onChange={e => setFormEntrega(p => ({ ...p, item_id: e.target.value }))}>
+                        {modalEntrega.itens.map(it => <option key={it.id} value={it.id}>{it.nome_item} ({it.unidade})</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Data Entrega</label>
+                      <input style={inp} type="date" value={formEntrega.data_entrega} onChange={e => setFormEntrega(p => ({ ...p, data_entrega: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Qtd. Entregue</label>
+                      <InputNumerico style={inp} decimais={3} value={formEntrega.quantidade_entregue} onChange={v => setFormEntrega(p => ({ ...p, quantidade_entregue: v }))} placeholder="0,000" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Obs.</label>
+                      <input style={inp} value={formEntrega.observacao} onChange={e => setFormEntrega(p => ({ ...p, observacao: e.target.value }))} placeholder="Ex: NF 1234" />
+                    </div>
+                  </div>
+                  <button style={{ ...btnV, marginTop: 12, opacity: salvando || !formEntrega.quantidade_entregue ? 0.5 : 1 }}
+                    disabled={salvando || !formEntrega.quantidade_entregue} onClick={salvarEntrega}>
+                    {salvando ? "Salvando…" : "Confirmar Entrega"}
+                  </button>
+
+                  {entregas.length > 0 && (<>
+                    <div style={{ ...secTit, marginTop: 20 }}>Histórico de Entregas</div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead><tr style={{ background: "var(--bg-page)" }}>
+                        {["Item","Data","Qtd. Entregue","Obs."].map((h, i) => (
+                          <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                        ))}
+                      </tr></thead>
+                      <tbody>
+                        {entregas.map((e, i) => (
+                          <tr key={e.id} style={{ borderBottom: i < entregas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                            <td style={{ padding: "7px 10px" }}>{modalEntrega.itens.find(it => it.id === e.item_id)?.nome_item ?? "—"}</td>
+                            <td style={{ padding: "7px 10px" }}>{fmtData(e.data_entrega)}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#16A34A" }}>{fmtN(e.quantidade_entregue)}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)" }}>{e.observacao ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>)}
+                </>)}
+
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── MODAL RELATÓRIO ── */}
       {modalRelatorio && (
