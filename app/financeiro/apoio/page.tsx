@@ -189,9 +189,11 @@ export default function ApoioFinanceiroPage() {
     if (!fazendaId) return;
     setAcaoId(l.id);
     const hoje = new Date().toISOString().slice(0, 10);
-    const { error } = await supabase
-      .from("apoio_baixas")
-      .insert({ fazenda_id: fazendaId, lancamento_id: l.id, data_baixa: hoje });
+    // Registra em apoio_baixas E atualiza o status oficial → entra no fluxo de caixa
+    const [{ error }] = await Promise.all([
+      supabase.from("apoio_baixas").insert({ fazenda_id: fazendaId, lancamento_id: l.id, data_baixa: hoje }),
+      supabase.from("lancamentos").update({ status: "baixado", data_baixa: hoje }).eq("id", l.id),
+    ]);
     if (!error) await carregar();
     setAcaoId(null);
   }
@@ -200,7 +202,11 @@ export default function ApoioFinanceiroPage() {
     setAcaoId(l.id);
     const baixa = baixaApoioPorLancId.get(l.id);
     if (!baixa) { setAcaoId(null); return; }
-    await supabase.from("apoio_baixas").delete().eq("id", baixa.id);
+    // Remove de apoio_baixas E reverte status para em_aberto
+    await Promise.all([
+      supabase.from("apoio_baixas").delete().eq("id", baixa.id),
+      supabase.from("lancamentos").update({ status: "em_aberto", data_baixa: null }).eq("id", l.id),
+    ]);
     await carregar();
     setAcaoId(null);
   }

@@ -6,6 +6,7 @@ import InputNumerico from "../../components/InputNumerico";
 import { useAuth } from "../../components/AuthProvider";
 import { listarLancamentos } from "../../lib/db";
 import type { Lancamento } from "../../lib/supabase";
+import { createBrowserClient } from "@supabase/ssr";
 import PlanoGate from "../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
@@ -94,10 +95,20 @@ export default function LCDPR() {
   useEffect(() => {
     if (!fazendaId) return;
     setLoading(true);
-    listarLancamentos(fazendaId).then(lans => {
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    Promise.all([
+      listarLancamentos(fazendaId),
+      // Carrega IDs baixados via Apoio Financeiro para excluir do LCDPR
+      sb.from("apoio_baixas").select("lancamento_id").eq("fazenda_id", fazendaId),
+    ]).then(([lans, { data: apoioBaixas }]) => {
+      const apoioIds = new Set((apoioBaixas ?? []).map((b: { lancamento_id: string }) => b.lancamento_id));
       const filtradas = lans.filter(l => {
         const ano = l.data_baixa?.slice(0, 4) ?? l.data_vencimento?.slice(0, 4);
-        return ano === String(anoSel) && l.status === "baixado";
+        // Exclui baixados via Apoio Financeiro — não entram no LCDPR
+        return ano === String(anoSel) && l.status === "baixado" && !apoioIds.has(l.id);
       });
       const items: EntradaLCDPR[] = filtradas.map(l => ({
         id: l.id,

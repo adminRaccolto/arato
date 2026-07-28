@@ -5,6 +5,7 @@ import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
+import { createBrowserClient } from "@supabase/ssr";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 
@@ -74,15 +75,19 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", 
 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
-  const { fazendaId, podeAcessarPlano, nomeFazendaSelecionada } = useAuth();
+  const { fazendaId, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
+
+  const temApoio = contaModulosOverrides["apoio_financeiro"] === true;
 
   const [lancamentos,  setLancamentos]  = useState<Lancamento[]>([]);
   const [empresas,     setEmpresas]     = useState<Empresa[]>([]);
   const [contas,       setContas]       = useState<ContaBancaria[]>([]);
   const [produtores,   setProdutores]   = useState<Produtor[]>([]);
   const [operacoesGer, setOperacoesGer] = useState<OperacaoGerencial[]>([]);
+  const [apoioBaixasIds, setApoioBaixasIds] = useState<Set<string>>(new Set());
+  const [incluirApoio,   setIncluirApoio]   = useState(true);
   const [carregando,  setCarregando]  = useState(true);
   const [cotacaoUSD,  setCotacaoUSD]  = useState<number>(5.90);
   const [filtroAberto, setFiltroAberto] = useState(false);
@@ -150,12 +155,21 @@ function FinanceiroRelatoriosInner() {
 
   useEffect(() => {
     if (!fazendaId) return;
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
     Promise.all([
       listarLancamentos(fazendaId),
       listarOperacoesGerenciais(fazendaId),
-    ]).then(([lans, ops]) => {
+      temApoio
+        ? sb.from("apoio_baixas").select("lancamento_id").eq("fazenda_id", fazendaId)
+        : Promise.resolve({ data: [] }),
+    ]).then(([lans, ops, apoioRes]) => {
       setLancamentos(lans);
       setOperacoesGer(ops);
+      const ids = ((apoioRes as { data: { lancamento_id: string }[] | null }).data ?? []).map(b => b.lancamento_id);
+      setApoioBaixasIds(new Set(ids));
     }).catch(() => {})
       .finally(() => setCarregando(false));
     listarEmpresas(fazendaId).then(setEmpresas).catch(() => setEmpresas([]));
@@ -165,7 +179,8 @@ function FinanceiroRelatoriosInner() {
       const taxa = d?.usdPtax ?? d?.usdBrl;
       if (taxa && taxa > 0) setCotacaoUSD(taxa);
     }).catch(() => {});
-  }, [fazendaId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazendaId, temApoio]);
 
   // localStorage simulações — escopad por fazenda para não vazar entre clientes
   const simKey = fazendaId ? `ractech_sim_fluxo_${fazendaId}` : null;
@@ -375,6 +390,26 @@ function FinanceiroRelatoriosInner() {
           </button>
         </header>
 
+        {/* ── Banner Apoio Financeiro (só exibe se addon ativo e aba fluxo) ── */}
+        {temApoio && aba === "fluxo" && (
+          <div style={{ background: incluirApoio ? "#EFF6FF" : "#F9FAFB", borderBottom: "0.5px solid #DDE2EE", padding: "8px 22px", display: "flex", alignItems: "center", gap: 10 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 500 }}>
+              <input
+                type="checkbox"
+                checked={incluirApoio}
+                onChange={e => setIncluirApoio(e.target.checked)}
+                style={{ width: 15, height: 15, accentColor: "#1A5CB8", cursor: "pointer" }}
+              />
+              Incluir baixas do Apoio Financeiro
+            </label>
+            <span style={{ fontSize: 11, color: "#555" }}>
+              {incluirApoio
+                ? `${apoioBaixasIds.size} baixa${apoioBaixasIds.size !== 1 ? "s" : ""} do apoio incluída${apoioBaixasIds.size !== 1 ? "s" : ""} no fluxo`
+                : `${apoioBaixasIds.size} baixa${apoioBaixasIds.size !== 1 ? "s" : ""} do apoio excluída${apoioBaixasIds.size !== 1 ? "s" : ""} — visão LCDPR`}
+            </span>
+          </div>
+        )}
+
         <div id="fluxo-print-content" style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
 
           {carregando && (
@@ -414,6 +449,8 @@ function FinanceiroRelatoriosInner() {
                   if (filtro.contasSel.length > 0) {
                     if (l.conta_bancaria && !contasEfetivasIds.has(l.conta_bancaria)) return false;
                   }
+                  // filtro Apoio Financeiro: exclui baixas do apoio quando desativado
+                  if (temApoio && !incluirApoio && apoioBaixasIds.has(l.id)) return false;
                   return true;
                 });
 
