@@ -187,6 +187,7 @@ export default function DrePage() {
         { data: orcData },
         { data: contratosData },
         { data: cpData },
+        { data: apoioData },
       ] = await Promise.all([
         supabase.from("plantios").select("custo_sementes, area_ha").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
         supabase.from("pulverizacoes").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
@@ -196,11 +197,14 @@ export default function DrePage() {
         supabase.from("orcamentos").select("area_ha, produtividade_esperada, preco_esperado_sc").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).maybeSingle(),
         supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("confirmado", true),
         supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id, moeda, sacas, preco_saca_barter").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("tipo", "pagar"),
       ]);
 
-      // ── Mapear operacao_gerencial_id → classificacao (batch) ──
+      // ── Mapear operacao_gerencial_id → classificacao (batch, inclui Apoio) ──
       const cpRows = cpData ?? [];
-      const ogIds = [...new Set(cpRows.map((c: { operacao_gerencial_id?: string }) => c.operacao_gerencial_id).filter(Boolean))] as string[];
+      const apoioRows = (apoioData ?? []) as { valor: number; categoria?: string; operacao_gerencial_id?: string }[];
+      const allRows = [...cpRows, ...apoioRows];
+      const ogIds = [...new Set(allRows.map((c: { operacao_gerencial_id?: string }) => c.operacao_gerencial_id).filter(Boolean))] as string[];
       const ogClassMap: Record<string, string> = {};
       if (ogIds.length > 0) {
         const { data: ogs } = await supabase
@@ -243,6 +247,11 @@ export default function DrePage() {
           : ((cp.valor as number) ?? 0);
         grp[g] = (grp[g] ?? 0) + valorBRL;
       }
+      // Acumular lançamentos do Apoio Financeiro vinculados ao ciclo
+      for (const ap of apoioRows) {
+        const g = cpGrupo(ap);
+        grp[g] = (grp[g] ?? 0) + (ap.valor ?? 0);
+      }
 
       // ── Receitas ──
       const totalSacas = (colheitasData ?? []).reduce((s, r) => s + (r.sacas_liquidas ?? 0), 0);
@@ -273,7 +282,7 @@ export default function DrePage() {
       for (const aux of auxCiclos) {
         const pct = (aux.absorcao_pct ?? 100) / 100;
         const [
-          { data: auxPl }, { data: auxPu }, , { data: auxAd }, { data: auxCo }, , , { data: auxCp },
+          { data: auxPl }, { data: auxPu }, , { data: auxAd }, { data: auxCo }, , , { data: auxCp }, { data: auxApoio },
         ] = await Promise.all([
           supabase.from("plantios").select("custo_sementes").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
           supabase.from("pulverizacoes").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
@@ -283,19 +292,24 @@ export default function DrePage() {
           Promise.resolve({ data: null }),
           Promise.resolve({ data: null }),
           supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id, moeda, sacas, preco_saca_barter").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+          supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", aux.id).eq("tipo", "pagar"),
         ]);
         aux_sementes     += (auxPl ?? []).reduce((s, r) => s + (r.custo_sementes ?? 0), 0) * pct;
         aux_fertilizantes += (auxAd ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;
         aux_defensivos   += (auxPu ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;
         aux_correcao_solo += (auxCo ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;
         // CPs do auxiliar
-        const auxOgIds = [...new Set((auxCp ?? []).map((c: { operacao_gerencial_id?: string }) => c.operacao_gerencial_id).filter(Boolean))] as string[];
+        const auxAllRows = [
+          ...(auxCp ?? []) as { valor?: number; categoria?: string; operacao_gerencial_id?: string; moeda?: string; sacas?: number; preco_saca_barter?: number }[],
+          ...(auxApoio ?? []) as { valor?: number; categoria?: string; operacao_gerencial_id?: string }[],
+        ];
+        const auxOgIds = [...new Set(auxAllRows.map((c) => c.operacao_gerencial_id).filter(Boolean))] as string[];
         const auxOgMap: Record<string, string> = {};
         if (auxOgIds.length > 0) {
           const { data: auxOgs } = await supabase.from("operacoes_gerenciais").select("id, classificacao").in("id", auxOgIds);
           for (const og of auxOgs ?? []) auxOgMap[og.id] = og.classificacao;
         }
-        for (const cp of (auxCp ?? []) as { valor?: number; categoria?: string; operacao_gerencial_id?: string; moeda?: string; sacas?: number; preco_saca_barter?: number }[]) {
+        for (const cp of auxAllRows) {
           // Usa auxOgMap específico do auxiliar; cpGrupo como fallback para categoria
           let g: string;
           if (cp.operacao_gerencial_id && auxOgMap[cp.operacao_gerencial_id]) {
@@ -303,8 +317,8 @@ export default function DrePage() {
           } else {
             g = cpGrupo(cp);
           }
-          const valorBRL = cp.moeda === "barter" && cp.sacas && cp.preco_saca_barter
-            ? cp.sacas * cp.preco_saca_barter
+          const valorBRL = (cp as { moeda?: string; sacas?: number; preco_saca_barter?: number }).moeda === "barter" && (cp as { sacas?: number }).sacas && (cp as { preco_saca_barter?: number }).preco_saca_barter
+            ? (cp as { sacas?: number }).sacas! * (cp as { preco_saca_barter?: number }).preco_saca_barter!
             : (cp.valor ?? 0);
           aux_grp[g] = (aux_grp[g] ?? 0) + valorBRL * pct;
         }
