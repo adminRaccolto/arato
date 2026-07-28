@@ -372,6 +372,41 @@ function ParametrosSistemaContent() {
   const [produtores, setProdutores] = useState<ProdutorMin[]>([]);
   const [expandedEmitter, setExpandedEmitter] = useState<string | null>(null);
 
+  // ── Upload de certificado A1 (por emitente)
+  const [certUploadState, setCertUploadState] = useState<{ [moduloKey: string]: { file: File | null; senha: string; loading: boolean; ok: boolean; erro: string } }>({});
+  const getCertState = (key: string) => certUploadState[key] ?? { file: null, senha: "", loading: false, ok: false, erro: "" };
+  const setCertField = (key: string, patch: Partial<typeof certUploadState[string]>) =>
+    setCertUploadState(prev => ({ ...prev, [key]: { ...getCertState(key), ...patch } }));
+
+  async function fazerUploadCert(emitter: { id: string; moduloKey: string; cpf_cnpj?: string; nome: string }) {
+    const st = getCertState(emitter.moduloKey);
+    if (!st.file || !st.senha.trim() || !fazendaId) return;
+    setCertField(emitter.moduloKey, { loading: true, erro: "" });
+    try {
+      const form = new FormData();
+      form.append("file",          st.file);
+      form.append("senha",         st.senha);
+      form.append("fazenda_id",    fazendaId);
+      form.append("produtor_id",   emitter.id);
+      form.append("produtor_nome", emitter.nome);
+      form.append("cpf_cnpj",      emitter.cpf_cnpj ?? "");
+      const res = await fetch("/api/cert-upload", { method: "POST", body: form });
+      const json = await res.json() as { ok?: boolean; error?: string; storage_path?: string; data_vencimento?: string | null };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "Erro no upload");
+      // Atualiza cfgs com o caminho correto + recria o registro certificado_a1_*
+      const certKey = `certificado_a1_${emitter.id}`;
+      setCfgs(prev => {
+        const fiscal = { ...(prev[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: json.storage_path ?? "", cert_a1_vencimento: json.data_vencimento ?? "" };
+        const meta = { ...(prev[certKey] ?? {} as CfgModulo), storage_path: json.storage_path ?? "", data_vencimento: json.data_vencimento ?? "" };
+        return { ...prev, [emitter.moduloKey]: fiscal, [certKey]: meta };
+      });
+      setCertField(emitter.moduloKey, { loading: false, ok: true, file: null, senha: "" });
+      setTimeout(() => setCertField(emitter.moduloKey, { ok: false }), 3000);
+    } catch (e) {
+      setCertField(emitter.moduloKey, { loading: false, erro: String(e instanceof Error ? e.message : e) });
+    }
+  }
+
   // ── Tributação NCM
   const [ncms, setNcms] = useState<NcmTributacao[]>([]);
   const [modalNcm, setModalNcm] = useState<(Partial<NcmTributacao> & { id?: string }) | null>(null);
@@ -1000,36 +1035,63 @@ function ParametrosSistemaContent() {
                     {/* Certificado e Reforma */}
                     <div style={{ marginBottom: 24 }}>
                       {secHeader("Certificado Digital e Reforma Tributária")}
-                      {certPathInvalid && (
-                        <div style={{ marginBottom: 14, padding: "12px 16px", background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
-                          <div style={{ fontSize: 13, color: "#991B1B", flex: 1 }}>
-                            {certPathIsEmail ? (
-                              <><strong>Caminho inválido:</strong> o campo contém um e-mail ({certPath}) em vez do caminho do arquivo <code>.pfx</code>.</>
-                            ) : (
-                              <><strong>Caminho incompleto:</strong> o campo não inclui o nome do arquivo (<code>{certPath}</code>). Deve terminar em <code>.pfx</code> ou <code>.p12</code>.</>
-                            )}
-                            {certCorrectPath ? (
-                              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                                <span style={{ color: "#7F1D1D" }}>Caminho correto encontrado no cadastro: <code style={{ background: "#FEE2E2", padding: "1px 5px", borderRadius: 3 }}>{certCorrectPath}</code></span>
-                                <button
-                                  onClick={() => {
-                                    const key = emitter.moduloKey;
-                                    const newCfg = { ...(cfgs[key] ?? {} as CfgModulo), cert_a1_path: certCorrectPath };
-                                    salvarComValor(key, newCfg);
-                                  }}
-                                  style={{ padding: "4px 14px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                  ✓ Usar caminho correto
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ marginTop: 6, color: "#7F1D1D" }}>
-                                Acesse a aba <strong>Certificado Digital</strong> e faça o upload do arquivo <code>.pfx</code> para corrigir automaticamente.
-                              </div>
-                            )}
-                          </div>
+                      {certPathInvalid && !certCorrectPath && (
+                        <div style={{ marginBottom: 14, padding: "10px 14px", background: "#FEF9C3", border: "0.5px solid #FDE68A", borderRadius: 8, fontSize: 12, color: "#78350F" }}>
+                          Caminho do certificado inválido (<code>{certPath || "vazio"}</code>). Faça o upload do arquivo <code>.pfx</code> abaixo para corrigir automaticamente.
                         </div>
                       )}
+                      {certCorrectPath && certPathInvalid && (
+                        <div style={{ marginBottom: 14, padding: "10px 14px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
+                          <span style={{ color: "#166534", flex: 1 }}>Certificado cadastrado: <code>{certCorrectPath}</code></span>
+                          <button
+                            onClick={() => salvarComValor(emitter.moduloKey, { ...(cfgs[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: certCorrectPath })}
+                            style={{ padding: "4px 14px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            ✓ Usar caminho correto
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Upload de certificado A1 embutido */}
+                      {(() => {
+                        const cs = getCertState(emitter.moduloKey);
+                        return (
+                          <div style={{ marginBottom: 14, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>Upload do Certificado A1 (.pfx)</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
+                              <div>
+                                <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Arquivo .pfx / .p12</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <label style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", borderRadius: 6, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                                    Selecionar arquivo
+                                    <input type="file" accept=".pfx,.p12,.cer" style={{ display: "none" }}
+                                      onChange={e => setCertField(emitter.moduloKey, { file: e.target.files?.[0] ?? null })} />
+                                  </label>
+                                  <span style={{ fontSize: 12, color: cs.file ? "#166534" : "#888" }}>{cs.file ? cs.file.name : "Nenhum arquivo selecionado"}</span>
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Senha do certificado</div>
+                                <input type="password" value={cs.senha} onChange={e => setCertField(emitter.moduloKey, { senha: e.target.value })}
+                                  placeholder="Senha do .pfx"
+                                  style={{ padding: "7px 10px", border: "0.5px solid #CBD5E1", borderRadius: 6, fontSize: 13, width: 180 }} />
+                              </div>
+                            </div>
+                            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                              <button
+                                disabled={!cs.file || !cs.senha.trim() || cs.loading}
+                                onClick={() => fazerUploadCert({ id: emitter.id, moduloKey: emitter.moduloKey, cpf_cnpj: emitter.cpf_cnpj, nome: emitter.nome })}
+                                style={{ padding: "7px 20px", background: cs.loading ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: cs.loading ? "not-allowed" : "pointer" }}>
+                                {cs.loading ? "Enviando..." : "Enviar certificado"}
+                              </button>
+                              {cs.ok && <span style={{ color: "#16A34A", fontSize: 12, fontWeight: 600 }}>✓ Certificado salvo com sucesso!</span>}
+                              {cs.erro && <span style={{ color: "#DC2626", fontSize: 12 }}>{cs.erro}</span>}
+                            </div>
+                            {hasCert && !certPathInvalid && (
+                              <div style={{ marginTop: 8, fontSize: 11, color: "#666" }}>Certificado atual: <code>{certPath}</code></div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {renderFieldsGrid(emitter.moduloKey, FISCAL_CERT)}
                     </div>
 
