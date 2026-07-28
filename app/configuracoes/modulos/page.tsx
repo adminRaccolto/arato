@@ -863,7 +863,12 @@ function ParametrosSistemaContent() {
             const isConfigured = !!(c.cpf_cnpj_emitente);
             const certPath = String(c.cert_a1_path ?? "");
             const certPathIsEmail = certPath.includes("@");
-            const hasCert = !!(c.cert_a1_path) && !certPathIsEmail;
+            const certPathMissesFile = certPath.length > 0 && !certPathIsEmail && !/\.(pfx|p12|cer|crt)$/i.test(certPath);
+            const certPathInvalid = certPathIsEmail || certPathMissesFile;
+            const hasCert = !!(c.cert_a1_path) && !certPathInvalid;
+            // Caminho correto cadastrado via upload (pode ser diferente do atual)
+            const certMeta = cfgs[`certificado_a1_${emitter.id}`] ?? null;
+            const certCorrectPath = String((certMeta as Record<string, unknown>)?.storage_path ?? "");
 
             return (
               <div key={emitter.moduloKey} style={{ border: `0.5px solid ${isOpen ? "#1A4870" : "var(--border)"}`, borderRadius: 10, marginBottom: 10, overflow: "hidden", boxShadow: isOpen ? "0 2px 8px rgba(26,72,112,0.08)" : "none" }}>
@@ -995,14 +1000,33 @@ function ParametrosSistemaContent() {
                     {/* Certificado e Reforma */}
                     <div style={{ marginBottom: 24 }}>
                       {secHeader("Certificado Digital e Reforma Tributária")}
-                      {certPathIsEmail && (
+                      {certPathInvalid && (
                         <div style={{ marginBottom: 14, padding: "12px 16px", background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
                           <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
-                          <div style={{ fontSize: 13, color: "#991B1B" }}>
-                            <strong>Caminho do certificado inválido.</strong> O campo contém um e-mail ({certPath}) em vez do caminho do arquivo <code>.pfx</code> no Supabase Storage.<br />
-                            <span style={{ color: "#7F1D1D" }}>
-                              Para corrigir: acesse o Supabase → Storage → bucket <strong>certificados</strong> → faça upload do arquivo <code>.pfx</code> → copie o caminho (ex: <code>meu-cert.pfx</code>) → cole aqui e salve.
-                            </span>
+                          <div style={{ fontSize: 13, color: "#991B1B", flex: 1 }}>
+                            {certPathIsEmail ? (
+                              <><strong>Caminho inválido:</strong> o campo contém um e-mail ({certPath}) em vez do caminho do arquivo <code>.pfx</code>.</>
+                            ) : (
+                              <><strong>Caminho incompleto:</strong> o campo não inclui o nome do arquivo (<code>{certPath}</code>). Deve terminar em <code>.pfx</code> ou <code>.p12</code>.</>
+                            )}
+                            {certCorrectPath ? (
+                              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                <span style={{ color: "#7F1D1D" }}>Caminho correto encontrado no cadastro: <code style={{ background: "#FEE2E2", padding: "1px 5px", borderRadius: 3 }}>{certCorrectPath}</code></span>
+                                <button
+                                  onClick={() => {
+                                    const key = emitter.moduloKey;
+                                    const newCfg = { ...(cfgs[key] ?? {} as CfgModulo), cert_a1_path: certCorrectPath };
+                                    salvarComValor(key, newCfg);
+                                  }}
+                                  style={{ padding: "4px 14px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                  ✓ Usar caminho correto
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: 6, color: "#7F1D1D" }}>
+                                Acesse a aba <strong>Certificado Digital</strong> e faça o upload do arquivo <code>.pfx</code> para corrigir automaticamente.
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
