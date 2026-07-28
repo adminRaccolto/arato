@@ -482,6 +482,19 @@ function ParametrosSistemaContent() {
     setTimeout(() => setOk(null), 2500);
   };
 
+  // Salva com valor explícito (evita race condition de setState + save imediato)
+  const salvarComValor = async (modulo: string, newCfg: CfgModulo) => {
+    if (!fazendaId) return;
+    setSalvando(modulo);
+    setCfgs(prev => ({ ...prev, [modulo]: newCfg }));
+    await supabase.from("configuracoes_modulo").upsert(
+      { fazenda_id: fazendaId, modulo, config: newCfg, updated_at: new Date().toISOString() },
+      { onConflict: "fazenda_id,modulo" }
+    );
+    setSalvando(null); setOk(modulo);
+    setTimeout(() => setOk(null), 2500);
+  };
+
   const buscarCep = async (cep: string, moduloKey: string) => {
     const cleaned = cep.replace(/\D/g, "");
     if (cleaned.length !== 8) return;
@@ -761,8 +774,8 @@ function ParametrosSistemaContent() {
                   <button
                     key={v}
                     onClick={async () => {
-                      setCfg("fiscal_global", "ambiente", v);
-                      await salvar("fiscal_global");
+                      const newCfg = { ...(cfgs["fiscal_global"] ?? {}), ambiente: v };
+                      await salvarComValor("fiscal_global", newCfg);
                     }}
                     style={{
                       padding: "8px 24px", borderRadius: 26, border: "none", cursor: "pointer",
@@ -841,8 +854,8 @@ function ParametrosSistemaContent() {
                           <button
                             key={v}
                             onClick={async () => {
-                              setCfg(emitter.moduloKey, "ambiente", v);
-                              await salvar(emitter.moduloKey);
+                              const newCfg = { ...(cfgs[emitter.moduloKey] ?? {}), ambiente: v };
+                              await salvarComValor(emitter.moduloKey, newCfg);
                             }}
                             style={{
                               padding: "3px 12px", borderRadius: 16, border: "none", cursor: "pointer", fontSize: 11, fontWeight: ativo ? 700 : 400,
