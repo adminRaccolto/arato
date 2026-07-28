@@ -518,6 +518,8 @@ export default function ComprasPage() {
               origem_lancamento: "pedido_compra",
               pedido_compra_id:  pedidoId,
               ciclo_id:          f.barter_ciclo_id || f.ciclo_id || undefined,
+              ano_safra_id:      f.barter_ano_safra_id || f.ano_safra_id || undefined,
+              produtor_id:       f.produtor_id || undefined,
             });
             await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
 
@@ -566,6 +568,9 @@ export default function ComprasPage() {
               pessoa_id:         f.fornecedor_id || undefined,
               origem_lancamento: "pedido_compra",
               pedido_compra_id:  pedidoId,
+              ano_safra_id:      f.ano_safra_id || undefined,
+              ciclo_id:          f.ciclo_id || undefined,
+              produtor_id:       f.produtor_id || undefined,
             });
             await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
           }
@@ -585,6 +590,9 @@ export default function ComprasPage() {
             valor:           totalItens,
             data_vencimento: vencimento,
             pessoa_id:       f.fornecedor_id || undefined,
+            ano_safra_id:    f.ano_safra_id || undefined,
+            ciclo_id:        f.ciclo_id || undefined,
+            produtor_id:     f.produtor_id || undefined,
           });
         } catch { /* não bloqueia o save */ }
       }
