@@ -111,7 +111,7 @@ interface ItemRascunho {
   _bag_msg?: string;  // aviso de conversão bag→kg (não vai ao banco)
 }
 
-interface PedidoMin { id: string; nr_pedido?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; }
+interface PedidoMin { id: string; nr_pedido?: string; numero?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; ano_safra_id?: string; ciclo_id?: string; data_vencimento?: string; }
 
 const ITEM_VAZIO = (): ItemRascunho => ({
   key: crypto.randomUUID(),
@@ -328,7 +328,7 @@ export default function NfCompraPage() {
     try {
       const { data } = await supabase
         .from("pedidos_compra")
-        .select("id, nr_pedido, fornecedor_id, contato_fornecedor, status")
+        .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
         .eq("fazenda_id", fazendaId)
         .in("status", ["rascunho", "aprovado", "entregue"])
         .order("created_at", { ascending: false });
@@ -994,6 +994,29 @@ export default function NfCompraPage() {
     }
   }
 
+  function onPedidoChange(pedidoId: string) {
+    if (!pedidoId) {
+      setCab(prev => ({ ...prev, pedido_compra_id: "" }));
+      return;
+    }
+    const ped = pedidos.find(p => p.id === pedidoId);
+    if (!ped) { setCab(prev => ({ ...prev, pedido_compra_id: pedidoId })); return; }
+    const forn = pessoas.find(x => x.id === ped.fornecedor_id);
+    setCab(prev => ({
+      ...prev,
+      pedido_compra_id:   pedidoId,
+      // Fornecedor
+      pessoa_id:          ped.fornecedor_id    ?? prev.pessoa_id,
+      emitente_nome:      forn?.nome           ?? prev.emitente_nome,
+      emitente_cnpj:      forn?.cpf_cnpj       ?? prev.emitente_cnpj,
+      // Classificação
+      ano_safra_id:       ped.ano_safra_id     ?? prev.ano_safra_id,
+      ciclo_id:           ped.ciclo_id         ?? prev.ciclo_id,
+      // Vencimento
+      data_vencimento_cp: ped.data_vencimento  ?? prev.data_vencimento_cp,
+    }));
+  }
+
   // ── Atualizar item ─────────────────────────────────────────
   const setItem = (key: string, patch: Partial<ItemRascunho>) => {
     setItens(prev => prev.map(it => {
@@ -1556,6 +1579,43 @@ export default function NfCompraPage() {
               {/* ─── ETAPA 2: CABEÇALHO ──────────────────────── */}
               {etapa === "cabecalho" && (
                 <div>
+
+                  {/* ── Vínculo com Pedido de Compra — ao topo ── */}
+                  <div style={{ background: cab.pedido_compra_id ? "#E8F5E9" : "var(--bg-page)", border: `0.5px solid ${cab.pedido_compra_id ? "#86EFAC" : "var(--border-table)"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: cab.pedido_compra_id ? 8 : 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: cab.pedido_compra_id ? "#1A6B3C" : "var(--text-1)" }}>
+                        {cab.pedido_compra_id ? "✓ Vinculado ao Pedido de Compra" : "Vincular a um Pedido de Compra"}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>{cab.pedido_compra_id ? "" : "— opcional. Ao selecionar, os campos serão preenchidos automaticamente."}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <select
+                        value={cab.pedido_compra_id}
+                        onChange={e => onPedidoChange(e.target.value)}
+                        style={{ ...inp, flex: 1, background: cab.pedido_compra_id ? "#F0FDF4" : "var(--bg-input)", fontWeight: cab.pedido_compra_id ? 600 : 400, color: cab.pedido_compra_id ? "#166534" : "var(--text-1)" }}
+                      >
+                        <option value="">— Sem pedido vinculado —</option>
+                        {pedidos.map(p => {
+                          const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
+                          const nr = p.nr_pedido ?? p.numero ?? p.id.substring(0, 8);
+                          return <option key={p.id} value={p.id}>{forn} — PC {nr} ({p.status})</option>;
+                        })}
+                      </select>
+                      {cab.pedido_compra_id && (
+                        <button onClick={() => onPedidoChange("")} style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid #86EFAC", background: "transparent", color: "#166534", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" as const }}>
+                          ✕ Desvincular
+                        </button>
+                      )}
+                    </div>
+                    {cab.pedido_compra_id && (
+                      <div style={{ marginTop: 8, fontSize: 11, color: "#1A6B3C", display: "flex", gap: 14 }}>
+                        {cab.emitente_nome && <span>Fornecedor: <strong>{cab.emitente_nome}</strong></span>}
+                        {cab.ano_safra_id && <span>Safra: <strong>{anosSafra.find(a => a.id === cab.ano_safra_id)?.descricao}</strong></span>}
+                        {cab.data_vencimento_cp && <span>Vencimento: <strong>{fmtData(cab.data_vencimento_cp)}</strong></span>}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                     <div>
                       <label style={lbl}>Número da NF *</label>
@@ -1712,29 +1772,8 @@ export default function NfCompraPage() {
                   </div>
 
                   <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Vinculações, Vencimento e Classificação</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Vencimento e Classificação</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                      <div>
-                        <label style={lbl}>Pedido de Compra</label>
-                        <select value={cab.pedido_compra_id} onChange={e => setCab(p=>({...p,pedido_compra_id:e.target.value}))} style={inp}>
-                          <option value="">Sem pedido vinculado</option>
-                          {pedidos
-                            .filter(p => {
-                              if (!cab.emitente_cnpj) return true;
-                              const cnpjNF = cab.emitente_cnpj.replace(/\D/g, "");
-                              const forn = pessoas.find(x => x.id === p.fornecedor_id);
-                              const cnpjForn = (forn?.cpf_cnpj ?? "").replace(/\D/g, "");
-                              return !cnpjForn || cnpjForn === cnpjNF;
-                            })
-                            .map(p => (
-                              <option key={p.id} value={p.id}>{(() => {
-                                const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
-                                const nr = p.nr_pedido ?? p.id.substring(0, 8);
-                                return `${forn} — PC ${nr}`;
-                              })()}</option>
-                            ))}
-                        </select>
-                      </div>
                       <div>
                         <label style={lbl}>Vencimento da CP</label>
                         <input type="date" value={cab.data_vencimento_cp} onChange={e => setCab(p=>({...p,data_vencimento_cp:e.target.value}))} style={inp} />
