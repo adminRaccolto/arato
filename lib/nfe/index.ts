@@ -70,7 +70,15 @@ async function carregarPfx(
     .storage
     .from("certificados")
     .download(storagePath);
-  if (error || !data) throw new Error(`Certificado não encontrado: ${storagePath}`);
+  if (error || !data) {
+    // Tenta variante sem subpastas (arquivo na raiz do bucket)
+    const nomeArquivo = storagePath.split("/").pop() ?? storagePath;
+    if (nomeArquivo !== storagePath) {
+      const { data: data2, error: error2 } = await sb().storage.from("certificados").download(nomeArquivo);
+      if (!error2 && data2) return Buffer.from(await data2.arrayBuffer());
+    }
+    throw new Error(`Certificado não encontrado: ${storagePath} — Supabase: ${error?.message ?? "sem dados"}`);
+  }
   return Buffer.from(await data.arrayBuffer());
 }
 
