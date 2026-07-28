@@ -772,8 +772,8 @@ export default function ComprasPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Nº", "Fornecedor", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 || i === 5 || i === 6 || i === 7 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                    {["Nº", "Fornecedor", "Produtor", "Cidade", "IE", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "6px 10px", textAlign: i === 0 || i === 8 || i === 9 || i === 10 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -782,32 +782,41 @@ export default function ComprasPage() {
                     const st = STATUS_MAP[ped.status];
                     return (
                       <tr key={ped.id} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870" }}>#{ped.numero ?? "—"}</td>
-                        <td style={{ padding: "10px 14px" }}>
+                        <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontSize: 11 }}>#{ped.numero ?? "—"}</td>
+                        <td style={{ padding: "6px 10px", fontSize: 11 }}>
                           <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{nomePessoa(ped.fornecedor_id)}</div>
-                          {ped.nr_pedido && <div style={{ fontSize: 11, color: "var(--text-2)" }}>Ped.: {ped.nr_pedido}</div>}
+                          {ped.nr_pedido && <div style={{ fontSize: 10, color: "var(--text-2)" }}>Ped.: {ped.nr_pedido}</div>}
                         </td>
-                        <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{nomeAnoSafra(ped.ano_safra_id) || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "var(--text-2)", maxWidth: 180 }}>
+                        <td style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-1)", whiteSpace: "nowrap" }}>
+                          {(() => { const pr = produtores.find(p => p.id === ped.produtor_id); return pr ? pr.nome : <span style={{ color: "#bbb" }}>—</span>; })()}
+                        </td>
+                        <td style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                          {(() => { const pr = produtores.find(p => p.id === ped.produtor_id); return pr?.municipio ? `${pr.municipio}${pr.estado ? " — " + pr.estado : ""}` : <span style={{ color: "#bbb" }}>—</span>; })()}
+                        </td>
+                        <td style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-2)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                          {(() => { const pr = produtores.find(p => p.id === ped.produtor_id); return pr?.inscricao_est || <span style={{ color: "#bbb" }}>—</span>; })()}
+                        </td>
+                        <td style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-2)" }}>{nomeAnoSafra(ped.ano_safra_id) || "—"}</td>
+                        <td style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-2)", maxWidth: 160 }}>
                           <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nomeOp(ped.operacao) !== "—" ? nomeOp(ped.operacao) : <span style={{ color: "#bbb" }}>—</span>}</div>
                         </td>
-                        <td style={{ padding: "10px 14px", color: "var(--text-1)" }}>{fmtData(ped.data_registro)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                        <td style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-1)" }}>{fmtData(ped.data_registro)}</td>
+                        <td style={{ padding: "6px 10px", textAlign: "center" }}>
                           {ped.meio_pagamento === "barter"
                             ? <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5200", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Barter</span>
                             : <span style={{ fontSize: 11, fontWeight: 600, color: ped.cotacao_moeda === "USD" ? "#0B5394" : "#1A4870" }}>{ped.cotacao_moeda ?? "R$"}</span>
                           }
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870" }}>
+                        <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontSize: 11 }}>
                           {(() => {
                             const moeda = ped.meio_pagamento === "barter" ? "barter" : (ped.cotacao_moeda ?? "R$");
                             return fmtMoeda(ped.total_financeiro, moeda);
                           })()}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                        <td style={{ padding: "6px 10px", textAlign: "center" }}>
                           <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
                         </td>
-                        <td style={{ padding: "10px 14px" }}>
+                        <td style={{ padding: "6px 10px" }}>
                           <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>Entregas</button>
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={async () => {

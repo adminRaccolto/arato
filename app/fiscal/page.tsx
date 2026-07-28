@@ -149,6 +149,15 @@ function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}, logoUrl?: string | 
   const tipoDesc  = nota.tipo === "saida" ? "SAÍDA" : "ENTRADA";
   // Parse numero "001.001" → "000.000.001" style
   const numFmt = String(nota.numero).padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
+  // CST derivado do CFOP (mesma lógica do builder.ts)
+  const _cfopD = (nota.cfop ?? "").replace(/\D/g, "");
+  const _cfopP = _cfopD.substring(0, 4);
+  const notaCst = _cfopD.startsWith("7") ? "041"
+    : (_cfopP === "5905" || _cfopP === "6905") ? "041"
+    : (_cfopP === "5501" || _cfopP === "6501") ? "040"
+    : (_cfopD.startsWith("5") || _cfopD.startsWith("1")) ? "051"
+    : "000";
+  const notaCfopFmt = (nota.cfop ?? "").replace(/\D/g, "");
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>DANFE NF-e ${numFmt} — Série ${nota.serie}</title>
@@ -342,8 +351,8 @@ ${isContingencia ? `<div style="background:#FEF3C7;border:1.5px solid #D97706;co
       <td class="c">1</td>
       <td>${nota.natureza}</td>
       <td class="c">—</td>
-      <td class="c">041</td>
-      <td class="c">${nota.cfop.replace(".", "")}</td>
+      <td class="c">${notaCst}</td>
+      <td class="c">${notaCfopFmt}</td>
       <td class="c">sc</td>
       <td class="r">—</td>
       <td class="r">—</td>
