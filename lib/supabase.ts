@@ -377,6 +377,10 @@ export type Contrato = {
   cessao_fornecedor_nome?: string; // nome do fornecedor (desnormalizado)
   cessao_data?: string;            // data em que a cessão foi formalizada
   cessao_obs?: string;
+  // Triangulação Cooperativa — comprador fiscal ≠ comprador econômico
+  is_triangulacao?: boolean;       // true = cooperativa faz a intermediação fiscal
+  comprador_final_id?: string;     // FK pessoas — trading/destino final do grão
+  comprador_final_nome?: string;   // desnormalizado para histórico
   // Documento físico — PDF do contrato no Supabase Storage
   pdf_url?: string | null;
   pdf_nome?: string | null;
@@ -468,6 +472,8 @@ export type Romaneio = {
   quebrados_pct?: number;
   carunchados_pct?: number;       // milho: carunchados e atacados por insetos
   outros_avariados_pct?: number;
+  // CIF: sem balança na fazenda — peso declarado pelo produtor
+  is_peso_estimado?: boolean;     // true = NF emitida com peso estimado, aguarda confirmação do destino
   // Peso recebido pelo comprador (pós-entrega)
   peso_liquido_destino?: number;  // balança do comprador (kg)
   peso_class_destino?: number;    // peso classificado pelo comprador (kg)

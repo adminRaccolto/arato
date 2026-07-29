@@ -8764,3 +8764,20 @@ CREATE POLICY "user_own_mensagens" ON suporte_mensagens
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 123 — is_peso_estimado em romaneios (CIF sem balança própria) ───────
+ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS is_peso_estimado boolean DEFAULT false;
+
+COMMENT ON COLUMN romaneios.is_peso_estimado IS 'true = NF emitida com peso estimado (CIF); peso_bruto_kg = peso estimado declarado, tara_kg = 0';
+
+NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 124 — Triangulação Cooperativa em contratos ────────────────────────
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS is_triangulacao       boolean DEFAULT false;
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS comprador_final_id    uuid REFERENCES pessoas(id) ON DELETE SET NULL;
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS comprador_final_nome  text;
+
+COMMENT ON COLUMN contratos.is_triangulacao IS 'true = cooperativa faz a intermediação fiscal; comprador fiscal ≠ comprador econômico';
+COMMENT ON COLUMN contratos.comprador_final_id IS 'Trading / destino final do grão na triangulação';
+
+NOTIFY pgrst, 'reload schema';

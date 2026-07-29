@@ -400,6 +400,9 @@ export default function Contratos() {
     cessao_fornecedor_nome: "",
     cessao_data: "",
     cessao_obs: "",
+    // triangulação cooperativa
+    is_triangulacao: false,
+    comprador_final_id: "",
   });
 
   const [fC, setFC] = useState(fContratoVazio());
@@ -609,6 +612,8 @@ export default function Contratos() {
   const [modalRomaneio, setModalRomaneio] = useState(false);
   const ROM_VAZIO = () => ({
     contratoId:"", placa:"", pesoBruto:"", tara:"",
+    // Peso estimado — CIF: caminhão do comprador pesa no destino
+    pesoEstimado: false, pesoEstimadoKg: "",
     umidade:"", impureza:"", ph:"",
     ardidos:"", mofados:"", fermentados:"", germinados:"",
     esverdeados:"", quebrados:"", carunchados:"", outros_avariados:"",
@@ -743,6 +748,9 @@ export default function Contratos() {
       cessao_obs: c.cessao_obs ?? "",
       pdf_url: c.pdf_url ?? undefined,
       pdf_nome: c.pdf_nome ?? undefined,
+      // triangulação
+      is_triangulacao: c.is_triangulacao ?? false,
+      comprador_final_id: c.comprador_final_id ?? "",
     });
     try {
       const its = await listarItensContrato(c.id);
@@ -895,6 +903,12 @@ export default function Contratos() {
           cessao_data: fC.cessao_data || undefined,
           cessao_obs: fC.cessao_obs || undefined,
         } : {}),
+        // triangulação cooperativa
+        ...(fC.is_triangulacao ? {
+          is_triangulacao: true,
+          comprador_final_id: fC.comprador_final_id || undefined,
+          comprador_final_nome: pessoas.find(p=>p.id===fC.comprador_final_id)?.nome || undefined,
+        } : { is_triangulacao: false, comprador_final_id: undefined, comprador_final_nome: undefined }),
       };
       let salvo: Contrato;
       if (editContrato) {
@@ -977,7 +991,9 @@ export default function Contratos() {
   const isSoja        = produto_rom.toLowerCase().startsWith("soja");
   const isMilho       = produto_rom.toLowerCase().startsWith("milho");
 
-  const plCalc        = fRom.pesoBruto && fRom.tara ? Number(fRom.pesoBruto) - Number(fRom.tara) : 0;
+  const plCalc        = fRom.pesoEstimado
+    ? (Number(fRom.pesoEstimadoKg) || 0)
+    : (fRom.pesoBruto && fRom.tara ? Number(fRom.pesoBruto) - Number(fRom.tara) : 0);
   const romUmidade    = parseFloat(fRom.umidade)   || 0;
   const romImpureza   = parseFloat(fRom.impureza)  || 0;
 
@@ -1007,6 +1023,7 @@ export default function Contratos() {
 
   const gerarRomaneio = async () => {
     if (!contratoSel || !fRom.placa || plCalc <= 0) return;
+    if (!fRom.pesoEstimado && (!fRom.pesoBruto || !fRom.tara)) { alert("Informe Peso Bruto e Tara."); return; }
     const todosRomaneios = contratos.flatMap(c => c.romaneios);
     setSalvando(true);
     try {
@@ -1015,8 +1032,9 @@ export default function Contratos() {
         fazenda_id:            fazendaId!,
         numero:                `ROM-${String(todosRomaneios.length+1).padStart(4,"0")}`,
         placa:                 fRom.placa.toUpperCase(),
-        peso_bruto_kg:         Number(fRom.pesoBruto),
-        tara_kg:               Number(fRom.tara),
+        peso_bruto_kg:         fRom.pesoEstimado ? plCalc : Number(fRom.pesoBruto),
+        tara_kg:               fRom.pesoEstimado ? 0 : Number(fRom.tara),
+        is_peso_estimado:      fRom.pesoEstimado || undefined,
         // peso_liquido_kg é GENERATED ALWAYS no banco (peso_bruto - tara)
         // classificação — comuns
         umidade_pct:           romUmidade   || undefined,
@@ -1454,6 +1472,14 @@ export default function Contratos() {
                                 </td>
                                 <td style={{ padding:"10px 12px", fontSize:12, color:"var(--text-1)", maxWidth:200 }}>
                                   <div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.comprador || "—"}</div>
+                                  {c.is_triangulacao && c.comprador_final_nome && (
+                                    <div style={{ fontSize:9, color:"#C9921B", fontWeight:600 }}>
+                                      ⇒ {c.comprador_final_nome.split(" ").slice(0,2).join(" ")}
+                                    </div>
+                                  )}
+                                  {c.is_triangulacao && !c.comprador_final_nome && (
+                                    <div style={{ fontSize:9, background:"#FBF3E0", color:"#C9921B", padding:"1px 5px", borderRadius:4, display:"inline-block", marginTop:2 }}>Triangulação</div>
+                                  )}
                                 </td>
                                 <td style={{ padding:"10px 12px" }}>
                                   <span style={{ fontSize:10, background:cp.bg, color:cp.color, padding:"2px 8px", borderRadius:8 }}>{c.produto}</span>
@@ -1694,9 +1720,13 @@ export default function Contratos() {
                               <td style={{ padding:"9px 12px", fontSize:11, maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comprador}</td>
                               <td style={{ padding:"9px 12px" }}><span style={{ fontSize:10, background:cp.bg, color:cp.color, padding:"2px 7px", borderRadius:8 }}>{r.produto}</span></td>
                               <td style={{ padding:"9px 12px", fontSize:11, fontFamily:"monospace" }}>{r.placa}</td>
-                              <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11 }}>{fmtPeso(r.peso_bruto_kg??0)}</td>
-                              <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11 }}>{fmtPeso(r.tara_kg??0)}</td>
-                              <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11, fontWeight:600 }}>{fmtPeso(r.peso_liquido_kg??0)}</td>
+                              <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11 }}>
+                                {r.is_peso_estimado
+                                  ? <span style={{ fontSize:9, background:"#F97316", color:"#fff", padding:"1px 5px", borderRadius:4, fontWeight:700 }}>EST.</span>
+                                  : fmtPeso(r.peso_bruto_kg??0)}
+                              </td>
+                              <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11 }}>{r.is_peso_estimado ? "—" : fmtPeso(r.tara_kg??0)}</td>
+                              <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11, fontWeight:600, color: r.is_peso_estimado ? "#C9921B" : "inherit" }}>{fmtPeso(r.peso_liquido_kg??0)}</td>
                               <td style={{ padding:"9px 12px", textAlign:"center", fontWeight:600, color:"#1A4870" }}>{(r.sacas??0).toLocaleString("pt-BR")}</td>
                               <td style={{ padding:"9px 12px", textAlign:"center" }}>
                                 {r.nfe_numero
@@ -2024,12 +2054,27 @@ export default function Contratos() {
                       )}
                     </div>
                     <div>
-                      <label style={lbl}>Cliente / Comprador</label>
+                      <label style={{ ...lbl, display:"flex", alignItems:"center", gap:8 }}>
+                        {fC.is_triangulacao ? "Comprador Fiscal (Cooperativa / Intermediário)" : "Cliente / Comprador"}
+                        <span style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:4, fontWeight:400, fontSize:10, color:"#C9921B", cursor:"pointer" }}
+                          onClick={() => setFC(p => ({ ...p, is_triangulacao: !p.is_triangulacao, comprador_final_id:"" }))}>
+                          <input type="checkbox" checked={fC.is_triangulacao} readOnly style={{ cursor:"pointer" }} /> Triangulação
+                        </span>
+                      </label>
                       <select style={inp} value={fC.pessoa_id} onChange={e => setFC(p=>({...p,pessoa_id:e.target.value}))}>
                         <option value="">— selecione —</option>
                         {pessoas.filter(p => p.cliente).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                       </select>
                     </div>
+                    {fC.is_triangulacao && (
+                      <div>
+                        <label style={lbl}>Comprador Final (Trading / Destino do Grão)</label>
+                        <select style={{ ...inp, borderColor:"#C9921B" }} value={fC.comprador_final_id} onChange={e => setFC(p=>({...p,comprador_final_id:e.target.value}))}>
+                          <option value="">— selecione —</option>
+                          {pessoas.filter(p => p.cliente).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>
+                      </div>
+                    )}
                     <div>
                       <label style={lbl}>Nr. Contrato Cliente</label>
                       <input style={inp} value={fC.nr_contrato_cliente} onChange={e => setFC(p=>({...p,nr_contrato_cliente:e.target.value}))} />
@@ -2456,23 +2501,48 @@ export default function Contratos() {
             )}
 
             {/* Pesagem */}
-            <BalancaSerial
-              onCapturarBruto={kg => setFRom(p => ({ ...p, pesoBruto: String(Math.round(kg)) }))}
-              onCapturarTara={kg  => setFRom(p => ({ ...p, tara:      String(Math.round(kg)) }))}
-            />
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
+            {/* Toggle: Balança própria vs CIF peso estimado */}
+            <div style={{ display:"flex", gap:8, marginBottom:10, background:"#F4F6FA", borderRadius:8, padding:"6px 10px", border:"0.5px solid var(--border-table)", alignItems:"center" }}>
+              <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:12 }}>
+                <input type="checkbox" checked={fRom.pesoEstimado}
+                  onChange={e => setFRom(p => ({ ...p, pesoEstimado: e.target.checked, pesoBruto:"", tara:"", pesoEstimadoKg:"" }))} />
+                <strong>Peso Estimado (CIF)</strong>
+              </label>
+              <span style={{ fontSize:11, color:"var(--text-3)" }}>
+                {fRom.pesoEstimado
+                  ? "Caminhão do comprador — produtor declara o peso estimado; NF emitida com reserva de ajuste"
+                  : "Balança própria: informe Peso Bruto e Tara para calcular o Peso Líquido"}
+              </span>
+            </div>
+            {!fRom.pesoEstimado && (
+              <BalancaSerial
+                onCapturarBruto={kg => setFRom(p => ({ ...p, pesoBruto: String(Math.round(kg)) }))}
+                onCapturarTara={kg  => setFRom(p => ({ ...p, tara:      String(Math.round(kg)) }))}
+              />
+            )}
+            <div style={{ display:"grid", gridTemplateColumns: fRom.pesoEstimado ? "1fr 1fr" : "1fr 1fr 1fr", gap:12, marginBottom:14 }}>
               <div>
                 <label style={lbl}>Placa do caminhão *</label>
                 <input style={{ ...inp, textTransform:"uppercase" }} placeholder="ABC-1D23" value={fRom.placa} onChange={e => setFRom(p=>({...p,placa:e.target.value}))} />
               </div>
-              <div>
-                <label style={lbl}>Peso bruto (kg) *</label>
-                <InputNumerico style={inp} decimais={0} placeholder="43800" value={fRom.pesoBruto} onChange={v => setFRom(p=>({...p,pesoBruto:v}))} />
-              </div>
-              <div>
-                <label style={lbl}>Tara — caminhão vazio (kg) *</label>
-                <InputNumerico style={inp} decimais={0} placeholder="17200" value={fRom.tara} onChange={v => setFRom(p=>({...p,tara:v}))} />
-              </div>
+              {fRom.pesoEstimado ? (
+                <div>
+                  <label style={lbl}>Peso Estimado (kg) *</label>
+                  <InputNumerico style={{ ...inp, borderColor:"#C9921B" }} decimais={0} placeholder="26500" value={fRom.pesoEstimadoKg} onChange={v => setFRom(p=>({...p,pesoEstimadoKg:v}))} />
+                  <div style={{ fontSize:10, marginTop:2, color:"#C9921B" }}>≈ {plCalc > 0 ? (plCalc/60).toFixed(0) : "—"} sc estimadas</div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label style={lbl}>Peso bruto (kg) *</label>
+                    <InputNumerico style={inp} decimais={0} placeholder="43800" value={fRom.pesoBruto} onChange={v => setFRom(p=>({...p,pesoBruto:v}))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Tara — caminhão vazio (kg) *</label>
+                    <InputNumerico style={inp} decimais={0} placeholder="17200" value={fRom.tara} onChange={v => setFRom(p=>({...p,tara:v}))} />
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Classificação */}
@@ -2615,10 +2685,17 @@ export default function Contratos() {
                 </div>
 
                 {/* ── Peso Recebido / Faturado pelo Comprador ── */}
-                <div style={{ background:"#FBF3E0", border:"0.5px solid #F6C87A", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
-                  <div style={{ fontSize:11, fontWeight:600, color:"#7A5A12", marginBottom:8 }}>
+                <div style={{ background: fRom.pesoEstimado ? "#FFF7ED" : "#FBF3E0", border:`0.5px solid ${fRom.pesoEstimado ? "#F97316" : "#F6C87A"}`, borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:"#7A5A12", marginBottom:8, display:"flex", alignItems:"center", gap:8 }}>
+                    {fRom.pesoEstimado
+                      ? <span style={{ background:"#F97316", color:"#fff", padding:"1px 7px", borderRadius:5, fontSize:10 }}>PESO ESTIMADO</span>
+                      : null}
                     Peso Recebido pelo Comprador
-                    <span style={{ fontSize:10, fontWeight:400, marginLeft:8, color:"var(--text-3)" }}>Preencher após receber o ticket de pesagem do destino</span>
+                    <span style={{ fontSize:10, fontWeight:400, color:"var(--text-3)" }}>
+                      {fRom.pesoEstimado
+                        ? "— NF será emitida com peso estimado. Preencha o peso real do comprador para verificar se é necessária NF Complementar."
+                        : "Preencher após receber o ticket de pesagem do destino"}
+                    </span>
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
                     <div>
@@ -2643,6 +2720,16 @@ export default function Contratos() {
                         value={fRom.obs_divergencia} onChange={e => setFRom(p=>({...p,obs_divergencia:e.target.value}))} />
                     </div>
                   </div>
+                  {/* Alerta NF Complementar para peso estimado com diferença > 0.5% */}
+                  {fRom.pesoEstimado && pesoDest > 0 && Math.abs(difKg) / plCalc > 0.005 && (
+                    <div style={{ marginTop:10, background:"#FEF2F2", border:"0.5px solid #FCA5A5", borderRadius:7, padding:"8px 12px", fontSize:11, color:"#991B1B", display:"flex", alignItems:"center", gap:8 }}>
+                      <span>⚠️</span>
+                      <div>
+                        <strong>NF Complementar necessária</strong> — diferença de {fmtPeso(Math.abs(difKg))} ({(Math.abs(difKg)/plCalc*100).toFixed(2)}%) entre o peso estimado e o peso real do comprador.
+                        Após salvar, emita uma NF Complementar em <strong>Fiscal → Emitir Complementar</strong> para ajustar a quantidade.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -2691,7 +2778,7 @@ export default function Contratos() {
             <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:8 }}>
               <button style={btnR} onClick={() => { setModalRomaneio(false); setFRom(ROM_VAZIO()); }}>Cancelar</button>
               <button onClick={gerarRomaneio} disabled={salvando||!contratoSel||!fRom.placa||plCalc<=0}
-                style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1 }}>
+                style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1, background: fRom.pesoEstimado ? "#C9921B" : undefined }}>
                 {salvando ? "Salvando…" : "Confirmar Pesagem"}
               </button>
             </div>

@@ -327,6 +327,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [qrDataUrl,        setQrDataUrl]        = useState("");
   const lastPendenciasMs   = useRef<number>(0);
   const lastTransfMs       = useRef<number>(0);
+  const prevQtdTransfRef   = useRef<number>(0);
 
   const pathname = usePathname();
   const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
@@ -374,6 +375,30 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       supabase.from("solicitacoes_transferencia_maquinas").select("id", { count: "exact", head: true }).eq("fazenda_destino_id", fazendaId).eq("status", "pendente"),
     ]).then(([r1, r2]) => setQtdTransferencias((r1.count ?? 0) + (r2.count ?? 0)));
   }, [fazendaId, pathname]);
+
+  // Toca som de notificação quando qtdTransferencias aumenta (nova solicitação do app)
+  useEffect(() => {
+    if (qtdTransferencias > prevQtdTransfRef.current) {
+      try {
+        const ctx = new (window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+        osc.onended = () => ctx.close();
+      } catch {
+        // AudioContext não disponível (SSR ou navegador restrito)
+      }
+    }
+    prevQtdTransfRef.current = qtdTransferencias;
+  }, [qtdTransferencias]);
 
   useEffect(() => {
     // Logo do sistema: lida do Supabase Storage (bucket "logos", arquivo "arato.png")
