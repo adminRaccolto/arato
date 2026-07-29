@@ -215,8 +215,16 @@ export async function emitirNFe(
   // 3. Próximo número (reservado de forma atômica)
   const numero = await proximoNumero(fazendaId, moduloKey, confg);
 
+  const cpfCnpjEmit = (confg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
+  const isCPFEmit   = cpfCnpjEmit.length === 11;
+
+  // NF-e MOC: CPF → série obrigatoriamente 890–999; CNPJ → série 001–889.
+  // Se o emitente for PF e a série configurada for < 890, usa 890 automaticamente.
+  const serieConfg = parseInt(confg.serie_nfe ?? "1", 10);
+  const serie      = isCPFEmit && serieConfg < 890 ? "890" : String(serieConfg).padStart(3, "0");
+
   const emitente: EmitenteCfg = {
-    cpf_cnpj:       confg.cpf_cnpj_emitente ?? "",
+    cpf_cnpj:       cpfCnpjEmit,
     razao_social:   confg.razao_social ?? "",
     ie:             emitIeOverride ?? confg.ie_emitente ?? "",
     im:             confg.im_emitente,
@@ -230,7 +238,7 @@ export async function emitirNFe(
     cep:            confg.cep ?? "00000000",
     fone:           confg.fone,
     ambiente:       (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
-    serie:          confg.serie_nfe ?? "001",
+    serie,
     numero_nfe:     numero,
   };
 
