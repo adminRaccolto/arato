@@ -459,6 +459,12 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     <transp>
       <modFrete>${frete}</modFrete>
     </transp>
+    <pag>
+      <detPag>
+        <tPag>90</tPag>
+        <vPag>0.00</vPag>
+      </detPag>
+    </pag>
     <infAdic>
       ${infCpl ? `<infCpl>${escXml(infCpl.substring(0, 5000))}</infCpl>` : ""}
     </infAdic>
