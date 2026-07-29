@@ -279,7 +279,8 @@ export async function emitirNFe(
     const ideSection  = xmlAssinado.match(/<ide>[\s\S]*?<\/ide>/)?.[0]   ?? "ide não encontrado";
     const emitSection = xmlAssinado.match(/<emit>[\s\S]*?<\/emit>/)?.[0] ?? "emit não encontrado";
     console.log("[NF-e debug] <ide>:", ideSection.slice(0, 600));
-    console.log("[NF-e debug] <emit>:", emitSection.slice(0, 300));
+    console.log("[NF-e debug] <emit>:", emitSection.slice(0, 800));
+    console.log("[NF-e debug] XML assinado (primeiros 3000 chars):", xmlAssinado.slice(0, 3000));
   }
 
   // 6. Transmitir

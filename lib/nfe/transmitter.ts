@@ -326,9 +326,12 @@ export async function transmitirNFe(
 
   const soapBody = envelopeAutorizacao(nfeXmlAssinado, cuf, tpAmb as "1" | "2");
 
+  console.log("[NF-e SOAP] corpo enviado (primeiros 5000 chars):", soapBody.slice(0, 5000));
+
   // soapPost agora rejeita (throw) em HTTP não-2xx ou resposta vazia —
   // o chamador em index.ts captura e converte em cStat 504.
   const resp = await soapPost(ep.autorizacao, soapBody, pem);
+  console.log("[NF-e SOAP] resposta SEFAZ (primeiros 3000 chars):", resp.slice(0, 3000));
   const result = parseResposta(resp);
 
   // Resposta assíncrona (cStat 103 = lote recebido) — consulta retAutorizacao
