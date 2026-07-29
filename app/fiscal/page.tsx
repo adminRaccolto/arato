@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoas } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoasDaConta } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor, ProdutorIE, Pessoa } from "../../lib/supabase";
@@ -683,6 +683,8 @@ function FiscalInner() {
   const [modalCert,     setModalCert]     = useState(false);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
+  const [buscaPessoa,   setBuscaPessoa]   = useState("");
+  const [dropdownPessoa,setDropdownPessoa]= useState(false);
   const [certProdId,    setCertProdId]    = useState("");
   const [certFile,      setCertFile]      = useState<File | null>(null);
   const [certSenha,     setCertSenha]     = useState("");
@@ -734,7 +736,7 @@ function FiscalInner() {
     if (!fazendaId) return;
     carregar();
     listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
-    listarPessoas(fazendaId).then(d => setPessoas(d)).catch(() => {});
+    listarPessoasDaConta(fazendaId).then(d => setPessoas(d)).catch(() => {});
     // Carrega anos_safra para o select do modal de emissão
     supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
       .then(({ data }) => { setAnosSafra(data ?? []); });
@@ -852,6 +854,7 @@ function FiscalInner() {
         valor_financeiro: i.valor_total,
       })));
     }
+    setBuscaPessoa(""); setDropdownPessoa(false);
     setTabNFe("produtor");
     setModalVenda(true);
   }
@@ -860,6 +863,12 @@ function FiscalInner() {
   const emitirVenda = async () => {
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
+    // Bloquear se razão social não configurada — SEFAZ rejeita com xNome inválido
+    const razaoSocial = danfeCfg.razao_social ?? "";
+    if (!razaoSocial || razaoSocial === "EMITENTE NÃO CONFIGURADO") {
+      alert("⚠ Razão Social do emitente não configurada.\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha o Nome/Razão Social antes de transmitir.");
+      return;
+    }
 
     // Itens: usa grid se preenchido, caso contrário usa o item rápido dos campos legados
     let itensPayload = nfeItens.map(i => ({
@@ -1105,7 +1114,7 @@ function FiscalInner() {
   ];
 
   const botaoNovo: Record<Aba, { label: string; onClick: () => void } | null> = {
-    venda:        { label: "◈ Nova NF-e de Venda",     onClick: () => setModalVenda(true) },
+    venda:        { label: "◈ Nova NF-e de Venda",     onClick: () => { setBuscaPessoa(""); setDropdownPessoa(false); setModalVenda(true); } },
     devolucao:    { label: "◈ Nova NF-e de Devolução", onClick: () => setModalDevolucao(true) },
     cancelamento: null,
     complemento:  null,
@@ -1893,33 +1902,64 @@ function FiscalInner() {
                 {/* ── ABA: DESTINATÁRIO ── */}
                 {tabNFe === "destinatario" && (
                   <div>
-                    {/* Buscar do cadastro de pessoas */}
-                    <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8 }}>
-                      <select
-                        style={{ ...inSt, flex:1, color: "#555" }}
-                        value=""
-                        onChange={e => {
-                          const p = pessoas.find(x => x.id === e.target.value);
-                          if (!p) return;
-                          fv({
-                            destinatario:    p.nome,
-                            cnpj:            p.cpf_cnpj       ?? "",
-                            dest_ie:         p.inscricao_est  ?? "",
-                            dest_tipo_pessoa: p.tipo === "pf" ? "fisica" : "juridica",
-                            dest_endereco:   p.logradouro     ?? "",
-                            dest_numero:     p.numero         ?? "",
-                            dest_bairro:     p.bairro         ?? "",
-                            dest_cidade:     p.municipio      ?? "",
-                            dest_uf:         p.estado         ?? "",
-                            dest_cep:        p.cep            ?? "",
-                          });
-                        }}
-                      >
-                        <option value="">Buscar no Cadastro de Pessoas...</option>
-                        {pessoas.map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
-                        ))}
-                      </select>
+                    {/* Buscar do cadastro de pessoas — combobox com filtro em tempo real */}
+                    <div style={{ position:"relative", marginBottom:8 }}>
+                      <input
+                        type="text"
+                        style={{ ...inSt, width:"100%", boxSizing:"border-box" }}
+                        placeholder={pessoas.length === 0 ? "Carregando cadastro de pessoas..." : `Buscar no Cadastro de Pessoas... (${pessoas.length} cadastrados)`}
+                        value={buscaPessoa}
+                        onChange={e => { setBuscaPessoa(e.target.value); setDropdownPessoa(true); }}
+                        onFocus={() => setDropdownPessoa(true)}
+                        onBlur={() => setTimeout(() => setDropdownPessoa(false), 160)}
+                        autoComplete="off"
+                      />
+                      {dropdownPessoa && (() => {
+                        const q = buscaPessoa.toLowerCase().trim();
+                        const filtrados = q
+                          ? pessoas.filter(p =>
+                              p.nome.toLowerCase().includes(q) ||
+                              (p.cpf_cnpj ?? "").replace(/\D/g,"").includes(q.replace(/\D/g,""))
+                            )
+                          : pessoas;
+                        return (
+                          <div style={{ position:"absolute", left:0, right:0, top:"calc(100% + 2px)", zIndex:9999, background:"#fff", border:"0.5px solid #DDE2EE", borderRadius:8, maxHeight:220, overflowY:"auto", boxShadow:"0 6px 20px rgba(0,0,0,0.14)" }}>
+                            {filtrados.length === 0 ? (
+                              <div style={{ padding:"12px 14px", fontSize:12, color:"#888" }}>
+                                {pessoas.length === 0
+                                  ? "Nenhuma pessoa cadastrada. Vá em Cadastros → Pessoas."
+                                  : `Nenhum resultado para "${buscaPessoa}"`
+                                }
+                              </div>
+                            ) : filtrados.slice(0, 30).map(p => (
+                              <div key={p.id}
+                                onMouseDown={() => {
+                                  fv({
+                                    destinatario:     p.nome,
+                                    cnpj:             (p.cpf_cnpj ?? "").replace(/\D/g,""),
+                                    dest_ie:          p.inscricao_est  ?? "",
+                                    dest_tipo_pessoa: p.tipo === "pf" ? "fisica" : "juridica",
+                                    dest_endereco:    p.logradouro     ?? "",
+                                    dest_numero:      p.numero      ?? "",
+                                    dest_bairro:      p.bairro      ?? "",
+                                    dest_cidade:      p.municipio      ?? "",
+                                    dest_uf:          p.estado         ?? "",
+                                    dest_cep:         (p.cep ?? "").replace(/\D/g,""),
+                                  });
+                                  setBuscaPessoa(p.nome + (p.cpf_cnpj ? " — " + p.cpf_cnpj : ""));
+                                  setDropdownPessoa(false);
+                                }}
+                                style={{ padding:"8px 14px", cursor:"pointer", borderBottom:"1px solid #f5f5f5" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background="#F0F5FF"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background="#fff"; }}
+                              >
+                                <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a" }}>{p.nome}</div>
+                                {p.cpf_cnpj && <div style={{ fontSize:11, color:"#666" }}>{p.cpf_cnpj}{p.municipio ? ` · ${p.municipio}/${p.estado}` : ""}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                     {row(
                       field("Remetente / Destinatário *",
