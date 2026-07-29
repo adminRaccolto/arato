@@ -258,6 +258,28 @@ export async function emitirNFe(
     return { sucesso: false, cStat: "503", xMotivo: `Erro na assinatura: ${e}`, xmlAssinado: built.xml };
   }
 
+  // Garante que Id="NFe..." (I maiúsculo) sobrevive ao re-serializador do xml-crypto.
+  // Alguns parsers DOM normalizam atributos para lowercase; o SEFAZ exige capital I.
+  // xml-crypto pode re-serializar atributos com case diferente; garante Id="NFe..." com I maiúsculo
+  xmlAssinado = xmlAssinado.replace(/\bid="(NFe\d{44})"/gi, 'Id="$1"');
+
+  // Debug: verifica se o Id da NF-e sobreviveu ao processo de assinatura intacto
+  {
+    const idNoAssinado = xmlAssinado.match(/Id="(NFe\d{44})"/)?.[1];
+    const idEsperado   = "NFe" + built.chave;
+    const ok = idNoAssinado === idEsperado;
+    console.log("[NF-e debug] serie usada:", emitente.serie);
+    console.log("[NF-e debug] chave do builder:", built.chave);
+    console.log("[NF-e debug] Id no XML assinado:", idNoAssinado ?? "NÃO ENCONTRADO");
+    console.log("[NF-e debug] match?", ok ? "SIM ✓" : "NÃO — MISMATCH ← CAUSA DO cStat 502");
+    if (!ok) {
+      console.error("[NF-e CRÍTICO] Id no XML assinado != chave do builder. O signing alterou o Id.");
+    }
+    // Log dos campos do <ide> — permite recalcular chave manualmente a partir dos logs
+    const ideSection = xmlAssinado.match(/<ide>[\s\S]*?<\/ide>/)?.[0] ?? "ide não encontrado";
+    console.log("[NF-e debug] <ide>:", ideSection.slice(0, 500));
+  }
+
   // 6. Transmitir
   let resposta;
   try {

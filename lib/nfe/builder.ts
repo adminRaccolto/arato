@@ -262,6 +262,8 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   const cDV = calcCDV(chave43);
   const chave = chave43 + cDV;
   const idNFe = `NFe${chave}`;
+  console.log("[buildNFe] cuf:", cuf, "AAMM:", AAMM, "serie:", serie, "nNF:", nNF, "cNF:", cNF, "cDV:", cDV);
+  console.log("[buildNFe] chave43 len:", chave43.length, "chave len:", chave.length);
 
   // ── Identificadores emitente e destinatário ───────────────────────────────
 
