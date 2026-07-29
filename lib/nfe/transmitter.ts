@@ -87,7 +87,12 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
       (res) => {
         let data = "";
         res.on("data", (c) => { data += c; });
-        res.on("end", () => resolve(data));
+        res.on("end", () => {
+          if (res.statusCode && res.statusCode >= 400) {
+            console.error(`[NF-e] SEFAZ HTTP ${res.statusCode} em ${url}: ${data.slice(0, 600)}`);
+          }
+          resolve(data);
+        });
       }
     );
     req.on("error", reject);
@@ -101,6 +106,9 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
 function envelopeAutorizacao(nfeXml: string, cuf: string, ambiente: "1" | "2"): string {
   // idLote: timestamp para unicidade
   const idLote = Date.now().toString().slice(-15);
+  // Remove a declaração XML (<?xml ...?>) antes de embutir dentro do envelope SOAP —
+  // um documento XML pode ter no máximo uma declaração, e o envelope já tem a sua.
+  const nfeBody = nfeXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -116,7 +124,7 @@ function envelopeAutorizacao(nfeXml: string, cuf: string, ambiente: "1" | "2"): 
       <enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
         <idLote>${idLote}</idLote>
         <indSinc>1</indSinc>
-        ${nfeXml}
+        ${nfeBody}
       </enviNFe>
     </nfeDadosMsg>
   </soap12:Body>
@@ -160,6 +168,16 @@ export interface RespostaSEFAZ {
 }
 
 function parseResposta(soapResp: string): RespostaSEFAZ {
+  // SOAP Fault: SEFAZ retorna quando recebe XML malformado ou requisição inválida.
+  // Tem <faultcode>/<faultstring> em vez de <cStat>/<xMotivo>.
+  const faultCode   = tagVal(soapResp, "faultcode");
+  const faultString = tagVal(soapResp, "faultstring");
+  if (faultCode || faultString) {
+    const motivo = faultString || faultCode || soapResp.slice(0, 300);
+    console.error(`[NF-e] SOAP Fault: ${faultCode} — ${faultString}`);
+    return { cStat: "999", xMotivo: `SOAP Fault ${faultCode}: ${motivo}` };
+  }
+
   // Extrai bloco retEnviNFe ou retConsReciNFe
   const cStat  = tagVal(soapResp, "cStat");
   const xMotivo = tagVal(soapResp, "xMotivo");
