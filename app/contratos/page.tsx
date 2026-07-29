@@ -30,88 +30,125 @@ const sbErr = (e: unknown) => {
 };
 
 // ── Tabela fiscal de naturezas de operação ────────────────────────────────────
-// Cada natureza carrega: descrição, CFOP intra (5xxx) e inter (6xxx), CST ICMS
-// e uma nota fiscal/legal para orientar o usuário.
-// O CFOP é auto-preenchido como inter-estadual (padrão MT → outros estados).
-// O usuário pode substituir manualmente para intra-estadual quando necessário.
+// Cada entrada tem um único cfop (intra ou inter já diferenciado como opção separada).
+// Grupos: "Vendas" | "Exportação" | "Remessas"
 const NATUREZAS_OPERACAO = [
+  // === Vendas — Mercado Interno ===
   {
-    codigo: "VPE-PF",
-    descricao: "Venda de Produção do Estabelecimento — Produtor Rural PF",
-    cfop_intra: "5110", cfop_inter: "6101", cst_icms: "090",
-    obs: "ICMS Diferido (Dec. MT 4.540/04). Operação padrão do produtor rural pessoa física. Funrural aplicável.",
+    codigo: "VPE-PF", grupo: "Vendas",
+    descricao: "Venda de Produção — Interestadual / Produtor Rural PF",
+    cfop: "6101", cst_icms: "090",
+    obs: "ICMS Diferido (Dec. MT 4.540/04). Venda para comprador fora do MT. Funrural aplicável.",
   },
   {
-    codigo: "VPE-PJ",
-    descricao: "Venda de Produção do Estabelecimento — Produtor Rural PJ",
-    cfop_intra: "5101", cfop_inter: "6101", cst_icms: "090",
-    obs: "ICMS Diferido. Produtor rural com CNPJ/PJ. Aplicável a Lucro Presumido ou Produtor Rural PJ.",
+    codigo: "VPE-PF-INTRA", grupo: "Vendas",
+    descricao: "Venda de Produção — Intraestadual / Produtor Rural PF",
+    cfop: "5101", cst_icms: "090",
+    obs: "ICMS Diferido. Venda para comprador dentro do MT (mesma UF). Funrural aplicável.",
   },
   {
-    codigo: "VMT",
-    descricao: "Venda de Mercadoria Adquirida ou Recebida de Terceiros",
-    cfop_intra: "5102", cfop_inter: "6102", cst_icms: "090",
-    obs: "Revenda de grão adquirido de outro produtor ou trading. ICMS Diferido.",
+    codigo: "VPE-PJ", grupo: "Vendas",
+    descricao: "Venda de Produção — Interestadual / Produtor Rural PJ",
+    cfop: "6101", cst_icms: "090",
+    obs: "ICMS Diferido. Produtor rural com CNPJ para compradores fora do MT.",
   },
   {
-    codigo: "RVO",
-    descricao: "Remessa para Venda à Ordem",
-    cfop_intra: "5119", cfop_inter: "6119", cst_icms: "090",
-    obs: "Operação triangular: produto sai do armazém diretamente ao comprador final. NF emitida pelo titular do estoque.",
+    codigo: "VPE-PJ-INTRA", grupo: "Vendas",
+    descricao: "Venda de Produção — Intraestadual / Produtor Rural PJ",
+    cfop: "5101", cst_icms: "090",
+    obs: "ICMS Diferido. Produtor rural com CNPJ para compradores dentro do MT.",
   },
   {
-    codigo: "REF",
-    descricao: "Remessa Simbólica — Entrega Futura",
-    cfop_intra: "5117", cfop_inter: "6117", cst_icms: "090",
-    obs: "Faturamento antecipado. NF simbólica sem movimentação física. Entrega real ocorre depois.",
+    codigo: "VMT", grupo: "Vendas",
+    descricao: "Venda de Mercadoria Adquirida ou Recebida de Terceiros — Interestadual",
+    cfop: "6102", cst_icms: "090",
+    obs: "Revenda de grão adquirido de terceiros para compradores fora do MT. ICMS Diferido.",
   },
   {
-    codigo: "RAG",
-    descricao: "Remessa para Armazém Geral (Depósito)",
-    cfop_intra: "5905", cfop_inter: "6905", cst_icms: "090",
-    obs: "Depósito em armazém de terceiros (cerealista). Não é venda. Não gera receita nem Funrural.",
+    codigo: "VMT-INTRA", grupo: "Vendas",
+    descricao: "Venda de Mercadoria Adquirida ou Recebida de Terceiros — Intraestadual",
+    cfop: "5102", cst_icms: "090",
+    obs: "Revenda de grão adquirido de terceiros para compradores dentro do MT. ICMS Diferido.",
   },
+  // === Exportação ===
   {
-    codigo: "TAG",
-    descricao: "Retorno de Armazém Geral",
-    cfop_intra: "5906", cfop_inter: "6906", cst_icms: "090",
-    obs: "Retorno de mercadoria depositada em armazém geral. Natureza espelho da remessa.",
-  },
-  {
-    codigo: "TRF",
-    descricao: "Transferência entre Estabelecimentos do Produtor",
-    cfop_intra: "5151", cfop_inter: "6151", cst_icms: "090",
-    obs: "Transferência entre fazendas/filiais do mesmo CNPJ ou grupo. Não é venda.",
-  },
-  {
-    codigo: "VFE-PF",
-    descricao: "Venda com Fim Específico de Exportação — Produtor Rural PF",
-    cfop_intra: "5501", cfop_inter: "6501", cst_icms: "090",
+    codigo: "VFE-PF", grupo: "Exportação",
+    descricao: "Venda com Fim Específico de Exportação — Interestadual / Produtor Rural PF",
+    cfop: "6501", cst_icms: "090",
     obs: "OPERAÇÃO MAIS COMUM EM MT: produtor vende para trading (Bunge, Cargill, ADM, Amaggi…) que exportará. ICMS suspenso/imune. PIS/COFINS imunes. Funrural incide normalmente. Não exige RE/DU-E do produtor.",
   },
   {
-    codigo: "VFE-PJ",
-    descricao: "Venda com Fim Específico de Exportação — Produtor Rural PJ",
-    cfop_intra: "5501", cfop_inter: "6501", cst_icms: "090",
-    obs: "Mesmo que VFE-PF, mas para produtor com CNPJ. ICMS suspenso. PIS/COFINS imunes. Funrural incide. Documento de exportação é responsabilidade da trading compradora.",
+    codigo: "VFE-PF-INTRA", grupo: "Exportação",
+    descricao: "Venda com Fim Específico de Exportação — Intraestadual / Produtor Rural PF",
+    cfop: "5501", cst_icms: "090",
+    obs: "VFE para trading exportadora dentro do MT. ICMS suspenso. PIS/COFINS imunes. Funrural incide.",
   },
   {
-    codigo: "VFE-TER",
+    codigo: "VFE-PJ", grupo: "Exportação",
+    descricao: "Venda com Fim Específico de Exportação — Interestadual / Produtor Rural PJ",
+    cfop: "6501", cst_icms: "090",
+    obs: "Mesmo que VFE-PF, mas para produtor com CNPJ. ICMS suspenso. PIS/COFINS imunes. Funrural incide.",
+  },
+  {
+    codigo: "VFE-TER", grupo: "Exportação",
     descricao: "Venda com Fim Específico de Exportação — Mercadoria de Terceiros",
-    cfop_intra: "5502", cfop_inter: "6502", cst_icms: "090",
+    cfop: "6502", cst_icms: "090",
     obs: "Venda de grão adquirido de terceiros (não produção própria) para trading exportadora. ICMS suspenso.",
   },
   {
-    codigo: "EXP",
+    codigo: "EXP", grupo: "Exportação",
     descricao: "Exportação Direta pelo Próprio Produtor",
-    cfop_intra: "7101", cfop_inter: "7101", cst_icms: "090",
-    obs: "Produtor exporta diretamente sem intermediário. Imune de ICMS, PIS, COFINS e Funrural (Art. 149-A CF). Exige Registro de Exportação (RE) e DU-E no SISCOMEX. Caso raro para produtor rural.",
+    cfop: "7101", cst_icms: "090",
+    obs: "Produtor exporta diretamente. Imune de ICMS, PIS, COFINS e Funrural (Art. 149-A CF). Exige RE e DU-E no SISCOMEX.",
   },
   {
-    codigo: "EXP-TER",
+    codigo: "EXP-TER", grupo: "Exportação",
     descricao: "Exportação Direta — Mercadoria de Terceiros",
-    cfop_intra: "7102", cfop_inter: "7102", cst_icms: "090",
-    obs: "Exportação direta de mercadoria adquirida de terceiros. Imune de ICMS, PIS, COFINS. Exige RE e DU-E.",
+    cfop: "7102", cst_icms: "090",
+    obs: "Exportação direta de mercadoria de terceiros. Imune de ICMS, PIS, COFINS. Exige RE e DU-E.",
+  },
+  // === Remessas ===
+  {
+    codigo: "REF", grupo: "Remessas",
+    descricao: "Remessa Simbólica — Entrega Futura",
+    cfop: "6117", cst_icms: "090",
+    obs: "Faturamento antecipado. NF simbólica sem movimentação física. Entrega real ocorre depois.",
+  },
+  {
+    codigo: "RVO", grupo: "Remessas",
+    descricao: "Remessa para Venda à Ordem",
+    cfop: "6119", cst_icms: "090",
+    obs: "Operação triangular: produto sai do armazém diretamente ao comprador final. NF emitida pelo titular do estoque.",
+  },
+  {
+    codigo: "RAG", grupo: "Remessas",
+    descricao: "Remessa para Armazém Geral — Interestadual",
+    cfop: "6905", cst_icms: "090",
+    obs: "Depósito em armazém fora do MT. Não é venda. Não gera receita nem Funrural.",
+  },
+  {
+    codigo: "RAG-INTRA", grupo: "Remessas",
+    descricao: "Remessa para Armazém Geral — Intraestadual",
+    cfop: "5905", cst_icms: "090",
+    obs: "Depósito em armazém dentro do MT. Não é venda. Não gera receita nem Funrural.",
+  },
+  {
+    codigo: "TAG", grupo: "Remessas",
+    descricao: "Retorno de Armazém Geral — Interestadual",
+    cfop: "6906", cst_icms: "090",
+    obs: "Retorno de mercadoria depositada em armazém geral fora do MT.",
+  },
+  {
+    codigo: "TAG-INTRA", grupo: "Remessas",
+    descricao: "Retorno de Armazém Geral — Intraestadual",
+    cfop: "5906", cst_icms: "090",
+    obs: "Retorno de mercadoria depositada em armazém geral dentro do MT.",
+  },
+  {
+    codigo: "TRF", grupo: "Remessas",
+    descricao: "Transferência entre Estabelecimentos do Produtor",
+    cfop: "6151", cst_icms: "090",
+    obs: "Transferência entre fazendas/filiais do mesmo CNPJ ou grupo. Não é venda.",
   },
 ] as const;
 
@@ -393,7 +430,7 @@ export default function Contratos() {
     if (naturezaSugerida === "__manual__") return; // contrato existente — não sobrescrever
     if (!fC.natureza_codigo || fC.natureza_codigo === naturezaSugerida) {
       const nat = NATUREZAS_OPERACAO.find(n => n.codigo === sugestao);
-      setFC(p => ({ ...p, natureza_codigo: sugestao, natureza_operacao: nat?.descricao ?? "", cfop: nat?.cfop_inter ?? p.cfop }));
+      setFC(p => ({ ...p, natureza_codigo: sugestao, natureza_operacao: nat?.descricao ?? "", cfop: nat?.cfop ?? p.cfop }));
     }
     setNaturezaSugerida(sugestao);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -513,7 +550,7 @@ export default function Contratos() {
         naturezaCod  = tipoPessoa === "pf" ? "VFE-PF" : "VFE-PJ";
         const natObj = NATUREZAS_OPERACAO.find(n => n.codigo === naturezaCod);
         naturezaDesc = natObj?.descricao ?? "";
-        cfopIA       = natObj?.cfop_inter ?? "6501";
+        cfopIA       = natObj?.cfop ?? "6501";
       }
 
       // Aplica tudo no formulário
@@ -2068,12 +2105,16 @@ export default function Contratos() {
                             ...p,
                             natureza_codigo:   e.target.value,
                             natureza_operacao: nat?.descricao ?? "",
-                            cfop:              nat?.cfop_inter ?? p.cfop,
+                            cfop:              nat?.cfop ?? p.cfop,
                           }));
                         }}>
                         <option value="">— selecione a natureza —</option>
-                        {NATUREZAS_OPERACAO.map(n => (
-                          <option key={n.codigo} value={n.codigo}>{n.descricao}</option>
+                        {(["Vendas", "Exportação", "Remessas"] as const).map(grupo => (
+                          <optgroup key={grupo} label={grupo}>
+                            {NATUREZAS_OPERACAO.filter(n => n.grupo === grupo).map(n => (
+                              <option key={n.codigo} value={n.codigo}>{n.descricao} (CFOP {n.cfop})</option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </div>
@@ -2108,8 +2149,7 @@ export default function Contratos() {
                       <div style={{ background:"#EBF4FB", border:"0.5px solid #93C5E8", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:11 }}>
                         <div style={{ fontWeight:600, color:"#0B2D50", marginBottom:4 }}>Informação Fiscal — {nat.descricao}</div>
                         <div style={{ display:"flex", gap:24, flexWrap:"wrap", color:"#1A4870" }}>
-                          <span>CFOP Inter-Estadual: <strong>{nat.cfop_inter}</strong></span>
-                          <span>CFOP Intra-Estadual: <strong>{nat.cfop_intra}</strong></span>
+                          <span>CFOP: <strong>{nat.cfop}</strong></span>
                           <span>CST ICMS: <strong>{nat.cst_icms}</strong></span>
                         </div>
                         <div style={{ color:"var(--text-2)", marginTop:4 }}>{nat.obs}</div>

@@ -2,10 +2,10 @@
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoas } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
-import type { NotaFiscal, Produtor, ProdutorIE } from "../../lib/supabase";
+import type { NotaFiscal, Produtor, ProdutorIE, Pessoa } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import ProdutorCombo from "../../components/ProdutorCombo";
 
@@ -81,7 +81,7 @@ const FVENDA_INICIAL = {
   tipo_nota: "propria" as "propria"|"terceiros", produtor_id: "", safra_id: "", ie_selecionada: "",
   // Destinatário
   destinatario: "", cnpj: "",
-  dest_endereco: "", dest_numero: "", dest_cidade: "", dest_uf: "",
+  dest_endereco: "", dest_numero: "", dest_bairro: "", dest_cidade: "", dest_uf: "", dest_cep: "",
   dest_tipo_pessoa: "juridica" as "fisica"|"juridica", dest_ie: "", dest_deposito: false,
   // Operações-CFOP
   cfop: "6.101", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
@@ -682,6 +682,7 @@ function FiscalInner() {
   // ── Modal upload certificado ─────────────────────────────────────
   const [modalCert,     setModalCert]     = useState(false);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
+  const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [certProdId,    setCertProdId]    = useState("");
   const [certFile,      setCertFile]      = useState<File | null>(null);
   const [certSenha,     setCertSenha]     = useState("");
@@ -733,6 +734,7 @@ function FiscalInner() {
     if (!fazendaId) return;
     carregar();
     listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
+    listarPessoas(fazendaId).then(d => setPessoas(d)).catch(() => {});
     // Carrega anos_safra para o select do modal de emissão
     supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
       .then(({ data }) => { setAnosSafra(data ?? []); });
@@ -828,8 +830,10 @@ function FiscalInner() {
       dest_ie:           (dj.dest_ie as string) ?? "",
       dest_endereco:     (dj.dest_endereco as string) ?? "",
       dest_numero:       (dj.dest_numero as string) ?? "",
+      dest_bairro:       (dj.dest_bairro as string) ?? "",
       dest_cidade:       (dj.dest_cidade as string) ?? "",
       dest_uf:           (dj.dest_uf as string) ?? "",
+      dest_cep:          (dj.dest_cep as string) ?? "",
     });
     // Pré-seleciona o mesmo emitente que foi usado originalmente (se disponível)
     if (moduloSalvo) setModuloKeyAtivo(moduloSalvo);
@@ -883,14 +887,16 @@ function FiscalInner() {
           fazenda_id:   fazendaId,
           modulo_key:   moduloKeyAtivo,
           destinatario: {
-            nome:        fVenda.destinatario,
-            cpf_cnpj:    fVenda.cnpj             || undefined,
-            ie:          fVenda.dest_ie          || undefined,
-            endereco:    fVenda.dest_endereco    || undefined,
-            numero:      fVenda.dest_numero      || undefined,
-            municipio:   fVenda.dest_cidade      || undefined,
-            uf:          fVenda.dest_uf          || undefined,
-            tipo_pessoa: fVenda.dest_tipo_pessoa,
+            nome:          fVenda.destinatario,
+            cpf_cnpj:      fVenda.cnpj            || undefined,
+            ie:            fVenda.dest_ie         || undefined,
+            logradouro:    fVenda.dest_endereco   || undefined,
+            numero:        fVenda.dest_numero     || undefined,
+            bairro:        fVenda.dest_bairro     || undefined,
+            municipio_nome:fVenda.dest_cidade     || undefined,
+            uf:            fVenda.dest_uf         || undefined,
+            cep:           fVenda.dest_cep        || undefined,
+            tipo_pessoa:   fVenda.dest_tipo_pessoa,
           },
           itens:    itensPayload,
           natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
@@ -934,8 +940,10 @@ function FiscalInner() {
           dest_ie:       fVenda.dest_ie       || undefined,
           dest_endereco: fVenda.dest_endereco || undefined,
           dest_numero:   fVenda.dest_numero   || undefined,
+          dest_bairro:   fVenda.dest_bairro   || undefined,
           dest_cidade:   fVenda.dest_cidade   || undefined,
           dest_uf:       fVenda.dest_uf       || undefined,
+          dest_cep:      fVenda.dest_cep      || undefined,
           ...(!resultado.sucesso && { sefaz_erro: `cStat ${resultado.cStat}: ${resultado.xMotivo}` }),
         },
         ...(modoContingencia && {
@@ -1885,6 +1893,34 @@ function FiscalInner() {
                 {/* ── ABA: DESTINATÁRIO ── */}
                 {tabNFe === "destinatario" && (
                   <div>
+                    {/* Buscar do cadastro de pessoas */}
+                    <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8 }}>
+                      <select
+                        style={{ ...inSt, flex:1, color: "#555" }}
+                        value=""
+                        onChange={e => {
+                          const p = pessoas.find(x => x.id === e.target.value);
+                          if (!p) return;
+                          fv({
+                            destinatario:    p.nome,
+                            cnpj:            p.cpf_cnpj       ?? "",
+                            dest_ie:         p.inscricao_est  ?? "",
+                            dest_tipo_pessoa: p.tipo === "pf" ? "fisica" : "juridica",
+                            dest_endereco:   p.logradouro     ?? "",
+                            dest_numero:     p.numero         ?? "",
+                            dest_bairro:     p.bairro         ?? "",
+                            dest_cidade:     p.municipio      ?? "",
+                            dest_uf:         p.estado         ?? "",
+                            dest_cep:        p.cep            ?? "",
+                          });
+                        }}
+                      >
+                        <option value="">Buscar no Cadastro de Pessoas...</option>
+                        {pessoas.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
+                        ))}
+                      </select>
+                    </div>
                     {row(
                       field("Remetente / Destinatário *",
                         <input style={inSt} placeholder="Bunge Alimentos S.A." value={fVenda.destinatario} onChange={e => fv({destinatario:e.target.value})} />),
@@ -1894,6 +1930,10 @@ function FiscalInner() {
                     {row(
                       field("Endereço", <input style={inSt} value={fVenda.dest_endereco} onChange={e => fv({dest_endereco:e.target.value})} />),
                       field("Número", <input style={inSt} value={fVenda.dest_numero} onChange={e => fv({dest_numero:e.target.value})} />, "0 0 80px"),
+                      field("Bairro", <input style={inSt} value={fVenda.dest_bairro} onChange={e => fv({dest_bairro:e.target.value})} />, "0 0 150px"),
+                    )}
+                    {row(
+                      field("CEP", <input style={inSt} placeholder="00000-000" value={fVenda.dest_cep} onChange={e => fv({dest_cep:e.target.value})} />, "0 0 110px"),
                       field("Cidade", <input style={inSt} value={fVenda.dest_cidade} onChange={e => fv({dest_cidade:e.target.value})} />),
                       field("UF", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.dest_uf} onChange={e => fv({dest_uf:e.target.value.toUpperCase().slice(0,2)})} />, "0 0 50px"),
                     )}
