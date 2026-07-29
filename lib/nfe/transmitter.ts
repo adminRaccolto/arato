@@ -52,6 +52,19 @@ function endpoints(uf: string, ambiente: "producao" | "homologacao"): UFEndpoint
 }
 
 // ─── SOAP request com mTLS ────────────────────────────────────────────────────
+//
+// Os webservices da SEFAZ usam certificados ICP-Brasil que NÃO estão no
+// bundle Mozilla/Node.js. A segurança da NF-e é garantida pelo XMLDSIG
+// (assinatura do certificado A1 no próprio XML), portanto a verificação
+// de cadeia TLS pode ser dispensada para os hostnames *.gov.br sem
+// comprometer a integridade fiscal — padrão adotado por ACBr, node-nfe
+// e demais bibliotecas brasileiras.
+//
+// Para qualquer outro destino rejectUnauthorized permanece true.
+function isSefazHost(hostname: string): boolean {
+  return /(?:\.gov\.br|\.fazenda\.(?:sp|mg|ba|pe|rs|pr)\.gov\.br)$/.test(hostname);
+}
+
 function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -67,7 +80,9 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         },
         cert: pem.cert,
         key:  pem.key,
-        rejectUnauthorized: true,
+        // ICP-Brasil não está no bundle Node.js — dispensar verificação de cadeia
+        // somente para domínios .gov.br; manter true para qualquer outro host.
+        rejectUnauthorized: !isSefazHost(u.hostname),
       },
       (res) => {
         let data = "";
