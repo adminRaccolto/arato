@@ -1023,13 +1023,24 @@ function FiscalInner() {
           } : undefined,
         }),
       });
-      const resultado = await res.json() as {
-        sucesso: boolean; chave?: string; numero?: string; protocolo?: string;
-        dhRecbto?: string; xmlUrl?: string; cStat: string; xMotivo: string;
+      const resBody = await res.json() as {
+        sucesso?: boolean; chave?: string; numero?: string; protocolo?: string;
+        dhRecbto?: string; xmlUrl?: string; cStat?: string; xMotivo?: string;
         emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
         emit_endereco?: string; emit_numero?: string; emit_bairro?: string;
         emit_municipio?: string; emit_uf?: string; emit_cep?: string; emit_fone?: string;
+        // campo de erro interno (status 500)
+        erro?: string;
       };
+
+      // API retornou erro interno (5xx) — sem cStat fiscal
+      if (!res.ok && !resBody.cStat) {
+        const errMsg = resBody.erro ?? `Erro HTTP ${res.status} na API de emissão`;
+        alert(`⚠ Falha na emissão\n\n${errMsg}`);
+        return;
+      }
+
+      const resultado = resBody;
 
       await criarNotaFiscal({
         fazenda_id:        fazendaId!,

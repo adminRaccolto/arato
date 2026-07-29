@@ -205,7 +205,12 @@ export async function emitirNFe(
   } catch (e) {
     return { sucesso: false, cStat: "502", xMotivo: String(e) };
   }
-  const pem = pfxParaPem(pfxBuffer, certSenha);
+  let pem: ReturnType<typeof pfxParaPem>;
+  try {
+    pem = pfxParaPem(pfxBuffer, certSenha);
+  } catch (e) {
+    return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}` };
+  }
 
   // 3. Próximo número (reservado de forma atômica)
   const numero = await proximoNumero(fazendaId, moduloKey, confg);
@@ -229,8 +234,13 @@ export async function emitirNFe(
     numero_nfe:     numero,
   };
 
-  // 4. Construir XML
-  const built = buildNFe({ ...input, emitente });
+  // 4. Construir XML — qualquer exceção aqui se tornava 500; agora vira cStat 505
+  let built: ReturnType<typeof buildNFe>;
+  try {
+    built = buildNFe({ ...input, emitente });
+  } catch (e) {
+    return { sucesso: false, cStat: "505", xMotivo: `Erro na construção do XML: ${e}` };
+  }
 
   // 5. Assinar
   let xmlAssinado: string;
