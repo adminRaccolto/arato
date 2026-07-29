@@ -1006,6 +1006,11 @@ function FiscalInner() {
       alert("⚠ CPF / CNPJ do emitente não configurado.\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha o CPF/CNPJ antes de transmitir.");
       return;
     }
+    // Produtor com múltiplas IEs: o usuário precisa selecionar qual usar nesta NF-e
+    if (iesProdutor.length > 1 && !fVenda.ie_selecionada) {
+      alert("⚠ Selecione a Inscrição Estadual do produtor na aba Produtor.\n\nO produtor possui mais de uma IE — escolha qual delas deve constar nesta NF-e.");
+      return;
+    }
 
     // Itens: usa grid se preenchido, caso contrário usa o item rápido dos campos legados
     let itensPayload = nfeItens.map(i => ({
@@ -1026,12 +1031,17 @@ function FiscalInner() {
 
     setSalvando(true);
     try {
+      // IE efetiva do emitente: dropdown de múltiplas IEs > IE única do cadastro > Parâmetros do Sistema
+      const prodSelEmit = produtores.find(p => p.id === fVenda.produtor_id);
+      const ieEfetiva   = fVenda.ie_selecionada || prodSelEmit?.inscricao_est || undefined;
+
       const res = await fetch("/api/fiscal/emitir-nfe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id:   fazendaId,
-          modulo_key:   moduloKeyAtivo,
+          fazenda_id:        fazendaId,
+          modulo_key:        moduloKeyAtivo,
+          emit_ie_override:  ieEfetiva || undefined,
           destinatario: {
             nome:          fVenda.destinatario,
             cpf_cnpj:      fVenda.cnpj            || undefined,
