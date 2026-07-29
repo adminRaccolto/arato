@@ -8720,3 +8720,47 @@ ALTER TABLE apoio_baixas
   ADD COLUMN IF NOT EXISTS conta_bancaria_id       uuid REFERENCES contas_bancarias(id);
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Seção 122 — RLS em suporte_conversas (isolamento por user_id) ─────────────
+-- Garante que cada usuário veja apenas suas próprias conversas de suporte.
+-- Raccotlo bypassa via role = 'raccotlo' (sem RLS) como nas demais tabelas.
+
+ALTER TABLE suporte_conversas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_own_conversas" ON suporte_conversas;
+CREATE POLICY "user_own_conversas" ON suporte_conversas
+  FOR ALL USING (
+    user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM perfis
+      WHERE perfis.user_id = auth.uid() AND perfis.role = 'raccotlo'
+    )
+  )
+  WITH CHECK (
+    user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM perfis
+      WHERE perfis.user_id = auth.uid() AND perfis.role = 'raccotlo'
+    )
+  );
+
+ALTER TABLE suporte_mensagens ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_own_mensagens" ON suporte_mensagens;
+CREATE POLICY "user_own_mensagens" ON suporte_mensagens
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM suporte_conversas sc
+      WHERE sc.id = suporte_mensagens.conversa_id
+        AND (
+          sc.user_id = auth.uid()
+          OR EXISTS (
+            SELECT 1 FROM perfis p
+            WHERE p.user_id = auth.uid() AND p.role = 'raccotlo'
+          )
+        )
+    )
+  );
+
+NOTIFY pgrst, 'reload schema';

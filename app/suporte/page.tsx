@@ -5,7 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import {
   listarConversasSuporte, criarConversaSuporte, excluirConversa,
-  listarMensagensSuporte, salvarMensagemSuporte,
+  listarMensagensSuporte, salvarMensagemSuporte, atualizarTituloConversa,
 } from "@/lib/db";
 import type { SuporteConversa, SuporteMensagem } from "@/lib/supabase";
 
@@ -37,7 +37,7 @@ export default function SuportePage() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("does not exist") || msg.includes("relation")) {
-        setErroGeral("As tabelas do Suporte IA ainda não foram criadas no banco de dados. Execute a Migration 47 no Supabase SQL Editor.");
+        setErroGeral("As tabelas do Suporte Chat ainda não foram criadas no banco de dados. Execute a Migration 47 no Supabase SQL Editor.");
       } else {
         setErroGeral("Erro ao carregar conversas: " + msg);
       }
@@ -73,7 +73,7 @@ export default function SuportePage() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("does not exist") || msg.includes("relation")) {
-        setErroGeral("As tabelas do Suporte IA ainda não foram criadas. Execute a Migration 47 no Supabase SQL Editor e tente novamente.");
+        setErroGeral("As tabelas do Suporte Chat ainda não foram criadas. Execute a Migration 47 no Supabase SQL Editor e tente novamente.");
       } else {
         setErroGeral("Erro ao criar conversa: " + msg);
       }
@@ -112,6 +112,8 @@ export default function SuportePage() {
       if (mensagens.length === 0) {
         const titulo = texto.length > 50 ? texto.slice(0, 47) + "..." : texto;
         setConversas(prev => prev.map(c => c.id === conversaAtiva.id ? { ...c, titulo } : c));
+        setConversaAtiva(prev => prev ? { ...prev, titulo } : prev);
+        atualizarTituloConversa(conversaAtiva.id, titulo).catch(() => {});
       }
 
       // Chama a API de IA
@@ -194,7 +196,7 @@ export default function SuportePage() {
             {/* Header */}
             <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870" }}>Suporte IA</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870" }}>Suporte Chat</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>Assistente Arato</div>
               </div>
               <button
@@ -276,8 +278,10 @@ export default function SuportePage() {
                 <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{
                     width: 32, height: 32, background: "#1A4870", borderRadius: "50%",
-                    display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, flexShrink: 0,
-                  }}>🤖</div>
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7" r="4" fill="white"/><path d="M4 21v-1a8 8 0 0 1 16 0v1" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/></svg>
+                </div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{conversaAtiva.titulo ?? "Nova conversa"}</div>
                     <div style={{ fontSize: 11, color: "#16A34A" }}>● Online</div>
@@ -290,7 +294,9 @@ export default function SuportePage() {
                     <div style={{ textAlign: "center", color: "#999", fontSize: 13, marginTop: 40 }}>Carregando...</div>
                   ) : mensagens.length === 0 ? (
                     <div style={{ textAlign: "center", marginTop: 40 }}>
-                      <div style={{ fontSize: 40, marginBottom: 12 }}>🤖</div>
+                      <div style={{ width: 72, height: 72, background: "#1A4870", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, marginLeft: "auto", marginRight: "auto" }}>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7" r="4" fill="white"/><path d="M4 21v-1a8 8 0 0 1 16 0v1" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/></svg>
+                      </div>
                       <div style={{ fontSize: 16, fontWeight: 600, color: "#1A4870", marginBottom: 6 }}>
                         Olá! Sou o assistente do Arato.
                       </div>
@@ -326,8 +332,10 @@ export default function SuportePage() {
                           <div style={{
                             width: 28, height: 28, background: "#1A4870", borderRadius: "50%",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            color: "#fff", fontSize: 14, flexShrink: 0, marginTop: 2,
-                          }}>🤖</div>
+                            flexShrink: 0, marginTop: 2,
+                          }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7" r="4" fill="white"/><path d="M4 21v-1a8 8 0 0 1 16 0v1" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/></svg>
+                          </div>
                         )}
                         <div style={{
                           maxWidth: "72%",
@@ -359,8 +367,10 @@ export default function SuportePage() {
                     <div style={{ display: "flex", gap: 10 }}>
                       <div style={{
                         width: 28, height: 28, background: "#1A4870", borderRadius: "50%",
-                        display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, flexShrink: 0,
-                      }}>🤖</div>
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7" r="4" fill="white"/><path d="M4 21v-1a8 8 0 0 1 16 0v1" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/></svg>
+                      </div>
                       <div style={{
                         background: "var(--bg-page)", border: "0.5px solid var(--border)",
                         borderRadius: "16px 16px 16px 4px", padding: "12px 16px",
@@ -419,8 +429,10 @@ export default function SuportePage() {
             ) : (
               /* Estado vazio — sem conversa selecionada */
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
-                <div style={{ fontSize: 56, marginBottom: 16 }}>🤖</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>Suporte IA</div>
+                <div style={{ width: 80, height: 80, background: "#1A4870", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7" r="4" fill="white"/><path d="M4 21v-1a8 8 0 0 1 16 0v1" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/></svg>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>Suporte Chat</div>
                 <div style={{ fontSize: 14, color: "#666", maxWidth: 380, lineHeight: 1.6, marginBottom: 24 }}>
                   Tire dúvidas sobre o Arato, regras fiscais do agronegócio e melhores práticas do campo.
                   Selecione uma conversa ou crie uma nova.
