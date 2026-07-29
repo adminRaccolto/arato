@@ -11,23 +11,23 @@ import ProdutorCombo from "../../components/ProdutorCombo";
 
 // ── Naturezas fiscais ────────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
-  { codigo: "6.101",    descricao: "Venda de Produção — Produtor Rural PF (ICMS Diferido)",          obs: "ICMS diferido nos termos do Decreto MT nº 4.540/2004. Operação isenta de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
-  { codigo: "6.101.PJ", descricao: "Venda de Produção — Produtor Rural PJ (ICMS Diferido)",          obs: "ICMS diferido nos termos do Decreto MT nº 4.540/2004. Operação isenta de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Contribuinte do Simples Nacional / Lucro Presumido." },
-  { codigo: "6.501",    descricao: "Venda com Fim Específico de Exportação — PF (CFOP 6.501)",        obs: "Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso VII do RICMS-MT. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991." },
-  { codigo: "6.501.PJ", descricao: "Venda com Fim Específico de Exportação — PJ (CFOP 6.501)",        obs: "Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso VII do RICMS-MT. PIS/COFINS imunes conforme art. 149-A da CF/88." },
-  { codigo: "5.101",    descricao: "Venda de Produção — Operação Interna (CFOP 5.101)",               obs: "ICMS diferido nos termos do Decreto MT nº 4.540/2004. Operação interna no Estado de Mato Grosso. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
-  { codigo: "5.501",    descricao: "Venda com Fim Específico de Exportação — Interna (CFOP 5.501)",   obs: "Venda com fim específico de exportação. Operação interna — ICMS suspenso conforme art. 7º, inciso VII do RICMS-MT. PIS/COFINS imunes conforme art. 149-A da CF/88." },
-  { codigo: "7.101",    descricao: "Exportação Direta pelo Produtor (CFOP 7.101)",                    obs: "Exportação direta. Operação imune de ICMS, PIS, COFINS e Funrural conforme art. 149-A da CF/88 e art. 14 da Lei 11.945/2009." },
-  { codigo: "6.905",    descricao: "Remessa para Armazém Geral / Depósito (CFOP 6.905)",              obs: "Remessa para depósito em armazém geral de terceiros. Operação não configura venda. Não incide ICMS, PIS, COFINS nem Funrural." },
-  { codigo: "6.117",    descricao: "Remessa Simbólica — Entrega Futura (CFOP 6.117)",                 obs: "Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido nos termos do Decreto MT nº 4.540/2004." },
-  { codigo: "6.119",    descricao: "Remessa para Venda à Ordem (CFOP 6.119)",                         obs: "Venda à ordem — operação triangular. ICMS diferido conforme Decreto MT nº 4.540/2004." },
+  { codigo: "6.101",    descricao: "Venda de Producao - Produtor Rural PF (ICMS Diferido)",           obs: "ICMS diferido nos termos do Decreto MT n. 4.540/2004. Operacao isenta de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
+  { codigo: "6.101.PJ", descricao: "Venda de Producao - Produtor Rural PJ (ICMS Diferido)",           obs: "ICMS diferido nos termos do Decreto MT n. 4.540/2004. Operacao isenta de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Contribuinte do Simples Nacional / Lucro Presumido." },
+  { codigo: "6.501",    descricao: "Venda com Fim Especifico de Exportacao - PF (CFOP 6.501)",         obs: "Venda com fim especifico de exportacao. ICMS suspenso conforme art. 7., inciso VII do RICMS-MT. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991." },
+  { codigo: "6.501.PJ", descricao: "Venda com Fim Especifico de Exportacao - PJ (CFOP 6.501)",         obs: "Venda com fim especifico de exportacao. ICMS suspenso conforme art. 7., inciso VII do RICMS-MT. PIS/COFINS imunes conforme art. 149-A da CF/88." },
+  { codigo: "5.101",    descricao: "Venda de Producao - Operacao Interna (CFOP 5.101)",                obs: "ICMS diferido nos termos do Decreto MT n. 4.540/2004. Operacao interna no Estado de Mato Grosso. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
+  { codigo: "5.501",    descricao: "Venda com Fim Especifico de Exportacao - Interna (CFOP 5.501)",    obs: "Venda com fim especifico de exportacao. Operacao interna - ICMS suspenso conforme art. 7., inciso VII do RICMS-MT. PIS/COFINS imunes conforme art. 149-A da CF/88." },
+  { codigo: "7.101",    descricao: "Exportacao Direta pelo Produtor (CFOP 7.101)",                     obs: "Exportacao direta. Operacao imune de ICMS, PIS, COFINS e Funrural conforme art. 149-A da CF/88 e art. 14 da Lei 11.945/2009." },
+  { codigo: "6.905",    descricao: "Remessa para Armazem Geral / Deposito (CFOP 6.905)",               obs: "Remessa para deposito em armazem geral de terceiros. Operacao nao configura venda. Nao incide ICMS, PIS, COFINS nem Funrural." },
+  { codigo: "6.117",    descricao: "Remessa Simbolica - Entrega Futura (CFOP 6.117)",                  obs: "Faturamento antecipado. NF simbolica sem movimentacao fisica de mercadoria. ICMS diferido nos termos do Decreto MT n. 4.540/2004." },
+  { codigo: "6.119",    descricao: "Remessa para Venda a Ordem (CFOP 6.119)",                          obs: "Venda a ordem - operacao triangular. ICMS diferido conforme Decreto MT n. 4.540/2004." },
 ];
 
 const NATUREZAS_DEVOLUCAO = [
-  { codigo: "2.201", descricao: "Devolução de venda de produção — interestadual (CFOP 2.201)",  obs: "Devolução de mercadoria originada em venda interestadual. ICMS diferido estornado conforme emissão original. Funrural não incide sobre devolução." },
-  { codigo: "1.201", descricao: "Devolução de venda de produção — intraestadual (CFOP 1.201)",  obs: "Devolução de mercadoria originada em venda intraestadual. ICMS diferido estornado conforme emissão original." },
-  { codigo: "2.202", descricao: "Devolução de venda de mercadoria adquirida — interestadual",   obs: "Devolução de mercadoria adquirida para comercialização. Operação interestadual." },
-  { codigo: "1.202", descricao: "Devolução de venda de mercadoria adquirida — intraestadual",   obs: "Devolução de mercadoria adquirida para comercialização. Operação intraestadual." },
+  { codigo: "2.201", descricao: "Devolucao de venda de producao - interestadual (CFOP 2.201)",  obs: "Devolucao de mercadoria originada em venda interestadual. ICMS diferido estornado conforme emissao original. Funrural nao incide sobre devolucao." },
+  { codigo: "1.201", descricao: "Devolucao de venda de producao - intraestadual (CFOP 1.201)",  obs: "Devolucao de mercadoria originada em venda intraestadual. ICMS diferido estornado conforme emissao original." },
+  { codigo: "2.202", descricao: "Devolucao de venda de mercadoria adquirida - interestadual",   obs: "Devolucao de mercadoria adquirida para comercializacao. Operacao interestadual." },
+  { codigo: "1.202", descricao: "Devolucao de venda de mercadoria adquirida - intraestadual",   obs: "Devolucao de mercadoria adquirida para comercializacao. Operacao intraestadual." },
 ];
 
 const NCM_OPTIONS = [

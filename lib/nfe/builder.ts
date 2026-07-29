@@ -92,6 +92,16 @@ function escXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+// Remove/substitui caracteres fora do range U+0020–U+00FF aceito pelo schema NF-e.
+// Em dashes/en dashes (U+2014, U+2013) viram " - "; demais chars Unicode altos são removidos.
+function sanitizeNFeTxt(s: string): string {
+  return s
+    .replace(/[–—]/g, " - ")           // en/em dash → " - "
+    .replace(/[^\x20-\xFF]/g, "")      // remove qualquer outro char fora do range Latin-1
+    .replace(/\s+/g, " ")              // colapsa espaços múltiplos gerados
+    .trim();
+}
+
 // Módulo 11 para cDV da chave de acesso
 function calcCDV(chave43: string): string {
   const pesos = [2, 3, 4, 5, 6, 7, 8, 9];
@@ -391,7 +401,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     <ide>
       <cUF>${cuf}</cUF>
       <cNF>${cNF}</cNF>
-      <natOp>${escXml(natureza.substring(0, 60))}</natOp>
+      <natOp>${escXml(sanitizeNFeTxt(natureza).substring(0, 60))}</natOp>
       <mod>55</mod>
       <serie>${parseInt(serie)}</serie>
       <nNF>${parseInt(nNF)}</nNF>
@@ -469,7 +479,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       </detPag>
     </pag>
     <infAdic>
-      ${infCpl ? `<infCpl>${escXml(infCpl.substring(0, 5000))}</infCpl>` : ""}
+      ${infCpl ? `<infCpl>${escXml(sanitizeNFeTxt(infCpl).substring(0, 5000))}</infCpl>` : ""}
     </infAdic>
   </infNFe>
 </NFe>`;
