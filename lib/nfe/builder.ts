@@ -92,6 +92,13 @@ function escXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+// Remove whitespace entre tags XML — aplicado ao XML completo antes de assinar.
+// SEFAZ rejeita (cStat 588) qualquer whitespace entre tags da mensagem.
+// IMPORTANTE: deve rodar ANTES da assinatura; pós-sign invalida o digest.
+function minifyXml(xml: string): string {
+  return xml.replace(/>\s+</g, "><").trim();
+}
+
 // Remove/substitui caracteres fora do range U+0020–U+00FF aceito pelo schema NF-e.
 // Em dashes/en dashes (U+2014, U+2013) viram " - "; demais chars Unicode altos são removidos.
 function sanitizeNFeTxt(s: string): string {
@@ -484,5 +491,5 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   </infNFe>
 </NFe>`;
 
-  return { xml, chave, cNF, numero: String(emit.numero_nfe) };
+  return { xml: minifyXml(xml), chave, cNF, numero: String(emit.numero_nfe) };
 }

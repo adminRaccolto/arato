@@ -176,27 +176,33 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
 
 function envelopeAutorizacao(nfeXml: string, cuf: string, tpAmb: "1" | "2"): string {
   const idLote = Date.now().toString().slice(-15);
-  const nfeBody = nfeXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
-  return `<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-  xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Header>
-    <nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">
-      <cUF>${cuf}</cUF>
-      <versaoDados>4.00</versaoDados>
-    </nfeCabecMsg>
-  </soap12:Header>
-  <soap12:Body>
-    <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">
-      <enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-        <idLote>${idLote}</idLote>
-        <indSinc>1</indSinc>
-        ${nfeBody}
-      </enviNFe>
-    </nfeDadosMsg>
-  </soap12:Body>
-</soap12:Envelope>`;
+  // Remove declaração XML — o SOAP envelope tem a sua própria
+  const nfeBody = nfeXml.replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
+  // SEFAZ rejeita (cStat 588) whitespace entre tags — envelope e conteúdo devem ser compactos.
+  // O NF-e body já chega minificado do builder (minifyXml rodou antes da assinatura).
+  return (
+    `<?xml version="1.0" encoding="utf-8"?>` +
+    `<soap12:Envelope` +
+      ` xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"` +
+      ` xmlns:xsd="http://www.w3.org/2001/XMLSchema"` +
+      ` xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">` +
+    `<soap12:Header>` +
+      `<nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">` +
+        `<cUF>${cuf}</cUF>` +
+        `<versaoDados>4.00</versaoDados>` +
+      `</nfeCabecMsg>` +
+    `</soap12:Header>` +
+    `<soap12:Body>` +
+      `<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">` +
+        `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">` +
+          `<idLote>${idLote}</idLote>` +
+          `<indSinc>1</indSinc>` +
+          nfeBody +
+        `</enviNFe>` +
+      `</nfeDadosMsg>` +
+    `</soap12:Body>` +
+    `</soap12:Envelope>`
+  );
 }
 
 function envelopeRetAutorizacao(recibo: string, cuf: string, tpAmb: "1" | "2"): string {
