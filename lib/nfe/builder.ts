@@ -226,6 +226,9 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   } = input;
 
   if (!itens.length) throw new Error("NF-e sem itens");
+  if (!emit.ie.trim()) throw new Error(
+    "IE do emitente não configurada. Acesse Configurações → Parâmetros do Sistema → Fiscal e preencha o campo 'Inscrição Estadual' do emitente selecionado."
+  );
 
   const tpAmb = emit.ambiente === "producao" ? "1" : "2";
   const cuf   = CUF[emit.uf] ?? "51";
@@ -411,7 +414,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       ${emitIdTag}
       <xNome>${escXml(emit.razao_social.substring(0, 60))}</xNome>
       ${enderEmit}
-      <IE>${emit.ie}</IE>
+      ${emit.ie.trim() ? `<IE>${escXml(emit.ie.trim())}</IE>` : ""}
       ${emit.im ? `<IM>${escXml(emit.im)}</IM>` : ""}
       <CRT>${emit.crt}</CRT>
     </emit>
