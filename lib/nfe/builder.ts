@@ -263,7 +263,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   const chave = chave43 + cDV;
   const idNFe = `NFe${chave}`;
   console.log("[buildNFe] cuf:", cuf, "AAMM:", AAMM, "serie:", serie, "nNF:", nNF, "cNF:", cNF, "cDV:", cDV);
-  console.log("[buildNFe] chave43 len:", chave43.length, "chave len:", chave.length);
+  console.log("[buildNFe] chave43 len:", chave43.length, "chave len:", chave.length, "idNFe:", idNFe);
 
   // ── Identificadores emitente e destinatário ───────────────────────────────
 
@@ -493,5 +493,32 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   </infNFe>
 </NFe>`;
 
-  return { xml: minifyXml(xml), chave, cNF, numero: String(emit.numero_nfe) };
+  const xmlMin = minifyXml(xml);
+
+  // Auto-validação: relê os campos do XML gerado e recalcula a chave para garantir consistência.
+  // Se falhar, há um bug no builder que impede autorizações mesmo antes do signing.
+  {
+    const xCuf    = xmlMin.match(/<cUF>(\d+)<\/cUF>/)?.[1] ?? "";
+    const xDhEmi  = xmlMin.match(/<dhEmi>([^<]+)<\/dhEmi>/)?.[1] ?? "";
+    const xAamm   = xDhEmi.slice(2, 4) + xDhEmi.slice(5, 7);
+    const xCpf    = xmlMin.match(/<CPF>(\d+)<\/CPF>/)?.[1];
+    const xCnpj   = xmlMin.match(/<CNPJ>(\d+)<\/CNPJ>/)?.[1];
+    const xCpf14  = xCpf ? xCpf.padStart(14, "0") : (xCnpj ?? "").padStart(14, "0");
+    const xMod    = xmlMin.match(/<mod>(\d+)<\/mod>/)?.[1] ?? "55";
+    const xSerie  = String(xmlMin.match(/<serie>(\d+)<\/serie>/)?.[1] ?? "1").padStart(3, "0");
+    const xNNF    = String(xmlMin.match(/<nNF>(\d+)<\/nNF>/)?.[1] ?? "1").padStart(9, "0");
+    const xTpEmis = xmlMin.match(/<tpEmis>(\d+)<\/tpEmis>/)?.[1] ?? "1";
+    const xCNF    = xmlMin.match(/<cNF>(\d+)<\/cNF>/)?.[1] ?? "";
+    const xChave43 = xCuf + xAamm + xCpf14 + xMod + xSerie + xNNF + xTpEmis + xCNF;
+    const xCDV    = calcCDV(xChave43);
+    const xChave  = xChave43 + xCDV;
+    const xId     = xmlMin.match(/Id="(NFe\d{44})"/)?.[1] ?? "";
+    const idOk    = xId === "NFe" + xChave;
+    console.log("[buildNFe] auto-val → chave dos campos XML:", xChave, "| Id no XML:", xId, "| ok?", idOk);
+    if (!idOk) {
+      console.error("[buildNFe] MISMATCH! serie no xml:", xSerie, "nNF:", xNNF, "cNF:", xCNF, "cuf:", xCuf, "aamm:", xAamm, "cpf14:", xCpf14);
+    }
+  }
+
+  return { xml: xmlMin, chave, cNF, numero: String(emit.numero_nfe) };
 }

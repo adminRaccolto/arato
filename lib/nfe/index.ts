@@ -275,9 +275,11 @@ export async function emitirNFe(
     if (!ok) {
       console.error("[NF-e CRÍTICO] Id no XML assinado != chave do builder. O signing alterou o Id.");
     }
-    // Log dos campos do <ide> — permite recalcular chave manualmente a partir dos logs
-    const ideSection = xmlAssinado.match(/<ide>[\s\S]*?<\/ide>/)?.[0] ?? "ide não encontrado";
-    console.log("[NF-e debug] <ide>:", ideSection.slice(0, 500));
+    // Log dos campos do <ide> e <emit> — permite recalcular chave manualmente
+    const ideSection  = xmlAssinado.match(/<ide>[\s\S]*?<\/ide>/)?.[0]   ?? "ide não encontrado";
+    const emitSection = xmlAssinado.match(/<emit>[\s\S]*?<\/emit>/)?.[0] ?? "emit não encontrado";
+    console.log("[NF-e debug] <ide>:", ideSection.slice(0, 600));
+    console.log("[NF-e debug] <emit>:", emitSection.slice(0, 300));
   }
 
   // 6. Transmitir
