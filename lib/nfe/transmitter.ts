@@ -195,7 +195,8 @@ function envelopeRetAutorizacao(recibo: string, cuf: string, ambiente: "1" | "2"
 // ─── Parser de resposta ───────────────────────────────────────────────────────
 
 function tagVal(xml: string, tag: string): string {
-  const m = xml.match(new RegExp(`<${tag}[^>]*>([^<]*)<\/${tag}>`));
+  // Aceita prefixo de namespace opcional (ex: <ns2:cStat>, <nfe:xMotivo>)
+  const m = xml.match(new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([^<]*)<\\/(?:[^:>]+:)?${tag}>`));
   return m ? m[1] : "";
 }
 
@@ -230,9 +231,14 @@ function parseResposta(soapResp: string): RespostaSEFAZ {
   const dhRecbto  = tagVal(soapResp, "dhRecbto");
   const chave     = tagVal(soapResp, "chNFe");
 
-  // Extrai o XML de autorização (nfeProc) se presente
-  const xmlProtMatch = soapResp.match(/<nfeProc[\s\S]*?<\/nfeProc>/);
+  // Extrai o XML de autorização (nfeProc) se presente — com ou sem prefixo de namespace
+  const xmlProtMatch = soapResp.match(/<(?:[^:>]+:)?nfeProc[\s\S]*?<\/(?:[^:>]+:)?nfeProc>/);
   const xmlProt = xmlProtMatch ? xmlProtMatch[0] : undefined;
+
+  if (!cStat) {
+    // Log para diagnóstico: mostra primeiros 800 chars da resposta SEFAZ
+    console.error(`[NF-e] cStat vazio — resposta SEFAZ (primeiros 800 chars): ${soapResp.slice(0, 800)}`);
+  }
 
   return { cStat, xMotivo, protocolo: protocolo || undefined, dhRecbto: dhRecbto || undefined, chave: chave || undefined, xmlProt, recibo: recibo || undefined };
 }
