@@ -766,6 +766,8 @@ function FiscalInner() {
   const [moduloKeyAtivo, setModuloKeyAtivo] = useState<string>("");
   type EmissorOpcao = { key: string; label: string };
   const [emissores, setEmissores] = useState<EmissorOpcao[]>([]);
+  // Todos os configs de emitentes indexados por moduloKey — evita usar cfgs[0] incorretamente
+  const [allEmitCfgs, setAllEmitCfgs] = useState<Record<string, Record<string, string>>>({});
 
   // ── Certificado A1 — carregado de configuracoes_modulo ──────────
   type CertInfo = { modulo: string; arquivo_nome: string; storage_path: string; produtor_id: string; produtor_nome: string; cpf_cnpj: string; data_vencimento: string | null };
@@ -861,6 +863,19 @@ function FiscalInner() {
       });
   }, [fazendaId]);
 
+  // Quando o usuário troca de emitente, atualiza danfeCfg com o config correto
+  useEffect(() => {
+    if (!moduloKeyAtivo || !allEmitCfgs[moduloKeyAtivo]) return;
+    const c = allEmitCfgs[moduloKeyAtivo];
+    setDanfeCfg({
+      razao_social: c.razao_social, cpf_cnpj_emitente: c.cpf_cnpj_emitente,
+      ie_emitente: c.ie_emitente, logradouro: c.logradouro,
+      numero_end: c.numero_end, bairro: c.bairro,
+      municipio: c.municipio, uf: c.uf, cep: c.cep, fone: c.fone,
+      ambiente: c.ambiente,
+    });
+  }, [moduloKeyAtivo, allEmitCfgs]);
+
   const carregar = async () => {
     if (!fazendaId) return;
     setCarregando(true); setErro(null);
@@ -872,14 +887,13 @@ function FiscalInner() {
         .select("modulo, config").eq("fazenda_id", fazendaId)
         .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal");
       if (cfgs && cfgs.length > 0) {
-        const c = cfgs[0].config as Record<string, string> ?? {};
-        setDanfeCfg({
-          razao_social: c.razao_social, cpf_cnpj_emitente: c.cpf_cnpj_emitente,
-          ie_emitente: c.ie_emitente, logradouro: c.logradouro,
-          numero_end: c.numero_end, bairro: c.bairro,
-          municipio: c.municipio, uf: c.uf, cep: c.cep, fone: c.fone,
-          ambiente: c.ambiente,
-        });
+        // Indexar todos os configs por moduloKey — corrige o bug de usar sempre cfgs[0]
+        const byKey: Record<string, Record<string, string>> = {};
+        for (const row of cfgs) {
+          byKey[row.modulo] = (row.config as Record<string, string>) ?? {};
+        }
+        setAllEmitCfgs(byKey);
+
         // Monta lista de emissores disponíveis (PF e PJ com CPF/CNPJ configurado)
         const lista: EmissorOpcao[] = cfgs
           .filter(cfg => (cfg.config as Record<string, string>)?.cpf_cnpj_emitente)
@@ -888,7 +902,21 @@ function FiscalInner() {
             return { key: cfg.modulo, label: `${cc.razao_social ?? cfg.modulo} (${cc.cpf_cnpj_emitente})` };
           });
         setEmissores(lista);
-        if (lista.length > 0 && !moduloKeyAtivo) setModuloKeyAtivo(lista[0].key);
+
+        // Seleciona o primeiro emitente com CPF/CNPJ como ativo (apenas se nenhum ainda selecionado)
+        const primeiroKey = lista[0]?.key;
+        const keyAtivo = moduloKeyAtivo || primeiroKey || "";
+        if (!moduloKeyAtivo && primeiroKey) setModuloKeyAtivo(primeiroKey);
+
+        // danfeCfg agora reflete o emitente ativo, não obrigatoriamente cfgs[0]
+        const c = byKey[keyAtivo] ?? byKey[primeiroKey ?? ""] ?? {};
+        setDanfeCfg({
+          razao_social: c.razao_social, cpf_cnpj_emitente: c.cpf_cnpj_emitente,
+          ie_emitente: c.ie_emitente, logradouro: c.logradouro,
+          numero_end: c.numero_end, bairro: c.bairro,
+          municipio: c.municipio, uf: c.uf, cep: c.cep, fone: c.fone,
+          ambiente: c.ambiente,
+        });
       }
     }
     catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar"); }
@@ -964,10 +992,26 @@ function FiscalInner() {
   const emitirVenda = async () => {
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
-    // Bloquear se razão social não configurada — SEFAZ rejeita com xNome inválido
-    const razaoSocial = danfeCfg.razao_social ?? "";
-    if (!razaoSocial || razaoSocial === "EMITENTE NÃO CONFIGURADO") {
-      alert("⚠ Razão Social do emitente não configurada.\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha o Nome/Razão Social antes de transmitir.");
+    // Validação completa do emitente ativo — usa sempre o config do moduloKeyAtivo, não de cfgs[0]
+    const emitCfgAtivo = allEmitCfgs[moduloKeyAtivo] ?? danfeCfg as Record<string, string>;
+    const razaoSocial  = emitCfgAtivo.razao_social ?? "";
+    const cpfCnpjEmit  = emitCfgAtivo.cpf_cnpj_emitente ?? "";
+    const crtEmit      = emitCfgAtivo.crt ?? "";
+    const municipioEmit = emitCfgAtivo.municipio_nome ?? emitCfgAtivo.municipio ?? "";
+    const ibgeEmit     = emitCfgAtivo.municipio_ibge ?? "";
+
+    const camposFaltando: string[] = [];
+    if (!razaoSocial || razaoSocial === "EMITENTE NÃO CONFIGURADO") camposFaltando.push("Razão Social / Nome");
+    if (!cpfCnpjEmit)  camposFaltando.push("CPF / CNPJ Emitente");
+    if (!crtEmit)       camposFaltando.push("CRT (Regime Tributário)");
+    if (!municipioEmit && !ibgeEmit) camposFaltando.push("Município e Código IBGE");
+
+    if (camposFaltando.length > 0) {
+      alert(
+        `⚠ Os seguintes campos obrigatórios do emitente não estão configurados:\n\n` +
+        camposFaltando.map(f => `  • ${f}`).join("\n") +
+        `\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha antes de transmitir.`
+      );
       return;
     }
 
