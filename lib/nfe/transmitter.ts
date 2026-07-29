@@ -15,9 +15,30 @@ interface UFEndpoints {
   statusServico: string;
 }
 
-// SVRS = RS / PR / SP (homologação) + demais UFs (MT, GO, MS, TO, RO, AC, RR, AP, AM, PA, MA, PI, CE, RN, PB, AL, SE)
-// UFs com autorizador próprio: SP, MG, RS, PE, BA, DF
+// ─── Mapeamento de autorizadores por UF (NF-e v4.00) ─────────────────────────
+//
+// Três autorizadores em produção:
+//   SVAN: AC, AM, MA, MT, PA, PI — www.nfe.fazenda.gov.br (Ambiente Nacional)
+//   SVRS: AL, AP, CE, DF, ES, GO, MS, PB, RN, RO, RR, SC, SE, TO — nfe.svrs.rs.gov.br
+//   Próprio: SP, MG, RS, PE, BA, PR (+ RS usa svrs.rs como próprio)
+//
+// Erro 114 "SVC-RS desabilitada pela SEFAZ de Origem" = UF não habilitou SVRS;
+// verificar se deve ir para SVAN ou para endpoint próprio da UF.
+
+const _svan: UFEndpoints = {
+  autorizacao:    "https://www.nfe.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx",
+  retAutorizacao: "https://www.nfe.fazenda.gov.br/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
+  statusServico:  "https://www.nfe.fazenda.gov.br/NFeStatusServico4/NFeStatusServico4.asmx",
+};
+
+const _svrs: UFEndpoints = {
+  autorizacao:    "https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
+  retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
+  statusServico:  "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
+};
+
 const ENDPOINTS_PROD: Record<string, UFEndpoints> = {
+  // ── Autorizadores próprios ─────────────────────────────────────────────────
   SP: {
     autorizacao:    "https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx",
     retAutorizacao: "https://nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx",
@@ -33,11 +54,32 @@ const ENDPOINTS_PROD: Record<string, UFEndpoints> = {
     retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
     statusServico:  "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
   },
-  _svrs: {
-    autorizacao:    "https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
-    retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
-    statusServico:  "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
+  PR: {
+    autorizacao:    "https://nfe.encat.org/nfe/services/NFeAutorizacao4",
+    retAutorizacao: "https://nfe.encat.org/nfe/services/NFeRetAutorizacao4",
+    statusServico:  "https://nfe.encat.org/nfe/services/NFeStatusServico4",
   },
+  BA: {
+    autorizacao:    "https://nfe.sefaz.ba.gov.br/webservices/NFeAutorizacao4/NFeAutorizacao4.asmx",
+    retAutorizacao: "https://nfe.sefaz.ba.gov.br/webservices/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
+    statusServico:  "https://nfe.sefaz.ba.gov.br/webservices/NFeStatusServico4/NFeStatusServico4.asmx",
+  },
+  PE: {
+    autorizacao:    "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeAutorizacao4",
+    retAutorizacao: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeRetAutorizacao4",
+    statusServico:  "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeStatusServico4",
+  },
+  AM: {
+    autorizacao:    "https://nfe.sefaz.am.gov.br/services2/services/NfeAutorizacao4",
+    retAutorizacao: "https://nfe.sefaz.am.gov.br/services2/services/NfeRetAutorizacao4",
+    statusServico:  "https://nfe.sefaz.am.gov.br/services2/services/NfeStatusServico4",
+  },
+  // ── SVAN — Ambiente Nacional ───────────────────────────────────────────────
+  // MT: cStat 114 em SVRS confirma que MT usa SVAN como autorizador primário
+  MT: _svan, AC: _svan, MA: _svan, PA: _svan, PI: _svan,
+  // ── SVRS — Sefaz Virtual RS ────────────────────────────────────────────────
+  // Demais UFs não listadas acima caem no fallback _svrs abaixo
+  _svrs,
 };
 
 const ENDPOINTS_HOM: UFEndpoints = {
