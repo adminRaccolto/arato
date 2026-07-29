@@ -992,26 +992,18 @@ function FiscalInner() {
   const emitirVenda = async () => {
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
-    // Validação completa do emitente ativo — usa sempre o config do moduloKeyAtivo, não de cfgs[0]
+    // Validação mínima no cliente — só bloqueia o que o servidor não consegue suprir com default
+    // (CRT default="3", municipio_ibge default="5106455", etc. são preenchidos no server)
     const emitCfgAtivo = allEmitCfgs[moduloKeyAtivo] ?? danfeCfg as Record<string, string>;
-    const razaoSocial  = emitCfgAtivo.razao_social ?? "";
-    const cpfCnpjEmit  = emitCfgAtivo.cpf_cnpj_emitente ?? "";
-    const crtEmit      = emitCfgAtivo.crt ?? "";
-    const municipioEmit = emitCfgAtivo.municipio_nome ?? emitCfgAtivo.municipio ?? "";
-    const ibgeEmit     = emitCfgAtivo.municipio_ibge ?? "";
+    const razaoSocial  = emitCfgAtivo.razao_social ?? danfeCfg.razao_social ?? "";
+    const cpfCnpjEmit  = emitCfgAtivo.cpf_cnpj_emitente ?? danfeCfg.cpf_cnpj_emitente ?? "";
 
-    const camposFaltando: string[] = [];
-    if (!razaoSocial || razaoSocial === "EMITENTE NÃO CONFIGURADO") camposFaltando.push("Razão Social / Nome");
-    if (!cpfCnpjEmit)  camposFaltando.push("CPF / CNPJ Emitente");
-    if (!crtEmit)       camposFaltando.push("CRT (Regime Tributário)");
-    if (!municipioEmit && !ibgeEmit) camposFaltando.push("Município e Código IBGE");
-
-    if (camposFaltando.length > 0) {
-      alert(
-        `⚠ Os seguintes campos obrigatórios do emitente não estão configurados:\n\n` +
-        camposFaltando.map(f => `  • ${f}`).join("\n") +
-        `\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha antes de transmitir.`
-      );
+    if (!razaoSocial || razaoSocial === "EMITENTE NÃO CONFIGURADO") {
+      alert("⚠ Razão Social do emitente não configurada.\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha o Nome/Razão Social antes de transmitir.");
+      return;
+    }
+    if (!cpfCnpjEmit) {
+      alert("⚠ CPF / CNPJ do emitente não configurado.\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha o CPF/CNPJ antes de transmitir.");
       return;
     }
 
