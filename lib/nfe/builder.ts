@@ -57,8 +57,7 @@ export interface NFeInput {
   infCpl?: string;
   frete?: "0" | "1" | "2" | "9"; // 0=emitente, 1=dest, 2=3rd, 9=sem
   nfe_ref?: string;       // chave da NF-e referenciada (devolução/complemento)
-  // Tipo da NF-e: 1=saída, 0=entrada
-  tipo?: "0" | "1";
+  tipo?: "0" | "1";       // 1=saída (padrão), 0=entrada
 }
 
 export interface NFeBuiltResult {
@@ -82,6 +81,17 @@ function fmtVal(n: number, casas = 2): string {
   return n.toFixed(casas);
 }
 
+// Escapa caracteres proibidos em conteúdo XML.
+// Todos os textos visíveis devem passar por aqui para evitar documento malformado.
+function escXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 // Módulo 11 para cDV da chave de acesso
 function calcCDV(chave43: string): string {
   const pesos = [2, 3, 4, 5, 6, 7, 8, 9];
@@ -93,9 +103,36 @@ function calcCDV(chave43: string): string {
   return String(resto === 0 || resto === 1 ? 0 : 11 - resto);
 }
 
-// Gera cNF: 8 dígitos aleatórios
 function gerarCNF(): string {
   return pad(Math.floor(Math.random() * 99999999), 8);
+}
+
+// Gera dhEmi no formato exigido pelo schema NF-e 4.00:
+// "AAAA-MM-DDTHH:MM:SS-HH:MM" (horário local + offset UTC)
+// MT, AM, MS, RO, RR = UTC-4 | AC = UTC-5 | demais = UTC-3
+// Sem DST desde 2019.
+const UF_OFFSET: Record<string, string> = {
+  AC: "-05:00",
+  AM: "-04:00",
+  MS: "-04:00",
+  MT: "-04:00",
+  RO: "-04:00",
+  RR: "-04:00",
+};
+
+function gerarDhEmi(uf: string): string {
+  const offset = UF_OFFSET[uf] ?? "-03:00";
+  const offsetH = parseInt(offset.slice(1, 3), 10) * (offset.startsWith("-") ? -1 : 1);
+  // Converte UTC atual para horário local da UF
+  const localMs = Date.now() + offsetH * 3600_000;
+  const local = new Date(localMs);
+  const YYYY = local.getUTCFullYear();
+  const MM   = pad(local.getUTCMonth() + 1, 2);
+  const DD   = pad(local.getUTCDate(), 2);
+  const HH   = pad(local.getUTCHours(), 2);
+  const mm   = pad(local.getUTCMinutes(), 2);
+  const ss   = pad(local.getUTCSeconds(), 2);
+  return `${YYYY}-${MM}-${DD}T${HH}:${mm}:${ss}${offset}`;
 }
 
 // cUF por UF
@@ -106,8 +143,7 @@ const CUF: Record<string, string> = {
   SE:"28", SP:"35", TO:"17",
 };
 
-// Determina operação de destino
-// 1=interna, 2=interestadual, 3=exterior
+// Indicador de destino da operação
 function idDest(cfop: string, ufEmit: string, ufDest?: string): "1" | "2" | "3" {
   const c = cfop.replace(/\D/g, "")[0];
   if (c === "7") return "3";
@@ -116,7 +152,20 @@ function idDest(cfop: string, ufEmit: string, ufDest?: string): "1" | "2" | "3" 
   return "1";
 }
 
-// Regras ICMS por CFOP para produtor rural em MT
+// ─── Regras ICMS por CFOP (produtor rural MT) ─────────────────────────────────
+//
+// ICMS51 — diferimento Decreto 4.540/2004 (operações internas MT):
+//   vBC    = vProd do item
+//   pICMS  = 12.00 (alíquota nominal)
+//   vICMSOp = vBC × pICMS/100  (ICMS que seria exigível sem diferimento)
+//   pDif   = 100.00 (diferimento total)
+//   vICMSDif = vICMSOp (valor diferido = vICMSOp × pDif/100)
+//   vICMS  = 0.00 (nada a pagar agora)
+//
+// A sequência de tags dentro de <ICMS51> deve obedecer o schema NF-e 4.00:
+//   orig, CST, modBC, vBC, pICMS, vICMSOp, pDif, vICMSDif, vICMS
+// Nota: vBCDif NÃO existe no schema 4.00; nem pRedBC dentro de ICMS51.
+
 interface ICMSRule {
   cst: string;
   xml: (vBC: number, vProd: number) => string;
@@ -126,50 +175,57 @@ function icmsRule(cfop: string): ICMSRule {
   const cod = cfop.replace(/\D/g, "");
   const prefix = cod.substring(0, 4);
 
-  // Exportação direta (7.xxx) — imune
   if (cod.startsWith("7")) {
-    return {
-      cst: "41",
-      xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>`,
-    };
+    // Exportação direta — imune
+    return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
   }
 
-  // Remessa armazém (5905/6905) — não incide
   if (prefix === "5905" || prefix === "6905") {
-    return {
-      cst: "41",
-      xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>`,
-    };
+    // Remessa p/ armazém — não incide
+    return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
   }
 
-  // Venda com FE exportação (5501/6501) — ICMS suspenso
   if (prefix === "5501" || prefix === "6501") {
-    return {
-      cst: "40",
-      xml: () => `<ICMS40><orig>0</orig><CST>40</CST></ICMS40>`,
-    };
+    // Venda com formação de estoque de exportação — suspenso
+    return { cst: "40", xml: () => `<ICMS40><orig>0</orig><CST>40</CST></ICMS40>` };
   }
 
-  // Operação interna (5.xxx) — ICMS diferido MT Decreto 4.540/2004
   if (cod.startsWith("5") || cod.startsWith("1")) {
+    // Operação interna MT — ICMS diferido 100% (Decreto 4.540/2004)
     return {
       cst: "51",
-      xml: (vBC) => `<ICMS51><orig>0</orig><CST>51</CST><modBC>3</modBC><vBC>${fmtVal(vBC)}</vBC><pRedBC>100.00</pRedBC><vBCDif>0.00</vBCDif><vICMSDif>0.00</vICMSDif><vICMS>0.00</vICMS><pICMS>0.00</pICMS></ICMS51>`,
+      xml: (vBC) => {
+        const vICMSOp = fmtVal(vBC * 12 / 100);
+        return `<ICMS51><orig>0</orig><CST>51</CST><modBC>3</modBC><vBC>${fmtVal(vBC)}</vBC><pICMS>12.00</pICMS><vICMSOp>${vICMSOp}</vICMSOp><pDif>100.00</pDif><vICMSDif>${vICMSOp}</vICMSDif><vICMS>0.00</vICMS></ICMS51>`;
+      },
     };
   }
 
-  // Interestadual (6.101, 6.117, 6.119, etc.) — ICMS normal 12% (padrão MT→CO)
-  const aliq = 12;
+  // Interestadual (6.xxx) — ICMS 12% (MT→CO/Sul/Sudeste)
   return {
     cst: "00",
-    xml: (vBC) => `<ICMS00><orig>0</orig><CST>00</CST><modBC>3</modBC><vBC>${fmtVal(vBC)}</vBC><pICMS>${fmtVal(aliq)}</pICMS><vICMS>${fmtVal(vBC * aliq / 100)}</vICMS></ICMS00>`,
+    xml: (vBC) => {
+      const vICMS = fmtVal(vBC * 12 / 100);
+      return `<ICMS00><orig>0</orig><CST>00</CST><modBC>3</modBC><vBC>${fmtVal(vBC)}</vBC><pICMS>12.00</pICMS><vICMS>${vICMS}</vICMS></ICMS00>`;
+    },
   };
 }
 
 // ─── Builder principal ────────────────────────────────────────────────────────
 
 export function buildNFe(input: NFeInput): NFeBuiltResult {
-  const { emitente: emit, destinatario: dest, itens, natureza, infCpl, frete = "9", nfe_ref, tipo = "1" } = input;
+  const {
+    emitente: emit,
+    destinatario: dest,
+    itens,
+    natureza,
+    infCpl,
+    frete = "9",
+    nfe_ref,
+    tipo = "1",
+  } = input;
+
+  if (!itens.length) throw new Error("NF-e sem itens");
 
   const tpAmb = emit.ambiente === "producao" ? "1" : "2";
   const cuf   = CUF[emit.uf] ?? "51";
@@ -177,8 +233,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   const serie = pad(emit.serie, 3);
   const nNF   = pad(emit.numero_nfe, 9);
   const cNF   = gerarCNF();
-  const agora = new Date();
-  const dhEmi = agora.toISOString().replace("Z", "-04:00").slice(0, 22) + ":00";
+  const dhEmi = gerarDhEmi(emit.uf);
   const AAMM  = dhEmi.slice(2, 4) + dhEmi.slice(5, 7);
 
   // Chave: cUF(2)+AAMM(4)+CNPJ/CPF(14)+mod(2)+serie(3)+nNF(9)+tpEmis(1)+cNF(8)
@@ -188,108 +243,123 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   const chave = chave43 + cDV;
   const idNFe = `NFe${chave}`;
 
-  // Totais
-  const vProd = itens.reduce((s, i) => s + (i.quantidade * i.valor_unitario - (i.valor_desconto ?? 0)), 0);
-  const vDesc = itens.reduce((s, i) => s + (i.valor_desconto ?? 0), 0);
+  // ── Identificadores emitente e destinatário ───────────────────────────────
 
-  // ICMS — calculado para cada item separadamente
-  const icmsTagsPerItem: string[] = [];
-  let vICMSTotal = 0;
-  let vBCTotal = 0;
-  for (const item of itens) {
-    const vProdItem = item.quantidade * item.valor_unitario - (item.valor_desconto ?? 0);
-    const rule = icmsRule(item.cfop);
-    // Para CST 00 (interestadual), BC = vProd
-    const vBC = rule.cst === "00" ? vProdItem : 0;
-    if (rule.cst === "00") {
-      vBCTotal += vBC;
-      vICMSTotal += vBC * 12 / 100;
-    }
-    icmsTagsPerItem.push(rule.xml(vBC, vProdItem));
+  // NF-e exige CPF (11) ou CNPJ (14) preenchidos — tag vazia é inválida
+  const emitIdTag = cnpjCpf.length === 11
+    ? `<CPF>${cnpjCpf}</CPF>`
+    : `<CNPJ>${cnpjCpf.padStart(14, "0")}</CNPJ>`;
+
+  const destCpfCnpj = dest.cpf_cnpj ? soDigitos(dest.cpf_cnpj) : "";
+  let destIdTag: string;
+  if (destCpfCnpj.length === 11) {
+    destIdTag = `<CPF>${destCpfCnpj}</CPF>`;
+  } else if (destCpfCnpj.length === 14) {
+    destIdTag = `<CNPJ>${destCpfCnpj}</CNPJ>`;
+  } else {
+    // Sem CPF/CNPJ — omite a tag (consumidor final sem identificação)
+    destIdTag = "";
   }
 
-  // Tag de identificação do emitente (PF ou PJ)
-  const emitIdTag = cnpjCpf.length === 14
-    ? `<CNPJ>${cnpjCpf}</CNPJ>`
-    : `<CPF>${cnpjCpf}</CPF>`;
-
-  // Tag de identificação do destinatário
-  const destCpfCnpj = dest.cpf_cnpj ? soDigitos(dest.cpf_cnpj) : "";
-  const destIdTag = destCpfCnpj.length === 14
-    ? `<CNPJ>${destCpfCnpj}</CNPJ>`
-    : destCpfCnpj.length === 11
-    ? `<CPF>${destCpfCnpj}</CPF>`
-    : `<CNPJ></CNPJ>`;
-
-  // Indicador IE destinatário: 1=contribuinte, 2=isento, 9=não contribuinte
   const indIEDest = dest.ie ? "1" : "9";
+  const destUF    = dest.uf ?? emit.uf;
 
-  const destUF = dest.uf ?? emit.uf;
+  // ── Referência NF-e anterior ──────────────────────────────────────────────
+  const nfeRefTag = nfe_ref ? `<NFref><refNFe>${nfe_ref}</refNFe></NFref>` : "";
 
-  // Referência a NF-e anterior (devolução/complemento)
-  const nfeRefTag = nfe_ref
-    ? `<NFref><refNFe>${nfe_ref}</refNFe></NFref>`
-    : "";
+  // ── Itens ─────────────────────────────────────────────────────────────────
 
-  // ── Itens ────────────────────────────────────────────────────────────────
+  // vProd do item = BRUTO (qtde × vUn) — o desconto é declarado separadamente em <vDesc>
+  // vNF final = ΣvProd - ΣvDesc
+  // Não confundir: o valor líquido (net) é calculado apenas no total, nunca no <vProd> do item.
+
+  let vProdBrutoTotal = 0;
+  let vDescTotal      = 0;
+  let vICMSTotal      = 0;
+  let vBCTotal        = 0;
+
   const itensXml = itens.map((item, idx) => {
-    const vProdItem = item.quantidade * item.valor_unitario - (item.valor_desconto ?? 0);
-    const icmsTag = icmsTagsPerItem[idx];
-    const ncm = soDigitos(item.ncm);
+    const vProdBruto = item.quantidade * item.valor_unitario;
+    const vDescItem  = item.valor_desconto ?? 0;
+    const vProdLiq   = vProdBruto - vDescItem; // usado como BC do ICMS
+
+    vProdBrutoTotal += vProdBruto;
+    vDescTotal      += vDescItem;
+
+    const rule = icmsRule(item.cfop);
+    // BC = vProd líquido (após desconto) para CST 00/51
+    const vBC = (rule.cst === "00" || rule.cst === "51") ? vProdLiq : 0;
+    if (rule.cst === "00") {
+      vBCTotal    += vBC;
+      vICMSTotal  += vBC * 12 / 100;
+    }
+
+    const ncm  = soDigitos(item.ncm);
     const cfop = soDigitos(item.cfop);
+
+    // PIS/COFINS CST 07 — operação isenta da contribuição:
+    // Deve usar <PISNT>/<COFINSNT>, não <PISAliq>/<COFINSAliq>.
+    // PISAliq/COFINSAliq só são válidos para CST 01, 02 e 03.
+    const pisXml    = `<PIS><PISNT><CST>07</CST></PISNT></PIS>`;
+    const cofinsXml = `<COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>`;
 
     return `<det nItem="${idx + 1}">
       <prod>
         <cProd>${pad(idx + 1, 4)}</cProd>
         <cEAN>SEM GTIN</cEAN>
-        <xProd>${item.descricao.substring(0, 120)}</xProd>
+        <xProd>${escXml(item.descricao.substring(0, 120))}</xProd>
         <NCM>${ncm}</NCM>
         <CFOP>${cfop}</CFOP>
-        <uCom>${item.unidade.toUpperCase()}</uCom>
+        <uCom>${escXml(item.unidade.toUpperCase())}</uCom>
         <qCom>${fmtVal(item.quantidade, 4)}</qCom>
         <vUnCom>${fmtVal(item.valor_unitario, 10)}</vUnCom>
-        <vProd>${fmtVal(vProdItem)}</vProd>
+        <vProd>${fmtVal(vProdBruto)}</vProd>
         <cEANTrib>SEM GTIN</cEANTrib>
-        <uTrib>${item.unidade.toUpperCase()}</uTrib>
+        <uTrib>${escXml(item.unidade.toUpperCase())}</uTrib>
         <qTrib>${fmtVal(item.quantidade, 4)}</qTrib>
         <vUnTrib>${fmtVal(item.valor_unitario, 10)}</vUnTrib>
-        ${item.valor_desconto ? `<vDesc>${fmtVal(item.valor_desconto)}</vDesc>` : ""}
+        ${vDescItem > 0 ? `<vDesc>${fmtVal(vDescItem)}</vDesc>` : ""}
         <indTot>1</indTot>
       </prod>
       <imposto>
         <vTotTrib>0.00</vTotTrib>
-        <ICMS>${icmsTag}</ICMS>
-        <PIS><PISAliq><CST>07</CST><vBC>0.00</vBC><pPIS>0.00</pPIS><vPIS>0.00</vPIS></PISAliq></PIS>
-        <COFINS><COFINSAliq><CST>07</CST><vBC>0.00</vBC><pCOFINS>0.00</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSAliq></COFINS>
+        <ICMS>${rule.xml(vBC, vProdLiq)}</ICMS>
+        ${pisXml}
+        ${cofinsXml}
       </imposto>
     </det>`;
   }).join("\n");
 
-  // ── Endereço emitente ─────────────────────────────────────────────────────
-  const cepEmit = soDigitos(emit.cep);
+  // ── Endereços ─────────────────────────────────────────────────────────────
+
   const enderEmit = `<enderEmit>
-      <xLgr>${emit.logradouro}</xLgr>
-      <nro>${emit.numero || "S/N"}</nro>
-      <xBairro>${emit.bairro}</xBairro>
+      <xLgr>${escXml(emit.logradouro)}</xLgr>
+      <nro>${escXml(emit.numero || "S/N")}</nro>
+      <xBairro>${escXml(emit.bairro)}</xBairro>
       <cMun>${emit.municipio_ibge}</cMun>
-      <xMun>${emit.municipio_nome}</xMun>
+      <xMun>${escXml(emit.municipio_nome)}</xMun>
       <UF>${emit.uf}</UF>
-      <CEP>${cepEmit}</CEP>
+      <CEP>${soDigitos(emit.cep)}</CEP>
       <cPais>1058</cPais>
       <xPais>Brasil</xPais>
       ${emit.fone ? `<fone>${soDigitos(emit.fone)}</fone>` : ""}
     </enderEmit>`;
 
-  // ── Endereço destinatário ─────────────────────────────────────────────────
+  // cMun 9999999 é o código reservado para município genérico (ex: consumidor sem endereço).
+  // Sempre preferir o código IBGE real do município do destinatário quando disponível.
+  const destCMun = dest.municipio_ibge && dest.municipio_ibge !== "9999999"
+    ? dest.municipio_ibge
+    : "9999999";
+
   const enderDest = dest.logradouro
     ? `<enderDest>
-      <xLgr>${dest.logradouro}</xLgr>
-      <nro>${dest.numero || "S/N"}</nro>
-      <xBairro>${dest.bairro ?? "N/A"}</xBairro>
-      <cMun>${dest.municipio_ibge ?? "9999999"}</cMun>
-      <xMun>${dest.municipio_nome ?? dest.uf ?? "N/A"}</xMun>
+      <xLgr>${escXml(dest.logradouro)}</xLgr>
+      <nro>${escXml(dest.numero || "S/N")}</nro>
+      <xBairro>${escXml(dest.bairro ?? "N/A")}</xBairro>
+      <cMun>${destCMun}</cMun>
+      <xMun>${escXml(dest.municipio_nome ?? destUF)}</xMun>
       <UF>${destUF}</UF>
-      <CEP>${soDigitos(dest.cep ?? "")}</CEP>
+      <CEP>${soDigitos(dest.cep ?? "00000000")}</CEP>
       <cPais>1058</cPais>
       <xPais>Brasil</xPais>
       ${dest.telefone ? `<fone>${soDigitos(dest.telefone)}</fone>` : ""}
@@ -298,28 +368,33 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <xLgr>NAO INFORMADO</xLgr>
       <nro>S/N</nro>
       <xBairro>NAO INFORMADO</xBairro>
-      <cMun>9999999</cMun>
-      <xMun>${destUF}</xMun>
+      <cMun>${destCMun}</cMun>
+      <xMun>${escXml(destUF)}</xMun>
       <UF>${destUF}</UF>
       <CEP>00000000</CEP>
       <cPais>1058</cPais>
       <xPais>Brasil</xPais>
     </enderDest>`;
 
+  // ── Totais ────────────────────────────────────────────────────────────────
+
+  const vNF = vProdBrutoTotal - vDescTotal; // valor total da NF-e
+
   // ── XML completo ──────────────────────────────────────────────────────────
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
   <infNFe versao="4.00" Id="${idNFe}">
     <ide>
       <cUF>${cuf}</cUF>
       <cNF>${cNF}</cNF>
-      <natOp>${natureza.substring(0, 60)}</natOp>
+      <natOp>${escXml(natureza.substring(0, 60))}</natOp>
       <mod>55</mod>
       <serie>${parseInt(serie)}</serie>
       <nNF>${parseInt(nNF)}</nNF>
       <dhEmi>${dhEmi}</dhEmi>
       <tpNF>${tipo}</tpNF>
-      <idDest>${idDest(itens[0]?.cfop ?? "6101", emit.uf, destUF)}</idDest>
+      <idDest>${idDest(itens[0].cfop, emit.uf, destUF)}</idDest>
       <cMunFG>${emit.municipio_ibge}</cMunFG>
       <tpImp>1</tpImp>
       <tpEmis>1</tpEmis>
@@ -334,19 +409,19 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     </ide>
     <emit>
       ${emitIdTag}
-      <xNome>${emit.razao_social.substring(0, 60)}</xNome>
+      <xNome>${escXml(emit.razao_social.substring(0, 60))}</xNome>
       ${enderEmit}
       <IE>${emit.ie}</IE>
-      ${emit.im ? `<IM>${emit.im}</IM>` : ""}
+      ${emit.im ? `<IM>${escXml(emit.im)}</IM>` : ""}
       <CRT>${emit.crt}</CRT>
     </emit>
     <dest>
       ${destIdTag}
-      <xNome>${dest.nome.substring(0, 60)}</xNome>
+      <xNome>${escXml(dest.nome.substring(0, 60))}</xNome>
       ${enderDest}
       <indIEDest>${indIEDest}</indIEDest>
-      ${dest.ie ? `<IE>${dest.ie}</IE>` : ""}
-      ${dest.email ? `<email>${dest.email}</email>` : ""}
+      ${dest.ie ? `<IE>${escXml(dest.ie)}</IE>` : ""}
+      ${dest.email ? `<email>${escXml(dest.email)}</email>` : ""}
     </dest>
     ${itensXml}
     <total>
@@ -368,24 +443,24 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
         <vICMSMonoReten>0.00</vICMSMonoReten>
         <qBCMonoRet>0.00</qBCMonoRet>
         <vICMSMonoRet>0.00</vICMSMonoRet>
-        <vProd>${fmtVal(vProd + vDesc)}</vProd>
+        <vProd>${fmtVal(vProdBrutoTotal)}</vProd>
         <vFrete>0.00</vFrete>
         <vSeg>0.00</vSeg>
-        <vDesc>${fmtVal(vDesc)}</vDesc>
+        <vDesc>${fmtVal(vDescTotal)}</vDesc>
         <vII>0.00</vII>
         <vIPI>0.00</vIPI>
         <vIPIDevol>0.00</vIPIDevol>
         <vPIS>0.00</vPIS>
         <vCOFINS>0.00</vCOFINS>
         <vOutro>0.00</vOutro>
-        <vNF>${fmtVal(vProd)}</vNF>
+        <vNF>${fmtVal(vNF)}</vNF>
       </ICMSTot>
     </total>
     <transp>
       <modFrete>${frete}</modFrete>
     </transp>
     <infAdic>
-      ${infCpl ? `<infCpl>${infCpl.substring(0, 5000).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</infCpl>` : ""}
+      ${infCpl ? `<infCpl>${escXml(infCpl.substring(0, 5000))}</infCpl>` : ""}
     </infAdic>
   </infNFe>
 </NFe>`;

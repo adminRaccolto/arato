@@ -57,7 +57,9 @@ export function assinarNFe(xmlSemAssinatura: string, pem: PemPair): string {
   const id = match[1];
 
   const sig = new SignedXml({
-    privateKey: pem.key,
+    privateKey:  pem.key,
+    // publicCert garante que xml-crypto gere o bloco <X509Certificate> no KeyInfo
+    publicCert:  pem.cert,
     // Algoritmo de assinatura exigido pela SEFAZ: rsa-sha1
     signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
     // xml-crypto v6 exige canonicalizationAlgorithm explícito (antes era inferido do transform)
@@ -73,7 +75,8 @@ export function assinarNFe(xmlSemAssinatura: string, pem: PemPair): string {
       // 2. Canonicalização C14N exclusiva (sem comentários)
       "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
     ],
-    digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256",
+    // MOC NF-e 4.00 exige SHA-1 para o digest — SHA-256 causa rejeição cStat 215
+    digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
   });
 
   // Localiza onde inserir a assinatura: logo após </infNFe>

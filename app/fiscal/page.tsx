@@ -1026,6 +1026,9 @@ function FiscalInner() {
       const resultado = await res.json() as {
         sucesso: boolean; chave?: string; numero?: string; protocolo?: string;
         dhRecbto?: string; xmlUrl?: string; cStat: string; xMotivo: string;
+        emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
+        emit_endereco?: string; emit_numero?: string; emit_bairro?: string;
+        emit_municipio?: string; emit_uf?: string; emit_cep?: string; emit_fone?: string;
       };
 
       await criarNotaFiscal({
@@ -1046,14 +1049,27 @@ function FiscalInner() {
         auto:              false,
         itens_json:        itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100 })),
         dados_nf_json:     {
-          modulo_key:    moduloKeyAtivo,
-          dest_ie:       fVenda.dest_ie       || undefined,
-          dest_endereco: fVenda.dest_endereco || undefined,
-          dest_numero:   fVenda.dest_numero   || undefined,
-          dest_bairro:   fVenda.dest_bairro   || undefined,
-          dest_cidade:   fVenda.dest_cidade   || undefined,
-          dest_uf:       fVenda.dest_uf       || undefined,
-          dest_cep:      fVenda.dest_cep      || undefined,
+          modulo_key:           moduloKeyAtivo,
+          protocolo_autorizacao: resultado.protocolo   || undefined,
+          // Dados do emitente — gravados na primeira emissão e usados pelo DANFE
+          emit_razao:     resultado.emit_razao    || undefined,
+          emit_cnpj:      resultado.emit_cnpj     || undefined,
+          emit_ie:        resultado.emit_ie       || undefined,
+          emit_endereco:  resultado.emit_endereco || undefined,
+          emit_numero:    resultado.emit_numero   || undefined,
+          emit_bairro:    resultado.emit_bairro   || undefined,
+          emit_municipio: resultado.emit_municipio|| undefined,
+          emit_uf:        resultado.emit_uf       || undefined,
+          emit_cep:       resultado.emit_cep      || undefined,
+          emit_fone:      resultado.emit_fone     || undefined,
+          // Dados do destinatário
+          dest_ie:        fVenda.dest_ie          || undefined,
+          dest_endereco:  fVenda.dest_endereco    || undefined,
+          dest_numero:    fVenda.dest_numero      || undefined,
+          dest_bairro:    fVenda.dest_bairro      || undefined,
+          dest_cidade:    fVenda.dest_cidade      || undefined,
+          dest_uf:        fVenda.dest_uf          || undefined,
+          dest_cep:       fVenda.dest_cep         || undefined,
           ...(!resultado.sucesso && { sefaz_erro: `cStat ${resultado.cStat}: ${resultado.xMotivo}` }),
         },
         ...(modoContingencia && {

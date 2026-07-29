@@ -71,37 +71,33 @@ async function tentarDownload(path: string): Promise<Buffer | null> {
 
 async function carregarPfx(
   storagePath: string,
-  fazendaId?: string,
+  fazendaId: string,
 ): Promise<Buffer> {
   // 1. Caminho exato registrado no banco
   const r1 = await tentarDownload(storagePath);
   if (r1) return r1;
 
-  // 2. Só o nome do arquivo na raiz do bucket
+  // 2. Tenta <fazendaId>/<filename> se o storagePath não inclui o fazendaId
   const filename = storagePath.split("/").pop() ?? "";
-  if (filename && filename !== storagePath) {
-    const r2 = await tentarDownload(filename);
+  if (filename && !storagePath.startsWith(fazendaId)) {
+    const r2 = await tentarDownload(`${fazendaId}/${filename}`);
     if (r2) return r2;
   }
 
-  // 3. Scan da raiz do bucket — qualquer .pfx/.p12
-  const { data: rootFiles } = await sb().storage.from("certificados").list("", { limit: 200 });
-  for (const f of rootFiles ?? []) {
+  // 3. Scan RESTRITO à pasta da fazenda — nunca escanear a raiz do bucket,
+  //    pois isso expõe certificados de outros tenants.
+  const { data: fazFiles } = await sb().storage.from("certificados").list(fazendaId, { limit: 100 });
+  for (const f of fazFiles ?? []) {
     if (/\.(pfx|p12)$/i.test(f.name)) {
-      const r3 = await tentarDownload(f.name);
+      const r3 = await tentarDownload(`${fazendaId}/${f.name}`);
       if (r3) return r3;
     }
-  }
-
-  // 4. Scan recursivo dentro da pasta da fazenda
-  const fid = fazendaId ?? storagePath.split("/")[0];
-  if (fid) {
-    const { data: subFolders } = await sb().storage.from("certificados").list(fid, { limit: 50 });
-    for (const folder of subFolders ?? []) {
-      const { data: prodFiles } = await sb().storage.from("certificados").list(`${fid}/${folder.name}`, { limit: 20 });
-      for (const f of prodFiles ?? []) {
-        if (/\.(pfx|p12)$/i.test(f.name)) {
-          const r4 = await tentarDownload(`${fid}/${folder.name}/${f.name}`);
+    // Sub-pasta dentro da fazenda (ex: fazendaId/pf/ ou fazendaId/pj/)
+    if (!f.name.includes(".")) {
+      const { data: sub } = await sb().storage.from("certificados").list(`${fazendaId}/${f.name}`, { limit: 20 });
+      for (const sf of sub ?? []) {
+        if (/\.(pfx|p12)$/i.test(sf.name)) {
+          const r4 = await tentarDownload(`${fazendaId}/${f.name}/${sf.name}`);
           if (r4) return r4;
         }
       }
@@ -111,6 +107,22 @@ async function carregarPfx(
   throw new Error(
     `Certificado não encontrado. Acesse Configurações → Parâmetros → Fiscal ` +
     `e faça o upload do .pfx na seção "Certificado Digital" do emitente.`
+  );
+}
+
+// ─── Monta nfeProc (XML final arquivável) ─────────────────────────────────────
+// SEFAZ devolve apenas o bloco <protNFe> na resposta de autorização.
+// Para arquivamento e contingência, o padrão exige o documento <nfeProc> que
+// contém o XML assinado + protNFe em um único envelope.
+function montarNfeProc(xmlAssinado: string, protNFe: string): string {
+  // Remove declaração XML (<?xml ...?>) — nfeProc tem a sua própria
+  const nfeBody = xmlAssinado.replace(/^<\?xml[^?]*\?>\s*/i, "");
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">` +
+    nfeBody +
+    protNFe +
+    `</nfeProc>`
   );
 }
 
@@ -156,6 +168,17 @@ export interface ResultadoEmissao {
   cStat: string;
   xMotivo: string;
   xmlAssinado?: string;   // disponível mesmo em rejeição, para debug
+  // Dados do emitente — para persistir em dados_nf_json e usados no DANFE
+  emit_razao?: string;
+  emit_cnpj?: string;
+  emit_ie?: string;
+  emit_endereco?: string;
+  emit_numero?: string;
+  emit_bairro?: string;
+  emit_municipio?: string;
+  emit_uf?: string;
+  emit_cep?: string;
+  emit_fone?: string;
 }
 
 // ─── Função principal: emitirNFe ─────────────────────────────────────────────
@@ -227,11 +250,13 @@ export async function emitirNFe(
 
   const autorizada = resposta.cStat === "100";
 
-  // 7. Salvar XML no Storage se autorizada
+  // 7. Salvar nfeProc no Storage se autorizada
+  // Formato correto: XML assinado + protNFe dentro de <nfeProc> — padrão SEFAZ para arquivamento
   let xmlUrl: string | undefined;
   if (autorizada && resposta.xmlProt) {
     try {
-      xmlUrl = await salvarXml(fazendaId, built.chave, resposta.xmlProt);
+      const nfeProcXml = montarNfeProc(xmlAssinado, resposta.xmlProt);
+      xmlUrl = await salvarXml(fazendaId, built.chave, nfeProcXml);
     } catch { /* não bloqueia — salvar é best-effort */ }
   }
 
@@ -245,5 +270,16 @@ export async function emitirNFe(
     cStat:     resposta.cStat,
     xMotivo:   resposta.xMotivo,
     xmlAssinado,
+    // Campos do emitente para persistir em dados_nf_json (usados no DANFE)
+    emit_razao:      emitente.razao_social,
+    emit_cnpj:       emitente.cpf_cnpj,
+    emit_ie:         emitente.ie,
+    emit_endereco:   emitente.logradouro,
+    emit_numero:     emitente.numero,
+    emit_bairro:     emitente.bairro,
+    emit_municipio:  emitente.municipio_nome,
+    emit_uf:         emitente.uf,
+    emit_cep:        emitente.cep,
+    emit_fone:       emitente.fone,
   };
 }
