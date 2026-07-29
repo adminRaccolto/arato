@@ -8781,3 +8781,37 @@ COMMENT ON COLUMN contratos.is_triangulacao IS 'true = cooperativa faz a interme
 COMMENT ON COLUMN contratos.comprador_final_id IS 'Trading / destino final do grão na triangulação';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 125 — FK ON DELETE SET NULL em insumos (corrige deleção na tela Dados & Limpeza) ──────
+-- As FKs abaixo existiam sem ON DELETE, causando violação de constraint ao tentar excluir insumos.
+-- Solução: ON DELETE SET NULL — o registro filho é preservado mas insumo_id vira NULL.
+
+-- 1. transferencias_estoque_itens (tabela criada fora das migrations)
+ALTER TABLE transferencias_estoque_itens
+  DROP CONSTRAINT IF EXISTS transferencias_estoque_itens_insumo_id_fkey;
+ALTER TABLE transferencias_estoque_itens
+  ADD CONSTRAINT transferencias_estoque_itens_insumo_id_fkey
+  FOREIGN KEY (insumo_id) REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- 2. recomendacao_produtos
+ALTER TABLE recomendacao_produtos
+  DROP CONSTRAINT IF EXISTS recomendacao_produtos_insumo_id_fkey;
+ALTER TABLE recomendacao_produtos
+  ADD CONSTRAINT recomendacao_produtos_insumo_id_fkey
+  FOREIGN KEY (insumo_id) REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- 3. tratamento_sementes_itens
+ALTER TABLE tratamento_sementes_itens
+  DROP CONSTRAINT IF EXISTS tratamento_sementes_itens_insumo_id_fkey;
+ALTER TABLE tratamento_sementes_itens
+  ADD CONSTRAINT tratamento_sementes_itens_insumo_id_fkey
+  FOREIGN KEY (insumo_id) REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- 4. tratamento_receitas_itens
+ALTER TABLE tratamento_receitas_itens
+  DROP CONSTRAINT IF EXISTS tratamento_receitas_itens_insumo_id_fkey;
+ALTER TABLE tratamento_receitas_itens
+  ADD CONSTRAINT tratamento_receitas_itens_insumo_id_fkey
+  FOREIGN KEY (insumo_id) REFERENCES insumos(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';
