@@ -63,23 +63,55 @@ export async function buscarConfEmitente(
 }
 
 // ─── Carrega PFX do Supabase Storage ─────────────────────────────────────────
+async function tentarDownload(path: string): Promise<Buffer | null> {
+  const { data, error } = await sb().storage.from("certificados").download(path);
+  if (!error && data) return Buffer.from(await data.arrayBuffer());
+  return null;
+}
+
 async function carregarPfx(
-  storagePath: string
+  storagePath: string,
+  fazendaId?: string,
 ): Promise<Buffer> {
-  const { data, error } = await sb()
-    .storage
-    .from("certificados")
-    .download(storagePath);
-  if (error || !data) {
-    // Tenta variante sem subpastas (arquivo na raiz do bucket)
-    const nomeArquivo = storagePath.split("/").pop() ?? storagePath;
-    if (nomeArquivo !== storagePath) {
-      const { data: data2, error: error2 } = await sb().storage.from("certificados").download(nomeArquivo);
-      if (!error2 && data2) return Buffer.from(await data2.arrayBuffer());
-    }
-    throw new Error(`Certificado não encontrado: ${storagePath} — Supabase: ${error?.message ?? "sem dados"}`);
+  // 1. Caminho exato registrado no banco
+  const r1 = await tentarDownload(storagePath);
+  if (r1) return r1;
+
+  // 2. Só o nome do arquivo na raiz do bucket
+  const filename = storagePath.split("/").pop() ?? "";
+  if (filename && filename !== storagePath) {
+    const r2 = await tentarDownload(filename);
+    if (r2) return r2;
   }
-  return Buffer.from(await data.arrayBuffer());
+
+  // 3. Scan da raiz do bucket — qualquer .pfx/.p12
+  const { data: rootFiles } = await sb().storage.from("certificados").list("", { limit: 200 });
+  for (const f of rootFiles ?? []) {
+    if (/\.(pfx|p12)$/i.test(f.name)) {
+      const r3 = await tentarDownload(f.name);
+      if (r3) return r3;
+    }
+  }
+
+  // 4. Scan recursivo dentro da pasta da fazenda
+  const fid = fazendaId ?? storagePath.split("/")[0];
+  if (fid) {
+    const { data: subFolders } = await sb().storage.from("certificados").list(fid, { limit: 50 });
+    for (const folder of subFolders ?? []) {
+      const { data: prodFiles } = await sb().storage.from("certificados").list(`${fid}/${folder.name}`, { limit: 20 });
+      for (const f of prodFiles ?? []) {
+        if (/\.(pfx|p12)$/i.test(f.name)) {
+          const r4 = await tentarDownload(`${fid}/${folder.name}/${f.name}`);
+          if (r4) return r4;
+        }
+      }
+    }
+  }
+
+  throw new Error(
+    `Certificado não encontrado. Acesse Configurações → Parâmetros → Fiscal ` +
+    `e faça o upload do .pfx na seção "Certificado Digital" do emitente.`
+  );
 }
 
 // ─── Próximo número da NF-e (atômico via update) ─────────────────────────────
@@ -146,7 +178,7 @@ export async function emitirNFe(
   // 2. Certificado
   let pfxBuffer: Buffer;
   try {
-    pfxBuffer = await carregarPfx(certPath);
+    pfxBuffer = await carregarPfx(certPath, fazendaId);
   } catch (e) {
     return { sucesso: false, cStat: "502", xMotivo: String(e) };
   }
