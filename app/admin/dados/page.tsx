@@ -19,6 +19,7 @@ type SubItem = {
   countTables: string[];
   deleteTables: string[];
   aviso?: string;
+  extraFiltro?: Record<string, string>; // filtros adicionais além de fazenda_id
 };
 
 type Grupo = {
@@ -81,11 +82,23 @@ const GRUPOS: Grupo[] = [
   {
     id: "cadastros", label: "Cadastros", icon: "👤", cor: "#7C3AED", bg: "#F5F3FF",
     subitens: [
-      { id: "pessoas",    label: "Pessoas",           icon: "👥", countTables: ["pessoas"],    deleteTables: ["pessoas"],    aviso: "Exclua Financeiro e Comercial antes — registros financeiros referenciam Pessoas." },
-      { id: "produtores", label: "Produtores",         icon: "🧑‍🌾", countTables: ["produtores"], deleteTables: ["produtores"] },
-      { id: "insumos",    label: "Insumos & Produtos", icon: "🌱", countTables: ["insumos"],    deleteTables: ["insumos"],    aviso: "Exclua Estoque antes — movimentações referenciam insumos." },
-      { id: "maquinas",   label: "Máquinas & Veículos",icon: "🚜", countTables: ["maquinas"],   deleteTables: ["abastecimentos","historico_manutencao","maquinas"] },
-      { id: "depositos",  label: "Depósitos / Silos",  icon: "🏚️", countTables: ["depositos"],  deleteTables: ["depositos"] },
+      { id: "pessoas",        label: "Pessoas",                 icon: "👥", countTables: ["pessoas"],    deleteTables: ["pessoas"],    aviso: "Exclua Financeiro e Comercial antes — registros financeiros referenciam Pessoas." },
+      { id: "produtores",     label: "Produtores",              icon: "🧑‍🌾", countTables: ["produtores"], deleteTables: ["produtores"] },
+      { id: "insumos_cat",    label: "Insumos (sementes/defensivos/fertilizantes)", icon: "🌱", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "insumo" }, aviso: "Exclua Estoque antes — movimentações referenciam insumos." },
+      { id: "itens_gerais",   label: "Itens Gerais (peças/materiais/consumo)",      icon: "📦", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "produto" }, aviso: "Exclua Estoque antes — movimentações referenciam itens." },
+      { id: "maquinas",       label: "Máquinas & Veículos",     icon: "🚜", countTables: ["maquinas"],   deleteTables: ["abastecimentos","historico_manutencao","maquinas"] },
+      { id: "depositos",      label: "Depósitos / Silos",       icon: "🏚️", countTables: ["depositos"],  deleteTables: ["depositos"] },
+    ],
+  },
+  {
+    id: "auxiliares", label: "Tabelas Auxiliares", icon: "📋", cor: "#6366F1", bg: "#EEF2FF",
+    subitens: [
+      { id: "grupos_insumos",        label: "Grupos & Subgrupos de Insumo",   icon: "📂", countTables: ["grupos_insumos"],        deleteTables: ["subgrupos_insumos","grupos_insumos"] },
+      { id: "centros_custo",         label: "Centros de Custo",               icon: "🎯", countTables: ["centros_custo"],         deleteTables: ["centros_custo"] },
+      { id: "categorias_lancamento", label: "Categorias de Lançamento",       icon: "🏷️", countTables: ["categorias_lancamento"], deleteTables: ["categorias_lancamento"] },
+      { id: "tipos_pessoa",          label: "Tipos de Pessoa",                icon: "👤", countTables: ["tipos_pessoa"],          deleteTables: ["tipos_pessoa"] },
+      { id: "operacoes_gerenciais",  label: "Operações Gerenciais (plano)",   icon: "⚙️", countTables: ["operacoes_gerenciais"],  deleteTables: ["operacoes_gerenciais"] },
+      { id: "padroes_classificacao", label: "Padrões de Classificação",       icon: "⚖️", countTables: ["padroes_classificacao"], deleteTables: ["padroes_classificacao"] },
     ],
   },
   {
@@ -185,7 +198,11 @@ export default function DadosAdminPage() {
         for (const table of sub.countTables) {
           for (const fId of fazIds) {
             try {
-              const { count } = await supabase.from(table).select("id", { count: "exact", head: true }).eq("fazenda_id", fId);
+              let q = supabase.from(table).select("id", { count: "exact", head: true }).eq("fazenda_id", fId);
+              if (sub.extraFiltro) {
+                for (const [k, v] of Object.entries(sub.extraFiltro)) q = q.eq(k, v);
+              }
+              const { count } = await q;
               total += count ?? 0;
             } catch { /* tabela pode não existir */ }
           }
@@ -215,7 +232,11 @@ export default function DadosAdminPage() {
         for (const table of sub.deleteTables) {
           for (const fId of fazIds) {
             try {
-              const { error, count } = await supabase.from(table).delete({ count: "exact" }).eq("fazenda_id", fId);
+              let q = supabase.from(table).delete({ count: "exact" }).eq("fazenda_id", fId);
+              if (sub.extraFiltro) {
+                for (const [k, v] of Object.entries(sub.extraFiltro)) q = q.eq(k, v);
+              }
+              const { error, count } = await q;
               if (error) { if (!isErroBenigno(error.message)) erros.push(`${table}: ${error.message}`); }
               else deletados += count ?? 0;
             } catch { /* tabela inexistente */ }

@@ -26,12 +26,15 @@ type LancRow = {
 };
 type InsumoRow = {
   fazenda_nome: string;
+  deposito_nome?: string;
   nome: string; categoria: string; unidade: string; estoque: string;
   estoque_minimo: string; valor_unitario: string; fabricante: string; subgrupo: string;
   _status?: "ok" | "aviso" | "erro" | "duplicado"; _msg?: string;
   _unidade_original?: string;  // unidade antes da conversão automática
 };
 type ProdutoRow = {
+  fazenda_nome?: string;
+  deposito_nome?: string;
   nome: string; categoria: string; unidade: string; codigo_interno: string;
   ncm: string; estoque: string; estoque_minimo: string; valor_unitario: string;
   valor_venda: string; fabricante: string; marca: string; subgrupo: string;
@@ -121,18 +124,18 @@ const TEMPLATE_CR = [
   ["Prestação de Serviço", "Outros", "2026-02-01", "2026-03-01", "8500.00", "", "BRL", "1", "1", "RECIBO", "", "Receita Serviços", ""],
 ];
 const TEMPLATE_INSUMOS = [
-  ["fazenda_nome*", "nome*", "categoria*", "unidade*", "estoque", "estoque_minimo", "valor_unitario", "fabricante", "subgrupo"],
-  ["Rancho Alegre", "Roundup WG", "defensivo", "kg", "500", "100", "42.50", "Monsanto", "Herbicida"],
-  ["Rancho Alegre", "Uréia 45% N", "fertilizante", "sc", "200", "50", "185.00", "Yara", "Nitrogênio"],
-  ["Fazenda Dois Irmãos", "TMG 7062 IPRO", "semente", "sc", "80", "20", "335.00", "TMG Sementes", "Soja"],
+  ["fazenda_nome*", "deposito_nome", "nome*", "categoria*", "unidade*", "estoque", "estoque_minimo", "valor_unitario", "fabricante", "subgrupo"],
+  ["Rancho Alegre", "Depósito Central", "Roundup WG", "defensivo", "kg", "500", "100", "42.50", "Monsanto", "Herbicida"],
+  ["Rancho Alegre", "Depósito Central", "Uréia 45% N", "fertilizante", "sc", "200", "50", "185.00", "Yara", "Nitrogênio"],
+  ["Fazenda Dois Irmãos", "Armazém Norte", "TMG 7062 IPRO", "semente", "sc", "80", "20", "335.00", "TMG Sementes", "Soja"],
 ];
 const TEMPLATE_PRODUTOS = [
-  ["nome*", "categoria*", "unidade*", "codigo_interno", "ncm", "estoque", "estoque_minimo", "valor_unitario", "valor_venda", "fabricante", "marca", "subgrupo"],
-  ["Filtro de Óleo Motor", "peca", "un", "FLT-001", "84212300", "10", "2", "85.00", "120.00", "Fram", "Fram", "Filtros"],
-  ["Fio Elétrico 2,5mm", "material", "m", "FIO-025", "85444929", "500", "100", "4.80", "7.50", "Prysmian", "Afumex", "Elétrico"],
-  ["Papel A4 75g/m² (Resma)", "escritorio", "cx", "PAP-A4", "48025590", "20", "5", "22.00", "32.00", "Chamex", "Chamex", "Papelaria"],
-  ["Óleo Hidráulico ISO 68", "uso_consumo", "L", "OLH-068", "27101980", "200", "50", "18.50", "0", "Ipiranga", "Lubrax", "Lubrificantes"],
-  ["Correia Trapezoidal B-75", "peca", "un", "COR-B75", "40103900", "5", "2", "45.00", "68.00", "Gates", "Gates", "Transmissão"],
+  ["fazenda_nome*", "deposito_nome", "nome*", "categoria*", "unidade*", "codigo_interno", "ncm", "estoque", "estoque_minimo", "valor_unitario", "valor_venda", "fabricante", "marca", "subgrupo"],
+  ["Rancho Alegre", "Almoxarifado", "Filtro de Óleo Motor", "peca", "un", "FLT-001", "84212300", "10", "2", "85.00", "120.00", "Fram", "Fram", "Filtros"],
+  ["Rancho Alegre", "", "Fio Elétrico 2,5mm", "material", "m", "FIO-025", "85444929", "500", "100", "4.80", "7.50", "Prysmian", "Afumex", "Elétrico"],
+  ["Fazenda Dois Irmãos", "", "Papel A4 75g/m² (Resma)", "escritorio", "cx", "PAP-A4", "48025590", "20", "5", "22.00", "32.00", "Chamex", "Chamex", "Papelaria"],
+  ["Rancho Alegre", "Almoxarifado", "Óleo Hidráulico ISO 68", "uso_consumo", "L", "OLH-068", "27101980", "200", "50", "18.50", "0", "Ipiranga", "Lubrax", "Lubrificantes"],
+  ["Rancho Alegre", "", "Correia Trapezoidal B-75", "peca", "un", "COR-B75", "40103900", "5", "2", "45.00", "68.00", "Gates", "Gates", "Transmissão"],
 ];
 
 const TEMPLATE_FUNCIONARIOS = [
@@ -549,6 +552,9 @@ function downloadTemplate(aba: Aba) {
         ["• fazenda_nome*: nome EXATO da fazenda conforme cadastrado no sistema (ex: Rancho Alegre)"],
         ["  O sistema usa esse nome para identificar a qual fazenda o estoque pertence."],
         ["  Um mesmo insumo pode ser importado para fazendas diferentes em linhas separadas."],
+        ["• deposito_nome: nome EXATO do depósito/armazém conforme cadastrado (ex: Depósito Central)"],
+        ["  Se informado, o saldo inicial é vinculado a esse depósito e uma movimentação de entrada"],
+        ["  (inventário) é registrada automaticamente. Deixe em branco para não vincular a depósito."],
         ["• nome*: nome do insumo"],
         ["• categoria*: semente, fertilizante, defensivo, inoculante, combustivel, peca, material, uso_consumo, escritorio, outros"],
         ["• unidade*: kg, g, L, mL, sc, t, un, m, m2, cx, pc, par, bag, outros"],
@@ -1381,6 +1387,14 @@ function ImportacaoInner() {
     if (!insumosRows.length) return;
     setLoadingInsumos(true);
     let ok = 0, erros = 0, duplicados = 0;
+
+    // Pré-carrega todos os depósitos das fazendas do usuário (1 query)
+    const fazIds = fazendas.map(f => f.id);
+    const { data: depositosDB } = fazIds.length
+      ? await supabase.from("depositos").select("id, nome, fazenda_id").in("fazenda_id", fazIds)
+      : { data: [] };
+    const depositos: { id: string; nome: string; fazenda_id: string }[] = depositosDB ?? [];
+
     for (const r of insumosRows) {
       if (r._status === "erro") { erros++; continue; }
       if (r._status === "duplicado" && !modoAtualizacaoInsumos) { duplicados++; continue; }
@@ -1390,17 +1404,26 @@ function ImportacaoInner() {
         r._status = "erro"; r._msg = `fazenda "${r.fazenda_nome}" não encontrada no cadastro`;
         erros++; continue;
       }
+      // Resolve deposito_id opcional a partir do nome
+      const depNome = (r.deposito_nome || "").trim().toLowerCase();
+      const depLinha = depNome
+        ? depositos.find(d => d.fazenda_id === fazLinha.id && d.nome.trim().toLowerCase() === depNome)
+        : null;
+
+      const estoqueQtd = parseFloat(r.estoque || "0");
+      const valorUnit  = parseFloat(String(r.valor_unitario).replace(",", ".") || "0");
       const payload = {
         fazenda_id:     fazLinha.id,
         tipo:           "insumo",
         nome:           r.nome.trim(),
         categoria:      r.categoria.trim(),
         unidade:        r.unidade.trim(),
-        estoque:        parseFloat(r.estoque || "0"),
+        estoque:        estoqueQtd,
         estoque_minimo: parseFloat(r.estoque_minimo || "0"),
-        valor_unitario: parseFloat(String(r.valor_unitario).replace(",", ".") || "0"),
+        valor_unitario: valorUnit,
         fabricante:     r.fabricante?.trim() || null,
         subgrupo:       r.subgrupo?.trim() || null,
+        deposito_id:    depLinha?.id ?? null,
       };
       if (r._status === "duplicado" && modoAtualizacaoInsumos) {
         const { error } = await supabase.from("insumos")
@@ -1411,9 +1434,24 @@ function ImportacaoInner() {
         if (error) { r._status = "erro"; r._msg = error.message; erros++; }
         else { r._status = "ok"; ok++; }
       } else {
-        const { error } = await supabase.from("insumos").insert(payload);
-        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-        else ok++;
+        const { data: ins, error } = await supabase.from("insumos").insert(payload).select("id").single();
+        if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
+        ok++;
+        // Se há estoque inicial, registra movimentação de entrada (inventário)
+        if (estoqueQtd > 0 && ins?.id) {
+          await supabase.from("movimentacoes_estoque").insert({
+            insumo_id:      ins.id,
+            fazenda_id:     fazLinha.id,
+            tipo:           "entrada",
+            motivo:         "inventario",
+            quantidade:     estoqueQtd,
+            valor_unitario: valorUnit > 0 ? valorUnit : null,
+            data:           new Date().toISOString().split("T")[0],
+            deposito_id:    depLinha?.id ?? null,
+            observacao:     "Saldo inicial — importação",
+            auto:           true,
+          });
+        }
       }
     }
     setInsumosRows([...insumosRows]);
@@ -1423,31 +1461,72 @@ function ImportacaoInner() {
 
   // ─── Importar Produtos ────────────────────────────────────
   async function importarProdutos() {
-    if (!fazendaId || !produtosRows.length) return;
+    if (!produtosRows.length) return;
     setLoadingProdutos(true);
     let ok = 0, erros = 0, duplicados = 0;
+
+    // Pré-carrega depósitos das fazendas do usuário (1 query)
+    const fazIds = fazendas.map(f => f.id);
+    const { data: depositosDB } = fazIds.length
+      ? await supabase.from("depositos").select("id, nome, fazenda_id").in("fazenda_id", fazIds)
+      : { data: [] };
+    const depositos: { id: string; nome: string; fazenda_id: string }[] = depositosDB ?? [];
+
     for (const r of produtosRows) {
       if (r._status === "duplicado") { duplicados++; continue; }
       if (r._status === "erro")      { erros++;      continue; }
+
+      // Resolve fazenda — prioriza linha, cai para fazenda ativa
+      const fazNome = (r.fazenda_nome || "").trim().toLowerCase();
+      const fazLinha = fazNome
+        ? fazendas.find(f => f.nome.trim().toLowerCase() === fazNome)
+        : fazendas.find(f => f.id === fazendaId);
+      if (!fazLinha) {
+        r._status = "erro"; r._msg = `fazenda "${r.fazenda_nome || "(ativa)"}" não encontrada`;
+        erros++; continue;
+      }
+      // Resolve depósito opcional
+      const depNome = (r.deposito_nome || "").trim().toLowerCase();
+      const depLinha = depNome
+        ? depositos.find(d => d.fazenda_id === fazLinha.id && d.nome.trim().toLowerCase() === depNome)
+        : null;
+
+      const estoqueQtd = parseFloat(r.estoque || "0");
+      const valorUnit  = parseFloat(String(r.valor_unitario).replace(",", ".") || "0");
       const valorVenda = parseFloat(String(r.valor_venda).replace(",", ".") || "0");
-      const { error } = await supabase.from("insumos").insert({
-        fazenda_id:     fazendaId,
+
+      const { data: ins, error } = await supabase.from("insumos").insert({
+        fazenda_id:     fazLinha.id,
         tipo:           "produto",
         nome:           r.nome.trim(),
         categoria:      r.categoria,
         unidade:        r.unidade,
-        estoque:        parseFloat(r.estoque || "0"),
+        estoque:        estoqueQtd,
         estoque_minimo: parseFloat(r.estoque_minimo || "0"),
-        valor_unitario: parseFloat(String(r.valor_unitario).replace(",", ".") || "0"),
-        // campos extras: armazenar em lote/subgrupo o que couber, NCM e código interno em colunas se existirem
+        valor_unitario: valorUnit,
         lote:           r.codigo_interno?.trim() || null,
         subgrupo:       r.subgrupo?.trim() || null,
         fabricante:     r.fabricante?.trim() || null,
-        // valor_venda e ncm — salvar como custo_medio e lote se não tiver colunas dedicadas
         custo_medio:    valorVenda > 0 ? valorVenda : null,
-      });
-      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-      else ok++;
+        deposito_id:    depLinha?.id ?? null,
+      }).select("id").single();
+      if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
+      ok++;
+      // Registra movimentação de entrada (inventário) se há estoque inicial
+      if (estoqueQtd > 0 && ins?.id) {
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id:      ins.id,
+          fazenda_id:     fazLinha.id,
+          tipo:           "entrada",
+          motivo:         "inventario",
+          quantidade:     estoqueQtd,
+          valor_unitario: valorUnit > 0 ? valorUnit : null,
+          data:           new Date().toISOString().split("T")[0],
+          deposito_id:    depLinha?.id ?? null,
+          observacao:     "Saldo inicial — importação",
+          auto:           true,
+        });
+      }
     }
     setProdutosRows([...produtosRows]);
     setResultProdutos({ ok, erros, duplicados });
