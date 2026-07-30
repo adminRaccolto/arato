@@ -8839,3 +8839,9 @@ WHERE modulo LIKE 'fiscal%'
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- Migration: adiciona fazenda_id em garantias_contrato (coluna estava faltando)
+ALTER TABLE garantias_contrato
+  ADD COLUMN IF NOT EXISTS fazenda_id uuid REFERENCES fazendas(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';
