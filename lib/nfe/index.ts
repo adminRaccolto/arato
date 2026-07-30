@@ -37,18 +37,20 @@ export async function buscarConfEmitente(
 
   let emitData = emitResult.data;
 
-  // Fallback: se o modulo_key exato não existe ou está sem CPF/cert, tenta encontrar
-  // qualquer módulo fiscal válido (com CPF e certificado) para a mesma fazenda.
-  // Isso protege contra módulos criados com UUID como sufixo ou configs corrompidas.
+  // Fallback: se o modulo_key exato não existe ou está sem CPF, busca qualquer módulo
+  // fiscal válido (com CPF) da mesma fazenda. cert_a1_path é resolvido abaixo separadamente.
   if (!emitData?.config || !(emitData.config as Record<string,string>).cpf_cnpj_emitente) {
     const { data: allMods } = await sb()
       .from("configuracoes_modulo").select("modulo, config")
       .eq("fazenda_id", fazendaId)
       .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-    const melhor = (allMods ?? []).find(r => {
+    // Prefere módulo com cert_a1_path; aceita qualquer um com CPF se nenhum tiver cert
+    const comCert = (allMods ?? []).find(r => {
       const c = r.config as Record<string,string>;
       return c?.cpf_cnpj_emitente && c?.cert_a1_path;
     });
+    const semCert = (allMods ?? []).find(r => (r.config as Record<string,string>)?.cpf_cnpj_emitente);
+    const melhor = comCert ?? semCert;
     if (melhor) emitData = { config: melhor.config };
   }
 
@@ -56,16 +58,16 @@ export async function buscarConfEmitente(
 
   const cfg = { ...emitData.config } as Record<string, string>;
 
-  // Corrige cert_a1_path se for URL inválida (URL do dashboard Supabase ou sem extensão .pfx/.p12)
+  // Resolve cert_a1_path: corrige URL inválida ou tenta achar em certificado_a1_*
   const certPath = cfg.cert_a1_path ?? "";
-  const certPathInvalid = certPath.startsWith("http") || (certPath.length > 0 && !/\.(pfx|p12|cer|crt)$/i.test(certPath));
+  const certPathInvalid = !certPath || certPath.startsWith("http") || !/\.(pfx|p12|cer|crt)$/i.test(certPath);
   if (certPathInvalid && certRows?.length) {
-    // Tenta achar o certificado_a1_* pelo CPF/CNPJ do emitente
+    // Busca certificado pelo CPF/CNPJ do emitente nos módulos certificado_a1_*
     const cpfDigits = (cfg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
     const found = certRows.find(r => {
       const c = r.config as Record<string, string>;
       return (c.cpf_cnpj ?? "").replace(/\D/g, "") === cpfDigits && c.storage_path;
-    });
+    }) ?? certRows[0]; // último recurso: primeiro cert encontrado
     if (found) {
       const c = found.config as Record<string, string>;
       cfg.cert_a1_path = c.storage_path;

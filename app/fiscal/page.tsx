@@ -614,17 +614,15 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                               ↺ Corrigir e retransmitir
                             </button>
                           )}
-                          {nota.observacao && (
-                            <button
+                          <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const erroInfo = (nota.dados_nf_json as Record<string,unknown>)?.sefaz_erro as string | undefined;
-                                alert(`Motivo da rejeição:\n\n${erroInfo ?? nota.observacao ?? "Sem detalhes disponíveis."}`);
+                                alert(`Motivo da rejeição:\n\n${erroInfo ?? "Código SEFAZ não registrado. Tente retransmitir a nota para obter o motivo atualizado."}`);
                               }}
                               style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 11 }}>
                               Ver motivo da rejeição
                             </button>
-                          )}
                         </>
                       )}
                       {nota.status === "em_digitacao" && onConsultarSefaz && (
