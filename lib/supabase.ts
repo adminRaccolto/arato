@@ -627,6 +627,7 @@ export type Produtor = {
   complemento?: string;
   bairro?: string;
   municipio?: string;
+  municipio_ibge?: string;   // código IBGE 7 dígitos — obrigatório para emissão de NF-e
   estado?: string;
   created_at?: string;
 };

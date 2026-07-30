@@ -289,7 +289,7 @@ function CadastrosInner() {
   const [produtores, setProdutores]   = useState<Produtor[]>([]);
   const [modalProd, setModalProd]     = useState(false);
   const [editProd, setEditProd]       = useState<Produtor | null>(null);
-  const [fProd, setFProd]             = useState({ nome: "", tipo: "pf" as "pf"|"pj", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT", razao_social: "", regime_tributario: "", car: "", nirf: "", itr: "", email_relatorios: "", _empresaId: "" });
+  const [fProd, setFProd]             = useState({ nome: "", tipo: "pf" as "pf"|"pj", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", razao_social: "", regime_tributario: "", car: "", nirf: "", itr: "", email_relatorios: "", _empresaId: "" });
   // Mapa produtor_id → empresa_id para Produtores PJ (preenchido ao salvar/carregar)
   const [prodEmpresaMap, setProdEmpresaMap] = useState<Record<string, string>>({});
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -883,7 +883,7 @@ function CadastrosInner() {
       inscricao_est: p.inscricao_est ?? "", email: p.email ?? "", telefone: p.telefone ?? "",
       cep: p.cep ?? "", logradouro: p.logradouro ?? "", numero: p.numero ?? "",
       complemento: p.complemento ?? "", bairro: p.bairro ?? "",
-      municipio: p.municipio ?? "", estado: p.estado ?? "MT",
+      municipio: p.municipio ?? "", municipio_ibge: p.municipio_ibge ?? "", estado: p.estado ?? "MT",
       razao_social: empVinculada?.razao_social ?? "",
       regime_tributario: empVinculada?.regime_tributario ?? "",
       car: empVinculada?.car ?? "", nirf: empVinculada?.nirf ?? "", itr: empVinculada?.itr ?? "",
@@ -891,7 +891,7 @@ function CadastrosInner() {
       _empresaId: empVinculada?.id ?? "",
     } : {
       nome: "", tipo: "pf", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "",
-      cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT",
+      cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT",
       razao_social: "", regime_tributario: "", car: "", nirf: "", itr: "", email_relatorios: "", _empresaId: "",
     });
     setTabProd("dados");
