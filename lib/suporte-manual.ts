@@ -831,8 +831,9 @@ Controla o estoque de insumos (sementes, fertilizantes, defensivos, combustível
 5. **Relatórios** — sub-aba Kardex (rastreamento produto a produto)
 
 ### Aba Posição
-- Filtrar por categoria: Sementes, Fertilizantes, Defensivos, Combustível, Grãos, Outros
-- Busca por nome do produto
+- **Busca** por nome do produto
+- **Filtro por depósito**: dropdown "Todos os depósitos" → selecione um depósito/armazém para ver só o estoque daquele local
+- Filtros por categoria: Sementes, Fertilizantes, Defensivos, Corretivos, Produtos, ⚠ Mínimo, ⛔ Negativos
 - Badge vermelho: produto abaixo do estoque mínimo
 - Valor total em estoque (custo médio × saldo)
 
@@ -1101,6 +1102,11 @@ Na NF autorizada, clique em **DANFE** → abre janela de impressão do browser.
 - **Rejeição 202 — Chave NF-e já utilizada:** número de NF duplicado. Avance o número nas configurações.
 - **Rejeição 561 — Certificado expirado:** renove o Certificado A1 e recarregue nas configurações.
 - **Rejeição 165 — Certificado inválido:** verifique se o certificado está no ambiente correto (prod/homol).
+- **Rejeição 502 — Campo ID não corresponde:** geralmente causado por série inválida para o tipo de emitente. Acesse **Configurações → Parâmetros do Sistema → Fiscal** e corrija a Série NF-e:
+  - Emitente **CNPJ**: série de **0 a 889**
+  - Emitente **CPF** (produtor rural PF): série de **920 a 969** (séries 890–899 são reservadas à SEFAZ e causam este erro)
+- **CFG: Série inválida para emitente CPF:** o sistema detectou que a série configurada está fora da faixa 920–969. Configure a série correta em Parâmetros → Fiscal → Série NF-e.
+- **CFG: Município IBGE não configurado:** o endereço do emitente ou destinatário não tem o código IBGE preenchido. Edite o cadastro da pessoa/produtor e use o campo CEP para auto-preencher (o sistema busca o código IBGE automaticamente via ViaCEP).
 - **SEFAZ fora do ar:** use a aba **Contingência** para emitir em modo offline.
 
 ### Certificado A1
@@ -1417,7 +1423,7 @@ Centraliza todos os cadastros mestres do sistema. Qualquer entidade que precisa 
 - **Insumos** — produtos de uso no campo: sementes, fertilizantes, defensivos, etc. Campos: nome (*), categoria (*), unidade (*), estoque mínimo, custo médio, princ. ativo.
 - **Produtos** — itens comercializados.
 - **Itens** — itens genéricos.
-- **Depósitos** — armazéns, silos, tulhas, galpões. Campos: nome, tipo, capacidade (sc).
+- **Depósitos** — armazéns, silos, tulhas, galpões. Campos: nome, tipo, capacidade (sc). O seletor de fazenda no topo mostra "Todos" para ver depósitos de todas as fazendas ou filtra por fazenda selecionada.
 - **Máquinas** — frota da fazenda. Sub-abas: geral (placa, tipo, modelo, ano), aquisição (valor, financiamento), seguro.
 - **Combustíveis** — bombas de abastecimento da fazenda. Campos: nome, produto (diesel/gasolina), localização.
 - **Grupos de Insumo / Subgrupos** — hierarquia de classificação de insumos.

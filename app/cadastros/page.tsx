@@ -2043,8 +2043,8 @@ function CadastrosInner() {
                 onChange={e => setFazTrabalho(e.target.value)}
                 style={{ padding: "6px 10px", border: "1.5px solid #1A5CB8", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", outline: "none" }}
               >
-                {aba === "safras" && <option value="">Todos</option>}
-                {aba !== "safras" && <option value="">— selecionar —</option>}
+                {(aba === "safras" || aba === "depositos") && <option value="">Todos</option>}
+                {aba !== "safras" && aba !== "depositos" && <option value="">— selecionar —</option>}
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             </div>
@@ -4864,8 +4864,8 @@ function CadastrosInner() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Fazenda", "Nome", "Tipo", "Pessoa/Armazém", "Capacidade (sc)", "Status", ""]} />
                 <tbody>
-                  {depositos.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado</td></tr>}
-                  {depositos.map((d, i) => {
+                  {depositos.filter(d => !fazTrabalho || d.fazenda_id === fazTrabalho).length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado{fazTrabalho ? " para esta fazenda" : ""}</td></tr>}
+                  {depositos.filter(d => !fazTrabalho || d.fazenda_id === fazTrabalho).map((d, i, arr) => {
                     const corTipo: Record<string, [string,string]> = {
                       insumo_fazenda:   ["#D5E8F5","#0B2D50"],
                       armazem_fazenda:  ["#E6F1FB","#0C447C"],
@@ -4886,7 +4886,7 @@ function CadastrosInner() {
                     const pessoaVinc = d.pessoa_id ? pessoas.find(p => p.id === d.pessoa_id)?.nome : null;
                     const fazendaNomeDep = fazendas.find(f => f.id === d.fazenda_id)?.nome ?? "—";
                     return (
-                      <tr key={d.id} style={{ borderBottom: i < depositos.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                      <tr key={d.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{fazendaNomeDep}</td>
                         <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{d.nome}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(labelTipoDep[d.tipo] ?? d.tipo, bg, cl)}</td>

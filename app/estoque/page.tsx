@@ -213,6 +213,7 @@ export default function Estoque() {
   // filtros posição
   const [filtroCat, setFiltroCat] = useState<"todos" | Insumo["categoria"] | "alertas" | "negativos" | "produtos">("todos");
   const [busca, setBusca]         = useState("");
+  const [filtroDeposito, setFiltroDeposito] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
 
   // filtro movimentações
@@ -506,6 +507,7 @@ export default function Estoque() {
   // ── Dados filtrados ──
   const insumosFiltrados = insumos.filter(i => {
     if (busca && !i.nome.toLowerCase().includes(busca.toLowerCase())) return false;
+    if (filtroDeposito && i.deposito_id !== filtroDeposito) return false;
     if (filtroCat === "alertas")  return i.estoque <= i.estoque_minimo;
     if (filtroCat === "negativos") return i.estoque < 0;
     if (filtroCat === "produtos")  return !["semente","fertilizante","defensivo","corretivo"].includes(i.categoria);
@@ -554,6 +556,14 @@ export default function Estoque() {
             <div>
               <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexDirection: "row", flexWrap: "wrap" }}>
                 <input style={{ ...inp, width: 220 }} placeholder="Buscar…" value={busca} onChange={e => setBusca(e.target.value)} />
+                <select
+                  value={filtroDeposito}
+                  onChange={e => setFiltroDeposito(e.target.value)}
+                  style={{ ...inp, width: 190, padding: "6px 10px" }}
+                >
+                  <option value="">Todos os depósitos</option>
+                  {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                </select>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {([
                     ["todos","Todos"],

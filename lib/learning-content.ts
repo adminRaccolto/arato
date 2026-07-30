@@ -465,6 +465,7 @@ Novo CMP = (Qtd. atual × CMP atual + Qtd. entrada × Preço entrada)
 - O custo lançado no DRE usa o CMP do momento do consumo
 - Compras mais baratas reduzem o CMP e melhoram a margem
 - Você pode ver o CMP de cada produto na tela de Estoque → Posição
+- Use o filtro **"Todos os depósitos"** na aba Posição para ver o estoque por armazém/silo
             `,
           },
           {
@@ -784,6 +785,37 @@ O **Código Fiscal de Operações e Prestações (CFOP)** define a natureza de c
 
 > **No Arato:** O CFOP é preenchido automaticamente quando você seleciona a "Natureza da Operação" no contrato.
             `,
+          },
+          {
+            id: "lc-5-1-1b",
+            titulo: "Série NF-e: CPF × CNPJ",
+            duracao: "3 min",
+            tipo: "leitura",
+            conteudo: `
+## Série da NF-e — regra por tipo de emitente
+
+A série da NF-e não é um número qualquer. O MOC NF-e 7.0 (manual do Ministério da Fazenda) define faixas diferentes para cada tipo de emitente.
+
+### Faixas válidas
+| Tipo de emitente | Faixa de série |
+|---|---|
+| **CNPJ** (empresa, cooperativa) | **0 a 889** |
+| **CPF** (produtor rural PF) | **920 a 969** |
+| 890–899 | ⛔ Reservado — NF-e avulsa da SEFAZ Estadual |
+| 900–919 e 990–999 | ⛔ Reservado — não usar |
+| 970–989 | Reservado — NF-e avulsa da SEFAZ Federal |
+
+### Por que isso importa
+Se um produtor rural PF (CPF) usar série na faixa 890–899, a SEFAZ retorna **cStat 502 — "Campo ID não corresponde"**, que parece um erro de assinatura mas na verdade é o campo de série incorreto.
+
+### Como configurar no Arato
+Vá em **Configurações → Parâmetros do Sistema → aba Fiscal**.
+- Se o emitente é **pessoa física (CPF)**: configure Série NF-e = **920** (ou qualquer valor entre 920 e 969)
+- Se o emitente é **pessoa jurídica (CNPJ)**: configure Série NF-e = **1** (ou qualquer valor entre 0 e 889)
+
+O sistema valida a faixa ao tentar transmitir e exibe uma mensagem de erro clara se a série estiver incorreta.
+            `,
+            dica: "Regra prática: produtor rural CPF → série 920. Empresa CNPJ → série 1.",
           },
           {
             id: "lc-5-1-2",
