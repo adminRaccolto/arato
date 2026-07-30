@@ -260,7 +260,18 @@ export async function emitirNFe(
     numero_nfe:     numero,
   };
 
-  // 4. Construir XML — qualquer exceção aqui se tornava 500; agora vira cStat 505
+  // 4. Validação prévia de campos obrigatórios — retorna CFG antes de tentar construir/transmitir
+  if (!emitente.municipio_ibge || !/^\d{7}$/.test(emitente.municipio_ibge)) {
+    return {
+      sucesso: false,
+      cStat: "CFG",
+      xMotivo:
+        "Código IBGE do município do emitente não configurado (campo obrigatório <cMun>). " +
+        "Acesse Parâmetros → Fiscal → emitente e preencha o CEP para auto-completar o IBGE, depois salve.",
+    };
+  }
+
+  // Constrói XML — qualquer exceção aqui se tornava 500; agora vira cStat 505
   let built: ReturnType<typeof buildNFe>;
   try {
     built = buildNFe({ ...input, emitente });

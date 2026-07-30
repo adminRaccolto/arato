@@ -360,6 +360,13 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
 
   // ── Endereços ─────────────────────────────────────────────────────────────
 
+  if (!emit.municipio_ibge || !/^\d{7}$/.test(emit.municipio_ibge)) {
+    throw new Error(
+      `cMun do emitente inválido ("${emit.municipio_ibge}"). ` +
+      "Configure o CEP do emitente em Parâmetros → Fiscal para auto-completar o código IBGE."
+    );
+  }
+
   const enderEmit = `<enderEmit>
       <xLgr>${escXml(emit.logradouro)}</xLgr>
       <nro>${escXml(emit.numero || "S/N")}</nro>
