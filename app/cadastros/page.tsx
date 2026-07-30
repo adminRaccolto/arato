@@ -347,7 +347,7 @@ function CadastrosInner() {
   const [pessoas, setPessoas]         = useState<Pessoa[]>([]);
   const [modalPes, setModalPes]       = useState(false);
   const [editPes, setEditPes]         = useState<Pessoa | null>(null);
-  const [fPes, setFPes]               = useState({ nome: "", tipo: "pj" as "pf"|"pj", cliente: true, fornecedor: false, cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT", nome_contato: "", telefone_contato: "", banco_nome: "", banco_agencia: "", banco_conta: "", banco_tipo: "", pix_chave: "", pix_tipo: "", regime_tributario: "", cnae: "", situacao_cadastral: "", subcategorias: [] as string[], criar_deposito_terceiro: false });
+  const [fPes, setFPes]               = useState({ nome: "", tipo: "pj" as "pf"|"pj", cliente: true, fornecedor: false, cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", nome_contato: "", telefone_contato: "", banco_nome: "", banco_agencia: "", banco_conta: "", banco_tipo: "", pix_chave: "", pix_tipo: "", regime_tributario: "", cnae: "", situacao_cadastral: "", subcategorias: [] as string[], criar_deposito_terceiro: false });
   const [novaSubcat, setNovaSubcat]   = useState("");
   const [filtroPes,  setFiltroPes]    = useState({ subcat: "", busca: "" });
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
@@ -910,10 +910,11 @@ function CadastrosInner() {
       if (!d.erro) {
         setFProd(p => ({
           ...p,
-          logradouro: d.logradouro ?? p.logradouro,
-          bairro:     d.bairro     ?? p.bairro,
-          municipio:  d.localidade ?? p.municipio,
-          estado:     d.uf         ?? p.estado,
+          logradouro:      d.logradouro ?? p.logradouro,
+          bairro:          d.bairro     ?? p.bairro,
+          municipio:       d.localidade ?? p.municipio,
+          municipio_ibge:  d.ibge       ?? p.municipio_ibge ?? "",
+          estado:          d.uf         ?? p.estado,
         }));
       }
     } catch { /* silencioso — usuário preenche manualmente */ }
@@ -1468,7 +1469,7 @@ function CadastrosInner() {
       email: p.email ?? "", telefone: p.telefone ?? "",
       cep: p.cep ?? "", logradouro: p.logradouro ?? "", numero: p.numero ?? "",
       complemento: p.complemento ?? "", bairro: p.bairro ?? "",
-      municipio: p.municipio ?? "", estado: p.estado ?? "MT",
+      municipio: p.municipio ?? "", municipio_ibge: p.municipio_ibge ?? "", estado: p.estado ?? "MT",
       nome_contato: p.nome_contato ?? "", telefone_contato: p.telefone_contato ?? "",
       banco_nome: p.banco_nome ?? "", banco_agencia: p.banco_agencia ?? "",
       banco_conta: p.banco_conta ?? "", banco_tipo: p.banco_tipo ?? "",
@@ -1479,7 +1480,7 @@ function CadastrosInner() {
     } : {
       nome: "", tipo: "pj", cliente: true, fornecedor: false,
       cpf_cnpj: "", inscricao_est: "", email: "", telefone: "",
-      cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT",
+      cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT",
       nome_contato: "", telefone_contato: "",
       banco_nome: "", banco_agencia: "", banco_conta: "", banco_tipo: "",
       pix_chave: "", pix_tipo: "",
@@ -1553,7 +1554,7 @@ function CadastrosInner() {
       if (!r.ok) return;
       const d = await r.json();
       if (d.erro) return;
-      setFPes(p => ({ ...p, logradouro: d.logradouro || "", bairro: d.bairro || "", municipio: d.localidade || "", estado: d.uf || "MT" }));
+      setFPes(p => ({ ...p, logradouro: d.logradouro || "", bairro: d.bairro || "", municipio: d.localidade || "", municipio_ibge: d.ibge || "", estado: d.uf || "MT" }));
     } catch {}
   };
 

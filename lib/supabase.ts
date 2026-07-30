@@ -677,6 +677,7 @@ export type Pessoa = {
   complemento?: string;
   bairro?: string;
   municipio?: string;
+  municipio_ibge?: string;   // código IBGE 7 dígitos — obrigatório para emissão de NF-e
   estado?: string;
   // Contato adicional
   nome_contato?: string;

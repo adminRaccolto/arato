@@ -81,7 +81,7 @@ const FVENDA_INICIAL = {
   tipo_nota: "propria" as "propria"|"terceiros", produtor_id: "", safra_id: "", ie_selecionada: "",
   // Destinatário
   destinatario: "", cnpj: "",
-  dest_endereco: "", dest_numero: "", dest_bairro: "", dest_cidade: "", dest_uf: "", dest_cep: "",
+  dest_endereco: "", dest_numero: "", dest_bairro: "", dest_cidade: "", dest_uf: "", dest_cep: "", dest_municipio_ibge: "",
   dest_tipo_pessoa: "juridica" as "fisica"|"juridica", dest_ie: "", dest_deposito: false,
   // Operações-CFOP
   cfop: "6.101", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
@@ -1043,16 +1043,17 @@ function FiscalInner() {
           modulo_key:        moduloKeyAtivo,
           emit_ie_override:  ieEfetiva || undefined,
           destinatario: {
-            nome:          fVenda.destinatario,
-            cpf_cnpj:      fVenda.cnpj            || undefined,
-            ie:            fVenda.dest_ie         || undefined,
-            logradouro:    fVenda.dest_endereco   || undefined,
-            numero:        fVenda.dest_numero     || undefined,
-            bairro:        fVenda.dest_bairro     || undefined,
-            municipio_nome:fVenda.dest_cidade     || undefined,
-            uf:            fVenda.dest_uf         || undefined,
-            cep:           fVenda.dest_cep        || undefined,
-            tipo_pessoa:   fVenda.dest_tipo_pessoa,
+            nome:              fVenda.destinatario,
+            cpf_cnpj:          fVenda.cnpj                 || undefined,
+            ie:                fVenda.dest_ie              || undefined,
+            logradouro:        fVenda.dest_endereco        || undefined,
+            numero:            fVenda.dest_numero          || undefined,
+            bairro:            fVenda.dest_bairro          || undefined,
+            municipio_nome:    fVenda.dest_cidade          || undefined,
+            municipio_ibge:    fVenda.dest_municipio_ibge  || undefined,
+            uf:                fVenda.dest_uf              || undefined,
+            cep:               fVenda.dest_cep             || undefined,
+            tipo_pessoa:       fVenda.dest_tipo_pessoa,
           },
           itens:    itensPayload,
           natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
@@ -2109,16 +2110,17 @@ function FiscalInner() {
                               <div key={p.id}
                                 onMouseDown={() => {
                                   fv({
-                                    destinatario:     p.nome,
-                                    cnpj:             (p.cpf_cnpj ?? "").replace(/\D/g,""),
-                                    dest_ie:          p.inscricao_est  ?? "",
-                                    dest_tipo_pessoa: p.tipo === "pf" ? "fisica" : "juridica",
-                                    dest_endereco:    p.logradouro     ?? "",
-                                    dest_numero:      p.numero      ?? "",
-                                    dest_bairro:      p.bairro      ?? "",
-                                    dest_cidade:      p.municipio      ?? "",
-                                    dest_uf:          p.estado         ?? "",
-                                    dest_cep:         (p.cep ?? "").replace(/\D/g,""),
+                                    destinatario:          p.nome,
+                                    cnpj:                  (p.cpf_cnpj ?? "").replace(/\D/g,""),
+                                    dest_ie:               p.inscricao_est  ?? "",
+                                    dest_tipo_pessoa:      p.tipo === "pf" ? "fisica" : "juridica",
+                                    dest_endereco:         p.logradouro     ?? "",
+                                    dest_numero:           p.numero         ?? "",
+                                    dest_bairro:           p.bairro         ?? "",
+                                    dest_cidade:           p.municipio      ?? "",
+                                    dest_uf:               p.estado         ?? "",
+                                    dest_cep:              (p.cep ?? "").replace(/\D/g,""),
+                                    dest_municipio_ibge:   p.municipio_ibge ?? "",
                                   });
                                   setBuscaPessoa(p.nome + (p.cpf_cnpj ? " — " + p.cpf_cnpj : ""));
                                   setDropdownPessoa(false);
@@ -2147,7 +2149,18 @@ function FiscalInner() {
                       field("Bairro", <input style={inSt} value={fVenda.dest_bairro} onChange={e => fv({dest_bairro:e.target.value})} />, "0 0 150px"),
                     )}
                     {row(
-                      field("CEP", <input style={inSt} placeholder="00000-000" value={fVenda.dest_cep} onChange={e => fv({dest_cep:e.target.value})} />, "0 0 110px"),
+                      field("CEP", <input style={inSt} placeholder="00000-000" value={fVenda.dest_cep}
+                        onChange={e => {
+                          const v = e.target.value;
+                          fv({ dest_cep: v });
+                          const raw = v.replace(/\D/g,"");
+                          if (raw.length === 8) {
+                            fetch(`https://viacep.com.br/ws/${raw}/json/`)
+                              .then(r => r.json())
+                              .then(d => { if (!d.erro) fv({ dest_endereco: d.logradouro || fVenda.dest_endereco, dest_bairro: d.bairro || fVenda.dest_bairro, dest_cidade: d.localidade || fVenda.dest_cidade, dest_uf: d.uf || fVenda.dest_uf, dest_municipio_ibge: d.ibge || fVenda.dest_municipio_ibge }); })
+                              .catch(() => {});
+                          }
+                        }} />, "0 0 110px"),
                       field("Cidade", <input style={inSt} value={fVenda.dest_cidade} onChange={e => fv({dest_cidade:e.target.value})} />),
                       field("UF", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.dest_uf} onChange={e => fv({dest_uf:e.target.value.toUpperCase().slice(0,2)})} />, "0 0 50px"),
                     )}

@@ -8815,3 +8815,28 @@ ALTER TABLE tratamento_receitas_itens
   FOREIGN KEY (insumo_id) REFERENCES insumos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Seção 136: municipio_ibge em pessoas + série NF-e para emitentes CPF
+-- ============================================================================
+
+-- 1. Adiciona coluna municipio_ibge na tabela pessoas (código IBGE 7 dígitos)
+ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS municipio_ibge text;
+
+-- 2. Corrige série NF-e para TODOS os emitentes CPF já cadastrados.
+--    Regra MOC NF-e 7.0: CPF emitente = série 920-969 (sistema próprio).
+--    Séries 890-899 são reservadas para NF-e avulsa do Fisco Estadual.
+--    Este UPDATE é idempotente: só atualiza quem ainda está fora da faixa.
+UPDATE configuracoes_modulo
+SET valor = jsonb_set(valor, '{serie_nfe}', '"920"')
+WHERE modulo LIKE 'fiscal%'
+  AND LENGTH(REGEXP_REPLACE(valor->>'cpf_cnpj_emitente', '[^0-9]', '', 'g')) = 11
+  AND (valor->>'serie_nfe') IS NOT NULL
+  AND (valor->>'serie_nfe') ~ '^[0-9]+$'
+  AND (valor->>'serie_nfe')::int < 920;
+
+-- 3. Popula municipio_ibge em pessoas existentes a partir do município/CEP
+--    onde possível via texto — apenas marca como vazio para ser corrigido via CEP
+--    no próximo acesso ao cadastro. O campo d.ibge do ViaCEP preenche automaticamente.
+
+NOTIFY pgrst, 'reload schema';

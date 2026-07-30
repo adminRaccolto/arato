@@ -1013,7 +1013,7 @@ function ParametrosSistemaContent() {
                           {campo("Município", inp({ value: String(c.municipio ?? ""), onChange: e => setCfg(emitter.moduloKey, "municipio", e.target.value) }))}
                         </div>
                         <div>
-                          {campo("Código IBGE", inp({ value: String(c.municipio_ibge ?? ""), placeholder: "5106455", onChange: e => setCfg(emitter.moduloKey, "municipio_ibge", e.target.value) }))}
+                          {campo("Código IBGE", inp({ value: String(c.municipio_ibge ?? ""), placeholder: "(automático via CEP)", onChange: e => setCfg(emitter.moduloKey, "municipio_ibge", e.target.value) }))}
                         </div>
                         <div>
                           {campo("UF", inp({ value: String(c.uf_emitente ?? ""), placeholder: "MT", maxLength: 2, onChange: e => setCfg(emitter.moduloKey, "uf_emitente", e.target.value.toUpperCase()) }))}
