@@ -819,6 +819,21 @@ export default function ContratosFinanceiros() {
     }
   }
 
+  // ── Helper: upload PDF da cédula → retorna {pdf_url, pdf_nome} ou null ──
+  const uploadPdfCedula = async (contratoId: string, file: File): Promise<{ pdf_url: string; pdf_nome: string } | null> => {
+    const ext  = file.name.split(".").pop() ?? "pdf";
+    const path = `contratos-financeiros/${fazendaId}/${contratoId}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
+    if (upErr) {
+      alert(`⚠️ PDF não pôde ser salvo: ${upErr.message}\n\nVerifique se o bucket "documentos" existe e está público no Supabase Storage.`);
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+    const pdfPayload = { pdf_url: urlData.publicUrl, pdf_nome: file.name };
+    await atualizarContratoFinanceiro(contratoId, pdfPayload);
+    return pdfPayload;
+  };
+
   // ── Salvar contrato (Principal) ──
   const salvarContrato = () => salvar(async () => {
     if (!fazendaId) { alert("Fazenda não identificada. Recarregue a página."); return; }
@@ -853,16 +868,8 @@ export default function ContratosFinanceiros() {
       let atualizado: ContratoFinanceiro = { ...contratoModal, ...payload };
       // Upload de PDF ao editar
       if (pdfFile) {
-        try {
-          const ext  = pdfFile.name.split(".").pop() ?? "pdf";
-          const path = `contratos-financeiros/${fazendaId}/${contratoModal.id}.${ext}`;
-          const { error: upErr } = await supabase.storage.from("documentos").upload(path, pdfFile, { upsert: true });
-          if (!upErr) {
-            const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
-            await atualizarContratoFinanceiro(contratoModal.id, { pdf_url: urlData.publicUrl, pdf_nome: pdfFile.name });
-            atualizado = { ...atualizado, pdf_url: urlData.publicUrl, pdf_nome: pdfFile.name };
-          }
-        } catch { /* PDF é opcional */ }
+        const saved = await uploadPdfCedula(contratoModal.id, pdfFile).catch(() => null);
+        if (saved) atualizado = { ...atualizado, ...saved };
         setPdfFile(null);
         setPdfNome(atualizado.pdf_nome ?? null);
         setPdfUrl(atualizado.pdf_url ?? null);
@@ -872,19 +879,10 @@ export default function ContratosFinanceiros() {
       setFCalc(prev => ({ ...prev, taxaMensal: payload.taxa_juros_am != null ? String(payload.taxa_juros_am) : prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
     } else {
       const novo = await criarContratoFinanceiro(payload);
-      // Upload do PDF da cédula se houver
+      // Upload do PDF da cédula se houver (o mesmo arquivo que a IA leu)
       if (pdfFile) {
-        try {
-          const ext   = pdfFile.name.split(".").pop() ?? "pdf";
-          const path  = `contratos-financeiros/${fazendaId}/${novo.id}.${ext}`;
-          const { error: upErr } = await supabase.storage.from("documentos").upload(path, pdfFile, { upsert: true });
-          if (!upErr) {
-            const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
-            await atualizarContratoFinanceiro(novo.id, { pdf_url: urlData.publicUrl, pdf_nome: pdfFile.name });
-            novo.pdf_url  = urlData.publicUrl;
-            novo.pdf_nome = pdfFile.name;
-          }
-        } catch { /* PDF é opcional — não bloqueia o save */ }
+        const saved = await uploadPdfCedula(novo.id, pdfFile).catch(() => null);
+        if (saved) { novo.pdf_url = saved.pdf_url; novo.pdf_nome = saved.pdf_nome; }
         setPdfFile(null);
       }
       setContratos(p => [novo, ...p]);
