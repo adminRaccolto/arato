@@ -1438,7 +1438,7 @@ function FiscalInner() {
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => { setModalComplemento(n); setAba("complemento"); }}
                     onConsultarSefaz={consultarSefaz}
-                    onImprimirDanfe={n => imprimirDanfe(n, danfeCfg, logoCliente)}
+                    onImprimirDanfe={n => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")}
                     onRetransmitir={abrirRetransmit}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1822,7 +1822,7 @@ function FiscalInner() {
                                 </span>
                               </td>
                               <td style={{ padding: "10px 12px" }}>
-                                <button onClick={() => imprimirDanfe(n, danfeCfg, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#1A4870", cursor: "pointer", fontSize: 11 }}>
+                                <button onClick={() => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#1A4870", cursor: "pointer", fontSize: 11 }}>
                                   DANFE
                                 </button>
                               </td>
