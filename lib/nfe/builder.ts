@@ -411,7 +411,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   const enderEmit = `<enderEmit>
       <xLgr>${escXml(emit.logradouro)}</xLgr>
       <nro>${escXml(emit.numero || "S/N")}</nro>
-      <xBairro>${escXml(emit.bairro)}</xBairro>
+      <xBairro>${escXml(emit.bairro || "S/N")}</xBairro>
       <cMun>${emit.municipio_ibge}</cMun>
       <xMun>${escXml(emit.municipio_nome)}</xMun>
       <UF>${emit.uf}</UF>
@@ -445,9 +445,9 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
 
   const enderDest = dest.logradouro
     ? `<enderDest>
-      <xLgr>${escXml(dest.logradouro)}</xLgr>
+      <xLgr>${escXml(dest.logradouro || "NAO INFORMADO")}</xLgr>
       <nro>${escXml(dest.numero || "S/N")}</nro>
-      <xBairro>${escXml(dest.bairro ?? "N/A")}</xBairro>
+      <xBairro>${escXml(dest.bairro || "N/A")}</xBairro>
       <cMun>${destCMun}</cMun>
       <xMun>${escXml(dest.municipio_nome ?? destUF)}</xMun>
       <UF>${destUF}</UF>

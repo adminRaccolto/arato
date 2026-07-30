@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
-type Aba = "excluir_cliente" | "limpar_dados";
+type Aba = "excluir_cliente" | "limpar_dados" | "manutencao";
 
 type ContaInfo = {
   id: string;
@@ -144,6 +144,11 @@ export default function DadosAdminPage() {
   const [confirmaDeletar, setConfirmaDeletar] = useState("");
   const [deletandoDados, setDeletandoDados] = useState(false);
   const [resultadoLimpeza, setResultadoLimpeza] = useState<ResultGrupo[] | null>(null);
+
+  // ─── Estado: Manutenção ───────────────────────────────────────────────
+  type IbgeDetalhe = { nome: string; cep: string; ibge?: string; erro?: string };
+  const [corrigindoIbge, setCorrigindoIbge] = useState(false);
+  const [resultadoIbge, setResultadoIbge] = useState<{ total: number; atualizados: number; erros: number; detalhes: IbgeDetalhe[] } | null>(null);
 
   if (!raccotloGestor) {
     return (
@@ -328,6 +333,7 @@ export default function DadosAdminPage() {
         {([
           { id: "excluir_cliente" as Aba, icon: "🗑️", label: "Excluir Cliente",  desc: "Remove a conta e TODOS os dados permanentemente" },
           { id: "limpar_dados"    as Aba, icon: "🧹", label: "Limpar Dados",     desc: "Selecione exatamente quais dados excluir" },
+          { id: "manutencao"      as Aba, icon: "🔧", label: "Manutenção",       desc: "Corrigir dados faltantes em massa (IBGE, etc.)" },
         ]).map(a => (
           <button key={a.id} onClick={() => { setAba(a.id); setResultadoCliente(null); setResultadoLimpeza(null); }}
             style={{ padding: "12px 20px", borderRadius: 10, cursor: "pointer", border: `2px solid ${aba === a.id ? "#E24B4A" : "var(--border)"}`, background: aba === a.id ? "#FFF0F0" : "white", textAlign: "left", minWidth: 220 }}>
@@ -636,6 +642,85 @@ export default function DadosAdminPage() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── ABA: MANUTENÇÃO ──────────────────────────────────────────────────── */}
+      {aba === "manutencao" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Corrigir IBGE de compradores */}
+          <div style={{ ...card, padding: "20px 24px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", marginBottom: 6 }}>
+                  Corrigir código IBGE dos compradores
+                </div>
+                <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>
+                  Percorre <strong>todas as pessoas cadastradas</strong> (de todos os clientes) que têm CEP preenchido mas sem código IBGE do município.
+                  Para cada uma, consulta o ViaCEP e salva o código automaticamente.
+                  Necessário para emissão de NF-e em produção.
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (!window.confirm("Corrigir IBGE de todos os compradores sem código? Isso pode levar alguns segundos.")) return;
+                  setCorrigindoIbge(true);
+                  setResultadoIbge(null);
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const resp = await fetch("/api/admin/corrigir-ibge-pessoas", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+                      body: JSON.stringify({ role: "raccotlo" }),
+                    });
+                    const json = await resp.json();
+                    setResultadoIbge(json);
+                  } catch (e) {
+                    alert("Erro: " + String(e));
+                  } finally { setCorrigindoIbge(false); }
+                }}
+                disabled={corrigindoIbge}
+                style={{ whiteSpace: "nowrap", padding: "10px 20px", borderRadius: 8, border: "none", background: corrigindoIbge ? "#ccc" : "#1A4870", color: "white", fontWeight: 700, fontSize: 13, cursor: corrigindoIbge ? "not-allowed" : "pointer" }}>
+                {corrigindoIbge ? "⏳ Corrigindo…" : "▶ Executar agora"}
+              </button>
+            </div>
+
+            {resultadoIbge && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", gap: 24, marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: "var(--text-2)" }}>Total sem IBGE: <strong>{resultadoIbge.total}</strong></span>
+                  <span style={{ fontSize: 13, color: "#16A34A", fontWeight: 700 }}>✓ Atualizados: {resultadoIbge.atualizados}</span>
+                  {resultadoIbge.erros > 0 && <span style={{ fontSize: 13, color: "#E24B4A", fontWeight: 700 }}>✗ Erros: {resultadoIbge.erros}</span>}
+                </div>
+                <div style={{ maxHeight: 320, overflowY: "auto", border: "0.5px solid var(--border)", borderRadius: 8 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#F4F6FA", borderBottom: "0.5px solid var(--border)" }}>
+                        <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Pessoa</th>
+                        <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>CEP</th>
+                        <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>IBGE</th>
+                        <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resultadoIbge.detalhes.map((d, i) => (
+                        <tr key={i} style={{ borderBottom: "0.5px solid var(--border)", background: i % 2 ? "#FAFAFA" : "white" }}>
+                          <td style={{ padding: "7px 12px", color: "var(--text-1)" }}>{d.nome}</td>
+                          <td style={{ padding: "7px 12px", color: "var(--text-2)", fontFamily: "monospace" }}>{d.cep}</td>
+                          <td style={{ padding: "7px 12px", color: "var(--text-2)", fontFamily: "monospace" }}>{d.ibge ?? "—"}</td>
+                          <td style={{ padding: "7px 12px" }}>
+                            {d.ibge
+                              ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓ OK</span>
+                              : <span style={{ color: "#E24B4A" }}>✗ {d.erro}</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </div>
         </div>
