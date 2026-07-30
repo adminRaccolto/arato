@@ -707,11 +707,6 @@ function CadastrosInner() {
       listarPrincipiosAtivos().then(setPrincipios).catch(() => {});
     }
     if (aba === "depositos") {
-      // Carrega depósitos de TODAS as fazendas da conta
-      const fzIds = fazendas.length > 0 ? fazendas : [{ id: fazendaId! }];
-      Promise.all(fzIds.map(f => listarDepositos(f.id!)))
-        .then(resultados => setDepositos(resultados.flat()))
-        .catch(e => setErro(String(e)));
       listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     }
     if (aba === "imoveis_urbanos") listarImoveisUrbanos(fazendaId).then(setImoveisUrbanos).catch(e => setErro(e.message));
@@ -821,6 +816,17 @@ function CadastrosInner() {
         });
     }
   }, [aba, fazendaId]);
+
+  // Depósitos: useEffect separado que observa `fazendas` para evitar race condition
+  // (aba=depositos pode estar ativa antes de fazendas terminar de carregar)
+  useEffect(() => {
+    if (aba !== "depositos") return;
+    const fzIds = fazendas.length > 0 ? fazendas : (fazendaId ? [{ id: fazendaId }] : []);
+    if (fzIds.length === 0) return;
+    Promise.all(fzIds.map(f => listarDepositos(f.id!)))
+      .then(resultados => setDepositos(resultados.flat()))
+      .catch(() => {});
+  }, [aba, fazendas, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carrega talhões/matrículas ao expandir fazenda
   const toggleFaz = async (id: string) => {
