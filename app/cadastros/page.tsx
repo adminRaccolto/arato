@@ -302,6 +302,7 @@ function CadastrosInner() {
   const fazIdEff: string | null = fazendaId ?? (fazendas.length > 0 ? fazendas[0].id : null);
   // Fazenda de trabalho — seletor explícito no topo da página, usado em todos os modais
   const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  const [filtroDepFazenda, setFiltroDepFazenda] = useState<string>(""); // filtro exclusivo da aba Depósitos (não afeta fazTrabalho)
   const [talhoes, setTalhoes]         = useState<Record<string, Talhao[]>>({});
   const [matriculas, setMatriculas]   = useState<Record<string, MatriculaImovel[]>>({});
   const [expandFaz, setExpandFaz]     = useState<Set<string>>(new Set());
@@ -2039,8 +2040,8 @@ function CadastrosInner() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Fazenda:</span>
               <select
-                value={fazTrabalho}
-                onChange={e => setFazTrabalho(e.target.value)}
+                value={aba === "depositos" ? filtroDepFazenda : fazTrabalho}
+                onChange={e => aba === "depositos" ? setFiltroDepFazenda(e.target.value) : setFazTrabalho(e.target.value)}
                 style={{ padding: "6px 10px", border: "1.5px solid #1A5CB8", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", outline: "none" }}
               >
                 {(aba === "safras" || aba === "depositos") && <option value="">Todos</option>}
@@ -4864,8 +4865,8 @@ function CadastrosInner() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Fazenda", "Nome", "Tipo", "Pessoa/Armazém", "Capacidade (sc)", "Status", ""]} />
                 <tbody>
-                  {depositos.filter(d => !fazTrabalho || d.fazenda_id === fazTrabalho).length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado{fazTrabalho ? " para esta fazenda" : ""}</td></tr>}
-                  {depositos.filter(d => !fazTrabalho || d.fazenda_id === fazTrabalho).map((d, i, arr) => {
+                  {depositos.filter(d => !filtroDepFazenda || d.fazenda_id === filtroDepFazenda).length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado{fazTrabalho ? " para esta fazenda" : ""}</td></tr>}
+                  {depositos.filter(d => !filtroDepFazenda || d.fazenda_id === filtroDepFazenda).map((d, i, arr) => {
                     const corTipo: Record<string, [string,string]> = {
                       insumo_fazenda:   ["#D5E8F5","#0B2D50"],
                       armazem_fazenda:  ["#E6F1FB","#0C447C"],
