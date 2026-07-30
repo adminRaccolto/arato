@@ -8845,3 +8845,25 @@ ALTER TABLE garantias_contrato
   ADD COLUMN IF NOT EXISTS fazenda_id uuid REFERENCES fazendas(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Migration: refinanciamento de contratos financeiros
+ALTER TABLE contratos_financeiros
+  ADD COLUMN IF NOT EXISTS refinanciado_por_id uuid REFERENCES contratos_financeiros(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS contratos_refinanciamento (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  contrato_novo_id    uuid NOT NULL REFERENCES contratos_financeiros(id) ON DELETE CASCADE,
+  contrato_origem_id  uuid NOT NULL REFERENCES contratos_financeiros(id) ON DELETE CASCADE,
+  saldo_incorporado   numeric(14,2),
+  created_at          timestamptz DEFAULT now(),
+  UNIQUE(contrato_novo_id, contrato_origem_id)
+);
+
+-- RLS: mesma política das demais tabelas de contratos
+ALTER TABLE contratos_refinanciamento ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Refinanciamento by fazenda" ON contratos_refinanciamento
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';

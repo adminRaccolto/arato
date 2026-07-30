@@ -2462,6 +2462,49 @@ export async function excluirAditivo(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ── Refinanciamento de Contratos ──────────────────────────────────────────────
+
+import type { ContratoRefinanciamento } from "./supabase";
+
+export async function listarOrigensRefinanciamento(contrato_novo_id: string): Promise<ContratoRefinanciamento[]> {
+  const { data, error } = await supabase
+    .from("contratos_refinanciamento")
+    .select("*, contrato_origem:contratos_financeiros!contrato_origem_id(*)")
+    .eq("contrato_novo_id", contrato_novo_id)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []) as ContratoRefinanciamento[];
+}
+
+export async function vincularOrigemRefinanciamento(
+  contrato_novo_id: string,
+  contrato_origem_id: string,
+  fazenda_id: string,
+  saldo_incorporado?: number,
+): Promise<ContratoRefinanciamento> {
+  // Insere vínculo
+  const { data, error } = await supabase
+    .from("contratos_refinanciamento")
+    .insert({ contrato_novo_id, contrato_origem_id, fazenda_id, saldo_incorporado: saldo_incorporado ?? null })
+    .select("*, contrato_origem:contratos_financeiros!contrato_origem_id(*)")
+    .single();
+  if (error) throw error;
+  // Marca contrato origem como refinanciado
+  await supabase.from("contratos_financeiros")
+    .update({ status: "refinanciado", refinanciado_por_id: contrato_novo_id })
+    .eq("id", contrato_origem_id);
+  return data as ContratoRefinanciamento;
+}
+
+export async function desvincularOrigemRefinanciamento(id: string, contrato_origem_id: string): Promise<void> {
+  const { error } = await supabase.from("contratos_refinanciamento").delete().eq("id", id);
+  if (error) throw error;
+  // Reverte origem para ativo
+  await supabase.from("contratos_financeiros")
+    .update({ status: "ativo", refinanciado_por_id: null })
+    .eq("id", contrato_origem_id);
+}
+
 // ————————————————————————————————————————
 // MÓDULO LAVOURA — Plantio
 // ————————————————————————————————————————

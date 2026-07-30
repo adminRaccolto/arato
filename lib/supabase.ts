@@ -1244,10 +1244,23 @@ export type ContratoFinanceiro = {
   fiscal: boolean;
   observacao?: string;
   produtor_id?: string | null;   // FK produtores — agricultor responsável pelo contrato (LCDPR)
-  status: "ativo" | "quitado" | "cancelado";
+  status: "ativo" | "quitado" | "cancelado" | "refinanciado";
+  refinanciado_por_id?: string | null; // FK → contrato que absorveu este (quando refinanciado)
   pdf_url?: string | null;       // URL do PDF da cédula no Supabase Storage
   pdf_nome?: string | null;      // Nome original do arquivo
   created_at?: string;
+};
+
+export type ContratoRefinanciamento = {
+  id: string;
+  fazenda_id: string;
+  contrato_novo_id: string;       // o contrato que absorveu
+  contrato_origem_id: string;     // o contrato que foi consolidado
+  saldo_incorporado?: number | null;
+  created_at?: string;
+  // joins opcionais
+  contrato_origem?: ContratoFinanceiro;
+  contrato_novo?: ContratoFinanceiro;
 };
 
 export type ParcelaLiberacao = {

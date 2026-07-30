@@ -10,6 +10,7 @@ import {
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
   listarAditivos, criarAditivo, excluirAditivo,
+  listarOrigensRefinanciamento, vincularOrigemRefinanciamento, desvincularOrigemRefinanciamento,
   listarMatriculas,
   listarMaquinas,
   listarContas,
@@ -24,7 +25,7 @@ import type {
   ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento,
   GarantiaContrato, CentroCustoContrato, MatriculaImovel,
   ContaBancaria, Pessoa, Maquina, AditivoContrato, ImovelUrbano, Produtor,
-  CentroCusto,
+  CentroCusto, ContratoRefinanciamento,
 } from "../../../lib/supabase";
 
 // ── estilos base ──────────────────────────────────────────
@@ -150,9 +151,10 @@ const TIPO_BEM_META: Record<NonNullable<GarantiaContrato["tipo_bem"]>, string> =
 };
 
 const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: string; cl: string }> = {
-  ativo:     { label: "Ativo",     bg: "#D5E8F5", cl: "#0B2D50" },
-  quitado:   { label: "Quitado",   bg: "#F1EFE8", cl: "var(--text-2)"    },
-  cancelado: { label: "Cancelado", bg: "#FCEBEB", cl: "#791F1F" },
+  ativo:        { label: "Ativo",        bg: "#D5E8F5", cl: "#0B2D50" },
+  quitado:      { label: "Quitado",      bg: "#F1EFE8", cl: "var(--text-2)" },
+  cancelado:    { label: "Cancelado",    bg: "#FCEBEB", cl: "#791F1F" },
+  refinanciado: { label: "Refinanciado", bg: "#EDE9FB", cl: "#4B3B9B" },
 };
 
 const FC_VAZIO = {
@@ -598,6 +600,8 @@ export default function ContratosFinanceiros() {
   const [ccCiclos, setCcCiclos]                   = useState<{ id: string; descricao?: string; cultura?: string; ano_safra_id?: string }[]>([]);
   const [ccOptions, setCcOptions]                 = useState<CentroCusto[]>([]);
   const [aditivos, setAditivos]                   = useState<AditivoContrato[]>([]);
+  const [origensRefin, setOrigensRefin]           = useState<ContratoRefinanciamento[]>([]);
+  const [fRefin, setFRefin]                       = useState({ contrato_origem_id: "", saldo_incorporado: "" });
   const [matriculas, setMatriculas]               = useState<MatriculaImovel[]>([]);
   const [maquinas, setMaquinas]                   = useState<Maquina[]>([]);
   const [imoveisUrbanos, setImoveisUrbanos]       = useState<ImovelUrbano[]>([]);
@@ -669,7 +673,10 @@ export default function ContratosFinanceiros() {
         setCcOptions(cc);
       }).catch(() => {});
     }
-    if (abaModal === "aditivos") listarAditivos(id).then(setAditivos).catch(() => {});
+    if (abaModal === "aditivos") {
+      listarAditivos(id).then(setAditivos).catch(() => {});
+      listarOrigensRefinanciamento(id).then(setOrigensRefin).catch(() => {});
+    }
     if (abaModal === "movimentacoes") {
       listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
       listarParcelasPagamento(id).then(setParcelasPagamento).catch(() => {});
@@ -715,7 +722,7 @@ export default function ContratosFinanceiros() {
     setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
     setFAdit({ ...FA_VAZIO });
     setPdfUrl(c?.pdf_url ?? null); setPdfNome(c?.pdf_nome ?? null);
-    setParcelasLiberacao([]); setParcelasPagamento([]); setGarantias([]); setCentrosCusto([]); setAditivos([]);
+    setParcelasLiberacao([]); setParcelasPagamento([]); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
     setModalAberto(true);
   };
 
@@ -1454,7 +1461,13 @@ export default function ContratosFinanceiros() {
                           {c.moeda === "USD" && ptax && <div style={{ fontSize: 10, color: "var(--text-3)" }}>≈ {fmtBRL(c.valor_financiado * ptax)}</div>}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtData(c.data_contrato)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                            {badge(sm.label, sm.bg, sm.cl)}
+                            {/* quantos contratos este consolida */}
+                            {(() => { const n = contratos.filter(x => x.refinanciado_por_id === c.id).length; return n > 0 ? <span style={{ fontSize: 10, color: "#4B3B9B", fontWeight: 600 }}>🔗 {n} contrato{n > 1 ? "s" : ""}</span> : null; })()}
+                          </div>
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
                             {c.pdf_url ? (
@@ -1861,6 +1874,29 @@ export default function ContratosFinanceiros() {
                       </div>
                     </div>
                   )}
+                  {/* Banner: este contrato foi refinanciado */}
+                  {contratoModal?.status === "refinanciado" && contratoModal.refinanciado_por_id && (() => {
+                    const novoC = contratos.find(x => x.id === contratoModal.refinanciado_por_id);
+                    return (
+                      <div style={{ marginBottom: 14, background: "#F0EDFE", border: "0.5px solid #7C6FC3", borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 16 }}>🔗</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "#4B3B9B" }}>Este contrato foi refinanciado</div>
+                          <div style={{ fontSize: 11, color: "#6B5CA5", marginTop: 2 }}>
+                            Absorvido por: <strong>{novoC?.descricao ?? `Contrato ${contratoModal.refinanciado_por_id.slice(0, 8)}…`}</strong>
+                            {novoC?.numero_documento && ` — Nº ${novoC.numero_documento}`}
+                          </div>
+                        </div>
+                        {novoC && (
+                          <button style={{ fontSize: 11, padding: "4px 10px", background: "#EDE9FB", border: "0.5px solid #7C6FC3", borderRadius: 6, cursor: "pointer", color: "#4B3B9B", fontWeight: 600 }}
+                            onClick={() => { fecharModal(); setTimeout(() => abrirModal(novoC), 50); }}>
+                            Ver novo contrato →
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <SecTitle>Identificação</SecTitle>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div style={{ gridColumn: "1/-1" }}>
@@ -2387,8 +2423,83 @@ export default function ContratosFinanceiros() {
                   ampliacao_valor: { label: "Ampliação de Valor", bg: "#EDE9FB", cl: "#4B3B9B" },
                   outros:          { label: "Outros",             bg: "#F3F4F6", cl: "var(--text-2)"    },
                 };
+                // contratos disponíveis para vincular como origem (exclui o atual e já vinculados)
+                const vinculadosIds = new Set(origensRefin.map(o => o.contrato_origem_id));
+                const disponiveis = contratos.filter(c => c.id !== contratoModal.id && !vinculadosIds.has(c.id) && c.status !== "refinanciado");
                 return (
                   <div>
+                    {/* ── Seção Refinanciamento ── */}
+                    <div style={{ background: "#F5F3FE", border: "0.5px solid #7C6FC340", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#4B3B9B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>🔗 Refinanciamento / Consolidação</div>
+                      <div style={{ fontSize: 12, color: "#6B5CA5", marginBottom: 14 }}>
+                        Se esta cédula consolida outros contratos anteriores (refinanciamento 1→1 ou N→1), vincule-os abaixo. Os contratos vinculados passam para status <strong>Refinanciado</strong> e ficam referenciando esta cédula.
+                      </div>
+
+                      {/* Contratos já vinculados como origem */}
+                      {origensRefin.length > 0 && (
+                        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 14 }}>
+                          <thead><tr style={{ background: "#EDE9FB" }}>
+                            {["Contrato de Origem", "Nº Operação", "Credor", "Saldo Incorporado", ""].map((h, i) => (
+                              <th key={i} style={{ padding: "6px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#4B3B9B" }}>{h}</th>
+                            ))}
+                          </tr></thead>
+                          <tbody>
+                            {origensRefin.map((o, i) => {
+                              const co = o.contrato_origem;
+                              return (
+                                <tr key={o.id} style={{ borderBottom: i < origensRefin.length - 1 ? "0.5px solid #DDD8F5" : "none", background: i % 2 === 0 ? "#fff" : "#FAF9FE" }}>
+                                  <td style={{ padding: "7px 10px", fontSize: 12, fontWeight: 600, color: "#4B3B9B" }}>{co?.descricao ?? "—"}</td>
+                                  <td style={{ padding: "7px 10px", fontSize: 11, fontFamily: "monospace", color: "#666" }}>{co?.numero_documento ?? "—"}</td>
+                                  <td style={{ padding: "7px 10px", fontSize: 11, color: "#555" }}>{co?.credor ?? "—"}</td>
+                                  <td style={{ padding: "7px 10px", fontSize: 12 }}>{o.saldo_incorporado ? fmtBRL(o.saldo_incorporado) : <span style={{ color: "#aaa" }}>—</span>}</td>
+                                  <td style={{ padding: "7px 10px" }}>
+                                    <button style={btnX} onClick={async () => {
+                                      if (!confirm("Desvincular este contrato de origem? Ele voltará para status Ativo.")) return;
+                                      await desvincularOrigemRefinanciamento(o.id, o.contrato_origem_id);
+                                      setOrigensRefin(p => p.filter(x => x.id !== o.id));
+                                      setContratos(p => p.map(c => c.id === o.contrato_origem_id ? { ...c, status: "ativo", refinanciado_por_id: null } : c));
+                                    }}>Desvincular</button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {/* Formulário para adicionar nova origem */}
+                      <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr auto", gap: 10, alignItems: "end" }}>
+                        <div>
+                          <label style={{ ...lbl, color: "#4B3B9B" }}>Contrato de Origem</label>
+                          <select style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} onChange={e => setFRefin(p => ({ ...p, contrato_origem_id: e.target.value }))}>
+                            <option value="">— Selecionar contrato a consolidar —</option>
+                            {disponiveis.map(c => (
+                              <option key={c.id} value={c.id}>{c.descricao}{c.numero_documento ? ` — ${c.numero_documento}` : ""} · {c.credor}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ ...lbl, color: "#4B3B9B" }}>Saldo Incorporado (R$)</label>
+                          <InputMonetario style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.saldo_incorporado} onChange={v => setFRefin(p => ({ ...p, saldo_incorporado: String(v) }))} />
+                        </div>
+                        <button
+                          disabled={!fRefin.contrato_origem_id || salvando}
+                          style={{ padding: "8px 16px", background: fRefin.contrato_origem_id ? "#4B3B9B" : "#ccc", color: "#fff", border: "none", borderRadius: 8, cursor: fRefin.contrato_origem_id ? "pointer" : "default", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}
+                          onClick={async () => {
+                            if (!fRefin.contrato_origem_id || !fazendaId) return;
+                            try {
+                              const saldo = fRefin.saldo_incorporado ? parseFloat(fRefin.saldo_incorporado.replace(",", ".")) : undefined;
+                              const novo = await vincularOrigemRefinanciamento(contratoModal.id, fRefin.contrato_origem_id, fazendaId, saldo);
+                              setOrigensRefin(p => [...p, novo]);
+                              setContratos(p => p.map(c => c.id === fRefin.contrato_origem_id ? { ...c, status: "refinanciado", refinanciado_por_id: contratoModal.id } : c));
+                              setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
+                            } catch (e) { alert("Erro ao vincular: " + (e as Error).message); }
+                          }}>
+                          + Vincular
+                        </button>
+                      </div>
+                    </div>
+
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
                       Registre alterações formais: prorrogações, renegociações de taxa, capitalizações e outros termos aditados entre as partes.
                     </div>
