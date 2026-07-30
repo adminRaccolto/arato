@@ -98,7 +98,7 @@ type TipoAvulsa = "venda" | "remessa" | "devolucao" | "retorno" | "";
 const FVENDA_INICIAL = {
   tipo_nota: "propria" as "propria" | "terceiros", produtor_id: "", ie_id: "", safra_id: "",
   destinatario: "", cnpj: "",
-  dest_endereco: "", dest_numero: "", dest_cidade: "", dest_uf: "",
+  dest_endereco: "", dest_numero: "", dest_cidade: "", dest_uf: "", dest_municipio_ibge: "",
   dest_tipo_pessoa: "juridica" as "fisica" | "juridica", dest_ie: "", dest_deposito: false,
   cfop: "6.501", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
   data_emissao: "", data_saida: "", hora_saida: "", dep_op: "",
@@ -388,8 +388,9 @@ function FaturamentoInner() {
       dest_ie:         comprador?.inscricao_est ?? "",
       dest_endereco:   comprador?.logradouro ?? "",
       dest_numero:     comprador?.numero ?? "",
-      dest_cidade:     comprador?.municipio ?? "",
-      dest_uf:         comprador?.estado ?? "",
+      dest_cidade:          comprador?.municipio ?? "",
+      dest_uf:              comprador?.estado ?? "",
+      dest_municipio_ibge:  comprador?.municipio_ibge ?? "",
       cfop:            cfopNorm,
       natureza_texto:  contrato.natureza_operacao ?? nat?.descricao ?? "",
       observacao:      nat ? textoNat(nat) : (contrato.observacao ?? ""),
@@ -521,12 +522,13 @@ function FaturamentoInner() {
           emit_uf:         emit.uf_emitente ?? "",
           emit_cep:        emit.cep ?? "",
           emit_fone:       emit.fone ?? "",
-          dest_tipo_pessoa: fVenda.dest_tipo_pessoa,
-          dest_ie:         fVenda.dest_ie,
-          dest_endereco:   fVenda.dest_endereco,
-          dest_numero:     fVenda.dest_numero,
-          dest_cidade:     fVenda.dest_cidade,
-          dest_uf:         fVenda.dest_uf,
+          dest_tipo_pessoa:     fVenda.dest_tipo_pessoa,
+          dest_ie:              fVenda.dest_ie,
+          dest_endereco:        fVenda.dest_endereco,
+          dest_numero:          fVenda.dest_numero,
+          dest_cidade:          fVenda.dest_cidade,
+          dest_uf:              fVenda.dest_uf,
+          dest_municipio_ibge:  fVenda.dest_municipio_ibge,
           frete_conta:     fVenda.frete_conta,
           transportadora:  fVenda.transportadora,
           placa:           fVenda.placa,
@@ -569,13 +571,14 @@ function FaturamentoInner() {
                 ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual
                 : undefined,
               destinatario: {
-                nome:           fVenda.destinatario,
-                cpf_cnpj:       fVenda.cnpj || undefined,
-                ie:             fVenda.dest_ie || undefined,
-                logradouro:     fVenda.dest_endereco || undefined,
-                numero:         fVenda.dest_numero || undefined,
-                municipio_nome: fVenda.dest_cidade || undefined,
-                uf:             fVenda.dest_uf || undefined,
+                nome:            fVenda.destinatario,
+                cpf_cnpj:        fVenda.cnpj || undefined,
+                ie:              fVenda.dest_ie || undefined,
+                logradouro:      fVenda.dest_endereco || undefined,
+                numero:          fVenda.dest_numero || undefined,
+                municipio_ibge:  fVenda.dest_municipio_ibge || undefined,
+                municipio_nome:  fVenda.dest_cidade || undefined,
+                uf:              fVenda.dest_uf || undefined,
               },
               itens: nfeItens.map(i => ({
                 descricao:      i.item,
@@ -606,7 +609,12 @@ function FaturamentoInner() {
               erroSefaz = `SEFAZ [${res.cStat}]: ${res.xMotivo}`;
             }
           }
-        } catch { /* SEFAZ unavailable — nota salva em rascunho */ }
+        } catch (errSefaz) {
+          // Erro interno (ex: IBGE ausente, certificado inválido) — mostra para o usuário e marca como rejeitada
+          await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nova.id);
+          nova.status = "rejeitada";
+          erroSefaz = String(errSefaz);
+        }
       }
 
       setNotas(p => [nova, ...p]);
@@ -1129,8 +1137,57 @@ function FaturamentoInner() {
                             style={{ padding:"4px 10px", fontSize:11, background:"#1A5CB8", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               if (!window.confirm("Transmitir para a SEFAZ?")) return;
-                              await atualizarStatusNFe(nota.id, "em_digitacao");
+                              const dj = nota.dados_nf_json as Record<string, string> ?? {};
+                              const emitCnpj = (dj.emit_cnpj ?? "").replace(/\D/g, "");
+                              const modulo = fiscalModulos.find(m => emitCnpj && m.modulo.endsWith(emitCnpj)) ?? fiscalModulos[0];
+                              if (!modulo) { alert("Módulo fiscal não encontrado. Verifique Parâmetros do Sistema."); return; }
+                              const itens = (nota.itens_json as {item:string;ncm:string;cfop:string;unidade:string;quantidade:number;valor_unitario:number}[]) ?? [];
                               setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "em_digitacao" } : n));
+                              try {
+                                const resp = await fetch("/api/fiscal/emitir-nfe", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    fazenda_id: nota.fazenda_id,
+                                    modulo_key: modulo.modulo,
+                                    destinatario: {
+                                      nome:           nota.destinatario,
+                                      cpf_cnpj:       nota.cnpj_destinatario || undefined,
+                                      ie:             dj.dest_ie || undefined,
+                                      logradouro:     dj.dest_endereco || undefined,
+                                      numero:         dj.dest_numero || undefined,
+                                      municipio_ibge: dj.dest_municipio_ibge || undefined,
+                                      municipio_nome: dj.dest_cidade || undefined,
+                                      uf:             dj.dest_uf || undefined,
+                                    },
+                                    itens: itens.map((i, idx) => ({
+                                      descricao:      i.item,
+                                      ncm:            i.ncm,
+                                      cfop:           i.cfop ?? nota.cfop,
+                                      unidade:        i.unidade,
+                                      quantidade:     i.quantidade,
+                                      valor_unitario: i.valor_unitario,
+                                    })),
+                                    natureza: nota.natureza,
+                                    tipo: "1" as const,
+                                  }),
+                                });
+                                const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; cStat?: string; xMotivo?: string; erro?: string };
+                                if (res.sucesso && res.chave) {
+                                  const num = res.numero ?? nota.numero;
+                                  await supabase.from("notas_fiscais").update({ status: "autorizada", chave_acesso: res.chave, numero: num }).eq("id", nota.id);
+                                  setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "autorizada", chave_acesso: res.chave, numero: num } : n));
+                                } else {
+                                  const msg = res.erro ?? `SEFAZ [${res.cStat}]: ${res.xMotivo}`;
+                                  await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nota.id);
+                                  setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "rejeitada" } : n));
+                                  alert(`⚠ NF-e rejeitada pela SEFAZ\n\n${msg}`);
+                                }
+                              } catch (err) {
+                                await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nota.id);
+                                setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "rejeitada" } : n));
+                                alert(`⚠ Erro ao transmitir\n\n${String(err)}`);
+                              }
                             }}>
                             Transmitir
                           </button>
