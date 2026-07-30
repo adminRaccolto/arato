@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoasDaConta } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor, ProdutorIE, Pessoa } from "../../lib/supabase";
@@ -644,7 +644,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
 
 // ── Página principal ──────────────────────────────────────────────────────────
 function FiscalInner() {
-  const { fazendaId, logoCliente } = useAuth();
+  const { fazendaId, contaId, logoCliente } = useAuth();
   const searchParams = useSearchParams();
   const abaParam = searchParams.get("aba") as Aba | null;
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
@@ -880,7 +880,13 @@ function FiscalInner() {
     if (!fazendaId) return;
     setCarregando(true); setErro(null);
     try {
-      const data = await listarNotasFiscais(fazendaId);
+      // Carrega NF-es de TODAS as fazendas da conta (não só a ativa)
+      const fazendas = await listarFazendasDaConta(contaId, fazendaId);
+      const fzIds = fazendas.length > 0 ? fazendas.map(f => f.id!) : [fazendaId!];
+      const todasNotas = await Promise.all(fzIds.map(id => listarNotasFiscais(id)));
+      const data = todasNotas.flat().sort((a, b) =>
+        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+      );
       setNotas(data);
       // Carregar config do primeiro emitente fiscal disponível para o DANFE
       const { data: cfgs } = await supabase.from("configuracoes_modulo")

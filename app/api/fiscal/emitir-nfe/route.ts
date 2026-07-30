@@ -46,9 +46,10 @@ export async function POST(req: NextRequest) {
       tipo?: "0" | "1";
     };
 
-    if (!body.fazenda_id || !body.modulo_key || !body.itens?.length) {
+    if (!body.fazenda_id || !body.itens?.length) {
       return NextResponse.json({ erro: "Campos obrigatórios ausentes" }, { status: 400 });
     }
+    // modulo_key é opcional — buscarConfEmitente tem fallback por CPF/cert quando vazio
 
     const auth = await validateFazendaAccess(body.fazenda_id, req.headers.get("authorization") ?? undefined);
     if (!auth.ok) return NextResponse.json({ erro: auth.error }, { status: auth.status });
