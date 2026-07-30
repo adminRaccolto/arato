@@ -427,7 +427,7 @@ function CadastrosInner() {
   const [depositos, setDepositos]     = useState<Deposito[]>([]);
   const [modalDep, setModalDep]       = useState(false);
   const [editDep, setEditDep]         = useState<Deposito | null>(null);
-  const [fDep, setFDep]               = useState({ fazenda_id: "", nome: "", tipo: "insumo_fazenda" as Deposito["tipo"], capacidade_sc: "", pessoa_id: "" });
+  const [fDep, setFDep]               = useState({ fazenda_id: "", nome: "", tipo: "insumo_fazenda" as Deposito["tipo"], capacidade_sc: "", pessoa_id: "", ativo: true });
 
   // ── Contas Bancárias ──
   const [contas, setContas]           = useState<ContaBancaria[]>([]);
@@ -1818,8 +1818,8 @@ function CadastrosInner() {
   const abrirModalDep = (d?: Deposito) => {
     setEditDep(d ?? null);
     setFDep(d
-      ? { fazenda_id: d.fazenda_id, nome: d.nome, tipo: d.tipo, capacidade_sc: String(d.capacidade_sc ?? ""), pessoa_id: d.pessoa_id ?? "" }
-      : { fazenda_id: fazTrabalho || fazIdEff || "", nome: "", tipo: "insumo_fazenda", capacidade_sc: "", pessoa_id: "" });
+      ? { fazenda_id: d.fazenda_id, nome: d.nome, tipo: d.tipo, capacidade_sc: String(d.capacidade_sc ?? ""), pessoa_id: d.pessoa_id ?? "", ativo: d.ativo ?? true }
+      : { fazenda_id: fazTrabalho || fazIdEff || "", nome: "", tipo: "insumo_fazenda", capacidade_sc: "", pessoa_id: "", ativo: true });
     setModalDep(true);
   };
   const salvarDep = () => salvar(async () => {
@@ -1830,7 +1830,7 @@ function CadastrosInner() {
     const payload = {
       fazenda_id: fazDepId, nome: fDep.nome.trim(), tipo: fDep.tipo,
       capacidade_sc: fDep.capacidade_sc ? Number(fDep.capacidade_sc) : undefined,
-      ativo: true,
+      ativo: fDep.ativo,
       pessoa_id: isTerceiro && fDep.pessoa_id ? fDep.pessoa_id : undefined,
     };
     if (editDep) { await atualizarDeposito(editDep.id, payload); setDepositos(p => p.map(x => x.id === editDep.id ? { ...x, ...payload } : x)); }
@@ -4903,6 +4903,15 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <button style={btnE} onClick={() => abrirModalDep(d)}>Editar</button>
+                            <button
+                              style={{ padding: "4px 10px", fontSize: 11, background: d.ativo ? "#FBF3E0" : "#DCFCE7", color: d.ativo ? "#C9921B" : "#16A34A", border: `0.5px solid ${d.ativo ? "#C9921B50" : "#16A34A50"}`, borderRadius: 6, cursor: "pointer" }}
+                              onClick={async () => {
+                                const novoAtivo = !d.ativo;
+                                await atualizarDeposito(d.id, { ativo: novoAtivo });
+                                setDepositos(x => x.map(r => r.id === d.id ? { ...r, ativo: novoAtivo } : r));
+                              }}>
+                              {d.ativo ? "Desativar" : "Ativar"}
+                            </button>
                             <button style={btnX} onClick={async () => {
                               if (!confirm("Excluir depósito? Esta ação não pode ser desfeita.")) return;
                               try {
@@ -4911,7 +4920,7 @@ function CadastrosInner() {
                               } catch (err: unknown) {
                                 const msg = String((err as {message?: string}).message ?? err);
                                 if (msg.includes("foreign key") || msg.includes("violates") || msg.includes("FK")) {
-                                  alert("Não é possível excluir: este depósito está vinculado a insumos ou movimentações de estoque.\n\nDesative-o em vez de excluir (botão Editar → desmarcar Ativo).");
+                                  alert("Não é possível excluir: este depósito está vinculado a insumos ou movimentações de estoque.\n\nClique em 'Desativar' para ocultá-lo dos seletores sem perder o histórico.");
                                 } else {
                                   alert(`Erro ao excluir depósito:\n${msg}`);
                                 }
@@ -9028,6 +9037,21 @@ function CadastrosInner() {
                 <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>Vinculando a uma pessoa, o depósito aparece automaticamente ao selecioná-la no Romaneio de Entrada.</div>
               </div>
             )}
+          </div>
+          {/* Toggle Ativo */}
+          <div style={{ marginTop: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={fDep.ativo}
+                onChange={e => setFDep(p => ({ ...p, ativo: e.target.checked }))}
+                style={{ width: 16, height: 16, accentColor: "#1A4870" }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, color: fDep.ativo ? "#16A34A" : "#888" }}>
+                {fDep.ativo ? "Depósito ativo — aparece nos seletores" : "Depósito inativo — oculto nos seletores"}
+              </span>
+            </label>
+            {!fDep.ativo && <div style={{ fontSize: 11, color: "#888", marginTop: 4, marginLeft: 26 }}>Depósitos inativos não aparecem para seleção em Estoque, Insumos e outras telas, mas o histórico é preservado.</div>}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalDep(false)}>Cancelar</button>
