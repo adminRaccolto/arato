@@ -218,10 +218,28 @@ export async function emitirNFe(
   const cpfCnpjEmit = (confg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
   const isCPFEmit   = cpfCnpjEmit.length === 11;
 
-  // NF-e MOC: CPF → série obrigatoriamente 890–999; CNPJ → série 001–889.
-  // Se o emitente for PF e a série configurada for < 890, usa 890 automaticamente.
-  const serieConfg = parseInt(confg.serie_nfe ?? "1", 10);
-  const serie      = isCPFEmit && serieConfg < 890 ? "890" : String(serieConfg).padStart(3, "0");
+  // MOC NF-e 7.0 — faixas de série por tipo de emitente:
+  //   CNPJ (procEmi 0/1/2/3): 0–889
+  //   CPF  (procEmi 0/1/2/3): 920–969
+  //   890–899: NF-e avulsa Fisco Estadual   ← NUNCA usar aqui (causa cStat 502)
+  //   970–989: NF-e avulsa Fisco Federal    ← NUNCA usar aqui
+  //   900–919 / 990–999: reservados
+  const serieConfg = parseInt(confg.serie_nfe ?? "0", 10);
+  if (isCPFEmit && (isNaN(serieConfg) || serieConfg < 920 || serieConfg > 969)) {
+    return {
+      sucesso: false,
+      cStat: "CFG",
+      xMotivo: `Série "${confg.serie_nfe ?? ""}" inválida para emitente CPF. Configure entre 920 e 969 em Parâmetros → Fiscal → Série NF-e.`,
+    };
+  }
+  if (!isCPFEmit && (isNaN(serieConfg) || serieConfg < 0 || serieConfg > 889)) {
+    return {
+      sucesso: false,
+      cStat: "CFG",
+      xMotivo: `Série "${confg.serie_nfe ?? ""}" inválida para emitente CNPJ. Configure entre 0 e 889 em Parâmetros → Fiscal → Série NF-e.`,
+    };
+  }
+  const serie = String(serieConfg).padStart(3, "0");
 
   const emitente: EmitenteCfg = {
     cpf_cnpj:       cpfCnpjEmit,
@@ -232,8 +250,8 @@ export async function emitirNFe(
     logradouro:     confg.logradouro ?? "",
     numero:         confg.numero ?? "S/N",
     bairro:         confg.bairro ?? "",
-    municipio_ibge: confg.municipio_ibge ?? "5106455",
-    municipio_nome: confg.municipio_nome ?? "Nova Mutum",
+    municipio_ibge: confg.municipio_ibge ?? "",
+    municipio_nome: confg.municipio_nome ?? "",
     uf:             confg.uf_emitente ?? "MT",
     cep:            confg.cep ?? "00000000",
     fone:           confg.fone,

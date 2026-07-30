@@ -286,6 +286,12 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   const indIEDest = dest.ie ? "1" : "9";
   const destUF    = dest.uf ?? emit.uf;
 
+  // MOC NF-e 7.0: em homologação o xNome do dest DEVE ser exatamente este texto
+  // (cStat 598 se o nome real for informado em tpAmb=2)
+  const nomeDestinatario = tpAmb === "2"
+    ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL"
+    : dest.nome;
+
   // ── Referência NF-e anterior ──────────────────────────────────────────────
   const nfeRefTag = nfe_ref ? `<NFref><refNFe>${nfe_ref}</refNFe></NFref>` : "";
 
@@ -439,7 +445,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     </emit>
     <dest>
       ${destIdTag}
-      <xNome>${escXml(dest.nome.substring(0, 60))}</xNome>
+      <xNome>${escXml(nomeDestinatario.substring(0, 60))}</xNome>
       ${enderDest}
       <indIEDest>${indIEDest}</indIEDest>
       ${dest.ie ? `<IE>${escXml(dest.ie)}</IE>` : ""}
