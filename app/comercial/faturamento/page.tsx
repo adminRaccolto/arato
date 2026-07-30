@@ -512,6 +512,7 @@ function FaturamentoInner() {
           valor_total:    i.valor_total,
         })),
         dados_nf_json: {
+          modulo_key:      moduloFiscal?.modulo ?? "",
           emit_razao:      emit.razao_social ?? "",
           emit_cnpj:       emit.cpf_cnpj_emitente ?? "",
           emit_ie:         emit.ie_emitente ?? "",
@@ -1138,15 +1139,20 @@ function FaturamentoInner() {
                             onClick={async () => {
                               if (!window.confirm("Transmitir para a SEFAZ?")) return;
                               const dj = nota.dados_nf_json as Record<string, string> ?? {};
-                              const emitCnpj = (dj.emit_cnpj ?? "").replace(/\D/g, "");
-                              // Carrega módulos fiscais da fazenda ESPECÍFICA da nota (pode diferir da fazenda ativa)
-                              const { data: modsNota } = await supabase
-                                .from("configuracoes_modulo").select("modulo, config")
-                                .eq("fazenda_id", nota.fazenda_id)
-                                .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-                              const mods = modsNota ?? [];
-                              const modulo = mods.find((m: {modulo:string}) => emitCnpj && m.modulo.endsWith(emitCnpj)) ?? mods[0];
-                              if (!modulo) { alert("Módulo fiscal não encontrado para a fazenda desta nota.\nAcesse Configurações → Parâmetros do Sistema → Aba Fiscal."); return; }
+                              // Usa modulo_key salvo no momento da criação (fonte da verdade)
+                              // Fallback: busca pelo CPF do emitente nos módulos da fazenda
+                              let moduloKey = dj.modulo_key ?? "";
+                              if (!moduloKey) {
+                                const emitCnpj = (dj.emit_cnpj ?? "").replace(/\D/g, "");
+                                const { data: modsNota } = await supabase
+                                  .from("configuracoes_modulo").select("modulo")
+                                  .eq("fazenda_id", nota.fazenda_id)
+                                  .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
+                                const mods = modsNota ?? [];
+                                const found = mods.find((m: {modulo:string}) => emitCnpj && m.modulo.endsWith(emitCnpj)) ?? mods[0];
+                                moduloKey = found?.modulo ?? "";
+                              }
+                              if (!moduloKey) { alert("Módulo fiscal não encontrado.\n\nSolução: abra a nota no Monitor de NF-e (Fiscal → NF-e de Saída) e use o botão '↺ Corrigir e retransmitir' — ele recarrega os parâmetros corretamente."); return; }
                               const itens = (nota.itens_json as {item:string;ncm:string;cfop:string;unidade:string;quantidade:number;valor_unitario:number}[]) ?? [];
                               setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "em_digitacao" } : n));
                               try {
@@ -1155,7 +1161,7 @@ function FaturamentoInner() {
                                   headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify({
                                     fazenda_id: nota.fazenda_id,
-                                    modulo_key: modulo.modulo,
+                                    modulo_key: moduloKey,
                                     destinatario: {
                                       nome:           nota.destinatario,
                                       cpf_cnpj:       nota.cnpj_destinatario || undefined,
