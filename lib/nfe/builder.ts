@@ -409,13 +409,13 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   }
 
   const enderEmit = `<enderEmit>
-      <xLgr>${escXml(emit.logradouro)}</xLgr>
+      <xLgr>${escXml(emit.logradouro || "NAO INFORMADO")}</xLgr>
       <nro>${escXml(emit.numero || "S/N")}</nro>
       <xBairro>${escXml(emit.bairro || "S/N")}</xBairro>
       <cMun>${emit.municipio_ibge}</cMun>
-      <xMun>${escXml(emit.municipio_nome)}</xMun>
+      <xMun>${escXml(emit.municipio_nome || emit.uf || "N/I")}</xMun>
       <UF>${emit.uf}</UF>
-      <CEP>${soDigitos(emit.cep)}</CEP>
+      <CEP>${soDigitos(emit.cep) || "00000000"}</CEP>
       <cPais>1058</cPais>
       <xPais>Brasil</xPais>
       ${emit.fone ? `<fone>${soDigitos(emit.fone)}</fone>` : ""}
@@ -449,9 +449,9 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <nro>${escXml(dest.numero || "S/N")}</nro>
       <xBairro>${escXml(dest.bairro || "N/A")}</xBairro>
       <cMun>${destCMun}</cMun>
-      <xMun>${escXml(dest.municipio_nome ?? destUF)}</xMun>
+      <xMun>${escXml(dest.municipio_nome || destUF || "N/I")}</xMun>
       <UF>${destUF}</UF>
-      <CEP>${soDigitos(dest.cep ?? "00000000")}</CEP>
+      <CEP>${soDigitos(dest.cep ?? "") || "00000000"}</CEP>
       <cPais>1058</cPais>
       <xPais>Brasil</xPais>
       ${dest.telefone ? `<fone>${soDigitos(dest.telefone)}</fone>` : ""}
