@@ -73,6 +73,34 @@ function soDigitos(s: string): string {
   return s.replace(/\D/g, "");
 }
 
+// Calcula e valida o dígito verificador do código IBGE de município (7 dígitos).
+// Algoritmo: pesos [1,2,1,2,1,2] sobre os 6 primeiros dígitos; produto>9 subtrai 9; DV=(10-soma%10)%10.
+function ibgeDigitoValido(code: string): boolean {
+  const d = soDigitos(code);
+  if (d.length !== 7) return false;
+  const pesos = [1, 2, 1, 2, 1, 2];
+  let soma = 0;
+  for (let i = 0; i < 6; i++) {
+    let p = parseInt(d[i]) * pesos[i];
+    if (p > 9) p -= 9;
+    soma += p;
+  }
+  const dv = (10 - (soma % 10)) % 10;
+  return dv === parseInt(d[6]);
+}
+
+export function ibgeDigitoEsperado(code: string): string {
+  const d = soDigitos(code).slice(0, 6).padStart(6, "0");
+  const pesos = [1, 2, 1, 2, 1, 2];
+  let soma = 0;
+  for (let i = 0; i < 6; i++) {
+    let p = parseInt(d[i]) * pesos[i];
+    if (p > 9) p -= 9;
+    soma += p;
+  }
+  return String((10 - (soma % 10)) % 10);
+}
+
 function pad(n: number | string, len: number): string {
   return String(n).padStart(len, "0");
 }
@@ -380,11 +408,21 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       ${emit.fone ? `<fone>${soDigitos(emit.fone)}</fone>` : ""}
     </enderEmit>`;
 
-  // cMun 9999999 é o código reservado para município genérico (ex: consumidor sem endereço).
-  // Sempre preferir o código IBGE real do município do destinatário quando disponível.
-  const destCMun = dest.municipio_ibge && dest.municipio_ibge !== "9999999"
-    ? dest.municipio_ibge
+  // cMun: limpa não-dígitos e valida dígito verificador IBGE antes de colocar no XML.
+  // Código reservado 9999999 é aceito pela SEFAZ para município não informado.
+  const rawDestIbge = soDigitos(dest.municipio_ibge ?? "");
+  const destCMun = rawDestIbge && rawDestIbge !== "9999999"
+    ? rawDestIbge
     : "9999999";
+  // Lança erro cedo para o index.ts converter em cStat CFG com mensagem acionável.
+  if (destCMun !== "9999999" && !ibgeDigitoValido(destCMun)) {
+    const dvEsperado = ibgeDigitoEsperado(destCMun);
+    throw new Error(
+      `Dígito verificador inválido no cMun do destinatário: "${destCMun}". ` +
+      `O código correto deve terminar com ${dvEsperado} (ex: ${destCMun.slice(0, 6)}${dvEsperado}). ` +
+      `Corrija o código IBGE no cadastro da pessoa destinatária (Cadastros → Pessoas → CEP auto-preenche o IBGE).`
+    );
+  }
 
   const enderDest = dest.logradouro
     ? `<enderDest>
