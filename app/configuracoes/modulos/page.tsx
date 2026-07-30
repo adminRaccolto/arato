@@ -1107,38 +1107,120 @@ function ParametrosSistemaContent() {
 
                     {/* Textos legais */}
                     <div style={{ marginBottom: 24 }}>
-                      {secHeader("Textos Legais — infCpl")}
+                      {secHeader("Obrigações Fiscais — infCpl automático")}
+
+                      {/* Botão pré-preencher MT */}
+                      <div style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          onClick={() => {
+                            setCfg(emitter.moduloKey, "inf_cpl_icms_diferido", "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.");
+                            setCfg(emitter.moduloKey, "inf_cpl_funrural", "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.");
+                            setCfg(emitter.moduloKey, "inf_cpl_base_reduzida", "Base de cálculo do ICMS reduzida conforme Convênio ICMS 100/97.");
+                          }}
+                          style={{ padding: "6px 14px", fontSize: 12, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
+                          Pré-preencher padrões MT (Mato Grosso)
+                        </button>
+                        <span style={{ fontSize: 11, color: "#888" }}>Preenche os textos com as leis corretas do RICMS/MT e Lei 8.212/1991</span>
+                      </div>
+
                       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                        <div>
-                          {campo("Texto padrão — aparece em todas as NF-e deste emitente",
-                            txta({
-                              rows: 3,
-                              value: String(c.inf_cpl_padrao ?? ""),
-                              placeholder: "Ex: Produtor Rural. CPF: 000.000.000-00. Isento de Inscrição Estadual conforme Art. 4º do RICMS/MT. Funrural retido na fonte pela adquirente conforme Lei 8.870/1994...",
-                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_padrao", e.target.value),
-                            })
+
+                        {/* Toggle Funrural */}
+                        <div style={{ background: "#F8F9FB", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: 14 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: c.funrural_retido === "true" ? 10 : 0 }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
+                              <input
+                                type="checkbox"
+                                checked={c.funrural_retido === "true"}
+                                onChange={e => setCfg(emitter.moduloKey, "funrural_retido", e.target.checked ? "true" : "false")}
+                                style={{ width: 16, height: 16, accentColor: "#1A4870" }}
+                              />
+                              Funrural retido na fonte pelo adquirente
+                            </label>
+                            <span style={{ fontSize: 11, color: "#888", fontStyle: "italic" }}>Art. 25, Lei 8.212/1991 — aplica-se a produtor rural PF (CPF)</span>
+                          </div>
+                          {c.funrural_retido === "true" && (
+                            <div>
+                              {campo("Texto que aparece no infCpl (editável)",
+                                txta({
+                                  rows: 2,
+                                  value: String(c.inf_cpl_funrural ?? ""),
+                                  placeholder: "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.",
+                                  onChange: e => setCfg(emitter.moduloKey, "inf_cpl_funrural", e.target.value),
+                                })
+                              )}
+                            </div>
                           )}
                         </div>
-                        <div>
-                          {campo("Texto ICMS diferido — usado em operações internas (CFOP 5101/5125)",
-                            txta({
-                              rows: 3,
-                              value: String(c.inf_cpl_icms_diferido ?? ""),
-                              placeholder: "Ex: ICMS DIFERIDO nos termos do RICMS/MT — Decreto nº 2.993/2010. O imposto fica diferido para a etapa seguinte de circulação da mercadoria...",
-                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_icms_diferido", e.target.value),
-                            })
+
+                        {/* Toggle ICMS Diferido */}
+                        <div style={{ background: "#F8F9FB", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: 14 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: c.icms_diferido_ativo === "true" ? 10 : 0 }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
+                              <input
+                                type="checkbox"
+                                checked={c.icms_diferido_ativo === "true"}
+                                onChange={e => setCfg(emitter.moduloKey, "icms_diferido_ativo", e.target.checked ? "true" : "false")}
+                                style={{ width: 16, height: 16, accentColor: "#1A4870" }}
+                              />
+                              ICMS diferido em operações internas (CFOP 5xxx)
+                            </label>
+                            <span style={{ fontSize: 11, color: "#888", fontStyle: "italic" }}>Art. 572 RICMS/MT — grãos em operações dentro de MT</span>
+                          </div>
+                          {c.icms_diferido_ativo === "true" && (
+                            <div>
+                              {campo("Texto que aparece no infCpl (editável)",
+                                txta({
+                                  rows: 2,
+                                  value: String(c.inf_cpl_icms_diferido ?? ""),
+                                  placeholder: "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.",
+                                  onChange: e => setCfg(emitter.moduloKey, "inf_cpl_icms_diferido", e.target.value),
+                                })
+                              )}
+                            </div>
                           )}
                         </div>
+
+                        {/* Base reduzida interestaduais */}
                         <div>
-                          {campo("Texto base reduzida — usado em operações interestaduais (CFOP 6101)",
+                          {campo("Texto base reduzida — operações interestaduais (CFOP 6xxx) — deixe vazio para não incluir",
                             txta({
-                              rows: 3,
+                              rows: 2,
                               value: String(c.inf_cpl_base_reduzida ?? ""),
-                              placeholder: "Ex: Base de cálculo do ICMS reduzida a 61,11% conforme Convênio ICMS 100/97 — alíquota efetiva: 7,33%...",
+                              placeholder: "Base de cálculo do ICMS reduzida conforme Convênio ICMS 100/97.",
                               onChange: e => setCfg(emitter.moduloKey, "inf_cpl_base_reduzida", e.target.value),
                             })
                           )}
                         </div>
+
+                        {/* Texto padrão livre */}
+                        <div>
+                          {campo("Texto complementar livre — aparece em todas as NF-e deste emitente",
+                            txta({
+                              rows: 3,
+                              value: String(c.inf_cpl_padrao ?? ""),
+                              placeholder: "Produtor Rural. Isento de IE conforme Art. 4º, II do RICMS/MT. Razão Social conforme CND em anexo.",
+                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_padrao", e.target.value),
+                            })
+                          )}
+                        </div>
+
+                        {/* Preview do infCpl */}
+                        {(() => {
+                          const partes: string[] = [];
+                          if (c.inf_cpl_padrao) partes.push(String(c.inf_cpl_padrao).trim());
+                          if (c.icms_diferido_ativo === "true") partes.push((String(c.inf_cpl_icms_diferido || "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.")).trim());
+                          if (c.inf_cpl_base_reduzida) partes.push(String(c.inf_cpl_base_reduzida).trim());
+                          if (c.funrural_retido === "true") partes.push((String(c.inf_cpl_funrural || "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.")).trim());
+                          const preview = partes.filter(Boolean).join(" ");
+                          if (!preview) return null;
+                          return (
+                            <div style={{ background: "#EFF6FF", border: "0.5px solid #1A5CB8", borderRadius: 8, padding: 12 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 6 }}>Pré-visualização do infCpl (operação interna):</div>
+                              <div style={{ fontSize: 12, color: "#0B2D50", lineHeight: 1.6 }}>{preview}</div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 

@@ -289,10 +289,29 @@ export async function emitirNFe(
     };
   }
 
+  // Auto-compõe infCpl a partir das configurações do emitente (Funrural, ICMS diferido, etc.)
+  const cfopPrimario = (input.itens[0]?.cfop ?? "").replace(/\D/g, "");
+  const cfopInterno = cfopPrimario.startsWith("5");
+  const cfopInterestadual = cfopPrimario.startsWith("6");
+  const partesInfCpl: string[] = [];
+  if (confg.inf_cpl_padrao) partesInfCpl.push(String(confg.inf_cpl_padrao).trim());
+  if (cfopInterno && confg.icms_diferido_ativo === "true") {
+    const txt = confg.inf_cpl_icms_diferido?.trim() || "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.";
+    partesInfCpl.push(txt);
+  } else if (cfopInterestadual && confg.inf_cpl_base_reduzida) {
+    partesInfCpl.push(String(confg.inf_cpl_base_reduzida).trim());
+  }
+  if (confg.funrural_retido === "true") {
+    const txt = confg.inf_cpl_funrural?.trim() || "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.";
+    partesInfCpl.push(txt);
+  }
+  if (input.infCpl?.trim()) partesInfCpl.push(input.infCpl.trim());
+  const infCplFinal = partesInfCpl.filter(Boolean).join(" ") || undefined;
+
   // Constrói XML — qualquer exceção aqui se tornava 500; agora vira cStat 505
   let built: ReturnType<typeof buildNFe>;
   try {
-    built = buildNFe({ ...input, emitente });
+    built = buildNFe({ ...input, emitente, infCpl: infCplFinal });
   } catch (e) {
     return { sucesso: false, cStat: "505", xMotivo: `Erro na construção do XML: ${e}` };
   }
