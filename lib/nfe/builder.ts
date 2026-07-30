@@ -409,18 +409,24 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     </enderEmit>`;
 
   // cMun: limpa não-dígitos e valida dígito verificador IBGE antes de colocar no XML.
-  // Código reservado 9999999 é aceito pela SEFAZ para município não informado.
+  // ATENÇÃO: 9999999 (Exterior) tem dígito verificador inválido (DV esperado = 6, não 9)
+  // e é rejeitado pela SEFAZ MT com cStat 274 em operações domésticas.
+  // Obrigatório informar o código IBGE real do município do destinatário.
   const rawDestIbge = soDigitos(dest.municipio_ibge ?? "");
-  const destCMun = rawDestIbge && rawDestIbge !== "9999999"
-    ? rawDestIbge
-    : "9999999";
-  // Lança erro cedo para o index.ts converter em cStat CFG com mensagem acionável.
-  if (destCMun !== "9999999" && !ibgeDigitoValido(destCMun)) {
+  if (!rawDestIbge || rawDestIbge.length !== 7) {
+    throw new Error(
+      `Código IBGE do município do destinatário não informado ou incompleto ("${rawDestIbge}"). ` +
+      `Acesse Cadastros → Pessoas → cadastro do comprador → informe o CEP para auto-preencher o IBGE, depois salve.`
+    );
+  }
+  const destCMun = rawDestIbge;
+  // Valida dígito verificador
+  if (!ibgeDigitoValido(destCMun)) {
     const dvEsperado = ibgeDigitoEsperado(destCMun);
     throw new Error(
       `Dígito verificador inválido no cMun do destinatário: "${destCMun}". ` +
-      `O código correto deve terminar com ${dvEsperado} (ex: ${destCMun.slice(0, 6)}${dvEsperado}). ` +
-      `Corrija o código IBGE no cadastro da pessoa destinatária (Cadastros → Pessoas → CEP auto-preenche o IBGE).`
+      `O código correto deve terminar com ${dvEsperado} → "${destCMun.slice(0, 6)}${dvEsperado}". ` +
+      `Corrija em Cadastros → Pessoas → CEP auto-preenche o IBGE correto.`
     );
   }
 
