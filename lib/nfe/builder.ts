@@ -406,7 +406,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
-  <infNFe versao="4.00" Id="${idNFe}">
+  <infNFe Id="${idNFe}" versao="4.00">
     <ide>
       <cUF>${cuf}</cUF>
       <cNF>${cNF}</cNF>

@@ -176,8 +176,18 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
 
 function envelopeAutorizacao(nfeXml: string, cuf: string, tpAmb: "1" | "2"): string {
   const idLote = Date.now().toString().slice(-15);
-  // Remove declaração XML — o SOAP envelope tem a sua própria
-  const nfeBody = nfeXml.replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
+  // Remove a declaração XML e o xmlns redundante do <NFe>.
+  // <enviNFe> já declara xmlns="http://www.portalfiscal.inf.br/nfe", portanto <NFe>
+  // herdaria o namespace sem precisar redeclará-lo. Alguns validadores de chave do
+  // SEFAZ (em especial MT) têm comportamento divergente entre o path de verificação
+  // de assinatura (que trata corretamente namespaces herdados) e o path de recomputa
+  // de chave (que pode confundir com a redeclaração). Removemos o xmlns redundante
+  // para eliminar essa ambiguidade sem afetar a validade da assinatura: o DigestValue
+  // é calculado sobre <infNFe> cujo namespace em escopo continua sendo o correto.
+  const nfeBody = nfeXml
+    .replace(/^<\?xml[^?]*\?>\s*/i, "")
+    .replace(/^<NFe xmlns="http:\/\/www\.portalfiscal\.inf\.br\/nfe">/, "<NFe>")
+    .trim();
   // SEFAZ rejeita (cStat 588) whitespace entre tags — envelope e conteúdo devem ser compactos.
   // O NF-e body já chega minificado do builder (minifyXml rodou antes da assinatura).
   return (
