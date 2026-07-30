@@ -483,9 +483,17 @@ function FaturamentoInner() {
       const produtor = produtores.find(p => p.id === fVenda.produtor_id);
       const valorTotal = nfeItens.reduce((s, i) => s + i.valor_total, 0);
 
-      // Encontra o módulo fiscal do emitente (match pelo CPF/CNPJ do produtor, senão usa o primeiro)
+      // Encontra o módulo fiscal do emitente:
+      // 1º) match exato pelo CPF/CNPJ do produtor
+      // 2º) qualquer módulo com certificado e CPF configurados (evita módulos vazios/corrompidos)
+      // 3º) primeiro da lista (último recurso)
       const cpfCnpjDigits = produtor?.cpf_cnpj?.replace(/\D/g, "") ?? "";
-      const moduloFiscal = fiscalModulos.find(m => cpfCnpjDigits && m.modulo.endsWith(cpfCnpjDigits)) ?? fiscalModulos[0];
+      const moduloValido = (m: {modulo:string; config: Record<string,string>}) =>
+        !!(m.config?.cpf_cnpj_emitente && m.config?.cert_a1_path);
+      const moduloFiscal =
+        fiscalModulos.find(m => cpfCnpjDigits && m.modulo.endsWith(cpfCnpjDigits)) ??
+        fiscalModulos.find(moduloValido) ??
+        fiscalModulos[0];
       const emit = moduloFiscal?.config ?? {};
 
       const payload: Omit<NotaFiscal, "id" | "created_at"> = {

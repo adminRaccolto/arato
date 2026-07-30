@@ -29,11 +29,29 @@ export async function buscarConfEmitente(
   moduloKey: string   // ex: "fiscal_pf_abc" ou "fiscal_emp_xyz"
 ): Promise<Record<string, string> | null> {
   // Carrega em paralelo: config do emitente + ambiente global + todos os certs cadastrados
-  const [{ data: emitData }, { data: globalData }, { data: certRows }] = await Promise.all([
+  const [emitResult, { data: globalData }, { data: certRows }] = await Promise.all([
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).single(),
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "fiscal_global").single(),
     sb().from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId).like("modulo", "certificado_a1_%"),
   ]);
+
+  let emitData = emitResult.data;
+
+  // Fallback: se o modulo_key exato não existe ou está sem CPF/cert, tenta encontrar
+  // qualquer módulo fiscal válido (com CPF e certificado) para a mesma fazenda.
+  // Isso protege contra módulos criados com UUID como sufixo ou configs corrompidas.
+  if (!emitData?.config || !(emitData.config as Record<string,string>).cpf_cnpj_emitente) {
+    const { data: allMods } = await sb()
+      .from("configuracoes_modulo").select("modulo, config")
+      .eq("fazenda_id", fazendaId)
+      .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
+    const melhor = (allMods ?? []).find(r => {
+      const c = r.config as Record<string,string>;
+      return c?.cpf_cnpj_emitente && c?.cert_a1_path;
+    });
+    if (melhor) emitData = { config: melhor.config };
+  }
+
   if (!emitData?.config) return null;
 
   const cfg = { ...emitData.config } as Record<string, string>;
