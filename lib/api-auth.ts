@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { isRaccotloAdmin } from "./raccotlo-auth";
 
 function adminClient() {
   return createClient(
@@ -27,6 +28,31 @@ export async function getSessionUser() {
   );
   const { data: { user } } = await supabase.auth.getUser();
   return user;
+}
+
+/**
+ * Exige uma sessão de administrador interno para operações globais.
+ * Endpoints que administram a instância WhatsApp, por exemplo, não podem ser
+ * liberados a clientes somente porque eles possuem uma sessão válida.
+ */
+export async function requireRaccotloAdmin(): Promise<
+  | { ok: true; userId: string }
+  | { ok: false; status: 401 | 403; error: string }
+> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, status: 401, error: "Não autenticado" };
+
+  const { data: perfil } = await adminClient()
+    .from("perfis")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!isRaccotloAdmin(perfil?.role, user.email)) {
+    return { ok: false, status: 403, error: "Acesso administrativo restrito" };
+  }
+
+  return { ok: true, userId: user.id };
 }
 
 /**

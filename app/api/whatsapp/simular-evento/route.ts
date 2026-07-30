@@ -2,8 +2,12 @@
 // Evita auto-chamada HTTP (causa MIDDLEWARE_INVOCATION_FAILED no Vercel)
 import { NextRequest, NextResponse } from "next/server";
 import { POST as webhookHandler } from "../webhook/route";
+import { requireRaccotloAdmin } from "../../../../lib/api-auth";
 
 export async function POST(req: NextRequest) {
+  const auth = await requireRaccotloAdmin();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const { telefone, mensagem = "olá, teste direto" } = await req.json() as { telefone: string; mensagem?: string };
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://web.arato.agr.br";

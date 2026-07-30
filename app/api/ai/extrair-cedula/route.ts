@@ -2,9 +2,13 @@
 // Usado pelo modal de Novo Contrato Financeiro na web
 import { NextRequest, NextResponse } from "next/server";
 import { extrairCedula } from "../../../../lib/extrair-cedula";
+import { getSessionUser } from "../../../../lib/api-auth";
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
     const form = await req.formData();
     const file = form.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "Nenhum arquivo enviado." }, { status: 400 });

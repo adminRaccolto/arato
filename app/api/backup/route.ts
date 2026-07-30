@@ -90,6 +90,8 @@ export async function POST(req: Request) {
     if (!body.fazenda_id) {
       return NextResponse.json({ sucesso: false, erro: "fazenda_id é obrigatório" }, { status: 400 });
     }
+    const access = await validateFazendaAccess(body.fazenda_id, authHeader ?? undefined);
+    if (!access.ok) return NextResponse.json({ erro: access.error }, { status: access.status });
     fazendaId = body.fazenda_id;
   }
 

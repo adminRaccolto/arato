@@ -217,6 +217,7 @@ export async function emitirNFe(
     const { data: pess } = await sb()
       .from("pessoas")
       .select("municipio_ibge, municipio, estado, cep")
+      .eq("fazenda_id", fazendaId)
       .eq("cpf_cnpj", digits)
       .maybeSingle();
     if (pess?.municipio_ibge) {

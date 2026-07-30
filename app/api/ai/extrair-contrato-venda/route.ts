@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extrairContratoVenda } from "@/lib/extrair-contrato-venda";
+import { getSessionUser } from "@/lib/api-auth";
 
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
     const formData = await request.formData();
     const file = formData.get("pdf") as File | null;
 

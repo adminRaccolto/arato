@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { processarMensagemIA } from "../../../../lib/whatsapp-claude";
 import { enviarTexto } from "../../../../lib/whatsapp-evolution";
+import { requireRaccotloAdmin } from "../../../../lib/api-auth";
 
 function sb() {
   return createClient(
@@ -13,6 +14,9 @@ function sb() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireRaccotloAdmin();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const { telefone, mensagem = "olá, teste do sistema" } = await req.json() as { telefone?: string; mensagem?: string };
 
   const log: string[] = [];

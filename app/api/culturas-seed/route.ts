@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../lib/api-auth";
 
 const DEFAULTS = [
   { nome: "Soja",                categoria: "graos", unidade: "sc", ncm: "1201.10.00", ordem: 1 },
@@ -23,6 +24,9 @@ const DEFAULTS_PA = [
 export async function POST(req: NextRequest) {
   const { fazenda_id } = await req.json() as { fazenda_id: string };
   if (!fazenda_id) return NextResponse.json({ error: "fazenda_id required" }, { status: 400 });
+
+  const access = await validateFazendaAccess(fazenda_id, req.headers.get("authorization") ?? undefined);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

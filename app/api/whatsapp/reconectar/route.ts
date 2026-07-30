@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireRaccotloAdmin } from "../../../../lib/api-auth";
 
 const EVO_BASE     = () => process.env.EVOLUTION_API_URL ?? "";
 const EVO_KEY      = () => process.env.EVOLUTION_API_KEY ?? "";
@@ -9,6 +10,9 @@ function hdrs() {
 }
 
 export async function POST() {
+  const auth = await requireRaccotloAdmin();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const base = EVO_BASE();
   const instance = EVO_INSTANCE();
 
@@ -36,6 +40,9 @@ export async function POST() {
 }
 
 export async function GET() {
+  const auth = await requireRaccotloAdmin();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   // Verifica estado atual
   const base = EVO_BASE();
   const instance = EVO_INSTANCE();

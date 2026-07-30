@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { getSessionUser } from "../../../lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: "Arquivo muito grande. Limite: 10 MB." }, { status: 413 });
+    }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);

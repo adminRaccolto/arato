@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireRaccotloAdmin } from "../../../../lib/api-auth";
 
 export async function GET() {
+  const auth = await requireRaccotloAdmin();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const EVO_BASE     = process.env.EVOLUTION_API_URL ?? "";
   const EVO_KEY      = process.env.EVOLUTION_API_KEY ?? "";
   const EVO_INSTANCE = process.env.EVOLUTION_INSTANCE ?? "";
