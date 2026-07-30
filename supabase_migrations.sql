@@ -8827,16 +8827,15 @@ ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS municipio_ibge text;
 --    Regra MOC NF-e 7.0: CPF emitente = série 920-969 (sistema próprio).
 --    Séries 890-899 são reservadas para NF-e avulsa do Fisco Estadual.
 --    Este UPDATE é idempotente: só atualiza quem ainda está fora da faixa.
+--    ATENÇÃO: coluna é "config" (não "valor") — corrigido da versão anterior.
 UPDATE configuracoes_modulo
-SET valor = jsonb_set(valor, '{serie_nfe}', '"920"')
+SET config = jsonb_set(config, '{serie_nfe}', '"920"')
 WHERE modulo LIKE 'fiscal%'
-  AND LENGTH(REGEXP_REPLACE(valor->>'cpf_cnpj_emitente', '[^0-9]', '', 'g')) = 11
-  AND (valor->>'serie_nfe') IS NOT NULL
-  AND (valor->>'serie_nfe') ~ '^[0-9]+$'
-  AND (valor->>'serie_nfe')::int < 920;
-
--- 3. Popula municipio_ibge em pessoas existentes a partir do município/CEP
---    onde possível via texto — apenas marca como vazio para ser corrigido via CEP
---    no próximo acesso ao cadastro. O campo d.ibge do ViaCEP preenche automaticamente.
+  AND LENGTH(REGEXP_REPLACE(config->>'cpf_cnpj_emitente', '[^0-9]', '', 'g')) = 11
+  AND (
+    config->>'serie_nfe' IS NULL
+    OR config->>'serie_nfe' = ''
+    OR (config->>'serie_nfe' ~ '^[0-9]+$' AND (config->>'serie_nfe')::int < 920)
+  );
 
 NOTIFY pgrst, 'reload schema';
