@@ -1139,8 +1139,14 @@ function FaturamentoInner() {
                               if (!window.confirm("Transmitir para a SEFAZ?")) return;
                               const dj = nota.dados_nf_json as Record<string, string> ?? {};
                               const emitCnpj = (dj.emit_cnpj ?? "").replace(/\D/g, "");
-                              const modulo = fiscalModulos.find(m => emitCnpj && m.modulo.endsWith(emitCnpj)) ?? fiscalModulos[0];
-                              if (!modulo) { alert("Módulo fiscal não encontrado. Verifique Parâmetros do Sistema."); return; }
+                              // Carrega módulos fiscais da fazenda ESPECÍFICA da nota (pode diferir da fazenda ativa)
+                              const { data: modsNota } = await supabase
+                                .from("configuracoes_modulo").select("modulo, config")
+                                .eq("fazenda_id", nota.fazenda_id)
+                                .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
+                              const mods = modsNota ?? [];
+                              const modulo = mods.find((m: {modulo:string}) => emitCnpj && m.modulo.endsWith(emitCnpj)) ?? mods[0];
+                              if (!modulo) { alert("Módulo fiscal não encontrado para a fazenda desta nota.\nAcesse Configurações → Parâmetros do Sistema → Aba Fiscal."); return; }
                               const itens = (nota.itens_json as {item:string;ncm:string;cfop:string;unidade:string;quantidade:number;valor_unitario:number}[]) ?? [];
                               setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "em_digitacao" } : n));
                               try {
