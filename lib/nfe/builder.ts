@@ -216,7 +216,9 @@ interface ICMSRule {
   xml: (vBC: number, vProd: number) => string;
 }
 
-function icmsRule(cfop: string): ICMSRule {
+// isNaoContribuinte: true quando destinatário é PF sem IE (indIEDest=9)
+// Nesse caso diferimento não se aplica — operação interna vira isenta (CST 40)
+function icmsRule(cfop: string, isNaoContribuinte = false): ICMSRule {
   const cod = cfop.replace(/\D/g, "");
   const prefix = cod.substring(0, 4);
 
@@ -236,7 +238,12 @@ function icmsRule(cfop: string): ICMSRule {
   }
 
   if (cod.startsWith("5") || cod.startsWith("1")) {
-    // Operação interna MT — ICMS diferido 100% (Decreto 4.540/2004)
+    if (isNaoContribuinte) {
+      // Venda a não contribuinte: diferimento não se aplica — isento (CST 40)
+      // Diferimento (CST 51) é exclusivo de operações entre contribuintes
+      return { cst: "40", xml: () => `<ICMS40><orig>0</orig><CST>40</CST></ICMS40>` };
+    }
+    // Operação interna MT entre contribuintes — ICMS diferido 100% (Decreto 4.540/2004)
     return {
       cst: "51",
       xml: (vBC) => {
@@ -311,7 +318,11 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     destIdTag = "";
   }
 
-  const indIEDest = dest.ie ? "1" : "9";
+  // PJ (CNPJ, 14 dígitos) sem IE cadastrada → trata como contribuinte (1)
+  // Em operações de grãos no MT, todos os compradores PJ têm IE — só pode não estar no cadastro
+  // PF (CPF, 11 dígitos) sem IE → não contribuinte (9) → consumidor final
+  const isCnpjDest = destCpfCnpj.length === 14;
+  const indIEDest  = dest.ie ? "1" : (isCnpjDest ? "1" : "9");
   const destUF    = dest.uf ?? emit.uf;
 
   // MOC NF-e 7.0: em homologação o xNome do dest DEVE ser exatamente este texto
@@ -342,7 +353,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     vProdBrutoTotal += vProdBruto;
     vDescTotal      += vDescItem;
 
-    const rule = icmsRule(item.cfop);
+    const rule = icmsRule(item.cfop, indIEDest === "9");
     // BC = vProd líquido (após desconto) para CST 00/51
     const vBC = (rule.cst === "00" || rule.cst === "51") ? vProdLiq : 0;
     if (rule.cst === "00") {

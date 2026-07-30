@@ -211,6 +211,27 @@ export async function emitirNFe(
   const confg = await buscarConfEmitente(fazendaId, moduloKey);
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal não encontrada para ${moduloKey}` };
 
+  // Fallback: IBGE do destinatário em branco → busca no cadastro de Pessoas pelo CPF/CNPJ
+  if (!input.destinatario.municipio_ibge && input.destinatario.cpf_cnpj) {
+    const digits = input.destinatario.cpf_cnpj.replace(/\D/g, "");
+    const { data: pess } = await sb()
+      .from("pessoas")
+      .select("municipio_ibge, municipio, estado, cep")
+      .eq("cpf_cnpj", digits)
+      .maybeSingle();
+    if (pess?.municipio_ibge) {
+      input = {
+        ...input,
+        destinatario: {
+          ...input.destinatario,
+          municipio_ibge: pess.municipio_ibge,
+          municipio_nome: input.destinatario.municipio_nome || pess.municipio || undefined,
+          uf:             input.destinatario.uf             || pess.estado    || undefined,
+        },
+      };
+    }
+  }
+
   const certPath = confg.cert_a1_path;
   const certSenha = confg.cert_a1_senha;
   if (!certPath || !certSenha)
