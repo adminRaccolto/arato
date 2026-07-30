@@ -77,6 +77,7 @@ export default function DanfePage() {
   const params = useParams<{ id: string }>();
   const [nota, setNota] = useState<NotaFiscal | null>(null);
   const [itens, setItens] = useState<Item[]>([]);
+  const [emitCnpjFallback, setEmitCnpjFallback] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,6 +87,23 @@ export default function DanfePage() {
       if (!nf) { setLoading(false); return; }
       setNota(nf as NotaFiscal);
 
+      // Fallback emit_cnpj: se dados_nf_json não tiver, busca no módulo fiscal da fazenda
+      const dj = nf.dados_nf_json as Record<string, string | number | undefined> | null;
+      const emitCnpjSalvo = String(dj?.emit_cnpj ?? "").replace(/\D/g, "");
+      if (!emitCnpjSalvo && nf.fazenda_id) {
+        const { data: mods } = await supabase.from("configuracoes_modulo")
+          .select("modulo, config")
+          .eq("fazenda_id", nf.fazenda_id)
+          .or("modulo.like.fiscal_%,modulo.like.certificado_a1_%");
+        const found = (mods ?? []).find(m => {
+          const cfg = m.config as Record<string, string>;
+          return cfg?.cpf_cnpj_emitente;
+        });
+        if (found) {
+          setEmitCnpjFallback(((found.config as Record<string, string>).cpf_cnpj_emitente ?? "").replace(/\D/g, ""));
+        }
+      }
+
       if (nf.itens_json && (nf.itens_json as Item[]).length > 0) {
         setItens(nf.itens_json as Item[]);
         setLoading(false);
@@ -93,7 +111,6 @@ export default function DanfePage() {
       }
 
       // Fallback: reconstruir do romaneio
-      const dj = nf.dados_nf_json as Record<string, string | number | undefined> | null;
       const romId = (dj as Record<string, string> | null)?.romaneio_id;
       const { data: rom } = await (
         romId
@@ -115,6 +132,8 @@ export default function DanfePage() {
   if (!nota)   return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "Arial", fontSize: 14, color: "#E24B4A" }}>Nota não encontrada.</div>;
 
   const d = (nota.dados_nf_json ?? {}) as Record<string, string | number | undefined>;
+  // Garante emit_cnpj mesmo para notas antigas que não salvaram o campo
+  const emitCnpjResolvido = String(d.emit_cnpj ?? "").replace(/\D/g, "") || emitCnpjFallback;
   const isHom    = nota.status !== "autorizada";
   const totalProd = itens.reduce((s, i) => s + i.valor_total, 0) || nota.valor_total;
   const chaveFmt  = (nota.chave_acesso ?? "").replace(/\D/g, "").replace(/(\d{4})/g, "$1 ").trim();
@@ -252,24 +271,30 @@ export default function DanfePage() {
         </div>
 
         {/* ── NATUREZA DA OPERAÇÃO ──────────────────────────────────────── */}
-        <div style={{ border: B, display: "flex", marginBottom: "0.5mm" }}>
-          <div style={cell(5)}>
-            <span style={lbl}>Natureza da Operação</span>
-            <div style={val}>{nota.natureza || "—"}</div>
-          </div>
-          <div style={cell(2)}>
-            <span style={lbl}>Inscrição Estadual</span>
-            <div style={val}>{String(d.emit_ie ?? "") || "—"}</div>
-          </div>
-          <div style={cell(2)}>
-            <span style={lbl}>Inscrição Estadual Subs. Tributário</span>
-            <div style={val}>—</div>
-          </div>
-          <div style={cellLast(3)}>
-            <span style={lbl}>CNPJ / CPF</span>
-            <div style={val}>{fmtDoc(String(d.emit_cnpj ?? ""))}</div>
-          </div>
-        </div>
+        {(() => {
+          const emitDoc = emitCnpjResolvido;
+          const emitDocLabel = emitDoc.length === 11 ? "CPF do Emitente" : "CNPJ do Emitente";
+          return (
+            <div style={{ border: B, display: "flex", marginBottom: "0.5mm" }}>
+              <div style={cell(5)}>
+                <span style={lbl}>Natureza da Operação</span>
+                <div style={val}>{nota.natureza || "—"}</div>
+              </div>
+              <div style={cell(2)}>
+                <span style={lbl}>IE do Emitente</span>
+                <div style={val}>{String(d.emit_ie ?? "") || "—"}</div>
+              </div>
+              <div style={cell(2)}>
+                <span style={lbl}>IE Subs. Tributário</span>
+                <div style={val}>—</div>
+              </div>
+              <div style={cellLast(3)}>
+                <span style={lbl}>{emitDocLabel}</span>
+                <div style={val}>{fmtDoc(emitDoc) || "—"}</div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── DESTINATÁRIO / REMETENTE ──────────────────────────────────── */}
         <div style={{ border: B, marginBottom: "0.5mm" }}>
@@ -323,7 +348,7 @@ export default function DanfePage() {
               <div style={val}>{destFone}</div>
             </div>
             <div style={cell(2)}>
-              <span style={lbl}>Inscrição Estadual</span>
+              <span style={lbl}>IE do Destinatário</span>
               <div style={val}>{String(d.dest_ie ?? "") || "—"}</div>
             </div>
             <div style={cellLast(1.5)}>

@@ -1200,7 +1200,7 @@ function FaturamentoInner() {
                         <button
                           style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#1A4870", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer" }}
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
-                          Visualizar
+                          DANFE
                         </button>
                         {nota.status === "em_digitacao" && (
                           <button
@@ -1262,13 +1262,6 @@ function FaturamentoInner() {
                               }
                             }}>
                             Transmitir
-                          </button>
-                        )}
-                        {nota.status === "autorizada" && nota.chave_acesso && (
-                          <button
-                            style={{ padding:"4px 10px", fontSize:11, background:"#0B2D50", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
-                            onClick={() => window.open(`/api/fiscal/danfe?chave=${nota.chave_acesso}&fazenda_id=${nota.fazenda_id}`, "_blank")}>
-                            DANFE
                           </button>
                         )}
                         {["autorizada","em_digitacao"].includes(nota.status) && (
