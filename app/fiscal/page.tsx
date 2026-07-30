@@ -962,14 +962,24 @@ function FiscalInner() {
       natureza_texto:    nota.natureza ?? "",
       serie:             nota.serie ?? "1",
       observacao:        nota.observacao ?? NATUREZAS_VENDA[0].obs,
-      dest_ie:           (dj.dest_ie as string) ?? "",
-      dest_endereco:     (dj.dest_endereco as string) ?? "",
-      dest_numero:       (dj.dest_numero as string) ?? "",
-      dest_bairro:       (dj.dest_bairro as string) ?? "",
-      dest_cidade:       (dj.dest_cidade as string) ?? "",
-      dest_uf:           (dj.dest_uf as string) ?? "",
-      dest_cep:          (dj.dest_cep as string) ?? "",
+      dest_ie:              (dj.dest_ie as string) ?? "",
+      dest_endereco:        (dj.dest_endereco as string) ?? "",
+      dest_numero:          (dj.dest_numero as string) ?? "",
+      dest_bairro:          (dj.dest_bairro as string) ?? "",
+      dest_cidade:          (dj.dest_cidade as string) ?? "",
+      dest_uf:              (dj.dest_uf as string) ?? "",
+      dest_cep:             (dj.dest_cep as string) ?? "",
+      dest_fone:            (dj.dest_fone as string) ?? "",
+      dest_municipio_ibge:  (dj.dest_municipio_ibge as string) ?? "",
     });
+    // Auto-lookup IBGE via ViaCEP se faltando
+    if (!(dj.dest_municipio_ibge as string) && (dj.dest_cep as string)) {
+      const cep = ((dj.dest_cep as string) ?? "").replace(/\D/g, "");
+      fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        .then(r => r.json())
+        .then(d => { if (d.ibge) setFVenda(prev => ({ ...prev, dest_municipio_ibge: d.ibge })); })
+        .catch(() => {});
+    }
     // Pré-seleciona o mesmo emitente que foi usado originalmente (se disponível)
     if (moduloSalvo) setModuloKeyAtivo(moduloSalvo);
     // Restaura itens se estiverem salvos
@@ -1008,6 +1018,10 @@ function FiscalInner() {
     }
     if (!cpfCnpjEmit) {
       alert("⚠ CPF / CNPJ do emitente não configurado.\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha o CPF/CNPJ antes de transmitir.");
+      return;
+    }
+    if (!fVenda.dest_municipio_ibge) {
+      alert("⚠ Código IBGE do município do destinatário não preenchido.\n\nAcesse a aba Destinatário e informe o Cód. IBGE.\nSe o comprador tiver CEP cadastrado em Cadastros → Pessoas, o sistema preenche automaticamente ao selecionar.");
       return;
     }
     // Produtor com múltiplas IEs: o usuário precisa selecionar qual usar nesta NF-e
@@ -2167,6 +2181,14 @@ function FiscalInner() {
                         }} />, "0 0 110px"),
                       field("Cidade", <input style={inSt} value={fVenda.dest_cidade} onChange={e => fv({dest_cidade:e.target.value})} />),
                       field("UF", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.dest_uf} onChange={e => fv({dest_uf:e.target.value.toUpperCase().slice(0,2)})} />, "0 0 50px"),
+                      field(
+                        <span style={{ display:"flex", alignItems:"center", gap:4 }}>
+                          Cód. IBGE *
+                          {!fVenda.dest_municipio_ibge && <span style={{ color:"#E24B4A", fontSize:9, fontWeight:700 }}>⚠ obrigatório</span>}
+                        </span>,
+                        <input style={{ ...inSt, borderColor: !fVenda.dest_municipio_ibge ? "#E24B4A" : undefined }} value={fVenda.dest_municipio_ibge} onChange={e => fv({dest_municipio_ibge:e.target.value})} placeholder="ex: 5106224" maxLength={7} />,
+                        "0 0 110px"
+                      ),
                     )}
                     {row(
                       field("Tipo Pessoa",
