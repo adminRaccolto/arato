@@ -4903,7 +4903,20 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <button style={btnE} onClick={() => abrirModalDep(d)}>Editar</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir depósito?")) excluirDeposito(d.id).then(() => setDepositos(x => x.filter(r => r.id !== d.id))); }}>✕</button>
+                            <button style={btnX} onClick={async () => {
+                              if (!confirm("Excluir depósito? Esta ação não pode ser desfeita.")) return;
+                              try {
+                                await excluirDeposito(d.id);
+                                setDepositos(x => x.filter(r => r.id !== d.id));
+                              } catch (err: unknown) {
+                                const msg = String((err as {message?: string}).message ?? err);
+                                if (msg.includes("foreign key") || msg.includes("violates") || msg.includes("FK")) {
+                                  alert("Não é possível excluir: este depósito está vinculado a insumos ou movimentações de estoque.\n\nDesative-o em vez de excluir (botão Editar → desmarcar Ativo).");
+                                } else {
+                                  alert(`Erro ao excluir depósito:\n${msg}`);
+                                }
+                              }
+                            }}>✕</button>
                           </div>
                         </td>
                       </tr>
