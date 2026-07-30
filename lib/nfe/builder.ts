@@ -480,7 +480,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <cDV>${cDV}</cDV>
       <tpAmb>${tpAmb}</tpAmb>
       <finNFe>1</finNFe>
-      <indFinal>0</indFinal>
+      <indFinal>${indIEDest === "9" ? "1" : "0"}</indFinal>
       <indPres>0</indPres>
       <procEmi>0</procEmi>
       <verProc>RacTech 1.0</verProc>
