@@ -6,7 +6,7 @@ import InputNumerico from "../../components/InputNumerico";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
   listarMovimentacoes, criarMovimentacaoManual,
-  listarDepositos,
+  listarDepositos, listarFazendasDaConta,
   listarBombas,
   listarMaquinas,
   listarNfEntradas, criarNfEntrada,
@@ -192,7 +192,7 @@ function parsearXmlNfe(xml: string): { numero: string; serie: string; chave: str
 // PÁGINA
 // ────────────────────────────────────────────────────────
 export default function Estoque() {
-  const { fazendaId, nomeUsuario, emailUsuario } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, emailUsuario } = useAuth();
 
   const [aba, setAba] = useState<Aba>("posicao");
   const [erro, setErro] = useState<string | null>(null);
@@ -267,7 +267,11 @@ export default function Estoque() {
     if (!fazendaId) return;
     setErro(null);
     listarInsumos(fazendaId).then(setInsumos).catch(e => setErro(e.message));
-    listarDepositos(fazendaId).then(setDepositos).catch(() => {});
+    listarFazendasDaConta(contaId, fazendaId)
+      .then(fzs => {
+        const ids = fzs.length > 0 ? fzs.map(f => f.id!) : [fazendaId];
+        Promise.all(ids.map(id => listarDepositos(id!))).then(r => setDepositos(r.flat())).catch(() => {});
+      }).catch(() => listarDepositos(fazendaId).then(setDepositos).catch(() => {}));
     listarBombas(fazendaId).then(setBombas).catch(() => {});
     listarMaquinas(fazendaId).then(setMaquinas).catch(() => {});
     listarPessoas(fazendaId).then(setPessoas).catch(() => {});
