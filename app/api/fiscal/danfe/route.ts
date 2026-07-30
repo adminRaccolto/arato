@@ -40,9 +40,24 @@ export async function GET(req: NextRequest) {
     } catch { /* coluna pode não existir ainda — migration pendente */ }
   }
 
+  // 1c. NF-e emitida pelo sistema — salva em {fazendaId}/nfe_emitidas/{chave}.xml
+  if (!xmlStoragePath) {
+    let fzId = fazenda_id;
+    if (!fzId) {
+      const { data: nf } = await db.from("notas_fiscais")
+        .select("fazenda_id, status")
+        .eq("chave_acesso", chave)
+        .maybeSingle();
+      if (nf?.fazenda_id) { fzId = nf.fazenda_id; nfStatus = nf.status; }
+    }
+    if (fzId) {
+      xmlStoragePath = `${fzId}/nfe_emitidas/${chave}.xml`;
+    }
+  }
+
   if (!xmlStoragePath) {
     return NextResponse.json(
-      { erro: "XML não encontrado. Use o botão '↻ Re-import.' na lista para baixar o XML desta NF do SIEG." },
+      { erro: "XML não encontrado. A NF-e pode não ter sido autorizada ainda ou o XML não foi armazenado." },
       { status: 404 }
     );
   }

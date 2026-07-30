@@ -98,7 +98,8 @@ type TipoAvulsa = "venda" | "remessa" | "devolucao" | "retorno" | "";
 const FVENDA_INICIAL = {
   tipo_nota: "propria" as "propria" | "terceiros", produtor_id: "", ie_id: "", safra_id: "",
   destinatario: "", cnpj: "",
-  dest_endereco: "", dest_numero: "", dest_cidade: "", dest_uf: "", dest_municipio_ibge: "",
+  dest_endereco: "", dest_numero: "", dest_bairro: "", dest_cep: "", dest_fone: "",
+  dest_cidade: "", dest_uf: "", dest_municipio_ibge: "",
   dest_tipo_pessoa: "juridica" as "fisica" | "juridica", dest_ie: "", dest_deposito: false,
   cfop: "6.501", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
   data_emissao: "", data_saida: "", hora_saida: "", dep_op: "",
@@ -535,6 +536,9 @@ function FaturamentoInner() {
           dest_ie:              fVenda.dest_ie,
           dest_endereco:        fVenda.dest_endereco,
           dest_numero:          fVenda.dest_numero,
+          dest_bairro:          fVenda.dest_bairro,
+          dest_cep:             fVenda.dest_cep,
+          dest_fone:            fVenda.dest_fone,
           dest_cidade:          fVenda.dest_cidade,
           dest_uf:              fVenda.dest_uf,
           dest_municipio_ibge:  fVenda.dest_municipio_ibge,
@@ -574,8 +578,8 @@ function FaturamentoInner() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              fazenda_id: fazEmissao,
-              modulo_key: moduloFiscal.modulo,
+              fazenda_id:      fazEmissao,
+              modulo_key:      moduloFiscal.modulo,
               emit_ie_override: fVenda.ie_id
                 ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual
                 : undefined,
@@ -585,6 +589,9 @@ function FaturamentoInner() {
                 ie:              fVenda.dest_ie || undefined,
                 logradouro:      fVenda.dest_endereco || undefined,
                 numero:          fVenda.dest_numero || undefined,
+                bairro:          fVenda.dest_bairro || undefined,
+                cep:             fVenda.dest_cep || undefined,
+                telefone:        fVenda.dest_fone || undefined,
                 municipio_ibge:  fVenda.dest_municipio_ibge || undefined,
                 municipio_nome:  fVenda.dest_cidade || undefined,
                 uf:              fVenda.dest_uf || undefined,
@@ -605,10 +612,32 @@ function FaturamentoInner() {
             }),
           });
           if (resp.ok || resp.status === 422) {
-            const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; cStat: string; xMotivo: string };
+            const res = await resp.json() as {
+              sucesso: boolean; chave?: string; numero?: string; protocolo?: string;
+              cStat: string; xMotivo: string;
+              emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
+              emit_endereco?: string; emit_bairro?: string; emit_municipio?: string; emit_uf?: string; emit_cep?: string;
+            };
             if (res.sucesso && res.chave) {
               const novoNumero = res.numero ?? nova.numero;
-              await supabase.from("notas_fiscais").update({ status: "autorizada", chave_acesso: res.chave, numero: novoNumero }).eq("id", nova.id);
+              // Mescla campos do resultado (protocolo + emit_) no dados_nf_json existente
+              const djAtual = (nova.dados_nf_json ?? {}) as Record<string, unknown>;
+              const djAtualizado = {
+                ...djAtual,
+                protocolo_autorizacao: res.protocolo ?? djAtual.protocolo_autorizacao,
+                emit_razao:      res.emit_razao ?? djAtual.emit_razao,
+                emit_cnpj:       res.emit_cnpj  ?? djAtual.emit_cnpj,
+                emit_ie:         res.emit_ie    ?? djAtual.emit_ie,
+                emit_endereco:   res.emit_endereco  ?? djAtual.emit_endereco,
+                emit_bairro:     res.emit_bairro    ?? djAtual.emit_bairro,
+                emit_municipio:  res.emit_municipio ?? djAtual.emit_municipio,
+                emit_uf:         res.emit_uf    ?? djAtual.emit_uf,
+                emit_cep:        res.emit_cep   ?? djAtual.emit_cep,
+              };
+              await supabase.from("notas_fiscais").update({
+                status: "autorizada", chave_acesso: res.chave, numero: novoNumero,
+                dados_nf_json: djAtualizado,
+              }).eq("id", nova.id);
               nova.status = "autorizada";
               nova.chave_acesso = res.chave;
               nova.numero = novoNumero;
@@ -759,11 +788,15 @@ function FaturamentoInner() {
                   destinatario:     p.nome,
                   cnpj:             p.cpf_cnpj ?? "",
                   dest_tipo_pessoa: p.tipo === "pf" ? "fisica" : "juridica",
-                  dest_ie:          p.inscricao_est ?? "",
-                  dest_endereco:    (p as unknown as Record<string,string>).logradouro ?? "",
-                  dest_numero:      (p as unknown as Record<string,string>).numero ?? "",
-                  dest_cidade:      p.municipio ?? "",
-                  dest_uf:          p.estado ?? "",
+                  dest_ie:             p.inscricao_est ?? "",
+                  dest_endereco:       p.logradouro ?? "",
+                  dest_numero:         p.numero ?? "",
+                  dest_bairro:         p.bairro ?? "",
+                  dest_cep:            p.cep ?? "",
+                  dest_fone:           p.telefone ?? "",
+                  dest_cidade:         p.municipio ?? "",
+                  dest_uf:             p.estado ?? "",
+                  dest_municipio_ibge: p.municipio_ibge ?? "",
                 });
               }}>
               <option value="">— selecione para preencher automaticamente —</option>
@@ -1164,6 +1197,9 @@ function FaturamentoInner() {
                                       ie:             dj.dest_ie || undefined,
                                       logradouro:     dj.dest_endereco || undefined,
                                       numero:         dj.dest_numero || undefined,
+                                      bairro:         dj.dest_bairro || undefined,
+                                      cep:            dj.dest_cep || undefined,
+                                      telefone:       dj.dest_fone || undefined,
                                       municipio_ibge: dj.dest_municipio_ibge || undefined,
                                       municipio_nome: dj.dest_cidade || undefined,
                                       uf:             dj.dest_uf || undefined,
@@ -1200,10 +1236,10 @@ function FaturamentoInner() {
                             Transmitir
                           </button>
                         )}
-                        {nota.status === "autorizada" && (
+                        {nota.status === "autorizada" && nota.chave_acesso && (
                           <button
                             style={{ padding:"4px 10px", fontSize:11, background:"#0B2D50", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
-                            onClick={() => window.open(`/fiscal/danfe/${nota.id}`, "_blank")}>
+                            onClick={() => window.open(`/api/fiscal/danfe?chave=${nota.chave_acesso}&fazenda_id=${nota.fazenda_id}`, "_blank")}>
                             DANFE
                           </button>
                         )}
