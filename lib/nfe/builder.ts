@@ -318,11 +318,13 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     destIdTag = "";
   }
 
-  // PJ (CNPJ, 14 dígitos) sem IE cadastrada → trata como contribuinte (1)
-  // Em operações de grãos no MT, todos os compradores PJ têm IE — só pode não estar no cadastro
-  // PF (CPF, 11 dígitos) sem IE → não contribuinte (9) → consumidor final
+  // indIEDest:
+  //   "1" → contribuinte com IE registrada (tag <IE> obrigatória)
+  //   "2" → contribuinte isento/sem IE cadastrada (PJ que não tem IE ou não informou)
+  //          → tag <IE>ISENTO</IE> → CST 51 diferido continua válido
+  //   "9" → não contribuinte (PF sem IE) → indFinal=1, CST 40
   const isCnpjDest = destCpfCnpj.length === 14;
-  const indIEDest  = dest.ie ? "1" : (isCnpjDest ? "1" : "9");
+  const indIEDest  = dest.ie ? "1" : (isCnpjDest ? "2" : "9");
   const destUF    = dest.uf ?? emit.uf;
 
   // MOC NF-e 7.0: em homologação o xNome do dest DEVE ser exatamente este texto
@@ -510,7 +512,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <xNome>${escXml(nomeDestinatario.substring(0, 60))}</xNome>
       ${enderDest}
       <indIEDest>${indIEDest}</indIEDest>
-      ${dest.ie ? `<IE>${escXml(dest.ie)}</IE>` : ""}
+      ${indIEDest === "1" && dest.ie ? `<IE>${escXml(dest.ie)}</IE>` : indIEDest === "2" ? `<IE>ISENTO</IE>` : ""}
       ${dest.email ? `<email>${escXml(dest.email)}</email>` : ""}
     </dest>
     ${itensXml}
