@@ -512,7 +512,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <xNome>${escXml(nomeDestinatario.substring(0, 60))}</xNome>
       ${enderDest}
       <indIEDest>${indIEDest}</indIEDest>
-      ${indIEDest === "1" && dest.ie ? `<IE>${escXml(dest.ie)}</IE>` : indIEDest === "2" ? `<IE>ISENTO</IE>` : ""}
+      ${indIEDest === "1" && dest.ie ? `<IE>${escXml(dest.ie)}</IE>` : ""}
       ${dest.email ? `<email>${escXml(dest.email)}</email>` : ""}
     </dest>
     ${itensXml}
