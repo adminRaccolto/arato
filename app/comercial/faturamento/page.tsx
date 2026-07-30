@@ -479,6 +479,7 @@ function FaturamentoInner() {
     if (!fVenda.produtor_id) { setErroForm("Selecione o produtor."); return; }
     if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
     if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
+    if (!fVenda.dest_municipio_ibge) { setErroForm("Código IBGE do município do destinatário é obrigatório. Selecione o comprador pelo cadastro (o sistema busca automaticamente pelo CEP) ou preencha o campo 'Cód. IBGE' na aba Destinatário."); return; }
     setEmitindo(true); setErroForm(null);
     try {
       const produtor = produtores.find(p => p.id === fVenda.produtor_id);
@@ -798,6 +799,20 @@ function FaturamentoInner() {
                   dest_uf:             p.estado ?? "",
                   dest_municipio_ibge: p.municipio_ibge ?? "",
                 });
+                // Se IBGE não cadastrado, busca via CEP automaticamente
+                if (!p.municipio_ibge && p.cep) {
+                  const cep = p.cep.replace(/\D/g, "");
+                  fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(r => r.json())
+                    .then(d => {
+                      if (d.ibge) {
+                        fv({ dest_municipio_ibge: d.ibge, dest_cidade: d.localidade ?? p.municipio ?? "", dest_uf: d.uf ?? p.estado ?? "" });
+                        // Salva de volta no cadastro de pessoas para não precisar buscar de novo
+                        supabase.from("pessoas").update({ municipio_ibge: d.ibge, municipio: d.localidade ?? p.municipio ?? "" }).eq("id", p.id);
+                      }
+                    })
+                    .catch(() => {});
+                }
               }}>
               <option value="">— selecione para preencher automaticamente —</option>
               {pessoas.map(p => (
@@ -841,6 +856,19 @@ function FaturamentoInner() {
           <div>
             <label style={lbl}>UF</label>
             <input style={inp} value={fVenda.dest_uf} onChange={e => fv({ dest_uf: e.target.value })} maxLength={2} placeholder="MT" />
+          </div>
+          <div>
+            <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
+              Cód. IBGE *
+              {!fVenda.dest_municipio_ibge && <span style={{ color:"#E24B4A", fontSize:10, fontWeight:700 }}>⚠ obrigatório</span>}
+            </label>
+            <input
+              style={{ ...inp, borderColor: !fVenda.dest_municipio_ibge ? "#E24B4A" : undefined }}
+              value={fVenda.dest_municipio_ibge}
+              onChange={e => fv({ dest_municipio_ibge: e.target.value })}
+              placeholder="ex: 5106224"
+              maxLength={7}
+            />
           </div>
           <div style={{ gridColumn:"1/-1" }}>
             <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6, cursor:"pointer" }}>
