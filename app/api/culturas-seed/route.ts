@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { validateFazendaAccess } from "../../../lib/api-auth";
 
 const DEFAULTS = [
-  { nome: "Soja",                categoria: "graos", unidade: "sc", ncm: "1201.10.00", ordem: 1 },
+  { nome: "Soja",                categoria: "graos", unidade: "sc", ncm: "1201.90.00", ordem: 1 },
   { nome: "Milho 1ª",            categoria: "graos", unidade: "sc", ncm: "1005.90.10", ordem: 2 },
   { nome: "Milho 2ª (Safrinha)", categoria: "graos", unidade: "sc", ncm: "1005.90.10", ordem: 3 },
   { nome: "Algodão",             categoria: "fibra", unidade: "@",  ncm: "5201.00.10", ordem: 4 },

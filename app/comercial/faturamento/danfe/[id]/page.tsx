@@ -6,8 +6,8 @@ import type { NotaFiscal } from "../../../../../lib/supabase";
 
 // ── Tabelas auxiliares ─────────────────────────────────────────────────
 const NCM: Record<string, string> = {
-  "Soja": "12011000", "Soja em Grão": "12011000", "Soja Convencional": "12011000",
-  "Soja Transgênica": "12011000",
+  "Soja": "12019000", "Soja em Grão": "12019000", "Soja Convencional": "12019000",
+  "Soja Transgênica": "12019000",
   "Milho": "10051090", "Milho 1ª": "10051090", "Milho 2ª (Safrinha)": "10051090", "Milho em Grão": "10051090",
   "Algodão": "52010020", "Algodão em Caroço": "52010020", "Algodão em Pluma": "52010010",
   "Caroço de Algodão": "12072100",
@@ -122,7 +122,7 @@ export default function DanfePage() {
         const produto = c?.produto ?? "Produto";
         const pesoKg: number = (rom as { peso_classificado_kg?: number; sacas?: number }).peso_classificado_kg ?? (((rom as { sacas?: number }).sacas ?? 0) * 60);
         const vUnit = pesoKg > 0 ? nf.valor_total / pesoKg : (c?.preco ?? 0);
-        setItens([{ item: produto, ncm: NCM[produto] ?? "12011000", cst: "051", cfop: nf.cfop ?? "5101", unidade: "KG", quantidade: pesoKg, valor_unitario: vUnit, valor_total: nf.valor_total }]);
+        setItens([{ item: produto, ncm: NCM[produto] ?? "12019000", cst: "051", cfop: nf.cfop ?? "5101", unidade: "KG", quantidade: pesoKg, valor_unitario: vUnit, valor_total: nf.valor_total }]);
       }
       setLoading(false);
     })();

@@ -195,7 +195,7 @@ Esses parâmetros são usados em **todas** as notas fiscais emitidas. Configure 
 - **6.905** — Remessa para depósito fechado (armazém terceiro)
 
 ### NCMs por commodity
-- Soja: **1201.10.00**
+- Soja: **1201.90.00**
 - Milho: **1005.90.10**
 - Algodão pluma: **5201.00.20**
 
@@ -629,7 +629,7 @@ Vá em **Comercial** → **Contratos de Grãos** → **+ Novo Contrato**.
 
 ### Grid de itens
 Para cada lote/produto:
-- Produto (ex: Soja Grão — NCM 1201.10.00)
+- Produto (ex: Soja Grão — NCM 1201.90.00)
 - Quantidade (sacas)
 - Preço unitário (R$/sc ou USD/sc)
 - CFOP (preenchido automaticamente pela Natureza da Operação)

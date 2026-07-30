@@ -21,7 +21,7 @@ Leia a seção correspondente ao que você precisa fazer.
 **Talhão:** Subdivisão da fazenda. Unidade básica de plantio.
 **OG (Operação Gerencial):** Classificação contábil de uma transação — vincula o lançamento ao plano de contas.
 **CFOP:** Código fiscal obrigatório na NF-e que descreve a natureza da operação (ex: 6101 = venda de produção para outro estado).
-**NCM:** Código de classificação do produto (ex: 1201.10.00 = soja em grão).
+**NCM:** Código de classificação do produto (ex: 1201.90.00 = soja em grão).
 **DANFE:** Documento impresso que acompanha a NF-e no transporte.
 **Romaneio:** Documento de pesagem de caminhão (peso bruto, tara, peso líquido).
 **Barter:** Troca de insumos por grãos. Aparece como modalidade de pagamento em CP.
@@ -1061,7 +1061,7 @@ Listagem geral de NF-es emitidas, cancelamento, devolução, NF complementar, ce
 
 **Aba Operações:**
 - Natureza da Operação (*) — com CFOP auto-preenchido (ex: VFE-PF → CFOP 6501)
-- Produto (*): Soja (NCM 1201.10.00), Milho (NCM 1005.10.90), Algodão (NCM 5201.00.20), Trigo (NCM 1001.99.00)
+- Produto (*): Soja (NCM 1201.90.00), Milho (NCM 1005.10.90), Algodão (NCM 5201.00.20), Trigo (NCM 1001.99.00)
 - Quantidade, Unidade, Preço Unitário, Valor Total
 - ICMS CST e alíquota (preenchidos pelas configurações de tributação)
 - PIS/COFINS CST (geralmente CST 06 — alíquota zero para grãos)

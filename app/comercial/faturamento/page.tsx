@@ -71,7 +71,7 @@ const NATUREZAS_DEVOLUCAO = [
 ];
 // Mapa legado — usado como fallback quando o produto não tem produto_agricola_id vinculado
 const NCM_PRODUTO_LEGADO: Record<string, string> = {
-  "Soja": "1201.10.00", "Milho 1ª": "1005.10.90", "Milho 2ª (Safrinha)": "1005.10.90",
+  "Soja": "1201.90.00", "Milho 1ª": "1005.10.90", "Milho 2ª (Safrinha)": "1005.10.90",
   "Algodão": "5201.00.20", "Algodão em Pluma": "5201.00.10", "Algodão em Caroço": "5201.00.20",
   "Caroço de Algodão": "1207.21.00",
   "Trigo": "1001.99.00", "Sorgo": "1007.90.10", "Feijão": "0713.39.90",
@@ -115,7 +115,7 @@ const FVENDA_INICIAL = {
   grupo_vendedor: "", comprador: "", data_lancamento: "", propriedade: "",
   empreendimento: "", criterio_rateio: "", obs_manual: "", obs_legal: "",
   observacao: NATUREZAS_VENDA[0].obs,
-  ncm: "1201.10.00", unidade: "sc", quantidade: "", valorUnitario: "",
+  ncm: "1201.90.00", unidade: "sc", quantidade: "", valorUnitario: "",
   contrato_numero: "", // referência ao contrato faturado
   romaneio_id:     "", // id do romaneio faturado
   romaneio_numero: "", // nº do romaneio para obs da NF
@@ -421,7 +421,7 @@ function FaturamentoInner() {
       item:      contrato.produto,
       ncm:       (prodAgricolas.find(p => p.id === contrato.produto_agricola_id)?.ncm)
                ?? NCM_PRODUTO_LEGADO[contrato.produto]
-               ?? "1201.10.00",
+               ?? "1201.90.00",
       quantidade: String(pesoKg),
       unidade:   "kg",
       valor_unitario: precoKgFmt,
@@ -468,7 +468,7 @@ function FaturamentoInner() {
 
   const addItem = () => setNfeItens(p => [...p, {
     id: crypto.randomUUID(), tipo_item: "Produto", item: "Soja",
-    ncm: "1201.10.00", quantidade: "", unidade: "sc", valor_unitario: "",
+    ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "",
     valor_total: 0, valor_financeiro: 0, cclass_trib: "",
   }]);
 

@@ -89,7 +89,7 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 - ICMS Diferido MT: produtor paga 0% ICMS na venda de grãos — benefício automático no Arato
 - Funrural PF: 1,5% INSS + 0,1% SENAR + 0,2% RAT sobre receita bruta
 - CFOPs mais usados: 6.101 (venda interestadual), 5.101 (intraestadual), 6.501 (remessa armazenagem), 5.905/6.905 (transbordo)
-- NCMs: soja 1201.10.00 · milho 1005.90.10 · algodão pluma 5201.00.20
+- NCMs: soja 1201.90.00 · milho 1005.90.10 · algodão pluma 5201.00.20
 
 ## Automação SIEG — detalhes
 - A automação SIEG baixa NFs emitidas para o CNPJ da fazenda 2×/dia (8h e 17h BRT)

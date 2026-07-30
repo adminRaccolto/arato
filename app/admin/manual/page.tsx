@@ -449,7 +449,7 @@ VALUES (
             <Tabela
               colunas={["Commodity", "NCM", "Descrição Resumida"]}
               linhas={[
-                ["Soja em grão",       "1201.10.00", "Soja mesmo triturada"],
+                ["Soja em grão",       "1201.90.00", "Soja mesmo triturada"],
                 ["Milho em grão",      "1005.90.10", "Milho para outros fins"],
                 ["Algodão em caroço",  "5201.00.10", "Algodão não cardado nem penteado"],
                 ["Algodão em pluma",   "5201.00.20", "Algodão não cardado nem penteado"],

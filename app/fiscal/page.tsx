@@ -31,10 +31,14 @@ const NATUREZAS_DEVOLUCAO = [
 ];
 
 const NCM_OPTIONS = [
-  { codigo: "1201.10.00", descricao: "Soja em grão, mesmo triturada" },
+  { codigo: "1201.90.00", descricao: "Soja em grão — outros (comercialização)" },
   { codigo: "1005.10.90", descricao: "Milho em grão" },
   { codigo: "5201.00.20", descricao: "Algodão em caroço" },
+  { codigo: "5201.00.10", descricao: "Algodão em pluma" },
+  { codigo: "1207.21.00", descricao: "Caroço de algodão" },
   { codigo: "1001.99.00", descricao: "Trigo em grão" },
+  { codigo: "1007.90.10", descricao: "Sorgo em grão" },
+  { codigo: "1201.10.00", descricao: "Soja para semeadura (sementes)" },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,7 +107,7 @@ const FVENDA_INICIAL = {
   empreendimento: "", criterio_rateio: "", obs_manual: "", obs_legal: "",
   observacoes: "", observacao: NATUREZAS_VENDA[0].obs,
   // Item único (legado + adição rápida)
-  ncm: "1201.10.00", unidade: "sc", quantidade: "", valorUnitario: "",
+  ncm: "1201.90.00", unidade: "sc", quantidade: "", valorUnitario: "",
 };
 
 const FRETES = [
@@ -679,7 +683,7 @@ function FiscalInner() {
   const [nfeItens, setNfeItens] = useState<NFeItem[]>([]);
   const [editItemModal, setEditItemModal] = useState<NFeItem | null>(null);
   const [novoItem, setNovoItem] = useState<Omit<NFeItem,"id"|"valor_total"|"valor_financeiro">>({
-    tipo_item: "Produto", item: "", ncm: "1201.10.00",
+    tipo_item: "Produto", item: "", ncm: "1201.90.00",
     quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040",
   });
 
@@ -704,7 +708,7 @@ function FiscalInner() {
   function addItem() {
     if (!novoItem.item || !novoItem.quantidade || !novoItem.valor_unitario) return;
     setNfeItens(p => [...p, calcItem(novoItem)]);
-    setNovoItem({ tipo_item: "Produto", item: "", ncm: "1201.10.00", quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040" });
+    setNovoItem({ tipo_item: "Produto", item: "", ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040" });
   }
   function removeItem(id: string) { setNfeItens(p => p.filter(i => i.id !== id)); }
   function saveEditItem(updated: NFeItem) {
@@ -734,7 +738,7 @@ function FiscalInner() {
 
   // Formulário Devolução
   const [fDev, setFDev] = useState({
-    remetente: "", cnpj: "", ncm: "1201.10.00",
+    remetente: "", cnpj: "", ncm: "1201.90.00",
     cfop: "2.201", quantidade: "", unidade: "sc", valorUnitario: "",
     nfe_ref: "", chave_ref: "",
     observacao: NATUREZAS_DEVOLUCAO[0].obs,
@@ -1193,7 +1197,7 @@ function FiscalInner() {
         valor_total: valor, data_emissao: TODAY, status: "em_digitacao",
         observacao: obs, auto: false,
       });
-      setFDev({ remetente: "", cnpj: "", ncm: "1201.10.00", cfop: "2.201", quantidade: "", unidade: "sc", valorUnitario: "", nfe_ref: "", chave_ref: "", observacao: NATUREZAS_DEVOLUCAO[0].obs });
+      setFDev({ remetente: "", cnpj: "", ncm: "1201.90.00", cfop: "2.201", quantidade: "", unidade: "sc", valorUnitario: "", nfe_ref: "", chave_ref: "", observacao: NATUREZAS_DEVOLUCAO[0].obs });
       setModalDevolucao(false);
       await carregar();
     } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }

@@ -20,7 +20,7 @@ const CRONOGRAMA = [
 
 // Produtos agrícolas com redução de alíquota
 const REDUCOES_AGRO = [
-  { ncm: "1201.10",   produto: "Soja em grão",              reducao: 60, obs: "Produto básico · redutor social" },
+  { ncm: "1201.90",   produto: "Soja em grão",              reducao: 60, obs: "Produto básico · redutor social" },
   { ncm: "1005.90",   produto: "Milho em grão",             reducao: 60, obs: "Produto básico · redutor social" },
   { ncm: "5201.00",   produto: "Algodão não cardado",       reducao: 60, obs: "Matéria-prima agro" },
   { ncm: "1001.99",   produto: "Trigo",                     reducao: 60, obs: "Produto básico" },
