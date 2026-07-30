@@ -1459,9 +1459,18 @@ export default function ContratosFinanceiros() {
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
-                            {c.pdf_url && (
-                              <a href={c.pdf_url} target="_blank" rel="noreferrer" title="Abrir PDF da cédula"
-                                style={{ fontSize: 12, padding: "3px 8px", background: "#FBF3E0", color: "#7A4300", border: "0.5px solid #C9921B", borderRadius: 6, textDecoration: "none", fontWeight: 600 }}>📄</a>
+                            {c.pdf_url ? (
+                              <a href={c.pdf_url} target="_blank" rel="noreferrer" title={`Abrir cédula: ${c.pdf_nome ?? "PDF"}`}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, padding: "4px 9px", background: "#FBF3E0", color: "#7A4300", border: "0.5px solid #C9921B", borderRadius: 6, textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}>
+                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2a1 1 0 011-1h6l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2z" stroke="#C9921B" strokeWidth="1.2" fill="#FDE9BB"/><path d="M9 1v4h4" stroke="#C9921B" strokeWidth="1.2" fill="none"/><path d="M5 8h6M5 10.5h4" stroke="#C9921B" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                                PDF
+                              </a>
+                            ) : (
+                              <button title="Anexar PDF da cédula" onClick={() => { abrirModal(c); }}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, padding: "4px 9px", background: "#F4F6FA", color: "#999", border: "0.5px solid #DDE2EE", borderRadius: 6, cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap" }}>
+                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2a1 1 0 011-1h6l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2z" stroke="#bbb" strokeWidth="1.2" fill="#f0f0f0"/><path d="M9 1v4h4" stroke="#bbb" strokeWidth="1.2" fill="none"/><path d="M8 7v4M6 9h4" stroke="#bbb" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                                PDF
+                              </button>
                             )}
                             <button style={{ ...btnE, background: "#EBF2FA", color: "#1A4870", fontWeight: 600 }} onClick={() => abrirModal(c)}>Abrir</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir contrato e todas as parcelas?")) excluirContratoFinanceiro(c.id).then(() => setContratos(p => p.filter(x => x.id !== c.id))); }}>✕</button>
