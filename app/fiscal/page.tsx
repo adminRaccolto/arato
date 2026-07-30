@@ -969,7 +969,6 @@ function FiscalInner() {
       dest_cidade:          (dj.dest_cidade as string) ?? "",
       dest_uf:              (dj.dest_uf as string) ?? "",
       dest_cep:             (dj.dest_cep as string) ?? "",
-      dest_fone:            (dj.dest_fone as string) ?? "",
       dest_municipio_ibge:  (dj.dest_municipio_ibge as string) ?? "",
     });
     // Auto-lookup IBGE via ViaCEP se faltando
@@ -2182,10 +2181,7 @@ function FiscalInner() {
                       field("Cidade", <input style={inSt} value={fVenda.dest_cidade} onChange={e => fv({dest_cidade:e.target.value})} />),
                       field("UF", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.dest_uf} onChange={e => fv({dest_uf:e.target.value.toUpperCase().slice(0,2)})} />, "0 0 50px"),
                       field(
-                        <span style={{ display:"flex", alignItems:"center", gap:4 }}>
-                          Cód. IBGE *
-                          {!fVenda.dest_municipio_ibge && <span style={{ color:"#E24B4A", fontSize:9, fontWeight:700 }}>⚠ obrigatório</span>}
-                        </span>,
+                        `Cód. IBGE *${!fVenda.dest_municipio_ibge ? " ⚠" : ""}`,
                         <input style={{ ...inSt, borderColor: !fVenda.dest_municipio_ibge ? "#E24B4A" : undefined }} value={fVenda.dest_municipio_ibge} onChange={e => fv({dest_municipio_ibge:e.target.value})} placeholder="ex: 5106224" maxLength={7} />,
                         "0 0 110px"
                       ),
