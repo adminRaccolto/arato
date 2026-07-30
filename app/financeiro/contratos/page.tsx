@@ -714,6 +714,7 @@ export default function ContratosFinanceiros() {
     setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
     setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
     setFAdit({ ...FA_VAZIO });
+    setPdfUrl(c?.pdf_url ?? null); setPdfNome(c?.pdf_nome ?? null);
     setParcelasLiberacao([]); setParcelasPagamento([]); setGarantias([]); setCentrosCusto([]); setAditivos([]);
     setModalAberto(true);
   };
@@ -849,7 +850,23 @@ export default function ContratosFinanceiros() {
     };
     if (contratoModal?.id) {
       await atualizarContratoFinanceiro(contratoModal.id, payload);
-      const atualizado = { ...contratoModal, ...payload };
+      let atualizado: ContratoFinanceiro = { ...contratoModal, ...payload };
+      // Upload de PDF ao editar
+      if (pdfFile) {
+        try {
+          const ext  = pdfFile.name.split(".").pop() ?? "pdf";
+          const path = `contratos-financeiros/${fazendaId}/${contratoModal.id}.${ext}`;
+          const { error: upErr } = await supabase.storage.from("documentos").upload(path, pdfFile, { upsert: true });
+          if (!upErr) {
+            const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+            await atualizarContratoFinanceiro(contratoModal.id, { pdf_url: urlData.publicUrl, pdf_nome: pdfFile.name });
+            atualizado = { ...atualizado, pdf_url: urlData.publicUrl, pdf_nome: pdfFile.name };
+          }
+        } catch { /* PDF é opcional */ }
+        setPdfFile(null);
+        setPdfNome(atualizado.pdf_nome ?? null);
+        setPdfUrl(atualizado.pdf_url ?? null);
+      }
       setContratos(p => p.map(x => x.id === contratoModal.id ? atualizado : x));
       setContratoModal(atualizado);
       setFCalc(prev => ({ ...prev, taxaMensal: payload.taxa_juros_am != null ? String(payload.taxa_juros_am) : prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
@@ -1810,11 +1827,31 @@ export default function ContratosFinanceiros() {
                       </div>
                     </div>
                   )}
-                  {/* PDF existente no contrato já salvo */}
-                  {contratoModal?.pdf_url && (
-                    <div style={{ marginBottom: 14, background: "#E8F3FB", border: "0.5px solid #1A487040", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 12, color: "#0B2D50" }}>📎 Cédula anexada: <strong>{contratoModal.pdf_nome ?? "arquivo.pdf"}</strong></span>
-                      <a href={contratoModal.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Abrir PDF ↗</a>
+                  {/* PDF da cédula — upload e visualização (sempre visível ao editar) */}
+                  {contratoModal && (
+                    <div style={{ marginBottom: 14, background: "#E8F3FB", border: "0.5px solid #1A487040", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 14 }}>📎</span>
+                        {(pdfFile ? pdfNome : contratoModal.pdf_nome) ? (
+                          <span style={{ fontSize: 12, color: "#0B2D50" }}>
+                            Cédula: <strong style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block", verticalAlign: "bottom" }}>{pdfFile ? pdfNome : (contratoModal.pdf_nome ?? "arquivo.pdf")}</strong>
+                            {pdfFile && <span style={{ fontSize: 11, color: "#C9921B", marginLeft: 6 }}>(novo — salve para confirmar)</span>}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "#555" }}>Nenhuma cédula PDF anexada</span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 10, flexShrink: 0, alignItems: "center" }}>
+                        {!pdfFile && contratoModal.pdf_url && (
+                          <a href={contratoModal.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Abrir PDF ↗</a>
+                        )}
+                        <label style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", textDecoration: "underline" }}>
+                          {(pdfFile || contratoModal.pdf_nome) ? "Substituir PDF" : "Anexar PDF"}
+                          <input type="file" accept="application/pdf" style={{ display: "none" }}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) { setPdfFile(f); setPdfNome(f.name); } e.target.value = ""; }}
+                          />
+                        </label>
+                      </div>
                     </div>
                   )}
                   <SecTitle>Identificação</SecTitle>
