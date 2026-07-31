@@ -1954,15 +1954,27 @@ function FiscalInner() {
                         </optgroup>
                       )}
                     </select>
+                    {empresasTotal.length === 0 && (
+                      <div style={{ marginTop: 6, fontSize: 11, color: "#666", background: "#F4F6FA", borderRadius: 6, padding: "7px 10px", lineHeight: 1.5 }}>
+                        Para adicionar e-CNPJ (empresa): <strong>Cadastros → Produtores → + Novo</strong> · preencha o CNPJ no campo CPF/CNPJ. A empresa aparecerá aqui automaticamente.
+                      </div>
+                    )}
                   </div>
                 );
                 if (total === 1) {
                   const nomeUnico = prodCpf.length === 1 ? prodCpf[0].nome : (empresasTotal[0]?.label ?? "");
                   return (
-                    <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--text-2)" }}>
-                      <span style={{ color: "var(--text-3)", fontSize: 11 }}>Titular: </span>
-                      <strong>{nomeUnico}</strong>
-                    </div>
+                    <>
+                      <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--text-2)" }}>
+                        <span style={{ color: "var(--text-3)", fontSize: 11 }}>Titular: </span>
+                        <strong>{nomeUnico}</strong>
+                      </div>
+                      {empresasTotal.length === 0 && (
+                        <div style={{ fontSize: 11, color: "#666", background: "#F4F6FA", borderRadius: 6, padding: "7px 10px", lineHeight: 1.5 }}>
+                          Para adicionar e-CNPJ (empresa): <strong>Cadastros → Produtores → + Novo</strong> · preencha o CNPJ no campo CPF/CNPJ.
+                        </div>
+                      )}
+                    </>
                   );
                 }
                 return null;
