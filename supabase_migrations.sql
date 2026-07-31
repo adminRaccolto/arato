@@ -8941,3 +8941,25 @@ CREATE POLICY "Ciots by mdfe fazenda" ON ciots
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: finalidades[] em empresas — substitui tipo_empresa (single-select)
+-- ============================================================================
+
+ALTER TABLE empresas
+  ADD COLUMN IF NOT EXISTS finalidades text[] NOT NULL DEFAULT '{}';
+
+-- Backfill: mapeia tipo_empresa antigo → finalidades[]
+UPDATE empresas
+SET finalidades = CASE tipo_empresa
+  WHEN 'fazenda_pj'         THEN ARRAY['produtor']
+  WHEN 'transportadora'     THEN ARRAY['transportadora']
+  WHEN 'trading'            THEN ARRAY['parceira']
+  WHEN 'prestadora_servicos'THEN ARRAY['parceira']
+  ELSE '{}' END
+WHERE finalidades = '{}' AND tipo_empresa IS NOT NULL;
+
+-- Índice GIN para filtros por finalidade (ex: finalidades @> '{transportadora}')
+CREATE INDEX IF NOT EXISTS idx_empresas_finalidades ON empresas USING gin(finalidades);
+
+NOTIFY pgrst, 'reload schema';

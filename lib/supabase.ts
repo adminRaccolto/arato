@@ -895,7 +895,9 @@ export type Empresa = {
   nome: string;                // nome fantasia
   razao_social?: string;
   tipo: "pf" | "pj";
+  /** @deprecated usar finalidades[] */
   tipo_empresa?: "fazenda_pj" | "transportadora" | "trading" | "prestadora_servicos" | "outros";
+  finalidades?: string[];         // multi-select: produtor | holding | parceira | transportadora
   cpf_cnpj?: string;
   inscricao_est?: string;
   crt?: "1" | "2" | "3";      // 1=Simples, 2=Simples excesso, 3=Regime Normal

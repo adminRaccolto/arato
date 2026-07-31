@@ -342,9 +342,9 @@ function CadastrosInner() {
   const [empresas, setEmpresas]       = useState<Empresa[]>([]);
   const [modalEmp, setModalEmp]       = useState(false);
   const [editEmp, setEditEmp]         = useState<Empresa | null>(null);
-  const [abaEmp, setAbaEmp]           = useState<"geral"|"endereco"|"fiscal"|"cert"|"registros">("geral");
+  const [abaEmp, setAbaEmp]           = useState<"geral"|"endereco"|"fiscal"|"registros">("geral");
   const [certFile, setCertFile]       = useState<File | null>(null);
-  const EMP_VAZIO = { nome: "", razao_social: "", tipo: "pj" as "pf"|"pj", tipo_empresa: "fazenda_pj" as Empresa["tipo_empresa"], cpf_cnpj: "", inscricao_est: "", crt: "3" as Empresa["crt"], regime_tributario: "", produtor_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", ambiente_fiscal: "homologacao" as Empresa["ambiente_fiscal"], serie_nfe: "1", serie_cte: "1", serie_mdfe: "1", rntrc: "", car: "", nirf: "", itr: "", email: "", email_relatorios: "", telefone: "", cert_a1_validade: "", cert_a1_senha: "", cert_a1_nome: "" };
+  const EMP_VAZIO = { nome: "", razao_social: "", tipo: "pj" as "pf"|"pj", finalidades: [] as string[], cpf_cnpj: "", inscricao_est: "", crt: "3" as Empresa["crt"], regime_tributario: "", produtor_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", ambiente_fiscal: "homologacao" as Empresa["ambiente_fiscal"], serie_nfe: "1", serie_cte: "1", serie_mdfe: "1", rntrc: "", car: "", nirf: "", itr: "", email: "", email_relatorios: "", telefone: "" };
   const [fEmp, setFEmp]               = useState({ ...EMP_VAZIO });
 
   // ── Pessoas ──
@@ -1445,7 +1445,7 @@ function CadastrosInner() {
     setCertFile(null);
     setFEmp(e ? {
       nome: e.nome, razao_social: e.razao_social ?? "", tipo: e.tipo,
-      tipo_empresa: e.tipo_empresa ?? "fazenda_pj",
+      finalidades: e.finalidades ?? [],
       cpf_cnpj: e.cpf_cnpj ?? "", inscricao_est: e.inscricao_est ?? "",
       crt: e.crt ?? "3", regime_tributario: e.regime_tributario ?? "",
       produtor_id: e.produtor_id ?? "",
@@ -1457,7 +1457,6 @@ function CadastrosInner() {
       rntrc: e.rntrc ?? "",
       car: e.car ?? "", nirf: e.nirf ?? "", itr: e.itr ?? "",
       email: e.email ?? "", email_relatorios: e.email_relatorios ?? "", telefone: e.telefone ?? "",
-      cert_a1_validade: e.cert_a1_validade ?? "", cert_a1_senha: e.cert_a1_senha ?? "", cert_a1_nome: e.cert_a1_nome ?? "",
     } : { ...EMP_VAZIO });
     setModalEmp(true);
   };
@@ -1478,7 +1477,7 @@ function CadastrosInner() {
       fazenda_id: fazId,
       nome: fEmp.nome.trim() || fEmp.razao_social.trim(),
       razao_social: fEmp.razao_social || undefined, tipo: fEmp.tipo,
-      tipo_empresa: fEmp.tipo_empresa ?? "outros",
+      finalidades: fEmp.finalidades ?? [],
       cpf_cnpj: fEmp.cpf_cnpj || undefined, inscricao_est: fEmp.inscricao_est || undefined,
       crt: fEmp.crt || undefined, regime_tributario: fEmp.regime_tributario || undefined,
       produtor_id: fEmp.produtor_id || undefined,
@@ -1492,9 +1491,6 @@ function CadastrosInner() {
       car: fEmp.car || undefined, nirf: fEmp.nirf || undefined, itr: fEmp.itr || undefined,
       email: fEmp.email || undefined, email_relatorios: fEmp.email_relatorios || undefined,
       telefone: fEmp.telefone || undefined,
-      cert_a1_validade: fEmp.cert_a1_validade || undefined,
-      cert_a1_senha: fEmp.cert_a1_senha || undefined,
-      cert_a1_nome: fEmp.cert_a1_nome || undefined,
     };
     let empresaId: string;
     if (editEmp) {
@@ -1505,19 +1501,6 @@ function CadastrosInner() {
       const n = await criarEmpresa(payload);
       empresaId = n.id;
       setEmpresas(p => [...p, n]);
-    }
-    // Upload certificado A1 se arquivo selecionado
-    if (certFile) {
-      try {
-        const path = `empresas/${fazId}/${empresaId}/cert_a1.pfx`;
-        const { error: upErr } = await supabase.storage.from("documentos").upload(path, certFile, { upsert: true });
-        if (!upErr) {
-          const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
-          const certUpdate = { cert_a1_url: urlData.publicUrl, cert_a1_nome: certFile.name, cert_a1_senha: fEmp.cert_a1_senha || undefined, cert_a1_validade: fEmp.cert_a1_validade || undefined };
-          await atualizarEmpresa(empresaId, certUpdate);
-          setEmpresas(p => p.map(x => x.id === empresaId ? { ...x, ...certUpdate } : x));
-        } else { alert("⚠️ Certificado não pôde ser salvo: " + upErr.message); }
-      } catch { /* não bloqueia o save */ }
     }
     setModalEmp(false);
   });
@@ -2167,7 +2150,17 @@ function CadastrosInner() {
                         <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{e.razao_social || e.nome}</div>
                         {e.razao_social && e.nome !== e.razao_social && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{e.nome}</div>}
                       </td>
-                      <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(e.tipo.toUpperCase(), e.tipo === "pj" ? "#E6F1FB" : "#FBF0D8", e.tipo === "pj" ? "#0C447C" : "#7A5A12")}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+                          {badge(e.tipo.toUpperCase(), e.tipo === "pj" ? "#E6F1FB" : "#FBF0D8", e.tipo === "pj" ? "#0C447C" : "#7A5A12")}
+                          {(e.finalidades ?? []).map(f => {
+                            const FIN_COLOR: Record<string, [string, string]> = { produtor: ["#F0FDF4","#166534"], holding: ["#F5F3FF","#6D28D9"], parceira: ["#FEF3C7","#92400E"], transportadora: ["#FFF7ED","#9A3412"] };
+                            const [bg,cl] = FIN_COLOR[f] ?? ["#F4F6FA","#555"];
+                            const FIN_LABEL: Record<string,string> = { produtor:"Produtor", holding:"Holding", parceira:"Parceira", transportadora:"Transp." };
+                            return badge(FIN_LABEL[f] ?? f, bg, cl);
+                          })}
+                        </div>
+                      </td>
                       <td style={{ padding: "10px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 12 }}>{e.cpf_cnpj || "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 12 }}>{e.inscricao_est || "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "var(--text-2)" }}>{e.regime_tributario || "—"}</td>
@@ -9763,18 +9756,30 @@ function CadastrosInner() {
           { key: "geral",      label: "Dados Gerais" },
           { key: "endereco",   label: "Endereço" },
           { key: "fiscal",     label: "Dados Fiscais" },
-          { key: "cert",       label: "Certificado A1" },
           { key: "registros",  label: "Registros" },
         ];
-        const certVencendo = fEmp.cert_a1_validade ? (() => { const d = new Date(fEmp.cert_a1_validade); const diff = Math.ceil((d.getTime() - Date.now()) / 86400000); return diff; })() : null;
+        const FINALIDADES_OPT: { key: string; label: string; desc: string }[] = [
+          { key: "produtor",      label: "Produtor Rural",           desc: "Emite NF-e de produção própria, titular de fazendas" },
+          { key: "holding",       label: "Controladora / Holding",   desc: "Empresa que controla outras ou consolida patrimônio" },
+          { key: "parceira",      label: "Parceira / Imobilizado",   desc: "Detentora de bens, máquinas ou operação compartilhada" },
+          { key: "transportadora",label: "Transportadora",           desc: "Opera frota própria; aparece nos seletores de CT-e e MDF-e" },
+        ];
+        const toggleFinalidade = (key: string) =>
+          setFEmp(p => ({
+            ...p,
+            finalidades: p.finalidades.includes(key)
+              ? p.finalidades.filter(f => f !== key)
+              : [...p.finalidades, key],
+          }));
+        const isTransp = fEmp.finalidades.includes("transportadora");
         return (
           <Modal titulo={editEmp ? "Editar Empresa" : "Nova Empresa"} onClose={() => setModalEmp(false)} width={900}>
             {/* Tabs */}
             <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20, marginTop: -4 }}>
               {ABAS_EMP.map(a => (
-                <button key={a.key} onClick={() => setAbaEmp(a.key)}
+                <button key={a.key} onClick={() => setAbaEmp(a.key as typeof abaEmp)}
                   style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: abaEmp === a.key ? 700 : 400, color: abaEmp === a.key ? "#1A4870" : "var(--text-2)", borderBottom: abaEmp === a.key ? "2.5px solid #1A4870" : "2.5px solid transparent", whiteSpace: "nowrap" }}>
-                  {a.label}{a.key === "cert" && fEmp.cert_a1_nome && <span style={{ marginLeft: 5, fontSize: 10, background: certVencendo !== null && certVencendo <= 30 ? "#FCEBEB" : "#DCFCE7", color: certVencendo !== null && certVencendo <= 30 ? "#791F1F" : "#166534", padding: "1px 5px", borderRadius: 4 }}>{certVencendo !== null && certVencendo <= 0 ? "Vencido" : certVencendo !== null && certVencendo <= 30 ? `${certVencendo}d` : "✓"}</span>}
+                  {a.label}
                 </button>
               ))}
             </div>
@@ -9790,15 +9795,24 @@ function CadastrosInner() {
                   <label style={lbl}>Nome Fantasia</label>
                   <input style={inp} placeholder="Ex: Fazenda Santa Fé" value={fEmp.nome} onChange={e => setFEmp(p => ({ ...p, nome: e.target.value }))} />
                 </div>
-                <div>
-                  <label style={lbl}>Tipo de Entidade</label>
-                  <select style={inp} value={fEmp.tipo_empresa} onChange={e => setFEmp(p => ({ ...p, tipo_empresa: e.target.value as Empresa["tipo_empresa"] }))}>
-                    <option value="fazenda_pj">Fazenda / Produtor PJ</option>
-                    <option value="transportadora">Transportadora</option>
-                    <option value="trading">Trading / Cerealista</option>
-                    <option value="prestadora_servicos">Prestadora de Serviços</option>
-                    <option value="outros">Outros</option>
-                  </select>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={{ ...lbl, marginBottom: 8, display: "block" }}>Finalidades — marque todas que se aplicam</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {FINALIDADES_OPT.map(f => {
+                      const ativo = fEmp.finalidades.includes(f.key);
+                      return (
+                        <label key={f.key} onClick={() => toggleFinalidade(f.key)} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", border: `0.5px solid ${ativo ? "#1A4870" : "var(--border-table)"}`, borderRadius: 8, cursor: "pointer", background: ativo ? "#EBF3FB" : "var(--bg-card)", transition: "all 0.1s" }}>
+                          <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${ativo ? "#1A4870" : "#CBD5E1"}`, background: ativo ? "#1A4870" : "transparent", flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {ativo && <span style={{ color: "#fff", fontSize: 10, lineHeight: 1 }}>✓</span>}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: ativo ? "#0B2D50" : "var(--text-1)" }}>{f.label}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{f.desc}</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label style={lbl}>Pessoa</label>
@@ -9927,58 +9941,24 @@ function CadastrosInner() {
                     <label style={lbl}>Série MDF-e</label>
                     <input style={{ ...inp, fontFamily: "monospace" }} placeholder="1" value={fEmp.serie_mdfe} onChange={e => setFEmp(p => ({ ...p, serie_mdfe: e.target.value.replace(/\D/g,"") }))} />
                   </div>
-                  {fEmp.tipo_empresa === "transportadora" && (
+                  {isTransp && (
                     <div>
                       <label style={lbl}>RNTRC (ANTT)</label>
                       <input style={{ ...inp, fontFamily: "monospace" }} placeholder="00000000" value={fEmp.rntrc} onChange={e => setFEmp(p => ({ ...p, rntrc: e.target.value.replace(/\D/g,"") }))} />
                     </div>
                   )}
                 </div>
-              </div>
-            )}
 
-            {/* Aba Certificado A1 */}
-            {abaEmp === "cert" && (
-              <div>
-                <div style={{ background: "#E8F3FB", border: "0.5px solid #1A487040", borderRadius: 10, padding: "14px 16px", marginBottom: 18 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#0B2D50", marginBottom: 4 }}>Certificado Digital A1 (.pfx)</div>
-                  <div style={{ fontSize: 12, color: "#555" }}>Necessário para assinar NF-e, CT-e e MDF-e. Arquivo .pfx protegido por senha. Vence anualmente.</div>
-                </div>
-
-                {/* Certificado atual */}
-                {(fEmp.cert_a1_nome || editEmp?.cert_a1_url) && !certFile && (
-                  <div style={{ marginBottom: 18, background: certVencendo !== null && certVencendo <= 0 ? "#FCEBEB" : certVencendo !== null && certVencendo <= 30 ? "#FBF3E0" : "#F0FDF4", border: `0.5px solid ${certVencendo !== null && certVencendo <= 0 ? "#E24B4A50" : certVencendo !== null && certVencendo <= 30 ? "#C9921B50" : "#16A34A50"}`, borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>📜 {fEmp.cert_a1_nome ?? "certificado.pfx"}</div>
-                      {fEmp.cert_a1_validade && (
-                        <div style={{ fontSize: 11, marginTop: 3, color: certVencendo !== null && certVencendo <= 0 ? "#E24B4A" : certVencendo !== null && certVencendo <= 30 ? "#C9921B" : "#16A34A" }}>
-                          {certVencendo !== null && certVencendo <= 0 ? "⚠️ VENCIDO" : certVencendo !== null && certVencendo <= 30 ? `⚠️ Vence em ${certVencendo} dias` : `✓ Válido até ${fEmp.cert_a1_validade.split("-").reverse().join("/")}`}
-                        </div>
-                      )}
-                    </div>
-                    {editEmp?.cert_a1_url && <a href={editEmp.cert_a1_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Baixar ↗</a>}
+                {/* Certificado A1 — status (gerenciado em Parâmetros Fiscais) */}
+                <div style={{ marginTop: 20, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870" }}>Certificado Digital A1</div>
+                    <a href="/configuracoes/modulos" style={{ fontSize: 11, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Gerenciar em Parâmetros Fiscais ↗</a>
                   </div>
-                )}
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label style={lbl}>{fEmp.cert_a1_nome ? "Substituir arquivo .pfx" : "Arquivo .pfx"}</label>
-                    <label style={{ display: "block", padding: "10px 14px", border: "0.5px dashed #1A4870", borderRadius: 8, cursor: "pointer", fontSize: 12, color: "#1A4870", textAlign: "center", background: "#F4F8FB" }}>
-                      {certFile ? `📜 ${certFile.name}` : "Clique para selecionar o .pfx"}
-                      <input type="file" accept=".pfx,.p12" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) { setCertFile(f); setFEmp(p => ({ ...p, cert_a1_nome: f.name })); } e.target.value = ""; }} />
-                    </label>
+                  <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+                    O certificado A1 (.pfx) é configurado uma única vez em <strong>Configurações → Parâmetros do Sistema → Aba Fiscal</strong>.<br/>
+                    Lá você faz o upload, vincula a senha e a validade é monitorada automaticamente com alertas de vencimento.
                   </div>
-                  <div>
-                    <label style={lbl}>Senha do certificado</label>
-                    <input style={inp} type="password" placeholder="Senha do arquivo .pfx" value={fEmp.cert_a1_senha} onChange={e => setFEmp(p => ({ ...p, cert_a1_senha: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={lbl}>Data de Vencimento</label>
-                    <input style={inp} type="date" value={fEmp.cert_a1_validade} onChange={e => setFEmp(p => ({ ...p, cert_a1_validade: e.target.value }))} />
-                  </div>
-                </div>
-                <div style={{ marginTop: 14, padding: "10px 14px", background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, fontSize: 11, color: "#7A5400" }}>
-                  ⚠️ A senha é armazenada de forma segura e usada exclusivamente para assinar os documentos fiscais no servidor. Nunca compartilhe este arquivo com terceiros.
                 </div>
               </div>
             )}
@@ -9999,7 +9979,7 @@ function CadastrosInner() {
                   <label style={lbl}>ITR — Número do Imóvel</label>
                   <input style={inp} value={fEmp.itr} onChange={e => setFEmp(p => ({ ...p, itr: e.target.value }))} />
                 </div>
-                {fEmp.tipo_empresa === "transportadora" && <>
+                {isTransp && <>
                   <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em", paddingBottom: 8, paddingTop: 8, borderBottom: "0.5px solid var(--border-table)", borderTop: "0.5px solid var(--border-table)" }}>TRANSPORTE (ANTT)</div>
                   <div>
                     <label style={lbl}>RNTRC — Registro Nacional de Transportadores</label>
