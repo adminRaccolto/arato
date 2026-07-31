@@ -21,6 +21,7 @@ type AuthCtx = {
   fazendaId:              string | null;
   fazendaIds:             string[];        // todas as fazendas da conta (multi-fazenda)
   contaId:                string | null;
+  contaNome:              string | null;   // nome da conta/cliente (exibido no TopNav)
   nomeUsuario:            string | null;
   emailUsuario:           string | null;
   userRole:               string | null;   // 'client' | 'raccotlo' | null
@@ -54,6 +55,7 @@ const Ctx = createContext<AuthCtx>({
   fazendaId:              null,
   fazendaIds:             [],
   contaId:                null,
+  contaNome:              null,
   nomeUsuario:            null,
   emailUsuario:           null,
   userRole:               null,
@@ -85,6 +87,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [fazendaId,              setFazendaId]              = useState<string | null>(null);
   const [fazendaIds,             setFazendaIds]             = useState<string[]>([]);
   const [contaId,                setContaId]                = useState<string | null>(null);
+  const [contaNome,              setContaNome]              = useState<string | null>(null);
   const [nomeUsuario,            setNomeUsuario]            = useState<string | null>(null);
   const [emailUsuario,           setEmailUsuario]           = useState<string | null>(null);
   const [userRole,               setUserRole]               = useState<string | null>(null);
@@ -277,7 +280,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const [contaRes, usuarioRes, modulosRes] = await Promise.allSettled([
         cid
           ? supabase.from("contas")
-              .select("pacote, status, onboarding_ativo, logo_url")
+              .select("nome, pacote, status, onboarding_ativo, logo_url")
               .eq("id", cid)
               .maybeSingle()
           : Promise.resolve({ data: null, error: null }),
@@ -294,6 +297,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       if (contaRes.status === "fulfilled") {
         const conta = contaRes.value.data as Record<string, unknown> | null;
         if (conta) {
+          if (conta.nome) setContaNome(conta.nome as string);
           setPlanoAtual((conta.pacote as PlanoId) ?? null);
           setContaStatus((conta.status as string) ?? null);
           const ativo = (conta.onboarding_ativo as boolean) ?? false;
@@ -523,7 +527,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      fazendaId, fazendaIds, contaId, nomeUsuario, emailUsuario, userRole, raccotloGestor,
+      fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, emailUsuario, userRole, raccotloGestor,
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,

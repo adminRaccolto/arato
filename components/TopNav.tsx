@@ -330,7 +330,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const prevQtdTransfRef   = useRef<number>(0);
 
   const pathname = usePathname();
-  const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
   const { toggle: toggleTheme, isDark } = useTheme();
   const navRef = useRef<HTMLDivElement>(null);
 
@@ -462,7 +462,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   const isRaccotloStaff = ["raccotlo","raccotlo_gestor","raccotlo_seletor","raccotlo_operacional"].includes(userRole ?? "");
 
-  const nomeIdentidade = produtorNome ?? fazenda?.nome ?? null;
+  // Quando a conta tem múltiplas fazendas, exibe o nome do cliente (conta) em vez da fazenda
+  const multiFazenda = fazendaIds.length > 1;
+  const nomeIdentidade = multiFazenda
+    ? (contaNome ?? produtorNome ?? fazenda?.nome ?? null)
+    : (produtorNome ?? fazenda?.nome ?? null);
   const iniciaisFazenda = nomeIdentidade
     ? nomeIdentidade.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
     : "—";
@@ -629,12 +633,17 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               )}
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.25 }}>
-                  {produtorNome ?? fazenda?.nome ?? "—"}
+                  {nomeIdentidade ?? "—"}
                 </div>
-                {fazenda && (
+                {fazenda && !multiFazenda && (
                   <div style={{ fontSize: 11, color: "var(--text-3)" }}>
                     {fazenda.municipio} · {fazenda.estado}
                     {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
+                  </div>
+                )}
+                {multiFazenda && fazenda && (
+                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                    {fazenda.nome}
                   </div>
                 )}
               </div>

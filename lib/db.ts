@@ -1494,6 +1494,12 @@ export async function listarNfEntradas(fazenda_id: string): Promise<NfEntrada[]>
   if (error) throw error;
   return data ?? [];
 }
+export async function listarNfEntradasPorFazendas(fazenda_ids: string[]): Promise<NfEntrada[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase.from("nf_entradas").select("*").in("fazenda_id", fazenda_ids).order("data_emissao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
 export async function criarNfEntrada(n: Omit<NfEntrada, "id" | "created_at">): Promise<NfEntrada> {
   const { data, error } = await supabase.from("nf_entradas").insert(n).select().single();
   if (error) throw error;

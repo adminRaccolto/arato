@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import {
-  listarNfEntradas, criarNfEntrada, atualizarNfEntrada,
+  listarNfEntradas, listarNfEntradasPorFazendas, criarNfEntrada, atualizarNfEntrada,
   listarNfEntradaItens, criarNfEntradaItem,
   processarNfEntrada,
   processarDevolucaoCompra,
@@ -137,7 +137,7 @@ const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: strin
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfCompraPage() {
-  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
 
   // Dados mestre
   const [nfs, setNfs]             = useState<NfEntrada[]>([]);
@@ -148,6 +148,10 @@ export default function NfCompraPage() {
   const [maquinas, setMaquinas]   = useState<Maquina[]>([]);
   const [pedidos, setPedidos]     = useState<PedidoMin[]>([]);
   const [regrasClass, setRegrasClass] = useState<RegraClassificacao[]>([]);
+  // Dados do wizard — recarregados para a fazenda específica de cada NF
+  const [wCentros,   setWCentros]   = useState<CentroCusto[]>([]);
+  const [wDepositos, setWDepositos] = useState<Deposito[]>([]);
+  const [wPedidos,   setWPedidos]   = useState<PedidoMin[]>([]);
   const [sugestaoNome, setSugestaoNome] = useState<string | null>(null); // nome da regra aplicada
 
   // Filtros lista
@@ -182,6 +186,12 @@ export default function NfCompraPage() {
   const [tipo,    setTipo]    = useState<TipoEntrada>("insumos");
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
+  // Seleção em lote
+  const [selectedNfs,  setSelectedNfs]  = useState<Set<string>>(new Set());
+  const [batchModal,   setBatchModal]   = useState(false);
+  const [batchSaving,  setBatchSaving]  = useState(false);
+  const [batchSettings, setBatchSettings] = useState({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "" });
+  const [batchFazendaId, setBatchFazendaId] = useState<string>("");
 
   // Visualizador de NF (read-only)
   const [nfViewer, setNfViewer] = useState<{ nf: NfEntrada; itens: NfEntradaItem[] } | null>(null);
@@ -283,8 +293,9 @@ export default function NfCompraPage() {
   // ── Carregar ────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
+    const idsParaNf = fazendaIds.length > 1 ? fazendaIds : [fazendaId];
     const [nfsData, insData, depData, pesData] = await Promise.all([
-      listarNfEntradas(fazendaId),
+      listarNfEntradasPorFazendas(idsParaNf),
       listarInsumos(fazendaId),
       listarDepositos(fazendaId),
       listarPessoas(fazendaId),
@@ -335,9 +346,28 @@ export default function NfCompraPage() {
       setPedidos((data ?? []) as PedidoMin[]);
     } catch {}
 
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // ── Helper: carrega dados do wizard para uma fazenda específica ──
+  async function carregarWizardData(fId: string) {
+    const [ccData, depData] = await Promise.all([
+      listarCentrosCustoGeral(fId).catch(() => [] as CentroCusto[]),
+      listarDepositos(fId).catch(() => [] as Deposito[]),
+    ]);
+    setWCentros(ccData);
+    setWDepositos(depData);
+    try {
+      const { data } = await supabase
+        .from("pedidos_compra")
+        .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
+        .eq("fazenda_id", fId)
+        .in("status", ["rascunho", "aprovado", "entregue"])
+        .order("created_at", { ascending: false });
+      setWPedidos((data ?? []) as PedidoMin[]);
+    } catch { setWPedidos([]); }
+  }
 
   // Carrega config do SIEG (CNPJs → nomes de produtor)
   useEffect(() => {
@@ -480,6 +510,10 @@ export default function NfCompraPage() {
     setItens([ITEM_VAZIO()]);
     setErr("");
     setSiegChave("");
+    // Para NF nova, usar dados da fazenda ativa
+    setWCentros([...centros]);
+    setWDepositos([...depositos]);
+    setWPedidos([...pedidos]);
     setWizard(true);
   }
 
@@ -546,6 +580,15 @@ export default function NfCompraPage() {
     } catch {}
     setEtapa("cabecalho");
     setErr("");
+    // Carrega centros/depósitos/pedidos para a fazenda desta NF específica
+    const nfFazId = nf.fazenda_id ?? fazendaId ?? "";
+    if (nfFazId && nfFazId !== fazendaId) {
+      await carregarWizardData(nfFazId);
+    } else {
+      setWCentros([...centros]);
+      setWDepositos([...depositos]);
+      setWPedidos([...pedidos]);
+    }
     setWizard(true);
   }
 
@@ -881,6 +924,60 @@ export default function NfCompraPage() {
     setModalNovoInsumo({ itemKey, nome: descricaoNf });
   }
 
+  async function processarEmLote() {
+    const nfsSel = nfsFiltradas.filter(n => selectedNfs.has(n.id) && n.status === "pendente");
+    if (!nfsSel.length) return;
+    setBatchSaving(true);
+    const erros: string[] = [];
+    for (const nf of nfsSel) {
+      try {
+        const ccId = batchSettings.centro_custo_id || nf.centro_custo_id;
+        const depId = batchSettings.deposito_destino_id || (nf as Record<string,unknown>).deposito_destino_id as string;
+        const upd: Partial<NfEntrada> = {};
+        if (batchSettings.data_vencimento_cp) upd.data_vencimento_cp = batchSettings.data_vencimento_cp;
+        if (batchSettings.pedido_compra_id)   upd.pedido_compra_id   = batchSettings.pedido_compra_id;
+        if (batchSettings.deposito_destino_id) (upd as Record<string,unknown>).deposito_destino_id = batchSettings.deposito_destino_id;
+        if (batchSettings.centro_custo_id)    upd.centro_custo_id    = batchSettings.centro_custo_id;
+        if (batchSettings.ano_safra_id)        upd.ano_safra_id       = batchSettings.ano_safra_id;
+        if (Object.keys(upd).length) await atualizarNfEntrada(nf.id, upd);
+        // Se custo_direto e tem CC definido: processa automaticamente
+        const tipoNf = nf.tipo_entrada ?? "custo_direto";
+        if (tipoNf === "custo_direto" && ccId) {
+          const itensNf = await listarNfEntradaItens(nf.id);
+          const itensCc = itensNf.map(it => ({
+            ...it,
+            tipo_apropiacao: "direto" as NfEntradaItem["tipo_apropiacao"],
+            centro_custo_id: ccId,
+          }));
+          await processarNfEntrada(
+            nf.id,
+            nf.fazenda_id ?? batchFazendaId,
+            itensCc,
+            nf.valor_total,
+            nf.emitente_nome,
+            nf.data_entrada ?? new Date().toISOString().split("T")[0],
+            nf.emitente_cnpj ?? undefined,
+            {
+              nfeNumero:        nf.numero,
+              dataVencimentoCp: batchSettings.data_vencimento_cp || nf.data_vencimento_cp || undefined,
+              tipoEntrada:      "custo_direto",
+              anoSafraId:       batchSettings.ano_safra_id       || nf.ano_safra_id        || undefined,
+              centroCustoId:    ccId,
+              pedidoCompraId:   batchSettings.pedido_compra_id   || nf.pedido_compra_id    || undefined,
+            },
+          );
+        }
+      } catch (e) {
+        erros.push(`NF ${nf.numero}: ${e instanceof Error ? e.message : "Erro"}`);
+      }
+    }
+    await carregar();
+    setBatchSaving(false);
+    setBatchModal(false);
+    setSelectedNfs(new Set());
+    if (erros.length) alert("Erros no lote:\n" + erros.join("\n"));
+  }
+
   async function salvarNovoInsumo() {
     if (!fazendaId || !formNovoInsumo.nome.trim()) return;
     setNovoInsumoSaving(true);
@@ -1193,6 +1290,41 @@ export default function NfCompraPage() {
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{nfsFiltradas.length} resultado{nfsFiltradas.length !== 1 ? "s" : ""}</span>
         </div>
 
+        {/* ── Barra de ações em lote ── */}
+        {selectedNfs.size > 0 && (
+          <div style={{ background: "#1A4870", borderRadius: 10, padding: "10px 18px", marginBottom: 12, display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
+              {selectedNfs.size} NF{selectedNfs.size > 1 ? "s" : ""} selecionada{selectedNfs.size > 1 ? "s" : ""}
+            </span>
+            <button
+              onClick={() => {
+                const nfsSel = nfsFiltradas.filter(n => selectedNfs.has(n.id) && n.status === "pendente");
+                if (!nfsSel.length) { alert("Nenhuma NF pendente selecionada para processar."); return; }
+                const fId = nfsSel[0].fazenda_id ?? fazendaId ?? "";
+                setBatchFazendaId(fId);
+                if (fId !== fazendaId) {
+                  carregarWizardData(fId);
+                } else {
+                  setWCentros([...centros]);
+                  setWDepositos([...depositos]);
+                  setWPedidos([...pedidos]);
+                }
+                setBatchSettings({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "" });
+                setBatchModal(true);
+              }}
+              style={{ padding: "6px 16px", background: "#fff", color: "#1A4870", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+            >
+              ⚡ Processar em lote
+            </button>
+            <button
+              onClick={() => setSelectedNfs(new Set())}
+              style={{ padding: "6px 12px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 8, fontSize: 12, cursor: "pointer" }}
+            >
+              Limpar seleção
+            </button>
+          </div>
+        )}
+
         {/* ── Tabela ── */}
         <div style={card}>
           {nfsFiltradas.length === 0 ? (
@@ -1203,8 +1335,8 @@ export default function NfCompraPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["Nº / Série", "Emitente", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Manifest.", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 6 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Manifest.", "Ações"].map((c, i) => (
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 8 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
@@ -1214,13 +1346,35 @@ export default function NfCompraPage() {
                   const tm = nf.tipo_entrada ? TIPO_META[nf.tipo_entrada] : null;
                   const om = nf.origem ? ORIGEM_META[nf.origem] : null;
                   return (
-                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
+                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: selectedNfs.has(nf.id) ? "#EFF6FF" : undefined }}>
+                      <td style={{ padding: "10px 12px" }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedNfs.has(nf.id)}
+                          onChange={e => {
+                            setSelectedNfs(prev => {
+                              const next = new Set(prev);
+                              e.target.checked ? next.add(nf.id) : next.delete(nf.id);
+                              return next;
+                            });
+                          }}
+                          style={{ cursor: "pointer" }}
+                        />
+                      </td>
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
                         {nf.numero}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-1)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {nf.emitente_nome}
                         {nf.emitente_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{nf.emitente_cnpj}</div>}
+                      </td>
+                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-1)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {(() => {
+                          if (!nf.cnpj_destino) return <span style={{ color: "var(--text-3)" }}>—</span>;
+                          const cnpjNum = nf.cnpj_destino.replace(/\D/g, "");
+                          const prod = siegProdutores.find(p => p.cnpj === cnpjNum);
+                          return prod ? <>{prod.nome}<div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDoc(cnpjNum)}</div></> : <span style={{ fontFamily: "monospace" }}>{fmtDoc(cnpjNum)}</span>;
+                        })()}
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{fmtData(nf.data_emissao)}</td>
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{fmtData(nf.data_entrada)}</td>
@@ -1596,7 +1750,14 @@ export default function NfCompraPage() {
                         style={{ ...inp, flex: 1, background: cab.pedido_compra_id ? "#F0FDF4" : "var(--bg-input)", fontWeight: cab.pedido_compra_id ? 600 : 400, color: cab.pedido_compra_id ? "#166534" : "var(--text-1)" }}
                       >
                         <option value="">— Sem pedido vinculado —</option>
-                        {pedidos.map(p => {
+                        {wPedidos.filter(p => {
+                          // Filtra pedidos pelo CNPJ do emitente desta NF
+                          if (!cab.emitente_cnpj) return true;
+                          const cnpjNf = cab.emitente_cnpj.replace(/\D/g, "");
+                          if (!cnpjNf) return true;
+                          const fornCnpj = pessoas.find(x => x.id === p.fornecedor_id)?.cpf_cnpj?.replace(/\D/g, "") ?? "";
+                          return !fornCnpj || fornCnpj === cnpjNf;
+                        }).map(p => {
                           const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
                           const nr = p.nr_pedido ?? p.numero ?? p.id.substring(0, 8);
                           return <option key={p.id} value={p.id}>{forn} — PC {nr} ({p.status})</option>;
@@ -1807,7 +1968,7 @@ export default function NfCompraPage() {
                         </div>
                         <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); }} style={inp}>
                           <option value="">— nenhum —</option>
-                          {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                          {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
                         </select>
                       </div>
                       <div>
@@ -1828,7 +1989,7 @@ export default function NfCompraPage() {
                         <label style={lbl}>Depósito de destino (onde o insumo será armazenado)</label>
                         <select value={cab.deposito_destino_id} onChange={e => setCab(p=>({...p,deposito_destino_id:e.target.value}))} style={inp}>
                           <option value="">Selecionar depósito…</option>
-                          {depositos.filter(d => d.tipo !== "terceiro").map(d => (
+                          {wDepositos.filter(d => d.tipo !== "terceiro").map(d => (
                             <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
                           ))}
                         </select>
@@ -1947,7 +2108,7 @@ export default function NfCompraPage() {
                           <label style={lbl}>Centro de Custo</label>
                           <select value={bulkCC} onChange={e => setBulkCC(e.target.value)} style={{ ...inp, fontSize: 12 }}>
                             <option value="">— não alterar —</option>
-                            {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                            {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
                           </select>
                         </div>
                         <button
@@ -2052,7 +2213,7 @@ export default function NfCompraPage() {
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                   <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                     <option value="">— selecionar CC —</option>
-                                    {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => (
+                                    {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => (
                                       <option key={c.id} value={c.id}>
                                         {c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}
                                       </option>
@@ -2157,7 +2318,7 @@ export default function NfCompraPage() {
                             <div style={{ padding: "6px 8px" }}>
                               <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">—</option>
-                                {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                                {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
                               </select>
                             </div>
                             <div style={{ padding: "6px 8px" }}>
@@ -2663,6 +2824,82 @@ export default function NfCompraPage() {
                 style={{ ...btnV, background: !formNovoInsumo.nome.trim() || novoInsumoSaving ? "var(--text-muted)" : "#C9921B", cursor: !formNovoInsumo.nome.trim() || novoInsumoSaving ? "default" : "pointer" }}
               >
                 {novoInsumoSaving ? "Salvando…" : "◈ Cadastrar e vincular"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Processar em Lote ── */}
+      {batchModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}
+          onClick={e => { if (e.target === e.currentTarget) setBatchModal(false); }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "94vw" }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>
+              ⚡ Processar em Lote
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>
+              {nfsFiltradas.filter(n => selectedNfs.has(n.id) && n.status === "pendente").length} NF(s) pendente(s) selecionada(s).
+              As configurações abaixo serão aplicadas a todas. Deixe em branco para manter o valor individual de cada NF.
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+              <div>
+                <label style={lbl}>Vencimento da CP</label>
+                <input type="date" value={batchSettings.data_vencimento_cp} onChange={e => setBatchSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Ano Safra</label>
+                <select value={batchSettings.ano_safra_id} onChange={e => setBatchSettings(p => ({ ...p, ano_safra_id: e.target.value }))} style={inp}>
+                  <option value="">— manter individual —</option>
+                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Centro de Custo (padrão)</label>
+                <select value={batchSettings.centro_custo_id} onChange={e => setBatchSettings(p => ({ ...p, centro_custo_id: e.target.value }))} style={inp}>
+                  <option value="">— manter individual —</option>
+                  {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => (
+                    <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Depósito de Entrada</label>
+                <select value={batchSettings.deposito_destino_id} onChange={e => setBatchSettings(p => ({ ...p, deposito_destino_id: e.target.value }))} style={inp}>
+                  <option value="">— manter individual —</option>
+                  {wDepositos.filter(d => d.tipo !== "terceiro").map(d => (
+                    <option key={d.id} value={d.id}>{d.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Vincular a Pedido de Compra</label>
+                <select value={batchSettings.pedido_compra_id} onChange={e => setBatchSettings(p => ({ ...p, pedido_compra_id: e.target.value }))} style={inp}>
+                  <option value="">— sem pedido —</option>
+                  {wPedidos.map(p => {
+                    const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
+                    const nr = p.nr_pedido ?? p.numero ?? p.id.substring(0, 8);
+                    return <option key={p.id} value={p.id}>{forn} — PC {nr} ({p.status})</option>;
+                  })}
+                </select>
+              </div>
+            </div>
+
+            {batchSettings.centro_custo_id && (
+              <div style={{ background: "#E8F5E9", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#15803D", marginBottom: 16 }}>
+                ✓ NFs do tipo <strong>Custo Direto</strong> serão processadas automaticamente com o CC selecionado. As demais NFs terão apenas as configurações salvas.
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button style={btnR} onClick={() => setBatchModal(false)} disabled={batchSaving}>Cancelar</button>
+              <button
+                onClick={processarEmLote}
+                disabled={batchSaving}
+                style={{ ...btnV, opacity: batchSaving ? 0.6 : 1, cursor: batchSaving ? "default" : "pointer" }}
+              >
+                {batchSaving ? "Processando…" : "Aplicar e Processar"}
               </button>
             </div>
           </div>
