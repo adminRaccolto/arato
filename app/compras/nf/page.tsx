@@ -481,7 +481,7 @@ export default function NfCompraPage() {
   const ccManutencao   = (id: string) => !!centros.find(c => c.id === id)?.manutencao_maquinas;
 
   // ── Abrir wizard novo ──────────────────────────────────────
-  function abrirNovo() {
+  async function abrirNovo() {
     setNfEdit(null);
     setEtapa("origem");
     setOrig("manual");
@@ -510,10 +510,8 @@ export default function NfCompraPage() {
     setItens([ITEM_VAZIO()]);
     setErr("");
     setSiegChave("");
-    // Para NF nova, usar dados da fazenda ativa
-    setWCentros([...centros]);
-    setWDepositos([...depositos]);
-    setWPedidos([...pedidos]);
+    // Carrega CC/depósitos frescos da fazenda ativa (evita race condition com centros ainda carregando)
+    if (fazendaId) await carregarWizardData(fazendaId);
     setWizard(true);
   }
 
@@ -580,15 +578,9 @@ export default function NfCompraPage() {
     } catch {}
     setEtapa("cabecalho");
     setErr("");
-    // Carrega centros/depósitos/pedidos para a fazenda desta NF específica
+    // Carrega CC/depósitos/pedidos frescos para a fazenda desta NF (sempre fresh, sem cache)
     const nfFazId = nf.fazenda_id ?? fazendaId ?? "";
-    if (nfFazId && nfFazId !== fazendaId) {
-      await carregarWizardData(nfFazId);
-    } else {
-      setWCentros([...centros]);
-      setWDepositos([...depositos]);
-      setWPedidos([...pedidos]);
-    }
+    await carregarWizardData(nfFazId || fazendaId || "");
     setWizard(true);
   }
 
@@ -1989,7 +1981,7 @@ export default function NfCompraPage() {
                         <label style={lbl}>Depósito de destino (onde o insumo será armazenado)</label>
                         <select value={cab.deposito_destino_id} onChange={e => setCab(p=>({...p,deposito_destino_id:e.target.value}))} style={inp}>
                           <option value="">Selecionar depósito…</option>
-                          {wDepositos.filter(d => d.tipo !== "terceiro").map(d => (
+                          {wDepositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
                             <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
                           ))}
                         </select>
@@ -2432,7 +2424,7 @@ export default function NfCompraPage() {
                         style={{ ...inp, maxWidth: 320 }}
                       >
                         <option value="">Não definir padrão</option>
-                        {depositos.filter(d => d.tipo !== "terceiro").map(d => (
+                        {depositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
                           <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
                         ))}
                       </select>
@@ -2868,7 +2860,7 @@ export default function NfCompraPage() {
                 <label style={lbl}>Depósito de Entrada</label>
                 <select value={batchSettings.deposito_destino_id} onChange={e => setBatchSettings(p => ({ ...p, deposito_destino_id: e.target.value }))} style={inp}>
                   <option value="">— manter individual —</option>
-                  {wDepositos.filter(d => d.tipo !== "terceiro").map(d => (
+                  {wDepositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
                     <option key={d.id} value={d.id}>{d.nome}</option>
                   ))}
                 </select>

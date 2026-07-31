@@ -834,7 +834,20 @@ function CadastrosInner() {
     Promise.all(ids.map(id => listarEmpresas(id).catch(() => [] as Empresa[])))
       .then(resultados => {
         const todas = resultados.flat();
-        const unicas = Array.from(new Map(todas.map(e => [e.id, e])).values())
+        // Deduplicar por CNPJ/CPF — mesmo CNPJ = mesma empresa; prefere o registro mais completo
+        const score = (x: Empresa) =>
+          (x.finalidades?.length ?? 0) * 10 +
+          (x.inscricao_est ? 5 : 0) +
+          (x.regime_tributario ? 3 : 0) +
+          (x.produtor_id ? 2 : 0) +
+          (x.email ? 1 : 0);
+        const byCnpj = new Map<string, Empresa>();
+        todas.forEach(e => {
+          const chave = (e.cpf_cnpj ?? "").replace(/\D/g, "") || e.id;
+          const atual = byCnpj.get(chave);
+          if (!atual || score(e) > score(atual)) byCnpj.set(chave, e);
+        });
+        const unicas = Array.from(byCnpj.values())
           .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""));
         setEmpresas(unicas);
         const map: Record<string, string> = {};
