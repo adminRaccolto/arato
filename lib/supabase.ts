@@ -2371,3 +2371,20 @@ export type TratamentoReceitaItem = {
   ordem?: number | null;
   created_at?: string;
 };
+
+export type Ciot = {
+  id: string;
+  id_operacao: string;           // 12 dígitos — IdOperacaoTransporte da ANTT
+  codigo_verificador: string;    // 4 dígitos — necessário para encerrar/cancelar
+  protocolo?: string | null;
+  cpf_cnpj_contratante: string;  // fazenda/embarcador
+  cpf_cnpj_contratado: string;   // TAC
+  valor_frete?: number | null;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  placa?: string | null;
+  mdfe_id?: string | null;
+  ambiente?: "homologacao" | "producao";
+  status?: "declarado" | "encerrado" | "cancelado";
+  created_at?: string;
+};

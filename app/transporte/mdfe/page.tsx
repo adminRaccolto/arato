@@ -60,12 +60,15 @@ interface Mdfe {
   municipio_encerramento?: string | null;
   uf_encerramento?: string | null;
   observacao?: string | null;
+  ciot?: string | null;
+  ciot_codigo_verificador?: string | null;
+  ciot_protocolo?: string | null;
   created_at?: string;
 }
 
 interface CteMin { id: string; numero_cte: string; serie: string; chave_acesso?: string | null; remetente_nome: string; destinatario_nome: string; valor_frete: number; status: string; }
-interface VeiculoMin { id: string; placa: string; tipo?: string; }
-interface MotoristaMin { id: string; nome: string; cpf?: string; }
+interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; }
+interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; rntrc?: string; }
 
 const STATUS_META: Record<StatusMdfe, { label: string; bg: string; cl: string }> = {
   rascunho:   { label: "Rascunho",   bg: "#FBF3E0", cl: "#7B4A00" },
@@ -86,6 +89,7 @@ export default function MdfePage() {
   const [ctes,      setCtes]      = useState<CteMin[]>([]);
   const [veiculos,  setVeiculos]  = useState<VeiculoMin[]>([]);
   const [motoristas,setMotoristas]= useState<MotoristaMin[]>([]);
+  const [empresaCpfCnpj, setEmpresaCpfCnpj] = useState("");
 
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState("");
@@ -111,6 +115,16 @@ export default function MdfePage() {
   });
   const [form, setForm] = useState(FORM_VAZIO());
 
+  // CIOT
+  const [ciotForm, setCiotForm] = useState({
+    valor_frete: "", data_fim: "", cep_origem: "", cep_destino: "",
+    ibge_origem: "", ibge_destino: "", distancia_km: "",
+    peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "",
+  });
+  const [ciotGerado,   setCiotGerado]   = useState<{ id: string; cv: string; protocolo: string } | null>(null);
+  const [gerandoCiot,  setGerandoCiot]  = useState(false);
+  const [ciotErro,     setCiotErro]     = useState("");
+
   // Modal encerramento
   const [modalEnc, setModalEnc] = useState<Mdfe | null>(null);
   const [encForm, setEncForm]   = useState({ data_encerramento: hoje(), municipio_encerramento: "", uf_encerramento: "MT" });
@@ -122,8 +136,8 @@ export default function MdfePage() {
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").eq("fazenda_id", fazendaId).order("data_emissao", { ascending: false }),
       supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status").eq("fazenda_id", fazendaId).eq("status", "autorizado"),
-      supabase.from("veiculos").select("id, placa, tipo").eq("fazenda_id", fazendaId).eq("ativo", true),
-      supabase.from("motoristas").select("id, nome, cpf").eq("fazenda_id", fazendaId).eq("ativo", true),
+      supabase.from("veiculos").select("id, placa, tipo, rntrc, num_eixos").eq("fazenda_id", fazendaId).eq("ativo", true),
+      supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").eq("fazenda_id", fazendaId).eq("ativo", true),
     ]);
     const raw = md ?? [];
     // documentos pode vir como JSON string do banco
@@ -135,6 +149,9 @@ export default function MdfePage() {
     setCtes(cd ?? []);
     setVeiculos(vd ?? []);
     setMotoristas(mot ?? []);
+    // cpf_cnpj do contratante (primeira empresa ativa da fazenda)
+    supabase.from("empresas").select("cpf_cnpj").eq("fazenda_id", fazendaId).limit(1).single()
+      .then(({ data }) => { if (data?.cpf_cnpj) setEmpresaCpfCnpj(data.cpf_cnpj); });
     if (raw.length > 0) {
       const maxNr = Math.max(...raw.map((m: Mdfe) => parseInt(m.numero_mdfe) || 0));
       setProximoNr(String(maxNr + 1));
@@ -144,10 +161,15 @@ export default function MdfePage() {
   useEffect(() => { carregar(); }, [carregar]);
 
   // ── Abrir modal ──────────────────────────────────────────
+  function resetCiot() {
+    setCiotForm({ valor_frete: "", data_fim: "", cep_origem: "", cep_destino: "", ibge_origem: "", ibge_destino: "", distancia_km: "", peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "" });
+    setCiotGerado(null); setCiotErro("");
+  }
+
   function abrirNovo() {
     setMdfeEdit(null);
     setForm({ ...FORM_VAZIO(), numero_mdfe: proximoNr });
-    setErr("");
+    setErr(""); resetCiot();
     setModal(true);
   }
 
@@ -170,8 +192,63 @@ export default function MdfePage() {
       cte_ids: cteIds,
       nfe_chaves: nfeChaves.length > 0 ? nfeChaves : [""],
     });
-    setErr("");
+    setErr(""); resetCiot();
+    if (m.ciot) setCiotGerado({ id: m.ciot, cv: m.ciot_codigo_verificador ?? "", protocolo: m.ciot_protocolo ?? "" });
     setModal(true);
+  }
+
+  // ── Gerar CIOT via ANTT ──────────────────────────────────
+  async function gerarCiot() {
+    const motorista = motoristas.find(m => m.id === form.motorista_id);
+    const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
+    if (!motorista?.cpf) { setCiotErro("Motorista sem CPF cadastrado."); return; }
+    if (!veiculo?.placa) { setCiotErro("Selecione um veículo."); return; }
+    if (!ciotForm.valor_frete || !ciotForm.data_fim || !ciotForm.cep_origem || !ciotForm.cep_destino || !ciotForm.distancia_km) {
+      setCiotErro("Preencha todos os campos obrigatórios do CIOT."); return;
+    }
+    setGerandoCiot(true); setCiotErro("");
+    try {
+      const res = await fetch("/api/antt/ciot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "declarar",
+          cnpjContratante: empresaCpfCnpj,
+          ambiente: "homologacao",
+          dados: {
+            CpfCnpjContratado:  motorista.cpf.replace(/\D/g, ""),
+            RNTRCContratado:    motorista.rntrc ?? veiculo.rntrc ?? "",
+            CpfCnpjContratante: empresaCpfCnpj.replace(/\D/g, ""),
+            ValorFrete:         parseFloat(ciotForm.valor_frete.replace(",", ".")).toFixed(2),
+            DataInicioViagem:   form.data_emissao,
+            DataFimViagem:      ciotForm.data_fim,
+            Veiculos: [{ Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista.rntrc ?? "", NumeroEixos: String(veiculo.num_eixos ?? 3) }],
+            OrigemDestino: [{
+              Origem:  { CodigoMunicipioOrigem:  ciotForm.ibge_origem,  CepOrigem:   ciotForm.cep_origem.replace(/\D/g,"")  },
+              Destino: { CodigoMunicipioDestino: ciotForm.ibge_destino, CepDestino:  ciotForm.cep_destino.replace(/\D/g,"") },
+              DistanciaPercorrida: ciotForm.distancia_km,
+              QtdViagens: "1",
+            }],
+            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: ciotForm.peso_ton || "0", CodigoTipoCarga: "5" },
+            InfPagamento: [{
+              TipoPagamento: ciotForm.tipo_pagamento,
+              CpfCnpjCreditado: motorista.cpf.replace(/\D/g,""),
+              ...(ciotForm.tipo_pagamento === "6" ? { ChavePix: ciotForm.chave_pix || motorista.cpf.replace(/\D/g,""), IndPagamento: "0" } : { IndPagamento: "0" }),
+            }],
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.Sucesso && data.Dados?.IdOperacaoTransporte) {
+        setCiotGerado({ id: data.Dados.IdOperacaoTransporte, cv: data.Dados.CodigoVerificador, protocolo: data.Dados.Protocolo ?? "" });
+      } else {
+        setCiotErro(data.Mensagem || data.Erros?.join(", ") || "Erro ao gerar CIOT.");
+      }
+    } catch (e) {
+      setCiotErro(e instanceof Error ? e.message : "Erro de conexão com a ANTT.");
+    } finally {
+      setGerandoCiot(false);
+    }
   }
 
   // ── Toggle CT-e vinculado ────────────────────────────────
@@ -222,6 +299,9 @@ export default function MdfePage() {
         valor_total_carga: form.valor_total_carga || null,
         status: mdfeEdit ? mdfeEdit.status : "rascunho" as StatusMdfe,
         observacao: form.observacao || null,
+        ciot: ciotGerado?.id ?? mdfeEdit?.ciot ?? null,
+        ciot_codigo_verificador: ciotGerado?.cv ?? mdfeEdit?.ciot_codigo_verificador ?? null,
+        ciot_protocolo: ciotGerado?.protocolo ?? mdfeEdit?.ciot_protocolo ?? null,
       };
       if (mdfeEdit) {
         await supabase.from("mdfes").update(payload).eq("id", mdfeEdit.id);
@@ -406,7 +486,7 @@ export default function MdfePage() {
         {/* Nota sobre DAEE */}
         <div style={{ marginTop: 16, padding: "10px 14px", background: "#D5E8F5", borderRadius: 8, fontSize: 12, color: "#0B2D50" }}>
           <strong>MDF-e obrigatório</strong> para transporte interestadual de cargas e sempre que houver múltiplos documentos fiscais por veículo.
-          Motoristas CLT: sem CIOT. Transmissão à ANTT/SEFAZ via integração futura com biblioteca CT-e/MDF-e Node.js.
+          Motoristas <strong>TAC</strong>: CIOT gerado automaticamente via API ANTT. Motoristas <strong>CLT</strong> (frota própria): isento de CIOT.
         </div>
       </main>
 
@@ -495,6 +575,98 @@ export default function MdfePage() {
               </div>
               <div />
 
+              {/* ── CIOT (TAC) ── */}
+              {(() => {
+                const mot = motoristas.find(m => m.id === form.motorista_id);
+                if (!mot || mot.tipo !== "tac") return null;
+                const NATUREZAS = [["2101","Soja"],["2102","Milho"],["2103","Algodão"],["2202","Granel vegetal"],["2201","Fertilizantes"],["4101","Carga geral"]];
+                const PGTOS    = [["6","PIX"],["1","Dinheiro"],["3","TED"]];
+                return <>
+                  <div style={{ ...divider, color: ciotGerado ? "#16A34A" : "#C9921B", borderTopColor: ciotGerado ? "#16A34A40" : "#C9921B40" }}>
+                    CIOT — {ciotGerado ? `✓ Gerado: ${ciotGerado.id}` : "Motorista TAC — CIOT obrigatório (Lei 11.442/2007)"}
+                  </div>
+                  {ciotGerado ? (
+                    <div style={{ gridColumn:"1/-1", background:"#F0FDF4", border:"0.5px solid #16A34A50", borderRadius:8, padding:"12px 16px", display:"flex", gap:20, alignItems:"center", flexWrap:"wrap" }}>
+                      <div>
+                        <div style={{ fontSize:10, color:"#16A34A", fontWeight:700 }}>CIOT</div>
+                        <div style={{ fontSize:18, fontWeight:700, fontFamily:"monospace", letterSpacing:2 }}>{ciotGerado.id}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10, color:"var(--text-2)" }}>Cód. Verificador</div>
+                        <div style={{ fontSize:15, fontFamily:"monospace" }}>{ciotGerado.cv}</div>
+                      </div>
+                      {ciotGerado.protocolo && <div>
+                        <div style={{ fontSize:10, color:"var(--text-2)" }}>Protocolo</div>
+                        <div style={{ fontSize:12, fontFamily:"monospace", color:"var(--text-2)" }}>{ciotGerado.protocolo}</div>
+                      </div>}
+                      <button type="button" onClick={resetCiot} style={{ marginLeft:"auto", padding:"6px 14px", border:"0.5px solid #C9921B50", borderRadius:8, background:"#FBF3E0", color:"#7A5400", fontSize:12, cursor:"pointer" }}>
+                        Gerar novo
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {ciotErro && <div style={{ gridColumn:"1/-1", background:"#FCEBEB", border:"0.5px solid #F5C6C6", borderRadius:8, padding:"8px 14px", fontSize:12, color:"#791F1F" }}>{ciotErro}</div>}
+                      <div>
+                        <label style={lbl}>Valor do Frete (R$) *</label>
+                        <input style={inp} placeholder="4500.00" value={ciotForm.valor_frete} onChange={e => setCiotForm(f => ({ ...f, valor_frete: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Data Fim da Viagem *</label>
+                        <input type="date" style={inp} value={ciotForm.data_fim} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Distância (km) *</label>
+                        <input style={inp} placeholder="850" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>CEP Origem *</label>
+                        <input style={{ ...inp, fontFamily:"monospace" }} placeholder="78450-000" value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Cód. IBGE Município Origem *</label>
+                        <input style={{ ...inp, fontFamily:"monospace" }} placeholder="5106224" maxLength={7} value={ciotForm.ibge_origem} onChange={e => setCiotForm(f => ({ ...f, ibge_origem: e.target.value.replace(/\D/g,"") }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>CEP Destino *</label>
+                        <input style={{ ...inp, fontFamily:"monospace" }} placeholder="11015-000" value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Cód. IBGE Município Destino *</label>
+                        <input style={{ ...inp, fontFamily:"monospace" }} placeholder="3548708" maxLength={7} value={ciotForm.ibge_destino} onChange={e => setCiotForm(f => ({ ...f, ibge_destino: e.target.value.replace(/\D/g,"") }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Natureza da Carga</label>
+                        <select style={inp} value={ciotForm.natureza} onChange={e => setCiotForm(f => ({ ...f, natureza: e.target.value }))}>
+                          {NATUREZAS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Peso (toneladas)</label>
+                        <input style={inp} placeholder="28.5" value={ciotForm.peso_ton} onChange={e => setCiotForm(f => ({ ...f, peso_ton: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Forma de Pagamento</label>
+                        <select style={inp} value={ciotForm.tipo_pagamento} onChange={e => setCiotForm(f => ({ ...f, tipo_pagamento: e.target.value }))}>
+                          {PGTOS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                      </div>
+                      {ciotForm.tipo_pagamento === "6" && (
+                        <div style={{ gridColumn:"2/-1" }}>
+                          <label style={lbl}>Chave PIX do Motorista</label>
+                          <input style={{ ...inp, fontFamily:"monospace" }} placeholder={mot.cpf ?? "CPF do motorista"} value={ciotForm.chave_pix} onChange={e => setCiotForm(f => ({ ...f, chave_pix: e.target.value }))} />
+                          <div style={{ fontSize:10, color:"var(--text-3)", marginTop:3 }}>Deixe em branco para usar o CPF do motorista como chave PIX</div>
+                        </div>
+                      )}
+                      <div style={{ gridColumn:"1/-1", display:"flex", justifyContent:"flex-end" }}>
+                        <button type="button" onClick={gerarCiot} disabled={gerandoCiot} style={{ padding:"8px 24px", background: gerandoCiot ? "var(--text-muted)" : "#C9921B", color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:13, cursor: gerandoCiot ? "default":"pointer" }}>
+                          {gerandoCiot ? "Gerando CIOT…" : "🔗 Gerar CIOT via ANTT"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>;
+              })()}
+
               {/* ── CT-e vinculados ── */}
               <div style={divider}>CT-e Vinculados</div>
               <div style={{ gridColumn: "1 / -1" }}>
@@ -555,7 +727,7 @@ export default function MdfePage() {
 
             <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>
-                Frota própria · Motoristas CLT · Sem CIOT · Transmissão futura à ANTT/SEFAZ
+                TAC: CIOT gerado via API ANTT · CLT: isento · Transmissão MDF-e via SEFAZ
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>

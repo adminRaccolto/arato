@@ -43,3 +43,6 @@ next-env.d.ts
 # Arquivos de referência locais (PDFs, Excel, binários Agrosoft)
 Arquivos_locais/
 .env*.local
+
+# Biblioteca ANTT CIOT (análise local — não commitar binários)
+GeradorCIOT_DLL/

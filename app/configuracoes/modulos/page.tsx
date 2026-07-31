@@ -43,7 +43,7 @@ interface Veiculo {
 }
 interface Motorista {
   id: string; nome: string; cpf: string; cnh?: string;
-  cnh_validade?: string; ativo: boolean;
+  cnh_validade?: string; tipo?: string; rntrc?: string; ativo: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1447,7 +1447,7 @@ function ParametrosSistemaContent() {
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
-              {["Nome","CPF","CNH","Validade CNH","Status",""].map(h => (
+              {["Nome","CPF","Tipo","CNH","Validade CNH","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
@@ -1459,6 +1459,11 @@ function ParametrosSistemaContent() {
                   <tr key={m.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                     <td style={{ padding: "8px 12px", fontWeight: 600 }}>{m.nome}</td>
                     <td style={{ padding: "8px 12px", color: "var(--text-2)", fontFamily: "monospace" }}>{m.cpf}</td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <span style={{ padding: "2px 7px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: m.tipo === "tac" ? "#FBF3E0" : "#EBF3FB", color: m.tipo === "tac" ? "#7A5400" : "#1A4870" }}>
+                        {m.tipo === "tac" ? "TAC" : "CLT"}
+                      </span>
+                    </td>
                     <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{m.cnh || "—"}</td>
                     <td style={{ padding: "8px 12px" }}>
                       {venc ? <span style={{ color: cnhVencida ? "#E24B4A" : "#16A34A", fontWeight: cnhVencida ? 700 : 400 }}>{venc.toLocaleDateString("pt-BR")}{cnhVencida ? " ⚠" : ""}</span> : "—"}
@@ -1472,7 +1477,7 @@ function ParametrosSistemaContent() {
                   </tr>
                 );
               })}
-              {motoristas.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum motorista cadastrado</td></tr>}
+              {motoristas.length === 0 && <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum motorista cadastrado</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1892,6 +1897,8 @@ function ParametrosSistemaContent() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Nome *", inp({ value: modalM.nome ?? "", onChange: e => setModalM(p => ({ ...p!, nome: e.target.value })) }))}
               {campo("CPF *", inp({ value: modalM.cpf ?? "", onChange: e => setModalM(p => ({ ...p!, cpf: e.target.value })), placeholder: "000.000.000-00" }))}
+              {campo("Tipo *", sel({ value: modalM.tipo ?? "clt", onChange: e => setModalM(p => ({ ...p!, tipo: e.target.value })), children: [<option key="clt" value="clt">CLT — Frota própria (isento de CIOT)</option>, <option key="tac" value="tac">TAC — Autônomo (CIOT obrigatório)</option>] as React.ReactNode }))}
+              {campo("RNTRC", inp({ value: modalM.rntrc ?? "", onChange: e => setModalM(p => ({ ...p!, rntrc: e.target.value })), placeholder: "Registro ANTT (TAC)" }))}
               {campo("CNH", inp({ value: modalM.cnh ?? "", onChange: e => setModalM(p => ({ ...p!, cnh: e.target.value })) }))}
               {campo("Validade CNH", inp({ type: "date", value: modalM.cnh_validade ?? "", onChange: e => setModalM(p => ({ ...p!, cnh_validade: e.target.value })) }))}
               {campo("Status", sel({ value: modalM.ativo === false ? "inativo" : "ativo", onChange: e => setModalM(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}

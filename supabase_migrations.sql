@@ -8890,3 +8890,54 @@ ALTER TABLE empresas
   ADD COLUMN IF NOT EXISTS rntrc             text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: CIOT — Motoristas TAC/CLT + CIOT em MDF-e + tabela ciots
+-- ============================================================================
+
+-- 1. Adiciona tipo e rntrc em motoristas
+ALTER TABLE motoristas
+  ADD COLUMN IF NOT EXISTS tipo  text NOT NULL DEFAULT 'clt' CHECK (tipo IN ('clt','tac')),
+  ADD COLUMN IF NOT EXISTS rntrc text;
+
+-- 2. Adiciona campos CIOT em mdfes
+ALTER TABLE mdfes
+  ADD COLUMN IF NOT EXISTS ciot                  text,
+  ADD COLUMN IF NOT EXISTS ciot_codigo_verificador text,
+  ADD COLUMN IF NOT EXISTS ciot_protocolo        text;
+
+-- 3. Tabela de rastreamento de CIOTs emitidos
+CREATE TABLE IF NOT EXISTS ciots (
+  id                      uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_operacao             text        NOT NULL UNIQUE, -- 12 dígitos ANTT
+  codigo_verificador      text        NOT NULL,        -- 4 dígitos
+  protocolo               text,
+  cpf_cnpj_contratante    text        NOT NULL,
+  cpf_cnpj_contratado     text        NOT NULL,
+  valor_frete             numeric(14,2),
+  data_inicio             date,
+  data_fim                date,
+  placa                   text,
+  mdfe_id                 uuid        REFERENCES mdfes(id),
+  ambiente                text        NOT NULL DEFAULT 'homologacao' CHECK (ambiente IN ('homologacao','producao')),
+  status                  text        NOT NULL DEFAULT 'declarado' CHECK (status IN ('declarado','encerrado','cancelado')),
+  created_at              timestamptz NOT NULL DEFAULT now()
+);
+
+-- RLS: tabela ciots — leitura pela fazenda via mdfe
+ALTER TABLE ciots ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Ciots by mdfe fazenda" ON ciots;
+CREATE POLICY "Ciots by mdfe fazenda" ON ciots
+  FOR ALL
+  USING (
+    mdfe_id IS NULL OR
+    mdfe_id IN (
+      SELECT id FROM mdfes m
+      WHERE m.fazenda_id IN (
+        SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+NOTIFY pgrst, 'reload schema';
