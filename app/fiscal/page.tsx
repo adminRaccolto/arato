@@ -787,6 +787,7 @@ function FiscalInner() {
   // ── Modal upload certificado ─────────────────────────────────────
   const [modalCert,     setModalCert]     = useState(false);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
+  const [empresasCert,  setEmpresasCert]  = useState<{ id: string; razao_social: string | null; nome: string | null; cnpj: string | null }[]>([]);
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [buscaPessoa,   setBuscaPessoa]   = useState("");
   const [dropdownPessoa,setDropdownPessoa]= useState(false);
@@ -806,19 +807,28 @@ function FiscalInner() {
 
   async function salvarCertificado() {
     if (!certFile || !certSenha.trim()) return;
-    if (produtores.length > 1 && !certProdId) { alert("Selecione o produtor titular."); return; }
+    const allCount = produtores.length + empresasCert.length;
+    if (allCount > 1 && !certProdId) { alert("Selecione o titular do certificado."); return; }
     setCertLoading(true);
     try {
-      const prod = produtores.find(p => p.id === certProdId) ?? produtores[0];
+      const prodSel = produtores.find(p => p.id === certProdId);
+      const empSel  = empresasCert.find(e => e.id === certProdId);
+      const titular = prodSel
+        ? { id: prodSel.id, nome: prodSel.nome, doc: prodSel.cpf_cnpj ?? "" }
+        : empSel
+        ? { id: empSel.id, nome: empSel.razao_social ?? empSel.nome ?? "Empresa", doc: empSel.cnpj ?? "" }
+        : produtores.length > 0
+        ? { id: produtores[0].id, nome: produtores[0].nome, doc: produtores[0].cpf_cnpj ?? "" }
+        : { id: empresasCert[0].id, nome: empresasCert[0].razao_social ?? empresasCert[0].nome ?? "Empresa", doc: empresasCert[0].cnpj ?? "" };
 
       // Upload + extração de data + salvamento via API (service role)
       const form = new FormData();
       form.append("file",          certFile);
       form.append("senha",         certSenha);
       form.append("fazenda_id",    fazendaId!);
-      form.append("produtor_id",   prod?.id        ?? "");
-      form.append("produtor_nome", prod?.nome      ?? "");
-      form.append("cpf_cnpj",      prod?.cpf_cnpj  ?? "");
+      form.append("produtor_id",   titular.id);
+      form.append("produtor_nome", titular.nome);
+      form.append("cpf_cnpj",      titular.doc);
 
       const res = await fetch("/api/cert-upload", { method: "POST", body: form });
       const json = await res.json() as {
@@ -828,7 +838,7 @@ function FiscalInner() {
       };
       if (!res.ok || !json.ok) throw new Error(json.error ?? "Erro no upload");
 
-      const nova: CertInfo = { modulo: `certificado_a1_${prod?.id ?? ""}`, arquivo_nome: json.arquivo_nome ?? "", storage_path: json.storage_path ?? "", produtor_id: prod?.id ?? "", produtor_nome: json.produtor_nome ?? "", cpf_cnpj: json.cpf_cnpj ?? "", data_vencimento: json.data_vencimento ?? null };
+      const nova: CertInfo = { modulo: `certificado_a1_${titular.id}`, arquivo_nome: json.arquivo_nome ?? "", storage_path: json.storage_path ?? "", produtor_id: titular.id, produtor_nome: json.produtor_nome ?? titular.nome, cpf_cnpj: json.cpf_cnpj ?? titular.doc, data_vencimento: json.data_vencimento ?? null };
       setCerts(prev => { const idx = prev.findIndex(c => c.produtor_id === nova.produtor_id); return idx >= 0 ? prev.map((c, i) => i === idx ? nova : c) : [...prev, nova]; });
       setCertOk(true);
       setTimeout(fecharCert, 1800);
@@ -841,6 +851,8 @@ function FiscalInner() {
     if (!fazendaId) return;
     carregar();
     listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
+    supabase.from("empresas").select("id, razao_social, nome, cnpj").eq("fazenda_id", fazendaId)
+      .then(({ data }) => data && setEmpresasCert(data as { id: string; razao_social: string | null; nome: string | null; cnpj: string | null }[]));
     listarPessoasDaConta(fazendaId).then(d => setPessoas(d)).catch(() => {});
     // Carrega anos_safra para o select do modal de emissão
     supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
@@ -1643,7 +1655,13 @@ function FiscalInner() {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Certificados Digitais A1</div>
-                      <button onClick={() => { setCertProdId(produtores.length === 1 ? produtores[0].id : ""); setModalCert(true); }}
+                      <button onClick={() => {
+                        const total = produtores.length + empresasCert.length;
+                        setCertProdId(total === 1
+                          ? (produtores.length === 1 ? produtores[0].id : empresasCert[0].id)
+                          : "");
+                        setModalCert(true);
+                      }}
                         style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                         + Adicionar certificado
                       </button>
@@ -1889,20 +1907,40 @@ function FiscalInner() {
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
             <div style={{ display: "grid", gap: 14 }}>
-              {produtores.length > 1 && (
+              {(produtores.length + empresasCert.length) > 1 && (
                 <div>
-                  <label style={labelSt}>Produtor / Titular *</label>
-                  <ProdutorCombo
-                    produtores={produtores}
+                  <label style={labelSt}>Titular (Produtor ou Empresa) *</label>
+                  <select
                     value={certProdId}
-                    onChange={setCertProdId}
-                    placeholder="Selecione..."
-                  />
+                    onChange={e => setCertProdId(e.target.value)}
+                    style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
+                  >
+                    <option value="">Selecione...</option>
+                    {produtores.length > 0 && (
+                      <optgroup label="Produtores (CPF)">
+                        {produtores.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {empresasCert.length > 0 && (
+                      <optgroup label="Empresas (CNPJ)">
+                        {empresasCert.map(e => (
+                          <option key={e.id} value={e.id}>{e.razao_social ?? e.nome}{e.cnpj ? ` — ${e.cnpj}` : ""}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
                 </div>
               )}
-              {produtores.length === 1 && (
+              {(produtores.length + empresasCert.length) === 1 && (
                 <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--text-2)" }}>
-                  <span style={{ color: "var(--text-3)", fontSize: 11 }}>Titular: </span><strong>{produtores[0].nome}</strong>
+                  <span style={{ color: "var(--text-3)", fontSize: 11 }}>Titular: </span>
+                  <strong>
+                    {produtores.length === 1
+                      ? produtores[0].nome
+                      : (empresasCert[0].razao_social ?? empresasCert[0].nome ?? "Empresa")}
+                  </strong>
                 </div>
               )}
               {/* Área de arquivo */}
