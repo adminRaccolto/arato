@@ -8862,8 +8862,31 @@ CREATE TABLE IF NOT EXISTS contratos_refinanciamento (
 
 -- RLS: mesma política das demais tabelas de contratos
 ALTER TABLE contratos_refinanciamento ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Refinanciamento by fazenda" ON contratos_refinanciamento;
 CREATE POLICY "Refinanciamento by fazenda" ON contratos_refinanciamento
   USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
          OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';
+
+-- Migration: expand empresas com dados fiscais e certificado A1
+ALTER TABLE empresas
+  ADD COLUMN IF NOT EXISTS tipo_empresa      text CHECK (tipo_empresa IN ('fazenda_pj','transportadora','trading','prestadora_servicos','outros')),
+  ADD COLUMN IF NOT EXISTS crt               text CHECK (crt IN ('1','2','3')),
+  ADD COLUMN IF NOT EXISTS cep               text,
+  ADD COLUMN IF NOT EXISTS logradouro        text,
+  ADD COLUMN IF NOT EXISTS numero            text,
+  ADD COLUMN IF NOT EXISTS complemento       text,
+  ADD COLUMN IF NOT EXISTS bairro            text,
+  ADD COLUMN IF NOT EXISTS municipio_ibge    text,
+  ADD COLUMN IF NOT EXISTS ambiente_fiscal   text DEFAULT 'homologacao' CHECK (ambiente_fiscal IN ('homologacao','producao')),
+  ADD COLUMN IF NOT EXISTS serie_nfe         text DEFAULT '1',
+  ADD COLUMN IF NOT EXISTS serie_cte         text DEFAULT '1',
+  ADD COLUMN IF NOT EXISTS serie_mdfe        text DEFAULT '1',
+  ADD COLUMN IF NOT EXISTS cert_a1_url       text,
+  ADD COLUMN IF NOT EXISTS cert_a1_nome      text,
+  ADD COLUMN IF NOT EXISTS cert_a1_senha     text,
+  ADD COLUMN IF NOT EXISTS cert_a1_validade  date,
+  ADD COLUMN IF NOT EXISTS rntrc             text;
 
 NOTIFY pgrst, 'reload schema';

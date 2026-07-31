@@ -889,26 +889,45 @@ export type Usuario = {
 
 export type Empresa = {
   id: string;
-  // Empresa sempre pertence a um Produtor (o dono/sócio/investidor)
-  produtor_id?: string;   // FK produtores — proprietário/sócio principal
-  fazenda_id: string;     // fazenda de referência (multi-tenant)
+  produtor_id?: string;        // FK produtores — proprietário/sócio principal
+  fazenda_id: string;
   // Identificação
-  nome: string;           // nome fantasia
+  nome: string;                // nome fantasia
   razao_social?: string;
   tipo: "pf" | "pj";
+  tipo_empresa?: "fazenda_pj" | "transportadora" | "trading" | "prestadora_servicos" | "outros";
   cpf_cnpj?: string;
   inscricao_est?: string;
-  regime_tributario?: string; // Produtor Rural PJ, Simples, Lucro Presumido…
-  // Localização
+  crt?: "1" | "2" | "3";      // 1=Simples, 2=Simples excesso, 3=Regime Normal
+  regime_tributario?: string;
+  // Endereço completo (obrigatório para NF-e/CT-e)
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
   municipio?: string;
+  municipio_ibge?: string;     // código IBGE 7 dígitos
   estado?: string;
-  // Registros rurais (vinculados à empresa operadora)
-  car?: string;           // Cadastro Ambiental Rural
-  nirf?: string;          // Número do Imóvel na Receita Federal
-  itr?: string;           // Número do imóvel no ITR
+  // Dados fiscais de emissão
+  ambiente_fiscal?: "homologacao" | "producao";
+  serie_nfe?: string;
+  serie_cte?: string;
+  serie_mdfe?: string;
+  // Certificado A1
+  cert_a1_url?: string;        // path no Supabase Storage
+  cert_a1_nome?: string;       // nome original do .pfx
+  cert_a1_senha?: string;      // senha do .pfx (necessária para assinar XMLs)
+  cert_a1_validade?: string;   // data de vencimento YYYY-MM-DD
+  // ANTT (transportadora)
+  rntrc?: string;              // Registro Nacional de Transportadores
+  // Registros rurais
+  car?: string;
+  nirf?: string;
+  itr?: string;
   // Contato
   email?: string;
-  email_relatorios?: string; // e-mail para envio de relatórios automáticos
+  email_relatorios?: string;
   telefone?: string;
   created_at?: string;
 };
