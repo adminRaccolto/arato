@@ -342,7 +342,10 @@ function CadastrosInner() {
   const [empresas, setEmpresas]       = useState<Empresa[]>([]);
   const [modalEmp, setModalEmp]       = useState(false);
   const [editEmp, setEditEmp]         = useState<Empresa | null>(null);
-  const [fEmp, setFEmp]               = useState({ nome: "", razao_social: "", tipo: "pj" as "pf"|"pj", cpf_cnpj: "", inscricao_est: "", regime_tributario: "", produtor_id: "", municipio: "", estado: "MT", car: "", nirf: "", itr: "", email: "", email_relatorios: "", telefone: "" });
+  const [abaEmp, setAbaEmp]           = useState<"geral"|"endereco"|"fiscal"|"cert"|"registros">("geral");
+  const [certFile, setCertFile]       = useState<File | null>(null);
+  const EMP_VAZIO = { nome: "", razao_social: "", tipo: "pj" as "pf"|"pj", tipo_empresa: "fazenda_pj" as Empresa["tipo_empresa"], cpf_cnpj: "", inscricao_est: "", crt: "3" as Empresa["crt"], regime_tributario: "", produtor_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", ambiente_fiscal: "homologacao" as Empresa["ambiente_fiscal"], serie_nfe: "1", serie_cte: "1", serie_mdfe: "1", rntrc: "", car: "", nirf: "", itr: "", email: "", email_relatorios: "", telefone: "", cert_a1_validade: "", cert_a1_senha: "", cert_a1_nome: "" };
+  const [fEmp, setFEmp]               = useState({ ...EMP_VAZIO });
 
   // ── Pessoas ──
   const [pessoas, setPessoas]         = useState<Pessoa[]>([]);
@@ -1438,31 +1441,84 @@ function CadastrosInner() {
   // ─────────────── EMPRESAS ───────────────
   const abrirModalEmp = (e?: Empresa) => {
     setEditEmp(e ?? null);
+    setAbaEmp("geral");
+    setCertFile(null);
     setFEmp(e ? {
       nome: e.nome, razao_social: e.razao_social ?? "", tipo: e.tipo,
+      tipo_empresa: e.tipo_empresa ?? "fazenda_pj",
       cpf_cnpj: e.cpf_cnpj ?? "", inscricao_est: e.inscricao_est ?? "",
-      regime_tributario: e.regime_tributario ?? "",
-      produtor_id: e.produtor_id ?? "", municipio: e.municipio ?? "", estado: e.estado ?? "MT",
+      crt: e.crt ?? "3", regime_tributario: e.regime_tributario ?? "",
+      produtor_id: e.produtor_id ?? "",
+      cep: e.cep ?? "", logradouro: e.logradouro ?? "", numero: e.numero ?? "",
+      complemento: e.complemento ?? "", bairro: e.bairro ?? "",
+      municipio: e.municipio ?? "", municipio_ibge: e.municipio_ibge ?? "", estado: e.estado ?? "MT",
+      ambiente_fiscal: e.ambiente_fiscal ?? "homologacao",
+      serie_nfe: e.serie_nfe ?? "1", serie_cte: e.serie_cte ?? "1", serie_mdfe: e.serie_mdfe ?? "1",
+      rntrc: e.rntrc ?? "",
       car: e.car ?? "", nirf: e.nirf ?? "", itr: e.itr ?? "",
       email: e.email ?? "", email_relatorios: e.email_relatorios ?? "", telefone: e.telefone ?? "",
-    } : { nome: "", razao_social: "", tipo: "pj", cpf_cnpj: "", inscricao_est: "", regime_tributario: "", produtor_id: "", municipio: "", estado: "MT", car: "", nirf: "", itr: "", email: "", email_relatorios: "", telefone: "" });
+      cert_a1_validade: e.cert_a1_validade ?? "", cert_a1_senha: e.cert_a1_senha ?? "", cert_a1_nome: e.cert_a1_nome ?? "",
+    } : { ...EMP_VAZIO });
     setModalEmp(true);
   };
+
+  const buscarCepEmp = async (cep: string) => {
+    const raw = cep.replace(/\D/g, "");
+    if (raw.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+      const d = await r.json();
+      if (!d.erro) setFEmp(p => ({ ...p, logradouro: d.logradouro ?? p.logradouro, bairro: d.bairro ?? p.bairro, municipio: d.localidade ?? p.municipio, municipio_ibge: d.ibge ?? p.municipio_ibge, estado: d.uf ?? p.estado }));
+    } catch { /* silencioso */ }
+  };
   const salvarEmp = () => salvar(async () => {
-    if (!fEmp.nome.trim()) return;
-    const payload = {
-      fazenda_id: (fazTrabalho || fazIdEff)!, nome: fEmp.nome.trim(),
+    if (!fEmp.nome.trim() && !fEmp.razao_social.trim()) return;
+    const fazId = (fazTrabalho || fazIdEff)!;
+    const payload: Omit<Empresa, "id"|"created_at"> = {
+      fazenda_id: fazId,
+      nome: fEmp.nome.trim() || fEmp.razao_social.trim(),
       razao_social: fEmp.razao_social || undefined, tipo: fEmp.tipo,
+      tipo_empresa: fEmp.tipo_empresa ?? "outros",
       cpf_cnpj: fEmp.cpf_cnpj || undefined, inscricao_est: fEmp.inscricao_est || undefined,
-      regime_tributario: fEmp.regime_tributario || undefined,
+      crt: fEmp.crt || undefined, regime_tributario: fEmp.regime_tributario || undefined,
       produtor_id: fEmp.produtor_id || undefined,
-      municipio: fEmp.municipio || undefined, estado: fEmp.estado || undefined,
+      cep: fEmp.cep || undefined, logradouro: fEmp.logradouro || undefined,
+      numero: fEmp.numero || undefined, complemento: fEmp.complemento || undefined,
+      bairro: fEmp.bairro || undefined, municipio: fEmp.municipio || undefined,
+      municipio_ibge: fEmp.municipio_ibge || undefined, estado: fEmp.estado || undefined,
+      ambiente_fiscal: fEmp.ambiente_fiscal ?? "homologacao",
+      serie_nfe: fEmp.serie_nfe || "1", serie_cte: fEmp.serie_cte || "1", serie_mdfe: fEmp.serie_mdfe || "1",
+      rntrc: fEmp.rntrc || undefined,
       car: fEmp.car || undefined, nirf: fEmp.nirf || undefined, itr: fEmp.itr || undefined,
       email: fEmp.email || undefined, email_relatorios: fEmp.email_relatorios || undefined,
       telefone: fEmp.telefone || undefined,
+      cert_a1_validade: fEmp.cert_a1_validade || undefined,
+      cert_a1_senha: fEmp.cert_a1_senha || undefined,
+      cert_a1_nome: fEmp.cert_a1_nome || undefined,
     };
-    if (editEmp) { await atualizarEmpresa(editEmp.id, payload); setEmpresas(p => p.map(x => x.id === editEmp.id ? { ...x, ...payload } : x)); }
-    else { const n = await criarEmpresa(payload); setEmpresas(p => [...p, n]); }
+    let empresaId: string;
+    if (editEmp) {
+      await atualizarEmpresa(editEmp.id, payload);
+      empresaId = editEmp.id;
+      setEmpresas(p => p.map(x => x.id === editEmp.id ? { ...x, ...payload } : x));
+    } else {
+      const n = await criarEmpresa(payload);
+      empresaId = n.id;
+      setEmpresas(p => [...p, n]);
+    }
+    // Upload certificado A1 se arquivo selecionado
+    if (certFile) {
+      try {
+        const path = `empresas/${fazId}/${empresaId}/cert_a1.pfx`;
+        const { error: upErr } = await supabase.storage.from("documentos").upload(path, certFile, { upsert: true });
+        if (!upErr) {
+          const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+          const certUpdate = { cert_a1_url: urlData.publicUrl, cert_a1_nome: certFile.name, cert_a1_senha: fEmp.cert_a1_senha || undefined, cert_a1_validade: fEmp.cert_a1_validade || undefined };
+          await atualizarEmpresa(empresaId, certUpdate);
+          setEmpresas(p => p.map(x => x.id === empresaId ? { ...x, ...certUpdate } : x));
+        } else { alert("⚠️ Certificado não pôde ser salvo: " + upErr.message); }
+      } catch { /* não bloqueia o save */ }
+    }
     setModalEmp(false);
   });
 
@@ -9702,92 +9758,264 @@ function CadastrosInner() {
       )}
 
       {/* ── Modal Empresa ── */}
-      {modalEmp && (
-        <Modal titulo={editEmp ? "Editar Empresa" : "Nova Empresa"} onClose={() => setModalEmp(false)} width={800}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={lbl}>Razão Social *</label>
-              <input style={inp} placeholder="Ex: Costa Beber Agropecuária Ltda" value={fEmp.razao_social} onChange={e => setFEmp(p => ({ ...p, razao_social: e.target.value }))} />
+      {modalEmp && (() => {
+        const ABAS_EMP: { key: typeof abaEmp; label: string }[] = [
+          { key: "geral",      label: "Dados Gerais" },
+          { key: "endereco",   label: "Endereço" },
+          { key: "fiscal",     label: "Dados Fiscais" },
+          { key: "cert",       label: "Certificado A1" },
+          { key: "registros",  label: "Registros" },
+        ];
+        const certVencendo = fEmp.cert_a1_validade ? (() => { const d = new Date(fEmp.cert_a1_validade); const diff = Math.ceil((d.getTime() - Date.now()) / 86400000); return diff; })() : null;
+        return (
+          <Modal titulo={editEmp ? "Editar Empresa" : "Nova Empresa"} onClose={() => setModalEmp(false)} width={900}>
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20, marginTop: -4 }}>
+              {ABAS_EMP.map(a => (
+                <button key={a.key} onClick={() => setAbaEmp(a.key)}
+                  style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: abaEmp === a.key ? 700 : 400, color: abaEmp === a.key ? "#1A4870" : "var(--text-2)", borderBottom: abaEmp === a.key ? "2.5px solid #1A4870" : "2.5px solid transparent", whiteSpace: "nowrap" }}>
+                  {a.label}{a.key === "cert" && fEmp.cert_a1_nome && <span style={{ marginLeft: 5, fontSize: 10, background: certVencendo !== null && certVencendo <= 30 ? "#FCEBEB" : "#DCFCE7", color: certVencendo !== null && certVencendo <= 30 ? "#791F1F" : "#166534", padding: "1px 5px", borderRadius: 4 }}>{certVencendo !== null && certVencendo <= 0 ? "Vencido" : certVencendo !== null && certVencendo <= 30 ? `${certVencendo}d` : "✓"}</span>}
+                </button>
+              ))}
             </div>
-            <div>
-              <label style={lbl}>Nome Fantasia</label>
-              <input style={inp} placeholder="Ex: Fazenda Santa Fé" value={fEmp.nome} onChange={e => setFEmp(p => ({ ...p, nome: e.target.value }))} />
+
+            {/* Aba Dados Gerais */}
+            {abaEmp === "geral" && (
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 14 }}>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={lbl}>Razão Social *</label>
+                  <input style={inp} placeholder="Ex: Costa Beber Agropecuária Ltda" value={fEmp.razao_social} onChange={e => setFEmp(p => ({ ...p, razao_social: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Nome Fantasia</label>
+                  <input style={inp} placeholder="Ex: Fazenda Santa Fé" value={fEmp.nome} onChange={e => setFEmp(p => ({ ...p, nome: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Tipo de Entidade</label>
+                  <select style={inp} value={fEmp.tipo_empresa} onChange={e => setFEmp(p => ({ ...p, tipo_empresa: e.target.value as Empresa["tipo_empresa"] }))}>
+                    <option value="fazenda_pj">Fazenda / Produtor PJ</option>
+                    <option value="transportadora">Transportadora</option>
+                    <option value="trading">Trading / Cerealista</option>
+                    <option value="prestadora_servicos">Prestadora de Serviços</option>
+                    <option value="outros">Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Pessoa</label>
+                  <select style={inp} value={fEmp.tipo} onChange={e => setFEmp(p => ({ ...p, tipo: e.target.value as "pf"|"pj" }))}>
+                    <option value="pj">Pessoa Jurídica</option>
+                    <option value="pf">Pessoa Física</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>{fEmp.tipo === "pj" ? "CNPJ" : "CPF"}</label>
+                  <input style={{ ...inp, fontFamily: "monospace" }} placeholder={fEmp.tipo === "pj" ? "00.000.000/0001-00" : "000.000.000-00"} value={fEmp.cpf_cnpj} onChange={e => setFEmp(p => ({ ...p, cpf_cnpj: maskCpfCnpj(e.target.value, p.tipo) }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Inscrição Estadual</label>
+                  <input style={{ ...inp, fontFamily: "monospace" }} placeholder="Apenas dígitos" value={fEmp.inscricao_est} onChange={e => setFEmp(p => ({ ...p, inscricao_est: e.target.value.replace(/\D/g,"") }))} />
+                </div>
+                <div>
+                  <label style={lbl}>CRT — Código de Regime Tributário</label>
+                  <select style={inp} value={fEmp.crt} onChange={e => setFEmp(p => ({ ...p, crt: e.target.value as Empresa["crt"] }))}>
+                    <option value="1">1 — Simples Nacional</option>
+                    <option value="2">2 — Simples Nacional — Excesso</option>
+                    <option value="3">3 — Regime Normal</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Regime Tributário (descrição)</label>
+                  <select style={inp} value={fEmp.regime_tributario} onChange={e => setFEmp(p => ({ ...p, regime_tributario: e.target.value }))}>
+                    <option value="">— selecione —</option>
+                    <option value="Produtor Rural PJ">Produtor Rural PJ</option>
+                    <option value="Simples Nacional">Simples Nacional</option>
+                    <option value="Lucro Presumido">Lucro Presumido</option>
+                    <option value="Lucro Real">Lucro Real</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Produtor vinculado (sócio/titular)</label>
+                  <select style={inp} value={fEmp.produtor_id} onChange={e => setFEmp(p => ({ ...p, produtor_id: e.target.value }))}>
+                    <option value="">— nenhum —</option>
+                    {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                </div>
+                <div style={{ borderTop: "0.5px solid var(--border-table)", gridColumn: "1/-1", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em" }}>CONTATO</div>
+                <div>
+                  <label style={lbl}>E-mail</label>
+                  <input style={inp} type="email" value={fEmp.email} onChange={e => setFEmp(p => ({ ...p, email: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>E-mail relatórios automáticos</label>
+                  <input style={inp} type="email" value={fEmp.email_relatorios} onChange={e => setFEmp(p => ({ ...p, email_relatorios: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Telefone</label>
+                  <input style={inp} value={fEmp.telefone} onChange={e => setFEmp(p => ({ ...p, telefone: maskPhone(e.target.value) }))} />
+                </div>
+              </div>
+            )}
+
+            {/* Aba Endereço */}
+            {abaEmp === "endereco" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={lbl}>CEP</label>
+                  <input style={inp} placeholder="00000-000" value={fEmp.cep} onChange={e => { const v = maskCep(e.target.value); setFEmp(p => ({ ...p, cep: v })); if (v.replace(/\D/g,"").length === 8) buscarCepEmp(v); }} />
+                </div>
+                <div style={{ gridColumn: "2/-1" }}>
+                  <label style={lbl}>Logradouro</label>
+                  <input style={inp} value={fEmp.logradouro} onChange={e => setFEmp(p => ({ ...p, logradouro: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Número</label>
+                  <input style={inp} value={fEmp.numero} onChange={e => setFEmp(p => ({ ...p, numero: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Complemento</label>
+                  <input style={inp} value={fEmp.complemento} onChange={e => setFEmp(p => ({ ...p, complemento: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Bairro</label>
+                  <input style={inp} value={fEmp.bairro} onChange={e => setFEmp(p => ({ ...p, bairro: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Município</label>
+                  <input style={inp} value={fEmp.municipio} onChange={e => setFEmp(p => ({ ...p, municipio: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Código IBGE (7 dígitos)</label>
+                  <input style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" value={fEmp.municipio_ibge} onChange={e => setFEmp(p => ({ ...p, municipio_ibge: e.target.value.replace(/\D/g,"") }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Estado</label>
+                  <select style={inp} value={fEmp.estado} onChange={e => setFEmp(p => ({ ...p, estado: e.target.value }))}>
+                    {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Aba Dados Fiscais */}
+            {abaEmp === "fiscal" && (
+              <div>
+                <div style={{ background: fEmp.ambiente_fiscal === "producao" ? "#FCEBEB" : "#FBF3E0", border: `0.5px solid ${fEmp.ambiente_fiscal === "producao" ? "#E24B4A50" : "#C9921B50"}`, borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: fEmp.ambiente_fiscal === "producao" ? "#791F1F" : "#7A5400", fontWeight: 600 }}>
+                  {fEmp.ambiente_fiscal === "producao" ? "⚠️ Ambiente de Produção — documentos emitidos têm validade fiscal real" : "🧪 Ambiente de Homologação — documentos são apenas para teste"}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14 }}>
+                  <div style={{ gridColumn: "1/-1" }}>
+                    <label style={lbl}>Ambiente SEFAZ</label>
+                    <div style={{ display: "flex", gap: 12 }}>
+                      {["homologacao", "producao"].map(v => (
+                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", padding: "8px 16px", border: `0.5px solid ${fEmp.ambiente_fiscal === v ? "#1A4870" : "var(--border-table)"}`, borderRadius: 8, background: fEmp.ambiente_fiscal === v ? "#D5E8F5" : "transparent" }}>
+                          <input type="radio" name="amb" value={v} checked={fEmp.ambiente_fiscal === v} onChange={() => setFEmp(p => ({ ...p, ambiente_fiscal: v as Empresa["ambiente_fiscal"] }))} />
+                          {v === "homologacao" ? "Homologação (Teste)" : "Produção (Real)"}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Série NF-e</label>
+                    <input style={{ ...inp, fontFamily: "monospace" }} placeholder="1" value={fEmp.serie_nfe} onChange={e => setFEmp(p => ({ ...p, serie_nfe: e.target.value.replace(/\D/g,"") }))} />
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>PF emitente: usar 920–969</div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Série CT-e</label>
+                    <input style={{ ...inp, fontFamily: "monospace" }} placeholder="1" value={fEmp.serie_cte} onChange={e => setFEmp(p => ({ ...p, serie_cte: e.target.value.replace(/\D/g,"") }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Série MDF-e</label>
+                    <input style={{ ...inp, fontFamily: "monospace" }} placeholder="1" value={fEmp.serie_mdfe} onChange={e => setFEmp(p => ({ ...p, serie_mdfe: e.target.value.replace(/\D/g,"") }))} />
+                  </div>
+                  {fEmp.tipo_empresa === "transportadora" && (
+                    <div>
+                      <label style={lbl}>RNTRC (ANTT)</label>
+                      <input style={{ ...inp, fontFamily: "monospace" }} placeholder="00000000" value={fEmp.rntrc} onChange={e => setFEmp(p => ({ ...p, rntrc: e.target.value.replace(/\D/g,"") }))} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Aba Certificado A1 */}
+            {abaEmp === "cert" && (
+              <div>
+                <div style={{ background: "#E8F3FB", border: "0.5px solid #1A487040", borderRadius: 10, padding: "14px 16px", marginBottom: 18 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#0B2D50", marginBottom: 4 }}>Certificado Digital A1 (.pfx)</div>
+                  <div style={{ fontSize: 12, color: "#555" }}>Necessário para assinar NF-e, CT-e e MDF-e. Arquivo .pfx protegido por senha. Vence anualmente.</div>
+                </div>
+
+                {/* Certificado atual */}
+                {(fEmp.cert_a1_nome || editEmp?.cert_a1_url) && !certFile && (
+                  <div style={{ marginBottom: 18, background: certVencendo !== null && certVencendo <= 0 ? "#FCEBEB" : certVencendo !== null && certVencendo <= 30 ? "#FBF3E0" : "#F0FDF4", border: `0.5px solid ${certVencendo !== null && certVencendo <= 0 ? "#E24B4A50" : certVencendo !== null && certVencendo <= 30 ? "#C9921B50" : "#16A34A50"}`, borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>📜 {fEmp.cert_a1_nome ?? "certificado.pfx"}</div>
+                      {fEmp.cert_a1_validade && (
+                        <div style={{ fontSize: 11, marginTop: 3, color: certVencendo !== null && certVencendo <= 0 ? "#E24B4A" : certVencendo !== null && certVencendo <= 30 ? "#C9921B" : "#16A34A" }}>
+                          {certVencendo !== null && certVencendo <= 0 ? "⚠️ VENCIDO" : certVencendo !== null && certVencendo <= 30 ? `⚠️ Vence em ${certVencendo} dias` : `✓ Válido até ${fEmp.cert_a1_validade.split("-").reverse().join("/")}`}
+                        </div>
+                      )}
+                    </div>
+                    {editEmp?.cert_a1_url && <a href={editEmp.cert_a1_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Baixar ↗</a>}
+                  </div>
+                )}
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div>
+                    <label style={lbl}>{fEmp.cert_a1_nome ? "Substituir arquivo .pfx" : "Arquivo .pfx"}</label>
+                    <label style={{ display: "block", padding: "10px 14px", border: "0.5px dashed #1A4870", borderRadius: 8, cursor: "pointer", fontSize: 12, color: "#1A4870", textAlign: "center", background: "#F4F8FB" }}>
+                      {certFile ? `📜 ${certFile.name}` : "Clique para selecionar o .pfx"}
+                      <input type="file" accept=".pfx,.p12" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) { setCertFile(f); setFEmp(p => ({ ...p, cert_a1_nome: f.name })); } e.target.value = ""; }} />
+                    </label>
+                  </div>
+                  <div>
+                    <label style={lbl}>Senha do certificado</label>
+                    <input style={inp} type="password" placeholder="Senha do arquivo .pfx" value={fEmp.cert_a1_senha} onChange={e => setFEmp(p => ({ ...p, cert_a1_senha: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Data de Vencimento</label>
+                    <input style={inp} type="date" value={fEmp.cert_a1_validade} onChange={e => setFEmp(p => ({ ...p, cert_a1_validade: e.target.value }))} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 14, padding: "10px 14px", background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, fontSize: 11, color: "#7A5400" }}>
+                  ⚠️ A senha é armazenada de forma segura e usada exclusivamente para assinar os documentos fiscais no servidor. Nunca compartilhe este arquivo com terceiros.
+                </div>
+              </div>
+            )}
+
+            {/* Aba Registros */}
+            {abaEmp === "registros" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em", paddingBottom: 8, borderBottom: "0.5px solid var(--border-table)" }}>REGISTROS RURAIS (FAZENDA PJ)</div>
+                <div>
+                  <label style={lbl}>CAR — Cadastro Ambiental Rural</label>
+                  <input style={inp} placeholder="MT-5106224-..." value={fEmp.car} onChange={e => setFEmp(p => ({ ...p, car: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>NIRF — Número do Imóvel (Receita)</label>
+                  <input style={inp} value={fEmp.nirf} onChange={e => setFEmp(p => ({ ...p, nirf: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>ITR — Número do Imóvel</label>
+                  <input style={inp} value={fEmp.itr} onChange={e => setFEmp(p => ({ ...p, itr: e.target.value }))} />
+                </div>
+                {fEmp.tipo_empresa === "transportadora" && <>
+                  <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em", paddingBottom: 8, paddingTop: 8, borderBottom: "0.5px solid var(--border-table)", borderTop: "0.5px solid var(--border-table)" }}>TRANSPORTE (ANTT)</div>
+                  <div>
+                    <label style={lbl}>RNTRC — Registro Nacional de Transportadores</label>
+                    <input style={{ ...inp, fontFamily: "monospace" }} placeholder="00000000" value={fEmp.rntrc} onChange={e => setFEmp(p => ({ ...p, rntrc: e.target.value.replace(/\D/g,"") }))} />
+                  </div>
+                </>}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24, paddingTop: 16, borderTop: "0.5px solid var(--border-table)" }}>
+              <button style={btnR} onClick={() => setModalEmp(false)}>Cancelar</button>
+              <button style={{ ...btnV, opacity: !fEmp.razao_social.trim() && !fEmp.nome.trim() ? 0.5 : 1 }} disabled={!fEmp.razao_social.trim() && !fEmp.nome.trim()} onClick={salvarEmp}>Salvar empresa</button>
             </div>
-            <div>
-              <label style={lbl}>Tipo</label>
-              <select style={inp} value={fEmp.tipo} onChange={e => setFEmp(p => ({ ...p, tipo: e.target.value as "pf"|"pj" }))}>
-                <option value="pj">Pessoa Jurídica</option>
-                <option value="pf">Pessoa Física</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>CNPJ / CPF</label>
-              <input style={{ ...inp, fontFamily: "monospace" }} placeholder={fEmp.tipo === "pj" ? "00.000.000/0001-00" : "000.000.000-00"} value={fEmp.cpf_cnpj} onChange={e => setFEmp(p => ({ ...p, cpf_cnpj: maskCpfCnpj(e.target.value, p.tipo) }))} />
-            </div>
-            <div>
-              <label style={lbl}>Inscrição Estadual</label>
-              <input style={{ ...inp, fontFamily: "monospace" }} placeholder="Apenas dígitos" value={fEmp.inscricao_est} onChange={e => setFEmp(p => ({ ...p, inscricao_est: e.target.value.replace(/\D/g,"") }))} />
-            </div>
-            <div>
-              <label style={lbl}>Regime Tributário</label>
-              <select style={inp} value={fEmp.regime_tributario} onChange={e => setFEmp(p => ({ ...p, regime_tributario: e.target.value }))}>
-                <option value="">— selecione —</option>
-                <option value="Produtor Rural PJ">Produtor Rural PJ</option>
-                <option value="Simples Nacional">Simples Nacional</option>
-                <option value="Lucro Presumido">Lucro Presumido</option>
-                <option value="Lucro Real">Lucro Real</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Produtor vinculado</label>
-              <select style={inp} value={fEmp.produtor_id} onChange={e => setFEmp(p => ({ ...p, produtor_id: e.target.value }))}>
-                <option value="">— nenhum —</option>
-                {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Município</label>
-              <input style={inp} value={fEmp.municipio} onChange={e => setFEmp(p => ({ ...p, municipio: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Estado</label>
-              <select style={inp} value={fEmp.estado} onChange={e => setFEmp(p => ({ ...p, estado: e.target.value }))}>
-                {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-              </select>
-            </div>
-            <div style={{ borderTop: "0.5px solid var(--border-table)", gridColumn: "1 / -1", paddingTop: 12, fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em" }}>REGISTROS RURAIS</div>
-            <div>
-              <label style={lbl}>CAR</label>
-              <input style={inp} placeholder="MT-..." value={fEmp.car} onChange={e => setFEmp(p => ({ ...p, car: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>NIRF</label>
-              <input style={inp} value={fEmp.nirf} onChange={e => setFEmp(p => ({ ...p, nirf: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>ITR</label>
-              <input style={inp} value={fEmp.itr} onChange={e => setFEmp(p => ({ ...p, itr: e.target.value }))} />
-            </div>
-            <div style={{ borderTop: "0.5px solid var(--border-table)", gridColumn: "1 / -1", paddingTop: 12, fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em" }}>CONTATO</div>
-            <div>
-              <label style={lbl}>E-mail</label>
-              <input style={inp} type="email" value={fEmp.email} onChange={e => setFEmp(p => ({ ...p, email: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>E-mail relatórios</label>
-              <input style={inp} type="email" value={fEmp.email_relatorios} onChange={e => setFEmp(p => ({ ...p, email_relatorios: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Telefone</label>
-              <input style={inp} value={fEmp.telefone} onChange={e => setFEmp(p => ({ ...p, telefone: maskPhone(e.target.value) }))} />
-            </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-            <button style={btnR} onClick={() => setModalEmp(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: !fEmp.razao_social.trim() && !fEmp.nome.trim() ? 0.5 : 1 }} disabled={!fEmp.razao_social.trim() && !fEmp.nome.trim()} onClick={salvarEmp}>Salvar</button>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
 
     </div>
   );
