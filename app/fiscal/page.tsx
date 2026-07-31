@@ -851,8 +851,20 @@ function FiscalInner() {
     if (!fazendaId) return;
     carregar();
     listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
-    supabase.from("empresas").select("id, razao_social, nome, cnpj").eq("fazenda_id", fazendaId)
-      .then(({ data }) => data && setEmpresasCert(data as { id: string; razao_social: string | null; nome: string | null; cnpj: string | null }[]));
+    // Carrega empresas de todas as fazendas da conta (mesmo que o registro esteja em outra fazenda)
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      const ids = fzs.length > 0 ? fzs.map(f => f.id!) : [fazendaId!];
+      return supabase.from("empresas").select("id, razao_social, nome, cnpj").in("fazenda_id", ids);
+    }).then(({ data }) => {
+      if (!data) return;
+      // Deduplicar por CNPJ
+      const byCnpj = new Map<string, { id: string; razao_social: string | null; nome: string | null; cnpj: string | null }>();
+      data.forEach(e => {
+        const chave = (e.cnpj ?? "").replace(/\D/g, "") || e.id;
+        if (!byCnpj.has(chave)) byCnpj.set(chave, e);
+      });
+      setEmpresasCert(Array.from(byCnpj.values()).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
+    }).catch(() => {});
     listarPessoasDaConta(fazendaId).then(d => setPessoas(d)).catch(() => {});
     // Carrega anos_safra para o select do modal de emissão
     supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
