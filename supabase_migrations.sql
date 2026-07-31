@@ -8968,10 +8968,15 @@ NOTIFY pgrst, 'reload schema';
 -- Migration: centros_custo_ids[] em regras_rateio — multi-CC por regra
 -- ============================================================================
 
+-- Garante centro_custo_id (Migration 48 — idempotente)
+ALTER TABLE regras_rateio
+  ADD COLUMN IF NOT EXISTS centro_custo_id UUID REFERENCES centros_custo(id);
+
+-- Adiciona array de CCs
 ALTER TABLE regras_rateio
   ADD COLUMN IF NOT EXISTS centros_custo_ids jsonb DEFAULT '[]'::jsonb;
 
--- Backfill: popula centros_custo_ids com o centro_custo_id existente
+-- Backfill: popula centros_custo_ids a partir de centro_custo_id existente
 UPDATE regras_rateio
 SET centros_custo_ids = jsonb_build_array(centro_custo_id)
 WHERE centros_custo_ids = '[]'::jsonb
