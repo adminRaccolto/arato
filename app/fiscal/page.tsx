@@ -851,20 +851,21 @@ function FiscalInner() {
     if (!fazendaId) return;
     carregar();
     listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
-    // Carrega empresas de todas as fazendas da conta (mesmo que o registro esteja em outra fazenda)
-    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
-      const ids = fzs.length > 0 ? fzs.map(f => f.id!) : [fazendaId!];
-      return supabase.from("empresas").select("id, razao_social, nome, cnpj").in("fazenda_id", ids);
-    }).then(({ data }) => {
-      if (!data) return;
-      // Deduplicar por CNPJ
-      const byCnpj = new Map<string, { id: string; razao_social: string | null; nome: string | null; cnpj: string | null }>();
-      data.forEach(e => {
-        const chave = (e.cnpj ?? "").replace(/\D/g, "") || e.id;
-        if (!byCnpj.has(chave)) byCnpj.set(chave, e);
-      });
-      setEmpresasCert(Array.from(byCnpj.values()).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
-    }).catch(() => {});
+    // Carrega empresas de todas as fazendas da conta
+    void (async () => {
+      try {
+        const fzs = await listarFazendasDaConta(contaId, fazendaId);
+        const ids = fzs.length > 0 ? fzs.map(f => f.id!) : [fazendaId!];
+        const { data } = await supabase.from("empresas").select("id, razao_social, nome, cnpj").in("fazenda_id", ids);
+        if (!data) return;
+        const byCnpj = new Map<string, { id: string; razao_social: string | null; nome: string | null; cnpj: string | null }>();
+        data.forEach(e => {
+          const chave = (e.cnpj ?? "").replace(/\D/g, "") || e.id;
+          if (!byCnpj.has(chave)) byCnpj.set(chave, e);
+        });
+        setEmpresasCert(Array.from(byCnpj.values()).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
+      } catch { /* silencioso */ }
+    })();
     listarPessoasDaConta(fazendaId).then(d => setPessoas(d)).catch(() => {});
     // Carrega anos_safra para o select do modal de emissão
     supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
@@ -887,7 +888,7 @@ function FiscalInner() {
           }
         }
       });
-  }, [fazendaId]);
+  }, [fazendaId, contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quando o usuário troca de emitente, atualiza danfeCfg com o config correto
   useEffect(() => {
@@ -1919,42 +1920,53 @@ function FiscalInner() {
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
             <div style={{ display: "grid", gap: 14 }}>
-              {(produtores.length + empresasCert.length) > 1 && (
-                <div>
-                  <label style={labelSt}>Titular (Produtor ou Empresa) *</label>
-                  <select
-                    value={certProdId}
-                    onChange={e => setCertProdId(e.target.value)}
-                    style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
-                  >
-                    <option value="">Selecione...</option>
-                    {produtores.length > 0 && (
-                      <optgroup label="Produtores (CPF)">
-                        {produtores.map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {empresasCert.length > 0 && (
-                      <optgroup label="Empresas (CNPJ)">
-                        {empresasCert.map(e => (
-                          <option key={e.id} value={e.id}>{e.razao_social ?? e.nome}{e.cnpj ? ` — ${e.cnpj}` : ""}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                </div>
-              )}
-              {(produtores.length + empresasCert.length) === 1 && (
-                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--text-2)" }}>
-                  <span style={{ color: "var(--text-3)", fontSize: 11 }}>Titular: </span>
-                  <strong>
-                    {produtores.length === 1
-                      ? produtores[0].nome
-                      : (empresasCert[0].razao_social ?? empresasCert[0].nome ?? "Empresa")}
-                  </strong>
-                </div>
-              )}
+              {(() => {
+                // Separa produtores por tipo de documento: CPF (11 dígitos) vs CNPJ (14 dígitos)
+                const prodCpf  = produtores.filter(p => (p.cpf_cnpj ?? "").replace(/\D/g, "").length !== 14);
+                const prodCnpj = produtores.filter(p => (p.cpf_cnpj ?? "").replace(/\D/g, "").length === 14);
+                // "Empresas": produtores com CNPJ + registros da tabela empresas
+                const empresasTotal = [
+                  ...prodCnpj.map(p => ({ id: p.id, label: p.nome, doc: p.cpf_cnpj ?? "" })),
+                  ...empresasCert.map(e => ({ id: e.id, label: e.razao_social ?? e.nome ?? "Empresa", doc: e.cnpj ?? "" })),
+                ];
+                const total = prodCpf.length + empresasTotal.length;
+                if (total > 1) return (
+                  <div>
+                    <label style={labelSt}>Titular (Produtor ou Empresa) *</label>
+                    <select
+                      value={certProdId}
+                      onChange={e => setCertProdId(e.target.value)}
+                      style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
+                    >
+                      <option value="">Selecione...</option>
+                      {prodCpf.length > 0 && (
+                        <optgroup label="Produtores (CPF)">
+                          {prodCpf.map(p => (
+                            <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {empresasTotal.length > 0 && (
+                        <optgroup label="Empresas (CNPJ)">
+                          {empresasTotal.map(e => (
+                            <option key={e.id} value={e.id}>{e.label}{e.doc ? ` — ${e.doc}` : ""}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+                );
+                if (total === 1) {
+                  const nomeUnico = prodCpf.length === 1 ? prodCpf[0].nome : (empresasTotal[0]?.label ?? "");
+                  return (
+                    <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--text-2)" }}>
+                      <span style={{ color: "var(--text-3)", fontSize: 11 }}>Titular: </span>
+                      <strong>{nomeUnico}</strong>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               {/* Área de arquivo */}
               <div>
                 <label style={labelSt}>Arquivo .pfx / .p12 *</label>
