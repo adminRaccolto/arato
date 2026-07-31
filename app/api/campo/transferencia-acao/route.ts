@@ -3,15 +3,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { emitirNFe, buscarConfEmitente } from "../../../../lib/nfe/index";
 
-const adm = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
 export const runtime = "nodejs"; // lib/nfe usa node-forge que precisa de Node
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const adm = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
   const t0 = Date.now();
   let acao = "unknown";
   try {
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         await adm.from("transferencias_estoque")
           .update({ status: "emitida", data_emissao: new Date().toISOString() })
           .eq("id", tid);
-        await _criarMovimentacoes(t, itensTransf);
+        await _criarMovimentacoes(t, itensTransf, adm);
         return NextResponse.json({ ok: true, aviso: "Configuração fiscal não encontrada — NF-e não emitida. Acesse Parâmetros → Fiscal." });
       }
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       }).eq("id", tid);
 
       // 7. Movimentações de estoque
-      await _criarMovimentacoes(t, itensTransf);
+      await _criarMovimentacoes(t, itensTransf, adm);
 
       return NextResponse.json({
         ok: true,
@@ -238,6 +238,8 @@ export async function POST(request: NextRequest) {
 async function _criarMovimentacoes(
   t: Record<string, unknown>,
   itens: Array<Record<string, unknown>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adm: any,
 ) {
   for (const it of itens) {
     await adm.from("movimentacoes_estoque").insert({
