@@ -197,7 +197,7 @@ export default function SuportePage() {
             <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870" }}>Suporte Chat</div>
-                <div style={{ fontSize: 11, color: "var(--text-3)" }}>Assistente Arato</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>Olívia · Assistente Virtual</div>
               </div>
               <button
                 onClick={novaConversa}
@@ -265,7 +265,7 @@ export default function SuportePage() {
             {/* Info */}
             <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
               <div style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                Assistente com conhecimento completo do Arato e do agronegócio brasileiro.
+                Olívia tem conhecimento completo do Arato e do agronegócio brasileiro.
               </div>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function SuportePage() {
                     <div style={{ textAlign: "center", marginTop: 40 }}>
                       <img src="/suporte-avatar.jpg" alt="Assistente" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", objectPosition: "top center", marginBottom: 12, display: "block", marginLeft: "auto", marginRight: "auto" }} />
                       <div style={{ fontSize: 16, fontWeight: 600, color: "#1A4870", marginBottom: 6 }}>
-                        Olá! Sou o assistente do Arato.
+                        Olá! Sou a Olívia, assistente virtual do Arato.
                       </div>
                       <div style={{ fontSize: 13, color: "#666", marginBottom: 24 }}>
                         Posso ajudar com dúvidas sobre o sistema, regras fiscais e práticas do agronegócio.
@@ -412,7 +412,8 @@ export default function SuportePage() {
               /* Estado vazio — sem conversa selecionada */
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
                 <img src="/suporte-avatar.jpg" alt="Assistente" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", objectPosition: "top center", marginBottom: 16 }} />
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>Suporte Chat</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", marginBottom: 4 }}>Olívia</div>
+                <div style={{ fontSize: 12, color: "#16A34A", marginBottom: 12, fontWeight: 500 }}>● Online</div>
                 <div style={{ fontSize: 14, color: "#666", maxWidth: 380, lineHeight: 1.6, marginBottom: 24 }}>
                   Tire dúvidas sobre o Arato, regras fiscais do agronegócio e melhores práticas do campo.
                   Selecione uma conversa ou crie uma nova.

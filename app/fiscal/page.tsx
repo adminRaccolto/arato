@@ -1420,7 +1420,7 @@ function FiscalInner() {
               )}
 
               {/* Abas */}
-              <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
+              <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 12 }}>
                 {ABAS.map(a => (
                   <button key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer",
@@ -1440,7 +1440,7 @@ function FiscalInner() {
 
               {/* ── ABA: NOTAS DE VENDA ── */}
               {aba === "venda" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 6 }}>
                     {[
                       { label: "Todas", count: notasVenda.length, filter: null },
@@ -1477,7 +1477,7 @@ function FiscalInner() {
 
               {/* ── ABA: NOTA DE DEVOLUÇÃO ── */}
               {aba === "devolucao" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)" }}>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
                       A <strong>Nota de Devolução</strong> é emitida quando o comprador devolve mercadoria anteriormente vendida.
@@ -1502,7 +1502,7 @@ function FiscalInner() {
 
               {/* ── ABA: CANCELAMENTO ── */}
               {aba === "cancelamento" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#FFF7ED" }}>
                     <div style={{ fontSize: 12, color: "#633806", lineHeight: 1.6 }}>
                       <strong>⚠ Regras para cancelamento:</strong> NF-e pode ser cancelada em até <strong>24 horas</strong> após autorização sem justificativa especial.
@@ -1568,7 +1568,7 @@ function FiscalInner() {
 
               {/* ── ABA: NOTA DE COMPLEMENTO ── */}
               {aba === "complemento" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)" }}>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
                       A <strong>Nota Complementar</strong> ajusta valor ou quantidade de uma NF-e já autorizada.
@@ -1763,7 +1763,7 @@ function FiscalInner() {
               )}
               {/* ── ABA: CONTINGÊNCIA ── */}
               {aba === "contingencia" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {/* Cabeçalho informativo */}
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#FFF7ED" }}>
                     <div style={{ fontSize: 12, color: "#633806", lineHeight: 1.7 }}>
