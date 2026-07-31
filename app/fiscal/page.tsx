@@ -787,7 +787,7 @@ function FiscalInner() {
   // ── Modal upload certificado ─────────────────────────────────────
   const [modalCert,     setModalCert]     = useState(false);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
-  const [empresasCert,  setEmpresasCert]  = useState<{ id: string; razao_social: string | null; nome: string | null; cnpj: string | null }[]>([]);
+  const [empresasCert,  setEmpresasCert]  = useState<{ id: string; razao_social: string | null; nome: string | null; cpf_cnpj: string | null }[]>([]);
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [buscaPessoa,   setBuscaPessoa]   = useState("");
   const [dropdownPessoa,setDropdownPessoa]= useState(false);
@@ -816,10 +816,10 @@ function FiscalInner() {
       const titular = prodSel
         ? { id: prodSel.id, nome: prodSel.nome, doc: prodSel.cpf_cnpj ?? "" }
         : empSel
-        ? { id: empSel.id, nome: empSel.razao_social ?? empSel.nome ?? "Empresa", doc: empSel.cnpj ?? "" }
+        ? { id: empSel.id, nome: empSel.razao_social ?? empSel.nome ?? "Empresa", doc: empSel.cpf_cnpj ?? "" }
         : produtores.length > 0
         ? { id: produtores[0].id, nome: produtores[0].nome, doc: produtores[0].cpf_cnpj ?? "" }
-        : { id: empresasCert[0].id, nome: empresasCert[0].razao_social ?? empresasCert[0].nome ?? "Empresa", doc: empresasCert[0].cnpj ?? "" };
+        : { id: empresasCert[0].id, nome: empresasCert[0].razao_social ?? empresasCert[0].nome ?? "Empresa", doc: empresasCert[0].cpf_cnpj ?? "" };
 
       // Upload + extração de data + salvamento via API (service role)
       const form = new FormData();
@@ -856,11 +856,11 @@ function FiscalInner() {
       try {
         const fzs = await listarFazendasDaConta(contaId, fazendaId);
         const ids = fzs.length > 0 ? fzs.map(f => f.id!) : [fazendaId!];
-        const { data } = await supabase.from("empresas").select("id, razao_social, nome, cnpj").in("fazenda_id", ids);
+        const { data } = await supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj").in("fazenda_id", ids);
         if (!data) return;
-        const byCnpj = new Map<string, { id: string; razao_social: string | null; nome: string | null; cnpj: string | null }>();
+        const byCnpj = new Map<string, { id: string; razao_social: string | null; nome: string | null; cpf_cnpj: string | null }>();
         data.forEach(e => {
-          const chave = (e.cnpj ?? "").replace(/\D/g, "") || e.id;
+          const chave = (e.cpf_cnpj ?? "").replace(/\D/g, "") || e.id;
           if (!byCnpj.has(chave)) byCnpj.set(chave, e);
         });
         setEmpresasCert(Array.from(byCnpj.values()).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
@@ -1927,7 +1927,7 @@ function FiscalInner() {
                 // "Empresas": produtores com CNPJ + registros da tabela empresas
                 const empresasTotal = [
                   ...prodCnpj.map(p => ({ id: p.id, label: p.nome, doc: p.cpf_cnpj ?? "" })),
-                  ...empresasCert.map(e => ({ id: e.id, label: e.razao_social ?? e.nome ?? "Empresa", doc: e.cnpj ?? "" })),
+                  ...empresasCert.map(e => ({ id: e.id, label: e.razao_social ?? e.nome ?? "Empresa", doc: e.cpf_cnpj ?? "" })),
                 ];
                 const total = prodCpf.length + empresasTotal.length;
                 if (total > 1) return (

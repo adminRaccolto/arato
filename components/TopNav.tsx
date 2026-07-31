@@ -462,11 +462,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   const isRaccotloStaff = ["raccotlo","raccotlo_gestor","raccotlo_seletor","raccotlo_operacional"].includes(userRole ?? "");
 
-  // Quando a conta tem múltiplas fazendas, exibe o nome do cliente (conta) em vez da fazenda
+  // Sempre exibe contaNome (conta) ou nomeProdutor (AuthProvider) como identidade principal
+  // fazenda?.nome é último recurso (exibia "Fazenda Frei Galvão" quando produtor não tinha join)
   const multiFazenda = fazendaIds.length > 1;
-  const nomeIdentidade = multiFazenda
-    ? (contaNome ?? produtorNome ?? fazenda?.nome ?? null)
-    : (produtorNome ?? fazenda?.nome ?? null);
+  const nomeIdentidade = contaNome ?? nomeProdutor ?? produtorNome ?? fazenda?.nome ?? null;
   const iniciaisFazenda = nomeIdentidade
     ? nomeIdentidade.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
     : "—";

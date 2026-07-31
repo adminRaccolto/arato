@@ -8,7 +8,7 @@ import TopNav from "../../../components/TopNav";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface CfgModulo { [key: string]: string | number | boolean }
 
-interface EmpresaMin { id: string; razao_social?: string; nome?: string; cnpj?: string; inscricao_est?: string; logradouro?: string; numero?: string; bairro?: string; municipio?: string; estado?: string; cep?: string; telefone?: string; }
+interface EmpresaMin { id: string; razao_social?: string; nome?: string; cpf_cnpj?: string; inscricao_est?: string; logradouro?: string; numero?: string; bairro?: string; municipio?: string; estado?: string; cep?: string; telefone?: string; }
 interface ProdutorMin { id: string; nome: string; cpf_cnpj?: string; inscricao_est?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; municipio?: string; estado?: string; cep?: string; telefone?: string; }
 interface EmitterEntry { type: "empresa" | "produtor"; id: string; nome: string; cpf_cnpj?: string; moduloKey: string; }
 
@@ -440,7 +440,7 @@ function ParametrosSistemaContent() {
         data.forEach(r => { if (r.config) map[r.modulo] = r.config as CfgModulo; });
         setCfgs(map);
       });
-    supabase.from("empresas").select("id, razao_social, nome, cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
+    supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
       .then(({ data }) => data && setEmpresas(data as EmpresaMin[]));
     supabase.from("produtores").select("id, nome, cpf_cnpj, inscricao_est, logradouro, numero, complemento, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
       .then(({ data }) => data && setProdutores(data as ProdutorMin[]));
@@ -796,7 +796,7 @@ function ParametrosSistemaContent() {
       const e = empresas.find(x => x.id === emitter.id);
       if (!e) return;
       seed = {
-        cpf_cnpj_emitente: e.cnpj ?? "",
+        cpf_cnpj_emitente: e.cpf_cnpj ?? "",
         razao_social:       e.razao_social ?? e.nome ?? "",
         ie_emitente:        e.inscricao_est ?? "",
         logradouro:         e.logradouro ?? "",
@@ -814,7 +814,7 @@ function ParametrosSistemaContent() {
   // ── Aba Fiscal — por emitente ─────────────────────────────────────────────
   const renderFiscalTab = () => {
     const emitters: EmitterEntry[] = [
-      ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cnpj, moduloKey: `fiscal_emp_${(e.cnpj ?? "").replace(/\D/g, "")}` })),
+      ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cpf_cnpj, moduloKey: `fiscal_emp_${(e.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
       ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${(p.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
     ];
 
@@ -1629,7 +1629,7 @@ function ParametrosSistemaContent() {
               {/* modulo_fiscal_ref — select dos emissores cadastrados */}
               {(() => {
                 const emitters: EmitterEntry[] = [
-                  ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cnpj, moduloKey: `fiscal_emp_${(e.cnpj ?? "").replace(/\D/g, "")}` })),
+                  ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cpf_cnpj, moduloKey: `fiscal_emp_${(e.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
                   ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${(p.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
                 ];
                 const cteC = cfgs["cte"] ?? {};
