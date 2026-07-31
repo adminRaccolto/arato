@@ -1723,13 +1723,13 @@ export type PedidoCompraEntrega = {
 export type RateioRegra = {
   id: string;
   fazenda_id: string;
-  ano_safra_id: string;       // regra válida para este ano safra
-  centro_custo_id: string;    // CC de origem que será distribuído
+  ano_safra_id: string;
+  centro_custo_id: string;        // primeiro CC (retrocompat)
+  centros_custo_ids?: string[];   // todos os CCs selecionados
   nome: string;
   descricao?: string;
   ativo?: boolean;
   created_at?: string;
-  // linhas carregadas em memória (não coluna do banco)
   linhas?: RateioRegraLinha[];
 };
 

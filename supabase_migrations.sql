@@ -8963,3 +8963,18 @@ WHERE finalidades = '{}' AND tipo_empresa IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_empresas_finalidades ON empresas USING gin(finalidades);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: centros_custo_ids[] em regras_rateio — multi-CC por regra
+-- ============================================================================
+
+ALTER TABLE regras_rateio
+  ADD COLUMN IF NOT EXISTS centros_custo_ids jsonb DEFAULT '[]'::jsonb;
+
+-- Backfill: popula centros_custo_ids com o centro_custo_id existente
+UPDATE regras_rateio
+SET centros_custo_ids = jsonb_build_array(centro_custo_id)
+WHERE centros_custo_ids = '[]'::jsonb
+  AND centro_custo_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

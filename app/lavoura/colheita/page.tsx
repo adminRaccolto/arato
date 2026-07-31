@@ -232,7 +232,14 @@ export default function ColheitaPage() {
     setSalvando(true);
     setErro(null);
     try {
-      await criarColheita({ ...formColheita, fazenda_id: fid });
+      await criarColheita({
+        ...formColheita,
+        fazenda_id:  fid,
+        talhao_id:   formColheita.talhao_id   || undefined,
+        deposito_id: formColheita.deposito_id  || undefined,
+        variedade:   formColheita.variedade    || undefined,
+        observacao:  formColheita.observacao   || undefined,
+      });
       setModalColheita(false);
       await carregar();
     } catch (e: unknown) {

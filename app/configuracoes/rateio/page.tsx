@@ -49,7 +49,7 @@ export default function RateioPage() {
   const [filtroAno, setFiltroAno] = useState("");
   const [modalCiclo, setModalCiclo] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [f, setF] = useState({ ano_safra_id: "", centro_custo_id: "", nome: "", descricao: "", ativo: true });
+  const [f, setF] = useState({ ano_safra_id: "", centros_custo_ids: [] as string[], nome: "", descricao: "", ativo: true });
   const [linhas, setLinhas] = useState<LinhaForm[]>([{ ...LINHA_VAZIA }, { ...LINHA_VAZIA }]);
   const [erroCiclo, setErroCiclo] = useState<string | null>(null);
   const [salvandoCiclo, setSalvandoCiclo] = useState(false);
@@ -143,12 +143,15 @@ export default function RateioPage() {
   };
 
   const abrirNovoCiclo = () => {
-    setF({ ano_safra_id: filtroAno, centro_custo_id: "", nome: "", descricao: "", ativo: true });
+    setF({ ano_safra_id: filtroAno, centros_custo_ids: [], nome: "", descricao: "", ativo: true });
     setLinhas([{ ...LINHA_VAZIA }, { ...LINHA_VAZIA }]);
     setEditId(null); setErroCiclo(null); setModalCiclo(true);
   };
   const abrirEditarCiclo = (r: RateioRegra) => {
-    setF({ ano_safra_id: r.ano_safra_id, centro_custo_id: r.centro_custo_id, nome: r.nome, descricao: r.descricao ?? "", ativo: r.ativo ?? true });
+    const ids = r.centros_custo_ids?.length
+      ? r.centros_custo_ids
+      : (r.centro_custo_id ? [r.centro_custo_id] : []);
+    setF({ ano_safra_id: r.ano_safra_id, centros_custo_ids: ids, nome: r.nome, descricao: r.descricao ?? "", ativo: r.ativo ?? true });
     setLinhas(r.linhas?.length ? r.linhas.map(l => ({ ciclo_id: l.ciclo_id ?? "", percentual: String(l.percentual), descricao: l.descricao ?? "" })) : [{ ...LINHA_VAZIA }, { ...LINHA_VAZIA }]);
     setEditId(r.id); setErroCiclo(null); setModalCiclo(true);
   };
@@ -156,7 +159,7 @@ export default function RateioPage() {
   const salvarCiclo = async () => {
     if (!fazendaId) return;
     if (!f.ano_safra_id) { setErroCiclo("Selecione o Ano Safra"); return; }
-    if (!f.centro_custo_id) { setErroCiclo("Selecione o Centro de Custo"); return; }
+    if (!f.centros_custo_ids.length) { setErroCiclo("Selecione ao menos um Centro de Custo"); return; }
     if (!f.nome.trim()) { setErroCiclo("Informe o nome da regra"); return; }
     if (!somaOk) { setErroCiclo(`Os percentuais somam ${somaLinhas.toFixed(2)}% — devem totalizar 100%`); return; }
     setSalvandoCiclo(true); setErroCiclo(null);
@@ -164,7 +167,16 @@ export default function RateioPage() {
       const lp: Omit<RateioRegraLinha, "id" | "regra_id" | "created_at">[] = linhas.map((l, i) => ({
         ciclo_id: l.ciclo_id || undefined, percentual: parseFloat(l.percentual) || 0, descricao: l.descricao || undefined, ordem: i,
       }));
-      const header = { fazenda_id: fazendaId, ano_safra_id: f.ano_safra_id, centro_custo_id: f.centro_custo_id, nome: f.nome.trim(), descricao: f.descricao || undefined, ativo: f.ativo };
+      const firstCC = f.centros_custo_ids[0] ?? "";
+      const header = {
+        fazenda_id: fazendaId,
+        ano_safra_id: f.ano_safra_id,
+        centro_custo_id: firstCC,
+        centros_custo_ids: f.centros_custo_ids,
+        nome: f.nome.trim(),
+        descricao: f.descricao || undefined,
+        ativo: f.ativo,
+      };
       if (editId) await atualizarRateioRegra(editId, header, lp);
       else await criarRateioRegra(header, lp);
       setModalCiclo(false); await carregar();
@@ -376,9 +388,12 @@ export default function RateioPage() {
                               <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{r.nome}</span>
                               {!r.ativo && <span style={{ fontSize: 10, background: "var(--bg-page)", color: "var(--text-3)", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
                             </div>
-                            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 8 }}>
-                              CC: <strong style={{ color: "#1A4870" }}>{nomeCC(r.centro_custo_id)}</strong>
-                              {r.descricao && <span style={{ color: "var(--text-3)", marginLeft: 8 }}>· {r.descricao}</span>}
+                            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 8, display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                              <span style={{ color: "var(--text-3)" }}>CC:</span>
+                              {(r.centros_custo_ids?.length ? r.centros_custo_ids : (r.centro_custo_id ? [r.centro_custo_id] : [])).map(id => (
+                                <span key={id} style={{ fontSize: 11, background: "#EFF6FF", color: "#1A4870", padding: "2px 7px", borderRadius: 5, fontWeight: 600, border: "0.5px solid #B8D4F0" }}>{nomeCC(id)}</span>
+                              ))}
+                              {r.descricao && <span style={{ color: "var(--text-3)", marginLeft: 4 }}>· {r.descricao}</span>}
                             </div>
                             {linhasR.length > 0 && (
                               <>
@@ -528,11 +543,35 @@ export default function RateioPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Centro de Custo de Origem *</label>
-                  <select style={{ ...inp, borderColor: !f.centro_custo_id ? "#E24B4A80" : "var(--border-table)" }} value={f.centro_custo_id} onChange={e => setF(p => ({ ...p, centro_custo_id: e.target.value }))}>
-                    <option value="">— Selecionar CC —</option>
-                    {ccs.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
-                  </select>
+                  <label style={lbl}>
+                    Centros de Custo de Origem *
+                    {f.centros_custo_ids.length > 0 && (
+                      <span style={{ marginLeft: 6, fontSize: 10, background: "#1A5CB8", color: "#fff", borderRadius: 10, padding: "1px 7px" }}>{f.centros_custo_ids.length}</span>
+                    )}
+                  </label>
+                  <div style={{
+                    border: f.centros_custo_ids.length === 0 ? "0.5px solid #E24B4A80" : "0.5px solid var(--border-table)",
+                    borderRadius: 7, maxHeight: 160, overflowY: "auto", background: "var(--bg-page)", padding: "6px 10px",
+                  }}>
+                    {ccs.filter(c => c.parent_id).length === 0 ? (
+                      <div style={{ fontSize: 12, color: "var(--text-3)", padding: "4px 0" }}>Nenhum CC cadastrado</div>
+                    ) : ccs.filter(c => c.parent_id).map(cc => (
+                      <label key={cc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 2px", cursor: "pointer", borderRadius: 5 }}>
+                        <input
+                          type="checkbox"
+                          checked={f.centros_custo_ids.includes(cc.id)}
+                          onChange={e => {
+                            const ids = e.target.checked
+                              ? [...f.centros_custo_ids, cc.id]
+                              : f.centros_custo_ids.filter(id => id !== cc.id);
+                            setF(p => ({ ...p, centros_custo_ids: ids }));
+                          }}
+                          style={{ accentColor: "#1A5CB8", width: 14, height: 14, flexShrink: 0 }}
+                        />
+                        <span style={{ fontSize: 12, color: "var(--text-1)" }}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 16 }}>
@@ -602,7 +641,7 @@ export default function RateioPage() {
               {erroCiclo && <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#791F1F" }}>{erroCiclo}</div>}
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                 <button style={btnR} onClick={() => setModalCiclo(false)}>Cancelar</button>
-                <button style={{ ...btnV, opacity: salvandoCiclo || !f.nome.trim() || !f.ano_safra_id || !f.centro_custo_id || !somaOk ? 0.5 : 1 }} disabled={salvandoCiclo || !f.nome.trim() || !f.ano_safra_id || !f.centro_custo_id || !somaOk} onClick={salvarCiclo}>
+                <button style={{ ...btnV, opacity: salvandoCiclo || !f.nome.trim() || !f.ano_safra_id || !f.centros_custo_ids.length || !somaOk ? 0.5 : 1 }} disabled={salvandoCiclo || !f.nome.trim() || !f.ano_safra_id || !f.centros_custo_ids.length || !somaOk} onClick={salvarCiclo}>
                   {salvandoCiclo ? "Salvando…" : editId ? "Salvar" : "Criar Regra"}
                 </button>
               </div>

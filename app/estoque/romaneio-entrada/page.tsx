@@ -600,29 +600,40 @@ export default function RomaneioEntradaPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, padding: "12px 14px", background: "#F5F3FF", borderRadius: 8, border: "0.5px solid #DDD6FE" }}>
               <div>
                 <label style={lbl}>Emitido por (empresa) *</label>
-                <input style={inp} placeholder="Ex: Bunge Alimentos, Cooperativa…" value={form.emitido_por} onChange={e => setForm(p => ({ ...p, emitido_por: e.target.value }))} disabled={editRom?.status === "confirmado"} />
-              </div>
-              <div>
-                <label style={lbl}>Armazém (Pessoas cadastradas)</label>
                 <select style={inp} value={form.pessoa_id} disabled={editRom?.status === "confirmado"}
                   onChange={e => {
                     const pid = e.target.value;
-                    const depVinc = deposTerceiros.find(d => d.pessoa_id === pid);
-                    setForm(p => ({ ...p, pessoa_id: pid, deposito_id: depVinc ? depVinc.id : p.deposito_id }));
+                    const pessoa = pessoas.find(p => p.id === pid);
+                    const deposFiltrado = deposTerceiros.filter(d => d.pessoa_id === pid);
+                    const depVinc = deposFiltrado[0];
+                    setForm(p => ({
+                      ...p,
+                      pessoa_id: pid,
+                      emitido_por: pessoa?.nome ?? p.emitido_por,
+                      deposito_id: depVinc ? depVinc.id : "",
+                    }));
                   }}>
-                  <option value="">— sem vínculo —</option>
+                  <option value="">— selecione —</option>
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn: "1/-1" }}>
+              <div>
                 <label style={lbl}>Depósito de Armazém *</label>
                 <select style={inp} value={form.deposito_id} onChange={e => setForm(p => ({ ...p, deposito_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
                   <option value="">— selecione o armazém —</option>
-                  {deposTerceiros.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                  {(form.pessoa_id
+                    ? deposTerceiros.filter(d => d.pessoa_id === form.pessoa_id)
+                    : deposTerceiros
+                  ).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                 </select>
-                {deposTerceiros.length === 0 && (
+                {form.pessoa_id && deposTerceiros.filter(d => d.pessoa_id === form.pessoa_id).length === 0 && (
                   <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 4 }}>
-                    Nenhum depósito de terceiro cadastrado. Vá em Cadastros → Pessoas e marque "Criar depósito de armazém vinculado".
+                    Nenhum depósito vinculado a esta pessoa. Vá em Cadastros → Pessoas e marque "Criar depósito de armazém vinculado".
+                  </div>
+                )}
+                {!form.pessoa_id && deposTerceiros.length === 0 && (
+                  <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 4 }}>
+                    Nenhum depósito de terceiro cadastrado.
                   </div>
                 )}
                 <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
