@@ -642,12 +642,7 @@ function CadastrosInner() {
 
     if (aba === "produtores")  carregarProdutores();
     if (aba === "empresas") {
-      listarEmpresas(fazendaId).then(emps => {
-        setEmpresas(emps);
-        const map: Record<string, string> = {};
-        emps.forEach(e => { if (e.produtor_id) map[e.produtor_id] = e.id; });
-        setProdEmpresaMap(map);
-      }).catch(e => setErro(e.message));
+      // empresas carregadas pelo useEffect separado abaixo (multi-fazenda)
       carregarProdutoresSilencioso();
     }
     if (aba === "fazendas") {
@@ -829,6 +824,23 @@ function CadastrosInner() {
     Promise.all(fzIds.map(f => listarDepositos(f.id!)))
       .then(resultados => setDepositos(resultados.flat()))
       .catch(() => {});
+  }, [aba, fazendas, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Empresas: carrega de todas as fazendas da conta para não perder registros criados em outras fazendas
+  useEffect(() => {
+    if (aba !== "empresas") return;
+    const ids = fazendas.length > 0 ? fazendas.map(f => f.id!) : fazendaId ? [fazendaId] : [];
+    if (ids.length === 0) return;
+    Promise.all(ids.map(id => listarEmpresas(id).catch(() => [] as Empresa[])))
+      .then(resultados => {
+        const todas = resultados.flat();
+        const unicas = Array.from(new Map(todas.map(e => [e.id, e])).values())
+          .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""));
+        setEmpresas(unicas);
+        const map: Record<string, string> = {};
+        unicas.forEach(e => { if (e.produtor_id) map[e.produtor_id] = e.id; });
+        setProdEmpresaMap(map);
+      }).catch(() => {});
   }, [aba, fazendas, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carrega talhões/matrículas ao expandir fazenda
@@ -2081,7 +2093,7 @@ function CadastrosInner() {
             </p>
           </div>
           {/* Seletor de fazenda — obrigatório, usado em todos os modais desta página */}
-          {fazendas.length > 0 && (
+          {fazendas.length > 0 && aba !== "empresas" && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Fazenda:</span>
               <select
