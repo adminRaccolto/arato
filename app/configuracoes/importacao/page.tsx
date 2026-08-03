@@ -1224,7 +1224,7 @@ function ImportacaoInner() {
     const resp = await fetch("/api/importar-apoio", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: validas, conta_id: contaId }),
+      body: JSON.stringify({ rows: validas, conta_id: contaId, fazenda_id_fallback: fazendaId }),
     });
     const json = await resp.json() as {
       ok: number; erros: number;

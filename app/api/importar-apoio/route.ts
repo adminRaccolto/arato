@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  const { rows, conta_id } = await req.json() as { rows: ApoioRow[]; conta_id: string };
+  const { rows, conta_id, fazenda_id_fallback } = await req.json() as { rows: ApoioRow[]; conta_id: string; fazenda_id_fallback?: string };
   if (!rows?.length || !conta_id) {
     return NextResponse.json({ error: "Parâmetros inválidos" }, { status: 400 });
   }
@@ -131,15 +131,14 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const nomeFazNorm = normalizar(r.fazenda_nome ?? "");
-    // 1ª tentativa: match direto na tabela fazendas
-    // 2ª tentativa: produtor PJ cadastrado com esse nome (usa o fazenda_id do produtor)
+    // 1ª tentativa: fazenda pelo nome | 2ª: produtor PJ | 3ª: fazenda ativa passada pelo cliente
     const fazIdRow = nomeFazNorm
-      ? (fazendaMap[nomeFazNorm] ?? produtorPJFazendaMap[nomeFazNorm])
-      : undefined;
+      ? (fazendaMap[nomeFazNorm] ?? produtorPJFazendaMap[nomeFazNorm] ?? fazenda_id_fallback)
+      : fazenda_id_fallback;
 
     if (!fazIdRow) {
       fazendasNaoEncontradas.add(r.fazenda_nome ?? "(vazio)");
-      erros.push({ linha: i + 2, msg: `Fazenda/empresa "${r.fazenda_nome}" não encontrada` });
+      erros.push({ linha: i + 2, msg: `Fazenda "${r.fazenda_nome}" não encontrada` });
       continue;
     }
 
