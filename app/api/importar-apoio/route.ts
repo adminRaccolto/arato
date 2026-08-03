@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface ApoioRow {
   fazenda_nome: string;
@@ -182,15 +182,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Inserir 1 a 1 — cada linha independente, falha isolada
+  // Inserir em lotes de 50 — falha isolada por lote, bem abaixo do timeout
+  const BATCH = 50;
   let ok = 0;
   const errosInsert: { linha: number; msg: string }[] = [];
-  for (let i = 0; i < toInsert.length; i++) {
-    const { error } = await admin.from("apoio_lancamentos").insert(toInsert[i]);
+  for (let s = 0; s < toInsert.length; s += BATCH) {
+    const chunk = toInsert.slice(s, s + BATCH);
+    const { error } = await admin.from("apoio_lancamentos").insert(chunk);
     if (error) {
-      errosInsert.push({ linha: i + 2, msg: error.message });
+      // falha no lote: registrar cada linha individualmente
+      for (let j = 0; j < chunk.length; j++) {
+        errosInsert.push({ linha: s + j + 2, msg: error.message });
+      }
     } else {
-      ok++;
+      ok += chunk.length;
     }
   }
 
