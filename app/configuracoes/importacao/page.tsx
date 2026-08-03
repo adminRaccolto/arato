@@ -1231,11 +1231,14 @@ function ImportacaoInner() {
     }
     if (!contaIdReal) { setLoadingApoio(false); return; }
 
+    // Fallback: fazenda ativa ou, se nula, primeira fazenda da conta
+    const fallbackFazendaId = fazendaId || fazendaIds[0] || null;
+
     // Usar API route com service_role_key — bypassa RLS, insere 1 a 1
     const resp = await fetch("/api/importar-apoio", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: validas, conta_id: contaIdReal, fazenda_id_fallback: fazendaId }),
+      body: JSON.stringify({ rows: validas, conta_id: contaIdReal, fazenda_id_fallback: fallbackFazendaId }),
     });
     const json = await resp.json() as {
       ok: number; erros: number;
