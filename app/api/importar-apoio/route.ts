@@ -171,7 +171,8 @@ export async function POST(req: NextRequest) {
       valor:                Number(r.valor) || 0,
       moeda,
       pessoa_id:            pessoaInfo?.id ?? null,
-      pessoa_nome:          pessoaInfo?.nome ?? null,
+      // Se não achou no cadastro, grava o nome da planilha — evita "—" na tela
+      pessoa_nome:          pessoaInfo?.nome ?? r.pessoa_nome?.trim() || null,
       numero_documento:     r.numero_documento?.trim() || null,
       tipo_documento_lcdpr: r.tipo_documento_lcdpr?.trim() || null,
       num_parcela:          r.num_parcela ? parseInt(r.num_parcela) : null,
