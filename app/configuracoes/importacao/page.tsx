@@ -1060,7 +1060,7 @@ function RefCategorias() {
 
 // ─── Página principal ─────────────────────────────────────────
 function ImportacaoInner() {
-  const { fazendaId, contaId, userRole } = useAuth();
+  const { fazendaId, fazendaIds, contaId, userRole } = useAuth();
   const searchParams = useSearchParams();
   const [aba, setAba] = useState<Aba>((searchParams.get("aba") as Aba) ?? "pessoas");
   const [fazendas, setFazendas] = useState<{id:string;nome:string}[]>([]);
