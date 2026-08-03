@@ -1213,18 +1213,29 @@ function ImportacaoInner() {
   }
 
   async function importarApoioLancamentos(rows: LancRow[]) {
-    if (!contaId || !rows.length) return;
+    if ((!contaId && !fazendaId) || !rows.length) return;
     setLoadingApoio(true);
 
     // Separar linhas válidas
     const validas = rows.filter(r => r._status !== "erro" && r._status !== "duplicado");
     const invalidas = rows.filter(r => r._status === "erro" || r._status === "duplicado");
 
-    // Usar API route com service_role_key — bypassa RLS para multi-fazenda
+    // Raccotlo: contaId aponta para a conta interna da Raccolto, não do cliente.
+    // Buscar o conta_id real pela fazenda ativa para garantir que as fazendas
+    // do cliente sejam resolvidas corretamente na API.
+    let contaIdReal = contaId;
+    if (fazendaId) {
+      const { data: fazDado } = await supabase
+        .from("fazendas").select("conta_id").eq("id", fazendaId).single();
+      if (fazDado?.conta_id) contaIdReal = fazDado.conta_id;
+    }
+    if (!contaIdReal) { setLoadingApoio(false); return; }
+
+    // Usar API route com service_role_key — bypassa RLS, insere 1 a 1
     const resp = await fetch("/api/importar-apoio", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: validas, conta_id: contaId, fazenda_id_fallback: fazendaId }),
+      body: JSON.stringify({ rows: validas, conta_id: contaIdReal, fazenda_id_fallback: fazendaId }),
     });
     const json = await resp.json() as {
       ok: number; erros: number;

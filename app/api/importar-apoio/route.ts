@@ -182,17 +182,15 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Inserir em lotes de 500
-  const BATCH = 500;
+  // Inserir 1 a 1 — cada linha independente, falha isolada
   let ok = 0;
   const errosInsert: { linha: number; msg: string }[] = [];
-  for (let s = 0; s < toInsert.length; s += BATCH) {
-    const chunk = toInsert.slice(s, s + BATCH);
-    const { error } = await admin.from("apoio_lancamentos").insert(chunk);
+  for (let i = 0; i < toInsert.length; i++) {
+    const { error } = await admin.from("apoio_lancamentos").insert(toInsert[i]);
     if (error) {
-      errosInsert.push({ linha: s + 1, msg: `Lote ${Math.floor(s / BATCH) + 1}: ${error.message}` });
+      errosInsert.push({ linha: i + 2, msg: error.message });
     } else {
-      ok += chunk.length;
+      ok++;
     }
   }
 
