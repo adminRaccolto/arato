@@ -632,7 +632,7 @@ export default function CtePage() {
       ══════════════════════════════════════════════════════ */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 800, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1060, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
             <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -643,11 +643,12 @@ export default function CtePage() {
               <button onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
               {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
 
               {/* ── Identificação ── */}
               <div style={divider}>Identificação</div>
+              {/* Linha 1: Nº CT-e | Série | Data | Tomador */}
               <div>
                 <label style={lbl}>Nº CT-e</label>
                 <input value={form.numero_cte} onChange={e => setForm(f => ({ ...f, numero_cte: e.target.value }))} style={inp} />
@@ -660,19 +661,6 @@ export default function CtePage() {
                 <label style={lbl}>Data de Emissão</label>
                 <input type="date" value={form.data_emissao} onChange={e => setForm(f => ({ ...f, data_emissao: e.target.value }))} style={inp} />
               </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>CFOP</label>
-                <select value={form.cfop} onChange={e => {
-                  const desc = CFOPS_CTE.find(c => c.cfop === e.target.value)?.desc ?? form.natureza_operacao;
-                  setForm(f => ({ ...f, cfop: e.target.value, natureza_operacao: desc }));
-                }} style={inp}>
-                  {CFOPS_CTE.map(c => <option key={c.cfop} value={c.cfop}>{c.cfop} — {c.desc}</option>)}
-                </select>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Natureza da Operação</label>
-                <input value={form.natureza_operacao} onChange={e => setForm(f => ({ ...f, natureza_operacao: e.target.value }))} style={inp} />
-              </div>
               <div>
                 <label style={lbl}>Tomador do Serviço</label>
                 <select value={form.tomador_tipo} onChange={e => setForm(f => ({ ...f, tomador_tipo: e.target.value as TomadorTipo }))} style={inp}>
@@ -681,6 +669,20 @@ export default function CtePage() {
                   <option value="expedidor">Expedidor</option>
                   <option value="recebedor">Recebedor</option>
                 </select>
+              </div>
+              {/* Linha 2: CFOP (3 cols) + Natureza (1 col) */}
+              <div style={{ gridColumn: "1 / 4" }}>
+                <label style={lbl}>CFOP</label>
+                <select value={form.cfop} onChange={e => {
+                  const desc = CFOPS_CTE.find(c => c.cfop === e.target.value)?.desc ?? form.natureza_operacao;
+                  setForm(f => ({ ...f, cfop: e.target.value, natureza_operacao: desc }));
+                }} style={inp}>
+                  {CFOPS_CTE.map(c => <option key={c.cfop} value={c.cfop}>{c.cfop} — {c.desc}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Natureza da Operação</label>
+                <input value={form.natureza_operacao} onChange={e => setForm(f => ({ ...f, natureza_operacao: e.target.value }))} style={inp} />
               </div>
 
               {/* ── Remetente ── */}
@@ -692,7 +694,7 @@ export default function CtePage() {
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn: "1 / 3" }}>
+              <div style={{ gridColumn: "1 / 4" }}>
                 <label style={lbl}>Razão Social / Nome</label>
                 <input value={form.remetente_nome} onChange={e => setForm(f => ({ ...f, remetente_nome: e.target.value }))} style={inp} />
               </div>
@@ -710,7 +712,7 @@ export default function CtePage() {
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn: "1 / 3" }}>
+              <div style={{ gridColumn: "1 / 4" }}>
                 <label style={lbl}>Razão Social / Nome</label>
                 <input value={form.destinatario_nome} onChange={e => setForm(f => ({ ...f, destinatario_nome: e.target.value }))} style={inp} />
               </div>
@@ -719,7 +721,7 @@ export default function CtePage() {
                 <input value={form.destinatario_cnpj} onChange={e => setForm(f => ({ ...f, destinatario_cnpj: e.target.value }))} style={inp} />
               </div>
 
-              {/* ── Percurso ── */}
+              {/* ── Percurso: Origem e Destino na mesma linha ── */}
               <div style={divider}>Percurso</div>
               <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Município de Origem</label>
@@ -731,6 +733,7 @@ export default function CtePage() {
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
+              <div style={{ gridColumn: "4 / 5" }} />
               <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Município de Destino</label>
                 <input value={form.municipio_destino} onChange={e => setForm(f => ({ ...f, municipio_destino: e.target.value }))} style={inp} placeholder="Rondonópolis" />
@@ -741,8 +744,9 @@ export default function CtePage() {
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
+              <div style={{ gridColumn: "4 / 5" }} />
 
-              {/* ── Mercadoria ── */}
+              {/* ── Mercadoria: Produto+NCM+Qtd numa linha, Unidade+Valor+PesoBruto+PesoLíq noutra ── */}
               <div style={divider}>Mercadoria Transportada</div>
               <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Produto</label>
@@ -777,26 +781,25 @@ export default function CtePage() {
 
               {/* ── Veículo & Motorista ── */}
               <div style={divider}>Veículo & Motorista (frota própria — CLT)</div>
-              <div>
+              <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Veículo</label>
                 <select value={form.veiculo_id} onChange={e => selecionarVeiculo(e.target.value)} style={inp}>
                   <option value="">— Selecionar —</option>
                   {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
                 </select>
               </div>
-              <div>
+              <div style={{ gridColumn: "3 / 5" }}>
                 <label style={lbl}>Motorista</label>
                 <select value={form.motorista_id} onChange={e => setForm(f => ({ ...f, motorista_id: e.target.value }))} style={inp}>
                   <option value="">— Selecionar —</option>
                   {motoristas.map(m => <option key={m.id} value={m.id}>{m.nome} {m.cpf ? `· ${m.cpf}` : ""}</option>)}
                 </select>
               </div>
-              <div />
 
               {/* ── Valores & ICMS ── */}
               <div style={divider}>Valores & ICMS</div>
               <div>
-                <label style={lbl}>Valor do Frete (prestação) (R$)</label>
+                <label style={lbl}>Valor do Frete (R$)</label>
                 <InputMonetario value={form.valor_frete} onChange={v => setForm(f => ({ ...f, valor_frete: v }))} style={inp} />
               </div>
               <div>
@@ -809,6 +812,7 @@ export default function CtePage() {
                 <label style={lbl}>Valor ICMS (calculado)</label>
                 <div style={{ ...inp, background: "var(--bg-card)", color: "#1A4870", fontWeight: 600 }}>{fmtBRL(valorIcms)}</div>
               </div>
+              <div />
 
               {/* ── Vínculo NF-e ── */}
               <div style={divider}>Vínculo</div>
