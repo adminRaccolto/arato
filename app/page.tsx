@@ -404,11 +404,32 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_ids: fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId] }),
       }).then(r => r.json()).catch(() => ({ ok: false, data: [], count: 0 })),
+
+      // Contratos com prazo de entrega vencendo nos próximos 30 dias
+      supabase.from("contratos")
+        .select("id, numero, produto, comprador, data_entrega, quantidade_sc, entregue_sc, status")
+        .eq("fazenda_id", fazendaId)
+        .eq("confirmado", true)
+        .neq("status", "encerrado")
+        .neq("status", "cancelado")
+        .gte("data_entrega", isoHoje)
+        .lte("data_entrega", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0])
+        .order("data_entrega"),
+
+      // Contratos com saldo totalmente entregue mas não encerrados
+      supabase.from("contratos")
+        .select("id, numero, produto, comprador, data_entrega, quantidade_sc, entregue_sc, status")
+        .eq("fazenda_id", fazendaId)
+        .eq("confirmado", true)
+        .in("status", ["aberto", "parcial"])
+        .gt("quantidade_sc", 0),
+
     ]).then(([
       cpRes, crRes, arrRes, certRes,
       cpTotalRes, crTotalRes, cpSemRes, crSemRes,
       ciclosRes, contratosRes, cpVencRes, segurosRes,
       pendFiscalRes, insNegRes, transfSolRes,
+      contratosEntregaRes, contratosSaldoRes,
     ]) => {
       const novosAlertas: Alerta[] = [];
 
@@ -579,6 +600,49 @@ export default function Dashboard() {
           link: "/estoque/transferencias",
           linkLabel: "Emitir NF",
         });
+      }
+
+      // ── Prazo de entrega de contratos ──
+      type ContratoAlerta = { id: string; numero: string; produto: string; comprador: string; data_entrega: string; quantidade_sc: number; entregue_sc: number; status: string };
+      for (const c of (contratosEntregaRes.data ?? []) as ContratoAlerta[]) {
+        const dias = diasAte(c.data_entrega);
+        const saldoSc = Math.max(0, (c.quantidade_sc ?? 0) - (c.entregue_sc ?? 0));
+        const urg: Urgencia = dias <= 3 ? "critico" : dias <= 7 ? "alto" : "medio";
+        novosAlertas.push({
+          id: `entrega-${c.id}`,
+          tipo: "contrato",
+          desc: `Entrega "${c.numero}" (${c.produto}) · ${saldoSc.toLocaleString("pt-BR")} sc restantes · ${labelDias(dias)} · ${c.comprador}`,
+          dias,
+          urgencia: urg,
+          link: "/contratos",
+          linkLabel: "Ver Contrato",
+        });
+      }
+
+      // ── Contratos com entrega completa pendentes de encerramento ──
+      const contratosParaEncerrar = ((contratosSaldoRes.data ?? []) as ContratoAlerta[])
+        .filter(c => (c.entregue_sc ?? 0) >= (c.quantidade_sc ?? 0) && (c.quantidade_sc ?? 0) > 0);
+      if (contratosParaEncerrar.length > 0) {
+        if (contratosParaEncerrar.length === 1) {
+          const c = contratosParaEncerrar[0];
+          novosAlertas.push({
+            id: `encerrar-${c.id}`,
+            tipo: "contrato",
+            desc: `Contrato "${c.numero}" (${c.produto}) totalmente entregue — encerre o contrato para liberar o saldo`,
+            urgencia: "medio",
+            link: "/contratos",
+            linkLabel: "Encerrar",
+          });
+        } else {
+          novosAlertas.push({
+            id: "encerrar-varios",
+            tipo: "contrato",
+            desc: `${contratosParaEncerrar.length} contratos totalmente entregues aguardando encerramento`,
+            urgencia: "medio",
+            link: "/contratos",
+            linkLabel: "Ver Contratos",
+          });
+        }
       }
 
       // Ordenar: crítico → alto → médio
