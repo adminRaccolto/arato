@@ -163,6 +163,12 @@ export default function ApoioFinanceiroPage() {
   const [acaoId, setAcaoId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // ── Seleção em lote (aba exclusivo) ───────────────────────────────────────
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [modalBaixaLote, setModalBaixaLote] = useState(false);
+  const [baixaLoteData, setBaixaLoteData] = useState(hoje());
+  const [salvandoLote, setSalvandoLote] = useState(false);
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -346,6 +352,42 @@ export default function ApoioFinanceiroPage() {
     await supabase.from("apoio_lancamentos").delete().eq("id", a.id);
     await carregar();
     setAcaoId(null);
+  }
+
+  // ── Baixa em lote (exclusivo) ─────────────────────────────────────────────
+  async function baixarEmLote() {
+    if (!selecionados.size || !baixaLoteData) return;
+    setSalvandoLote(true);
+    const ids = Array.from(selecionados);
+    const { error } = await supabase
+      .from("apoio_lancamentos")
+      .update({ baixado: true, data_baixa: baixaLoteData })
+      .in("id", ids);
+    setSalvandoLote(false);
+    if (!error) {
+      setModalBaixaLote(false);
+      setSelecionados(new Set());
+      setMsg(`${ids.length} lançamento(s) baixado(s) com sucesso.`);
+      setTimeout(() => setMsg(null), 4000);
+      await carregar();
+    }
+  }
+
+  function toggleSelecionado(id: string) {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelecionarTodos() {
+    const abertos = apoioLancs.filter((a) => !a.baixado).map((a) => a.id);
+    if (abertos.every((id) => selecionados.has(id))) {
+      setSelecionados(new Set());
+    } else {
+      setSelecionados(new Set(abertos));
+    }
   }
 
   // ── Excel export ──────────────────────────────────────────────────────────
@@ -660,7 +702,27 @@ export default function ApoioFinanceiroPage() {
         {/* ── Aba: Apoio Exclusivo ────────────────────────────────────────────── */}
         {aba === "exclusivo" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+              {selecionados.size > 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 13, color: "#555", fontWeight: 600 }}>
+                    {selecionados.size} selecionado(s)
+                  </span>
+                  <button
+                    onClick={() => { setBaixaLoteData(hoje()); setModalBaixaLote(true); }}
+                    style={btn("#C9921B")}
+                  >
+                    Baixar Selecionados
+                  </button>
+                  <button onClick={() => setSelecionados(new Set())} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+                    Limpar Seleção
+                  </button>
+                </div>
+              ) : (
+                <span style={{ fontSize: 12, color: "#aaa" }}>
+                  Selecione lançamentos para baixa em lote
+                </span>
+              )}
               <button onClick={() => { setFormApoio(FORM_VAZIO); setModalAberto(true); }} style={btn("#1A4870")}>
                 + Novo Lançamento
               </button>
@@ -671,6 +733,14 @@ export default function ApoioFinanceiroPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
+                      <th style={{ ...th, width: 36 }}>
+                        <input
+                          type="checkbox"
+                          checked={apoioLancs.filter((a) => !a.baixado).length > 0 && apoioLancs.filter((a) => !a.baixado).every((a) => selecionados.has(a.id))}
+                          onChange={toggleSelecionarTodos}
+                          title="Selecionar todos em aberto"
+                        />
+                      </th>
                       {["Vencimento", "Tipo", "Descrição", "Pessoa/Fornecedor", "Categoria", "Valor", "Status", "Ações"].map((h) => (
                         <th key={h} style={th}>{h}</th>
                       ))}
@@ -679,18 +749,28 @@ export default function ApoioFinanceiroPage() {
                   <tbody>
                     {apoioLancs.length === 0 && (
                       <tr>
-                        <td colSpan={8} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
+                        <td colSpan={9} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
                           {carregando ? "Carregando…" : "Nenhum lançamento exclusivo cadastrado."}
                         </td>
                       </tr>
                     )}
                     {apoioLancs.map((a) => {
                       const emAcao = acaoId === a.id;
+                      const selecionado = selecionados.has(a.id);
                       const pessoaNome = a.pessoa_id
                         ? (pessoas.find((p) => p.id === a.pessoa_id)?.nome ?? a.pessoa_nome ?? "—")
                         : (a.pessoa_nome ?? "—");
                       return (
-                        <tr key={a.id} style={{ background: a.baixado ? "#F9FFF9" : "#fff" }}>
+                        <tr key={a.id} style={{ background: selecionado ? "#FFF8F0" : a.baixado ? "#F9FFF9" : "#fff" }}>
+                          <td style={{ ...td, textAlign: "center" }}>
+                            {!a.baixado && (
+                              <input
+                                type="checkbox"
+                                checked={selecionado}
+                                onChange={() => toggleSelecionado(a.id)}
+                              />
+                            )}
+                          </td>
                           <td style={td}>{fmtData(a.data_vencimento)}</td>
                           <td style={td}>
                             <span style={{
@@ -808,6 +888,49 @@ export default function ApoioFinanceiroPage() {
                   style={btn("#C9921B")}
                 >
                   {salvandoBaixa ? "Salvando…" : "Confirmar Baixa"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Modal: Baixa em Lote ──────────────────────────────────────────── */}
+        {modalBaixaLote && (
+          <div
+            onClick={() => setModalBaixaLote(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ ...card, width: 400, maxWidth: "95vw", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}
+            >
+              <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
+                Baixa em Lote
+              </h3>
+              <p style={{ margin: "0 0 18px", fontSize: 12, color: "#888" }}>
+                {selecionados.size} lançamento(s) selecionado(s) serão marcados como baixados.
+              </p>
+
+              <div>
+                <label style={lbl}>Data da Baixa *</label>
+                <input
+                  type="date"
+                  value={baixaLoteData}
+                  onChange={(e) => setBaixaLoteData(e.target.value)}
+                  style={{ ...inp, width: "100%" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                <button onClick={() => setModalBaixaLote(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+                  Cancelar
+                </button>
+                <button
+                  onClick={baixarEmLote}
+                  disabled={salvandoLote || !baixaLoteData}
+                  style={btn("#C9921B")}
+                >
+                  {salvandoLote ? "Baixando…" : `Confirmar Baixa (${selecionados.size})`}
                 </button>
               </div>
             </div>

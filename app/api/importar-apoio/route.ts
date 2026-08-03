@@ -145,15 +145,13 @@ export async function POST(req: NextRequest) {
   let ok = 0;
   for (let s = 0; s < toInsert.length; s += BATCH) {
     const chunk = toInsert.slice(s, s + BATCH);
-    const { error, count } = await admin
+    const { error } = await admin
       .from("apoio_lancamentos")
-      .insert(chunk)
-      .select("id", { count: "exact", head: true });
+      .insert(chunk);
     if (error) {
-      // Se um lote falhar, registra o erro mas continua os outros lotes
       erros.push({ linha: s + 1, msg: `Lote ${Math.floor(s/BATCH)+1}: ${error.message}` });
     } else {
-      ok += count ?? chunk.length;
+      ok += chunk.length;
     }
   }
 
