@@ -8983,3 +8983,17 @@ WHERE centros_custo_ids = '[]'::jsonb
   AND centro_custo_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: emitente no CT-e (empresa transportadora como emissora)
+-- ============================================================================
+
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS emitente_id UUID REFERENCES empresas(id),
+  ADD COLUMN IF NOT EXISTS emitente_razao_social TEXT,
+  ADD COLUMN IF NOT EXISTS emitente_cnpj TEXT;
+
+-- Índice para buscas por emitente
+CREATE INDEX IF NOT EXISTS idx_ctes_emitente_id ON ctes(emitente_id);
+
+NOTIFY pgrst, 'reload schema';

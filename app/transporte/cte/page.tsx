@@ -60,6 +60,9 @@ interface Cte {
   base_calc_icms: number;
   aliquota_icms: number;
   valor_icms: number;
+  emitente_id?: string | null;
+  emitente_razao_social?: string | null;
+  emitente_cnpj?: string | null;
   veiculo_id?: string | null;
   veiculo_placa: string;
   veiculo_tipo?: string | null;
@@ -77,6 +80,7 @@ interface Cte {
 interface VeiculoMin { id: string; placa: string; tipo?: string; cap_kg?: number; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; cnh?: string; }
 interface PessoaMin { id: string; nome: string; cpf_cnpj?: string; municipio?: string; estado?: string; }
+interface EmpresaTransp { id: string; razao_social?: string | null; nome?: string | null; cpf_cnpj?: string | null; rntrc?: string | null; }
 
 const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> = {
   rascunho:   { label: "Rascunho",  bg: "#FBF3E0", cl: "#7B4A00" },
@@ -106,6 +110,8 @@ function imprimirDacte(c: Cte, logoUrl?: string | null) {
   const valorFmt  = c.valor_frete.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
   const numFmt    = c.numero_cte.padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
   const icmsFmt   = c.valor_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+  const emitNome  = c.emitente_razao_social ?? "—";
+  const emitCnpj  = c.emitente_cnpj ?? "—";
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>DACTE CT-e ${numFmt} — Série ${c.serie}</title>
@@ -147,6 +153,21 @@ td{border:0.3mm solid #000;padding:1mm}
       <div class="val" style="font-size:7pt">${c.natureza_operacao}</div>
       <div class="lbl" style="margin-top:2mm">TOMADOR DO SERVIÇO</div>
       <div class="val" style="font-size:7pt">${{ remetente:"Remetente (0)", expedidor:"Expedidor (1)", recebedor:"Recebedor (2)", destinatario:"Destinatário (3)" }[c.tomador_tipo] ?? c.tomador_tipo}</div>
+    </div>
+  </div>
+
+  <!-- EMITENTE -->
+  <div class="section" style="margin-bottom:1.5mm">
+    <div class="section-header">EMITENTE (TRANSPORTADORA)</div>
+    <div class="row">
+      <div class="box" style="flex:3">
+        <span class="lbl">RAZÃO SOCIAL</span>
+        <span class="val">${emitNome}</span>
+      </div>
+      <div class="box" style="flex:1">
+        <span class="lbl">CNPJ</span>
+        <span class="val">${emitCnpj}</span>
+      </div>
     </div>
   </div>
 
@@ -241,12 +262,13 @@ window.onload = function() {
 // Componente
 // ─────────────────────────────────────────────────────────────
 export default function CtePage() {
-  const { fazendaId, logoCliente, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, fazendaIds, logoCliente, podeAcessarPlano } = useAuth();
 
-  const [ctes,      setCtes]      = useState<Cte[]>([]);
-  const [veiculos,  setVeiculos]  = useState<VeiculoMin[]>([]);
-  const [motoristas,setMotoristas]= useState<MotoristaMin[]>([]);
-  const [pessoas,   setPessoas]   = useState<PessoaMin[]>([]);
+  const [ctes,           setCtes]           = useState<Cte[]>([]);
+  const [veiculos,       setVeiculos]       = useState<VeiculoMin[]>([]);
+  const [motoristas,     setMotoristas]     = useState<MotoristaMin[]>([]);
+  const [pessoas,        setPessoas]        = useState<PessoaMin[]>([]);
+  const [empresasTransp, setEmpresasTransp] = useState<EmpresaTransp[]>([]);
 
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState("");
@@ -262,6 +284,7 @@ export default function CtePage() {
   const [proximoNr, setProximoNr] = useState("1");
 
   const FORM_VAZIO = () => ({
+    emitente_id: "", emitente_razao_social: "", emitente_cnpj: "",
     numero_cte: proximoNr, serie: "1", data_emissao: hoje(),
     cfop: "6353",
     natureza_operacao: "Prestação de Serviço de Transporte",
@@ -287,16 +310,19 @@ export default function CtePage() {
   // ── Carregar ─────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [{ data: cd }, { data: vd }, { data: md }, { data: pd }] = await Promise.all([
+    const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId];
+    const [{ data: cd }, { data: vd }, { data: md }, { data: pd }, { data: ed }] = await Promise.all([
       supabase.from("ctes").select("*").eq("fazenda_id", fazendaId).order("data_emissao", { ascending: false }),
       supabase.from("veiculos").select("id, placa, tipo, cap_kg").eq("fazenda_id", fazendaId).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, cnh").eq("fazenda_id", fazendaId).eq("ativo", true),
       supabase.from("pessoas").select("id, nome, cpf_cnpj, municipio, estado").eq("fazenda_id", fazendaId),
+      supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, rntrc").in("fazenda_id", ids).contains("finalidades", ["transportadora"]),
     ]);
     setCtes(cd ?? []);
     setVeiculos(vd ?? []);
     setMotoristas(md ?? []);
     setPessoas(pd ?? []);
+    setEmpresasTransp((ed ?? []).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
     // Próximo número
     if (cd && cd.length > 0) {
       const maxNr = Math.max(...(cd as Cte[]).map(c => parseInt(c.numero_cte) || 0));
@@ -317,6 +343,7 @@ export default function CtePage() {
   function abrirEditar(c: Cte) {
     setCteEdit(c);
     setForm({
+      emitente_id: c.emitente_id ?? "", emitente_razao_social: c.emitente_razao_social ?? "", emitente_cnpj: c.emitente_cnpj ?? "",
       numero_cte: c.numero_cte, serie: c.serie, data_emissao: c.data_emissao,
       cfop: c.cfop, natureza_operacao: c.natureza_operacao,
       tomador_tipo: c.tomador_tipo,
@@ -376,8 +403,12 @@ export default function CtePage() {
     try {
       const veiculo = veiculos.find(v => v.id === form.veiculo_id);
       const motorista = motoristas.find(m => m.id === form.motorista_id);
+      const emitente = empresasTransp.find(e => e.id === form.emitente_id);
       const payload = {
         fazenda_id: fazendaId,
+        emitente_id: form.emitente_id || null,
+        emitente_razao_social: (emitente?.razao_social ?? emitente?.nome ?? form.emitente_razao_social) || null,
+        emitente_cnpj: (emitente?.cpf_cnpj ?? form.emitente_cnpj) || null,
         numero_cte: form.numero_cte,
         serie: form.serie,
         chave_acesso: cteEdit?.chave_acesso ?? null,
@@ -645,6 +676,41 @@ export default function CtePage() {
 
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
               {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
+
+              {/* ── Emitente (Transportadora) ── */}
+              <div style={divider}>Emitente — Empresa Transportadora</div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                {empresasTransp.length === 0 ? (
+                  <div style={{ background: "#FBF3E0", border: "0.5px solid #E9C97B", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7B4A00" }}>
+                    Nenhuma empresa com finalidade <strong>Transportadora</strong> cadastrada.
+                    Acesse <strong>Cadastros → Empresas → editar empresa → marque "Transportadora"</strong>.
+                  </div>
+                ) : (
+                  <div>
+                    <label style={lbl}>Selecionar Transportadora Emitente</label>
+                    <select
+                      value={form.emitente_id}
+                      onChange={e => {
+                        const emp = empresasTransp.find(x => x.id === e.target.value);
+                        setForm(f => ({
+                          ...f,
+                          emitente_id: e.target.value,
+                          emitente_razao_social: emp?.razao_social ?? emp?.nome ?? "",
+                          emitente_cnpj: emp?.cpf_cnpj ?? "",
+                        }));
+                      }}
+                      style={{ ...inp, borderColor: !form.emitente_id ? "#E9C97B" : undefined }}
+                    >
+                      <option value="">— Selecionar emitente —</option>
+                      {empresasTransp.map(e => (
+                        <option key={e.id} value={e.id}>
+                          {e.razao_social ?? e.nome} {e.cpf_cnpj ? `· ${e.cpf_cnpj}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
 
               {/* ── Identificação ── */}
               <div style={divider}>Identificação</div>
