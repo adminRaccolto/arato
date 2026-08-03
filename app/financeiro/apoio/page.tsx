@@ -62,11 +62,10 @@ const fmtBRL = (v: number) =>
 const fmtData = (d: string) =>
   d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
-function mesAtual() {
-  const hoje = new Date();
-  const y = hoje.getFullYear();
-  const m = String(hoje.getMonth() + 1).padStart(2, "0");
-  return { ini: `${y}-${m}-01`, fim: `${y}-${m}-31` };
+function periodoApoio() {
+  // Padrão amplo: 3 anos atrás até 5 anos à frente — cobre todos os lançamentos abertos
+  const y = new Date().getFullYear();
+  return { ini: `${y - 3}-01-01`, fim: `${y + 5}-12-31` };
 }
 
 function hoje() {
@@ -125,7 +124,7 @@ const FORM_VAZIO = {
 export default function ApoioFinanceiroPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
 
-  const { ini: iniPadrao, fim: fimPadrao } = mesAtual();
+  const { ini: iniPadrao, fim: fimPadrao } = periodoApoio();
   const [dataIni, setDataIni] = useState(iniPadrao);
   const [dataFim, setDataFim] = useState(fimPadrao);
 
@@ -224,16 +223,26 @@ export default function ApoioFinanceiroPage() {
         setApoioBaixas([]);
       }
 
-      const { data: apoio } = await supabase
-        .from("apoio_lancamentos")
-        .select("*")
-        .in("fazenda_id", fazendaIds)
-        .gte("data_vencimento", dataIni)
-        .lte("data_vencimento", dataFim)
-        .order("data_vencimento")
-        .limit(10000);
-
-      setApoioLancs((apoio ?? []) as ApoioLancamento[]);
+      // Paginação: PostgREST do Supabase tem max_rows=1000 fixo — .limit() não supera esse cap.
+      // Busca em lotes de 1000 até esgotar todos os registros do período.
+      const allApoio: ApoioLancamento[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data: batch } = await supabase
+          .from("apoio_lancamentos")
+          .select("*")
+          .in("fazenda_id", fazendaIds)
+          .gte("data_vencimento", dataIni)
+          .lte("data_vencimento", dataFim)
+          .order("data_vencimento")
+          .range(from, from + PAGE - 1);
+        if (!batch || batch.length === 0) break;
+        allApoio.push(...(batch as ApoioLancamento[]));
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      setApoioLancs(allApoio);
     } finally {
       setCarregando(false);
     }
