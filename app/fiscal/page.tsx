@@ -646,7 +646,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
 
 // ── Página principal ──────────────────────────────────────────────────────────
 function FiscalInner() {
-  const { fazendaId, contaId, logoCliente } = useAuth();
+  const { fazendaId, fazendaIds, contaId, logoCliente } = useAuth();
   const searchParams = useSearchParams();
   const abaParam = searchParams.get("aba") as Aba | null;
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
@@ -868,7 +868,7 @@ function FiscalInner() {
     })();
     listarPessoasDaConta(fazendaId).then(d => setPessoas(d)).catch(() => {});
     // Carrega anos_safra para o select do modal de emissão
-    supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
+    supabase.from("anos_safra").select("id, descricao").in("fazenda_id", fazendaIds).order("descricao", { ascending: false })
       .then(({ data }) => { setAnosSafra(data ?? []); });
     // Carrega metadados de todos os certificados A1 via API (service role — sem RLS)
     void fetch(`/api/cert-meta?fazenda_id=${fazendaId}`)
@@ -877,7 +877,7 @@ function FiscalInner() {
       .catch(() => {});
     // Carrega estado de contingência persistido
     void supabase.from("configuracoes_modulo")
-      .select("config").eq("fazenda_id", fazendaId).eq("modulo", "fiscal_contingencia").maybeSingle()
+      .select("config").in("fazenda_id", fazendaIds).eq("modulo", "fiscal_contingencia").maybeSingle()
       .then(({ data }) => {
         if (data?.config) {
           const c = data.config as Record<string, string>;
@@ -917,7 +917,7 @@ function FiscalInner() {
       setNotas(data);
       // Carregar config do primeiro emitente fiscal disponível para o DANFE
       const { data: cfgs } = await supabase.from("configuracoes_modulo")
-        .select("modulo, config").eq("fazenda_id", fazendaId)
+        .select("modulo, config").in("fazenda_id", fazendaIds)
         .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal");
       if (cfgs && cfgs.length > 0) {
         // Indexar todos os configs por moduloKey — corrige o bug de usar sempre cfgs[0]

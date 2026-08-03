@@ -272,7 +272,7 @@ function TH({ cols }: { cols: string[] }) {
 function CadastrosInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const { fazendaId, contaId, userRole } = useAuth();
+  const { fazendaId, fazendaIds, contaId, userRole } = useAuth();
   const [aba, setAba] = useState<TabCad>((params.get("tab") as TabCad) ?? "produtores");
 
   // Sincroniza a aba sempre que o query param ?tab= mudar na URL
@@ -738,7 +738,7 @@ function CadastrosInner() {
       listarOperacoesGerenciais(fazendaId).then(setOpGers).catch(e => setErro(e.message));
       listarPlanoContas(fazendaId).then(r => setPlanoContasDB(r.length > 0 ? r : planoContasPadrao)).catch(() => setPlanoContasDB(planoContasPadrao));
     }
-    if (aba === "padroes_classificacao") supabase.from("padroes_classificacao").select("*").eq("fazenda_id", fazendaId).order("commodity").order("nome_padrao").then(({ data, error }) => { if (error) setErro(error.message); else setPadroesCls((data ?? []) as PadraoClassificacao[]); });
+    if (aba === "padroes_classificacao") supabase.from("padroes_classificacao").select("*").in("fazenda_id", fazendaIds).order("commodity").order("nome_padrao").then(({ data, error }) => { if (error) setErro(error.message); else setPadroesCls((data ?? []) as PadraoClassificacao[]); });
     if (aba === "principios_ativos") {
       listarPrincipiosAtivos().then(setPrincipios).catch(e => setErro(e.message));
       listarNomesComerciais().then(setNomesComerciais).catch(() => {});
@@ -749,7 +749,7 @@ function CadastrosInner() {
     }
     if (aba === "culturas" || aba === "safras" || aba === "produtos") {
       // Carrega insumos produto_agricola — auto-seed se vazio
-      supabase.from("insumos").select("id,nome,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome")
+      supabase.from("insumos").select("id,nome,unidade").in("fazenda_id", fazendaIds).eq("categoria","produto_agricola").order("nome")
         .then(async ({ data }) => {
           if (data && data.length > 0) { setInsumosPA(data as Insumo[]); return; }
           await supabase.from("insumos").insert([
@@ -760,10 +760,10 @@ function CadastrosInner() {
             { fazenda_id: fazendaId, tipo: "produto", nome: "Trigo",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
             { fazenda_id: fazendaId, tipo: "produto", nome: "Sorgo",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
           ]);
-          const { data: seeded } = await supabase.from("insumos").select("id,nome,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome");
+          const { data: seeded } = await supabase.from("insumos").select("id,nome,unidade").in("fazenda_id", fazendaIds).eq("categoria","produto_agricola").order("nome");
           setInsumosPA((seeded ?? []) as Insumo[]);
         });
-      supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome")
+      supabase.from("culturas").select("*").in("fazenda_id", fazendaIds).order("ordem").order("nome")
         .then(async ({ data, error }) => {
           if (error) return;
           if (!data || data.length === 0) {
@@ -787,7 +787,7 @@ function CadastrosInner() {
       supabase
         .from("operacao_cfop_fiscal")
         .select("*, operacoes_gerenciais(classificacao, descricao, tipo)")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("ativo", true)
         .order("cfop")
         .then(({ data, error }) => {
@@ -6073,7 +6073,7 @@ function CadastrosInner() {
               } else {
                 await supabase.from("culturas").insert(payload);
               }
-              const { data } = await supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome");
+              const { data } = await supabase.from("culturas").select("*").in("fazenda_id", fazendaIds).order("ordem").order("nome");
               setCulturasList((data ?? []) as CulturaItem[]);
               setModalCultura(false);
               setSalvandoCultura(false);

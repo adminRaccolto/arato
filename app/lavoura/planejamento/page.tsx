@@ -185,7 +185,7 @@ async function excluirRecomendacao(id: string): Promise<void> {
 type Aba = "orcamento" | "comparativo" | "agenda" | "recomendacoes";
 
 export default function Planejamento() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<Aba>("orcamento");
 
   // dados base
@@ -248,7 +248,7 @@ export default function Planejamento() {
       listarTarefas(fazendaId).catch(() => [] as Tarefa[]),
       listarRecomendacoes(fazendaId).catch(() => [] as Recomendacao[]),
       listarAnosSafra(fazendaId).catch(() => [] as AnoSafra[]),
-      supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId).order("created_at").then(r => (r.data ?? []) as Ciclo[]),
+      supabase.from("ciclos").select("*").in("fazenda_id", fazendaIds).order("created_at").then(r => (r.data ?? []) as Ciclo[]),
     ])
     .then(([t, rec, anos, cic]) => {
       setTarefas(t); setRecomendacoes(rec);
@@ -274,7 +274,7 @@ export default function Planejamento() {
   useEffect(() => {
     if (!cicloSelOrc || !fazendaId) { setOrcamento(null); setOrcItens([]); return; }
     setLoadingOrc(true);
-    supabase.from("orcamentos").select("*").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloSelOrc).maybeSingle()
+    supabase.from("orcamentos").select("*").in("fazenda_id", fazendaIds).eq("ciclo_id", cicloSelOrc).maybeSingle()
       .then(async ({ data }) => {
         setOrcamento(data as Orcamento | null);
         if (data) {

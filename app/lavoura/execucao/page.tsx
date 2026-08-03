@@ -409,7 +409,7 @@ function TelaExecucao({
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function ExecucaoPage() {
-  const { fazendaId, nomeFazendaSelecionada: fazendaNome } = useAuth();
+  const { fazendaId, fazendaIds, nomeFazendaSelecionada: fazendaNome } = useAuth();
   const [recs,    setRecs]    = useState<Recomendacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [online,  setOnline]  = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
@@ -440,7 +440,7 @@ export default function ExecucaoPage() {
     if (!fazendaId) return;
     setLoading(true);
     const { data } = await supabase.from("recomendacoes").select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .in("status", ["pendente", "em_execucao"])
       .order("data_prevista_inicio", { ascending: true });
     setRecs((data ?? []) as Recomendacao[]);

@@ -80,7 +80,7 @@ function calcularAlertas(dias: DiaClima[]) {
 }
 
 export default function Pluviometria() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<"api"|"manual">("api");
   const [fazenda, setFazenda] = useState<Fazenda | null>(null);
   const [talhoes, setTalhoes] = useState<Talhao[]>([]);
@@ -107,7 +107,7 @@ export default function Pluviometria() {
     const { data } = await supabase
       .from("leituras_pluviometricas")
       .select("*, talhoes(nome)")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .order("data", { ascending: false })
       .order("hora", { ascending: false })
       .limit(200);
@@ -121,7 +121,7 @@ export default function Pluviometria() {
     if (!fazendaId) return;
     const [{ data: faz }, { data: tal }] = await Promise.all([
       supabase.from("fazendas").select("id,nome,lat,lng").eq("id", fazendaId).single(),
-      supabase.from("talhoes").select("id,nome,area_ha,lat,lng").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("talhoes").select("id,nome,area_ha,lat,lng").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     if (faz) setFazenda(faz as Fazenda);
     if (tal) setTalhoes(tal as Talhao[]);

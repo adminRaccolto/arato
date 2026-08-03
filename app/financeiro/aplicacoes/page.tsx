@@ -61,7 +61,7 @@ const MOV_COR: Record<TipoMovimento, string> = {
 
 // ─── Componente principal ────────────────────────────────────
 export default function AplicacoesFinanceirasPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [aplicacoes, setAplicacoes]   = useState<AplicacaoFinanceira[]>([]);
   const [movimentos, setMovimentos]   = useState<AplicacaoMovimento[]>([]);
@@ -102,9 +102,9 @@ export default function AplicacoesFinanceirasPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [{ data: ap }, { data: mv }, { data: cb }] = await Promise.all([
-      supabase.from("aplicacoes_financeiras").select("*").eq("fazenda_id", fazendaId).order("data_inicio", { ascending: false }),
-      supabase.from("aplicacao_movimentos").select("*").eq("fazenda_id", fazendaId).order("data", { ascending: false }),
-      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").eq("fazenda_id", fazendaId),
+      supabase.from("aplicacoes_financeiras").select("*").in("fazenda_id", fazendaIds).order("data_inicio", { ascending: false }),
+      supabase.from("aplicacao_movimentos").select("*").in("fazenda_id", fazendaIds).order("data", { ascending: false }),
+      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").in("fazenda_id", fazendaIds),
     ]);
     setAplicacoes(ap ?? []);
     setMovimentos(mv ?? []);

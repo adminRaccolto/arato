@@ -84,7 +84,7 @@ const TIPO_BEM_META: Record<TipoBem, { label: string; bg: string; cl: string }> 
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function ConsorciosPage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
 
   // Dados
@@ -129,7 +129,7 @@ export default function ConsorciosPage() {
     const { data: cd } = await supabase
       .from("consorcios")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .order("data_inicio", { ascending: false });
     setConsorcios(cd ?? []);
 

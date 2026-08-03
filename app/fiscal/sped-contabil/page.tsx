@@ -239,7 +239,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "20px 24px", marginBottom: 20 };
 
 export default function SpedContabilPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [entidade, setEntidade] = useState<"pf" | "pj">("pf");
   const [anoExercicio, setAnoExercicio] = useState(new Date().getFullYear() - 1 + "");
   const [vinculos, setVinculos] = useState<string[]>(["rural", "pessoa_fisica", "investimento"]);
@@ -264,7 +264,7 @@ export default function SpedContabilPage() {
       const { data: cfgData } = await supabase
         .from("config_contabilidade")
         .select("*")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("entidade", entidade)
         .single();
 
@@ -283,7 +283,7 @@ export default function SpedContabilPage() {
       let query = supabase
         .from("lancamentos")
         .select("*")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("entidade_contabil", entidade)
         .gte("data_lancamento", dtIni)
         .lte("data_lancamento", dtFin)
@@ -300,7 +300,7 @@ export default function SpedContabilPage() {
       const { data: opsData } = await supabase
         .from("operacoes_gerenciais")
         .select("id, classificacao, descricao, conta_debito, conta_credito, tipo")
-        .eq("fazenda_id", fazendaId);
+        .in("fazenda_id", fazendaIds);
 
       const ops = (opsData ?? []) as Pick<OperacaoGerencial, "id" | "classificacao" | "descricao" | "conta_debito" | "conta_credito" | "tipo">[];
       const opMap = new Map(ops.map(o => [o.id, o]));

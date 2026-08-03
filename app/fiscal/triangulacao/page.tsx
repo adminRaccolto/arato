@@ -137,7 +137,7 @@ function fmtMoeda(v?: number, moeda = "BRL") {
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function TriangulacaoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [lista, setLista]       = useState<Triangulacao[]>([]);
   const [pessoas, setPessoas]   = useState<Pessoa[]>([]);
@@ -179,9 +179,9 @@ export default function TriangulacaoPage() {
     if (!fazendaId) return;
     setLoading(true);
     const [{ data: tri }, { data: pes }, { data: prod }] = await Promise.all([
-      supabase.from("triangulacoes").select("*").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
-      supabase.from("pessoas").select("id,nome,tipo,cpf_cnpj,municipio,estado,logradouro").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("produtores").select("id,nome,tipo,cpf_cnpj,inscricao_est,municipio,estado").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("triangulacoes").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }),
+      supabase.from("pessoas").select("id,nome,tipo,cpf_cnpj,municipio,estado,logradouro").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("produtores").select("id,nome,tipo,cpf_cnpj,inscricao_est,municipio,estado").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     setLista((tri ?? []) as Triangulacao[]);
     setPessoas((pes ?? []) as Pessoa[]);

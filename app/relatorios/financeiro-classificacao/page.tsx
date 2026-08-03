@@ -38,7 +38,7 @@ interface Grupo {
 
 // ─── componente ──────────────────────────────────────────────────────────────
 function RelFinClassInner() {
-  const { fazendaId, nomeFazendaSelecionada } = useAuth();
+  const { fazendaId, fazendaIds, nomeFazendaSelecionada } = useAuth();
 
   const [inicio, setInicio]   = useState(mesInicio());
   const [fim, setFim]         = useState(hoje());
@@ -64,7 +64,7 @@ function RelFinClassInner() {
     if (!fazendaId) return;
     supabase.from("lancamentos")
       .select("categoria, operacao_gerencial_id")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .then(({ data }) => {
         const map = new Map<string, string>();
         (data ?? []).forEach(l => {
@@ -104,7 +104,7 @@ function RelFinClassInner() {
       let q = supabase
         .from("lancamentos")
         .select("*, pessoas(nome)")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", inicio)
         .lte("data_vencimento", fim)
         .order("categoria")

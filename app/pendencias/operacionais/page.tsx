@@ -53,7 +53,7 @@ function fmtDataCurta(val?: unknown) {
 }
 
 export default function PendenciasOperacionais() {
-  const { fazendaId } = useAuth() as { fazendaId: string };
+  const { fazendaId, fazendaIds } = useAuth() as { fazendaId: string; fazendaIds: string[] };
 
   const [pendencias,    setPendencias]    = useState<PendenciaRow[]>([]);
   const [loading,       setLoading]       = useState(true);
@@ -105,7 +105,7 @@ export default function PendenciasOperacionais() {
     setBuscaInsumo(modal.produto_nome_pendente ?? "");
     setMsgModal(null);
     supabase.from("insumos").select("id, nome, unidade, estoque, custo_medio")
-      .eq("fazenda_id", fazendaId).order("nome")
+      .in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
   }, [modal, fazendaId]);
 

@@ -83,7 +83,7 @@ interface EntradaLCDPR {
 
 // ─────────────────────────────────────────────────────────────
 export default function LCDPR() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
   const [aba, setAba]         = useState<AbaLCDPR>("livro");
   const [anoSel, setAnoSel]   = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
@@ -102,7 +102,7 @@ export default function LCDPR() {
     Promise.all([
       listarLancamentos(fazendaId),
       // Carrega IDs baixados via Apoio Financeiro para excluir do LCDPR
-      sb.from("apoio_baixas").select("lancamento_id").eq("fazenda_id", fazendaId),
+      sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", fazendaIds),
     ]).then(([lans, { data: apoioBaixas }]) => {
       const apoioIds = new Set((apoioBaixas ?? []).map((b: { lancamento_id: string }) => b.lancamento_id));
       const filtradas = lans.filter(l => {

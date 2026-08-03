@@ -83,7 +83,7 @@ const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 
 
 // ─── Componente ───────────────────────────────────────────────
 export default function GnrePage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [guias, setGuias]     = useState<GnreGuia[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState<string>("todas");
@@ -103,7 +103,7 @@ export default function GnrePage() {
     const { data } = await supabase
       .from("gnre_guias")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .order("created_at", { ascending: false });
     setGuias(data ?? []);
     setLoading(false);

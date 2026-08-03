@@ -109,7 +109,7 @@ const hoje   = () => new Date().toISOString().slice(0, 10);
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Conciliacao() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [contas, setContas]             = useState<ContaBancaria[]>([]);
@@ -129,9 +129,9 @@ export default function Conciliacao() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [cR, lR] = await Promise.all([
-      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("lancamentos").select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .in("status", ["aberto","vencido","baixado"])
         .order("data_vencimento", { ascending: false }),
     ]);
@@ -142,7 +142,7 @@ export default function Conciliacao() {
     const { data: exR } = await supabase
       .from("extratos_bancarios")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .order("data_importacao", { ascending: false });
     if (exR) setExtratos(exR as unknown as Extrato[]);
   }, [fazendaId]);

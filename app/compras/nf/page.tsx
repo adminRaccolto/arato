@@ -340,7 +340,7 @@ export default function NfCompraPage() {
       const { data } = await supabase
         .from("pedidos_compra")
         .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .in("status", ["rascunho", "aprovado", "entregue"])
         .order("created_at", { ascending: false });
       setPedidos((data ?? []) as PedidoMin[]);
@@ -376,7 +376,7 @@ export default function NfCompraPage() {
       try {
         const { data: cfgs } = await supabase
           .from("configuracoes_modulo").select("config, modulo")
-          .eq("fazenda_id", fazendaId).in("modulo", ["sieg", "fiscal", "fiscal_nfe"]);
+          .in("fazenda_id", fazendaIds).in("modulo", ["sieg", "fiscal", "fiscal_nfe"]);
         const cnpjs: string[] = [];
         for (const row of (cfgs ?? [])) {
           const c = (row.config ?? {}) as Record<string, unknown>;
@@ -386,9 +386,9 @@ export default function NfCompraPage() {
         }
         const prodsQ = contaId
           ? supabase.from("produtores").select("nome,cpf_cnpj").eq("conta_id", contaId)
-          : supabase.from("produtores").select("nome,cpf_cnpj").eq("fazenda_id", fazendaId);
+          : supabase.from("produtores").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
         const { data: prods } = await prodsQ;
-        const { data: pess  } = await supabase.from("pessoas").select("nome,cpf_cnpj").eq("fazenda_id", fazendaId);
+        const { data: pess  } = await supabase.from("pessoas").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
         const todos: Array<{nome:string;cnpj:string}> = [];
         for (const c of cnpjs) {
           const match = [...(prods??[]), ...(pess??[])].find(p => (p.cpf_cnpj??"").replace(/\D/g,"") === c);

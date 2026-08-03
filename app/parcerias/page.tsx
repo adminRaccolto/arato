@@ -166,7 +166,7 @@ type GrupoNovo = {
 
 // ─── Componente principal ─────────────────────────────────────
 export default function ParceriasPage() {
-  const { contaId, fazendaId } = useAuth();
+  const { contaId, fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<"parcerias" | "grupos" | "apuracao">("parcerias");
 
   // ── Parcerias ─────────────────────────────────────────────
@@ -225,7 +225,7 @@ export default function ParceriasPage() {
     const [{ data: prods }, { data: cics }, { data: tlhs }] = await Promise.all([
       supabase.from("produtores").select("id, nome, cpf_cnpj").eq("conta_id", contaId).order("nome"),
       supabase.from("ciclos").select("id, descricao").order("descricao"),
-      supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("talhoes").select("id, nome, area_ha").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     setProdutores(prods ?? []);
     setCiclos(cics ?? []);

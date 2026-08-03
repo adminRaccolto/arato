@@ -145,7 +145,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
 
 // ─── Componente principal ─────────────────────────────────────
 function CustosInner() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
   const searchParams  = useSearchParams();
   const aba = (searchParams.get("aba") as Aba) || "dre";
 
@@ -174,8 +174,8 @@ function CustosInner() {
     if (!fazendaId) return;
     Promise.all([
       listarSafras(fazendaId),
-      supabase.from("anos_safra").select("id,descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-      supabase.from("ciclos").select("id,ano_safra_id,cultura,descricao,area_plantada_ha").eq("fazenda_id", fazendaId).order("descricao"),
+      supabase.from("anos_safra").select("id,descricao").in("fazenda_id", fazendaIds).order("descricao", { ascending: false }),
+      supabase.from("ciclos").select("id,ano_safra_id,cultura,descricao,area_plantada_ha").in("fazenda_id", fazendaIds).order("descricao"),
     ]).then(([sfrs, aR, cR]) => {
       setSafras(sfrs);
       const as = (aR.data ?? []) as AnoSafra[];
@@ -200,25 +200,25 @@ function CustosInner() {
       return;
     }
     setDreLoading(true);
-    let rateioQ = supabase.from("regras_rateio").select("id,nome,tipos,ano_safra_id").eq("fazenda_id", fazendaId);
+    let rateioQ = supabase.from("regras_rateio").select("id,nome,tipos,ano_safra_id").in("fazenda_id", fazendaIds);
     if (anoSafraId) rateioQ = rateioQ.eq("ano_safra_id", anoSafraId);
     Promise.all([
       supabase.from("contratos")
         .select("id,ciclo_id,produto,moeda,preco,quantidade_sc,confirmado,status")
-        .eq("fazenda_id", fazendaId).in("ciclo_id", cicloIds)
+        .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds)
         .neq("status", "cancelado").eq("confirmado", true),
       supabase.from("movimentacoes_estoque")
         .select("id,insumo_id,quantidade,safra,motivo")
-        .eq("fazenda_id", fazendaId).in("safra", cicloIds).eq("tipo", "saida"),
+        .in("fazenda_id", fazendaIds).in("safra", cicloIds).eq("tipo", "saida"),
       supabase.from("insumos")
         .select("id,custo_medio,categoria,nome")
-        .eq("fazenda_id", fazendaId),
+        .in("fazenda_id", fazendaIds),
       supabase.from("lancamentos")
         .select("id,categoria,valor,safra_id,descricao,status,data_vencimento")
-        .eq("fazenda_id", fazendaId).in("safra_id", cicloIds).eq("tipo", "pagar"),
+        .in("fazenda_id", fazendaIds).in("safra_id", cicloIds).eq("tipo", "pagar"),
       supabase.from("lancamentos")
         .select("id,categoria,valor,safra_id,descricao,status,data_vencimento")
-        .eq("fazenda_id", fazendaId).is("safra_id", null).eq("tipo", "pagar"),
+        .in("fazenda_id", fazendaIds).is("safra_id", null).eq("tipo", "pagar"),
       supabase.from("regras_rateio_linhas")
         .select("id,regra_id,ciclo_id,percentual")
         .in("ciclo_id", cicloIds),

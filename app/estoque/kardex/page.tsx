@@ -50,7 +50,7 @@ type LinhaKardex = {
 // ─── componente ─────────────────────────────────────────────────────────────
 
 export default function Kardex() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [insumoId,     setInsumoId]     = useState("");
@@ -67,10 +67,10 @@ export default function Kardex() {
   useEffect(() => {
     if (!fazendaId) return;
     supabase.from("insumos").select("*")
-      .eq("fazenda_id", fazendaId).order("nome")
+      .in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
     supabase.from("depositos").select("id,nome")
-      .eq("fazenda_id", fazendaId).order("nome")
+      .in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setDepositos(data ?? []));
   }, [fazendaId]);
 
@@ -90,7 +90,7 @@ export default function Kardex() {
     const qAntes = supabase
       .from("movimentacoes_estoque")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .eq("insumo_id", insumoId)
       .lt("data", dataIni)
       .order("data", { ascending: true });
@@ -100,7 +100,7 @@ export default function Kardex() {
     const qPeriodo = supabase
       .from("movimentacoes_estoque")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .eq("insumo_id", insumoId)
       .gte("data", dataIni)
       .lte("data", dataFim + "T23:59:59")

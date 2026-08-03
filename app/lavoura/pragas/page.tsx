@@ -119,7 +119,7 @@ const estagioDisplay = (r: Monitoramento) => r.estagio_cultura ?? r.estagio ?? "
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function PragasPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<"lista"|"mapa"|"relatorio">("lista");
 
   const [registros,  setRegistros]  = useState<Monitoramento[]>([]);
@@ -172,12 +172,12 @@ export default function PragasPage() {
     const [{ data: regs }, { data: tal }, { data: cic }, { data: recsData }] = await Promise.all([
       supabase.from("monitoramento_pragas")
         .select("*, talhoes(nome), ciclos(cultura, anos_safra(ano))")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .order("created_at", { ascending: false })
         .limit(500),
-      supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(ano)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
-      supabase.from("recomendacoes").select("id, tipo, agronomo_nome, data_recomendacao").eq("fazenda_id", fazendaId).order("data_recomendacao", { ascending: false }).limit(50),
+      supabase.from("talhoes").select("id, nome, area_ha").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("ciclos").select("id, cultura, anos_safra(ano)").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }),
+      supabase.from("recomendacoes").select("id, tipo, agronomo_nome, data_recomendacao").in("fazenda_id", fazendaIds).order("data_recomendacao", { ascending: false }).limit(50),
     ]);
 
     const normalizado: Monitoramento[] = (regs ?? []).map((r: Record<string, unknown>) => ({

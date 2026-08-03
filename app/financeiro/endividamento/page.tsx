@@ -85,7 +85,7 @@ export default function RelatorioEndividamento() {
       const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
       const [ctsRaw, { data: prods }] = await Promise.all([
         listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds),
-        supabase.from("produtores").select("id,nome_razao_social,cpf_cnpj").eq("fazenda_id", fazendaId).order("nome_razao_social"),
+        supabase.from("produtores").select("id,nome_razao_social,cpf_cnpj").in("fazenda_id", fazendaIds).order("nome_razao_social"),
       ]);
 
       if (!ctsRaw?.length) { setContratos([]); setProdutores((prods ?? []) as Produtor[]); return; }

@@ -626,7 +626,7 @@ export default function ContratosFinanceiros() {
       });
     listarFazendas(fazendaId).then(f => setFazendas(f as { id: string; nome: string }[])).catch(() => {});
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
-    supabase.from("pessoas").select("*").eq("fazenda_id", fazendaId).eq("fornecedor", true).order("nome").then(({ data }) => setPessoas(data ?? []));
+    supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).eq("fornecedor", true).order("nome").then(({ data }) => setPessoas(data ?? []));
     supabase.from("produtores").select("*").eq("conta_id", contaId).order("nome").then(({ data }) => setProdutores(data ?? []));
     const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => { const t = d.usdPtax ?? d.usdBrl; if (t && t > 1) setPtax(t); }).catch(() => {});
     buscarPtax();
@@ -664,8 +664,8 @@ export default function ContratosFinanceiros() {
           : [{ ciclo_id: "", centro_custo_id: "", percentual: "100", valor: "" }]);
       }).catch(() => {});
       Promise.all([
-        supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao"),
-        supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("descricao"),
+        supabase.from("anos_safra").select("id, descricao").in("fazenda_id", fazendaIds).order("descricao"),
+        supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").in("fazenda_id", fazendaIds).order("descricao"),
         listarCentrosCustoGeralDaConta(fazendaId),
       ]).then(([as_, ci, cc]) => {
         setCcAnosSafra(as_.data ?? []);
@@ -1180,7 +1180,7 @@ export default function ContratosFinanceiros() {
 
     // Carrega anos_safra para vincular lancamentos ao filtro de safra do BI
     const { data: anosSafraDB } = await supabase
-      .from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId);
+      .from("anos_safra").select("id, descricao").in("fazenda_id", fazendaIds);
     const anosSafraList = anosSafraDB ?? [];
     const matchAnoSafra = (desc?: string): string | undefined => {
       if (!desc) return undefined;
@@ -1196,7 +1196,7 @@ export default function ContratosFinanceiros() {
     const { data: cfExist } = await supabase
       .from("contratos_financeiros")
       .select("numero_documento")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .not("numero_documento", "is", null);
     const nrsExistentes = new Set((cfExist ?? []).map(r => String(r.numero_documento).trim()).filter(Boolean));
 
@@ -1264,7 +1264,7 @@ export default function ContratosFinanceiros() {
         if (nrDoc) {
           const { count } = await supabase
             .from("lancamentos").select("id", { count: "exact", head: true })
-            .eq("fazenda_id", fazendaId).eq("auto", true).eq("numero_documento", nrDoc);
+            .in("fazenda_id", fazendaIds).eq("auto", true).eq("numero_documento", nrDoc);
           lancJaExistem = (count ?? 0) > 0;
         }
 

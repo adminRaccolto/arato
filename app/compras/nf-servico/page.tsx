@@ -121,7 +121,7 @@ const CAB_VAZIO = () => ({
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfServicoPage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
 
   const [nfs,      setNfs]      = useState<NfServico[]>([]);
   const [pessoas,  setPessoas]  = useState<Pessoa[]>([]);
@@ -164,7 +164,7 @@ export default function NfServicoPage() {
       const { data } = await supabase
         .from("nf_servicos")
         .select("*")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .order("data_prestacao", { ascending: false });
       setNfs((data ?? []) as NfServico[]);
     } catch {}
@@ -192,7 +192,7 @@ export default function NfServicoPage() {
       const { data } = await supabase
         .from("pedidos_compra")
         .select("id, nr_pedido, status")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .in("status", ["rascunho", "aprovado"])
         .order("created_at", { ascending: false });
       setPedidos((data ?? []) as PedidoMin[]);

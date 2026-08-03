@@ -51,7 +51,7 @@ const TIPOS_OP_PADRAO = [
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function TesourariaPage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
 
   const [lancamentos, setLancamentos] = useState<LancTesoura[]>([]);
   const [contas, setContas]           = useState<ContaBancariaMin[]>([]);
@@ -77,9 +77,9 @@ export default function TesourariaPage() {
     if (!fazendaId) return;
 
     const [{ data: lb }, { data: cb }, { data: ob }] = await Promise.all([
-      supabase.from("lancamentos").select("*").eq("fazenda_id", fazendaId).eq("origem_lancamento", "tesouraria").order("data_lancamento", { ascending: false }),
-      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").eq("fazenda_id", fazendaId),
-      supabase.from("operacoes_tesouraria").select("*").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("lancamentos").select("*").in("fazenda_id", fazendaIds).eq("origem_lancamento", "tesouraria").order("data_lancamento", { ascending: false }),
+      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").in("fazenda_id", fazendaIds),
+      supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
     ]);
 
     setLancamentos(lb ?? []);

@@ -83,7 +83,7 @@ const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","P
 // Componente
 // ─────────────────────────────────────────────────────────────
 export default function MdfePage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
 
   const [mdfes,     setMdfes]     = useState<Mdfe[]>([]);
   const [ctes,      setCtes]      = useState<CteMin[]>([]);
@@ -134,10 +134,10 @@ export default function MdfePage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
-      supabase.from("mdfes").select("*").eq("fazenda_id", fazendaId).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status").eq("fazenda_id", fazendaId).eq("status", "autorizado"),
-      supabase.from("veiculos").select("id, placa, tipo, rntrc, num_eixos").eq("fazenda_id", fazendaId).eq("ativo", true),
-      supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").eq("fazenda_id", fazendaId).eq("ativo", true),
+      supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      supabase.from("veiculos").select("id, placa, tipo, rntrc, num_eixos").in("fazenda_id", fazendaIds).eq("ativo", true),
+      supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
     ]);
     const raw = md ?? [];
     // documentos pode vir como JSON string do banco
@@ -150,7 +150,7 @@ export default function MdfePage() {
     setVeiculos(vd ?? []);
     setMotoristas(mot ?? []);
     // cpf_cnpj do contratante (primeira empresa ativa da fazenda)
-    supabase.from("empresas").select("cpf_cnpj").eq("fazenda_id", fazendaId).limit(1).single()
+    supabase.from("empresas").select("cpf_cnpj").in("fazenda_id", fazendaIds).limit(1).single()
       .then(({ data }) => { if (data?.cpf_cnpj) setEmpresaCpfCnpj(data.cpf_cnpj); });
     if (raw.length > 0) {
       const maxNr = Math.max(...raw.map((m: Mdfe) => parseInt(m.numero_mdfe) || 0));

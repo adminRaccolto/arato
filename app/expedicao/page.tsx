@@ -105,7 +105,7 @@ const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Expedicao() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
 
   // Fazendas da conta
   const [fazendas, setFazendas]         = useState<Fazenda[]>([]);
@@ -154,15 +154,15 @@ export default function Expedicao() {
   useEffect(() => {
     if (!fazendaId) return;
     listarFazendas(fazendaId).then(f => setFazendas(f as Fazenda[]));
-    supabase.from("anos_safra").select("id,descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
+    supabase.from("anos_safra").select("id,descricao").in("fazenda_id", fazendaIds).order("descricao", { ascending: false })
       .then(({ data }) => data && setAnosS(data));
-    supabase.from("ciclos").select("id,cultura,ano_safra_id").eq("fazenda_id", fazendaId).order("cultura")
+    supabase.from("ciclos").select("id,cultura,ano_safra_id").in("fazenda_id", fazendaIds).order("cultura")
       .then(({ data }) => data && setCiclos(data));
-    supabase.from("transportadoras").select("id,razao_social").eq("fazenda_id", fazendaId).eq("ativa", true)
+    supabase.from("transportadoras").select("id,razao_social").in("fazenda_id", fazendaIds).eq("ativa", true)
       .then(({ data }) => data && setTransp(data));
-    supabase.from("veiculos").select("id,placa,tipo").eq("fazenda_id", fazendaId).eq("ativo", true)
+    supabase.from("veiculos").select("id,placa,tipo").in("fazenda_id", fazendaIds).eq("ativo", true)
       .then(({ data }) => data && setVeiculos(data));
-    supabase.from("motoristas").select("id,nome").eq("fazenda_id", fazendaId).eq("ativo", true)
+    supabase.from("motoristas").select("id,nome").in("fazenda_id", fazendaIds).eq("ativo", true)
       .then(({ data }) => data && setMotori(data));
   }, [fazendaId]);
 

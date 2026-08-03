@@ -39,7 +39,7 @@ const STATUS_META: Record<StatusMutuo, { label: string; bg: string; cl: string }
 };
 
 export default function MutuoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [mutuos, setMutuos]         = useState<Mutuo[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoMutuo[]>([]);
@@ -70,8 +70,8 @@ export default function MutuoPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [{ data: md }, { data: cb }] = await Promise.all([
-      supabase.from("mutuos").select("*").eq("fazenda_id", fazendaId).order("data_inicio", { ascending: false }),
-      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao").eq("fazenda_id", fazendaId),
+      supabase.from("mutuos").select("*").in("fazenda_id", fazendaIds).order("data_inicio", { ascending: false }),
+      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao").in("fazenda_id", fazendaIds),
     ]);
     setMutuos(md ?? []);
     setContas(cb ?? []);

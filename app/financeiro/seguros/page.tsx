@@ -107,7 +107,7 @@ const STATUS_SINISTRO_META: Record<StatusSinistro, { label: string; bg: string; 
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function SegurosPage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
   const [aba, setAba] = useState<"apolices" | "vencimentos" | "sinistros">("apolices");
 
   // Dados
@@ -151,7 +151,7 @@ export default function SegurosPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [{ data: ap }, { data: pr }, { data: si }] = await Promise.all([
-      supabase.from("apolices_seguro").select("*").eq("fazenda_id", fazendaId).order("data_fim_vigencia"),
+      supabase.from("apolices_seguro").select("*").in("fazenda_id", fazendaIds).order("data_fim_vigencia"),
       supabase.from("pagamentos_premio_seguro").select("*").order("data_vencimento"),
       supabase.from("sinistros_seguro").select("*").order("data_ocorrencia", { ascending: false }),
     ]);

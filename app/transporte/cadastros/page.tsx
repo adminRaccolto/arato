@@ -90,7 +90,7 @@ function Campo({ label, required, children }: { label: string; required?: boolea
 
 // ── Página ────────────────────────────────────────────────────────────────────
 export default function TransporteCadastrosPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<Aba>("transportadoras");
 
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
@@ -110,9 +110,9 @@ export default function TransporteCadastrosPage() {
     if (!fazendaId) return;
     setLoading(true);
     const [r1, r2, r3] = await Promise.all([
-      supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId).order("razao_social"),
-      supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId).order("placa"),
-      supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("transportadoras").select("*").in("fazenda_id", fazendaIds).order("razao_social"),
+      supabase.from("veiculos").select("*").in("fazenda_id", fazendaIds).order("placa"),
+      supabase.from("motoristas").select("*").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     if (r1.data) setTransportadoras(r1.data);
     if (r2.data) setVeiculos(r2.data);

@@ -123,7 +123,7 @@ const FORM_VAZIO = {
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function ApoioFinanceiroPage() {
-  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
 
   const { ini: iniPadrao, fim: fimPadrao } = mesAtual();
   const [dataIni, setDataIni] = useState(iniPadrao);
@@ -205,7 +205,7 @@ export default function ApoioFinanceiroPage() {
       const { data: lancs } = await supabase
         .from("lancamentos")
         .select("id,tipo,descricao,valor,data_vencimento,data_baixa,status,categoria,pessoa_id,observacao,moeda")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", dataIni)
         .lte("data_vencimento", dataFim)
         .order("data_vencimento");
@@ -226,7 +226,7 @@ export default function ApoioFinanceiroPage() {
       const { data: apoio } = await supabase
         .from("apoio_lancamentos")
         .select("*")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", dataIni)
         .lte("data_vencimento", dataFim)
         .order("data_vencimento");

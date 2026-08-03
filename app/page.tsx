@@ -182,11 +182,11 @@ export default function Dashboard() {
       const q = buscaGlobal.trim();
       try {
         const [cpRes, contratoRes, cicloRes, insumoRes, pessoaRes] = await Promise.all([
-          supabase.from("lancamentos").select("id, descricao, valor, tipo").eq("fazenda_id", fazendaId).ilike("descricao", `%${q}%`).in("status", ["em_aberto", "vencido", "vencendo"]).limit(3),
-          supabase.from("contratos").select("id, numero_contrato, cliente").eq("fazenda_id", fazendaId).or(`numero_contrato.ilike.%${q}%,cliente.ilike.%${q}%`).limit(3),
-          supabase.from("ciclos").select("id, nome, cultura").eq("fazenda_id", fazendaId).ilike("nome", `%${q}%`).limit(3),
-          supabase.from("insumos").select("id, nome, categoria").eq("fazenda_id", fazendaId).ilike("nome", `%${q}%`).limit(3),
-          supabase.from("pessoas").select("id, nome, cpf_cnpj").eq("fazenda_id", fazendaId).ilike("nome", `%${q}%`).limit(3),
+          supabase.from("lancamentos").select("id, descricao, valor, tipo").in("fazenda_id", fazendaIds).ilike("descricao", `%${q}%`).in("status", ["em_aberto", "vencido", "vencendo"]).limit(3),
+          supabase.from("contratos").select("id, numero_contrato, cliente").in("fazenda_id", fazendaIds).or(`numero_contrato.ilike.%${q}%,cliente.ilike.%${q}%`).limit(3),
+          supabase.from("ciclos").select("id, nome, cultura").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
+          supabase.from("insumos").select("id, nome, categoria").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
+          supabase.from("pessoas").select("id, nome, cpf_cnpj").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
         ]);
         const res: ResultadoBusca[] = [];
         for (const r of cpRes.data ?? []) {
@@ -279,7 +279,7 @@ export default function Dashboard() {
       // CP a vencer nos próximos 7 dias + vencidos (piso 180 dias atrás)
       supabase.from("lancamentos")
         .select("id, descricao, valor, data_vencimento, status")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
@@ -291,7 +291,7 @@ export default function Dashboard() {
       // CR a vencer nos próximos 7 dias + vencidos (piso 180 dias atrás)
       supabase.from("lancamentos")
         .select("id, descricao, valor, data_vencimento, status")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "receber")
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
@@ -303,7 +303,7 @@ export default function Dashboard() {
       // Arrendamentos vencendo em 15 dias
       supabase.from("arrendamento_pagamentos")
         .select("id, data_vencimento, valor_previsto, sacas_previstas, commodity, arrendamentos(descricao)")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("status", "pendente")
         .lte("data_vencimento", isoEm15)
         .order("data_vencimento"),
@@ -311,13 +311,13 @@ export default function Dashboard() {
       // Certificado A1
       supabase.from("configuracoes")
         .select("cert_a1_vencimento")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .maybeSingle(),
 
       // CP total em aberto
       supabase.from("lancamentos")
         .select("valor")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
@@ -326,7 +326,7 @@ export default function Dashboard() {
       // CR total em aberto
       supabase.from("lancamentos")
         .select("valor")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "receber")
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
@@ -335,7 +335,7 @@ export default function Dashboard() {
       // CP vencendo esta semana (hoje a 7 dias)
       supabase.from("lancamentos")
         .select("valor")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
@@ -346,7 +346,7 @@ export default function Dashboard() {
       // CR vencendo esta semana (hoje a 7 dias)
       supabase.from("lancamentos")
         .select("valor")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "receber")
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
@@ -357,20 +357,20 @@ export default function Dashboard() {
       // Ciclos ativos
       supabase.from("ciclos")
         .select("id", { count: "exact", head: true })
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("status", "ativo"),
 
       // Contratos confirmados não encerrados
       supabase.from("contratos")
         .select("id", { count: "exact", head: true })
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("confirmado", true)
         .neq("status", "encerrado"),
 
       // CP vencidos (piso 180 dias atrás — exclui artefatos da migração)
       supabase.from("lancamentos")
         .select("valor")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
@@ -381,7 +381,7 @@ export default function Dashboard() {
       // Seguros de máquinas vencendo em 30 dias
       supabase.from("maquinas")
         .select("id, nome, seguro_vencimento_apolice, seguro_seguradora")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("ativa", true)
         .not("seguro_vencimento_apolice", "is", null)
         .lte("seguro_vencimento_apolice", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]),
@@ -389,13 +389,13 @@ export default function Dashboard() {
       // Pendências fiscais aguardando NF
       supabase.from("pendencias_fiscais")
         .select("id", { count: "exact", head: true })
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("status", "aguardando"),
 
       // Insumos com estoque negativo
       supabase.from("insumos")
         .select("id, nome, estoque, unidade")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .lt("estoque", 0),
 
       // Solicitações de transferência — via API route (service_role_key, sem RLS)
@@ -408,7 +408,7 @@ export default function Dashboard() {
       // Contratos com prazo de entrega vencendo nos próximos 30 dias
       supabase.from("contratos")
         .select("id, numero, produto, comprador, data_entrega, quantidade_sc, entregue_sc, status")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("confirmado", true)
         .neq("status", "encerrado")
         .neq("status", "cancelado")
@@ -419,7 +419,7 @@ export default function Dashboard() {
       // Contratos com saldo totalmente entregue mas não encerrados
       supabase.from("contratos")
         .select("id, numero, produto, comprador, data_entrega, quantidade_sc, entregue_sc, status")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("confirmado", true)
         .in("status", ["aberto", "parcial"])
         .gt("quantidade_sc", 0),
@@ -671,7 +671,7 @@ export default function Dashboard() {
     // Carrega pendências de conciliação independentemente
     supabase.from("conciliacao_pendencias")
       .select("id,conta_nome,conta_id,data,descricao,valor,tipo,fitid")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .eq("status", "pendente")
       .order("data", { ascending: false })
       .then(({ data }) => { if (data) setConciliPend(data as ConciliPendencia[]); });

@@ -53,7 +53,7 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtNum = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
 export default function AbastecimentoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [bombas,       setBombas]       = useState<BombaCombustivel[]>([]);
   const [maquinas,     setMaquinas]     = useState<Maquina[]>([]);
@@ -102,7 +102,7 @@ export default function AbastecimentoPage() {
     // Insumos de combustível cadastrados
     const { data: ins } = await supabase.from("insumos")
       .select("id, nome, estoque, custo_medio, unidade")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .eq("categoria", "combustivel")
       .order("nome");
     setInsumos((ins ?? []) as InsumoCombo[]);
@@ -117,7 +117,7 @@ export default function AbastecimentoPage() {
         maquinas(nome),
         funcionarios(nome)
       `)
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .gte("data", inicio)
       .lte("data", fim)
       .order("data", { ascending: false })

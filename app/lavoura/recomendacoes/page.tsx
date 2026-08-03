@@ -106,7 +106,7 @@ function ModalNova({
   talhoesInit?: RecTalhao[];
   produtosInit?: RecProduto[];
 }) {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<"geral"|"talhoes"|"produtos"|"condicoes">("geral");
   const [saving, setSaving] = useState(false);
   const isEditing = !!recEdit;
@@ -752,7 +752,7 @@ function ModalExecutar({
 // ─── Página principal ────────────────────────────────────────────────────────
 
 export default function RecomendacoesPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [recs,       setRecs]       = useState<Recomendacao[]>([]);
   const [talhoes,    setTalhoes]    = useState<Talhao[]>([]);
@@ -781,7 +781,7 @@ export default function RecomendacoesPage() {
     if (!fazendaId) return;
     setLoading(true);
     const { data } = await supabase.from("recomendacoes").select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .order("data_recomendacao", { ascending: false });
     setRecs((data ?? []) as Recomendacao[]);
     setLoading(false);

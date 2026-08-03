@@ -40,7 +40,7 @@ const TIPO_LABEL: Record<string, string> = {
 };
 
 export default function PendenciasFiscaisPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const router = useRouter();
 
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
@@ -65,7 +65,7 @@ export default function PendenciasFiscaisPage() {
     setLoading(true);
     let q = supabase.from("pendencias_fiscais")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .order("data_operacao", { ascending: false });
     if (filtroStatus) q = q.eq("status", filtroStatus);
     if (filtroTipo)   q = q.eq("tipo", filtroTipo);

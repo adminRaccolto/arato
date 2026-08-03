@@ -128,7 +128,7 @@ const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 
 
 // ─── Componente ───────────────────────────────────────────────
 export default function EsocialPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<"trabalhadores" | "eventos" | "apuracao">("trabalhadores");
 
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -151,8 +151,8 @@ export default function EsocialPage() {
     if (!fazendaId) return;
     // Trabalhadores: lê de funcionarios (fonte única de verdade)
     const [{ data: funcs }, { data: evts }] = await Promise.all([
-      supabase.from("funcionarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("esocial_eventos").select("*").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("funcionarios").select("*").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("esocial_eventos").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }),
     ]);
     setTrabalhadores((funcs ?? []).map(funcToTrab));
     setEventos((evts ?? []) as EsocialEvento[]);

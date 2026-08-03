@@ -75,7 +75,7 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", 
 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
-  const { fazendaId, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
@@ -164,10 +164,10 @@ function FinanceiroRelatoriosInner() {
       listarLancamentos(fazendaId),
       listarOperacoesGerenciais(fazendaId),
       temApoio
-        ? sb.from("apoio_baixas").select("lancamento_id").eq("fazenda_id", fazendaId)
+        ? sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", fazendaIds)
         : Promise.resolve({ data: [] }),
       temApoio
-        ? sb.from("apoio_lancamentos").select("id,tipo,descricao,valor,data_vencimento,categoria,pessoa_nome").eq("fazenda_id", fazendaId).eq("baixado", false)
+        ? sb.from("apoio_lancamentos").select("id,tipo,descricao,valor,data_vencimento,categoria,pessoa_nome").in("fazenda_id", fazendaIds).eq("baixado", false)
         : Promise.resolve({ data: [] }),
     ]).then(([lans, ops, apoioRes, apoioLancsRes]) => {
       setLancamentos(lans);

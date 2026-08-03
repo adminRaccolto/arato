@@ -41,7 +41,7 @@ const STATUS_COLOR: Record<string, string> = {
 // ─── Página ──────────────────────────────────────────────────
 
 export default function PendenciasNfPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [nfs,         setNfs]         = useState<NfComItens[]>([]);
   const [loading,     setLoading]     = useState(true);
@@ -73,7 +73,7 @@ export default function PendenciasNfPage() {
     let q = supabase
       .from("nf_importadas_sieg")
       .select("*, pessoa:pessoas(nome)")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .order("data_emissao", { ascending: false });
     if (filtroStatus !== "todas") q = q.eq("status", filtroStatus);
     const { data } = await q;
@@ -90,9 +90,9 @@ export default function PendenciasNfPage() {
 
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("insumos").select("id, nome, categoria").eq("fazenda_id", fazendaId).order("nome")
+    supabase.from("insumos").select("id, nome, categoria").in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
-    supabase.from("centros_custo").select("id, nome, codigo").eq("fazenda_id", fazendaId).order("nome")
+    supabase.from("centros_custo").select("id, nome, codigo").in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setCentrosCusto((data ?? []) as CentroCusto[]));
   }, [fazendaId]);
 

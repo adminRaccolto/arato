@@ -30,7 +30,7 @@ const fmtN   = (v: number, d = 2) => v.toLocaleString("pt-BR", { minimumFraction
 const fmtData = (s: string) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
 
 export default function MigrarNF() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [logs, setLogs] = useState<MigracaoLog[]>([]);
   const [loadLogs, setLoadLogs] = useState(true);
@@ -50,8 +50,8 @@ export default function MigrarNF() {
     if (!fazendaId) return;
     const [{ data: cts }, { data: lg }] = await Promise.all([
       supabase.from("contratos").select("id,numero,comprador,produto,quantidade_sc,entregue_sc,status,safra,ano_safra_id")
-        .eq("fazenda_id", fazendaId).order("numero", { ascending: false }),
-      supabase.from("migracoes_nf").select("*").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).limit(50),
+        .in("fazenda_id", fazendaIds).order("numero", { ascending: false }),
+      supabase.from("migracoes_nf").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(50),
     ]);
     if (cts) setContratos(cts as Contrato[]);
     if (lg) setLogs(lg as MigracaoLog[]);
@@ -109,7 +109,7 @@ export default function MigrarNF() {
       // 3. Atualiza CR vinculado (se houver) — busca lançamentos cujo romaneio_id = romaneioId
       await supabase.from("lancamentos")
         .update({ observacao: `[MIGRAÇÃO NF] Movido do contrato ${contratoOrigem.numero} para ${contratoDestino.numero}. ${motivo}`.trim() })
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .or(`observacao.ilike.%romaneio ${romaneioSel.numero}%,descricao.ilike.%${romaneioSel.numero}%`);
 
       // 4. Grava log de auditoria

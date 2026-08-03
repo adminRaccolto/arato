@@ -971,7 +971,7 @@ export default function Contratos() {
       const { data } = await supabase
         .from("lancamentos")
         .select("id, descricao, data_vencimento, valor, status")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds)
         .eq("tipo", "pagar")
         .eq("pessoa_id", fC.cessao_fornecedor_id)
         .in("status", ["em_aberto", "parcial"])

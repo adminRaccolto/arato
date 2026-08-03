@@ -36,7 +36,7 @@ const TIPO_META: Record<string, { label: string; bg: string; cl: string }> = {
 };
 
 export default function OperacoesTesourariaPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [ops, setOps]         = useState<OpTesoura[]>([]);
   const [modalOp, setModalOp] = useState(false);
@@ -47,7 +47,7 @@ export default function OperacoesTesourariaPage() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const { data } = await supabase.from("operacoes_tesouraria").select("*").eq("fazenda_id", fazendaId).order("nome");
+    const { data } = await supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome");
     setOps(data ?? []);
   }, [fazendaId]);
 
