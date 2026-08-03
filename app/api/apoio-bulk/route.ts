@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  // Verificar acesso do usuário
   const { data: perfil } = await admin
     .from("perfis")
     .select("conta_id, role")
@@ -38,46 +37,64 @@ export async function POST(req: NextRequest) {
 
   if (!ids?.length) return NextResponse.json({ error: "Nenhum ID fornecido" }, { status: 400 });
 
-  // Verificar que os IDs pertencem à conta do usuário
-  const { data: registros } = await admin
-    .from("apoio_lancamentos")
-    .select("id, fazenda_id")
-    .in("id", ids);
+  // Para raccotlo: usa admin sem restrição de conta (já autenticado como admin)
+  // Para usuário normal: verifica que os registros pertencem à conta dele
+  let idsPermitidos: string[] = ids;
 
-  if (!registros?.length) return NextResponse.json({ error: "Nenhum registro encontrado" }, { status: 404 });
+  if (perfil.role !== "raccotlo") {
+    const contaAlvo = perfil.conta_id;
+    if (!contaAlvo) return NextResponse.json({ error: "Sem conta associada" }, { status: 403 });
 
-  // Verificar que as fazendas pertencem à conta
-  const fazendaIds = [...new Set(registros.map((r: { fazenda_id: string }) => r.fazenda_id))];
-  const { data: fazendas } = await admin
-    .from("fazendas")
-    .select("id")
-    .in("id", fazendaIds)
-    .eq("conta_id", perfil.role === "raccotlo" ? conta_id : perfil.conta_id);
+    // Buscar fazendas da conta do usuário
+    const { data: fazendas } = await admin
+      .from("fazendas")
+      .select("id")
+      .eq("conta_id", contaAlvo);
+    const fazendaSet = new Set((fazendas ?? []).map((f: { id: string }) => f.id));
 
-  const fazendaIdsPermitidos = new Set((fazendas ?? []).map((f: { id: string }) => f.id));
-  const idsPermitidos = registros
-    .filter((r: { id: string; fazenda_id: string }) => fazendaIdsPermitidos.has(r.fazenda_id))
-    .map((r: { id: string }) => r.id);
+    // Verificar que os IDs pertencem às fazendas da conta — em lotes de 100
+    const BATCH = 100;
+    const registrosFazenda: { id: string; fazenda_id: string }[] = [];
+    for (let s = 0; s < ids.length; s += BATCH) {
+      const chunk = ids.slice(s, s + BATCH);
+      const { data } = await admin
+        .from("apoio_lancamentos")
+        .select("id, fazenda_id")
+        .in("id", chunk);
+      if (data) registrosFazenda.push(...data);
+    }
 
-  if (!idsPermitidos.length) return NextResponse.json({ error: "Sem acesso aos registros" }, { status: 403 });
+    idsPermitidos = registrosFazenda
+      .filter(r => fazendaSet.has(r.fazenda_id))
+      .map(r => r.id);
+
+    if (!idsPermitidos.length) return NextResponse.json({ error: "Sem acesso aos registros" }, { status: 403 });
+  }
+
+  // Executar ação em lotes de 100 (evita limite de URL do PostgREST)
+  const BATCH = 100;
+  let ok = 0;
 
   if (action === "delete") {
-    const { error } = await admin
-      .from("apoio_lancamentos")
-      .delete()
-      .in("id", idsPermitidos);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: idsPermitidos.length });
+    for (let s = 0; s < idsPermitidos.length; s += BATCH) {
+      const chunk = idsPermitidos.slice(s, s + BATCH);
+      const { error } = await admin.from("apoio_lancamentos").delete().in("id", chunk);
+      if (!error) ok += chunk.length;
+    }
+    return NextResponse.json({ ok });
   }
 
   if (action === "baixar") {
     const data_baixa = payload?.data_baixa ?? new Date().toISOString().slice(0, 10);
-    const { error } = await admin
-      .from("apoio_lancamentos")
-      .update({ baixado: true, data_baixa })
-      .in("id", idsPermitidos);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: idsPermitidos.length });
+    for (let s = 0; s < idsPermitidos.length; s += BATCH) {
+      const chunk = idsPermitidos.slice(s, s + BATCH);
+      const { error } = await admin
+        .from("apoio_lancamentos")
+        .update({ baixado: true, data_baixa })
+        .in("id", chunk);
+      if (!error) ok += chunk.length;
+    }
+    return NextResponse.json({ ok });
   }
 
   return NextResponse.json({ error: "Ação inválida" }, { status: 400 });
