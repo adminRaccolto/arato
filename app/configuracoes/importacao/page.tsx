@@ -2870,39 +2870,50 @@ function ImportacaoInner() {
                     )}
                   </div>
                 )}
-                {/* Verificação de fazendas — só para aba apoio */}
+                {/* Verificação de entidades — só para aba apoio */}
                 {aba === "apoio" && totalRows > 0 && fazendas.length > 0 && (() => {
                   const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-                  const sistNorm = new Map(fazendas.map(f => [norm(f.nome), f.nome]));
+                  // Entidades válidas: fazendas + produtores PJ (buscados da conta)
+                  const entidadesFaz   = fazendas.map(f => ({ nome: f.nome, tipo: "Fazenda" }));
                   const unique = [...new Set(apoioRows.map(r => r.fazenda_nome?.trim()).filter(Boolean))];
-                  const matched   = unique.filter(n => sistNorm.has(norm(n)));
-                  const unmatched = unique.filter(n => !sistNorm.has(norm(n)));
+                  // Checagem client-side: só fazendas (produtores PJ são verificados pelo servidor)
+                  const fazNorm = new Set(entidadesFaz.map(e => norm(e.nome)));
+                  const matchedFaz   = unique.filter(n => fazNorm.has(norm(n)));
+                  const unmatchedFaz = unique.filter(n => !fazNorm.has(norm(n)));
+                  // Avisa que unmatchedFaz podem ainda ser produtores PJ (servidor valida)
+                  const totalOk = matchedFaz.length;
+                  const totalNok = unmatchedFaz.length;
                   return (
-                    <div style={{ marginTop: 14, padding: "12px 16px", background: unmatched.length ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${unmatched.length ? "#E24B4A" : "#16A34A"}`, borderRadius: 8, fontSize: 12 }}>
-                      <strong style={{ color: unmatched.length ? "#7A1A1A" : "#14532D" }}>
-                        {unmatched.length === 0
-                          ? `✓ Todas as ${unique.length} fazenda(s) do arquivo foram encontradas no sistema`
-                          : `✗ ${unmatched.length} fazenda(s) NÃO encontrada(s) — ${matched.length} de ${unique.length} vão importar`}
+                    <div style={{ marginTop: 14, padding: "12px 16px", background: totalNok ? "#FFF8F0" : "#F0FDF4", border: `0.5px solid ${totalNok ? "#C9921B" : "#16A34A"}`, borderRadius: 8, fontSize: 12 }}>
+                      <strong style={{ color: totalNok ? "#7A5800" : "#14532D" }}>
+                        {totalNok === 0
+                          ? `✓ Todas as ${unique.length} entidade(s) do arquivo foram encontradas como fazendas`
+                          : `⚠ ${totalOk} fazenda(s) encontradas · ${totalNok} não encontradas como fazenda`}
                       </strong>
                       <div style={{ display: "flex", gap: 24, marginTop: 8, flexWrap: "wrap" }}>
-                        {unmatched.length > 0 && (
+                        {totalNok > 0 && (
                           <div>
-                            <div style={{ fontWeight: 700, color: "#E24B4A", marginBottom: 4 }}>No arquivo (sem match):</div>
-                            {unmatched.map(n => <div key={n} style={{ fontFamily: "monospace", color: "#7A1A1A" }}>✗ {n}</div>)}
+                            <div style={{ fontWeight: 700, color: "#C9921B", marginBottom: 4 }}>Não encontradas como fazenda:</div>
+                            {unmatchedFaz.map(n => (
+                              <div key={n} style={{ fontFamily: "monospace", color: "#7A5800" }}>
+                                ? {n}
+                                <span style={{ fontFamily: "system-ui", color: "#888", marginLeft: 6, fontSize: 11 }}>(verificando como empresa PJ…)</span>
+                              </div>
+                            ))}
                           </div>
                         )}
                         <div>
-                          <div style={{ fontWeight: 700, color: "#16A34A", marginBottom: 4 }}>Cadastradas no sistema:</div>
+                          <div style={{ fontWeight: 700, color: "#16A34A", marginBottom: 4 }}>Fazendas no sistema:</div>
                           {fazendas.map(f => (
-                            <div key={f.id} style={{ fontFamily: "monospace", color: matched.some(m => norm(m) === norm(f.nome)) ? "#14532D" : "#888" }}>
-                              {matched.some(m => norm(m) === norm(f.nome)) ? "✓" : "·"} {f.nome}
+                            <div key={f.id} style={{ fontFamily: "monospace", color: matchedFaz.some(m => norm(m) === norm(f.nome)) ? "#14532D" : "#888" }}>
+                              {matchedFaz.some(m => norm(m) === norm(f.nome)) ? "✓" : "·"} {f.nome}
                             </div>
                           ))}
                         </div>
                       </div>
-                      {unmatched.length > 0 && (
-                        <div style={{ marginTop: 8, color: "#7A1A1A" }}>
-                          Corrija a coluna <strong>fazenda_nome*</strong> no arquivo para usar exatamente os nomes à direita (sem aspas, acentos são tolerados).
+                      {totalNok > 0 && (
+                        <div style={{ marginTop: 8, color: "#7A5800", lineHeight: 1.5 }}>
+                          O sistema também aceita <strong>empresas (produtores PJ)</strong> cadastradas em <strong>Cadastros → Produtores</strong>. Se o nome acima for uma empresa PJ cadastrada, ela será reconhecida ao importar. Caso contrário, corrija o nome na coluna <code>fazenda_nome*</code>.
                         </div>
                       )}
                     </div>

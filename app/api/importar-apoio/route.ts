@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   const { data: fazendasDB } = await admin
     .from("fazendas").select("id, nome").eq("conta_id", conta_id);
 
-  const fazendaMap: Record<string, string> = {};   // normalizado → id
+  const fazendaMap: Record<string, string> = {};    // normalizado → fazenda_id
   const fazendaNomeMap: Record<string, string> = {}; // normalizado → nome original
   (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
     const key = normalizar(f.nome);
@@ -78,6 +78,19 @@ export async function POST(req: NextRequest) {
     fazendaNomeMap[key] = f.nome;
   });
   const fazendaIds = Object.values(fazendaMap);
+
+  // Fallback: produtores PJ da conta → seu próprio fazenda_id
+  // Cobre empresas do grupo cadastradas como produtor mas não como fazenda
+  const { data: produtoresPJDB } = await admin
+    .from("produtores")
+    .select("id, nome, fazenda_id")
+    .eq("conta_id", conta_id)
+    .eq("tipo", "pj");
+
+  const produtorPJFazendaMap: Record<string, string> = {}; // normalizado(nome) → fazenda_id
+  (produtoresPJDB ?? []).forEach((p: { nome: string; fazenda_id: string }) => {
+    if (p.fazenda_id) produtorPJFazendaMap[normalizar(p.nome)] = p.fazenda_id;
+  });
 
   // Mapas de pessoas: por CPF/CNPJ (dígitos) e por nome normalizado (fallback)
   const [pessoasRes, produtoresRes] = await Promise.all([
@@ -118,11 +131,15 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const nomeFazNorm = normalizar(r.fazenda_nome ?? "");
-    const fazIdRow = nomeFazNorm ? fazendaMap[nomeFazNorm] : undefined;
+    // 1ª tentativa: match direto na tabela fazendas
+    // 2ª tentativa: produtor PJ cadastrado com esse nome (usa o fazenda_id do produtor)
+    const fazIdRow = nomeFazNorm
+      ? (fazendaMap[nomeFazNorm] ?? produtorPJFazendaMap[nomeFazNorm])
+      : undefined;
 
     if (!fazIdRow) {
       fazendasNaoEncontradas.add(r.fazenda_nome ?? "(vazio)");
-      erros.push({ linha: i + 2, msg: `Fazenda "${r.fazenda_nome}" não encontrada` });
+      erros.push({ linha: i + 2, msg: `Fazenda/empresa "${r.fazenda_nome}" não encontrada` });
       continue;
     }
 
