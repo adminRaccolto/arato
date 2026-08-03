@@ -390,6 +390,22 @@ export default function ApoioFinanceiroPage() {
     }
   }
 
+  async function excluirEmLote() {
+    if (!selecionados.size) return;
+    if (!confirm(`Excluir ${selecionados.size} lançamento(s) permanentemente?`)) return;
+    const ids = Array.from(selecionados);
+    const { error } = await supabase
+      .from("apoio_lancamentos")
+      .delete()
+      .in("id", ids);
+    if (!error) {
+      setSelecionados(new Set());
+      setMsg(`${ids.length} lançamento(s) excluído(s).`);
+      setTimeout(() => setMsg(null), 4000);
+      await carregar();
+    }
+  }
+
   // ── Excel export ──────────────────────────────────────────────────────────
   async function exportarExcel() {
     const XLSX = await import("xlsx");
@@ -713,6 +729,9 @@ export default function ApoioFinanceiroPage() {
                     style={btn("#C9921B")}
                   >
                     Baixar Selecionados
+                  </button>
+                  <button onClick={excluirEmLote} style={btn("#E24B4A")}>
+                    Excluir Selecionados
                   </button>
                   <button onClick={() => setSelecionados(new Set())} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                     Limpar Seleção
