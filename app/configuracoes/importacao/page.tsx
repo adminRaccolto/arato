@@ -17,10 +17,12 @@ type PessoaRow = {
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type LancRow = {
+  fazenda_nome: string;
   descricao: string; categoria: string; data_lancamento: string;
   data_vencimento: string; valor: string; pessoa_cpf_cnpj: string;
   moeda: string; num_parcela: string; total_parcelas: string;
   tipo_documento_lcdpr: string; numero_documento: string;
+  observacao: string;
   operacao_gerencial: string; produtor_cpf_cnpj: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
@@ -113,15 +115,15 @@ const TEMPLATE_PESSOAS = [
   ["Pedro Operador", "pf", "111.222.333-44", "nao", "nao", "sim", "pedro@email.com", "(65)99000-0001", "Nova Mutum", "MT", "78450-000", "", "", ""],
 ];
 const TEMPLATE_CP = [
-  ["descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "operacao_gerencial", "produtor_cpf_cnpj"],
-  ["Compra de Soja (Bunge)", "Comercialização", "2026-01-10", "2026-02-10", "150000.00", "08.821.250/0001-60", "BRL", "1", "1", "NF", "NF 001234", "Custeio Soja", "012.345.678-90"],
-  ["Arrendamento Fazenda Sul", "Arrendamento", "2026-03-01", "2026-03-31", "45000.00", "012.345.678-90", "BRL", "1", "3", "RECIBO", "", "Arrendamento Terras", ""],
-  ["Frete colheita safra 25/26", "Transporte", "2026-01-20", "2026-02-20", "28500.00", "", "BRL", "1", "1", "NF", "NF 005678", "Fretes e Carretos", ""],
+  ["fazenda_nome*", "descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "observacao", "operacao_gerencial", "produtor_cpf_cnpj"],
+  ["Fazenda Matriz", "Compra de Fertilizante", "Insumos", "2026-01-10", "2026-02-10", "150000.00", "08.821.250/0001-60", "BRL", "1", "1", "NF", "NF 001234", "", "Custeio Soja", "012.345.678-90"],
+  ["Fazenda Matriz", "Arrendamento Fazenda Sul", "Arrendamento", "2026-03-01", "2026-03-31", "45000.00", "012.345.678-90", "BRL", "1", "3", "RECIBO", "", "", "Arrendamento Terras", ""],
+  ["Fazenda Filial", "Frete colheita safra 25/26", "Transporte", "2026-01-20", "2026-02-20", "28500.00", "", "BRL", "1", "1", "NF", "NF 005678", "", "Fretes e Carretos", ""],
 ];
 const TEMPLATE_CR = [
-  ["descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "operacao_gerencial", "produtor_cpf_cnpj"],
-  ["Venda Soja Safra 25/26", "Comercialização", "2026-01-15", "2026-02-15", "280000.00", "08.821.250/0001-60", "BRL", "1", "2", "NF", "NF 008800", "Receita Soja", "012.345.678-90"],
-  ["Prestação de Serviço", "Outros", "2026-02-01", "2026-03-01", "8500.00", "", "BRL", "1", "1", "RECIBO", "", "Receita Serviços", ""],
+  ["fazenda_nome*", "descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "observacao", "operacao_gerencial", "produtor_cpf_cnpj"],
+  ["Fazenda Matriz", "Venda Soja Safra 25/26", "Comercialização", "2026-01-15", "2026-02-15", "280000.00", "08.821.250/0001-60", "BRL", "1", "2", "NF", "NF 008800", "", "Receita Soja", "012.345.678-90"],
+  ["Fazenda Matriz", "Prestação de Serviço", "Outros", "2026-02-01", "2026-03-01", "8500.00", "", "BRL", "1", "1", "RECIBO", "", "", "Receita Serviços", ""],
 ];
 const TEMPLATE_INSUMOS = [
   ["fazenda_nome*", "deposito_nome", "nome*", "categoria*", "unidade*", "estoque", "estoque_minimo", "valor_unitario", "fabricante", "subgrupo"],
@@ -633,6 +635,7 @@ function validarPessoa(r: Record<string, string>): PessoaRow {
 
 function validarLanc(r: Record<string, string>): LancRow {
   const row = r as unknown as LancRow;
+  if (!row.fazenda_nome?.trim())    return { ...row, _status: "erro", _msg: "fazenda_nome obrigatório" };
   if (!row.descricao?.trim())       return { ...row, _status: "erro", _msg: "descricao obrigatória" };
   if (!row.categoria?.trim())       return { ...row, _status: "erro", _msg: "categoria obrigatória" };
   if (!row.data_lancamento?.trim()) return { ...row, _status: "erro", _msg: "data_lancamento obrigatória" };
@@ -1317,15 +1320,27 @@ function ImportacaoInner() {
     setLoading(true);
     let ok = 0, erros = 0, duplicados = 0;
 
+    // Carregar todas as fazendas da conta para resolver fazenda_nome → fazenda_id
+    const { data: fazendasDB } = contaId
+      ? await supabase.from("fazendas").select("id, nome").eq("conta_id", contaId)
+      : await supabase.from("fazendas").select("id, nome").eq("id", fazendaId);
+    const ids = (fazendasDB ?? []).map((f: { id: string }) => f.id);
+    if (!ids.length) ids.push(fazendaId!);
+    const fazendaMap: Record<string, string> = {};
+    (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
+      fazendaMap[f.nome.trim().toLowerCase()] = f.id;
+    });
+
     const [pessoasRes, opGerRes, produtoresRes] = await Promise.all([
-      supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
-      supabase.from("operacoes_gerenciais").select("id, descricao, classificacao").eq("fazenda_id", fazendaId),
+      supabase.from("pessoas").select("id, cpf_cnpj, fazenda_id").in("fazenda_id", ids),
+      supabase.from("operacoes_gerenciais").select("id, descricao, fazenda_id").in("fazenda_id", ids),
       supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
     ]);
+    // Maps globais (qualquer fazenda da conta)
     const pessoaMap: Record<string, string> = {};
     (pessoasRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => { if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id; });
     const opGerMap: Record<string, string> = {};
-    (opGerRes.data ?? []).forEach((o: { id: string; descricao: string; classificacao?: string }) => {
+    (opGerRes.data ?? []).forEach((o: { id: string; descricao: string }) => {
       opGerMap[o.descricao.toLowerCase().trim()] = o.id;
     });
     const produtorMap: Record<string, string> = {};
@@ -1334,7 +1349,7 @@ function ImportacaoInner() {
     // ── Carregar números auto-gerados por contratos (guarda de duplicidade) ──
     const { data: autoLancsGlobal } = await supabase
       .from("lancamentos").select("numero_documento")
-      .eq("fazenda_id", fazendaId).eq("tipo", tipo).eq("auto", true);
+      .in("fazenda_id", ids).eq("tipo", tipo).eq("auto", true);
     const autoNumsGlobal = new Set(
       (autoLancsGlobal ?? []).map((l: { numero_documento: string | null }) =>
         (l.numero_documento ?? "").toLowerCase().trim()
@@ -1351,25 +1366,38 @@ function ImportacaoInner() {
         r._msg = "CP já gerado automaticamente pelo contrato financeiro";
         duplicados++; continue;
       }
+
+      // Resolver fazenda_id: pela coluna fazenda_nome ou sessão ativa
+      const nomeFaz = r.fazenda_nome?.trim().toLowerCase() ?? "";
+      const fazIdRow = nomeFaz ? (fazendaMap[nomeFaz] ?? fazendaId) : fazendaId;
+
       const pessoaId = r.pessoa_cpf_cnpj ? pessoaMap[r.pessoa_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
       const produtorId = r.produtor_cpf_cnpj?.trim() ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
       const opGerId = r.operacao_gerencial?.trim() ? opGerMap[r.operacao_gerencial.toLowerCase().trim()] ?? null : null;
       const valor = parseFloat(String(r.valor).replace(",", "."));
+
+      // Moeda: R$ → BRL, US$ → USD, SSJ/SCM → barter
+      const moedaRaw = (r.moeda ?? "BRL").trim().toUpperCase();
+      const moeda: "BRL" | "USD" | "barter" = moedaRaw === "BRL" || moedaRaw === "R$" ? "BRL"
+        : moedaRaw === "USD" || moedaRaw === "US$" ? "USD"
+        : "barter";
+
       const { error } = await supabase.from("lancamentos").insert({
-        fazenda_id:              fazendaId,
+        fazenda_id:              fazIdRow,
         tipo,
         descricao:               r.descricao.trim(),
         categoria:               r.categoria.trim(),
         data_lancamento:         r.data_lancamento.trim(),
         data_vencimento:         r.data_vencimento.trim(),
         valor,
-        moeda:                   (r.moeda?.toUpperCase() as "BRL"|"USD"|"barter") || "BRL",
+        moeda,
         status:                  "em_aberto",
         auto:                    false,
         num_parcela:             r.num_parcela    ? parseInt(r.num_parcela)    : null,
         total_parcelas:          r.total_parcelas  ? parseInt(r.total_parcelas) : null,
         tipo_documento_lcdpr:    r.tipo_documento_lcdpr?.trim() || null,
         numero_documento:        r.numero_documento?.trim() || null,
+        observacao:              r.observacao?.trim() || null,
         pessoa_id:               pessoaId,
         operacao_gerencial_id:   opGerId,
         produtor_id:             produtorId,
