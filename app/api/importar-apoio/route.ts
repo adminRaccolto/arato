@@ -87,15 +87,22 @@ export async function POST(req: NextRequest) {
   // Fazenda de fallback (primeira da conta)
   const [defaultFazendaId] = Object.values(fazendaMap);
 
-  let ok = 0;
+  // Preparar todos os registros de uma vez (sem loop assíncrono)
+  type InsertRow = {
+    fazenda_id: string; tipo: string; descricao: string; categoria: string | null;
+    data_lancamento: string | null; data_vencimento: string; valor: number; moeda: string;
+    pessoa_id: string | null; pessoa_nome: string | null; numero_documento: string | null;
+    tipo_documento_lcdpr: string | null; num_parcela: number | null; total_parcelas: number | null;
+    observacao: string | null; produtor_id: string | null; baixado: boolean;
+  };
+
+  const toInsert: InsertRow[] = [];
   const erros: { linha: number; msg: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const nomeFaz = r.fazenda_nome?.trim().toLowerCase() ?? "";
-    const fazIdRow = nomeFaz
-      ? (fazendaMap[nomeFaz] ?? defaultFazendaId)
-      : defaultFazendaId;
+    const fazIdRow = nomeFaz ? (fazendaMap[nomeFaz] ?? defaultFazendaId) : defaultFazendaId;
 
     if (!fazIdRow) {
       erros.push({ linha: i + 1, msg: `Fazenda "${r.fazenda_nome}" não encontrada na conta` });
@@ -112,30 +119,41 @@ export async function POST(req: NextRequest) {
       : moedaRaw === "SSJ" || moedaRaw === "SCM" || moedaRaw === "BARTER" ? "barter"
       : "BRL";
 
-    const { error } = await admin.from("apoio_lancamentos").insert({
-      fazenda_id:              fazIdRow,
-      tipo:                    "pagar",
-      descricao:               r.descricao.trim(),
-      categoria:               r.categoria?.trim() || null,
-      data_lancamento:         r.data_lancamento?.trim() || null,
-      data_vencimento:         r.data_vencimento.trim(),
-      valor:                   Number(r.valor) || 0,
+    toInsert.push({
+      fazenda_id:           fazIdRow,
+      tipo:                 "pagar",
+      descricao:            r.descricao.trim(),
+      categoria:            r.categoria?.trim() || null,
+      data_lancamento:      r.data_lancamento?.trim() || null,
+      data_vencimento:      r.data_vencimento.trim(),
+      valor:                Number(r.valor) || 0,
       moeda,
-      pessoa_id:               pessoaInfo?.id ?? null,
-      pessoa_nome:             pessoaInfo?.nome ?? null,
-      numero_documento:        r.numero_documento?.trim() || null,
-      tipo_documento_lcdpr:    r.tipo_documento_lcdpr?.trim() || null,
-      num_parcela:             r.num_parcela ? parseInt(r.num_parcela) : null,
-      total_parcelas:          r.total_parcelas ? parseInt(r.total_parcelas) : null,
-      observacao:              r.observacao?.trim() || null,
-      produtor_id:             produtorId,
-      baixado:                 false,
+      pessoa_id:            pessoaInfo?.id ?? null,
+      pessoa_nome:          pessoaInfo?.nome ?? null,
+      numero_documento:     r.numero_documento?.trim() || null,
+      tipo_documento_lcdpr: r.tipo_documento_lcdpr?.trim() || null,
+      num_parcela:          r.num_parcela ? parseInt(r.num_parcela) : null,
+      total_parcelas:       r.total_parcelas ? parseInt(r.total_parcelas) : null,
+      observacao:           r.observacao?.trim() || null,
+      produtor_id:          produtorId,
+      baixado:              false,
     });
+  }
 
+  // Inserir em lotes de 500 — uma única chamada por lote (100x mais rápido)
+  const BATCH = 500;
+  let ok = 0;
+  for (let s = 0; s < toInsert.length; s += BATCH) {
+    const chunk = toInsert.slice(s, s + BATCH);
+    const { error, count } = await admin
+      .from("apoio_lancamentos")
+      .insert(chunk)
+      .select("id", { count: "exact", head: true });
     if (error) {
-      erros.push({ linha: i + 1, msg: error.message });
+      // Se um lote falhar, registra o erro mas continua os outros lotes
+      erros.push({ linha: s + 1, msg: `Lote ${Math.floor(s/BATCH)+1}: ${error.message}` });
     } else {
-      ok++;
+      ok += count ?? chunk.length;
     }
   }
 
