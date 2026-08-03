@@ -1211,18 +1211,29 @@ Lançamentos sem OG configurada ou sem contas débito/crédito no plano de conta
 **Caminho:** Menu superior → **Transporte** → **CT-e**
 
 ### O que faz
-Emite Conhecimentos de Transporte Eletrônico para frota própria da fazenda (motoristas CLT vinculados à fazenda, sem CIOT).
+Emite Conhecimentos de Transporte Eletrônico para frota própria da fazenda (motoristas e veículos cadastrados em Transporte → Cadastros).
+
+### Conceito: Emitente vs Transportadoras de terceiros
+- **Emitente do CT-e**: SEMPRE uma das suas empresas registradas em **Cadastros → Empresas** com finalidade **Transportadora** (ex: MURIANA TRANSPORTES LTDA, OGLIARI TRANSPORTES LTDA).
+- **Transportadoras de terceiros** (Transporte → Cadastros → Transportadoras): empresas que você CONTRATA para fazer fretes. Elas emitem os próprios CT-es — você não emite por elas.
+- **Veículos e Motoristas**: frota compartilhada da conta. Um veículo pode aparecer em CT-e de qualquer empresa emitente. "Agregado" = motorista autônomo com veículo próprio, registrado sem vínculo de transportadora.
+
+### Pré-requisitos antes de emitir
+1. Em **Cadastros → Empresas**, edite cada empresa transportadora sua e marque a finalidade **Transportadora**. Elas passam a aparecer no seletor de Emitente do CT-e.
+2. Em **Transporte → Cadastros**, cadastre os veículos e motoristas (frota própria ou agregados).
+3. Certificado A1 configurado em **Fiscal → Certificado Digital** para a empresa emitente.
 
 ### Campos do CT-e
+- **Emitente**: selecionar qual das suas empresas transportadoras está emitindo (*)
 - Número CT-e, Série, Data de emissão (*)
 - CFOP, Natureza da Operação
 - Tomador (quem paga o frete): remetente, destinatário, expedidor ou recebedor
-- Remetente: nome, CNPJ (ou select do cadastro)
-- Destinatário: nome, CNPJ (ou select do cadastro)
+- Remetente: nome, CNPJ (ou select do cadastro de Pessoas)
+- Destinatário: nome, CNPJ (ou select do cadastro de Pessoas)
 - Origem: município/UF de saída (*), Destino: município/UF chegada (*)
 - Produto: descrição (*), NCM, quantidade, unidade, peso bruto (kg), peso líquido (kg)
 - Valor da mercadoria, Valor do frete (*)
-- ICMS: base de cálculo, alíquota, valor
+- ICMS: alíquota e valor calculado automaticamente
 - Veículo (select do cadastro de Transportes), Motorista (select do cadastro de Transportes)
 - NF-e vinculada (chave de acesso)
 - Observação
@@ -1230,9 +1241,9 @@ Emite Conhecimentos de Transporte Eletrônico para frota própria da fazenda (mo
 ### Status do CT-e
 rascunho → autorizado → cancelado
 
-### Pré-requisito
-- Veículos e motoristas cadastrados em **Configurações → Parâmetros do Sistema → Transportes**
-- Certificado A1 configurado (ou CT-e usa o mesmo certificado da NF-e se não configurado separado)
+### DACTE (documento impresso)
+- Clique no ícone de impressora na linha do CT-e
+- Inclui: emitente, remetente, destinatário, percurso, valores, modal rodoviário, código de barras da chave de acesso
 
 ---
 
@@ -1243,6 +1254,9 @@ rascunho → autorizado → cancelado
 ### O que faz
 Emite o Manifesto Eletrônico de Documentos Fiscais, obrigatório no transporte interestadual e intermunicipal de cargas.
 
+### Conceito
+O MDF-e "envelopa" um conjunto de CT-es (ou NF-es avulsas) em uma única viagem. Um caminhão que sai carregado de MT para SP com vários conhecimentos de transporte precisa de um MDF-e cobrindo toda a viagem.
+
 ### Campos do MDF-e
 - Série, Número, Data de emissão
 - UF de Início (*), UF de Fim (*), Percurso (lista de UFs intermediárias)
@@ -1250,6 +1264,13 @@ Emite o Manifesto Eletrônico de Documentos Fiscais, obrigatório no transporte 
 - Seleção dos documentos: CT-e autorizados e NF-e avulsas a incluir no manifesto
 - CIOT (Código Identificador da Operação de Transporte) — para frete pago
 - Informações do veículo e condutor
+
+### Fluxo típico
+1. Emita e autorize os CT-es da viagem
+2. Crie o MDF-e e selecione os CT-es autorizados
+3. Informe veículo, motorista, percurso
+4. Autorize o MDF-e antes de o caminhão partir
+5. Ao chegar no destino: encerre o MDF-e
 
 ---
 

@@ -8997,3 +8997,14 @@ ALTER TABLE ctes
 CREATE INDEX IF NOT EXISTS idx_ctes_emitente_id ON ctes(emitente_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: colunas de triangulação em contratos (Comercialização de Grãos)
+-- ============================================================================
+
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS is_triangulacao     BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS comprador_final_id  UUID REFERENCES pessoas(id),
+  ADD COLUMN IF NOT EXISTS comprador_final_nome TEXT;
+
+NOTIFY pgrst, 'reload schema';
