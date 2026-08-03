@@ -127,6 +127,7 @@ export async function POST(req: NextRequest) {
   const erros: { linha: number; msg: string }[] = [];
   const fazendasNaoEncontradas = new Set<string>();
   let semPessoa = 0;
+  let semPessoaNomePlanilha = 0; // chegou sem pessoa_nome na planilha (nem por alias)
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -152,6 +153,7 @@ export async function POST(req: NextRequest) {
       pessoaInfo = pessoaMapNome[normalizar(r.pessoa_nome)] ?? null;
     }
     if (!pessoaInfo) semPessoa++;
+    if (!r.pessoa_nome?.trim() && !r.pessoa_cpf_cnpj?.trim()) semPessoaNomePlanilha++;
 
     const produtorId = r.produtor_cpf_cnpj?.trim()
       ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
@@ -204,6 +206,8 @@ export async function POST(req: NextRequest) {
     ok,
     erros: erros.length + errosInsert.length,
     sem_pessoa: semPessoa,
+    // diagnóstico: quantas linhas chegaram sem pessoa_nome nem cpf_cnpj na planilha
+    sem_pessoa_nome_planilha: semPessoaNomePlanilha,
     fazendas_sistema: Object.values(fazendaNomeMap),
     fazendas_nao_encontradas: Array.from(fazendasNaoEncontradas),
     detalhes: [...erros.slice(0, 10), ...errosInsert],

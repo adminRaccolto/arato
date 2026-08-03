@@ -637,6 +637,40 @@ function validarPessoa(r: Record<string, string>): PessoaRow {
   return { ...row, tipo: row.tipo.toLowerCase(), _status: "ok", _msg: "" };
 }
 
+// Normaliza nomes de coluna da planilha do cliente → campos esperados pelo sistema
+// Cobre variações comuns de planilhas de ERPs brasileiros
+function normalizeApoioRow(r: Record<string, string>): Record<string, string> {
+  const n: Record<string, string> = { ...r };
+
+  // pessoa_nome: fornecedor / credor / parceiro
+  if (!n.pessoa_nome?.trim()) {
+    for (const a of ["Fornecedor","fornecedor","FORNECEDOR","Credor","credor","CREDOR",
+                     "Parceiro","parceiro","PARCEIRO","Pessoa","pessoa","PESSOA",
+                     "Nome_Fornecedor","nome_fornecedor","RazaoSocial","razao_social",
+                     "RAZAO_SOCIAL","nome_pessoa","Nome","NOME","Beneficiario","BENEFICIARIO"]) {
+      if (r[a]?.trim()) { n.pessoa_nome = r[a]; break; }
+    }
+  }
+
+  // pessoa_cpf_cnpj: CNPJ / CPF / documento
+  if (!n.pessoa_cpf_cnpj?.trim()) {
+    for (const a of ["CNPJ","cnpj","CPF","cpf","CPF_CNPJ","cpf_cnpj","Documento",
+                     "documento","DOCUMENTO","CPF/CNPJ","Doc","doc","CNPJ_Fornecedor"]) {
+      if (r[a]?.trim()) { n.pessoa_cpf_cnpj = r[a]; break; }
+    }
+  }
+
+  // fazenda_nome: fazenda / propriedade / empresa / filial
+  if (!n.fazenda_nome?.trim()) {
+    for (const a of ["Fazenda","fazenda","FAZENDA","Propriedade","propriedade","PROPRIEDADE",
+                     "Empresa","empresa","EMPRESA","Filial","filial","FILIAL","Unidade","unidade"]) {
+      if (r[a]?.trim()) { n.fazenda_nome = r[a]; break; }
+    }
+  }
+
+  return n;
+}
+
 function validarLanc(r: Record<string, string>): LancRow {
   const row = r as unknown as LancRow;
   if (!row.fazenda_nome?.trim())    return { ...row, _status: "erro", _msg: "fazenda_nome obrigatório" };
@@ -1112,6 +1146,7 @@ function ImportacaoInner() {
   type Resultado = { ok: number; erros: number; duplicados: number; atualizados?: number };
   type ResultadoApoio = Resultado & {
     sem_pessoa?: number;
+    sem_pessoa_nome_planilha?: number;
     fazendas_sistema?: string[];
     fazendas_nao_encontradas?: string[];
   };
@@ -1208,7 +1243,14 @@ function ImportacaoInner() {
 
   async function handleFileApoio(file: File) {
     const raw = await parseXlsx(file);
-    const rows = raw.map(r => validarLanc(r));
+    // Normaliza nomes de coluna antes de validar — cobre variações de ERP
+    const rows = raw.map(r => validarLanc(normalizeApoioRow(r as Record<string, string>)));
+    // Diagnóstico: colunas originais da planilha
+    const colunasDetectadas = raw.length > 0 ? Object.keys(raw[0]) : [];
+    const temPessoaNome = rows.filter(r => r.pessoa_nome?.trim()).length;
+    const temPessoaDoc  = rows.filter(r => r.pessoa_cpf_cnpj?.trim()).length;
+    console.info(`[Apoio Import] Colunas: ${colunasDetectadas.join(", ")}`);
+    console.info(`[Apoio Import] Com pessoa_nome: ${temPessoaNome}/${rows.length} | Com CPF/CNPJ: ${temPessoaDoc}/${rows.length}`);
     setApoioRows(rows); setResultApoio(null);
   }
 
@@ -1243,6 +1285,7 @@ function ImportacaoInner() {
     const json = await resp.json() as {
       ok: number; erros: number;
       sem_pessoa?: number;
+      sem_pessoa_nome_planilha?: number;
       fazendas_sistema?: string[];
       fazendas_nao_encontradas?: string[];
       detalhes?: { linha: number; msg: string }[];
@@ -1262,6 +1305,7 @@ function ImportacaoInner() {
       erros: json.erros + invalidas.filter(r => r._status === "erro").length,
       duplicados: invalidas.filter(r => r._status === "duplicado").length,
       sem_pessoa: json.sem_pessoa,
+      sem_pessoa_nome_planilha: json.sem_pessoa_nome_planilha,
       fazendas_sistema: json.fazendas_sistema,
       fazendas_nao_encontradas: json.fazendas_nao_encontradas,
     });
@@ -2981,12 +3025,24 @@ function ImportacaoInner() {
             {/* Diagnóstico de importação — só para Apoio Financeiro */}
             {aba === "apoio" && resultApoio && (
               <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                {/* Fornecedores sem vínculo */}
-                {(resultApoio.sem_pessoa ?? 0) > 0 && (
-                  <div style={{ padding: "10px 14px", background: "#FFF8F0", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 12, color: "#7A5800" }}>
-                    <strong>⚠ {resultApoio.sem_pessoa} lançamento(s) sem vínculo com fornecedor</strong>
+                {/* Fornecedores: planilha sem nome (coluna vazia ou nome de coluna diferente) */}
+                {(resultApoio.sem_pessoa_nome_planilha ?? 0) > 0 && (
+                  <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 12, color: "#7A1A1A" }}>
+                    <strong>✗ {resultApoio.sem_pessoa_nome_planilha} linha(s) sem fornecedor na planilha</strong>
                     <div style={{ marginTop: 4 }}>
-                      O sistema tenta associar pelo CPF/CNPJ e depois pelo nome. Certifique-se de que o fornecedor está em <strong>Cadastros → Pessoas</strong> e que a coluna <code>pessoa_cpf_cnpj</code> ou <code>pessoa_nome</code> bate com o cadastro.
+                      A coluna <code>pessoa_nome</code> (ou alias: Fornecedor, Credor, Parceiro) está <strong>vazia</strong> nessas linhas — verifique o arquivo. O sistema também aceita colunas nomeadas <code>pessoa_cpf_cnpj</code>, <code>CNPJ</code> ou <code>CPF</code>.
+                    </div>
+                    <div style={{ marginTop: 4, color: "#555" }}>
+                      Abra o Console do navegador (F12 → Console) para ver quais colunas foram detectadas na planilha.
+                    </div>
+                  </div>
+                )}
+                {/* Fornecedores com nome mas sem cadastro */}
+                {(resultApoio.sem_pessoa ?? 0) > (resultApoio.sem_pessoa_nome_planilha ?? 0) && (
+                  <div style={{ padding: "10px 14px", background: "#FFF8F0", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 12, color: "#7A5800" }}>
+                    <strong>⚠ {(resultApoio.sem_pessoa ?? 0) - (resultApoio.sem_pessoa_nome_planilha ?? 0)} fornecedor(es) não encontrado(s) no Cadastro de Pessoas</strong>
+                    <div style={{ marginTop: 4 }}>
+                      O nome ou CNPJ está na planilha, mas não corresponde a nenhuma Pessoa cadastrada. O nome foi importado mesmo assim. Para vincular o cadastro: vá em <strong>Cadastros → Pessoas</strong>, cadastre o fornecedor e reimporte.
                     </div>
                   </div>
                 )}
