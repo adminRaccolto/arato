@@ -7,7 +7,7 @@ import { listarFazendasDaConta } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos" | "contratos_venda" | "produtores_imp" | "fazendas_imp" | "talhoes_imp" | "funcionarios";
+type Aba = "pessoas" | "cp" | "cr" | "apoio" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos" | "contratos_venda" | "produtores_imp" | "fazendas_imp" | "talhoes_imp" | "funcionarios";
 
 type PessoaRow = {
   nome: string; tipo: string; cpf_cnpj: string; cliente: string; fornecedor: string;
@@ -512,6 +512,7 @@ function downloadTemplate(aba: Aba) {
       pessoas:          TEMPLATE_PESSOAS,
       cp:               TEMPLATE_CP,
       cr:               TEMPLATE_CR,
+      apoio:            TEMPLATE_CP,
       insumos:          TEMPLATE_INSUMOS,
       produtos:         TEMPLATE_PRODUTOS,
       maquinas:         TEMPLATE_MAQUINAS,
@@ -547,6 +548,7 @@ function downloadTemplate(aba: Aba) {
       pessoas:          instrBase,
       cp:               INSTRUCOES_CP_CR,
       cr:               INSTRUCOES_CP_CR,
+      apoio:            INSTRUCOES_CP_CR,
       insumos:          [
         ["INSTRUÇÕES — IMPORTAÇÃO DE INSUMOS"],
         [""],
@@ -587,6 +589,7 @@ function downloadTemplate(aba: Aba) {
       pessoas:          "template_pessoas.xlsx",
       cp:               "template_contas_pagar.xlsx",
       cr:               "template_contas_receber.xlsx",
+      apoio:            "template_apoio_financeiro.xlsx",
       insumos:          "template_insumos.xlsx",
       produtos:         "template_produtos.xlsx",
       maquinas:         "template_maquinas_veiculos.xlsx",
@@ -1074,6 +1077,7 @@ function ImportacaoInner() {
   // Estados por aba
   const [pessoasRows,  setPessoasRows]  = useState<PessoaRow[]>([]);
   const [cpRows,       setCpRows]       = useState<LancRow[]>([]);
+  const [apoioRows,    setApoioRows]    = useState<LancRow[]>([]);
   const [crRows,       setCrRows]       = useState<LancRow[]>([]);
   const [insumosRows,  setInsumosRows]  = useState<InsumoRow[]>([]);
   const [produtosRows, setProdutosRows] = useState<ProdutoRow[]>([]);
@@ -1088,6 +1092,7 @@ function ImportacaoInner() {
 
   const [loadingPessoas,     setLoadingPessoas]     = useState(false);
   const [loadingCp,          setLoadingCp]          = useState(false);
+  const [loadingApoio,       setLoadingApoio]       = useState(false);
   const [loadingCr,          setLoadingCr]          = useState(false);
   const [loadingInsumos,     setLoadingInsumos]     = useState(false);
   const [modoAtualizacaoInsumos, setModoAtualizacaoInsumos] = useState(false);
@@ -1106,6 +1111,7 @@ function ImportacaoInner() {
   type Resultado = { ok: number; erros: number; duplicados: number; atualizados?: number };
   const [resultPessoas,      setResultPessoas]      = useState<Resultado | null>(null);
   const [resultCp,           setResultCp]           = useState<Resultado | null>(null);
+  const [resultApoio,        setResultApoio]        = useState<Resultado | null>(null);
   const [resultCr,           setResultCr]           = useState<Resultado | null>(null);
   const [resultInsumos,      setResultInsumos]      = useState<Resultado | null>(null);
   const [resultProdutos,     setResultProdutos]     = useState<Resultado | null>(null);
@@ -1192,6 +1198,84 @@ function ImportacaoInner() {
       });
     }
     setCpRows(rows); setResultCp(null);
+  }
+
+  async function handleFileApoio(file: File) {
+    const raw = await parseXlsx(file);
+    const rows = raw.map(r => validarLanc(r));
+    setApoioRows(rows); setResultApoio(null);
+  }
+
+  async function importarApoioLancamentos(rows: LancRow[]) {
+    if (!fazendaId || !rows.length) return;
+    setLoadingApoio(true);
+    let ok = 0, erros = 0, duplicados = 0;
+
+    // Carregar todas as fazendas da conta para resolver fazenda_nome → fazenda_id
+    const { data: fazendasDB } = contaId
+      ? await supabase.from("fazendas").select("id, nome").eq("conta_id", contaId)
+      : await supabase.from("fazendas").select("id, nome").eq("id", fazendaId);
+    const ids = (fazendasDB ?? []).map((f: { id: string }) => f.id);
+    if (!ids.length) ids.push(fazendaId!);
+    const fazendaMap: Record<string, string> = {};
+    (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
+      fazendaMap[f.nome.trim().toLowerCase()] = f.id;
+    });
+
+    const [pessoasRes, produtoresRes] = await Promise.all([
+      supabase.from("pessoas").select("id, cpf_cnpj, nome").in("fazenda_id", ids),
+      supabase.from("produtores").select("id, cpf_cnpj").in("fazenda_id", ids),
+    ]);
+    const pessoaMap: Record<string, { id: string; nome: string }> = {};
+    (pessoasRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null; nome: string }) => {
+      if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = { id: p.id, nome: p.nome };
+    });
+    const produtorMap: Record<string, string> = {};
+    (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
+      if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+    });
+
+    for (const r of rows) {
+      if (r._status === "erro")      { erros++;      continue; }
+      if (r._status === "duplicado") { duplicados++; continue; }
+
+      const nomeFaz = r.fazenda_nome?.trim().toLowerCase() ?? "";
+      const fazIdRow = nomeFaz ? (fazendaMap[nomeFaz] ?? fazendaId) : fazendaId;
+
+      const docKey = r.pessoa_cpf_cnpj ? r.pessoa_cpf_cnpj.replace(/\D/g, "") : "";
+      const pessoaInfo = docKey ? pessoaMap[docKey] ?? null : null;
+      const produtorId = r.produtor_cpf_cnpj?.trim()
+        ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
+      const valor = parseFloat(String(r.valor).replace(",", "."));
+      const moedaRaw = (r.moeda ?? "BRL").trim().toUpperCase();
+      const moeda = moedaRaw === "BRL" || moedaRaw === "R$" ? "BRL"
+        : moedaRaw === "USD" || moedaRaw === "US$" ? "USD" : "barter";
+
+      const { error } = await supabase.from("apoio_lancamentos").insert({
+        fazenda_id:              fazIdRow,
+        tipo:                    "pagar",
+        descricao:               r.descricao.trim(),
+        categoria:               r.categoria?.trim() || null,
+        data_lancamento:         r.data_lancamento?.trim() || null,
+        data_vencimento:         r.data_vencimento.trim(),
+        valor,
+        moeda,
+        pessoa_id:               pessoaInfo?.id ?? null,
+        pessoa_nome:             pessoaInfo?.nome ?? null,
+        numero_documento:        r.numero_documento?.trim() || null,
+        tipo_documento_lcdpr:    r.tipo_documento_lcdpr?.trim() || null,
+        num_parcela:             r.num_parcela ? parseInt(r.num_parcela) : null,
+        total_parcelas:          r.total_parcelas ? parseInt(r.total_parcelas) : null,
+        observacao:              r.observacao?.trim() || null,
+        produtor_id:             produtorId,
+        baixado:                 false,
+      });
+      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+      else ok++;
+    }
+    setApoioRows([...rows]);
+    setResultApoio({ ok, erros, duplicados });
+    setLoadingApoio(false);
   }
 
   async function handleFileCr(file: File) {
@@ -2471,6 +2555,16 @@ function ImportacaoInner() {
       onFile: handleFileCp,
       onImport: () => importarLancamentos("pagar", cpRows, setCpRows, setResultCp, setLoadingCp),
     },
+    apoio: {
+      label: "Apoio Financeiro", icon: "📋",
+      desc: "Importe lançamentos para o Apoio Financeiro (provisões, planejamento). Destino: apoio_lancamentos — separado do CP/CR oficial.",
+      cols: ["fazenda_nome", "descricao", "categoria", "data_lancamento", "data_vencimento", "valor", "pessoa_cpf_cnpj", "moeda", "num_parcela", "numero_documento", "tipo_documento_lcdpr", "observacao"],
+      rows: apoioRows as Record<string, unknown>[],
+      loading: loadingApoio,
+      result: resultApoio,
+      onFile: handleFileApoio,
+      onImport: () => importarApoioLancamentos(apoioRows),
+    },
     cr: {
       label: "Contas a Receber", icon: "💰",
       desc: "Importe contas a receber. Use numero_documento, operacao_gerencial e produtor_cpf_cnpj para classificação completa.",
@@ -2595,6 +2689,7 @@ function ImportacaoInner() {
   function limpar() {
     if (aba === "pessoas")       { setPessoasRows([]);        setResultPessoas(null); }
     if (aba === "cp")            { setCpRows([]);              setResultCp(null); }
+    if (aba === "apoio")         { setApoioRows([]);           setResultApoio(null); }
     if (aba === "cr")            { setCrRows([]);              setResultCr(null); }
     if (aba === "insumos")       { setInsumosRows([]);         setResultInsumos(null); }
     if (aba === "produtos")      { setProdutosRows([]);        setResultProdutos(null); }
@@ -2628,7 +2723,7 @@ function ImportacaoInner() {
         {/* Sidebar de abas */}
         <div style={{ width: 200, flexShrink: 0 }}>
           <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "talhoes_imp", "funcionarios"] as Aba[]).map(a => {
+            {(["pessoas", "cp", "cr", "apoio", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "talhoes_imp", "funcionarios"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
                 <button
@@ -2823,7 +2918,7 @@ function ImportacaoInner() {
           </div>
 
           {/* Dicas contextuais */}
-          {(aba === "cp" || aba === "cr") && (
+          {(aba === "cp" || aba === "cr" || aba === "apoio") && (
             <div style={{ marginTop: 16, padding: "12px 16px", background: "#D5E8F5", borderRadius: 10, border: "0.5px solid #1A4870", fontSize: 12, color: "#0B2D50" }}>
               <strong>💡 Dica:</strong> A coluna <code>pessoa_cpf_cnpj</code> faz o vínculo automático com o cadastro de Pessoas pelo CPF ou CNPJ.
               Importe Pessoas primeiro para garantir o vínculo correto.

@@ -9008,3 +9008,18 @@ ALTER TABLE contratos
   ADD COLUMN IF NOT EXISTS comprador_final_nome TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: colunas extras em apoio_lancamentos para importação em massa
+-- ============================================================================
+
+ALTER TABLE apoio_lancamentos
+  ADD COLUMN IF NOT EXISTS moeda                text NOT NULL DEFAULT 'BRL',
+  ADD COLUMN IF NOT EXISTS data_lancamento      date,
+  ADD COLUMN IF NOT EXISTS numero_documento     text,
+  ADD COLUMN IF NOT EXISTS tipo_documento_lcdpr text,
+  ADD COLUMN IF NOT EXISTS num_parcela          integer,
+  ADD COLUMN IF NOT EXISTS total_parcelas       integer,
+  ADD COLUMN IF NOT EXISTS produtor_id          uuid REFERENCES produtores(id);
+
+NOTIFY pgrst, 'reload schema';
