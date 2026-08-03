@@ -2870,6 +2870,45 @@ function ImportacaoInner() {
                     )}
                   </div>
                 )}
+                {/* Verificação de fazendas — só para aba apoio */}
+                {aba === "apoio" && totalRows > 0 && fazendas.length > 0 && (() => {
+                  const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+                  const sistNorm = new Map(fazendas.map(f => [norm(f.nome), f.nome]));
+                  const unique = [...new Set(apoioRows.map(r => r.fazenda_nome?.trim()).filter(Boolean))];
+                  const matched   = unique.filter(n => sistNorm.has(norm(n)));
+                  const unmatched = unique.filter(n => !sistNorm.has(norm(n)));
+                  return (
+                    <div style={{ marginTop: 14, padding: "12px 16px", background: unmatched.length ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${unmatched.length ? "#E24B4A" : "#16A34A"}`, borderRadius: 8, fontSize: 12 }}>
+                      <strong style={{ color: unmatched.length ? "#7A1A1A" : "#14532D" }}>
+                        {unmatched.length === 0
+                          ? `✓ Todas as ${unique.length} fazenda(s) do arquivo foram encontradas no sistema`
+                          : `✗ ${unmatched.length} fazenda(s) NÃO encontrada(s) — ${matched.length} de ${unique.length} vão importar`}
+                      </strong>
+                      <div style={{ display: "flex", gap: 24, marginTop: 8, flexWrap: "wrap" }}>
+                        {unmatched.length > 0 && (
+                          <div>
+                            <div style={{ fontWeight: 700, color: "#E24B4A", marginBottom: 4 }}>No arquivo (sem match):</div>
+                            {unmatched.map(n => <div key={n} style={{ fontFamily: "monospace", color: "#7A1A1A" }}>✗ {n}</div>)}
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 700, color: "#16A34A", marginBottom: 4 }}>Cadastradas no sistema:</div>
+                          {fazendas.map(f => (
+                            <div key={f.id} style={{ fontFamily: "monospace", color: matched.some(m => norm(m) === norm(f.nome)) ? "#14532D" : "#888" }}>
+                              {matched.some(m => norm(m) === norm(f.nome)) ? "✓" : "·"} {f.nome}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {unmatched.length > 0 && (
+                        <div style={{ marginTop: 8, color: "#7A1A1A" }}>
+                          Corrija a coluna <strong>fazenda_nome*</strong> no arquivo para usar exatamente os nomes à direita (sem aspas, acentos são tolerados).
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                     <strong>{totalRows}</strong> linha{totalRows !== 1 ? "s" : ""} lida{totalRows !== 1 ? "s" : ""}
