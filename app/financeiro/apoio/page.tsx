@@ -123,7 +123,7 @@ const FORM_VAZIO = {
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function ApoioFinanceiroPage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
 
   const { ini: iniPadrao, fim: fimPadrao } = mesAtual();
   const [dataIni, setDataIni] = useState(iniPadrao);
@@ -354,22 +354,26 @@ export default function ApoioFinanceiroPage() {
     setAcaoId(null);
   }
 
-  // ── Baixa em lote (exclusivo) ─────────────────────────────────────────────
+  // ── Baixa em lote (exclusivo) — via API para bypassar RLS multi-fazenda ──
   async function baixarEmLote() {
     if (!selecionados.size || !baixaLoteData) return;
     setSalvandoLote(true);
     const ids = Array.from(selecionados);
-    const { error } = await supabase
-      .from("apoio_lancamentos")
-      .update({ baixado: true, data_baixa: baixaLoteData })
-      .in("id", ids);
+    const resp = await fetch("/api/apoio-bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "baixar", ids, data: { data_baixa: baixaLoteData }, conta_id: contaId }),
+    });
+    const json = await resp.json();
     setSalvandoLote(false);
-    if (!error) {
+    if (resp.ok) {
       setModalBaixaLote(false);
       setSelecionados(new Set());
-      setMsg(`${ids.length} lançamento(s) baixado(s) com sucesso.`);
+      setMsg(`${json.ok} lançamento(s) baixado(s) com sucesso.`);
       setTimeout(() => setMsg(null), 4000);
       await carregar();
+    } else {
+      setMsg(`Erro: ${json.error}`);
     }
   }
 
@@ -394,15 +398,19 @@ export default function ApoioFinanceiroPage() {
     if (!selecionados.size) return;
     if (!confirm(`Excluir ${selecionados.size} lançamento(s) permanentemente?`)) return;
     const ids = Array.from(selecionados);
-    const { error } = await supabase
-      .from("apoio_lancamentos")
-      .delete()
-      .in("id", ids);
-    if (!error) {
+    const resp = await fetch("/api/apoio-bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", ids, conta_id: contaId }),
+    });
+    const json = await resp.json();
+    if (resp.ok) {
       setSelecionados(new Set());
-      setMsg(`${ids.length} lançamento(s) excluído(s).`);
+      setMsg(`${json.ok} lançamento(s) excluído(s).`);
       setTimeout(() => setMsg(null), 4000);
       await carregar();
+    } else {
+      setMsg(`Erro: ${json.error}`);
     }
   }
 
