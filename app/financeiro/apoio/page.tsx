@@ -208,7 +208,8 @@ export default function ApoioFinanceiroPage() {
         .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", dataIni)
         .lte("data_vencimento", dataFim)
-        .order("data_vencimento");
+        .order("data_vencimento")
+        .limit(10000);
 
       setLancamentos((lancs ?? []) as Lancamento[]);
 
@@ -229,7 +230,8 @@ export default function ApoioFinanceiroPage() {
         .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", dataIni)
         .lte("data_vencimento", dataFim)
-        .order("data_vencimento");
+        .order("data_vencimento")
+        .limit(10000);
 
       setApoioLancs((apoio ?? []) as ApoioLancamento[]);
     } finally {
