@@ -416,6 +416,25 @@ export default function ApoioFinanceiroPage() {
     }
   }
 
+  async function excluirTudo() {
+    if (!confirm("Excluir TODOS os lançamentos do Apoio Financeiro desta conta?\n\nEsta ação remove todos os registros de todas as fazendas, independente do filtro de datas.")) return;
+    if (!confirm("Confirmar exclusão total? Esta ação não pode ser desfeita.")) return;
+    const resp = await fetch("/api/apoio-bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete-all", conta_id: contaId, fazenda_ids: fazendaIds }),
+    });
+    const json = await resp.json();
+    if (resp.ok) {
+      setSelecionados(new Set());
+      setApoioLancs([]);
+      setMsg(`${json.ok} lançamento(s) excluído(s).`);
+      setTimeout(() => setMsg(null), 5000);
+    } else {
+      setMsg(`Erro: ${json.error}`);
+    }
+  }
+
   // ── Excel export ──────────────────────────────────────────────────────────
   async function exportarExcel() {
     const XLSX = await import("xlsx");
@@ -752,9 +771,14 @@ export default function ApoioFinanceiroPage() {
                   Selecione lançamentos para baixa em lote
                 </span>
               )}
-              <button onClick={() => { setFormApoio(FORM_VAZIO); setModalAberto(true); }} style={btn("#1A4870")}>
-                + Novo Lançamento
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={excluirTudo} style={{ ...btn("#E24B4A"), background: "white", color: "#E24B4A", border: "0.5px solid #E24B4A" }}>
+                  🗑 Excluir Tudo
+                </button>
+                <button onClick={() => { setFormApoio(FORM_VAZIO); setModalAberto(true); }} style={btn("#1A4870")}>
+                  + Novo Lançamento
+                </button>
+              </div>
             </div>
 
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>

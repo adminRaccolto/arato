@@ -28,12 +28,36 @@ export async function POST(req: NextRequest) {
     .single();
   if (!perfil) return NextResponse.json({ error: "Perfil não encontrado" }, { status: 403 });
 
-  const { action, ids, data: payload, conta_id } = await req.json() as {
-    action: "delete" | "baixar";
-    ids: string[];
+  const { action, ids, data: payload, conta_id, fazenda_ids } = await req.json() as {
+    action: "delete" | "baixar" | "delete-all";
+    ids?: string[];
     data?: { data_baixa?: string };
     conta_id: string;
+    fazenda_ids?: string[];
   };
+
+  // delete-all: apaga todos os registros das fazendas da conta
+  if (action === "delete-all") {
+    const fids = fazenda_ids?.length
+      ? fazenda_ids
+      : await (async () => {
+          const { data } = await admin.from("fazendas").select("id").eq("conta_id", conta_id);
+          return (data ?? []).map((f: { id: string }) => f.id);
+        })();
+    if (!fids.length) return NextResponse.json({ ok: 0 });
+    let ok = 0;
+    const BATCH = 50;
+    for (let s = 0; s < fids.length; s += BATCH) {
+      const chunk = fids.slice(s, s + BATCH);
+      const { data: deleted, error } = await admin
+        .from("apoio_lancamentos")
+        .delete()
+        .in("fazenda_id", chunk)
+        .select("id");
+      if (!error) ok += (deleted ?? []).length;
+    }
+    return NextResponse.json({ ok });
+  }
 
   if (!ids?.length) return NextResponse.json({ error: "Nenhum ID fornecido" }, { status: 400 });
 
