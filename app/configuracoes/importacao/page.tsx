@@ -20,6 +20,7 @@ type LancRow = {
   fazenda_nome: string;
   descricao: string; categoria: string; data_lancamento: string;
   data_vencimento: string; valor: string; pessoa_cpf_cnpj: string;
+  pessoa_nome: string;
   moeda: string; num_parcela: string; total_parcelas: string;
   tipo_documento_lcdpr: string; numero_documento: string;
   observacao: string;
@@ -115,10 +116,10 @@ const TEMPLATE_PESSOAS = [
   ["Pedro Operador", "pf", "111.222.333-44", "nao", "nao", "sim", "pedro@email.com", "(65)99000-0001", "Nova Mutum", "MT", "78450-000", "", "", ""],
 ];
 const TEMPLATE_CP = [
-  ["fazenda_nome*", "descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "observacao", "operacao_gerencial", "produtor_cpf_cnpj"],
-  ["Fazenda Matriz", "Compra de Fertilizante", "Insumos", "2026-01-10", "2026-02-10", "150000.00", "08.821.250/0001-60", "BRL", "1", "1", "NF", "NF 001234", "", "Custeio Soja", "012.345.678-90"],
-  ["Fazenda Matriz", "Arrendamento Fazenda Sul", "Arrendamento", "2026-03-01", "2026-03-31", "45000.00", "012.345.678-90", "BRL", "1", "3", "RECIBO", "", "", "Arrendamento Terras", ""],
-  ["Fazenda Filial", "Frete colheita safra 25/26", "Transporte", "2026-01-20", "2026-02-20", "28500.00", "", "BRL", "1", "1", "NF", "NF 005678", "", "Fretes e Carretos", ""],
+  ["fazenda_nome*", "descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "pessoa_nome", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "observacao", "operacao_gerencial", "produtor_cpf_cnpj"],
+  ["Fazenda Matriz", "Compra de Fertilizante", "Insumos", "2026-01-10", "2026-02-10", "150000.00", "08.821.250/0001-60", "DIPAGRO LTDA", "BRL", "1", "1", "NF", "NF 001234", "", "Custeio Soja", "012.345.678-90"],
+  ["Fazenda Matriz", "Arrendamento Fazenda Sul", "Arrendamento", "2026-03-01", "2026-03-31", "45000.00", "012.345.678-90", "", "BRL", "1", "3", "RECIBO", "", "", "Arrendamento Terras", ""],
+  ["Fazenda Filial", "Frete colheita safra 25/26", "Transporte", "2026-01-20", "2026-02-20", "28500.00", "", "TRANSPORTADORA XYZ", "BRL", "1", "1", "NF", "NF 005678", "", "Fretes e Carretos", ""],
 ];
 const TEMPLATE_CR = [
   ["fazenda_nome*", "descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "observacao", "operacao_gerencial", "produtor_cpf_cnpj"],
@@ -1109,9 +1110,14 @@ function ImportacaoInner() {
   const [loadingFuncionarios,   setLoadingFuncionarios]   = useState(false);
 
   type Resultado = { ok: number; erros: number; duplicados: number; atualizados?: number };
+  type ResultadoApoio = Resultado & {
+    sem_pessoa?: number;
+    fazendas_sistema?: string[];
+    fazendas_nao_encontradas?: string[];
+  };
   const [resultPessoas,      setResultPessoas]      = useState<Resultado | null>(null);
   const [resultCp,           setResultCp]           = useState<Resultado | null>(null);
-  const [resultApoio,        setResultApoio]        = useState<Resultado | null>(null);
+  const [resultApoio,        setResultApoio]        = useState<ResultadoApoio | null>(null);
   const [resultCr,           setResultCr]           = useState<Resultado | null>(null);
   const [resultInsumos,      setResultInsumos]      = useState<Resultado | null>(null);
   const [resultProdutos,     setResultProdutos]     = useState<Resultado | null>(null);
@@ -1220,18 +1226,31 @@ function ImportacaoInner() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rows: validas, conta_id: contaId }),
     });
-    const json = await resp.json() as { ok: number; erros: number; detalhes?: { linha: number; msg: string }[] };
+    const json = await resp.json() as {
+      ok: number; erros: number;
+      sem_pessoa?: number;
+      fazendas_sistema?: string[];
+      fazendas_nao_encontradas?: string[];
+      detalhes?: { linha: number; msg: string }[];
+    };
 
     // Marcar linhas que falharam no servidor
     if (json.detalhes?.length) {
       json.detalhes.forEach(({ linha, msg }) => {
-        const row = validas[linha - 1];
+        const row = validas[linha - 2]; // linha é 1-indexed a partir do header
         if (row) { row._status = "erro"; row._msg = msg; }
       });
     }
 
     setApoioRows([...rows]);
-    setResultApoio({ ok: json.ok, erros: json.erros + invalidas.filter(r => r._status === "erro").length, duplicados: invalidas.filter(r => r._status === "duplicado").length });
+    setResultApoio({
+      ok: json.ok,
+      erros: json.erros + invalidas.filter(r => r._status === "erro").length,
+      duplicados: invalidas.filter(r => r._status === "duplicado").length,
+      sem_pessoa: json.sem_pessoa,
+      fazendas_sistema: json.fazendas_sistema,
+      fazendas_nao_encontradas: json.fazendas_nao_encontradas,
+    });
     setLoadingApoio(false);
   }
 
@@ -2895,6 +2914,44 @@ function ImportacaoInner() {
               />
             )}
 
+            {/* Diagnóstico de importação — só para Apoio Financeiro */}
+            {aba === "apoio" && resultApoio && (
+              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                {/* Fornecedores sem vínculo */}
+                {(resultApoio.sem_pessoa ?? 0) > 0 && (
+                  <div style={{ padding: "10px 14px", background: "#FFF8F0", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 12, color: "#7A5800" }}>
+                    <strong>⚠ {resultApoio.sem_pessoa} lançamento(s) sem vínculo com fornecedor</strong>
+                    <div style={{ marginTop: 4 }}>
+                      O sistema tenta associar pelo CPF/CNPJ e depois pelo nome. Certifique-se de que o fornecedor está em <strong>Cadastros → Pessoas</strong> e que a coluna <code>pessoa_cpf_cnpj</code> ou <code>pessoa_nome</code> bate com o cadastro.
+                    </div>
+                  </div>
+                )}
+
+                {/* Fazendas não encontradas */}
+                {(resultApoio.fazendas_nao_encontradas ?? []).length > 0 && (
+                  <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 12, color: "#7A1A1A" }}>
+                    <strong>✗ Fazendas no arquivo NÃO encontradas no sistema:</strong>
+                    <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                      {(resultApoio.fazendas_nao_encontradas ?? []).map(f => (
+                        <li key={f} style={{ fontFamily: "monospace" }}>{f}</li>
+                      ))}
+                    </ul>
+                    <div style={{ marginTop: 8 }}>
+                      <strong>Fazendas cadastradas no sistema:</strong>
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                        {(resultApoio.fazendas_sistema ?? []).map(f => (
+                          <li key={f} style={{ fontFamily: "monospace" }}>{f}</li>
+                        ))}
+                      </ul>
+                      <div style={{ marginTop: 6 }}>
+                        Corrija o nome da fazenda na coluna <code>fazenda_nome*</code> do arquivo para bater exatamente com um dos nomes acima e reimporte.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Empty state */}
             {totalRows === 0 && !cfg.result && (
               <div style={{ marginTop: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 13, padding: "16px 0" }}>
@@ -2904,10 +2961,16 @@ function ImportacaoInner() {
           </div>
 
           {/* Dicas contextuais */}
-          {(aba === "cp" || aba === "cr" || aba === "apoio") && (
+          {(aba === "cp" || aba === "cr") && (
             <div style={{ marginTop: 16, padding: "12px 16px", background: "#D5E8F5", borderRadius: 10, border: "0.5px solid #1A4870", fontSize: 12, color: "#0B2D50" }}>
               <strong>💡 Dica:</strong> A coluna <code>pessoa_cpf_cnpj</code> faz o vínculo automático com o cadastro de Pessoas pelo CPF ou CNPJ.
               Importe Pessoas primeiro para garantir o vínculo correto.
+            </div>
+          )}
+          {aba === "apoio" && (
+            <div style={{ marginTop: 16, padding: "12px 16px", background: "#D5E8F5", borderRadius: 10, border: "0.5px solid #1A4870", fontSize: 12, color: "#0B2D50" }}>
+              <strong>💡 Dica Apoio Financeiro:</strong> O vínculo com fornecedor é feito primeiro por <code>pessoa_cpf_cnpj</code> (CPF/CNPJ), depois por <code>pessoa_nome</code> (nome exato).
+              Após importar, o diagnóstico mostra quais fazendas não foram encontradas — use os nomes exatamente como cadastrados no sistema.
             </div>
           )}
           {aba === "produtos" && <RefCategorias />}

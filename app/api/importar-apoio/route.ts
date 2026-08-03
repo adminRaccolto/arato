@@ -15,6 +15,7 @@ interface ApoioRow {
   valor: number;
   moeda?: string;
   pessoa_cpf_cnpj?: string;
+  pessoa_nome?: string;
   num_parcela?: string;
   total_parcelas?: string;
   tipo_documento_lcdpr?: string;
@@ -23,8 +24,17 @@ interface ApoioRow {
   produtor_cpf_cnpj?: string;
 }
 
+// Remove acentos, normaliza para lowercase e colapsa espaços múltiplos
+function normalizar(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function POST(req: NextRequest) {
-  // Autenticar usuário via cookies
   const cookieStore = await cookies();
   const supabaseUser = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +44,6 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabaseUser.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
-  // Admin client com service_role_key — bypassa RLS
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -46,7 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Parâmetros inválidos" }, { status: 400 });
   }
 
-  // Verificar que o usuário realmente tem acesso à conta
+  // Verificar acesso do usuário à conta
   const { data: perfil } = await admin
     .from("perfis")
     .select("conta_id, role")
@@ -57,16 +66,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Sem acesso a esta conta" }, { status: 403 });
   }
 
-  // Carregar todas as fazendas da conta
+  // Carregar todas as fazendas da conta — mapa com chave normalizada
   const { data: fazendasDB } = await admin
     .from("fazendas").select("id, nome").eq("conta_id", conta_id);
-  const fazendaMap: Record<string, string> = {};
+
+  const fazendaMap: Record<string, string> = {};   // normalizado → id
+  const fazendaNomeMap: Record<string, string> = {}; // normalizado → nome original
   (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
-    fazendaMap[f.nome.trim().toLowerCase()] = f.id;
+    const key = normalizar(f.nome);
+    fazendaMap[key] = f.id;
+    fazendaNomeMap[key] = f.nome;
   });
   const fazendaIds = Object.values(fazendaMap);
 
-  // Mapas de pessoas e produtores
+  // Mapas de pessoas: por CPF/CNPJ (dígitos) e por nome normalizado (fallback)
   const [pessoasRes, produtoresRes] = await Promise.all([
     fazendaIds.length
       ? admin.from("pessoas").select("id, cpf_cnpj, nome").in("fazenda_id", fazendaIds)
@@ -75,19 +88,20 @@ export async function POST(req: NextRequest) {
       ? admin.from("produtores").select("id, cpf_cnpj").in("fazenda_id", fazendaIds)
       : { data: [] },
   ]);
-  const pessoaMap: Record<string, { id: string; nome: string }> = {};
+
+  const pessoaMapDoc: Record<string, { id: string; nome: string }> = {};
+  const pessoaMapNome: Record<string, { id: string; nome: string }> = {};
   (pessoasRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null; nome: string }) => {
-    if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = { id: p.id, nome: p.nome };
+    const info = { id: p.id, nome: p.nome };
+    if (p.cpf_cnpj) pessoaMapDoc[p.cpf_cnpj.replace(/\D/g, "")] = info;
+    pessoaMapNome[normalizar(p.nome)] = info;
   });
+
   const produtorMap: Record<string, string> = {};
   (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
     if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
   });
 
-  // Fazenda de fallback (primeira da conta)
-  const [defaultFazendaId] = Object.values(fazendaMap);
-
-  // Preparar todos os registros de uma vez (sem loop assíncrono)
   type InsertRow = {
     fazenda_id: string; tipo: string; descricao: string; categoria: string | null;
     data_lancamento: string | null; data_vencimento: string; valor: number; moeda: string;
@@ -98,19 +112,31 @@ export async function POST(req: NextRequest) {
 
   const toInsert: InsertRow[] = [];
   const erros: { linha: number; msg: string }[] = [];
+  const fazendasNaoEncontradas = new Set<string>();
+  let semPessoa = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const nomeFaz = r.fazenda_nome?.trim().toLowerCase() ?? "";
-    const fazIdRow = nomeFaz ? (fazendaMap[nomeFaz] ?? defaultFazendaId) : defaultFazendaId;
+    const nomeFazNorm = normalizar(r.fazenda_nome ?? "");
+    const fazIdRow = nomeFazNorm ? fazendaMap[nomeFazNorm] : undefined;
 
     if (!fazIdRow) {
-      erros.push({ linha: i + 1, msg: `Fazenda "${r.fazenda_nome}" não encontrada na conta` });
+      fazendasNaoEncontradas.add(r.fazenda_nome ?? "(vazio)");
+      erros.push({ linha: i + 2, msg: `Fazenda "${r.fazenda_nome}" não encontrada` });
       continue;
     }
 
+    // Match de pessoa: tenta CPF/CNPJ primeiro, depois nome
+    let pessoaInfo: { id: string; nome: string } | null = null;
     const docKey = r.pessoa_cpf_cnpj ? r.pessoa_cpf_cnpj.replace(/\D/g, "") : "";
-    const pessoaInfo = docKey.length >= 11 ? pessoaMap[docKey] ?? null : null;
+    if (docKey.length >= 11) {
+      pessoaInfo = pessoaMapDoc[docKey] ?? null;
+    }
+    if (!pessoaInfo && r.pessoa_nome?.trim()) {
+      pessoaInfo = pessoaMapNome[normalizar(r.pessoa_nome)] ?? null;
+    }
+    if (!pessoaInfo) semPessoa++;
+
     const produtorId = r.produtor_cpf_cnpj?.trim()
       ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
 
@@ -140,20 +166,26 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Inserir em lotes de 500 — uma única chamada por lote (100x mais rápido)
+  // Inserir em lotes de 500
   const BATCH = 500;
   let ok = 0;
+  const errosInsert: { linha: number; msg: string }[] = [];
   for (let s = 0; s < toInsert.length; s += BATCH) {
     const chunk = toInsert.slice(s, s + BATCH);
-    const { error } = await admin
-      .from("apoio_lancamentos")
-      .insert(chunk);
+    const { error } = await admin.from("apoio_lancamentos").insert(chunk);
     if (error) {
-      erros.push({ linha: s + 1, msg: `Lote ${Math.floor(s/BATCH)+1}: ${error.message}` });
+      errosInsert.push({ linha: s + 1, msg: `Lote ${Math.floor(s / BATCH) + 1}: ${error.message}` });
     } else {
       ok += chunk.length;
     }
   }
 
-  return NextResponse.json({ ok, erros: erros.length, detalhes: erros.slice(0, 20) });
+  return NextResponse.json({
+    ok,
+    erros: erros.length + errosInsert.length,
+    sem_pessoa: semPessoa,
+    fazendas_sistema: Object.values(fazendaNomeMap),
+    fazendas_nao_encontradas: Array.from(fazendasNaoEncontradas),
+    detalhes: [...erros.slice(0, 10), ...errosInsert],
+  });
 }
