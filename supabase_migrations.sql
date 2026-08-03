@@ -9023,3 +9023,29 @@ ALTER TABLE apoio_lancamentos
   ADD COLUMN IF NOT EXISTS produtor_id          uuid REFERENCES produtores(id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: RLS apoio_lancamentos por conta (não só fazenda ativa)
+-- ============================================================================
+
+DROP POLICY IF EXISTS "apoio_lancamentos_all" ON apoio_lancamentos;
+
+CREATE POLICY "apoio_lancamentos_conta" ON apoio_lancamentos FOR ALL USING (
+  fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    INNER JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ) OR EXISTS (
+    SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'
+  )
+) WITH CHECK (
+  fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    INNER JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ) OR EXISTS (
+    SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'
+  )
+);
+
+NOTIFY pgrst, 'reload schema';

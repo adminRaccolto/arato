@@ -1207,75 +1207,61 @@ function ImportacaoInner() {
   }
 
   async function importarApoioLancamentos(rows: LancRow[]) {
-    if (!fazendaId || !rows.length) return;
+    if (!contaId || !rows.length) return;
     setLoadingApoio(true);
-    let ok = 0, erros = 0, duplicados = 0;
 
-    // Carregar todas as fazendas da conta para resolver fazenda_nome → fazenda_id
-    const { data: fazendasDB } = contaId
-      ? await supabase.from("fazendas").select("id, nome").eq("conta_id", contaId)
-      : await supabase.from("fazendas").select("id, nome").eq("id", fazendaId);
-    const ids = (fazendasDB ?? []).map((f: { id: string }) => f.id);
-    if (!ids.length) ids.push(fazendaId!);
-    const fazendaMap: Record<string, string> = {};
-    (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
-      fazendaMap[f.nome.trim().toLowerCase()] = f.id;
-    });
+    // Separar linhas válidas
+    const validas = rows.filter(r => r._status !== "erro" && r._status !== "duplicado");
+    const invalidas = rows.filter(r => r._status === "erro" || r._status === "duplicado");
 
-    const [pessoasRes, produtoresRes] = await Promise.all([
-      supabase.from("pessoas").select("id, cpf_cnpj, nome").in("fazenda_id", ids),
-      supabase.from("produtores").select("id, cpf_cnpj").in("fazenda_id", ids),
-    ]);
-    const pessoaMap: Record<string, { id: string; nome: string }> = {};
-    (pessoasRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null; nome: string }) => {
-      if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = { id: p.id, nome: p.nome };
+    // Usar API route com service_role_key — bypassa RLS para multi-fazenda
+    const resp = await fetch("/api/importar-apoio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows: validas, conta_id: contaId }),
     });
-    const produtorMap: Record<string, string> = {};
-    (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
-      if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
-    });
+    const json = await resp.json() as { ok: number; erros: number; detalhes?: { linha: number; msg: string }[] };
 
+    // Marcar linhas que falharam no servidor
+    if (json.detalhes?.length) {
+      json.detalhes.forEach(({ linha, msg }) => {
+        const row = validas[linha - 1];
+        if (row) { row._status = "erro"; row._msg = msg; }
+      });
+    }
+
+    setApoioRows([...rows]);
+    setResultApoio({ ok: json.ok, erros: json.erros + invalidas.filter(r => r._status === "erro").length, duplicados: invalidas.filter(r => r._status === "duplicado").length });
+    setLoadingApoio(false);
+  }
+
+  // ── [REMOVIDO — substituído pela versão acima que usa API route] ──
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async function _importarApoioLegado(rows: LancRow[]) {
     for (const r of rows) {
-      if (r._status === "erro")      { erros++;      continue; }
-      if (r._status === "duplicado") { duplicados++; continue; }
-
-      const nomeFaz = r.fazenda_nome?.trim().toLowerCase() ?? "";
-      const fazIdRow = nomeFaz ? (fazendaMap[nomeFaz] ?? fazendaId) : fazendaId;
-
-      const docKey = r.pessoa_cpf_cnpj ? r.pessoa_cpf_cnpj.replace(/\D/g, "") : "";
-      const pessoaInfo = docKey ? pessoaMap[docKey] ?? null : null;
-      const produtorId = r.produtor_cpf_cnpj?.trim()
-        ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
-      const valor = parseFloat(String(r.valor).replace(",", "."));
-      const moedaRaw = (r.moeda ?? "BRL").trim().toUpperCase();
-      const moeda = moedaRaw === "BRL" || moedaRaw === "R$" ? "BRL"
-        : moedaRaw === "USD" || moedaRaw === "US$" ? "USD" : "barter";
-
+      if (r._status === "erro")      { continue; }
+      if (r._status === "duplicado") { continue; }
       const { error } = await supabase.from("apoio_lancamentos").insert({
-        fazenda_id:              fazIdRow,
+        fazenda_id:              fazendaId,
         tipo:                    "pagar",
         descricao:               r.descricao.trim(),
         categoria:               r.categoria?.trim() || null,
         data_lancamento:         r.data_lancamento?.trim() || null,
         data_vencimento:         r.data_vencimento.trim(),
-        valor,
-        moeda,
-        pessoa_id:               pessoaInfo?.id ?? null,
-        pessoa_nome:             pessoaInfo?.nome ?? null,
+        valor:                   parseFloat(String(r.valor).replace(",", ".")),
+        moeda:                   "BRL",
+        pessoa_id:               null,
+        pessoa_nome:             null,
         numero_documento:        r.numero_documento?.trim() || null,
         tipo_documento_lcdpr:    r.tipo_documento_lcdpr?.trim() || null,
         num_parcela:             r.num_parcela ? parseInt(r.num_parcela) : null,
         total_parcelas:          r.total_parcelas ? parseInt(r.total_parcelas) : null,
         observacao:              r.observacao?.trim() || null,
-        produtor_id:             produtorId,
+        produtor_id:             null,
         baixado:                 false,
       });
-      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-      else ok++;
+      if (error) console.error(error.message);
     }
-    setApoioRows([...rows]);
-    setResultApoio({ ok, erros, duplicados });
-    setLoadingApoio(false);
   }
 
   async function handleFileCr(file: File) {
