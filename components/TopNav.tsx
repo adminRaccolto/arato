@@ -634,17 +634,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.25 }}>
                   {nomeIdentidade ?? "—"}
                 </div>
-                {fazenda && !multiFazenda && (
-                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                    {fazenda.municipio} · {fazenda.estado}
-                    {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
-                  </div>
-                )}
-                {multiFazenda && fazenda && (
-                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                    {fazenda.nome}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -665,11 +654,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {nomeProdutor || nomeFazendaSelecionada}
                 </div>
-                {fazenda && (
-                  <div style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {fazenda.municipio} · {fazenda.estado}
-                  </div>
-                )}
               </div>
               <button
                 onClick={clearFazenda}
