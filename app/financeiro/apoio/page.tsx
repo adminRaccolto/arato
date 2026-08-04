@@ -170,6 +170,15 @@ export default function ApoioFinanceiroPage() {
   const [acaoId, setAcaoId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // ── Filtros de coluna (aba exclusivo) ────────────────────────────────────
+  const [fDescricao,  setFDescricao]  = useState("");
+  const [fFornecedor, setFForncedor]  = useState("");
+  const [fProdutor,   setFProdutor]   = useState("");
+  const [fSafra,      setFSafra]      = useState("");
+  const [fOrigem,     setFOrigem]     = useState("");
+  const [fCategoria,  setFCategoria]  = useState("");
+  const [fStatus,     setFStatus]     = useState<"" | "aberto" | "baixado">(""); // "" = todos
+
   // ── Seleção em lote (aba exclusivo) ───────────────────────────────────────
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [modalBaixaLote, setModalBaixaLote] = useState(false);
@@ -818,16 +827,76 @@ export default function ApoioFinanceiroPage() {
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
+                    {/* ── Linha de filtros por coluna ── */}
+                    <tr style={{ background: "#F4F6FA" }}>
+                      <th style={th} />
+                      <th style={th} />
+                      <th style={th}>
+                        <select value={fStatus} onChange={e => setFStatus(e.target.value as "" | "aberto" | "baixado")}
+                          style={{ width: "100%", fontSize: 10, border: "0.5px solid #DDE2EE", borderRadius: 4, padding: "2px 4px", background: "#fff" }}>
+                          <option value="">Todos</option>
+                          <option value="aberto">Aberto</option>
+                          <option value="baixado">Baixado</option>
+                        </select>
+                      </th>
+                      {[
+                        [fDescricao,  setFDescricao,  "Descrição…"],
+                        [fFornecedor, setFForncedor,  "Fornecedor…"],
+                        [null,        null,           ""],           // CPF/CNPJ — não filtrável
+                        [fProdutor,   setFProdutor,   "Produtor…"],
+                        [fSafra,      setFSafra,      "Safra…"],
+                        [fOrigem,     setFOrigem,     "Origem…"],
+                        [fCategoria,  setFCategoria,  "Categoria…"],
+                      ].map(([val, setter, ph], i) => (
+                        <th key={i} style={th}>
+                          {setter ? (
+                            <input
+                              value={val as string}
+                              onChange={e => (setter as (v: string) => void)(e.target.value)}
+                              placeholder={ph as string}
+                              style={{ width: "100%", fontSize: 10, border: "0.5px solid #DDE2EE", borderRadius: 4, padding: "2px 4px", outline: "none" }}
+                            />
+                          ) : null}
+                        </th>
+                      ))}
+                      <th style={th} />
+                      <th style={th} />
+                      <th style={th}>
+                        {(fDescricao || fFornecedor || fProdutor || fSafra || fOrigem || fCategoria || fStatus) && (
+                          <button onClick={() => { setFDescricao(""); setFForncedor(""); setFProdutor(""); setFSafra(""); setFOrigem(""); setFCategoria(""); setFStatus(""); }}
+                            style={{ fontSize: 10, padding: "2px 6px", border: "0.5px solid #DDE2EE", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#E24B4A", whiteSpace: "nowrap" }}>
+                            ✕ Limpar
+                          </button>
+                        )}
+                      </th>
+                    </tr>
                   </thead>
                   <tbody>
-                    {apoioLancs.length === 0 && (
-                      <tr>
-                        <td colSpan={13} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
-                          {carregando ? "Carregando…" : "Nenhum lançamento exclusivo cadastrado."}
-                        </td>
-                      </tr>
-                    )}
-                    {apoioLancs.map((a) => {
+                    {(() => {
+                      const inc = (v: string | null | undefined, f: string) =>
+                        !f || (v ?? "").toLowerCase().includes(f.toLowerCase());
+                      const apoioFiltrado = apoioLancs.filter((a) => {
+                        const pessoaNomeF = (a.pessoa_id ? pessoas.find(p => p.id === a.pessoa_id)?.nome : null) ?? a.pessoa_nome ?? "";
+                        if (!inc(a.descricao, fDescricao))   return false;
+                        if (!inc(pessoaNomeF, fFornecedor))  return false;
+                        if (!inc(a.produtor_nome, fProdutor)) return false;
+                        if (!inc(a.safra_nome, fSafra))      return false;
+                        if (!inc(a.origem, fOrigem))         return false;
+                        if (!inc(a.categoria, fCategoria))   return false;
+                        if (fStatus === "aberto"  && a.baixado)  return false;
+                        if (fStatus === "baixado" && !a.baixado) return false;
+                        return true;
+                      });
+                      const temFiltro = fDescricao || fFornecedor || fProdutor || fSafra || fOrigem || fCategoria || fStatus;
+                      return (<>
+                        {apoioFiltrado.length === 0 && (
+                          <tr>
+                            <td colSpan={13} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
+                              {carregando ? "Carregando…" : temFiltro ? `Nenhum resultado para os filtros aplicados.` : "Nenhum lançamento exclusivo cadastrado."}
+                            </td>
+                          </tr>
+                        )}
+                        {apoioFiltrado.map((a) => {
                       const emAcao = acaoId === a.id;
                       const selecionado = selecionados.has(a.id);
                       const pessoaCadastro = a.pessoa_id ? pessoas.find((p) => p.id === a.pessoa_id) : null;
@@ -902,6 +971,8 @@ export default function ApoioFinanceiroPage() {
                         </tr>
                       );
                     })}
+                      </>);
+                    })()}
                   </tbody>
                 </table>
               </div>
