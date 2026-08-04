@@ -1669,10 +1669,13 @@ export async function processarNfEntrada(
   },
 ): Promise<void> {
   for (const item of itens) {
-    // Custo por unidade do catálogo (pode diferir da unidade da NF quando há fator de conversão).
-    // Exemplo: NF em "bag" (fator=25), estoque em "L" → custo/L = custo/bag ÷ 25.
-    const fator = (item.fator_conversao && item.fator_conversao > 0) ? item.fator_conversao : 1;
-    const custoUnitarioCatalogo = item.valor_unitario / fator;
+    // Custo por unidade do catálogo — sempre derivado do total monetário da NF dividido pela
+    // quantidade já convertida (armazenada em catalog units). Cobre dois cenários:
+    //   a) BAG→KG automático: fator=1, mas valor_unitario ainda é R$/bag → total/kg_qty é correto
+    //   b) Fator manual: quantidade_db = qNF × fator → total / (qNF × fator) = vUnit / fator
+    const custoUnitarioCatalogo = item.quantidade > 0
+      ? item.valor_total / item.quantidade
+      : item.valor_unitario;
 
     // ── Defensivo/Fertilizante/Inoculante → estoque por Princípio Ativo ─
     if (item.tipo_apropiacao === "estoque" && item.principio_ativo_id) {
