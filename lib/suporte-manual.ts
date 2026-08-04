@@ -602,6 +602,10 @@ Gerencia todas as despesas da fazenda: insumos, combustível, frete, arrendament
 3. **Aba Principal** (*):
    - Descrição (*), Valor (*), Moeda (BRL / USD / barter), Vencimento (*), Categoria (*)
    - LCDPR: tipo de documento para o Livro Caixa Digital
+   - **Veículo / Máquina (opcional):** select unificado com máquinas da fazenda e veículos de transportadoras próprias. Aparece automaticamente quando há veículos cadastrados.
+     - Para categorias de **Manutenção** (OG 2.01.01.03.*): exibe todos os tipos (tratores, colheitadeiras, caminhões, etc.)
+     - Para demais categorias (multa de trânsito, impostos, etc.): exibe apenas veículos emplacados (caminhão, carreta, carro, veículos de transportadora)
+     - Formato de exibição: `[ABC-1234] — Nome (Fazenda)` ou `[ABC-1234] (Transportadora)` com grupos separados
 4. **Aba Adicionais:**
    - Forma de pagamento, Conta de pagamento (banco), OG, Centro de Custo
    - Produtor, Ciclo, Talhão (vínculos para rateio)
@@ -1577,7 +1581,7 @@ Para tipos de custo com proporção diferente da regra principal, crie uma **Reg
 **Caminho:** Menu superior → **Configurações** → **Importação**
 
 ### O que faz
-Permite importar dados em massa via planilha XLSX: pessoas, CP, CR, insumos, produtos, máquinas, contratos financeiros, arrendamentos, contratos de venda, produtores, fazendas e talhões.
+Permite importar dados em massa via planilha XLSX: pessoas, CP, CR, insumos, produtos, máquinas, contratos financeiros, arrendamentos, contratos de venda, produtores, fazendas, talhões e lançamentos do Apoio Financeiro.
 
 ### Abas disponíveis
 - **Pessoas** — clientes, fornecedores, parceiros
@@ -1592,6 +1596,7 @@ Permite importar dados em massa via planilha XLSX: pessoas, CP, CR, insumos, pro
 - **Produtores** — produtores rurais
 - **Fazendas** — propriedades rurais
 - **Talhões** — subdivisões das fazendas
+- **Apoio Financeiro** — lançamentos exclusivos do consultor Raccotlo (apenas raccotlo)
 
 ### Processo de importação (igual para todas as abas)
 1. Clique em **Baixar Template** para obter o modelo XLSX
@@ -1749,11 +1754,22 @@ Ferramenta de trabalho interno do consultor Raccotlo para organizar lançamentos
 **Aba Exclusivo (lançamentos próprios do Apoio):**
 - Lista de CP/CR criadas diretamente no Apoio Financeiro (não existem no sistema oficial)
 - Badge por status: em_aberto, baixado_apoio
+- Grid full-width com 13 colunas: Data, Vencimento, Descrição, Fornecedor, Produtor, Safra, Origem, Categoria, Valor, Status, Ações
+- **Filtros de string**: linha de inputs abaixo dos cabeçalhos para filtrar por Descrição, Fornecedor, Produtor, Safra, Origem, Categoria — digitação em tempo real + botão ✕ Limpar para resetar todos
+- Filtro de status: dropdown (Todos / Em aberto / Baixado)
 
 **Aba Compartilhado (lançamentos oficiais gerenciados via Apoio):**
 - Lista de CP/CR do sistema oficial que foram "baixadas" dentro do contexto do Apoio
 - Badge: baixado_apoio ou baixado_oficial
 - Permite "Reabrir baixa" tanto para lançamentos baixados no Apoio quanto no sistema oficial
+
+**Aba Importação:**
+- Importa lançamentos do Apoio em massa via planilha XLSX
+- Template com 19 campos: data, vencimento, tipo, valor, moeda, descrição, categoria, fazenda, pessoa_nome, cnpj_cpf, produtor_nome, produtor_cpf_cnpj, safra_nome, ciclo, talhão, operacao_gerencial, observacao, origem, status
+- Matching automático de Pessoa por CNPJ/CPF (prioridade) ou por nome; Fazenda por nome; OG por descrição
+- CNPJ com zero inicial suprimido pelo Excel é normalizado automaticamente (13 → 14 dígitos)
+- Empresas com 2 CNPJs cadastradas com o mesmo nome: o sistema usa o CNPJ para resolver a ambiguidade; se só o nome for informado e houver duplicata, o lançamento importa sem vínculo de pessoa (sem erro)
+- Campos `produtor_nome`, `safra_nome`, `origem` são gravados como texto livre (não dependem de FK) para preservar contexto histórico mesmo que o cadastro mude
 
 ### Como criar um lançamento exclusivo
 1. Clique em **+ Novo Lançamento**
@@ -1817,6 +1833,8 @@ Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção
 | Ver fluxo de caixa | Financeiro → Fluxo de Caixa |
 | Lançar contas a receber | Financeiro → Contas a Receber |
 | Lançar contas a pagar | Financeiro → Contas a Pagar |
+| Vincular multa de trânsito a veículo | Financeiro → Contas a Pagar → Nova CP → campo Veículo |
+| Vincular manutenção a máquina/veículo | Financeiro → Contas a Pagar → Nova CP → campo Veículo |
 | Gerenciar financiamentos | Financeiro → Contratos Financeiros |
 | Lançamentos de tesouraria | Financeiro → Tesouraria |
 | Estimativas financeiras (consultor) | Financeiro → Apoio Financeiro |
@@ -1845,5 +1863,6 @@ Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção
 | Cadastrar pessoas/fornecedores | Cadastros → Pessoas |
 | Cadastrar contas bancárias | Cadastros → Contas Bancárias |
 | Importar dados em massa | Configurações → Importação |
+| Importar lançamentos do Apoio (raccotlo) | Financeiro → Apoio Financeiro → aba Importação |
 | Definir regras de rateio | Configurações → Regras de Rateio |
 `;
