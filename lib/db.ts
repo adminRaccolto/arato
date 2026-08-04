@@ -1669,13 +1669,18 @@ export async function processarNfEntrada(
   },
 ): Promise<void> {
   for (const item of itens) {
+    // Custo por unidade do catálogo (pode diferir da unidade da NF quando há fator de conversão).
+    // Exemplo: NF em "bag" (fator=25), estoque em "L" → custo/L = custo/bag ÷ 25.
+    const fator = (item.fator_conversao && item.fator_conversao > 0) ? item.fator_conversao : 1;
+    const custoUnitarioCatalogo = item.valor_unitario / fator;
+
     // ── Defensivo/Fertilizante/Inoculante → estoque por Princípio Ativo ─
     if (item.tipo_apropiacao === "estoque" && item.principio_ativo_id) {
       await registrarEntradaPA({
         fazendaId:         fazenda_id,
         principioAtivoId:  item.principio_ativo_id,
         quantidade:        item.quantidade,
-        custoUnitario:     item.valor_unitario,
+        custoUnitario:     custoUnitarioCatalogo,
         nomeComercialRef:  item.nome_comercial_ref ?? item.descricao_produto,
         nfEntradaId:       nfId,
         nfEntradaItemId:   item.id,
@@ -1692,14 +1697,14 @@ export async function processarNfEntrada(
         fazenda_id,
         tipo:               "entrada",
         quantidade:         item.quantidade,
-        valor_unitario:     item.valor_unitario,
+        valor_unitario:     custoUnitarioCatalogo,
         data:               dataEntrada,
         observacao:         `NF ${nfId} — ${item.descricao_produto}`,
         auto:               true,
         deposito_id:        item.deposito_id ?? null,
         nf_entrada_item_id: item.id,
       });
-      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id);
+      await creditarInsumo(item.insumo_id, item.quantidade, custoUnitarioCatalogo, fazenda_id);
     }
 
     // ── Manutenção de máquina ────────────────────────────────────
