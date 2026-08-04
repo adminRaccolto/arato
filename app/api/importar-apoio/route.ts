@@ -37,6 +37,83 @@ function normalizar(s: string): string {
     .trim();
 }
 
+// Normaliza CNPJ/CPF digits — corrige zero inicial perdido pelo Excel (salvo como número)
+// Ex: "6338993000869" (13 dígitos) → "06338993000869" (14 dígitos CNPJ)
+//     "1234567890"   (10 dígitos) → "01234567890"   (11 dígitos CPF)
+function normalizarDoc(digits: string): string {
+  if (digits.length === 13) return "0" + digits; // CNPJ sem leading zero
+  if (digits.length === 10) return "0" + digits; // CPF sem leading zero
+  return digits;
+}
+
+// Normaliza nomes de coluna da planilha → campos do sistema (mesmo que normalizeApoioRow no client)
+function normalizarColunasRow(r: Record<string, string>): Record<string, string> {
+  const n: Record<string, string> = { ...r };
+
+  if (!n.pessoa_cpf_cnpj?.trim()) {
+    for (const a of [
+      "CNPJ","cnpj","CPF","cpf","CPF_CNPJ","cpf_cnpj",
+      "CPF/CNPJ","CNPJ/CPF","cnpj/cpf","cpf/cnpj",     // ordem invertida — ERPs BR
+      "Documento","documento","DOCUMENTO",
+      "Doc","doc","CNPJ_Fornecedor","cnpj_fornecedor",
+      "Nr.CNPJ","Nro.CNPJ","Nr CNPJ","CNPJ Fornecedor", // variações sem underscore
+      "CPF Fornecedor","cpf_cpnj","cpnj",                // typos comuns
+    ]) {
+      if (r[a]?.trim()) { n.pessoa_cpf_cnpj = r[a]; break; }
+    }
+  }
+
+  if (!n.pessoa_nome?.trim()) {
+    for (const a of [
+      "Fornecedor","fornecedor","FORNECEDOR",
+      "Credor","credor","CREDOR","Parceiro","parceiro",
+      "RazaoSocial","razao_social","RAZAO_SOCIAL","Razão Social","RAZÃO SOCIAL",
+      "Nome Fornecedor","Nome_Fornecedor","nome_fornecedor",
+      "Beneficiario","BENEFICIARIO","Beneficiário","Nome","NOME",
+    ]) {
+      if (r[a]?.trim()) { n.pessoa_nome = r[a]; break; }
+    }
+  }
+
+  if (!n.produtor_nome?.trim()) {
+    for (const a of [
+      "Produtor","produtor","PRODUTOR","Emitente","emitente",
+      "Tomador","tomador","produtor_nome",
+    ]) {
+      if (r[a]?.trim()) { n.produtor_nome = r[a]; break; }
+    }
+  }
+
+  if (!n.produtor_cpf_cnpj?.trim()) {
+    for (const a of [
+      "CPF_Produtor","cpf_produtor","CNPJ_Produtor","cnpj_produtor",
+      "CPF Produtor","CNPJ Produtor","CPF_Emitente","cpf_emitente",
+    ]) {
+      if (r[a]?.trim()) { n.produtor_cpf_cnpj = r[a]; break; }
+    }
+  }
+
+  if (!n.safra_nome?.trim()) {
+    for (const a of [
+      "Safra","safra","SAFRA","AnoSafra","ano_safra","ANO_SAFRA",
+      "Exercicio","Exercício","exercicio","Ano","ano",
+    ]) {
+      if (r[a]?.trim()) { n.safra_nome = r[a]; break; }
+    }
+  }
+
+  if (!n.origem?.trim()) {
+    for (const a of [
+      "Origem","origem","ORIGEM","Centro_Custo","centro_custo",
+      "Centro Custo","Departamento","departamento","Unidade_Negocio",
+    ]) {
+      if (r[a]?.trim()) { n.origem = r[a]; break; }
+    }
+  }
+
+  return n;
+}
+
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
   const supabaseUser = createServerClient(
@@ -111,20 +188,42 @@ export async function POST(req: NextRequest) {
   ]);
 
   const pessoaMapDoc: Record<string, { id: string; nome: string }> = {};
-  const pessoaMapNome: Record<string, { id: string; nome: string }> = {};
+  // pessoaMapNome: nomes que aparecem em APENAS 1 registro — nomes duplicados são marcados como
+  // ambíguos ("__ambiguo__") e só podem ser resolvidos via CPF/CNPJ, nunca pelo nome
+  const pessoaMapNome: Record<string, { id: string; nome: string } | "__ambiguo__"> = {};
   (pessoasRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null; nome: string }) => {
     const info = { id: p.id, nome: p.nome };
-    if (p.cpf_cnpj) pessoaMapDoc[p.cpf_cnpj.replace(/\D/g, "")] = info;
-    pessoaMapNome[normalizar(p.nome)] = info;
+    if (p.cpf_cnpj) {
+      const digits = p.cpf_cnpj.replace(/\D/g, "");
+      pessoaMapDoc[digits] = info;
+      // também mapeia versão sem leading zero (caso o cadastro tenha gravado sem)
+      if (digits.startsWith("0")) pessoaMapDoc[digits.slice(1)] = info;
+    }
+    const nomeKey = normalizar(p.nome);
+    if (pessoaMapNome[nomeKey] && pessoaMapNome[nomeKey] !== "__ambiguo__") {
+      // mesmo nome → ambíguo, só CNPJ resolve
+      pessoaMapNome[nomeKey] = "__ambiguo__";
+    } else if (!pessoaMapNome[nomeKey]) {
+      pessoaMapNome[nomeKey] = info;
+    }
   });
 
   // Produtor: match por CPF/CNPJ OU por nome normalizado (para relatórios via FK)
   const produtorMapDoc: Record<string, { id: string; nome: string }> = {};
-  const produtorMapNome: Record<string, { id: string; nome: string }> = {};
+  const produtorMapNome: Record<string, { id: string; nome: string } | "__ambiguo__"> = {};
   (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null; nome: string }) => {
     const info = { id: p.id, nome: p.nome };
-    if (p.cpf_cnpj) produtorMapDoc[p.cpf_cnpj.replace(/\D/g, "")] = info;
-    produtorMapNome[normalizar(p.nome)] = info;
+    if (p.cpf_cnpj) {
+      const digits = p.cpf_cnpj.replace(/\D/g, "");
+      produtorMapDoc[digits] = info;
+      if (digits.startsWith("0")) produtorMapDoc[digits.slice(1)] = info;
+    }
+    const nomeKey = normalizar(p.nome);
+    if (produtorMapNome[nomeKey] && produtorMapNome[nomeKey] !== "__ambiguo__") {
+      produtorMapNome[nomeKey] = "__ambiguo__";
+    } else if (!produtorMapNome[nomeKey]) {
+      produtorMapNome[nomeKey] = info;
+    }
   });
 
   // Ano Safra: match por descrição normalizada (ex: "2025/2026" → uuid)
@@ -151,7 +250,7 @@ export async function POST(req: NextRequest) {
   let semPessoaNomePlanilha = 0; // chegou sem pessoa_nome na planilha (nem por alias)
 
   for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
+    const r = normalizarColunasRow(rows[i] as unknown as Record<string, string>) as unknown as ApoioRow;
     const nomeFazNorm = normalizar(r.fazenda_nome ?? "");
     // 1ª tentativa: fazenda pelo nome | 2ª: produtor PJ | 3ª: fazenda ativa passada pelo cliente
     const fazIdRow = nomeFazNorm
@@ -164,24 +263,30 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    // Match de pessoa: tenta CPF/CNPJ primeiro, depois nome
+    // Match de pessoa: 1º CPF/CNPJ (com correção de zero perdido pelo Excel) → 2º nome
     let pessoaInfo: { id: string; nome: string } | null = null;
-    const docKey = r.pessoa_cpf_cnpj ? r.pessoa_cpf_cnpj.replace(/\D/g, "") : "";
+    const docRaw = r.pessoa_cpf_cnpj ? r.pessoa_cpf_cnpj.replace(/\D/g, "") : "";
+    const docKey = normalizarDoc(docRaw);
     if (docKey.length >= 11) {
-      pessoaInfo = pessoaMapDoc[docKey] ?? null;
+      pessoaInfo = pessoaMapDoc[docKey] ?? pessoaMapDoc[docRaw] ?? null;
     }
     if (!pessoaInfo && r.pessoa_nome?.trim()) {
-      pessoaInfo = pessoaMapNome[normalizar(r.pessoa_nome)] ?? null;
+      const nomeMatch = pessoaMapNome[normalizar(r.pessoa_nome)];
+      if (nomeMatch && nomeMatch !== "__ambiguo__") pessoaInfo = nomeMatch;
+      // Se ambíguo (2 CNPJs, mesmo nome): não vincula via nome — exige CPF/CNPJ para desambiguar
     }
     if (!pessoaInfo) semPessoa++;
     if (!r.pessoa_nome?.trim() && !r.pessoa_cpf_cnpj?.trim()) semPessoaNomePlanilha++;
 
-    // Produtor: 1º CPF/CNPJ → 2º nome normalizado → 3º texto livre (cache apenas)
-    const prodCpfKey = r.produtor_cpf_cnpj?.replace(/\D/g, "") ?? "";
+    // Produtor: 1º CPF/CNPJ (com correção de zero perdido) → 2º nome → 3º texto livre
+    const prodRaw = r.produtor_cpf_cnpj?.replace(/\D/g, "") ?? "";
+    const prodCpfKey = normalizarDoc(prodRaw);
     let produtorInfo: { id: string; nome: string } | null = null;
-    if (prodCpfKey.length >= 11) produtorInfo = produtorMapDoc[prodCpfKey] ?? null;
-    if (!produtorInfo && r.produtor_nome?.trim())
-      produtorInfo = produtorMapNome[normalizar(r.produtor_nome)] ?? null;
+    if (prodCpfKey.length >= 11) produtorInfo = produtorMapDoc[prodCpfKey] ?? produtorMapDoc[prodRaw] ?? null;
+    if (!produtorInfo && r.produtor_nome?.trim()) {
+      const nomeMatch = produtorMapNome[normalizar(r.produtor_nome)];
+      if (nomeMatch && nomeMatch !== "__ambiguo__") produtorInfo = nomeMatch;
+    }
     const produtorId   = produtorInfo?.id ?? null;
     // produtor_nome: nome canônico do cadastro (para FK) OU texto da planilha (display)
     const produtorNome = produtorInfo?.nome ?? r.produtor_nome?.trim() ?? null;
