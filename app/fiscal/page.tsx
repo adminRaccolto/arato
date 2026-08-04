@@ -419,6 +419,15 @@ ${isContingencia ? `<div class="cont">⚡ EMITIDA EM CONTINGÊNCIA — ${modoEmi
   ].map(([l,v], i) => `<div class="p br" style="flex:1${i === 5 ? ";font-weight:bold" : ""}"><span class="lbl">${l}</span><span class="val r${i === 5 ? " " : ""}">${v}</span></div>`).join("")}
 </div>
 
+<!-- IBS/CBS REFORMA TRIBUTÁRIA -->
+<div class="b bl br bb sec-hdr" style="background:#f5f5f5">TRIBUTOS — REFORMA TRIBUTÁRIA (LC 214/2024)</div>
+<div class="row bl br bb" style="min-height:8mm">
+  <div class="p br" style="flex:1"><span class="lbl">IBS — Imposto sobre Bens e Serviços</span><span class="val r">R$ ${Number(dados.ibs_valor ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span><span class="lbl" style="font-size:5pt;color:#888">Alíq. ${Number(dados.ibs_aliquota ?? 0).toFixed(2).replace(".",",")}% · Vigência 2029</span></div>
+  <div class="p br" style="flex:1"><span class="lbl">CBS — Contribuição sobre Bens e Serviços</span><span class="val r">R$ ${Number(dados.cbs_valor ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span><span class="lbl" style="font-size:5pt;color:#888">Alíq. ${Number(dados.cbs_aliquota ?? 0.9).toFixed(2).replace(".",",")}% · Transitório 2026</span></div>
+  <div class="p br" style="flex:1"><span class="lbl">Total Tributos Estimados (IBS + CBS)</span><span class="val r" style="font-size:9pt;font-weight:900">R$ ${(Number(dados.ibs_valor ?? 0) + Number(dados.cbs_valor ?? 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+  <div class="p" style="flex:3"><span class="lbl">Base Legal</span><span style="font-size:6pt;line-height:1.5">Tributo estimado conforme LC 214/2024 e NT 2025.001. Produtos agropecuários podem ter alíquota zero no período de transição (2026–2028).</span></div>
+</div>
+
 <!-- TRANSPORTADOR -->
 <div class="b bl br bb sec-hdr">TRANSPORTADOR / VOLUMES TRANSPORTADOS</div>
 <div class="row bl br bb">
@@ -1075,6 +1084,13 @@ function FiscalInner() {
     const valorTotal = Math.round(itensPayload.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0) * 100) / 100;
     const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop);
 
+    // IBS/CBS — Reforma Tributária LC 214/2024 + NT 2025.001
+    // Em 2026 (transição): produtor rural PF, exportações e agropecuário = alíquota zero
+    const cfopRfIsento = /^(5|6|7)(1[0-9][0-9]|501)/.test(fVenda.cfop.replace(/\D/g,"").slice(0,4));
+    const ibsValor2026 = 0;  // IBS: vigência plena apenas a partir de 2029
+    const cbsAliq2026  = cfopRfIsento ? 0 : 0.9;  // 0,9% geral; 0% agro/exportação
+    const cbsValor2026 = Math.round(valorTotal * (cbsAliq2026 / 100) * 100) / 100;
+
     setSalvando(true);
     try {
       // IE efetiva do emitente: dropdown de múltiplas IEs > IE única do cadastro > Parâmetros do Sistema
@@ -1174,6 +1190,11 @@ function FiscalInner() {
           dest_cidade:    fVenda.dest_cidade      || undefined,
           dest_uf:        fVenda.dest_uf          || undefined,
           dest_cep:       fVenda.dest_cep         || undefined,
+          // IBS/CBS — Reforma Tributária LC 214/2024
+          ibs_valor:      ibsValor2026,
+          ibs_aliquota:   0,
+          cbs_valor:      cbsValor2026,
+          cbs_aliquota:   cbsAliq2026,
           ...(!resultado.sucesso && { sefaz_erro: `cStat ${resultado.cStat}: ${resultado.xMotivo}` }),
         },
         ...(modoContingencia && {

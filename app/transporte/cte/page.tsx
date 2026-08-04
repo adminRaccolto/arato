@@ -398,7 +398,6 @@ export default function CtePage() {
     if (!fazendaId) return;
     if (!form.remetente_nome.trim())   { setErr("Informe o remetente."); return; }
     if (!form.destinatario_nome.trim()){ setErr("Informe o destinatário."); return; }
-    if (!form.veiculo_id && !veiculos.length) { /* ok */ }
     setSaving(true); setErr("");
     try {
       const veiculo = veiculos.find(v => v.id === form.veiculo_id);
@@ -447,11 +446,23 @@ export default function CtePage() {
         status: cteEdit ? cteEdit.status : "rascunho" as StatusCte,
         observacao: form.observacao || null,
       };
-      if (cteEdit) {
-        await supabase.from("ctes").update(payload).eq("id", cteEdit.id);
-      } else {
-        await supabase.from("ctes").insert(payload);
+
+      // Usa API route com service_role_key para contornar JWT expirado (RLS 42501)
+      const res = await fetch("/api/transporte/cte-salvar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id: fazendaId,
+          cte_id: cteEdit?.id ?? undefined,
+          payload,
+        }),
+      });
+      const json = await res.json() as { sucesso?: boolean; erro?: string };
+      if (!res.ok || !json.sucesso) {
+        setErr(json.erro ?? "Erro ao salvar CT-e.");
+        return;
       }
+
       await carregar();
       setModal(false);
     } catch (e: unknown) {

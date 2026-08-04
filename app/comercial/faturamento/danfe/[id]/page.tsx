@@ -201,7 +201,7 @@ export default function DanfePage() {
         )}
 
         {/* ── CANHÃO ────────────────────────────────────────────────────── */}
-        <div style={{ border: B, marginBottom: "2mm", padding: "1.5mm 2mm", display: "flex", gap: "3mm", alignItems: "flex-start" }}>
+        <div style={{ border: "0.3mm dashed #000", marginBottom: "2mm", padding: "1.5mm 2mm", display: "flex", gap: "3mm", alignItems: "flex-start" }}>
           {/* Texto recebimento */}
           <div style={{ flex: 3, fontSize: 7, lineHeight: 1.6 }}>
             <strong>RECEBEMOS DE {emitNome}</strong> OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL ELETRÔNICA INDICADA AO LADO.
@@ -428,6 +428,43 @@ export default function DanfePage() {
             </div>
           </div>
         </div>
+
+        {/* ── TRIBUTOS — REFORMA TRIBUTÁRIA (LC 214/2024) ──────────────── */}
+        {(() => {
+          const ibsValor = Number(d.ibs_valor ?? 0);
+          const cbsValor = Number(d.cbs_valor ?? 0);
+          const ibsAliq  = Number(d.ibs_aliquota ?? 0);
+          const cbsAliq  = Number(d.cbs_aliquota ?? 0.9);
+          const totTrib  = ibsValor + cbsValor;
+          return (
+            <div style={{ border: B, marginBottom: "0.5mm" }}>
+              <div style={{ ...sec, background: "#f5f5f5" }}>Tributos — Reforma Tributária (LC 214/2024)</div>
+              <div style={{ display: "flex" }}>
+                <div style={cell(2)}>
+                  <span style={lbl}>IBS — Imposto sobre Bens e Serviços</span>
+                  <div style={val}>R$ {fmtR(ibsValor)}</div>
+                  <div style={{ fontSize: 6, color: "#888", marginTop: 1 }}>Alíquota {fmtR(ibsAliq, 2)}% · Vigência 2029</div>
+                </div>
+                <div style={cell(2)}>
+                  <span style={lbl}>CBS — Contribuição sobre Bens e Serviços</span>
+                  <div style={val}>R$ {fmtR(cbsValor)}</div>
+                  <div style={{ fontSize: 6, color: "#888", marginTop: 1 }}>Alíquota {fmtR(cbsAliq, 2)}% · Transitório 2026</div>
+                </div>
+                <div style={cell(2)}>
+                  <span style={lbl}>Total Tributos Estimados (IBS + CBS)</span>
+                  <div style={{ fontSize: 9, fontWeight: 900 }}>R$ {fmtR(totTrib)}</div>
+                </div>
+                <div style={cellLast(4)}>
+                  <span style={lbl}>Base Legal</span>
+                  <div style={{ fontSize: 6.5, lineHeight: 1.5, color: "#333" }}>
+                    Tributo estimado conforme LC 214/2024 e NT 2025.001.<br />
+                    Produtos agropecuários podem ter alíquota zero no período de transição (2026–2028).
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── TRANSPORTADOR ─────────────────────────────────────────────── */}
         <div style={{ border: B, marginBottom: "0.5mm" }}>
