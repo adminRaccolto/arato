@@ -52,6 +52,10 @@ interface ApoioLancamento {
   ano_safra_id: string | null;
   ciclo_id: string | null;
   operacao_gerencial_id: string | null;
+  produtor_id: string | null;
+  produtor_nome: string | null;
+  safra_nome: string | null;
+  origem: string | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -803,7 +807,7 @@ export default function ApoioFinanceiroPage() {
                           title="Selecionar todos em aberto"
                         />
                       </th>
-                      {["Vencimento", "Tipo", "Descrição", "Pessoa/Fornecedor", "CPF/CNPJ", "Categoria", "Valor", "Status", "Ações"].map((h) => (
+                      {["Vencimento", "Tipo", "Descrição", "Pessoa/Fornecedor", "CPF/CNPJ", "Produtor", "Safra", "Origem", "Categoria", "Valor", "Status", "Ações"].map((h) => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
@@ -811,7 +815,7 @@ export default function ApoioFinanceiroPage() {
                   <tbody>
                     {apoioLancs.length === 0 && (
                       <tr>
-                        <td colSpan={10} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
+                        <td colSpan={13} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
                           {carregando ? "Carregando…" : "Nenhum lançamento exclusivo cadastrado."}
                         </td>
                       </tr>
@@ -852,6 +856,9 @@ export default function ApoioFinanceiroPage() {
                             )}
                           </td>
                           <td style={{ ...td, color: "#666", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>{pessoaDoc}</td>
+                          <td style={{ ...td, color: "#555", fontSize: 12 }}>{a.produtor_nome ?? "—"}</td>
+                          <td style={{ ...td, color: "#666", fontSize: 12 }}>{a.safra_nome ?? "—"}</td>
+                          <td style={{ ...td, color: "#666", fontSize: 12 }}>{a.origem ?? "—"}</td>
                           <td style={{ ...td, color: "#888" }}>{a.categoria ?? "—"}</td>
                           <td style={{ ...td, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
                             {fmtBRL(a.valor)}

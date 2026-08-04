@@ -9049,3 +9049,16 @@ CREATE POLICY "apoio_lancamentos_conta" ON apoio_lancamentos FOR ALL USING (
 );
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================================
+-- Migration: colunas produtor_nome, safra_nome, origem em apoio_lancamentos
+-- Permite gravar texto livre da planilha sem depender de FK resolution
+-- ============================================================================
+
+ALTER TABLE apoio_lancamentos
+  ADD COLUMN IF NOT EXISTS produtor_nome text,
+  ADD COLUMN IF NOT EXISTS safra_nome    text,
+  ADD COLUMN IF NOT EXISTS origem        text;
+
+NOTIFY pgrst, 'reload schema';

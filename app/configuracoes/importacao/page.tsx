@@ -25,6 +25,7 @@ type LancRow = {
   tipo_documento_lcdpr: string; numero_documento: string;
   observacao: string;
   operacao_gerencial: string; produtor_cpf_cnpj: string;
+  produtor_nome: string; safra_nome: string; origem: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type InsumoRow = {
@@ -120,6 +121,12 @@ const TEMPLATE_CP = [
   ["Fazenda Matriz", "Compra de Fertilizante", "Insumos", "2026-01-10", "2026-02-10", "150000.00", "08.821.250/0001-60", "DIPAGRO LTDA", "BRL", "1", "1", "NF", "NF 001234", "", "Custeio Soja", "012.345.678-90"],
   ["Fazenda Matriz", "Arrendamento Fazenda Sul", "Arrendamento", "2026-03-01", "2026-03-31", "45000.00", "012.345.678-90", "", "BRL", "1", "3", "RECIBO", "", "", "Arrendamento Terras", ""],
   ["Fazenda Filial", "Frete colheita safra 25/26", "Transporte", "2026-01-20", "2026-02-20", "28500.00", "", "TRANSPORTADORA XYZ", "BRL", "1", "1", "NF", "NF 005678", "", "Fretes e Carretos", ""],
+];
+const TEMPLATE_APOIO = [
+  ["fazenda_nome*", "descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "pessoa_nome", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "observacao", "operacao_gerencial", "produtor_cpf_cnpj", "produtor_nome", "safra_nome", "origem"],
+  ["Fazenda Matriz", "Compra de Defensivos", "Defensivos", "2025-03-01", "2025-03-30", "44200.00", "08.821.250/0001-60", "DIPAGRO LTDA", "BRL", "1", "1", "NF", "NF 001234", "", "Custeio Soja", "012.345.678-90", "João Ogliari", "2025/2026", ""],
+  ["Fazenda Frei Galvão", "Compra de Corretivos", "Corretivos de Solo", "2025-09-01", "2025-09-30", "3724.50", "", "CAL SUPREMA LTDA", "BRL", "1", "1", "NF", "", "", "Correção Solo", "", "Denis Ogliari", "2025/2026", "Talhão 01"],
+  ["Fazenda Oasis", "Arrendamento Rural", "Arrendamento", "2025-01-01", "2025-06-30", "28000.00", "012.345.678-90", "JOSE DA SILVA", "BRL", "1", "1", "RECIBO", "", "", "Arrendamento", "", "Denis Ogliari", "2025/2026", "Gleba Norte"],
 ];
 const TEMPLATE_CR = [
   ["fazenda_nome*", "descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "observacao", "operacao_gerencial", "produtor_cpf_cnpj"],
@@ -513,7 +520,7 @@ function downloadTemplate(aba: Aba) {
       pessoas:          TEMPLATE_PESSOAS,
       cp:               TEMPLATE_CP,
       cr:               TEMPLATE_CR,
-      apoio:            TEMPLATE_CP,
+      apoio:            TEMPLATE_APOIO,
       insumos:          TEMPLATE_INSUMOS,
       produtos:         TEMPLATE_PRODUTOS,
       maquinas:         TEMPLATE_MAQUINAS,
@@ -665,6 +672,38 @@ function normalizeApoioRow(r: Record<string, string>): Record<string, string> {
     for (const a of ["Fazenda","fazenda","FAZENDA","Propriedade","propriedade","PROPRIEDADE",
                      "Empresa","empresa","EMPRESA","Filial","filial","FILIAL","Unidade","unidade"]) {
       if (r[a]?.trim()) { n.fazenda_nome = r[a]; break; }
+    }
+  }
+
+  // produtor_nome: Produtor / produtor / Emitente
+  if (!n.produtor_nome?.trim()) {
+    for (const a of ["Produtor","produtor","PRODUTOR","Emitente","emitente","EMITENTE",
+                     "Tomador","tomador","produtor_nome"]) {
+      if (r[a]?.trim()) { n.produtor_nome = r[a]; break; }
+    }
+  }
+
+  // produtor_cpf_cnpj: CPF/CNPJ do produtor
+  if (!n.produtor_cpf_cnpj?.trim()) {
+    for (const a of ["CPF_Produtor","cpf_produtor","CNPJ_Produtor","cnpj_produtor",
+                     "CPF_Emitente","cpf_emitente","produtor_cpf","produtor_cnpj"]) {
+      if (r[a]?.trim()) { n.produtor_cpf_cnpj = r[a]; break; }
+    }
+  }
+
+  // safra_nome: Safra / safra / AnoSafra
+  if (!n.safra_nome?.trim()) {
+    for (const a of ["Safra","safra","SAFRA","AnoSafra","ano_safra","ANO_SAFRA",
+                     "Exercicio","exercicio","Ano","ano"]) {
+      if (r[a]?.trim()) { n.safra_nome = r[a]; break; }
+    }
+  }
+
+  // origem: Origem / origem / Unidade_Negocio
+  if (!n.origem?.trim()) {
+    for (const a of ["Origem","origem","ORIGEM","Unidade_Negocio","unidade_negocio",
+                     "Centro_Custo","centro_custo","Departamento","departamento"]) {
+      if (r[a]?.trim()) { n.origem = r[a]; break; }
     }
   }
 

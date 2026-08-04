@@ -22,6 +22,9 @@ interface ApoioRow {
   numero_documento?: string;
   observacao?: string;
   produtor_cpf_cnpj?: string;
+  produtor_nome?: string;
+  safra_nome?: string;
+  origem?: string;
 }
 
 // Remove acentos, normaliza para lowercase e colapsa espaços múltiplos
@@ -121,6 +124,7 @@ export async function POST(req: NextRequest) {
     pessoa_id: string | null; pessoa_nome: string | null; numero_documento: string | null;
     tipo_documento_lcdpr: string | null; num_parcela: number | null; total_parcelas: number | null;
     observacao: string | null; produtor_id: string | null; baixado: boolean;
+    produtor_nome: string | null; safra_nome: string | null; origem: string | null;
   };
 
   const toInsert: InsertRow[] = [];
@@ -155,8 +159,12 @@ export async function POST(req: NextRequest) {
     if (!pessoaInfo) semPessoa++;
     if (!r.pessoa_nome?.trim() && !r.pessoa_cpf_cnpj?.trim()) semPessoaNomePlanilha++;
 
-    const produtorId = r.produtor_cpf_cnpj?.trim()
-      ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
+    // Produtor: tenta CPF/CNPJ → uuid; se não achar, grava nome como texto livre
+    const prodCpfKey = r.produtor_cpf_cnpj?.replace(/\D/g, "") ?? "";
+    const produtorId = prodCpfKey.length >= 11 ? (produtorMap[prodCpfKey] ?? null) : null;
+    const produtorNome = produtorId
+      ? null  // já vinculado — nome vem do cadastro via FK
+      : (r.produtor_nome?.trim() || r.produtor_cpf_cnpj?.trim() || null);
 
     const moedaRaw = (r.moeda ?? "BRL").trim().toUpperCase();
     const moeda = moedaRaw === "USD" || moedaRaw === "US$" ? "USD"
@@ -181,6 +189,9 @@ export async function POST(req: NextRequest) {
       total_parcelas:       r.total_parcelas ? parseInt(r.total_parcelas) : null,
       observacao:           r.observacao?.trim() || null,
       produtor_id:          produtorId,
+      produtor_nome:        produtorNome,
+      safra_nome:           r.safra_nome?.trim() || null,
+      origem:               r.origem?.trim() || null,
       baixado:              false,
     });
   }
