@@ -93,8 +93,9 @@ const td: React.CSSProperties = {
   verticalAlign: "middle", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
 
-// Larguras fixas por coluna do grid Apoio Exclusivo
-const COL_APOIO = [32, 82, 58, 160, 140, 110, 100, 70, 80, 100, 96, 68, 118];
+// Larguras proporcionais (%) para o grid Apoio Exclusivo — usa 100% da largura disponível
+// Checkbox, Vencto, Tipo, Descrição, Pessoa, CPF/CNPJ, Produtor, Safra, Origem, Categoria, Valor, Status, Ações
+const COL_APOIO_PCT = ["2.5%", "6.5%", "5%", "13%", "12%", "9%", "9%", "6%", "7%", "9%", "7%", "5%", "9%"];
 
 const btn = (bg: string, color = "#fff"): React.CSSProperties => ({
   padding: "5px 12px", background: bg, color, border: "none",
@@ -253,7 +254,7 @@ export default function ApoioFinanceiroPage() {
     } finally {
       setCarregando(false);
     }
-  }, [fazendaId, dataIni, dataFim]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaId, dataIni, dataFim, fazendaIds.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -557,7 +558,7 @@ export default function ApoioFinanceiroPage() {
   return (
     <>
       <TopNav />
-      <div style={{ padding: "24px 28px", maxWidth: 1300, fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ padding: "20px 24px", maxWidth: "100%", fontFamily: "system-ui, sans-serif" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -799,9 +800,9 @@ export default function ApoioFinanceiroPage() {
 
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", minWidth: 1214, borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                   <colgroup>
-                    {COL_APOIO.map((w, i) => <col key={i} style={{ width: w }} />)}
+                    {COL_APOIO_PCT.map((w, i) => <col key={i} style={{ width: w }} />)}
                   </colgroup>
                   <thead>
                     <tr>
