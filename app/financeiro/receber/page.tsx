@@ -897,7 +897,6 @@ export default function ContasReceber() {
                             {/* Fornecedor/Cliente */}
                             <td style={{ padding: "8px 10px", maxWidth: cw("fornecedor"), overflow: "hidden" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
-                                <div style={{ width: 28, height: 28, borderRadius: 7, background: `${statusBorder}22`, border: `0.5px solid ${statusBorder}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: statusBorder, flexShrink: 0 }}>{inicial}</div>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                     <span style={{ fontWeight: 600, fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{fornNome}</span>
