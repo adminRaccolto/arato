@@ -83,15 +83,18 @@ const card: React.CSSProperties = {
 };
 
 const th: React.CSSProperties = {
-  padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700,
+  padding: "8px 8px", textAlign: "left", fontSize: 11, fontWeight: 700,
   color: "#555", background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE",
-  whiteSpace: "nowrap",
+  whiteSpace: "nowrap", overflow: "hidden",
 };
 
 const td: React.CSSProperties = {
-  padding: "9px 12px", fontSize: 13, color: "#1a1a1a", borderBottom: "0.5px solid #EEF0F5",
-  verticalAlign: "middle",
+  padding: "8px 8px", fontSize: 12, color: "#1a1a1a", borderBottom: "0.5px solid #EEF0F5",
+  verticalAlign: "middle", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
+
+// Larguras fixas por coluna do grid Apoio Exclusivo
+const COL_APOIO = [32, 82, 58, 160, 140, 110, 100, 70, 80, 100, 96, 68, 118];
 
 const btn = (bg: string, color = "#fff"): React.CSSProperties => ({
   padding: "5px 12px", background: bg, color, border: "none",
@@ -796,10 +799,13 @@ export default function ApoioFinanceiroPage() {
 
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table style={{ width: "100%", minWidth: 1214, borderCollapse: "collapse", tableLayout: "fixed" }}>
+                  <colgroup>
+                    {COL_APOIO.map((w, i) => <col key={i} style={{ width: w }} />)}
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={{ ...th, width: 36 }}>
+                      <th style={th}>
                         <input
                           type="checkbox"
                           checked={apoioLancs.filter((a) => !a.baixado).length > 0 && apoioLancs.filter((a) => !a.baixado).every((a) => selecionados.has(a.id))}
@@ -807,7 +813,7 @@ export default function ApoioFinanceiroPage() {
                           title="Selecionar todos em aberto"
                         />
                       </th>
-                      {["Vencimento", "Tipo", "Descrição", "Pessoa/Fornecedor", "CPF/CNPJ", "Produtor", "Safra", "Origem", "Categoria", "Valor", "Status", "Ações"].map((h) => (
+                      {["Vencto.", "Tipo", "Descrição", "Pessoa/Fornecedor", "CPF/CNPJ", "Produtor", "Safra", "Origem", "Categoria", "Valor", "Status", "Ações"].map((h) => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
@@ -838,52 +844,56 @@ export default function ApoioFinanceiroPage() {
                               />
                             )}
                           </td>
-                          <td style={td}>{fmtData(a.data_vencimento)}</td>
-                          <td style={td}>
+                          <td style={{ ...td, fontSize: 11 }}>{fmtData(a.data_vencimento)}</td>
+                          <td style={{ ...td, padding: "8px 4px" }}>
                             <span style={{
-                              padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700,
+                              padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
                               background: a.tipo === "pagar" ? "#FEF2F2" : "#F0FDF4",
                               color: a.tipo === "pagar" ? "#E24B4A" : "#16A34A",
                             }}>
-                              {a.tipo === "pagar" ? "Pagar" : "Receber"}
+                              {a.tipo === "pagar" ? "Pagar" : "Rcbr"}
                             </span>
                           </td>
-                          <td style={td}>{a.descricao}</td>
-                          <td style={{ ...td, color: vinculada ? "#1a1a1a" : "#888" }} title={vinculada ? "Vinculado ao cadastro" : "Não encontrado no cadastro de Pessoas"}>
+                          <td style={td} title={a.descricao}>{a.descricao}</td>
+                          <td style={{ ...td, color: vinculada ? "#1a1a1a" : "#888" }}
+                              title={vinculada ? pessoaNome : `${pessoaNome} — não está em Cadastros → Pessoas`}>
                             {pessoaNome}
                             {!vinculada && pessoaNome !== "—" && (
-                              <span style={{ marginLeft: 4, fontSize: 10, color: "#C9921B" }} title="Nome da planilha — não está em Cadastros → Pessoas">⚠</span>
+                              <span style={{ marginLeft: 3, fontSize: 10, color: "#C9921B" }}>⚠</span>
                             )}
                           </td>
-                          <td style={{ ...td, color: "#666", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>{pessoaDoc}</td>
-                          <td style={{ ...td, color: "#555", fontSize: 12 }}>{a.produtor_nome ?? "—"}</td>
-                          <td style={{ ...td, color: "#666", fontSize: 12 }}>{a.safra_nome ?? "—"}</td>
-                          <td style={{ ...td, color: "#666", fontSize: 12 }}>{a.origem ?? "—"}</td>
-                          <td style={{ ...td, color: "#888" }}>{a.categoria ?? "—"}</td>
-                          <td style={{ ...td, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                          <td style={{ ...td, color: "#666", fontVariantNumeric: "tabular-nums", fontSize: 11 }} title={pessoaDoc}>{pessoaDoc}</td>
+                          <td style={{ ...td, color: "#555", fontSize: 11 }} title={a.produtor_nome ?? ""}>{a.produtor_nome ?? "—"}</td>
+                          <td style={{ ...td, color: "#666", fontSize: 11 }} title={a.safra_nome ?? ""}>{a.safra_nome ?? "—"}</td>
+                          <td style={{ ...td, color: "#666", fontSize: 11 }} title={a.origem ?? ""}>{a.origem ?? "—"}</td>
+                          <td style={{ ...td, color: "#888", fontSize: 11 }} title={a.categoria ?? ""}>{a.categoria ?? "—"}</td>
+                          <td style={{ ...td, fontWeight: 600, fontVariantNumeric: "tabular-nums", fontSize: 11 }}>
                             {fmtBRL(a.valor)}
                           </td>
-                          <td style={td}>
+                          <td style={{ ...td, padding: "8px 6px" }}>
                             {a.baixado ? (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "#16A34A" }}>
-                                ✓ Baixado{a.data_baixa ? ` ${fmtData(a.data_baixa)}` : ""}
+                              <span style={{ fontSize: 10, fontWeight: 700, color: "#16A34A" }}>
+                                ✓ Baixado
                               </span>
                             ) : (
-                              <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600 }}>Aberto</span>
+                              <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 600 }}>Aberto</span>
                             )}
                           </td>
-                          <td style={td}>
-                            <div style={{ display: "flex", gap: 6 }}>
+                          <td style={{ ...td, padding: "6px 4px" }}>
+                            <div style={{ display: "flex", gap: 4 }}>
                               {!a.baixado ? (
-                                <button onClick={() => baixarApoioExclusivo(a)} disabled={emAcao} style={btn("#C9921B")}>
+                                <button onClick={() => baixarApoioExclusivo(a)} disabled={emAcao}
+                                  style={{ ...btn("#C9921B"), padding: "4px 8px", fontSize: 11 }}>
                                   {emAcao ? "…" : "Baixar"}
                                 </button>
                               ) : (
-                                <button onClick={() => desfazerBaixaExclusivo(a)} disabled={emAcao} style={btn("#888")}>
+                                <button onClick={() => desfazerBaixaExclusivo(a)} disabled={emAcao}
+                                  style={{ ...btn("#888"), padding: "4px 8px", fontSize: 11 }}>
                                   {emAcao ? "…" : "Reabrir"}
                                 </button>
                               )}
-                              <button onClick={() => excluirApoioExclusivo(a)} disabled={emAcao} style={btn("#E24B4A")}>
+                              <button onClick={() => excluirApoioExclusivo(a)} disabled={emAcao}
+                                style={{ ...btn("#E24B4A"), padding: "4px 8px", fontSize: 11 }}>
                                 {emAcao ? "…" : "Excluir"}
                               </button>
                             </div>
