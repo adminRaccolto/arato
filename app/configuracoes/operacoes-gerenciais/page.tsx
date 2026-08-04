@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -79,7 +79,7 @@ function BadgeConta({ codigo, contas }: { codigo: string; contas: ContaContabil[
 }
 
 // ── Componente ─────────────────────────────────────────────────────────────────
-export default function OperacoesGerenciaisPage() {
+function OperacoesGerenciaisContent() {
   const { fazendaId } = useAuth();
   const searchParams = useSearchParams();
 
@@ -835,5 +835,13 @@ export default function OperacoesGerenciaisPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OperacoesGerenciaisPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando…</div>}>
+      <OperacoesGerenciaisContent />
+    </Suspense>
   );
 }
