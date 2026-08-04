@@ -806,7 +806,7 @@ export default function ContasReceber() {
                 {filtradosBase.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Nenhuma conta encontrada para este filtro.</div>
                 ) : (
-                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 44 + cw("fornecedor") + (col("operacao") ? cw("operacao") : 0) + (col("safra") ? cw("safra") : 0) + (col("ciclo") ? cw("ciclo") : 0) + cw("vencimento") + cw("valor") + (col("dt_receb") ? cw("dt_receb") : 0) + (col("valor_receb") ? cw("valor_receb") : 0) + (col("moeda") ? cw("moeda") : 0) + (col("conta") ? cw("conta") : 0) + (col("produtor") ? cw("produtor") : 0) + (col("origem") ? cw("origem") : 0) + (col("obs") ? cw("obs") : 0) + 70, 600), borderCollapse: "collapse" }}>
+                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 44 + cw("fornecedor") + (col("operacao") ? cw("operacao") : 0) + (col("safra") ? cw("safra") : 0) + (col("ciclo") ? cw("ciclo") : 0) + cw("vencimento") + cw("valor") + (col("dt_receb") ? cw("dt_receb") : 0) + (col("valor_receb") ? cw("valor_receb") : 0) + (col("moeda") ? cw("moeda") : 0) + (col("conta") ? cw("conta") : 0) + (col("produtor") ? cw("produtor") : 0) + (col("origem") ? cw("origem") : 0) + (col("obs") ? cw("obs") : 0) + 110, 600), borderCollapse: "collapse" }}>
                     <thead
                       style={{ position: "sticky", top: 0, zIndex: 3 }}
                       onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
@@ -836,7 +836,7 @@ export default function ContasReceber() {
                         {col("produtor")    && <th style={{ ...thS(cw("produtor"),    "left"),   width: cw("produtor"),    position: "relative", userSelect: "none" }}>Produtor   <ResizeHandle onMouseDown={startResize("produtor")}    /></th>}
                         {col("origem")      && <th style={{ ...thS(cw("origem"),      "center"), width: cw("origem"),      position: "relative", userSelect: "none" }}>Origem     <ResizeHandle onMouseDown={startResize("origem")}      /></th>}
                         {col("obs")         && <th style={{ ...thS(cw("obs"),         "left"),   width: cw("obs"),         position: "relative", userSelect: "none" }}>Observação <ResizeHandle onMouseDown={startResize("obs")}         /></th>}
-                        <th style={{ ...thS(70, "center"), width: 70 }}></th>
+                        <th style={{ ...thS(110, "center"), width: 110 }}>Ações</th>
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
@@ -984,30 +984,28 @@ export default function ContasReceber() {
                               {obsExibir}
                             </td>}
                             {/* Ação */}
-                            <td style={{ padding: "8px 6px", textAlign: "center" }}>
-                              <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center" }}>
+                            <td style={{ padding: "5px 6px", textAlign: "center" }}>
+                              <div style={{ display: "flex", gap: 3, justifyContent: "center", alignItems: "center" }}>
                                 {isPrevisao ? (
                                   <button onClick={() => confirmarPrevisao(l)} title="Confirmar previsão"
-                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#1A5CB8", color: "#fff", border: "none", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</button>
+                                    style={btnAcao("#1A5CB8", "#fff")}>✓</button>
                                 ) : l.moeda === "barter" ? (
                                   <button onClick={() => abrirBaixa(l)} title="Confirmar entrega barter"
-                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "rgba(251,191,36,0.1)", color: "#FBBF24", border: "0.5px solid rgba(251,191,36,0.3)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>⇄</button>
+                                    style={btnAcao("rgba(251,191,36,0.1)", "#FBBF24", "0.5px solid rgba(251,191,36,0.3)")}>⇄</button>
                                 ) : l.status !== "baixado" ? (
                                   <button onClick={() => abrirBaixa(l)} title="Receber / Registrar recebimento"
-                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#16A34A", color: "#fff", border: "none", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>↓</button>
+                                    style={btnAcao("#16A34A", "#fff")}>↓</button>
                                 ) : (
                                   <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de recebimento"
-                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "rgba(251,191,36,0.08)", color: "#FBBF24", border: "0.5px solid rgba(251,191,36,0.25)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↺</button>
+                                    style={btnAcao("rgba(251,191,36,0.08)", "#FBBF24", "0.5px solid rgba(251,191,36,0.25)")}>↺</button>
                                 )}
                                 {l.status !== "baixado" && (
                                   <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
-                                    style={{ fontSize: 11, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "#EFF6FF", color: "#1E40AF", border: "0.5px solid #BFDBFE", lineHeight: 1, fontWeight: 600, whiteSpace: "nowrap" }}>
-                                    📅 Reprog.
-                                  </button>
+                                    style={btnAcao("#EFF6FF", "#1E40AF", "0.5px solid #BFDBFE")}>↕</button>
                                 )}
                                 {!l.auto && (
                                   <button onClick={() => abrirEditar(l)} title="Editar lançamento"
-                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border)", lineHeight: 1 }}>✏</button>
+                                    style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
                                 )}
                               </div>
                             </td>
@@ -1744,6 +1742,10 @@ export default function ContasReceber() {
 }
 
 // ── th helper ───────────────────────────────────────────────
+function btnAcao(bg: string, color: string, border = "none"): React.CSSProperties {
+  return { width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: bg, color, border, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
+}
+
 function thS(_minW: number, align: "left" | "center" | "right" = "left"): React.CSSProperties {
   return {
     padding: "6px 8px",

@@ -1226,6 +1226,17 @@ function ImportacaoInner() {
   const [loadingCr,          setLoadingCr]          = useState(false);
   const [loadingInsumos,     setLoadingInsumos]     = useState(false);
   const [modoAtualizacaoInsumos, setModoAtualizacaoInsumos] = useState(false);
+  // Seletores de fazenda/depósito da tela (override para toda a planilha)
+  const [insumoFazSel,  setInsumoFazSel]  = useState("");
+  const [insumoDepSel,  setInsumoDepSel]  = useState("");
+  const [insumoDepositos, setInsumoDepositos] = useState<{id:string;nome:string}[]>([]);
+
+  useEffect(() => {
+    if (!insumoFazSel) { setInsumoDepositos([]); setInsumoDepSel(""); return; }
+    supabase.from("depositos").select("id, nome").eq("fazenda_id", insumoFazSel).order("nome")
+      .then(({ data }) => { setInsumoDepositos(data ?? []); setInsumoDepSel(""); });
+  }, [insumoFazSel]);
+
   const [loadingProdutos,    setLoadingProdutos]    = useState(false);
   const [loadingMaquinas,    setLoadingMaquinas]    = useState(false);
   const [loadingContratoFin, setLoadingContratoFin] = useState(false);
@@ -1464,6 +1475,20 @@ function ImportacaoInner() {
   async function handleFileInsumos(file: File) {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarInsumo(r));
+
+    // Se fazenda está selecionada na tela, corrige erros de fazenda_nome ausente
+    if (insumoFazSel) {
+      const fazNome = fazendas.find(f => f.id === insumoFazSel)?.nome ?? "";
+      rows.forEach(r => {
+        if (!r.fazenda_nome) r.fazenda_nome = fazNome;
+        // Remove erro de fazenda obrigatória quando o seletor da tela está ativo
+        if (r._status === "erro" && (r._msg ?? "").includes("fazenda")) {
+          r.fazenda_nome = fazNome;
+          r._status = "ok"; r._msg = "";
+        }
+      });
+    }
+
     // Duplicados dentro do arquivo — chave: fazenda_nome + nome
     const chavesVistas = new Set<string>();
     rows.forEach(r => {
@@ -1474,24 +1499,24 @@ function ImportacaoInner() {
         else chavesVistas.add(chave);
       }
     });
-    // Duplicados já existentes no banco — para cada fazenda citada no arquivo
-    const fazNomesCitadas = [...new Set(rows.filter(r => r._status === "ok").map(r => r.fazenda_nome?.trim()).filter(Boolean))];
-    if (fazNomesCitadas.length && fazendas.length) {
-      const ids = fazendas.filter(f => fazNomesCitadas.includes(f.nome)).map(f => f.id);
-      if (ids.length) {
-        const { data: existentes } = await supabase
-          .from("insumos").select("nome, fazenda_id").in("fazenda_id", ids).eq("tipo", "insumo");
-        const chavesBanco = new Set((existentes ?? []).map((x: { nome: string; fazenda_id: string }) => {
-          const faz = fazendas.find(f => f.id === x.fazenda_id);
-          return `${(faz?.nome || "").toLowerCase().trim()}:${x.nome.toLowerCase().trim()}`;
-        }));
-        rows.forEach(r => {
-          if (r._status === "ok" && r.nome) {
-            const chave = `${(r.fazenda_nome || "").toLowerCase().trim()}:${r.nome.toLowerCase().trim()}`;
-            if (chavesBanco.has(chave)) { r._status = "duplicado"; r._msg = "já cadastrado nesta fazenda"; }
-          }
-        });
-      }
+    // Duplicados já existentes no banco
+    const fazIds = insumoFazSel
+      ? [insumoFazSel]
+      : [...new Set(rows.filter(r => r._status === "ok").map(r => r.fazenda_nome?.trim()).filter(Boolean)
+          .map(nome => fazendas.find(f => f.nome === nome)?.id).filter((id): id is string => !!id))];
+    if (fazIds.length) {
+      const { data: existentes } = await supabase
+        .from("insumos").select("nome, fazenda_id").in("fazenda_id", fazIds).eq("tipo", "insumo");
+      const chavesBanco = new Set((existentes ?? []).map((x: { nome: string; fazenda_id: string }) => {
+        const faz = fazendas.find(f => f.id === x.fazenda_id);
+        return `${(faz?.nome || "").toLowerCase().trim()}:${x.nome.toLowerCase().trim()}`;
+      }));
+      rows.forEach(r => {
+        if (r._status === "ok" && r.nome) {
+          const chave = `${(r.fazenda_nome || "").toLowerCase().trim()}:${r.nome.toLowerCase().trim()}`;
+          if (chavesBanco.has(chave)) { r._status = "duplicado"; r._msg = "já cadastrado nesta fazenda"; }
+        }
+      });
     }
     setInsumosRows(rows); setResultInsumos(null);
   }
@@ -1668,17 +1693,32 @@ function ImportacaoInner() {
     for (const r of insumosRows) {
       if (r._status === "erro") { erros++; continue; }
       if (r._status === "duplicado" && !modoAtualizacaoInsumos) { duplicados++; continue; }
-      // Resolve fazenda_id a partir do nome informado na linha
-      const fazLinha = fazendas.find(f => f.nome.trim().toLowerCase() === (r.fazenda_nome || "").trim().toLowerCase());
+
+      // Resolve fazenda: seletor de tela tem prioridade; fallback para coluna da planilha
+      let fazLinha: { id: string; nome: string } | undefined;
+      if (insumoFazSel) {
+        fazLinha = fazendas.find(f => f.id === insumoFazSel);
+      } else {
+        fazLinha = fazendas.find(f => f.nome.trim().toLowerCase() === (r.fazenda_nome || "").trim().toLowerCase());
+      }
       if (!fazLinha) {
-        r._status = "erro"; r._msg = `fazenda "${r.fazenda_nome}" não encontrada no cadastro`;
+        r._status = "erro"; r._msg = insumoFazSel
+          ? "fazenda selecionada não encontrada"
+          : `fazenda "${r.fazenda_nome}" não encontrada no cadastro`;
         erros++; continue;
       }
-      // Resolve deposito_id opcional a partir do nome
-      const depNome = (r.deposito_nome || "").trim().toLowerCase();
-      const depLinha = depNome
-        ? depositos.find(d => d.fazenda_id === fazLinha.id && d.nome.trim().toLowerCase() === depNome)
-        : null;
+
+      // Resolve depósito: seletor de tela tem prioridade; fallback para coluna da planilha
+      let depLinha: { id: string; nome: string; fazenda_id: string } | null = null;
+      if (insumoDepSel) {
+        const d = depositos.find(d => d.id === insumoDepSel && d.fazenda_id === fazLinha!.id);
+        depLinha = d ?? null;
+      } else {
+        const depNome = (r.deposito_nome || "").trim().toLowerCase();
+        depLinha = depNome
+          ? depositos.find(d => d.fazenda_id === fazLinha!.id && d.nome.trim().toLowerCase() === depNome) ?? null
+          : null;
+      }
 
       const estoqueQtd = parseFloat(r.estoque || "0");
       const valorUnit  = parseFloat(String(r.valor_unitario).replace(",", ".") || "0");
@@ -2886,7 +2926,7 @@ function ImportacaoInner() {
               return (
                 <button
                   key={a}
-                  onClick={() => setAba(a)}
+                  onClick={() => { setAba(a); if (a !== "insumos") { setInsumoFazSel(""); setInsumoDepSel(""); } }}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     width: "100%", padding: "12px 16px",
@@ -2939,6 +2979,56 @@ function ImportacaoInner() {
                 ⬇ Baixar template
               </button>
             </div>
+
+            {/* Seletores de Fazenda / Depósito — apenas na aba Insumos */}
+            {aba === "insumos" && (
+              <div style={{ marginBottom: 16, padding: "14px 16px", background: "#F0F7FF", border: "0.5px solid #1A487040", borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                  Destino da Importação
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>
+                      Fazenda <span style={{ color: "#888", fontWeight: 400 }}>(opcional — substitui coluna da planilha)</span>
+                    </label>
+                    <select
+                      value={insumoFazSel}
+                      onChange={e => { setInsumoFazSel(e.target.value); setInsumosRows([]); setResultInsumos(null); }}
+                      style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #CCC", borderRadius: 8, fontSize: 13, background: "white", color: insumoFazSel ? "var(--text-1)" : "#888" }}
+                    >
+                      <option value="">— Usar coluna fazenda_nome da planilha —</option>
+                      {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>
+                      Depósito <span style={{ color: "#888", fontWeight: 400 }}>(opcional — substitui coluna da planilha)</span>
+                    </label>
+                    <select
+                      value={insumoDepSel}
+                      onChange={e => setInsumoDepSel(e.target.value)}
+                      disabled={!insumoFazSel}
+                      style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #CCC", borderRadius: 8, fontSize: 13, background: "white", color: insumoDepSel ? "var(--text-1)" : "#888", opacity: insumoFazSel ? 1 : 0.5 }}
+                    >
+                      <option value="">— Sem depósito específico —</option>
+                      {insumoDepositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                    </select>
+                    {insumoFazSel && insumoDepositos.length === 0 && (
+                      <span style={{ fontSize: 11, color: "#888", marginTop: 4, display: "block" }}>
+                        Nenhum depósito cadastrado para esta fazenda
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {insumoFazSel && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#1A4870" }}>
+                    ✓ Toda a planilha será importada para <strong>{fazendas.find(f => f.id === insumoFazSel)?.nome}</strong>
+                    {insumoDepSel && <> → <strong>{insumoDepositos.find(d => d.id === insumoDepSel)?.nome}</strong></>}
+                    {" — "}coluna <code>fazenda_nome</code> {insumoFazSel ? "ignorada" : "obrigatória"}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Upload */}
             <UploadZone onFile={cfg.onFile} />

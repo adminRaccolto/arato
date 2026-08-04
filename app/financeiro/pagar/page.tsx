@@ -1001,7 +1001,7 @@ function ContasPagarInner() {
                 {filtradosBase.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Nenhuma conta encontrada para este filtro.</div>
                 ) : (
-                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 44 + cw("fornecedor") + (col("operacao") ? cw("operacao") : 0) + (col("safra") ? cw("safra") : 0) + (col("ciclo") ? cw("ciclo") : 0) + cw("vencimento") + cw("valor") + (col("dt_pgto") ? cw("dt_pgto") : 0) + (col("valor_pago") ? cw("valor_pago") : 0) + (col("moeda") ? cw("moeda") : 0) + (col("conta") ? cw("conta") : 0) + (col("produtor") ? cw("produtor") : 0) + (col("origem") ? cw("origem") : 0) + (col("obs") ? cw("obs") : 0) + 70, 600), borderCollapse: "collapse" }}>
+                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 44 + cw("fornecedor") + (col("operacao") ? cw("operacao") : 0) + (col("safra") ? cw("safra") : 0) + (col("ciclo") ? cw("ciclo") : 0) + cw("vencimento") + cw("valor") + (col("dt_pgto") ? cw("dt_pgto") : 0) + (col("valor_pago") ? cw("valor_pago") : 0) + (col("moeda") ? cw("moeda") : 0) + (col("conta") ? cw("conta") : 0) + (col("produtor") ? cw("produtor") : 0) + (col("origem") ? cw("origem") : 0) + (col("obs") ? cw("obs") : 0) + 110, 600), borderCollapse: "collapse" }}>
                     <thead style={{ position: "sticky", top: 0, zIndex: 3 }}
                       onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
                       title="Clique com botão direito para configurar colunas">
@@ -1025,7 +1025,7 @@ function ContasPagarInner() {
                         {col("produtor")   && <th style={{ ...thS(cw("produtor"),   "left"),   width: cw("produtor"),   position: "relative", userSelect: "none" }}>Produtor<ResizeHandle onMouseDown={startResize("produtor")} /></th>}
                         {col("origem")     && <th style={{ ...thS(cw("origem"),     "center"), width: cw("origem"),     position: "relative", userSelect: "none" }}>Origem<ResizeHandle onMouseDown={startResize("origem")} /></th>}
                         {col("obs")        && <th style={{ ...thS(cw("obs"),        "left"),   width: cw("obs"),        position: "relative", userSelect: "none" }}>Observação<ResizeHandle onMouseDown={startResize("obs")} /></th>}
-                        <th style={{ ...thS(70, "center"), width: 70 }}></th>
+                        <th style={{ ...thS(110, "center"), width: 110 }}>Ações</th>
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
@@ -1162,51 +1162,30 @@ function ContasPagarInner() {
                             {col("obs") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", maxWidth: 160 }}>{obsExibir}</td>}
                             {/* Ação */}
                             <td style={{ padding: "5px 6px", textAlign: "center" }}>
-                              <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center" }}>
+                              <div style={{ display: "flex", gap: 3, justifyContent: "center", alignItems: "center" }}>
                                 {isPrevisao ? (
-                                  <button
-                                    onClick={() => confirmarPrevisao(l)}
-                                    title="Confirmar previsão"
-                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#1A5CB8", color: "#fff", border: "none", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}
-                                  >✓</button>
+                                  <button onClick={() => confirmarPrevisao(l)} title="Confirmar previsão"
+                                    style={btnAcao("#1A5CB8", "#fff")}>✓</button>
                                 ) : l.moeda === "barter" ? (
-                                  <span title="Liquidar no fechamento da safra" style={{ width: 28, height: 26, borderRadius: 6, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>
-                                    🌾
-                                  </span>
+                                  <span title="Liquidar no fechamento da safra" style={{ ...btnAcao("#FBF3E0", "#7A5200"), border: "0.5px solid #C9921B50", display: "flex", alignItems: "center", justifyContent: "center" }}>🌾</span>
                                 ) : l.status !== "baixado" ? (
-                                  <button
-                                    onClick={() => abrirBaixa(l)}
-                                    title="Baixar / Registrar pagamento"
-                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#C9921B", color: "#fff", border: "none", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
-                                  >↓</button>
+                                  <button onClick={() => abrirBaixa(l)} title="Baixar / Registrar pagamento"
+                                    style={btnAcao("#C9921B", "#fff")}>↓</button>
                                 ) : (
-                                  <button
-                                    onClick={() => reabrirUm(l)}
-                                    title="Reabrir — apaga dados de pagamento"
-                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}
-                                  >↺</button>
+                                  <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de pagamento"
+                                    style={btnAcao("#FBF3E0", "#7A5C00", "0.5px solid #C9921B")}>↺</button>
                                 )}
                                 {l.status !== "baixado" && (
-                                  <button
-                                    onClick={() => abrirReprog(l)}
-                                    title="Reprogramar vencimento"
-                                    style={{ fontSize: 11, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "#EFF6FF", color: "#1E40AF", border: "0.5px solid #BFDBFE", lineHeight: 1, fontWeight: 600, whiteSpace: "nowrap" }}
-                                  >
-                                    📅 Reprog.
-                                  </button>
+                                  <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
+                                    style={btnAcao("#EFF6FF", "#1E40AF", "0.5px solid #BFDBFE")}>↕</button>
                                 )}
                                 {l.status !== "baixado" && (
-                                  <button
-                                    onClick={() => abrirEditar(l)}
-                                    title="Editar lançamento"
-                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border)", lineHeight: 1 }}
-                                  >
-                                    ✏
-                                  </button>
+                                  <button onClick={() => abrirEditar(l)} title="Editar lançamento"
+                                    style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
                                 )}
                                 {l.nfe_numero && (
-                                  <span title={`NF vinculada: ${l.nfe_numero}`} style={{ fontSize: 11, padding: "2px 6px", borderRadius: 5, background: "rgba(96,165,250,0.1)", color: "#60A5FA", border: "0.5px solid rgba(96,165,250,0.25)", fontWeight: 700 }}>
-                                    📎 {l.nfe_numero}
+                                  <span title={`NF vinculada: ${l.nfe_numero}`} style={{ fontSize: 9, padding: "2px 5px", borderRadius: 4, background: "rgba(96,165,250,0.1)", color: "#60A5FA", border: "0.5px solid rgba(96,165,250,0.25)", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                    NF
                                   </span>
                                 )}
                               </div>
@@ -2344,6 +2323,10 @@ function ContasPagarInner() {
 }
 
 // ── th helper ───────────────────────────────────────────────
+function btnAcao(bg: string, color: string, border = "none"): React.CSSProperties {
+  return { width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: bg, color, border, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
+}
+
 function thS(_minW: number, align: "left" | "center" | "right" = "left"): React.CSSProperties {
   return {
     padding: "6px 8px",

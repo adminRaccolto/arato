@@ -605,7 +605,7 @@ Gerencia todas as despesas da fazenda: insumos, combustível, frete, arrendament
    - **Veículo / Máquina (opcional):** select unificado com máquinas da fazenda e veículos de transportadoras próprias. Aparece automaticamente quando há veículos cadastrados.
      - Para categorias de **Manutenção** (OG 2.01.01.03.*): exibe todos os tipos (tratores, colheitadeiras, caminhões, etc.)
      - Para demais categorias (multa de trânsito, impostos, etc.): exibe apenas veículos emplacados (caminhão, carreta, carro, veículos de transportadora)
-     - Formato de exibição: `[ABC-1234] — Nome (Fazenda)` ou `[ABC-1234] (Transportadora)` com grupos separados
+     - Formato de exibição: [ABC-1234] — Nome (Fazenda) ou [ABC-1234] (Transportadora) com grupos separados
 4. **Aba Adicionais:**
    - Forma de pagamento, Conta de pagamento (banco), OG, Centro de Custo
    - Produtor, Ciclo, Talhão (vínculos para rateio)
@@ -1769,7 +1769,7 @@ Ferramenta de trabalho interno do consultor Raccotlo para organizar lançamentos
 - Matching automático de Pessoa por CNPJ/CPF (prioridade) ou por nome; Fazenda por nome; OG por descrição
 - CNPJ com zero inicial suprimido pelo Excel é normalizado automaticamente (13 → 14 dígitos)
 - Empresas com 2 CNPJs cadastradas com o mesmo nome: o sistema usa o CNPJ para resolver a ambiguidade; se só o nome for informado e houver duplicata, o lançamento importa sem vínculo de pessoa (sem erro)
-- Campos `produtor_nome`, `safra_nome`, `origem` são gravados como texto livre (não dependem de FK) para preservar contexto histórico mesmo que o cadastro mude
+- Campos produtor_nome, safra_nome, origem são gravados como texto livre (não dependem de FK) para preservar contexto histórico mesmo que o cadastro mude
 
 ### Como criar um lançamento exclusivo
 1. Clique em **+ Novo Lançamento**
