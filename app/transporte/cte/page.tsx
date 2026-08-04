@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
@@ -261,8 +262,10 @@ window.onload = function() {
 // ─────────────────────────────────────────────────────────────
 // Componente
 // ─────────────────────────────────────────────────────────────
-export default function CtePage() {
+function CtePageInner() {
   const { fazendaId, contaId, fazendaIds, logoCliente, podeAcessarPlano } = useAuth();
+  const searchParams = useSearchParams();
+  const prefillApplied = useRef(false);
 
   const [ctes,           setCtes]           = useState<Cte[]>([]);
   const [veiculos,       setVeiculos]       = useState<VeiculoMin[]>([]);
@@ -331,6 +334,48 @@ export default function CtePage() {
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // ── Prefill a partir de NF-e (botão "CT-e / MDF-e" na página Fiscal) ────────
+  useEffect(() => {
+    if (prefillApplied.current) return;
+    if (!searchParams.get("from_nfe")) return;
+    const rawStr = sessionStorage.getItem("cte_prefill_nfe");
+    if (!rawStr) return;
+    prefillApplied.current = true;
+    sessionStorage.removeItem("cte_prefill_nfe");
+    try {
+      const p = JSON.parse(rawStr) as {
+        remetente_nome: string; remetente_cnpj: string;
+        destinatario_nome: string; destinatario_cnpj: string;
+        municipio_origem: string; uf_origem: string;
+        municipio_destino: string; uf_destino: string;
+        valor_mercadoria: number; nfe_chave: string;
+        produto_descricao: string; ncm: string;
+        quantidade: number; unidade: string;
+      };
+      setCteEdit(null);
+      setForm(f => ({
+        ...f,
+        numero_cte:        proximoNr,
+        remetente_nome:    p.remetente_nome    || f.remetente_nome,
+        remetente_cnpj:    p.remetente_cnpj    || f.remetente_cnpj,
+        destinatario_nome: p.destinatario_nome || f.destinatario_nome,
+        destinatario_cnpj: p.destinatario_cnpj || f.destinatario_cnpj,
+        municipio_origem:  p.municipio_origem  || f.municipio_origem,
+        uf_origem:         p.uf_origem         || f.uf_origem,
+        municipio_destino: p.municipio_destino || f.municipio_destino,
+        uf_destino:        p.uf_destino        || f.uf_destino,
+        valor_mercadoria:  p.valor_mercadoria  || f.valor_mercadoria,
+        nfe_chave:         p.nfe_chave         || f.nfe_chave,
+        produto_descricao: p.produto_descricao || f.produto_descricao,
+        ncm:               p.ncm               || f.ncm,
+        quantidade:        p.quantidade        || f.quantidade,
+        unidade:           p.unidade           || f.unidade,
+      }));
+      setErr("");
+      setModal(true);
+    } catch { /* JSON inválido — ignora */ }
+  }, [ctes, searchParams, proximoNr]); // dispara após ctes carregar
 
   // ── Abrir modal ──────────────────────────────────────────
   function abrirNovo() {
@@ -919,5 +964,14 @@ export default function CtePage() {
         </div>
       )}
     </div>
+  );
+}
+
+import { Suspense } from "react";
+export default function CtePage() {
+  return (
+    <Suspense fallback={null}>
+      <CtePageInner />
+    </Suspense>
   );
 }

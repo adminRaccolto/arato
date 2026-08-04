@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../components/TopNav";
 import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
@@ -511,13 +511,14 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF }: {
   notas: NotaFiscal[];
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
   onConsultarSefaz?: (n: NotaFiscal) => void;
   onImprimirDanfe?: (n: NotaFiscal) => void;
   onRetransmitir?: (n: NotaFiscal) => void;
+  onManifestarNF?: (n: NotaFiscal) => void;
 }) {
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -616,6 +617,19 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                               Emitir Complementar
                             </button>
                           )}
+                          {onManifestarNF && (() => {
+                            const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+                            const fc = String(dj.frete_conta ?? "");
+                            const ehCif = fc === "0" || fc === "";
+                            return ehCif ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onManifestarNF(nota); }}
+                                style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#1A4870", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                              >
+                                🚛 CT-e / MDF-e
+                              </button>
+                            ) : null;
+                          })()}
                         </>
                       )}
                       {(nota.status === "rejeitada" || nota.status === "denegada") && (
@@ -656,6 +670,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
 // ── Página principal ──────────────────────────────────────────────────────────
 function FiscalInner() {
   const { fazendaId, fazendaIds, contaId, logoCliente } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const abaParam = searchParams.get("aba") as Aba | null;
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
@@ -1190,6 +1205,7 @@ function FiscalInner() {
           dest_cidade:    fVenda.dest_cidade      || undefined,
           dest_uf:        fVenda.dest_uf          || undefined,
           dest_cep:       fVenda.dest_cep         || undefined,
+          frete_conta:    fVenda.frete_conta,
           // IBS/CBS — Reforma Tributária LC 214/2024
           ibs_valor:      ibsValor2026,
           ibs_aliquota:   0,
@@ -1290,6 +1306,29 @@ function FiscalInner() {
     } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
     finally { setSalvando(false); }
   };
+
+  function maniTestarNF(nota: NotaFiscal) {
+    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    const itens = (nota.itens_json ?? []) as Array<{ item: string; ncm: string; quantidade: number; unidade: string }>;
+    const prefill = {
+      remetente_nome:    String(dj.emit_razao   ?? ""),
+      remetente_cnpj:    String(dj.emit_cnpj    ?? ""),
+      destinatario_nome: nota.destinatario       ?? "",
+      destinatario_cnpj: nota.cnpj_destinatario  ?? "",
+      municipio_origem:  String(dj.emit_municipio ?? ""),
+      uf_origem:         String(dj.emit_uf        ?? "MT"),
+      municipio_destino: String(dj.dest_cidade    ?? ""),
+      uf_destino:        String(dj.dest_uf        ?? "MT"),
+      valor_mercadoria:  nota.valor_total,
+      nfe_chave:         nota.chave_acesso        ?? "",
+      produto_descricao: itens[0]?.item           ?? "Soja em Grão",
+      ncm:               (itens[0]?.ncm ?? "12010090").replace(/\D/g, ""),
+      quantidade:        itens[0]?.unidade === "KG" ? (itens[0]?.quantidade ?? 0) : 0,
+      unidade:           itens[0]?.unidade === "KG" ? "KG" : "TON",
+    };
+    sessionStorage.setItem("cte_prefill_nfe", JSON.stringify(prefill));
+    router.push("/transporte/cte?from_nfe=1");
+  }
 
   const consultarSefaz = async (nota: NotaFiscal) => {
     // Simulação: em homologação autoriza automaticamente.
@@ -1486,6 +1525,7 @@ function FiscalInner() {
                     onConsultarSefaz={consultarSefaz}
                     onImprimirDanfe={n => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")}
                     onRetransmitir={abrirRetransmit}
+                    onManifestarNF={maniTestarNF}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>
