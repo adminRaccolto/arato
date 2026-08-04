@@ -111,26 +111,6 @@ function saudar(): string {
   return "Boa noite";
 }
 
-// ─── Counter animation hook ───────────────────────────────────
-function useCountUp(target: number, duration = 900): number {
-  const [display, setDisplay] = useState(0);
-  const rafRef = useRef<number>(0);
-  useEffect(() => {
-    cancelAnimationFrame(rafRef.current);
-    if (target === 0) { setDisplay(0); return; }
-    let start = 0;
-    function step(ts: number) {
-      if (!start) start = ts;
-      const pct = Math.min((ts - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - pct, 3); // cubic ease-out
-      setDisplay(target * ease);
-      if (pct < 1) rafRef.current = requestAnimationFrame(step);
-    }
-    rafRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [target, duration]);
-  return display;
-}
 
 // ─── Dashboard ────────────────────────────────────────────────
 export default function Dashboard() {
@@ -144,16 +124,8 @@ export default function Dashboard() {
   const [flash,      setFlash]      = useState<Record<string, Direcao>>({});
   const prevPrecos   = useRef<PrecosData | null>(null);
 
-  // Resumo financeiro
-  const [cpAberto,   setCpAberto]   = useState(0);
-  const [crAberto,   setCrAberto]   = useState(0);
-  const [cpSemana,   setCpSemana]   = useState(0);
-  const [crSemana,   setCrSemana]   = useState(0);
-
   // Stats lavoura
-  const [ciclosAtivos,    setCiclosAtivos]    = useState(0);
-  const [contratosAtivos, setContratosAtivos] = useState(0);
-  const [vencidosCp,      setVencidosCp]      = useState(0);
+  const [ciclosAtivos, setCiclosAtivos] = useState(0);
 
   // Inconsistências de conciliação bancária
   interface ConciliPendencia {
@@ -314,69 +286,11 @@ export default function Dashboard() {
         .in("fazenda_id", fazendaIds)
         .maybeSingle(),
 
-      // CP total em aberto
-      supabase.from("lancamentos")
-        .select("valor")
-        .in("fazenda_id", fazendaIds)
-        .eq("tipo", "pagar")
-        .neq("moeda", "barter")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .in("status", statusAberto),
-
-      // CR total em aberto
-      supabase.from("lancamentos")
-        .select("valor")
-        .in("fazenda_id", fazendaIds)
-        .eq("tipo", "receber")
-        .neq("moeda", "barter")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .in("status", statusAberto),
-
-      // CP vencendo esta semana (hoje a 7 dias)
-      supabase.from("lancamentos")
-        .select("valor")
-        .in("fazenda_id", fazendaIds)
-        .eq("tipo", "pagar")
-        .neq("moeda", "barter")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .in("status", statusAberto)
-        .gte("data_vencimento", isoHoje)
-        .lte("data_vencimento", isoEm7),
-
-      // CR vencendo esta semana (hoje a 7 dias)
-      supabase.from("lancamentos")
-        .select("valor")
-        .in("fazenda_id", fazendaIds)
-        .eq("tipo", "receber")
-        .neq("moeda", "barter")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .in("status", statusAberto)
-        .gte("data_vencimento", isoHoje)
-        .lte("data_vencimento", isoEm7),
-
       // Ciclos ativos
       supabase.from("ciclos")
         .select("id", { count: "exact", head: true })
         .in("fazenda_id", fazendaIds)
         .eq("status", "ativo"),
-
-      // Contratos confirmados não encerrados
-      supabase.from("contratos")
-        .select("id", { count: "exact", head: true })
-        .in("fazenda_id", fazendaIds)
-        .eq("confirmado", true)
-        .neq("status", "encerrado"),
-
-      // CP vencidos (piso 180 dias atrás — exclui artefatos da migração)
-      supabase.from("lancamentos")
-        .select("valor")
-        .in("fazenda_id", fazendaIds)
-        .eq("tipo", "pagar")
-        .neq("moeda", "barter")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .in("status", statusAberto)
-        .gte("data_vencimento", isoFloor)
-        .lt("data_vencimento", isoHoje),
 
       // Seguros de máquinas vencendo em 30 dias
       supabase.from("maquinas")
@@ -426,8 +340,7 @@ export default function Dashboard() {
 
     ]).then(([
       cpRes, crRes, arrRes, certRes,
-      cpTotalRes, crTotalRes, cpSemRes, crSemRes,
-      ciclosRes, contratosRes, cpVencRes, segurosRes,
+      ciclosRes, segurosRes,
       pendFiscalRes, insNegRes, transfSolRes,
       contratosEntregaRes, contratosSaldoRes,
     ]) => {
@@ -651,19 +564,7 @@ export default function Dashboard() {
 
       setAlertas(novosAlertas);
 
-      // Resumo financeiro
-      const cpT = (cpTotalRes.data ?? []).reduce((s, r) => s + ((r as { valor: number }).valor ?? 0), 0);
-      const crT = (crTotalRes.data ?? []).reduce((s, r) => s + ((r as { valor: number }).valor ?? 0), 0);
-      const cpS = (cpSemRes.data ?? []).reduce((s, r) => s + ((r as { valor: number }).valor ?? 0), 0);
-      const crS = (crSemRes.data ?? []).reduce((s, r) => s + ((r as { valor: number }).valor ?? 0), 0);
-      const cpV = (cpVencRes.data ?? []).reduce((s, r) => s + ((r as { valor: number }).valor ?? 0), 0);
-      setCpAberto(cpT);
-      setCrAberto(crT);
-      setCpSemana(cpS);
-      setCrSemana(crS);
-      setVencidosCp(cpV);
       setCiclosAtivos(ciclosRes.count ?? 0);
-      setContratosAtivos(contratosRes.count ?? 0);
 
       setLoadAl(false);
     }).catch(() => setLoadAl(false));
@@ -719,8 +620,6 @@ export default function Dashboard() {
     setConciliPend(prev => prev.filter(x => x.id !== id));
   }
 
-  const saldoSemana = crSemana - cpSemana;
-
   const TIPO_LABEL: Record<string, string> = {
     cp: "A Pagar", cr: "A Receber", arrendamento: "Arrendamento",
     cert_a1: "Certificado", contrato: "Contrato", estoque: "Estoque", fiscal: "Fiscal",
@@ -736,11 +635,6 @@ export default function Dashboard() {
     { label: "Lavoura",          link: "/lavoura",             cor: "#16A34A", sigla: "LV" },
     { label: "Relatórios",       link: "/relatorios",          cor: "#378ADD", sigla: "RL" },
   ];
-
-  // ── Counter animations (disparadas quando dados chegam do banco) ──
-  const saldoAnim  = useCountUp(!loadAl ? saldoSemana : 0);
-  const cpAnim     = useCountUp(!loadAl ? cpAberto    : 0);
-  const crAnim     = useCountUp(!loadAl ? crAberto    : 0);
 
   const CSS = `
     @keyframes fadeUp   { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
@@ -762,104 +656,62 @@ export default function Dashboard() {
 
       <main style={{ flex:1, maxWidth:1440, margin:"0 auto", width:"100%", padding:"0 0 60px" }}>
 
-        {/* ═══ HERO ═══ */}
+        {/* ═══ HERO COMPACTO ═══ */}
         <div style={{
-          padding:"36px 32px 32px",
+          padding:"16px 28px 14px",
           background:"linear-gradient(160deg,#0A1628 0%,#0D1F38 60%,#091422 100%)",
           borderBottom:"0.5px solid var(--border)",
           animation:"fadeUp .5s ease both",
         }}>
-          {/* Saudação */}
-          <div style={{ fontSize:12,color:"var(--text-3)",fontWeight:500,marginBottom:20,letterSpacing:".02em" }}>
-            {saudar()}, {(nomeUsuario ?? "").split(" ")[0] || "…"} &nbsp;·&nbsp;
-            {new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}
-            {ciclosAtivos > 0 && <span style={{ color:"#22C55E" }}> · {ciclosAtivos} ciclo{ciclosAtivos>1?"s":""} ativo{ciclosAtivos>1?"s":""}</span>}
-          </div>
 
-          {/* Número principal */}
-          <div style={{ display:"flex", alignItems:"flex-end", gap:40, flexWrap:"wrap" }}>
-            <div>
-              <div style={{ fontSize:10,fontWeight:700,color:"var(--text-muted)",letterSpacing:".14em",textTransform:"uppercase",marginBottom:8 }}>
-                SALDO PROJETADO — 7 DIAS
-              </div>
-              <div style={{ fontSize:64,fontWeight:800,lineHeight:1,letterSpacing:"-2px",fontVariantNumeric:"tabular-nums",
-                color: loadAl ? "#1E3A5F" : saldoSemana >= 0 ? "#22C55E" : "#EF4444" }}>
-                {loadAl ? "—" : <>{saldoSemana >= 0 ? "+" : ""}{fmtMoeda(saldoAnim)}</>}
-              </div>
-              <div style={{ display:"flex",gap:20,marginTop:12 }}>
-                <span style={{ fontSize:12,color:"var(--text-3)" }}>
-                  Entradas <strong style={{ color:"#22C55E",fontVariantNumeric:"tabular-nums" }}>+{fmtMoeda(crSemana)}</strong>
-                </span>
-                <span style={{ fontSize:12,color:"var(--text-3)" }}>
-                  Saídas <strong style={{ color:"#EF4444",fontVariantNumeric:"tabular-nums" }}>−{fmtMoeda(cpSemana)}</strong>
-                </span>
-                {vencidosCp > 0 && (
-                  <span style={{ fontSize:12,fontWeight:700,color:"#EF4444" }}>⚠ {fmtMoeda(vencidosCp)} vencidos</span>
-                )}
-              </div>
-            </div>
-
-            {/* KPI Strip */}
-            <div style={{ display:"flex",gap:2,flexWrap:"wrap",marginLeft:"auto" }}>
-              {([
-                { label:"A PAGAR",    v:loadAl?"—":fmtMoeda(cpAnim),       c:"#EF4444", bg:"rgba(239,68,68,0.1)",   b:"rgba(239,68,68,0.2)"   },
-                { label:"A RECEBER",  v:loadAl?"—":fmtMoeda(crAnim),       c:"#22C55E", bg:"rgba(34,197,94,0.08)",  b:"rgba(34,197,94,0.2)"   },
-                { label:"CICLOS",     v:loadAl?"—":String(ciclosAtivos),    c:"#60A5FA", bg:"rgba(96,165,250,0.08)", b:"rgba(96,165,250,0.2)"  },
-                { label:"CONTRATOS",  v:loadAl?"—":String(contratosAtivos), c:"#FBBF24", bg:"rgba(251,191,36,0.08)", b:"rgba(251,191,36,0.2)"  },
-              ] as const).map((s,i) => (
-                <div key={i} style={{ padding:"14px 20px",background:s.bg,border:`0.5px solid ${s.b}`,borderRadius:10,minWidth:130,textAlign:"center" }}>
-                  <div style={{ fontSize:9,fontWeight:700,color:"var(--text-muted)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:6 }}>{s.label}</div>
-                  <div style={{ fontSize:20,fontWeight:800,color:s.c,fontVariantNumeric:"tabular-nums",lineHeight:1 }}>{s.v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Status bolsas */}
-          <div style={{ display:"flex",gap:10,marginTop:20,flexWrap:"wrap",alignItems:"center" }}>
+          {/* Linha 1: saudação + status bolsas + busca */}
+          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap" }}>
+            <span style={{ fontSize:12,color:"var(--text-3)",fontWeight:500,letterSpacing:".01em" }}>
+              {saudar()}, {(nomeUsuario ?? "").split(" ")[0] || "…"}&nbsp;·&nbsp;
+              {new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}
+              {ciclosAtivos > 0 && <span style={{ color:"#22C55E" }}> · {ciclosAtivos} ciclo{ciclosAtivos>1?"s":""} ativo{ciclosAtivos>1?"s":""}</span>}
+            </span>
             {[mercado.cbot,mercado.b3].map((m,i) => (
-              <span key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600,
-                color:m.aberto?"#22C55E":"var(--text-3)",padding:"4px 12px",borderRadius:20,
+              <span key={i} style={{ display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,
+                color:m.aberto?"#22C55E":"var(--text-3)",padding:"3px 10px",borderRadius:20,
                 background:m.aberto?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.04)",
                 border:`0.5px solid ${m.aberto?"rgba(34,197,94,0.3)":"var(--border)"}` }}>
-                <span style={{ width:6,height:6,borderRadius:"50%",background:m.aberto?"#22C55E":"var(--text-muted)",display:"inline-block",animation:m.aberto?"pulso 2s ease infinite":"none" }} />
+                <span style={{ width:5,height:5,borderRadius:"50%",background:m.aberto?"#22C55E":"var(--text-muted)",display:"inline-block",animation:m.aberto?"pulso 2s ease infinite":"none" }} />
                 {m.label}
               </span>
             ))}
-            {alertas.some(a => a.urgencia==="critico") && (
-              <span style={{ display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,
-                color:"#EF4444",padding:"4px 12px",borderRadius:20,
+            {alertas.some(a=>a.urgencia==="critico") && (
+              <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,
+                color:"#EF4444",padding:"3px 10px",borderRadius:20,
                 background:"rgba(239,68,68,0.1)",border:"0.5px solid rgba(239,68,68,0.3)" }}>
-                <span style={{ width:6,height:6,borderRadius:"50%",background:"#EF4444",display:"inline-block",animation:"pulso 1s ease infinite" }} />
+                <span style={{ width:5,height:5,borderRadius:"50%",background:"#EF4444",display:"inline-block",animation:"pulso 1s ease infinite" }} />
                 {alertas.filter(a=>a.urgencia==="critico").length} crítico{alertas.filter(a=>a.urgencia==="critico").length>1?"s":""}
               </span>
             )}
-
             {/* Busca global */}
-            <div ref={buscaRef} style={{ marginLeft:"auto",position:"relative",width:340 }}>
-              <span style={{ position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:12,color:"var(--text-muted)",pointerEvents:"none" }}>🔍</span>
+            <div ref={buscaRef} style={{ marginLeft:"auto",position:"relative",width:300 }}>
+              <span style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--text-muted)",pointerEvents:"none" }}>🔍</span>
               <input
                 type="text"
                 placeholder="Buscar lançamentos, contratos, insumos…"
                 value={buscaGlobal}
                 onChange={e => { setBuscaGlobal(e.target.value); setBuscaAberta(true); }}
                 onFocus={() => setBuscaAberta(true)}
-                style={{ width:"100%",boxSizing:"border-box",padding:"8px 12px 8px 34px",
-                  border:"0.5px solid var(--border)",borderRadius:10,fontSize:13,
-                  background:"var(--bg-input)",outline:"none",color:"var(--text-1)",
-                  boxShadow:"none" }}
+                style={{ width:"100%",boxSizing:"border-box",padding:"6px 10px 6px 30px",
+                  border:"0.5px solid rgba(255,255,255,0.12)",borderRadius:8,fontSize:12,
+                  background:"rgba(255,255,255,0.06)",outline:"none",color:"var(--text-1)" }}
               />
               {buscaGlobal && !buscandoGlobal && (
-                <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:14,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</button>
+                <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</button>
               )}
               {buscaAberta && buscaGlobal.trim().length >= 2 && (
-                <div style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid var(--border)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:320,overflowY:"auto" }}>
+                <div style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid var(--border)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:300,overflowY:"auto" }}>
                   {resultadosBusca.length === 0 && !buscandoGlobal && (
                     <div style={{ padding:"14px",fontSize:12,color:"var(--text-3)",textAlign:"center" }}>Nenhum resultado para "{buscaGlobal}"</div>
                   )}
                   {resultadosBusca.map(r => (
                     <a key={r.id} href={r.link} onClick={() => setBuscaAberta(false)}
-                      style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:"0.5px solid var(--border-table)",textDecoration:"none",background:"transparent" }}
+                      style={{ display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:"0.5px solid var(--border-table)",textDecoration:"none",background:"transparent" }}
                       onMouseEnter={e=>(e.currentTarget.style.background="var(--bg-input)")}
                       onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
                       <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:5,background:r.cor+"22",color:r.cor,flexShrink:0 }}>{r.categoria}</span>
@@ -871,139 +723,140 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* ═══ TICKER DE PREÇOS ═══ */}
-        {!loadPr && precos && (
-          <div style={{ background:"var(--bg-nav)",borderBottom:"0.5px solid var(--border-table)",padding:"10px 0",overflow:"hidden" }}>
-            <div style={{ display:"flex",alignItems:"center",padding:"0 20px",flexWrap:"wrap",gap:32 }}>
-              {[
-                { nome:"SOJA CBOT",   v:`${fmtUsd(precos.soja.cbot)}¢/bu`,     brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`,    d:precos.soja.variacao    },
-                { nome:"MILHO",       v:`R$ ${fmtBrl(precos.milho.brl)}/sc`,    brl:"",                                    d:precos.milho.variacao   },
-                { nome:"ALGODÃO",     v:`${fmtUsd(precos.algodao.cbot)}¢/lb`,   brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`,  d:precos.algodao.variacao },
-                { nome:"USD SPOT",    v:`R$ ${fmtBrl(precos.usdBrl)}`,          brl:"",                                    d:0                       },
-                { nome:"PTAX",        v:precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—", brl:"", d:0                  },
-              ].map((m,i) => (
-                <div key={i} style={{ display:"flex",alignItems:"center",gap:10,flexShrink:0 }}>
-                  <span style={{ fontSize:10,fontWeight:700,color:"var(--text-muted)",letterSpacing:".06em" }}>{m.nome}</span>
-                  <span style={{ fontSize:14,fontWeight:700,color:"var(--text-1)",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
-                  {m.brl && <span style={{ fontSize:11,color:"var(--text-3)" }}>{m.brl}</span>}
-                  {m.d !== 0 && <span style={{ fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:4,
-                    background:m.d>0?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",
-                    color:m.d>0?"#22C55E":"#EF4444" }}>{fmtPct(m.d)}</span>}
-                  {i < 4 && <div style={{ width:1,height:14,background:"var(--border)",marginLeft:12 }} />}
-                </div>
-              ))}
-              <span style={{ fontSize:10,color:"#1E3A5F",marginLeft:"auto" }}>
-                {precos.erro ? "⚠ dados aproximados" : new Date(precos.atualizadoEm).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
-              </span>
-            </div>
-          </div>
-        )}
+          {/* Linha 2: alertas | acesso rápido */}
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 280px",gap:20,alignItems:"start",marginBottom:12 }}>
 
-        {/* ═══ GRID PRINCIPAL ═══ */}
-        <div style={{ padding:"24px 28px",display:"grid",gridTemplateColumns:"1fr 300px",gap:20,alignItems:"start" }}>
-
-          {/* ── COLUNA ESQUERDA ── */}
-          <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
-
-            {/* ALERTAS */}
-            <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
-              <div style={{ padding:"14px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Alertas &amp; Pendências</span>
-                {loadAl
-                  ? <span style={{ fontSize:11,color:"#1E3A5F" }}>verificando…</span>
-                  : <span style={{ fontSize:11,color:"var(--text-3)",background:"var(--bg-input)",padding:"2px 9px",borderRadius:10,fontWeight:600 }}>{alertas.length} {alertas.length===1?"item":"itens"}</span>
-                }
-              </div>
-
-              {loadAl ? (
-                <div style={{ padding:"32px 20px",textAlign:"center",fontSize:12,color:"#1E3A5F" }}>Verificando pendências…</div>
-              ) : alertas.length === 0 ? (
-                <div style={{ padding:"44px 20px",textAlign:"center" }}>
-                  <div style={{ width:48,height:48,borderRadius:"50%",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.3)",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#22C55E" }}>✓</div>
-                  <div style={{ fontSize:14,fontWeight:700,color:"#22C55E",marginBottom:5 }}>Tudo em dia</div>
-                  <div style={{ fontSize:12,color:"var(--text-muted)" }}>Nenhuma pendência nos próximos 7 dias</div>
-                </div>
-              ) : alertas.map((a, idx) => {
-                const cor = COR[a.urgencia];
-                return (
-                  <div key={a.id} className="al-row" style={{
-                    display:"flex",alignItems:"center",gap:12,padding:"12px 20px",
-                    borderBottom: idx < alertas.length-1 ? "0.5px solid rgba(255,255,255,0.04)" : "none",
-                    background:"transparent",
-                    borderLeft:`3px solid ${cor.badge}`,
-                  }}>
-                    <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:5,flexShrink:0,background:cor.badge+"18",color:cor.badge,letterSpacing:".04em",textTransform:"uppercase" }}>
-                      {TIPO_LABEL[a.tipo] ?? a.tipo}
-                    </span>
-                    <span style={{ flex:1,fontSize:13,color:"var(--text-2)",lineHeight:1.45 }}>{a.desc}</span>
-                    <a href={a.link}
-                      style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"var(--border-table)",border:"0.5px solid var(--border)",color:"var(--text-2)",fontWeight:600,textDecoration:"none",whiteSpace:"nowrap",flexShrink:0 }}>
-                      {a.linkLabel} →
-                    </a>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* CONCILIAÇÃO */}
-            {conciliPend.length > 0 && (
-              <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
-                <div style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                  <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Inconsistências de Conciliação</span>
-                  <span style={{ fontSize:11,fontWeight:700,color:"#FBBF24",background:"rgba(251,191,36,0.1)",padding:"2px 8px",borderRadius:10,border:"0.5px solid rgba(251,191,36,0.3)" }}>
-                    {conciliPend.length} sem lançamento
+            {/* Alertas compactos */}
+            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4 }}>
+                <span style={{ fontSize:9,fontWeight:700,color:"var(--text-muted)",letterSpacing:".12em",textTransform:"uppercase" }}>ALERTAS &amp; PENDÊNCIAS</span>
+                {!loadAl && (
+                  <span style={{ fontSize:10,fontWeight:700,padding:"1px 8px",borderRadius:10,
+                    background:alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.15)":alertas.some(a=>a.urgencia==="alto")?"rgba(251,191,36,0.1)":"rgba(255,255,255,0.05)",
+                    color:alertas.some(a=>a.urgencia==="critico")?"#EF4444":alertas.some(a=>a.urgencia==="alto")?"#FBBF24":"var(--text-muted)",
+                    border:`0.5px solid ${alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.3)":alertas.some(a=>a.urgencia==="alto")?"rgba(251,191,36,0.25)":"var(--border)"}` }}>
+                    {alertas.length} {alertas.length===1?"item":"itens"}
                   </span>
-                </div>
-                {conciliPend.slice(0,5).map(p => (
-                  <div key={p.id} style={{ padding:"11px 20px",borderBottom:"0.5px solid rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:12 }}>
-                    <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:5,background:p.tipo==="debito"?"rgba(239,68,68,0.12)":"rgba(34,197,94,0.12)",color:p.tipo==="debito"?"#EF4444":"#22C55E",flexShrink:0 }}>
-                      {p.tipo==="debito"?"DÉBITO":"CRÉDITO"}
-                    </span>
-                    <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ fontSize:12,fontWeight:600,color:"var(--text-1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.descricao}</div>
-                      <div style={{ fontSize:11,color:"var(--text-3)" }}>{p.data.split("-").reverse().join("/")} · {p.conta_nome ?? "—"}</div>
-                    </div>
-                    <span style={{ fontSize:13,fontWeight:700,color:p.tipo==="debito"?"#EF4444":"#22C55E",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums" }}>
-                      {p.tipo==="debito"?"−":"+"}R$ {p.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
-                    </span>
-                    <button disabled={resolvendo===p.id} onClick={() => { const cat=prompt(`Categoria (${p.descricao}):`,p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos"); if(cat!==null) resolverInconsistencia(p,cat||(p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos")); }}
-                      style={{ padding:"4px 10px",background:"rgba(59,130,246,0.15)",color:"#60A5FA",border:"0.5px solid rgba(59,130,246,0.3)",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",opacity:resolvendo===p.id?.6:1,flexShrink:0 }}>
-                      {resolvendo===p.id?"Lançando…":"Lançar"}
-                    </button>
-                    <button onClick={() => ignorarInconsistencia(p.id)} style={{ padding:"4px 9px",background:"rgba(255,255,255,0.04)",color:"var(--text-3)",border:"0.5px solid var(--border)",borderRadius:6,fontSize:11,cursor:"pointer",flexShrink:0 }}>
-                      Ignorar
-                    </button>
-                  </div>
-                ))}
-                {conciliPend.length > 5 && (
-                  <div style={{ padding:"10px 20px",textAlign:"center" }}>
-                    <a href="/financeiro/conciliacao" style={{ fontSize:12,color:"#60A5FA",fontWeight:600,textDecoration:"none" }}>Ver todas ({conciliPend.length}) →</a>
-                  </div>
                 )}
               </div>
-            )}
-          </div>
+              {loadAl ? (
+                <div style={{ fontSize:11,color:"var(--text-muted)" }}>Verificando…</div>
+              ) : alertas.length === 0 ? (
+                <div style={{ display:"flex",alignItems:"center",gap:8,padding:"7px 11px",borderRadius:7,background:"rgba(34,197,94,0.06)",border:"0.5px solid rgba(34,197,94,0.2)" }}>
+                  <span style={{ color:"#22C55E",fontSize:14 }}>✓</span>
+                  <span style={{ fontSize:11,fontWeight:600,color:"#22C55E" }}>Tudo em dia — nenhuma pendência</span>
+                </div>
+              ) : (
+                alertas.slice(0,4).map(a => {
+                  const cor = COR[a.urgencia];
+                  return (
+                    <a key={a.id} href={a.link} style={{ display:"flex",alignItems:"center",gap:8,
+                      padding:"5px 9px",borderRadius:6,
+                      background:"rgba(255,255,255,0.04)",border:"0.5px solid rgba(255,255,255,0.05)",
+                      borderLeft:`3px solid ${cor.badge}`,textDecoration:"none" }}>
+                      <span style={{ fontSize:9,fontWeight:700,color:cor.badge,letterSpacing:".05em",textTransform:"uppercase",
+                        flexShrink:0,padding:"1px 5px",borderRadius:4,background:cor.badge+"18" }}>
+                        {TIPO_LABEL[a.tipo] ?? a.tipo}
+                      </span>
+                      <span style={{ flex:1,fontSize:11,color:"rgba(255,255,255,0.6)",lineHeight:1.3,
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                        {a.desc}
+                      </span>
+                    </a>
+                  );
+                })
+              )}
+              {!loadAl && alertas.length > 4 && (
+                <div style={{ fontSize:10,color:"rgba(255,255,255,0.22)",paddingTop:1 }}>
+                  +{alertas.length - 4} mais
+                </div>
+              )}
+            </div>
 
-          {/* ── COLUNA DIREITA: Atalhos ── */}
-          <div>
-            <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,padding:"16px" }}>
-              <div style={{ fontSize:10,fontWeight:700,color:"var(--text-muted)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:14 }}>Acesso Rápido</div>
-              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+            {/* Acesso Rápido */}
+            <div>
+              <div style={{ fontSize:9,fontWeight:700,color:"var(--text-muted)",letterSpacing:".12em",textTransform:"uppercase",marginBottom:6 }}>ACESSO RÁPIDO</div>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:5 }}>
                 {ATALHOS.map(a => (
                   <a key={a.link} href={a.link} className="atalho-dark"
-                    style={{ display:"flex",alignItems:"center",gap:10,padding:"12px",borderRadius:8,
-                      border:"0.5px solid var(--border)",textDecoration:"none",
-                      background:"var(--bg-stripe)" }}>
-                    <span style={{ width:32,height:32,borderRadius:8,background:a.cor+"1A",color:a.cor,fontWeight:800,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
-                    <span style={{ fontSize:12,color:"var(--text-2)",fontWeight:500,lineHeight:1.25 }}>{a.label}</span>
+                    style={{ display:"flex",alignItems:"center",gap:7,padding:"7px 9px",borderRadius:7,
+                      border:"0.5px solid rgba(255,255,255,0.08)",textDecoration:"none",
+                      background:"rgba(255,255,255,0.04)" }}>
+                    <span style={{ width:24,height:24,borderRadius:6,background:a.cor+"22",color:a.cor,fontWeight:800,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
+                    <span style={{ fontSize:11,color:"rgba(255,255,255,0.55)",fontWeight:500,lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{a.label}</span>
                   </a>
                 ))}
               </div>
             </div>
           </div>
+
+          {/* Linha 3: cotações inline */}
+          {!loadPr && precos && (
+            <div style={{ display:"flex",alignItems:"center",flexWrap:"wrap",gap:20,borderTop:"0.5px solid rgba(255,255,255,0.06)",paddingTop:10 }}>
+              {[
+                { nome:"SOJA CBOT", v:`${fmtUsd(precos.soja.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`, d:precos.soja.variacao },
+                { nome:"MILHO",    v:`R$ ${fmtBrl(precos.milho.brl)}/sc`, brl:"",                                 d:precos.milho.variacao },
+                { nome:"ALGODÃO",  v:`${fmtUsd(precos.algodao.cbot)}¢/lb`,brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`, d:precos.algodao.variacao },
+                { nome:"USD SPOT", v:`R$ ${fmtBrl(precos.usdBrl)}`,       brl:"",                                 d:0 },
+                { nome:"PTAX",     v:precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—", brl:"",                 d:0 },
+              ].map((m,i) => (
+                <div key={i} style={{ display:"flex",alignItems:"center",gap:7,flexShrink:0 }}>
+                  <span style={{ fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:".06em" }}>{m.nome}</span>
+                  <span style={{ fontSize:12,fontWeight:700,color:"var(--text-1)",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
+                  {m.brl && <span style={{ fontSize:10,color:"rgba(255,255,255,0.35)" }}>{m.brl}</span>}
+                  {m.d !== 0 && <span style={{ fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:4,
+                    background:m.d>0?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",
+                    color:m.d>0?"#22C55E":"#EF4444" }}>{fmtPct(m.d)}</span>}
+                  {i < 4 && <div style={{ width:1,height:12,background:"rgba(255,255,255,0.08)",marginLeft:4 }} />}
+                </div>
+              ))}
+              <span style={{ fontSize:9,color:"rgba(255,255,255,0.18)",marginLeft:"auto" }}>
+                {precos.erro ? "⚠ dados aprox." : new Date(precos.atualizadoEm).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Conciliação (apenas se houver pendências) */}
+        {conciliPend.length > 0 && (
+          <div style={{ padding:"20px 28px 0" }}>
+            <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
+              <div style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Inconsistências de Conciliação</span>
+                <span style={{ fontSize:11,fontWeight:700,color:"#FBBF24",background:"rgba(251,191,36,0.1)",padding:"2px 8px",borderRadius:10,border:"0.5px solid rgba(251,191,36,0.3)" }}>
+                  {conciliPend.length} sem lançamento
+                </span>
+              </div>
+              {conciliPend.slice(0,5).map(p => (
+                <div key={p.id} style={{ padding:"11px 20px",borderBottom:"0.5px solid rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:12 }}>
+                  <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:5,background:p.tipo==="debito"?"rgba(239,68,68,0.12)":"rgba(34,197,94,0.12)",color:p.tipo==="debito"?"#EF4444":"#22C55E",flexShrink:0 }}>
+                    {p.tipo==="debito"?"DÉBITO":"CRÉDITO"}
+                  </span>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontSize:12,fontWeight:600,color:"var(--text-1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.descricao}</div>
+                    <div style={{ fontSize:11,color:"var(--text-3)" }}>{p.data.split("-").reverse().join("/")} · {p.conta_nome ?? "—"}</div>
+                  </div>
+                  <span style={{ fontSize:13,fontWeight:700,color:p.tipo==="debito"?"#EF4444":"#22C55E",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums" }}>
+                    {p.tipo==="debito"?"−":"+"}R$ {p.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
+                  </span>
+                  <button disabled={resolvendo===p.id} onClick={() => { const cat=prompt(`Categoria (${p.descricao}):`,p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos"); if(cat!==null) resolverInconsistencia(p,cat||(p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos")); }}
+                    style={{ padding:"4px 10px",background:"rgba(59,130,246,0.15)",color:"#60A5FA",border:"0.5px solid rgba(59,130,246,0.3)",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",opacity:resolvendo===p.id?.6:1,flexShrink:0 }}>
+                    {resolvendo===p.id?"Lançando…":"Lançar"}
+                  </button>
+                  <button onClick={() => ignorarInconsistencia(p.id)} style={{ padding:"4px 9px",background:"rgba(255,255,255,0.04)",color:"var(--text-3)",border:"0.5px solid var(--border)",borderRadius:6,fontSize:11,cursor:"pointer",flexShrink:0 }}>
+                    Ignorar
+                  </button>
+                </div>
+              ))}
+              {conciliPend.length > 5 && (
+                <div style={{ padding:"10px 20px",textAlign:"center" }}>
+                  <a href="/financeiro/conciliacao" style={{ fontSize:12,color:"#60A5FA",fontWeight:600,textDecoration:"none" }}>Ver todas ({conciliPend.length}) →</a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       </main>
     </div>

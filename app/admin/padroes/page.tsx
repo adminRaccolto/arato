@@ -213,25 +213,17 @@ export default function PadroesPage() {
           </button>
         </div>
         <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-          Cadastros de base que podem ser sincronizados com os clientes. Alterações aqui não afetam clientes automaticamente — use "Sincronizar" para propagar.
+          Operações padrão visíveis por todos os clientes automaticamente (Opção A). Alterações aqui refletem imediatamente — sem necessidade de sincronizar.
         </div>
       </div>
 
-      {/* Banner de aviso de sincronização */}
+      {/* Banner informativo de ação concluída */}
       {syncBanner && (
-        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <span style={{ fontSize: 13, color: "#7A5A10", fontWeight: 500 }}>{syncBanner}</span>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => { setSyncBanner(null); setSyncSelect(new Set(fazendas.map(f => f.id))); sincronizar(); }}
-              style={{ padding: "5px 14px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer", fontSize: 12 }}
-            >
-              Sincronizar agora →
-            </button>
-            <button onClick={() => setSyncBanner(null)} style={{ padding: "5px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#666" }}>
-              Depois
-            </button>
-          </div>
+        <div style={{ background: "#EAF3DE", border: "0.5px solid #2D7A3A", borderRadius: 8, padding: "10px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span style={{ fontSize: 13, color: "#1A5C38", fontWeight: 500 }}>{syncBanner}</span>
+          <button onClick={() => setSyncBanner(null)} style={{ padding: "5px 10px", border: "0.5px solid #2D7A3A", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A5C38" }}>
+            OK
+          </button>
         </div>
       )}
 

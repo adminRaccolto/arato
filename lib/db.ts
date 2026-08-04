@@ -3778,10 +3778,37 @@ export async function excluirFormaPagamento(id: string): Promise<void> {
 // OPERAÇÕES GERENCIAIS / PLANO DE CONTAS
 // ————————————————————————————————————————
 
+// Resolve conta_id de uma fazenda (para filtros Option A)
+async function resolverContaIdDaFazenda(fazenda_id: string | null | undefined): Promise<string | null> {
+  if (!fazenda_id) return null;
+  const { data } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  const cid = data?.conta_id as string | null | undefined;
+  return cid && !cid.startsWith("sem_conta_") ? cid : null;
+}
+
+// Filtro OR unificado: global (ambos null) + tenant + legado por fazenda
+function ogOrFilter(conta_id: string | null, fazenda_id: string | null): string {
+  const parts: string[] = ["and(fazenda_id.is.null,conta_id.is.null)"];
+  if (conta_id)  parts.push(`conta_id.eq.${conta_id}`);
+  if (fazenda_id) parts.push(`fazenda_id.eq.${fazenda_id}`);
+  return parts.join(",");
+}
+
 export async function listarOperacoesGerenciais(fazenda_id: string): Promise<OperacaoGerencial[]> {
-  const { data, error } = await supabase.from("operacoes_gerenciais").select("*").eq("fazenda_id", fazenda_id).order("classificacao");
+  const conta_id = await resolverContaIdDaFazenda(fazenda_id);
+  const { data, error } = await supabase.from("operacoes_gerenciais")
+    .select("*")
+    .or(ogOrFilter(conta_id, fazenda_id))
+    .order("classificacao");
   if (error) throw error;
-  return data ?? [];
+  // Deduplicar por classificação: global tem prioridade, depois tenant, depois legado
+  const seen = new Set<string>();
+  return (data ?? []).filter(op => {
+    const key = op.classificacao ?? op.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // Retorna apenas operações folha (com gerar_financeiro=true e não grupos)
@@ -3789,8 +3816,9 @@ export async function listarOperacoesGerenciaisAtivas(
   fazenda_id: string,
   filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" }
 ): Promise<OperacaoGerencial[]> {
+  const conta_id = await resolverContaIdDaFazenda(fazenda_id);
   let q = supabase.from("operacoes_gerenciais").select("*")
-    .eq("fazenda_id", fazenda_id)
+    .or(ogOrFilter(conta_id, fazenda_id))
     .eq("inativo", false)
     .order("classificacao");
   if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
@@ -3800,22 +3828,33 @@ export async function listarOperacoesGerenciaisAtivas(
   if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
   const { data, error } = await q;
   if (error) throw error;
-  // Exclui nós de grupo (não têm gerar_financeiro E não têm permite_cp_cr/nf)
-  return (data ?? []).filter(op =>
-    op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
-    op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
-  );
+  // Exclui nós de grupo; deduplicar por classificação
+  const seen = new Set<string>();
+  return (data ?? []).filter(op => {
+    if (!(op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
+          op.permite_adiantamentos || op.permite_baixas || op.permite_estoque)) return false;
+    const key = op.classificacao ?? op.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
-// Carrega operações gerenciais ativas de TODAS as fazendas da conta
+// Carrega operações gerenciais ativas: global + conta + TODAS as fazendas (Option A)
 export async function listarOperacoesGerenciaisAtivasDaConta(
   filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" },
   fazenda_id_fallback?: string | null,
 ): Promise<OperacaoGerencial[]> {
+  const conta_id = await resolverContaIdDaFazenda(fazenda_id_fallback);
   const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
+
+  // Monta filtro OR: global + conta + fazendas legadas
+  const parts: string[] = ["and(fazenda_id.is.null,conta_id.is.null)"];
+  if (conta_id) parts.push(`conta_id.eq.${conta_id}`);
+  if (ids.length) parts.push(...ids.map(id => `fazenda_id.eq.${id}`));
+
   let q = supabase.from("operacoes_gerenciais").select("*")
-    .in("fazenda_id", ids)
+    .or(parts.join(","))
     .eq("inativo", false)
     .order("classificacao");
   if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
@@ -3885,6 +3924,18 @@ export async function listarTodosCfops(fazenda_id: string): Promise<OperacaoCfop
   if (error) throw error;
   return data ?? [];
 }
+// Cria adição do cliente (conta_id = tenant; fazenda_id = null)
+export async function criarOperacaoGerencialCustom(
+  conta_id: string,
+  o: Omit<OperacaoGerencial, "id" | "created_at" | "conta_id" | "fazenda_id">
+): Promise<OperacaoGerencial> {
+  const { data, error } = await supabase.from("operacoes_gerenciais")
+    .insert({ ...o, conta_id, fazenda_id: null })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
 export async function criarOperacaoGerencial(o: Omit<OperacaoGerencial, "id" | "created_at">): Promise<OperacaoGerencial> {
   const { data, error } = await supabase.from("operacoes_gerenciais").insert(o).select().single();
   if (error) throw error;

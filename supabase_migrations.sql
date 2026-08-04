@@ -9082,3 +9082,63 @@ CREATE INDEX IF NOT EXISTS idx_lancamentos_maquina_id ON lancamentos(maquina_id)
 CREATE INDEX IF NOT EXISTS idx_lancamentos_veiculo_id  ON lancamentos(veiculo_id)  WHERE veiculo_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Option A: Operações Gerenciais — Padrão Global (Raccotlo) + Adições por Conta
+-- Global  = fazenda_id IS NULL AND conta_id IS NULL  → gerenciado pelo Raccotlo
+-- Tenant  = conta_id IS NOT NULL AND fazenda_id IS NULL → adição do próprio cliente
+-- Legado  = fazenda_id IS NOT NULL → cópias antigas por fazenda (backward compat)
+-- ============================================================
+
+ALTER TABLE operacoes_gerenciais
+  ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_op_gerenciais_conta_id
+  ON operacoes_gerenciais(conta_id)
+  WHERE conta_id IS NOT NULL;
+
+-- Substitui a política permissiva por políticas granulares
+DROP POLICY IF EXISTS "allow_all_operacoes_gerenciais" ON operacoes_gerenciais;
+
+-- SELECT: global + própria conta + fazendas legadas + raccotlo
+DO $$ BEGIN
+  CREATE POLICY "og_select" ON operacoes_gerenciais FOR SELECT USING (
+    (fazenda_id IS NULL AND conta_id IS NULL)
+    OR conta_id IN (
+      SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL
+    )
+    OR fazenda_id IN (
+      SELECT p.fazenda_id FROM perfis p WHERE p.user_id = auth.uid() AND p.fazenda_id IS NOT NULL
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- INSERT: raccotlo insere global/legado; cliente insere na própria conta
+DO $$ BEGIN
+  CREATE POLICY "og_insert" ON operacoes_gerenciais FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+    OR (
+      conta_id IN (SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL)
+      AND fazenda_id IS NULL
+    )
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- UPDATE: raccotlo atualiza qualquer; cliente apenas suas adições
+DO $$ BEGIN
+  CREATE POLICY "og_update" ON operacoes_gerenciais FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+    OR conta_id IN (SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL)
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- DELETE: mesmo padrão do UPDATE
+DO $$ BEGIN
+  CREATE POLICY "og_delete" ON operacoes_gerenciais FOR DELETE USING (
+    EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+    OR conta_id IN (SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL)
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+NOTIFY pgrst, 'reload schema';

@@ -1801,6 +1801,7 @@ export type RateioGlobalCiclo = {
 export type OperacaoGerencial = {
   id: string;
   fazenda_id: string | null;
+  conta_id?: string | null;     // NULL = padrão Raccotlo; NOT NULL = adição do cliente
   classificacao: string;        // ex: "1.01.01.01.001"
   descricao: string;
   tipo: "receita" | "despesa";
