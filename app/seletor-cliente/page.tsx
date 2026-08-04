@@ -82,7 +82,7 @@ export default function SeletorCliente() {
     // Guarda conta_id do cliente para que o sistema exiba dados de TODAS as fazendas
     if (c.conta_id) localStorage.setItem("raccotlo_cliente_conta_id", c.conta_id);
     else            localStorage.removeItem("raccotlo_cliente_conta_id");
-    selectFazenda(f.id, f.nome, c.produtor_nome);
+    selectFazenda(f.id, f.nome, c.produtor_nome ?? c.conta_nome);
   }
 
   return (

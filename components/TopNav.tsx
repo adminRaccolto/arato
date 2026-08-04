@@ -640,19 +640,19 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
           <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.1)" }} />
 
-          {userRole === "raccotlo" && fazendaId && (nomeProdutor || nomeFazendaSelecionada) && (
+          {userRole === "raccotlo" && fazendaId && nomeProdutor && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {logoCliente
                 ? <img src={logoCliente} alt="" style={{ height: 24, width: 24, objectFit: "contain", borderRadius: 4, border: "0.5px solid rgba(255,255,255,0.15)" }} />
                 : (
                   <div style={{ width: 24, height: 24, borderRadius: 4, background: "rgba(59,130,246,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#60A5FA", flexShrink: 0 }}>
-                    {(nomeProdutor || nomeFazendaSelecionada || "").substring(0, 2).toUpperCase()}
+                    {nomeProdutor.substring(0, 2).toUpperCase()}
                   </div>
                 )
               }
               <div style={{ maxWidth: 200 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {nomeProdutor || nomeFazendaSelecionada}
+                  {nomeProdutor}
                 </div>
               </div>
               <button
