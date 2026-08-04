@@ -1850,8 +1850,10 @@ export async function processarNfEntrada(
     }
 
     if (lancamentoIdPedido) {
-      // Atualiza o lançamento existente do pedido com os dados reais da NF
+      // Atualiza o lançamento existente do pedido com os dados reais da NF.
+      // NF-e é sempre em BRL por lei — força moeda BRL independente do pedido original.
       await supabase.from("lancamentos").update({
+        moeda:                 "BRL",
         descricao:             `NF ${opts?.nfeNumero ? `${opts.nfeNumero} — ` : ""}${emitente}${temVef ? " (VEF)" : ""}`,
         valor:                 valorTotal,
         data_vencimento:       opts?.dataVencimentoCp ?? dataEntrada,
