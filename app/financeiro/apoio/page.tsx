@@ -803,7 +803,7 @@ export default function ApoioFinanceiroPage() {
                           title="Selecionar todos em aberto"
                         />
                       </th>
-                      {["Vencimento", "Tipo", "Descrição", "Pessoa/Fornecedor", "Categoria", "Valor", "Status", "Ações"].map((h) => (
+                      {["Vencimento", "Tipo", "Descrição", "Pessoa/Fornecedor", "CPF/CNPJ", "Categoria", "Valor", "Status", "Ações"].map((h) => (
                         <th key={h} style={th}>{h}</th>
                       ))}
                     </tr>
@@ -811,7 +811,7 @@ export default function ApoioFinanceiroPage() {
                   <tbody>
                     {apoioLancs.length === 0 && (
                       <tr>
-                        <td colSpan={9} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
+                        <td colSpan={10} style={{ ...td, textAlign: "center", color: "#888", padding: 32 }}>
                           {carregando ? "Carregando…" : "Nenhum lançamento exclusivo cadastrado."}
                         </td>
                       </tr>
@@ -819,9 +819,10 @@ export default function ApoioFinanceiroPage() {
                     {apoioLancs.map((a) => {
                       const emAcao = acaoId === a.id;
                       const selecionado = selecionados.has(a.id);
-                      const pessoaNome = a.pessoa_id
-                        ? (pessoas.find((p) => p.id === a.pessoa_id)?.nome ?? a.pessoa_nome ?? "—")
-                        : (a.pessoa_nome ?? "—");
+                      const pessoaCadastro = a.pessoa_id ? pessoas.find((p) => p.id === a.pessoa_id) : null;
+                      const pessoaNome = pessoaCadastro?.nome ?? a.pessoa_nome ?? "—";
+                      const pessoaDoc  = pessoaCadastro?.cpf_cnpj ?? "—";
+                      const vinculada  = !!pessoaCadastro;
                       return (
                         <tr key={a.id} style={{ background: selecionado ? "#FFF8F0" : a.baixado ? "#F9FFF9" : "#fff" }}>
                           <td style={{ ...td, textAlign: "center" }}>
@@ -844,7 +845,13 @@ export default function ApoioFinanceiroPage() {
                             </span>
                           </td>
                           <td style={td}>{a.descricao}</td>
-                          <td style={{ ...td, color: "#555" }}>{pessoaNome}</td>
+                          <td style={{ ...td, color: vinculada ? "#1a1a1a" : "#888" }} title={vinculada ? "Vinculado ao cadastro" : "Não encontrado no cadastro de Pessoas"}>
+                            {pessoaNome}
+                            {!vinculada && pessoaNome !== "—" && (
+                              <span style={{ marginLeft: 4, fontSize: 10, color: "#C9921B" }} title="Nome da planilha — não está em Cadastros → Pessoas">⚠</span>
+                            )}
+                          </td>
+                          <td style={{ ...td, color: "#666", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>{pessoaDoc}</td>
                           <td style={{ ...td, color: "#888" }}>{a.categoria ?? "—"}</td>
                           <td style={{ ...td, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
                             {fmtBRL(a.valor)}
