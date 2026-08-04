@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -1113,6 +1113,60 @@ export async function listarMaquinas(fazenda_id: string): Promise<Maquina[]> {
   const { data, error } = await supabase.from("maquinas").select("*").eq("fazenda_id", fazenda_id).order("nome");
   if (error) throw error;
   return data ?? [];
+}
+
+export type VeiculoUnificado = {
+  ref: string;           // "m:uuid" para maquina, "v:uuid" para veiculo transportadora
+  maquina_id?: string;
+  veiculo_id?: string;
+  label: string;         // "[ABC-1234] — Scania R450 (Fazenda X)"
+  placa?: string;
+  tipo: string;
+  origem: "fazenda" | "transportadora";
+  emplacado: boolean;    // tem placa registrada
+};
+
+const TIPOS_EMPLACADOS_MAQUINA = ["caminhao", "carreta", "carro"];
+
+export async function listarVeiculosUnificados(
+  fazendaIds: string[],
+  filtro: "todos" | "emplacados" = "emplacados",
+): Promise<VeiculoUnificado[]> {
+  if (!fazendaIds.length) return [];
+
+  const [maqRes, veiRes] = await Promise.all([
+    supabase.from("maquinas").select("id,fazenda_id,nome,tipo,placa,ativa").in("fazenda_id", fazendaIds).eq("ativa", true).order("nome"),
+    supabase.from("veiculos").select("id,fazenda_id,placa,tipo,proprietario,ativo").in("fazenda_id", fazendaIds).eq("ativo", true).order("placa"),
+  ]);
+
+  // Buscar nomes das fazendas para o label
+  const fRes = await supabase.from("fazendas").select("id,nome").in("id", fazendaIds);
+  const fMap: Record<string, string> = {};
+  for (const f of fRes.data ?? []) fMap[f.id] = f.nome;
+
+  const result: VeiculoUnificado[] = [];
+
+  for (const m of (maqRes.data ?? []) as (Maquina & { fazenda_id: string })[]) {
+    const emplacado = TIPOS_EMPLACADOS_MAQUINA.includes(m.tipo ?? "");
+    if (filtro === "emplacados" && !emplacado) continue;
+    const placa = m.placa?.toUpperCase() ?? "";
+    const fazNome = fMap[m.fazenda_id] ?? "Fazenda";
+    const label = placa
+      ? `[${placa}] — ${m.nome} (${fazNome})`
+      : `${m.nome} (${fazNome})`;
+    result.push({ ref: `m:${m.id}`, maquina_id: m.id, label, placa: placa || undefined, tipo: m.tipo, origem: "fazenda", emplacado });
+  }
+
+  for (const v of (veiRes.data ?? []) as (Veiculo & { fazenda_id: string })[]) {
+    const fazNome = fMap[v.fazenda_id] ?? "Transportadora";
+    const placa = v.placa?.toUpperCase() ?? "";
+    const nome = v.proprietario ? `${placa} — ${v.proprietario}` : placa;
+    const label = `[${placa}] ${v.tipo ?? ""} (${fazNome})`.trim();
+    result.push({ ref: `v:${v.id}`, veiculo_id: v.id, label, placa, tipo: v.tipo ?? "truck", origem: "transportadora", emplacado: true });
+  }
+
+  result.sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  return result;
 }
 export async function criarMaquina(m: Omit<Maquina, "id" | "created_at">): Promise<Maquina> {
   const { data, error } = await supabase.from("maquinas").insert(m).select().single();

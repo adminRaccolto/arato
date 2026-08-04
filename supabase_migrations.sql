@@ -9062,3 +9062,23 @@ ALTER TABLE apoio_lancamentos
   ADD COLUMN IF NOT EXISTS origem        text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Migration: Veículo vinculado em lançamentos financeiros
+-- Permite vincular multas de trânsito / manutenção a um veículo específico
+-- ============================================================================
+
+-- 1. Adiciona coluna de placa em maquinas (ex: veículos da fazenda)
+ALTER TABLE maquinas
+  ADD COLUMN IF NOT EXISTS placa text;
+
+-- 2. Vincula lançamentos a máquinas da fazenda ou veículos de transportadora
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS maquina_id uuid REFERENCES maquinas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS veiculo_id  uuid REFERENCES veiculos(id)  ON DELETE SET NULL;
+
+-- Índices para relatórios por veículo
+CREATE INDEX IF NOT EXISTS idx_lancamentos_maquina_id ON lancamentos(maquina_id) WHERE maquina_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_lancamentos_veiculo_id  ON lancamentos(veiculo_id)  WHERE veiculo_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

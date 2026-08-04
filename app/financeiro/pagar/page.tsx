@@ -10,7 +10,7 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, type VeiculoUnificado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -131,7 +131,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 
 // ═══════════════════════════════════════════════════════════════
 function ContasPagarInner() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, fazendaIds = [] } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
@@ -145,6 +145,7 @@ function ContasPagarInner() {
   const [ciclos,        setCiclos]        = useState<Ciclo[]>([]);
   const [talhoes,       setTalhoes]       = useState<Talhao[]>([]);
   const [funcionarios,  setFuncionarios]  = useState<Funcionario[]>([]);
+  const [veiculos,      setVeiculos]      = useState<VeiculoUnificado[]>([]);
   const [contas,        setContas]        = useState<ContaBancariaMin[]>([]);
   const [opGerenciais,  setOpGerenciais]  = useState<OperacaoGerencial[]>([]);
   const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
@@ -275,6 +276,7 @@ function ContasPagarInner() {
       tipo_mao_obra:         l.tipo_mao_obra         ?? "",
       unidade_mao_obra:      l.unidade_mao_obra      ?? "Dia",
       quantidade_mao_obra:   l.quantidade_mao_obra?.toString() ?? "",
+      veiculo_sel:           l.maquina_id ? `m:${l.maquina_id}` : l.veiculo_id ? `v:${l.veiculo_id}` : "",
     });
     setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
     carregarOps();
@@ -317,6 +319,8 @@ function ContasPagarInner() {
     serie: "",
     // Mão de Obra
     funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "",
+    // Veículo vinculado
+    veiculo_sel: "",  // "m:uuid" | "v:uuid" | ""
   });
 
   // grid editável de parcelas (prazo)
@@ -406,7 +410,8 @@ function ContasPagarInner() {
     supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, fazenda_id").eq("fazenda_id", fid).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
     listarTalhoes(fid).then(setTalhoes).catch(() => {});
     listarFuncionarios(fid).then(setFuncionarios).catch(() => {});
-  }, [fid]);
+    listarVeiculosUnificados(fazendaIds.length ? fazendaIds : [fid], "todos").then(setVeiculos).catch(() => {});
+  }, [fid, fazendaIds.join(",")]);
 
   async function carregar() {
     setLoading(true);
@@ -742,6 +747,8 @@ function ContasPagarInner() {
             unidade_mao_obra:    form.unidade_mao_obra    || null,
             quantidade_mao_obra: form.quantidade_mao_obra ? Number(form.quantidade_mao_obra) : null,
           } : {}),
+          maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : null,
+          veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : null,
         };
         const { error } = await supabase.from("lancamentos").update(patch).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
@@ -796,6 +803,10 @@ function ContasPagarInner() {
         tipo_mao_obra:       form.tipo_mao_obra       || undefined,
         unidade_mao_obra:    form.unidade_mao_obra    || undefined,
         quantidade_mao_obra: form.quantidade_mao_obra ? Number(form.quantidade_mao_obra) : undefined,
+      } : {}),
+      ...(form.veiculo_sel ? {
+        maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : undefined,
+        veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : undefined,
       } : {}),
     };
 
@@ -913,7 +924,7 @@ function ContasPagarInner() {
                 📄 NFs Importadas
               </a>
               <button className="cp-btn"
-                onClick={() => { setCascade({}); setModalTab("principal"); setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "" }); setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true); }}
+                onClick={() => { setCascade({}); setModalTab("principal"); setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "" }); setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true); }}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Nova CP
               </button>
@@ -2153,6 +2164,35 @@ function ContasPagarInner() {
                       </select>
                     </div>
                   </div>
+
+                  {/* Veículo vinculado — aparece quando OG é Manutenção ou há veículos */}
+                  {veiculos.length > 0 && (() => {
+                    const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    const isManu = og && (og.classificacao ?? "").startsWith("2.01.01.03");
+                    // Para manutenção: todos os veículos. Para outros contextos: só emplacados
+                    const lista = isManu ? veiculos : veiculos.filter(v => v.emplacado);
+                    if (!lista.length) return null;
+                    return (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Veículo / Máquina (opcional)</label>
+                          <select style={inp} value={form.veiculo_sel} onChange={e => setForm(p => ({ ...p, veiculo_sel: e.target.value }))}>
+                            <option value="">— Sem vínculo —</option>
+                            <optgroup label="Fazenda">
+                              {lista.filter(v => v.origem === "fazenda").map(v => (
+                                <option key={v.ref} value={v.ref}>{v.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Transportadora">
+                              {lista.filter(v => v.origem === "transportadora").map(v => (
+                                <option key={v.ref} value={v.ref}>{v.label}</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Mão de Obra — aparece quando OG é Mão de Obra */}
                   {form.operacao_gerencial_id && (() => {

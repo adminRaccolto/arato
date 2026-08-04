@@ -282,6 +282,9 @@ export type Lancamento = {
   // Venda de grãos — rastreio do CR por contrato/romaneio
   contrato_id?: string;               // FK contratos.id — CR de pedido de venda ou entrega
   romaneio_id?: string;               // FK romaneios.id — CR gerado por romaneio/faturamento
+  // Veículo vinculado (manutenção, multa de trânsito, etc.)
+  maquina_id?: string;                // FK maquinas.id — máquina/veículo próprio da fazenda
+  veiculo_id?: string;                // FK veiculos.id — veículo de transportadora
   created_at?: string;
 };
 
@@ -752,11 +755,26 @@ export type CicloTalhao = {
   created_at?: string;
 };
 
+export type Veiculo = {
+  id: string;
+  fazenda_id: string;
+  placa: string;
+  tipo?: "truck" | "bitruck" | "bitrem" | "rodotrem" | "van" | "outros";
+  tara_kg?: number;
+  cap_kg?: number;
+  uf?: string;
+  rntrc?: string;
+  proprietario?: string;
+  ativo: boolean;
+  created_at?: string;
+};
+
 export type Maquina = {
   id: string;
   fazenda_id: string;
   nome: string;
-  tipo: "trator" | "colheitadeira" | "pulverizador" | "plantadeira" | "caminhao" | "carro" | "implemento" | "outro";
+  placa?: string;
+  tipo: "trator" | "colheitadeira" | "pulverizador" | "plantadeira" | "caminhao" | "carreta" | "carro" | "implemento" | "outro";
   marca?: string;
   modelo?: string;
   ano?: number;
