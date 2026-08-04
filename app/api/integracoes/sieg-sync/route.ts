@@ -162,17 +162,18 @@ export async function POST(req: NextRequest) {
         if (!forceReimport) { duplicados_nfe++; continue; }
         // Re-importação forçada: atualiza cabeçalho e, se ainda pendente, recria itens
         await db.from("nf_entradas").update({
-          numero:           nfe.numero,
-          serie:            nfe.serie,
-          data_emissao:     nfe.data_emissao,
-          emitente_nome:    nfe.nome_emitente,
-          emitente_cnpj:    nfe.cnpj_emitente,
-          valor_total:      nfe.valor_total,
-          natureza:         nfe.natureza,
-          cfop:             nfe.cfop,
-          cnpj_destino,
-          xml_storage_path: xmlPath,
-          observacao:       `Re-importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
+          numero:            nfe.numero,
+          serie:             nfe.serie,
+          data_emissao:      nfe.data_emissao,
+          emitente_nome:     nfe.nome_emitente,
+          emitente_cnpj:     nfe.cnpj_emitente,
+          valor_total:       nfe.valor_total,
+          natureza:          nfe.natureza,
+          cfop:              nfe.cfop,
+          cnpj_destino:      nfe.cnpj_destinatario,   // CNPJ/CPF exato do <dest> — essencial para Manifestação
+          nome_destinatario: nfe.nome_destinatario,
+          xml_storage_path:  xmlPath,
+          observacao:        `Re-importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
         }).eq("id", dup.id);
         if (dup.status === "pendente" && itensPayload.length > 0) {
           await db.from("nf_entrada_itens").delete().eq("nf_entrada_id", dup.id);
@@ -187,20 +188,21 @@ export async function POST(req: NextRequest) {
         .from("nf_entradas")
         .insert({
           fazenda_id,
-          numero:           nfe.numero,
-          serie:            nfe.serie,
-          chave_acesso:     nfe.chave,
-          data_emissao:     nfe.data_emissao,
-          emitente_nome:    nfe.nome_emitente,
-          emitente_cnpj:    nfe.cnpj_emitente,
-          valor_total:      nfe.valor_total,
-          natureza:         nfe.natureza,
-          cfop:             nfe.cfop,
-          cnpj_destino,
-          status:           "pendente",
-          origem:           "sieg",
-          xml_storage_path: xmlPath,
-          observacao:       `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
+          numero:            nfe.numero,
+          serie:             nfe.serie,
+          chave_acesso:      nfe.chave,
+          data_emissao:      nfe.data_emissao,
+          emitente_nome:     nfe.nome_emitente,
+          emitente_cnpj:     nfe.cnpj_emitente,
+          valor_total:       nfe.valor_total,
+          natureza:          nfe.natureza,
+          cfop:              nfe.cfop,
+          cnpj_destino:      nfe.cnpj_destinatario,   // CNPJ/CPF exato do <dest> — essencial para Manifestação
+          nome_destinatario: nfe.nome_destinatario,
+          status:            "pendente",
+          origem:            "sieg",
+          xml_storage_path:  xmlPath,
+          observacao:        `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
         })
         .select("id")
         .single();

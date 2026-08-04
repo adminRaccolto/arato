@@ -9142,3 +9142,9 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Migration: nome_destinatario em nf_entradas (SIEG — nome exato do <dest> no XML)
+-- Resolve: destinatário não aparecia no cabeçalho da NF importada via SIEG
+-- Junto com a correção de cnpj_destino para usar o CNPJ do XML (não do config),
+-- garante que a Manifestação SIEG funcione corretamente.
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS nome_destinatario TEXT;

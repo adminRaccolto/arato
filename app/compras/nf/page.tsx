@@ -1463,6 +1463,7 @@ export default function NfCompraPage() {
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-1)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {(() => {
+                          if (nf.nome_destinatario) return <>{nf.nome_destinatario}{nf.cnpj_destino && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDoc(nf.cnpj_destino.replace(/\D/g,""))}</div>}</>;
                           if (!nf.cnpj_destino) return <span style={{ color: "var(--text-3)" }}>—</span>;
                           const cnpjNum = nf.cnpj_destino.replace(/\D/g, "");
                           const prod = siegProdutores.find(p => p.cnpj === cnpjNum);
@@ -1615,10 +1616,10 @@ export default function NfCompraPage() {
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Destinatário</div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
-                      {nf.cnpj_destino ? (() => {
+                      {nf.nome_destinatario || (nf.cnpj_destino ? (() => {
                         const prod = siegProdutores.find(p => p.cnpj === nf.cnpj_destino?.replace(/\D/g,""));
                         return prod?.nome ?? fmtDoc(nf.cnpj_destino);
-                      })() : "—"}
+                      })() : "—")}
                     </div>
                     {nf.cnpj_destino && <div style={{ fontSize: 12, color: "var(--text-2)", fontFamily: "monospace", marginTop: 4 }}>{fmtDoc(nf.cnpj_destino.replace(/\D/g,""))}</div>}
                   </div>

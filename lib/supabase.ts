@@ -1090,8 +1090,9 @@ export type NfEntrada = {
   // Safra e ciclo (classificação na entrada)
   ano_safra_id?: string;
   ciclo_id?: string;
-  // Destinatário (CPF/CNPJ que recebeu a NF — para Manifestação multi-CPF)
+  // Destinatário (exatamente como consta no XML <dest> — essencial para Manifestação SIEG)
   cnpj_destino?: string;
+  nome_destinatario?: string;
   // Manifestação do Destinatário (SEFAZ)
   manifestacao_tipo?: number | null;
   manifestacao_data?: string | null;
