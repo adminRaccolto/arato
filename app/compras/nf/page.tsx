@@ -84,31 +84,75 @@ const MAN_ST: Record<ManStatus, { label: string; cor: string; bg: string }> = {
 const fmtDoc = (s: string) => s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 
 // ─────────────────────────────────────────────────────────────
+// Tabela de conversão de unidades
+// ─────────────────────────────────────────────────────────────
+interface ConversaoConfig {
+  key: string;          // "bag→kg", "ton→kg", etc.
+  de: string;           // unidade NF normalizada (lowercase)
+  para: string;         // unidade catálogo (lowercase)
+  fator: number | null; // null = manual (usuário informa qtd total)
+  tipo: "auto" | "manual";
+  labelSelect: string;  // texto no <select>
+  labelPara: string;    // rótulo da unidade destino no campo extra
+}
+
+const TABELA_CONVERSAO: ConversaoConfig[] = [
+  { key: "bag→kg",    de: "bag",   para: "kg",    fator: null,    tipo: "manual", labelSelect: "Bag → Kg  (manual)",  labelPara: "kg"   },
+  { key: "bag→g",     de: "bag",   para: "g",     fator: null,    tipo: "manual", labelSelect: "Bag → g   (manual)",  labelPara: "g"    },
+  { key: "ton→kg",    de: "ton",   para: "kg",    fator: 1000,    tipo: "auto",   labelSelect: "Ton → Kg  (×1000)",   labelPara: "kg"   },
+  { key: "kg→ton",    de: "kg",    para: "ton",   fator: 0.001,   tipo: "auto",   labelSelect: "Kg → Ton  (÷1000)",   labelPara: "ton"  },
+  { key: "kg→g",      de: "kg",    para: "g",     fator: 1000,    tipo: "auto",   labelSelect: "Kg → g    (×1000)",   labelPara: "g"    },
+  { key: "g→kg",      de: "g",     para: "kg",    fator: 0.001,   tipo: "auto",   labelSelect: "g → Kg    (÷1000)",   labelPara: "kg"   },
+  { key: "l→ml",      de: "l",     para: "ml",    fator: 1000,    tipo: "auto",   labelSelect: "L → mL    (×1000)",   labelPara: "mL"   },
+  { key: "ml→l",      de: "ml",    para: "l",     fator: 0.001,   tipo: "auto",   labelSelect: "mL → L    (÷1000)",   labelPara: "L"    },
+  { key: "galao→l",   de: "galao", para: "l",     fator: null,    tipo: "manual", labelSelect: "Galão → L (manual)",  labelPara: "L"    },
+  { key: "l→galao",   de: "l",     para: "galao", fator: null,    tipo: "manual", labelSelect: "L → Galão (manual)",  labelPara: "galão"},
+];
+
+function normUnidade(u: string) { return u.toLowerCase().trim(); }
+
+function getConversao(key: string): ConversaoConfig | undefined {
+  return TABELA_CONVERSAO.find(c => c.key === key);
+}
+
+// Calcula quantidade em unidade catálogo a partir de conversão automática
+function calcQtdCatalogo(item: ItemRascunho): number {
+  const conv = getConversao(item.conversao_key);
+  if (!conv || conv.tipo !== "auto" || !conv.fator) return item.qtd_nf;
+  return item.qtd_nf * conv.fator;
+}
+
+// ─────────────────────────────────────────────────────────────
 // Tipos locais
 // ─────────────────────────────────────────────────────────────
 interface ItemRascunho {
   key: string;
-  descricao_nf: string;          // como veio na NF
+  descricao_nf: string;
   ncm: string;
   cfop: string;
-  unidade_nf: string;
-  quantidade: number;
-  valor_unitario: number;
-  valor_total: number;
+  // Valores originais do documento fiscal (sempre preservados)
+  unidade_nf: string;        // unidade como consta na NF
+  qtd_nf: number;            // quantidade como consta na NF
+  vunit_nf: number;          // valor unitário como consta na NF
+  valor_total: number;       // total da linha na NF
+  // Conversão
+  conversao_key: string;     // "" | "bag→kg" | "ton→kg" | ...
+  // Valores catálogo (pós-conversão; o que entra no estoque)
+  quantidade: number;        // qty em unidade catálogo
+  valor_unitario: number;    // = vunit_nf (mantido para exibição; custo real = valor_total/quantidade)
+  fator_conversao: number;   // fator derivado (apenas auditoria no DB)
   // Associação ao catálogo
-  insumo_id: string;             // UUID do insumo (sementes/outros)
-  principio_ativo_id: string;    // UUID do PA (defensivos/fertilizantes/inoculantes)
-  nome_comercial_ref: string;    // nome original na NF — para auditoria
-  fator_conversao: number;       // quantidade_nf × fator = quantidade_catálogo
+  insumo_id: string;
+  principio_ativo_id: string;
+  nome_comercial_ref: string;
   // Resolução via princípio ativo
-  pa_nome?: string;              // nome do PA resolvido (exibição)
-  pa_auto?: boolean;             // true = resolvido automaticamente
+  pa_nome?: string;
+  pa_auto?: boolean;
   // Apropriação
   tipo_apropiacao: NfEntradaItem["tipo_apropiacao"];
   deposito_id: string;
   maquina_id: string;
   centro_custo_id: string;
-  _bag_msg?: string;  // aviso de conversão bag→kg (não vai ao banco)
 }
 
 interface PedidoMin { id: string; nr_pedido?: string; numero?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; ano_safra_id?: string; ciclo_id?: string; data_vencimento?: string; }
@@ -116,8 +160,10 @@ interface PedidoMin { id: string; nr_pedido?: string; numero?: string; fornecedo
 const ITEM_VAZIO = (): ItemRascunho => ({
   key: crypto.randomUUID(),
   descricao_nf: "", ncm: "", cfop: "", unidade_nf: "UN",
-  quantidade: 0, valor_unitario: 0, valor_total: 0,
-  insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", fator_conversao: 1,
+  qtd_nf: 0, vunit_nf: 0, valor_total: 0,
+  conversao_key: "",
+  quantidade: 0, valor_unitario: 0, fator_conversao: 1,
+  insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
   tipo_apropiacao: "estoque",
   deposito_id: "", maquina_id: "", centro_custo_id: "",
 });
@@ -554,26 +600,37 @@ export default function NfCompraPage() {
     try {
       const itensDB = await listarNfEntradaItens(nf.id);
       if (itensDB.length > 0) {
-        setItens(itensDB.map(i => ({
-          key: i.id,
-          descricao_nf: i.descricao_nf ?? i.descricao_produto,
-          ncm: i.ncm ?? "",
-          cfop: i.cfop ?? "",
-          unidade_nf: i.unidade_nf ?? i.unidade,
-          quantidade: i.quantidade,
-          valor_unitario: i.valor_unitario,
-          valor_total: i.valor_total,
-          insumo_id:          i.insumo_id           ?? "",
-          principio_ativo_id: i.principio_ativo_id  ?? "",
-          nome_comercial_ref: i.nome_comercial_ref  ?? "",
-          fator_conversao: i.fator_conversao ?? 1,
-          tipo_apropiacao: i.tipo_apropiacao,
-          deposito_id: i.deposito_id ?? "",
-          maquina_id: i.maquina_id ?? "",
-          centro_custo_id: i.centro_custo_id ?? "",
-          pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
-          pa_auto:  !!i.principio_ativo_id,
-        })));
+        setItens(itensDB.map(i => {
+          const fator   = i.fator_conversao ?? 1;
+          // Qtd NF original: quantidade / fator (reverso da conversão salva)
+          const qtdNf   = fator > 0 ? i.quantidade / fator : i.quantidade;
+          const convKey = fator !== 1
+            ? (TABELA_CONVERSAO.find(c => Math.abs((c.fator ?? 1) - fator) < 0.00001)?.key ?? "")
+            : "";
+          return {
+            key: i.id,
+            descricao_nf:  i.descricao_nf ?? i.descricao_produto,
+            ncm:  i.ncm  ?? "",
+            cfop: i.cfop ?? "",
+            unidade_nf:         i.unidade_nf ?? i.unidade,
+            qtd_nf:             qtdNf,
+            vunit_nf:           i.valor_unitario,
+            valor_total:        i.valor_total,
+            conversao_key:      convKey,
+            quantidade:         i.quantidade,
+            valor_unitario:     i.valor_unitario,
+            fator_conversao:    fator,
+            insumo_id:          i.insumo_id           ?? "",
+            principio_ativo_id: i.principio_ativo_id  ?? "",
+            nome_comercial_ref: i.nome_comercial_ref  ?? "",
+            tipo_apropiacao:    i.tipo_apropiacao,
+            deposito_id:        i.deposito_id         ?? "",
+            maquina_id:         i.maquina_id          ?? "",
+            centro_custo_id:    i.centro_custo_id     ?? "",
+            pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
+            pa_auto:  !!i.principio_ativo_id,
+          };
+        }));
       }
     } catch {}
     setEtapa("cabecalho");
@@ -642,48 +699,58 @@ export default function NfCompraPage() {
           const uTrib  = prod?.querySelector("uTrib")?.textContent ?? "";
           const qTrib  = parseFloat(prod?.querySelector("qTrib")?.textContent  ?? "0");
 
-          // ── Conversão automática BAG → KG ──────────────────────────────────
-          // Se a NF informa os bags em uCom e o peso tributável em kg/t em uTrib,
-          // usamos o peso total em kg como quantidade de estoque.
+          // ── Detecção de conversão BAG → KG via campos da NF ─────────────────
+          // Se uCom = BAG e uTrib tem o peso, pre-preenche conversão manual com o total.
           const uComNorm  = uCom.toUpperCase().trim();
           const uTribNorm = uTrib.toUpperCase().trim();
           const isBag     = uComNorm === "BAG";
-          let   qtdeEstoque = qCom;
-          let   unEstoque   = uCom;
-          let   msgBag: string | undefined;
+
+          let convKey    = "";
+          let qtdCatalogo = qCom; // default = NF qty
+          let qtdKgPreenchida = 0;
 
           if (isBag) {
+            convKey = "bag→kg";
             if (uTribNorm === "KG" && qTrib > 0) {
-              // Peso total em kg já disponível no campo tributável
-              qtdeEstoque = qTrib;
-              unEstoque   = "kg";
-              msgBag = `🔄 ${qCom} bag(s) convertidos automaticamente: ${qTrib} kg (via qTrib da NF)`;
+              qtdCatalogo     = qTrib;
+              qtdKgPreenchida = qTrib;
             } else if (uTribNorm === "TON" && qTrib > 0) {
-              qtdeEstoque = qTrib * 1000;
-              unEstoque   = "kg";
-              msgBag = `🔄 ${qCom} bag(s) convertidos automaticamente: ${(qTrib * 1000).toFixed(1)} kg (${qTrib} ton via qTrib da NF)`;
+              qtdCatalogo     = qTrib * 1000;
+              qtdKgPreenchida = qTrib * 1000;
+            }
+            // Sem qTrib: conversão bag→kg selecionada mas qtd_catalogo = 0 (usuário digita)
+          } else {
+            // Tenta auto-matching: unidade NF bate com alguma conversão conhecida "de"
+            const autoMatch = TABELA_CONVERSAO.find(
+              c => c.tipo === "auto" && normUnidade(uCom) === c.de
+            );
+            if (autoMatch && autoMatch.fator) {
+              convKey     = autoMatch.key;
+              qtdCatalogo = qCom * autoMatch.fator;
             } else {
-              // Não foi possível converter automaticamente — alerta ao usuário
-              qtdeEstoque = qCom;
-              unEstoque   = "bag";
-              msgBag = `⚠️ ${qCom} bag(s) sem peso em kg na NF. Informe o peso manualmente.`;
+              qtdCatalogo = qCom;
             }
           }
+
+          const fatorDeriv = qCom > 0 ? qtdCatalogo / qCom : 1;
 
           // tenta regra específica de item; fallback para regra do header
           const regraItem = aplicarRegraClassificacao(regrasClass, cnpj, xNome, NCM, CFOP, xProd) ?? regraHeader;
           return {
             key: crypto.randomUUID(),
             descricao_nf: xProd, ncm: NCM, cfop: CFOP,
-            unidade_nf: unEstoque,
-            quantidade: qtdeEstoque,
+            unidade_nf:    uCom,       // original da NF sempre
+            qtd_nf:        qCom,
+            vunit_nf:      vUnCom,
+            valor_total:   vProd,
+            conversao_key: convKey,
+            quantidade:    isBag && qtdKgPreenchida > 0 ? qtdKgPreenchida : (convKey && !isBag ? qtdCatalogo : qCom),
             valor_unitario: vUnCom,
-            valor_total: vProd,
-            insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", fator_conversao: 1,
+            fator_conversao: fatorDeriv,
+            insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
             deposito_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
-            _bag_msg: msgBag,        // campo auxiliar para exibir aviso na tela (não vai ao banco)
           };
         }));
       }
@@ -804,8 +871,8 @@ export default function NfCompraPage() {
           unidade:             isPAItem ? it.unidade_nf : (it.insumo_id ? (insumos.find(i => i.id === it.insumo_id)?.unidade ?? it.unidade_nf) : it.unidade_nf),
           unidade_nf:          it.unidade_nf,
           fator_conversao:     it.fator_conversao ?? 1,
-          quantidade:          it.quantidade * (it.fator_conversao ?? 1),
-          valor_unitario:      it.valor_unitario,
+          quantidade:          it.quantidade,   // já em unidade catálogo (conversão aplicada no state)
+          valor_unitario:      it.vunit_nf,     // preço original da NF (custo real = valor_total/qtd em db.ts)
           valor_total:         it.valor_total,
           tipo_apropiacao:     tipoAprp,
           centro_custo_id:     it.centro_custo_id || undefined,
@@ -1112,9 +1179,43 @@ export default function NfCompraPage() {
     setItens(prev => prev.map(it => {
       if (it.key !== key) return it;
       const updated = { ...it, ...patch };
-      if (patch.quantidade !== undefined || patch.valor_unitario !== undefined) {
-        updated.valor_total = updated.quantidade * updated.valor_unitario;
+
+      // Recalcula valor_total a partir dos valores NF originais
+      if (patch.qtd_nf !== undefined || patch.vunit_nf !== undefined) {
+        updated.valor_total    = (updated.qtd_nf || 0) * (updated.vunit_nf || 0);
+        updated.valor_unitario = updated.vunit_nf;
+        // Se não há conversão, quantidade catálogo acompanha qtd NF
+        if (!updated.conversao_key) {
+          updated.quantidade     = updated.qtd_nf;
+          updated.fator_conversao = 1;
+        }
       }
+
+      // Seleção/mudança de conversão
+      if (patch.conversao_key !== undefined) {
+        const conv = getConversao(patch.conversao_key);
+        if (!conv) {
+          // Sem conversão — restaura quantidades NF
+          updated.quantidade      = updated.qtd_nf;
+          updated.fator_conversao = 1;
+        } else if (conv.tipo === "auto" && conv.fator) {
+          // Auto — calcula imediatamente
+          updated.quantidade      = updated.qtd_nf * conv.fator;
+          updated.fator_conversao = conv.fator;
+        }
+        // Manual — quantidade fica zerada; usuário preenche via campo extra
+        if (conv?.tipo === "manual") {
+          updated.quantidade      = 0;
+          updated.fator_conversao = 1;
+        }
+      }
+
+      // Atualização manual da quantidade catálogo (campo extra manual)
+      if (patch.quantidade !== undefined && updated.conversao_key) {
+        const qCat = patch.quantidade || 0;
+        updated.fator_conversao = updated.qtd_nf > 0 ? qCat / updated.qtd_nf : 1;
+      }
+
       return updated;
     }));
   };
@@ -1610,7 +1711,7 @@ export default function NfCompraPage() {
       ══════════════════════════════════════════════════════ */}
       {wizard && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 900, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1140, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
             <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -2106,11 +2207,7 @@ export default function NfCompraPage() {
                         <button
                           onClick={() => {
                             if (!bulkCC) return;
-                            setItens(prev => prev.map(it => {
-                              const ehDireto = tipo === "custo_direto" || it.tipo_apropiacao === "direto";
-                              if (!ehDireto) return it;
-                              return { ...it, centro_custo_id: bulkCC };
-                            }));
+                            setItens(prev => prev.map(it => ({ ...it, centro_custo_id: bulkCC })));
                           }}
                           style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
                         >
@@ -2125,13 +2222,15 @@ export default function NfCompraPage() {
                     {/* Cabeçalho */}
                     <div style={{
                       display: "grid",
-                      gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" :
-                                           tipo === "custo_direto" ? "2fr 80px 90px 100px 110px 1.5fr 32px" :
-                                           "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
+                      gridTemplateColumns: tipo === "insumos"
+                        ? "2fr 1.6fr 68px 90px 90px 110px 180px 28px"
+                        : tipo === "custo_direto"
+                        ? "2fr 80px 90px 100px 110px 1.5fr 32px"
+                        : "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
                       gap: 0, background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)"
                     }}>
                       {(tipo === "insumos"
-                        ? ["Descrição NF", "Insumo / Centro Custo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Fator Conv.", ""]
+                        ? ["Descrição NF", "Insumo / Centro Custo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Conversão de Unidade", ""]
                         : tipo === "custo_direto"
                         ? ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro de Custo", ""]
                         : ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro Custo", "Apropriação", ""]
@@ -2142,41 +2241,32 @@ export default function NfCompraPage() {
 
                     {/* Linhas */}
                     {itens.map((it) => {
-                      // ── Detecção de semente e aviso de bag ──────────────────
-                      const insAtual = insumos.find(i => i.id === it.insumo_id);
-                      const isSemente = insAtual?.categoria === "semente";
-                      const unNorm = it.unidade_nf.toLowerCase().trim();
-                      const isBagManual = (unNorm === "bag") && !it._bag_msg; // inserido manualmente (sem conversão automática)
-                      const avisoSementeBag = isSemente && unNorm === "bag";
+                      const conv      = getConversao(it.conversao_key);
+                      const temConv   = !!conv;
+                      const autoConv  = conv?.tipo === "auto";
+                      const manualConv = conv?.tipo === "manual";
+                      // Conversões disponíveis para a unidade NF deste item
+                      const convOptions = TABELA_CONVERSAO.filter(
+                        c => normUnidade(it.unidade_nf) === c.de
+                      );
                       return (
                       <div key={it.key} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
-                        {/* Banner bag — conversão automática ou aviso */}
-                        {it._bag_msg && (
-                          <div style={{
-                            padding: "5px 12px", fontSize: 11,
-                            background: it._bag_msg.startsWith("🔄") ? "#EAF5D5" : "#FEF3CD",
-                            color:      it._bag_msg.startsWith("🔄") ? "#1A5C38"  : "#7A5A12",
-                            borderBottom: "0.5px solid",
-                            borderColor: it._bag_msg.startsWith("🔄") ? "#B4E2A0" : "#F6C87A",
-                          }}>
-                            {it._bag_msg}
-                          </div>
-                        )}
                         <div style={{
-                        display: "grid",
-                        gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" :
-                                             tipo === "custo_direto" ? "2fr 80px 90px 100px 110px 1.5fr 32px" :
-                                             "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
-                        gap: 0, alignItems: "center"
-                      }}>
+                          display: "grid",
+                          gridTemplateColumns: tipo === "insumos"
+                            ? "2fr 1.6fr 68px 90px 90px 110px 180px 28px"
+                            : tipo === "custo_direto"
+                            ? "2fr 80px 90px 100px 110px 1.5fr 32px"
+                            : "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
+                          gap: 0, alignItems: "start"
+                        }}>
                         {tipo === "insumos" ? (
                           <>
-                            <div style={{ padding: "6px 8px" }}>
+                            {/* Col 1 — Descrição NF */}
+                            <div style={{ padding: "7px 8px" }}>
                               <input
                                 value={it.descricao_nf}
-                                onChange={e => {
-                                  setItem(it.key, { descricao_nf: e.target.value, pa_nome: undefined, pa_auto: false, principio_ativo_id: "", nome_comercial_ref: "" });
-                                }}
+                                onChange={e => setItem(it.key, { descricao_nf: e.target.value, pa_nome: undefined, pa_auto: false, principio_ativo_id: "", nome_comercial_ref: "" })}
                                 onBlur={e => resolverItemPA(it.key, e.target.value)}
                                 placeholder="Descrição na NF"
                                 style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
@@ -2189,8 +2279,9 @@ export default function NfCompraPage() {
                                 </div>
                               )}
                             </div>
-                            <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
-                              {/* Toggle Estoque / C. Custo */}
+
+                            {/* Col 2 — Insumo / C. Custo */}
+                            <div style={{ padding: "7px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
                               <div style={{ display: "flex", gap: 2 }}>
                                 <button
                                   onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
@@ -2206,9 +2297,7 @@ export default function NfCompraPage() {
                                   <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                     <option value="">— selecionar CC —</option>
                                     {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}
-                                      </option>
+                                      <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>
                                     ))}
                                   </select>
                                   {ccManutencao(it.centro_custo_id) && (
@@ -2226,33 +2315,93 @@ export default function NfCompraPage() {
                                   </select>
                                   <button
                                     onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
-                                    title="Cadastrar novo produto no catálogo"
+                                    title="Cadastrar novo produto"
                                     style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0, fontWeight: 700 }}
                                   >+</button>
                                 </div>
                               )}
                             </div>
-                            <div style={{ padding: "6px 8px" }}>
-                              <input value={it.unidade_nf} onChange={e => setItem(it.key, { unidade_nf: e.target.value })} placeholder="UN" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+
+                            {/* Col 3 — Un. NF (somente leitura quando há conversão) */}
+                            <div style={{ padding: "7px 6px" }}>
+                              <input
+                                value={it.unidade_nf}
+                                readOnly={temConv}
+                                onChange={e => !temConv && setItem(it.key, { unidade_nf: e.target.value, conversao_key: "" })}
+                                placeholder="UN"
+                                style={{ ...inp, fontSize: 11, padding: "5px 6px", background: temConv ? "var(--bg-page)" : undefined, color: temConv ? "var(--text-3)" : undefined }}
+                              />
                             </div>
-                            <div style={{ padding: "6px 8px" }}>
-                              <InputNumerico decimais={3} value={it.quantidade || ""} onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+
+                            {/* Col 4 — Qtd NF (travada quando há conversão) */}
+                            <div style={{ padding: "7px 6px" }}>
+                              {temConv ? (
+                                <div style={{ padding: "5px 8px", fontSize: 12, color: "var(--text-3)", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)", textAlign: "right" }}>
+                                  {it.qtd_nf.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                                </div>
+                              ) : (
+                                <InputNumerico decimais={3} value={it.qtd_nf || ""} onChange={v => setItem(it.key, { qtd_nf: parseFloat(v)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              )}
                             </div>
-                            <div style={{ padding: "6px 8px" }}>
-                              <InputMonetario value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+
+                            {/* Col 5 — Vl. Unit. NF (travado quando há conversão) */}
+                            <div style={{ padding: "7px 6px" }}>
+                              {temConv ? (
+                                <div style={{ padding: "5px 8px", fontSize: 12, color: "var(--text-3)", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)", textAlign: "right" }}>
+                                  {it.vunit_nf.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                </div>
+                              ) : (
+                                <InputMonetario value={it.vunit_nf || ""} onChange={v => setItem(it.key, { vunit_nf: v, valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              )}
                             </div>
-                            <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
+
+                            {/* Col 6 — Vl. Total */}
+                            <div style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)", paddingTop: 11 }}>
                               {fmtBRL(it.valor_total)}
                             </div>
-                            <div style={{ padding: "6px 8px" }}>
+
+                            {/* Col 7 — Conversão */}
+                            <div style={{ padding: "7px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
                               {it.tipo_apropiacao !== "direto" && (
-                                <InputNumerico
-                                  decimais={4}
-                                  value={it.fator_conversao || 1}
-                                  onChange={v => setItem(it.key, { fator_conversao: parseFloat(v)||1 })}
-                                  title="Fator de conversão: qtd NF × fator = qtd no catálogo"
-                                  style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
-                                />
+                                <>
+                                  {/* Select de conversão */}
+                                  <select
+                                    value={it.conversao_key}
+                                    onChange={e => setItem(it.key, { conversao_key: e.target.value })}
+                                    style={{ ...inp, fontSize: 11, padding: "4px 7px",
+                                      background: temConv ? (autoConv ? "#EAF5D5" : "#FFF8E6") : undefined,
+                                      color: temConv ? (autoConv ? "#1A5C38" : "#7A5A12") : "var(--text-2)",
+                                      border: temConv ? `0.5px solid ${autoConv ? "#B4E2A0" : "#F6C87A"}` : undefined,
+                                    }}
+                                  >
+                                    <option value="">— sem conversão —</option>
+                                    {convOptions.length > 0
+                                      ? convOptions.map(c => <option key={c.key} value={c.key}>{c.labelSelect}</option>)
+                                      : TABELA_CONVERSAO.map(c => <option key={c.key} value={c.key}>{c.labelSelect}</option>)
+                                    }
+                                  </select>
+
+                                  {/* AUTO: mostra resultado calculado */}
+                                  {autoConv && conv && (
+                                    <div style={{ fontSize: 11, color: "#1A5C38", background: "#EAF5D5", borderRadius: 6, padding: "3px 8px", fontWeight: 600 }}>
+                                      = {it.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} {conv.labelPara}
+                                    </div>
+                                  )}
+
+                                  {/* MANUAL: campo para qtd total na unidade destino */}
+                                  {manualConv && conv && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                      <InputNumerico
+                                        decimais={3}
+                                        value={it.quantidade || ""}
+                                        onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0 })}
+                                        placeholder={`Total em ${conv.labelPara}`}
+                                        style={{ ...inp, fontSize: 11, padding: "4px 7px", flex: 1 }}
+                                      />
+                                      <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{conv.labelPara}</span>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           </>
@@ -2331,18 +2480,10 @@ export default function NfCompraPage() {
                           )}
                         </div>
                         </div>
-                        {/* Aviso semente + bag — entrada manual sem conversão automática */}
-                        {avisoSementeBag && isBagManual && (
-                          <div style={{ padding: "6px 12px", background: "#FCEBEB", borderTop: "0.5px solid #F5C6C6", fontSize: 11, color: "#791F1F", display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontSize: 14 }}>⚠️</span>
-                            <span>
-                              <strong>Entrada de semente deve ser efetuada em Kg.</strong>{" "}
-                              Converta o peso do bag para Kg. Essa informação deve estar na nota fiscal.
-                            </span>
-                            <button onClick={() => setItem(it.key, { unidade_nf: "kg" })}
-                              style={{ marginLeft: "auto", fontSize: 10, padding: "2px 10px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap" }}>
-                              Corrigir para kg →
-                            </button>
+                        {/* Aviso: bag sem peso informado ainda */}
+                        {it.conversao_key === "bag→kg" && it.quantidade <= 0 && (
+                          <div style={{ padding: "5px 12px", background: "#FEF3CD", borderTop: "0.5px solid #F6C87A", fontSize: 11, color: "#7A5A12" }}>
+                            ⚠️ Informe o peso total em kg no campo de conversão.
                           </div>
                         )}
                       </div>
