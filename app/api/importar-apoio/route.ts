@@ -95,13 +95,18 @@ export async function POST(req: NextRequest) {
     if (p.fazenda_id) produtorPJFazendaMap[normalizar(p.nome)] = p.fazenda_id;
   });
 
-  // Mapas de pessoas: por CPF/CNPJ (dígitos) e por nome normalizado (fallback)
-  const [pessoasRes, produtoresRes] = await Promise.all([
+  // Mapas de pessoas, produtores e safras — todos com suporte a nome normalizado
+  const [pessoasRes, produtoresRes, safrasRes] = await Promise.all([
     fazendaIds.length
       ? admin.from("pessoas").select("id, cpf_cnpj, nome").in("fazenda_id", fazendaIds)
       : { data: [] },
     fazendaIds.length
-      ? admin.from("produtores").select("id, cpf_cnpj").in("fazenda_id", fazendaIds)
+      // nome obrigatório para matching por nome (não só por CPF)
+      ? admin.from("produtores").select("id, cpf_cnpj, nome").in("fazenda_id", fazendaIds)
+      : { data: [] },
+    // anos_safra por conta (via conta_id das fazendas)
+    fazendaIds.length
+      ? admin.from("anos_safra").select("id, descricao").in("fazenda_id", fazendaIds)
       : { data: [] },
   ]);
 
@@ -113,9 +118,19 @@ export async function POST(req: NextRequest) {
     pessoaMapNome[normalizar(p.nome)] = info;
   });
 
-  const produtorMap: Record<string, string> = {};
-  (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
-    if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+  // Produtor: match por CPF/CNPJ OU por nome normalizado (para relatórios via FK)
+  const produtorMapDoc: Record<string, { id: string; nome: string }> = {};
+  const produtorMapNome: Record<string, { id: string; nome: string }> = {};
+  (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null; nome: string }) => {
+    const info = { id: p.id, nome: p.nome };
+    if (p.cpf_cnpj) produtorMapDoc[p.cpf_cnpj.replace(/\D/g, "")] = info;
+    produtorMapNome[normalizar(p.nome)] = info;
+  });
+
+  // Ano Safra: match por descrição normalizada (ex: "2025/2026" → uuid)
+  const safraMap: Record<string, { id: string; descricao: string }> = {};
+  (safrasRes.data ?? []).forEach((s: { id: string; descricao: string }) => {
+    safraMap[normalizar(s.descricao)] = { id: s.id, descricao: s.descricao };
   });
 
   type InsertRow = {
@@ -123,8 +138,10 @@ export async function POST(req: NextRequest) {
     data_lancamento: string | null; data_vencimento: string; valor: number; moeda: string;
     pessoa_id: string | null; pessoa_nome: string | null; numero_documento: string | null;
     tipo_documento_lcdpr: string | null; num_parcela: number | null; total_parcelas: number | null;
-    observacao: string | null; produtor_id: string | null; baixado: boolean;
-    produtor_nome: string | null; safra_nome: string | null; origem: string | null;
+    observacao: string | null; baixado: boolean;
+    produtor_id: string | null; produtor_nome: string | null;
+    ano_safra_id: string | null; safra_nome: string | null;
+    origem: string | null;
   };
 
   const toInsert: InsertRow[] = [];
@@ -159,12 +176,22 @@ export async function POST(req: NextRequest) {
     if (!pessoaInfo) semPessoa++;
     if (!r.pessoa_nome?.trim() && !r.pessoa_cpf_cnpj?.trim()) semPessoaNomePlanilha++;
 
-    // Produtor: tenta CPF/CNPJ → uuid; se não achar, grava nome como texto livre
+    // Produtor: 1º CPF/CNPJ → 2º nome normalizado → 3º texto livre (cache apenas)
     const prodCpfKey = r.produtor_cpf_cnpj?.replace(/\D/g, "") ?? "";
-    const produtorId = prodCpfKey.length >= 11 ? (produtorMap[prodCpfKey] ?? null) : null;
-    const produtorNome = produtorId
-      ? null  // já vinculado — nome vem do cadastro via FK
-      : (r.produtor_nome?.trim() || r.produtor_cpf_cnpj?.trim() || null);
+    let produtorInfo: { id: string; nome: string } | null = null;
+    if (prodCpfKey.length >= 11) produtorInfo = produtorMapDoc[prodCpfKey] ?? null;
+    if (!produtorInfo && r.produtor_nome?.trim())
+      produtorInfo = produtorMapNome[normalizar(r.produtor_nome)] ?? null;
+    const produtorId   = produtorInfo?.id ?? null;
+    // produtor_nome: nome canônico do cadastro (para FK) OU texto da planilha (display)
+    const produtorNome = produtorInfo?.nome ?? r.produtor_nome?.trim() ?? null;
+
+    // Ano Safra: match por descrição normalizada (ex: "2025/2026")
+    const safraRaw  = r.safra_nome?.trim() ?? "";
+    const safraInfo = safraRaw ? (safraMap[normalizar(safraRaw)] ?? null) : null;
+    const safraId   = safraInfo?.id ?? null;
+    // safra_nome: descrição canônica do cadastro OU texto da planilha (display)
+    const safraNome = safraInfo?.descricao ?? (safraRaw || null);
 
     const moedaRaw = (r.moeda ?? "BRL").trim().toUpperCase();
     const moeda = moedaRaw === "USD" || moedaRaw === "US$" ? "USD"
@@ -190,7 +217,8 @@ export async function POST(req: NextRequest) {
       observacao:           r.observacao?.trim() || null,
       produtor_id:          produtorId,
       produtor_nome:        produtorNome,
-      safra_nome:           r.safra_nome?.trim() || null,
+      ano_safra_id:         safraId,
+      safra_nome:           safraNome,
       origem:               r.origem?.trim() || null,
       baixado:              false,
     });
