@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo, Suspense, useCallback } from "react";
+import React, { useState, useEffect, useMemo, Suspense, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
@@ -135,6 +135,8 @@ function ContasPagarInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
+  // Guarda o último cascade usado para pré-preencher o próximo modal novo
+  const lastCascadeRef = useRef<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
   // ── Aba principal: Lançamentos ou Faturas ──
@@ -203,7 +205,9 @@ function ContasPagarInner() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
 
-  function fecharModal() {
+  function fecharModal(salvo = false) {
+    // Ao salvar, guarda o cascade atual para pré-preencher o próximo modal novo
+    if (salvo) lastCascadeRef.current = cascade;
     setModalNovo(false);
     setEditandoId(null);
     setParcelas([]);
@@ -758,13 +762,14 @@ function ContasPagarInner() {
           maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : null,
           veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : null,
         };
-        const { error } = await supabase.from("lancamentos").update(patch).eq("id", editandoId);
+        const { error, count } = await supabase.from("lancamentos").update(patch, { count: "exact" }).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
+        if (count === 0) { alert("Sessão expirada — reconecte e tente novamente (0 linhas atualizadas)."); return; }
         setLancamentos(prev => prev.map(x =>
           x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
         ));
         if (salvarComoRegra) await criarRegraClassificacao();
-        fecharModal();
+        fecharModal(true);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
         alert("Erro ao salvar: " + msg);
@@ -851,7 +856,7 @@ function ContasPagarInner() {
       }
       setLancamentos(prev => [...criados, ...prev]);
       if (salvarComoRegra) await criarRegraClassificacao();
-      fecharModal();
+      fecharModal(true);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
       alert("Erro ao salvar: " + msg);
@@ -932,7 +937,14 @@ function ContasPagarInner() {
                 📄 NFs Importadas
               </a>
               <button className="cp-btn"
-                onClick={() => { setCascade({}); setModalTab("principal"); setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "" }); setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true); }}
+                onClick={() => {
+                  // Pré-preenche com o último cascade salvo (produtor/fazenda/safra da previsão anterior)
+                  const lc = lastCascadeRef.current;
+                  setCascade(lc);
+                  setModalTab("principal");
+                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId ?? "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: lc.talhaoId ?? "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "" });
+                  setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true);
+                }}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Nova CP
               </button>
@@ -2304,7 +2316,7 @@ function ContasPagarInner() {
                     ⚡ Efetivar
                   </button>
                 )}
-                <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--border-row)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={() => fecharModal()} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--border-row)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                 <button onClick={adicionarLancamento} disabled={disabled}
                   style={{ padding: "8px 20px", background: disabled ? "var(--text-muted)" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", fontSize: 13 }}>
                   {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : form.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} repetições` : "◈ Salvar"}
