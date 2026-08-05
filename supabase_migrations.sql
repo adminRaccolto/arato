@@ -9157,3 +9157,37 @@ ALTER TABLE contratos_financeiros
   ADD COLUMN IF NOT EXISTS indexador   TEXT,
   ADD COLUMN IF NOT EXISTS spread_aa   NUMERIC(10,6),
   ADD COLUMN IF NOT EXISTS spread_am   NUMERIC(10,6);
+
+-- Migration: tabela de taxas variáveis de referência (CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M)
+-- Histórico mensal por indexador, valores em % a.a. (taxa anualizada)
+-- Atualizado automaticamente todo dia 1º do mês via cron /api/cron/atualizar-taxas
+CREATE TABLE IF NOT EXISTS taxas_variaveis_historico (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  indexador   TEXT NOT NULL,          -- CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M
+  ano         INTEGER NOT NULL,
+  mes         INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
+  valor_pct   NUMERIC(10,6) NOT NULL, -- Percentual ao ano (ex: 14.75 = 14,75% a.a.)
+  fonte       TEXT DEFAULT 'bcb',     -- 'bcb' = Banco Central, 'manual' = lançamento manual
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(indexador, ano, mes)
+);
+
+-- Habilitar RLS (somente raccotlo e usuários autenticados leem — dados públicos)
+ALTER TABLE taxas_variaveis_historico ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY "taxas_select_all" ON taxas_variaveis_historico FOR SELECT USING (auth.uid() IS NOT NULL);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY "taxas_insert_raccotlo" ON taxas_variaveis_historico FOR INSERT WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY "taxas_update_raccotlo" ON taxas_variaveis_historico FOR UPDATE USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Migration: snapshot do indexador no momento da contratação
+-- Armazena o valor da taxa variável de referência no momento em que o contrato foi cadastrado
+ALTER TABLE contratos_financeiros
+  ADD COLUMN IF NOT EXISTS taxa_variavel_ref NUMERIC(10,6);
+
+NOTIFY pgrst, 'reload schema';

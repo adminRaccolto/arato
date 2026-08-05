@@ -2260,6 +2260,7 @@ function desnormalizarContrato(c: Omit<ContratoFinanceiro, "id" | "created_at">)
     // Campos de taxa variável (CDI, IPCA…)
     taxa_tipo:              c.taxa_tipo,
     indexador:              c.indexador,
+    taxa_variavel_ref:      c.taxa_variavel_ref,
     spread_aa:              c.spread_aa,
     spread_am:              c.spread_am,
   };

@@ -1269,8 +1269,9 @@ export type ContratoFinanceiro = {
   numero_documento?: string;
   taxa_tipo?: "fixa" | "variavel"; // tipo de remuneração
   indexador?: string;              // CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M, Outro
-  spread_aa?: number;              // spread sobre o indexador a.a. (%)
-  spread_am?: number;              // spread sobre o indexador a.m. (%)
+  taxa_variavel_ref?: number;      // valor do indexador na data de contratação (snapshot)
+  spread_aa?: number;              // juros fixos sobre o indexador a.a. (%)
+  spread_am?: number;              // juros fixos sobre o indexador a.m. (%)
   taxa_juros_aa?: number;          // taxa de juros anual — só para taxa fixa (%)
   taxa_juros_am?: number;          // taxa de juros mensal — só para taxa fixa (%)
   iof_pct?: number;              // IOF (%)
@@ -2413,4 +2414,15 @@ export type Ciot = {
   ambiente?: "homologacao" | "producao";
   status?: "declarado" | "encerrado" | "cancelado";
   created_at?: string;
+};
+
+export type TaxaVariavelHistorico = {
+  id?: string;
+  indexador: string;   // CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M
+  ano: number;
+  mes: number;         // 1-12
+  valor_pct: number;   // valor percentual anualizado (ex: 14.75 = 14,75% a.a.)
+  fonte?: string;      // bcb, manual
+  created_at?: string;
+  updated_at?: string;
 };

@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/curva-mercado",
       "schedule": "0 22 * * 1-5"
+    },
+    {
+      "path": "/api/cron/atualizar-taxas",
+      "schedule": "0 10 1 * *"
     }
   ]
 }

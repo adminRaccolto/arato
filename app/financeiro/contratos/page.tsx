@@ -167,6 +167,7 @@ const FC_VAZIO = {
   data_contrato: "", numero_documento: "",
   taxa_tipo: "fixa" as "fixa" | "variavel",
   indexador: "", spread_aa: "", spread_am: "",
+  taxa_variavel_ref: "",
   taxa_juros_aa: "", taxa_juros_am: "",
   iof_pct: "", tac_valor: "", outros_custos: "",
   conta_liberacao_id: "", conta_pagamento_id: "",
@@ -182,86 +183,12 @@ const FA_VAZIO = {
   novo_valor_financiado: "", novo_num_parcelas: "", obs: "",
 };
 
-type ContratoImportado = {
-  cd_divida: string;
-  descricao: string;
-  nr_contrato: string;
-  data_contrato: string;
-  tipo: ContratoFinanceiro["tipo"];
-  credor: string;
-  taxa_juros_aa: number;
-  taxa_juros_am?: number;
-  valor_financiado: number;
-  moeda: "BRL" | "USD";
-  cotacao?: number;
-  desc_safra?: string;
-  parcelas: {
-    num_parcela: number;
-    data_vencimento: string;
-    amortizacao: number;
-    juros: number;
-    despesas_acessorios: number;
-    valor_parcela: number;
-    saldo_devedor: number;
-  }[];
-};
-
-function parseDateBR(s: unknown): string {
-  if (!s) return "";
-  if (s instanceof Date) return s.toISOString().slice(0, 10);
-  const str = String(s).trim();
-  if (!str) return "";
-  // YYYY-MM-DD already
-  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
-  // DD/MM/YYYY or DD-MM-YYYY
-  const parts = str.split(/[\/\-\.]/);
-  if (parts.length === 3) {
-    const [a, b, c] = parts;
-    if (a.length === 4) return `${a}-${b.padStart(2,"0")}-${c.padStart(2,"0")}`;
-    return `${c.padStart(4,"20")}-${b.padStart(2,"0")}-${a.padStart(2,"0")}`;
-  }
-  return "";
-}
-
-function parseNumBR(v: unknown): number {
-  if (typeof v === "number") return v;
-  if (!v) return 0;
-  // Remove thousand separators (. in BR) and replace decimal comma
-  return parseFloat(String(v).replace(/\./g, "").replace(",", ".")) || 0;
-}
-
-function mapTipoContrato(st: string): ContratoFinanceiro["tipo"] {
-  const s = String(st ?? "").trim().toUpperCase()
-    .normalize("NFD").replace(/[̀-ͯ]/g, "");
-  const m: Record<string, ContratoFinanceiro["tipo"]> = {
-    "I": "investimento", "C": "custeio", "P": "cpr", "O": "outros", "E": "egf",
-    "INVESTIMENTO": "investimento",
-    "CUSTEIO": "custeio",
-    "CPR": "cpr", "CPR FISICA": "cpr", "CPR FINANCEIRA": "cpr",
-    "EGF": "egf",
-    "OUTRAS": "outros", "OUTROS": "outros",
-    "SECURITIZACAO": "securitizacao",
-    "FINAME": "investimento", "BNDES": "investimento", "PRONAF": "custeio",
-    "PRONAMP": "custeio", "FCO": "investimento", "FNO": "investimento", "FNE": "investimento",
-  };
-  return m[s] ?? "outros";
-}
-
-type LerXLSXResult = {
-  contratos: ContratoImportado[];
-  debug: {
-    colunas: string[];
-    totalLinhas: number;
-    gruposEncontrados: number;
-    valoresOperacao: string[];
-    avisos: string[];
-  };
-};
-
-async function lerXLSX(file: File): Promise<LerXLSXResult> {
-  // Parsing no servidor (Node.js Buffer) — evita "Unsupported ZIP Compression method NaN"
-  // que ocorre com exportações de ERPs como AgroSoft/Agrobase no browser
-  const form = new FormData();
+// ── (importação XLSX removida — use a tela de Importação em Configurações) ──
+// ────────────────────────────────────────────────────────
+// PÁGINA
+// ────────────────────────────────────────────────────────
+async function _placeholder() {
+  const form = new FormData(); void form;
   form.append("file", file);
   const res = await fetch("/api/parse-xlsx", { method: "POST", body: form });
   if (!res.ok) {
@@ -552,14 +479,8 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
     return { contratos, debug: { colunas, totalLinhas: rows.length, gruposEncontrados: contratos.length, valoresOperacao, avisos } };
   }
 
-  // Formato não reconhecido — retorna debug para o usuário
-  const valoresOperacao = [...new Set(rows.map(r => str(r, "OPERACAO_CONTA", "TIPO_PARC")).filter(Boolean))];
-  return { contratos: [], debug: { colunas, totalLinhas: rows.length, gruposEncontrados: 0, valoresOperacao, avisos } };
 }
 
-// ────────────────────────────────────────────────────────
-// PÁGINA
-// ────────────────────────────────────────────────────────
 export default function ContratosFinanceiros() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
   const [fazendas, setFazendas]         = useState<{ id: string; nome: string }[]>([]);
@@ -571,12 +492,9 @@ export default function ContratosFinanceiros() {
   const [salvando, setSalvando]   = useState(false);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [ptax, setPtax]           = useState<number | null>(null);
-  const [modalImport, setModalImport]     = useState(false);
-  const [importPreview, setImportPreview] = useState<ContratoImportado[] | null>(null);
-  const [importando, setImportando]       = useState(false);
-  const [importLog, setImportLog]         = useState<string[]>([]);
-  const [importDiag, setImportDiag]       = useState<LerXLSXResult["debug"] | null>(null);
-  const [importCriarLanc, setImportCriarLanc] = useState(true);
+  // taxa variável — valor de referência buscado da tabela taxas_variaveis_historico
+  const [taxaVariavelRef, setTaxaVariavelRef] = useState<number | null>(null);
+  const [loadingTaxaRef, setLoadingTaxaRef]   = useState(false);
 
   // modal unificado
   const [modalAberto, setModalAberto]       = useState(false);
@@ -635,6 +553,23 @@ export default function ContratosFinanceiros() {
     const timer = setInterval(buscarPtax, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [fazendaId]);
+
+  // ── Busca taxa variável de referência da tabela taxas_variaveis_historico ──
+  const buscarTaxaVariavelRef = async (indexador: string) => {
+    if (!indexador || indexador === "Outro") { setTaxaVariavelRef(null); setFC(p => ({ ...p, taxa_variavel_ref: "" })); return; }
+    setLoadingTaxaRef(true);
+    const { data } = await supabase
+      .from("taxas_variaveis_historico")
+      .select("valor_pct, ano, mes")
+      .eq("indexador", indexador)
+      .order("ano", { ascending: false })
+      .order("mes", { ascending: false })
+      .limit(1);
+    const taxa = data?.[0]?.valor_pct ?? null;
+    setTaxaVariavelRef(taxa);
+    setFC(p => ({ ...p, taxa_variavel_ref: taxa != null ? String(taxa) : "" }));
+    setLoadingTaxaRef(false);
+  };
 
   // ── Carregar dados ao mudar aba ──
   useEffect(() => {
@@ -709,6 +644,7 @@ export default function ContratosFinanceiros() {
       data_contrato: c.data_contrato, numero_documento: c.numero_documento ?? "",
       taxa_tipo: (c.taxa_tipo ?? "fixa") as "fixa" | "variavel",
       indexador: c.indexador ?? "",
+      taxa_variavel_ref: "",
       spread_aa: c.spread_aa != null ? String(c.spread_aa) : "",
       spread_am: c.spread_am != null ? String(c.spread_am) : "",
       taxa_juros_aa: c.taxa_juros_aa != null ? String(c.taxa_juros_aa) : "",
@@ -728,6 +664,7 @@ export default function ContratosFinanceiros() {
     setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
     setFAdit({ ...FA_VAZIO });
     setPdfUrl(c?.pdf_url ?? null); setPdfNome(c?.pdf_nome ?? null);
+    if (c?.taxa_tipo === "variavel" && c.indexador) buscarTaxaVariavelRef(c.indexador);
     setParcelasLiberacao([]); setParcelasPagamento([]); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
     setModalAberto(true);
   };
@@ -1116,9 +1053,9 @@ export default function ContratosFinanceiros() {
   const totalFinanciado = contratosFiltrados.filter(c => c.status === "ativo").reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
 
-  // ── Template XLSX para download ──
-  const baixarModeloXLSX = async () => {
-    const XLSX = await import("xlsx");
+  // ── (baixarModeloXLSX e confirmarImporte removidos — importação via Configurações) ──
+  const _removedXLSX = async () => {
+    const XLSX = await import("xlsx"); void XLSX;
     const headers = [
       "NUMERO_CONTRATO", "DESCRICAO", "CREDOR", "TIPO", "LINHA_CREDITO",
       "TIPO_CALCULO", "MOEDA", "VALOR_FINANCIADO", "COTACAO_USD",
@@ -1378,11 +1315,6 @@ export default function ContratosFinanceiros() {
       }
     }
 
-    setImportLog(log);
-    setImportPreview(null);
-    setImportando(false);
-  };
-
   // ── Aba desabilitada quando contrato ainda não salvo ──
   function AbaDisabled({ nome }: { nome: string }) {
     return (
@@ -1417,7 +1349,6 @@ export default function ContratosFinanceiros() {
                   {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
                 </select>
               )}
-              <button style={{ ...btnR, padding: "9px 20px" }} onClick={() => { setModalImport(true); setImportPreview(null); setImportLog([]); }}>↑ Importar XLSX</button>
               <button style={{ ...btnV, background: "#1A4870", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
             </div>
           </div>
@@ -1526,240 +1457,6 @@ export default function ContratosFinanceiros() {
         </div>
       </main>
 
-      {/* ══ Modal Importar XLSX ══ */}
-      {modalImport && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) { setModalImport(false); setImportPreview(null); setImportLog([]); } }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(940px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Importar Contratos Financeiros — XLSX</div>
-                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>AgroSoft · Formato alternativo · Formato livre (1 linha por contrato, qualquer fonte)</div>
-              </div>
-              <button onClick={() => { setModalImport(false); setImportPreview(null); setImportLog([]); }} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>✕</button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-              {importLog.length > 0 ? (
-                <div>
-                  <div style={{ marginBottom: 12, fontWeight: 600, fontSize: 14, color: "#1A4870" }}>
-                    Resultado da importação — {importLog.filter(l => l.startsWith("✓")).length} sucesso{importLog.filter(l => l.startsWith("✗")).length > 0 ? `, ${importLog.filter(l => l.startsWith("✗")).length} erro` : ""}
-                  </div>
-                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, fontFamily: "monospace", fontSize: 12, maxHeight: 360, overflowY: "auto" }}>
-                    {importLog.map((l, i) => (
-                      <div key={i} style={{ color: l.startsWith("✓") ? "#1A5C38" : "#E24B4A", marginBottom: 4 }}>{l}</div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
-                    <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setModalImport(false); setImportPreview(null); setImportLog([]); }}>Fechar</button>
-                  </div>
-                </div>
-              ) : !importPreview ? (
-                <div>
-                  <div style={{ marginBottom: 16, background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "#0B2D50" }}>
-                    <div style={{ fontWeight: 600, marginBottom: 8 }}>3 formatos aceitos — o sistema detecta automaticamente:</div>
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 3 }}>Formato AgroSoft/Agrobase (N linhas por contrato, agrupadas por CD_DIVIDA):</div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
-                        CD_DIVIDA · NR_CONTRATO · DESCRICAO · DATA_DIVIDA · ST_TIPO_DIVIDA · NOME_CREDOR_DEVEDOR · PERC_JUROS · VALOR_FINANCIADO · CD_MOEDA · VL_COTACAO · OPERACAO_CONTA · NUM_PARC · DATA_VENCIMENTO · VALOR_AMORTIZACAO · VALOR_JUROS_ENCARGOS · VALOR_ACESSORIOS · VALOR_PARCELAS · SALDO_DEVEDOR
-                      </div>
-                      <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-2)" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
-                    </div>
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 3 }}>Formato alternativo (N linhas por contrato, com acentos/espaços):</div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
-                        Nº CONTRATO · DÍVIDA · CREDOR/DEVEDOR · DATA DÍVIDA · % JUROS · MOEDA · VALOR · DATA PARCELA · VALOR SALDO · TIPO PARC.
-                      </div>
-                      <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-2)" }}>TIPO PARC.: C/R = crédito (liberação), D/P = débito (parcela) &nbsp;|&nbsp; MOEDA: BRL ou USD</div>
-                    </div>
-                    <div style={{ borderTop: "0.5px solid #1A487030", paddingTop: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 3 }}>Formato Livre — 1 linha por contrato (manual ou de qualquer sistema):</div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
-                        NUMERO_CONTRATO · DESCRICAO · CREDOR · TIPO · LINHA_CREDITO · TIPO_CALCULO · MOEDA · VALOR_FINANCIADO · COTACAO_USD · DATA_CONTRATO · DATA_LIBERACAO · DATA_VENCIMENTO · <strong>PRAZO_MESES</strong> · CARENCIA_MESES · <strong>PERIODICIDADE_PAGAMENTO</strong> · TAXA_JUROS_AA · TAXA_JUROS_AM · IOF_PCT · TAC_VALOR · OUTROS_CUSTOS · OBSERVACAO
-                      </div>
-                      <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-2)" }}>
-                        TIPO: Custeio, Investimento, CPR, EGF, Outros &nbsp;|&nbsp; TIPO_CALCULO: SAC, PRICE ou bullet &nbsp;|&nbsp; MOEDA: BRL ou USD
-                        <br/>PERIODICIDADE_PAGAMENTO: mensal, semestral, anual, bullet &nbsp;|&nbsp; PRAZO_MESES: nº de parcelas (ex: 12 mensal = 1 ano)
-                        <br/>Se PRAZO_MESES &gt; 0: parcelas geradas automaticamente. Senão: parcela única em DATA_VENCIMENTO.
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Diagnóstico quando arquivo foi lido mas nenhum contrato encontrado */}
-                  {importDiag && (
-                    <div style={{ marginBottom: 16, background: "#FFF8EC", border: "1.5px solid #C9921B", borderRadius: 10, padding: "14px 18px" }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: "#7A5C00", marginBottom: 10 }}>
-                        ⚠️ Arquivo lido mas nenhum contrato encontrado
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-                        {[
-                          { label: "Linhas lidas", val: importDiag.totalLinhas },
-                          { label: "Grupos CD_DIVIDA", val: importDiag.gruposEncontrados },
-                          { label: "Colunas detectadas", val: importDiag.colunas.length },
-                        ].map(({ label, val }) => (
-                          <div key={label} style={{ background: "white", borderRadius: 8, padding: "8px 12px", textAlign: "center", border: "0.5px solid #C9921B40" }}>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: val === 0 ? "#E24B4A" : "#C9921B" }}>{val}</div>
-                            <div style={{ fontSize: 11, color: "var(--text-2)" }}>{label}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {importDiag.gruposEncontrados === 0 && (
-                        <div style={{ padding: "8px 12px", background: "#FFF0F0", borderRadius: 7, fontSize: 12, color: "#7A1A1A", marginBottom: 10 }}>
-                          <strong>Formato não reconhecido.</strong> A planilha precisa de uma coluna de identificação do contrato: <code>CD_DIVIDA</code> (AgroSoft), <code>NR_CONTRATO</code> / <code>DÍVIDA</code> (alternativo), ou <code>NUMERO_CONTRATO</code> (formato livre — 1 linha por contrato).
-                        </div>
-                      )}
-
-                      {importDiag.valoresOperacao.length > 0 && (
-                        <div style={{ marginBottom: 10 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Valores encontrados em OPERACAO_CONTA:</div>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {importDiag.valoresOperacao.map(v => (
-                              <span key={v} style={{ padding: "2px 8px", background: "white", border: "0.5px solid #C9921B", borderRadius: 12, fontSize: 11, color: "#7A5C00", fontFamily: "monospace" }}>{v}</span>
-                            ))}
-                          </div>
-                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Esperado: <code>Receber</code> (cabeçalho) e <code>Pagar</code> (parcelas)</div>
-                        </div>
-                      )}
-
-                      <div style={{ marginBottom: 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Colunas encontradas no arquivo:</div>
-                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "var(--text-2)", lineHeight: 1.8, background: "white", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)" }}>
-                          {importDiag.colunas.join(" · ") || "(nenhuma)"}
-                        </div>
-                      </div>
-
-                      {importDiag.avisos.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Avisos do parser:</div>
-                          {importDiag.avisos.map((av, i) => (
-                            <div key={i} style={{ fontSize: 11, color: "#7A5C00", marginBottom: 2 }}>• {av}</div>
-                          ))}
-                        </div>
-                      )}
-
-                      <button onClick={() => setImportDiag(null)}
-                        style={{ marginTop: 10, padding: "5px 12px", background: "white", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, color: "#7A5C00", cursor: "pointer" }}>
-                        Tentar outro arquivo
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Botão de download do modelo */}
-                  <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
-                    <button
-                      onClick={baixarModeloXLSX}
-                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#7A5C00" }}
-                    >
-                      ⬇ Baixar Modelo XLSX
-                    </button>
-                  </div>
-
-                  <label style={{ display: "block", border: "2px dashed var(--border-table)", borderRadius: 12, padding: "40px 0", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border-table)")}>
-                    <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Selecionar arquivo XLSX</div>
-                    <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>Clique para abrir ou arraste o arquivo aqui (.xlsx, .xls)</div>
-                    <input type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={async e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        const result = await lerXLSX(file);
-                        if (result.contratos.length === 0) {
-                          setImportDiag(result.debug);
-                          return;
-                        }
-                        setImportDiag(null);
-                        setImportPreview(result.contratos);
-                      } catch (err) {
-                        alert("Erro ao ler o arquivo: " + (err as Error).message);
-                      }
-                      e.target.value = "";
-                    }} />
-                  </label>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>
-                      {importPreview.length} contrato{importPreview.length !== 1 ? "s" : ""} encontrado{importPreview.length !== 1 ? "s" : ""} — total {importPreview.reduce((s, c) => s + c.parcelas.length, 0)} parcelas
-                    </div>
-                    <button style={{ ...btnR, fontSize: 12 }} onClick={() => setImportPreview(null)}>← Selecionar outro arquivo</button>
-                  </div>
-                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ background: "var(--bg-page)" }}>
-                          {["Nº Contrato", "Descrição / Data", "Credor", "Tipo", "Taxa a.a.", "Valor Financiado", "Parcelas"].map((h, i) => (
-                            <th key={i} style={{ padding: "8px 10px", textAlign: i >= 4 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {importPreview.map((c, idx) => {
-                          const tm = TIPO_META[c.tipo];
-                          const primeiraParc = c.parcelas[0];
-                          const ultimaParc = c.parcelas[c.parcelas.length - 1];
-                          return (
-                            <tr key={idx} style={{ borderBottom: idx < importPreview.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
-                              <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1A4870" }}>{c.nr_contrato || c.cd_divida}</td>
-                              <td style={{ padding: "8px 10px" }}>
-                                <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao}</div>
-                                <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtData(c.data_contrato)}</div>
-                              </td>
-                              <td style={{ padding: "8px 10px", color: "var(--text-2)", maxWidth: 140 }}>{c.credor}</td>
-                              <td style={{ padding: "8px 10px" }}>
-                                <span style={{ fontSize: 10, background: tm.bg, color: tm.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
-                              </td>
-                              <td style={{ padding: "8px 10px", textAlign: "center" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}%` : "—"}</td>
-                              <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600 }}>
-                                {c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}
-                                {c.cotacao ? <div style={{ fontSize: 10, color: "var(--text-3)" }}>cotação {fmtNum(c.cotacao, 4)}</div> : null}
-                              </td>
-                              <td style={{ padding: "8px 10px", textAlign: "center" }}>
-                                <span style={{ fontWeight: 700, color: "#1A4870" }}>{c.parcelas.length}x</span>
-                                {primeiraParc && ultimaParc && (
-                                  <div style={{ fontSize: 10, color: "var(--text-3)" }}>
-                                    {fmtData(primeiraParc.data_vencimento)} → {fmtData(ultimaParc.data_vencimento)}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
-                      <input type="checkbox" checked={importCriarLanc} onChange={e => setImportCriarLanc(e.target.checked)} />
-                      <span>Criar lançamentos financeiros (CP/CR) automaticamente</span>
-                    </label>
-                    {!importCriarLanc && (
-                      <div style={{ fontSize: 12, color: "#7A5C00", background: "#FBF3E0", borderRadius: 6, padding: "6px 10px" }}>
-                        Somente os contratos e parcelas serão criados. Use esta opção se você já tem os lançamentos no Contas a Pagar para evitar duplicidade.
-                      </div>
-                    )}
-                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                      Contratos já existentes (mesmo Nº Contrato) serão automaticamente pulados.
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                    <button style={btnR} onClick={() => { setModalImport(false); setImportPreview(null); }}>Cancelar</button>
-                    <button
-                      style={{ ...btnV, background: "#1A4870", opacity: importando ? 0.5 : 1 }}
-                      disabled={importando}
-                      onClick={confirmarImporte}
-                    >{importando ? "Importando…" : `Importar ${importPreview.length} contrato${importPreview.length !== 1 ? "s" : ""}`}</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ══ Modal Unificado ══ */}
       {modalAberto && (
@@ -2082,10 +1779,11 @@ export default function ContratosFinanceiros() {
                     </div>
                   ) : (
                     <>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                      {/* Linha 1: Indexador | Taxa Variável (ref) | Juros Fixos a.a. | Juros Fixos a.m. | TEF a.a. */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 8 }}>
                         <div>
                           <label style={lbl}>Indexador <span style={{ color: "#E24B4A" }}>*</span></label>
-                          <select style={inp} value={fC.indexador} onChange={e => setFC(p => ({ ...p, indexador: e.target.value }))}>
+                          <select style={inp} value={fC.indexador} onChange={e => { setFC(p => ({ ...p, indexador: e.target.value })); buscarTaxaVariavelRef(e.target.value); }}>
                             <option value="">Selecione…</option>
                             {["CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "INPC", "IGP-M", "Outro"].map(idx => (
                               <option key={idx} value={idx}>{idx}</option>
@@ -2093,8 +1791,15 @@ export default function ContratosFinanceiros() {
                           </select>
                         </div>
                         <div>
+                          <label style={lbl}>
+                            Taxa {fC.indexador || "Variável"} — ref. {loadingTaxaRef ? "…" : taxaVariavelRef != null ? `${fmtNum(taxaVariavelRef, 4)}% a.a.` : "sem dado"}
+                          </label>
+                          <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-3)", cursor: "default" }}
+                            readOnly value={taxaVariavelRef != null ? fmtNum(taxaVariavelRef, 4) : "—"} />
+                        </div>
+                        <div>
                           <label style={lbl}>Juros Fixos a.a. (%)</label>
-                          <InputNumerico style={inp} decimais={3} placeholder="Ex: 2,50" value={fC.spread_aa}
+                          <InputNumerico style={inp} decimais={3} placeholder="Ex: 3,40" value={fC.spread_aa}
                             onChange={v => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_aa: v, spread_am: isNaN(aa) ? "" : String(parseFloat(aaParaAm(aa).toFixed(6))) })); }} />
                         </div>
                         <div>
@@ -2103,6 +1808,24 @@ export default function ContratosFinanceiros() {
                             onChange={v => { const am = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_am: v, spread_aa: isNaN(am) ? "" : String(parseFloat(amParaAa(am).toFixed(4))) })); }} />
                         </div>
                         <div>
+                          {(() => {
+                            const variavel = taxaVariavelRef ?? 0;
+                            const fixo = parseFloat((fC.spread_aa || "0").replace(",", ".")) || 0;
+                            const tef = variavel + fixo;
+                            return (
+                              <div>
+                                <label style={lbl}>TEF — Taxa Efetiva a.a. (%)</label>
+                                <div style={{ ...inp, background: tef > 0 ? "#EAF4EC" : "var(--bg-page)", border: `0.5px solid ${tef > 0 ? "#16A34A" : "var(--border)"}`, color: tef > 0 ? "#0F5132" : "var(--text-3)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>
+                                  {tef > 0 ? `${fmtNum(tef, 2)}%` : "—"}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      {/* Linha 2: IOF | TAC | Outros */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 2fr", gap: 12, marginBottom: 4 }}>
+                        <div>
                           <label style={lbl}>IOF (%)</label>
                           <InputNumerico style={inp} decimais={3} placeholder="Ex: 0,38" value={fC.iof_pct} onChange={v => setFC(p => ({ ...p, iof_pct: v }))} />
                         </div>
@@ -2110,6 +1833,11 @@ export default function ContratosFinanceiros() {
                           <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
                           <InputMonetario style={inp} placeholder="Ex: 500,00" value={fC.tac_valor} onChange={v => setFC(p => ({ ...p, tac_valor: String(v) }))} />
                         </div>
+                        <div>
+                          <label style={lbl}>Outros Custos (R$)</label>
+                          <InputMonetario style={inp} placeholder="Registro, cartório…" value={fC.outros_custos} onChange={v => setFC(p => ({ ...p, outros_custos: String(v) }))} />
+                        </div>
+                        <div style={{ display: "flex", alignItems: "flex-end" }} />
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, padding: "6px 10px", background: "#FBF3E0", borderRadius: 6, border: "0.5px solid #EF9F27" }}>
                         <span style={{ fontSize: 11, color: "#7A4300" }}>⚠ Taxa fixa + variável — o cronograma usa apenas os <strong>juros fixos</strong> como estimativa. O custo real incluirá o {fC.indexador || "indexador"} vigente na data de cada parcela.</span>

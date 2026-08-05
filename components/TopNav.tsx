@@ -264,6 +264,7 @@ const NAV: NavItem[] = [
       { id: "conf-plano-contas",  label: "Plano de Contas",       path: "/configuracoes/plano-contas",            moduleId: "conf_financeiro" },
       { id: "conf-op-gerenciais", label: "Operações Gerenciais",  path: "/configuracoes/operacoes-gerenciais",    moduleId: "conf_financeiro" },
       { id: "conf-formas-pgto",   label: "Formas de Pagamento",   path: "/cadastros?tab=formas_pagamento",     moduleId: "conf_financeiro" },
+      { id: "conf-taxas-variaveis", label: "Taxas de Referência (CDI, IPCA…)", path: "/configuracoes/financeiras/taxas", moduleId: "conf_financeiro" },
 
       { type: "divider", label: "Contabilidade" },
       { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade", moduleId: "conf_contabilidade" },
