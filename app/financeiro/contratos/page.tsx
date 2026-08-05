@@ -1480,7 +1480,7 @@ export default function ContratosFinanceiros() {
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge({ sac: "SAC", sac_crescente: "SACRE", price: "PRICE", outros: "Outros" }[c.tipo_calculo ?? "sac"] ?? (c.tipo_calculo ?? "SAC").toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>
                           {c.taxa_tipo === "variavel" && c.indexador
-                            ? <span title={`Taxa variável: ${c.indexador}${c.spread_aa != null ? ` + ${fmtNum(c.spread_aa, 2)}% a.a.` : ""}`}>
+                            ? <span title={`Taxa fixa + variável: ${c.indexador}${c.spread_aa != null ? ` + ${fmtNum(c.spread_aa, 2)}% a.a. (fixo)` : ""}`}>
                                 {c.indexador}{c.spread_aa != null ? <span style={{ fontSize: 10, color: "var(--text-3)" }}> +{fmtNum(c.spread_aa, 2)}%</span> : ""}
                               </span>
                             : c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}
@@ -2052,7 +2052,7 @@ export default function ContratosFinanceiros() {
                     {(["fixa", "variavel"] as const).map(t => (
                       <button key={t} type="button" onClick={() => setFC(p => ({ ...p, taxa_tipo: t }))}
                         style={{ padding: "4px 14px", borderRadius: 6, border: `0.5px solid ${fC.taxa_tipo === t ? "#1A4870" : "var(--border)"}`, background: fC.taxa_tipo === t ? "#D5E8F5" : "transparent", color: fC.taxa_tipo === t ? "#0B2D50" : "var(--text-3)", fontSize: 12, fontWeight: fC.taxa_tipo === t ? 600 : 400, cursor: "pointer" }}>
-                        {t === "fixa" ? "Taxa Fixa" : "Taxa Variável (CDI, IPCA…)"}
+                        {t === "fixa" ? "Taxa Fixa" : "Taxa Fixa + Variável"}
                       </button>
                     ))}
                   </div>
@@ -2093,12 +2093,12 @@ export default function ContratosFinanceiros() {
                           </select>
                         </div>
                         <div>
-                          <label style={lbl}>Spread a.a. (%)</label>
+                          <label style={lbl}>Juros Fixos a.a. (%)</label>
                           <InputNumerico style={inp} decimais={3} placeholder="Ex: 2,50" value={fC.spread_aa}
                             onChange={v => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_aa: v, spread_am: isNaN(aa) ? "" : String(parseFloat(aaParaAm(aa).toFixed(6))) })); }} />
                         </div>
                         <div>
-                          <label style={lbl}>Spread a.m. (%)</label>
+                          <label style={lbl}>Juros Fixos a.m. (%)</label>
                           <InputNumerico style={inp} decimais={4} placeholder="Auto" value={fC.spread_am}
                             onChange={v => { const am = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_am: v, spread_aa: isNaN(am) ? "" : String(parseFloat(amParaAa(am).toFixed(4))) })); }} />
                         </div>
@@ -2112,7 +2112,7 @@ export default function ContratosFinanceiros() {
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, padding: "6px 10px", background: "#FBF3E0", borderRadius: 6, border: "0.5px solid #EF9F27" }}>
-                        <span style={{ fontSize: 11, color: "#7A4300" }}>⚠ Taxa variável — o cronograma usa apenas o <strong>spread</strong> como estimativa. Os valores reais dependerão do {fC.indexador || "indexador"} na data de cada parcela.</span>
+                        <span style={{ fontSize: 11, color: "#7A4300" }}>⚠ Taxa fixa + variável — o cronograma usa apenas os <strong>juros fixos</strong> como estimativa. O custo real incluirá o {fC.indexador || "indexador"} vigente na data de cada parcela.</span>
                       </div>
                     </>
                   )}
