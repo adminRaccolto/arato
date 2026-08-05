@@ -2254,6 +2254,14 @@ function desnormalizarContrato(c: Omit<ContratoFinanceiro, "id" | "created_at">)
     ano_safra_id:           c.safra_id ?? null,
     forma_pagamento:        c.forma_pagamento ?? null,
     local_pagamento:        c.local_pagamento ?? null,
+    // Campos de PDF da cédula
+    pdf_url:                c.pdf_url,
+    pdf_nome:               c.pdf_nome,
+    // Campos de taxa variável (CDI, IPCA…)
+    taxa_tipo:              c.taxa_tipo,
+    indexador:              c.indexador,
+    spread_aa:              c.spread_aa,
+    spread_am:              c.spread_am,
   };
 }
 

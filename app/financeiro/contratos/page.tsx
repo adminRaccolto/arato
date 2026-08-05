@@ -851,7 +851,12 @@ export default function ContratosFinanceiros() {
     }
     const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
     const pdfPayload = { pdf_url: urlData.publicUrl, pdf_nome: file.name };
-    await atualizarContratoFinanceiro(contratoId, pdfPayload);
+    // Update direto — não passa por desnormalizarContrato para não sobrescrever campos não relacionados
+    const { error: dbErr } = await supabase
+      .from("contratos_financeiros")
+      .update(pdfPayload)
+      .eq("id", contratoId);
+    if (dbErr) console.error("[uploadPdfCedula] erro ao salvar pdf_url:", dbErr.message);
     return pdfPayload;
   };
 
