@@ -66,33 +66,56 @@ export async function POST(req: NextRequest) {
         body.data_entrega ||
         new Date().toISOString().split("T")[0];
 
+      // Monta payload base — sem colunas opcionais que podem não existir no DB
+      const crPayload: Record<string, unknown> = {
+        fazenda_id: body.fazenda_id,
+        tipo: "receber",
+        descricao: `Pedido de Venda — ${compradorNome} (Contrato ${body.numero ?? body.contrato_id.slice(-6)})`,
+        categoria: "Pedido de Venda — Grãos",
+        data_lancamento: new Date().toISOString().split("T")[0],
+        data_vencimento: dataRef,
+        valor: body.valor_total,
+        moeda: body.moeda,
+        status: "em_aberto",          // em_aberto é seguro em qualquer constraint
+        pessoa_id: body.pessoa_id || null,
+        observacao: "Pedido de Venda gerado ao confirmar contrato. Será atualizado conforme romaneios faturados.",
+      };
+
+      // Colunas adicionadas em migrations específicas — só inclui se a coluna existir
+      // (evita erros de schema se a migration não foi executada ainda)
+      if (body.ciclo_id) crPayload.ciclo_id = body.ciclo_id;
+      if (body.ano_safra_id) crPayload.ano_safra_id = body.ano_safra_id;
+
+      // Tenta incluir contrato_id (Seção 80 pode não ter sido executada)
       const { data: crRow, error: crErr } = await sb
         .from("lancamentos")
-        .insert({
-          fazenda_id: body.fazenda_id,
-          tipo: "receber",
-          descricao: `Pedido de Venda — ${compradorNome} (Contrato ${body.numero ?? body.contrato_id.slice(-6)})`,
-          categoria: "Pedido de Venda — Grãos",
-          data_lancamento: new Date().toISOString().split("T")[0],
-          data_vencimento: dataRef,
-          valor: body.valor_total,
-          moeda: body.moeda,
-          status: "previsto",
-          safra_id: body.ciclo_id || null,
-          ano_safra_id: body.ano_safra_id || null,
-          contrato_id: body.contrato_id,
-          pessoa_id: body.pessoa_id || null,
-          observacao: "Pedido de Venda gerado ao confirmar contrato. Será reduzido conforme faturamento dos romaneios.",
-          auto: true,
-        })
+        .insert({ ...crPayload, contrato_id: body.contrato_id })
         .select("id")
         .single();
 
-      if (crErr) {
-        return NextResponse.json({ error: crErr.message, num_lancamento: numLancamento }, { status: 207 });
-      }
+      // Se falhar por contrato_id não existir, tenta sem ele
+      if (crErr && crErr.message.includes("contrato_id")) {
+        const { data: crRow2, error: crErr2 } = await sb
+          .from("lancamentos")
+          .insert(crPayload)
+          .select("id")
+          .single();
 
-      crId = crRow?.id ?? null;
+        if (crErr2) {
+          return NextResponse.json({
+            error: `CR não criado: ${crErr2.message}`,
+            num_lancamento: numLancamento,
+          }, { status: 207 });
+        }
+        crId = crRow2?.id ?? null;
+      } else if (crErr) {
+        return NextResponse.json({
+          error: `CR não criado: ${crErr.message}`,
+          num_lancamento: numLancamento,
+        }, { status: 207 });
+      } else {
+        crId = crRow?.id ?? null;
+      }
 
       if (crId) {
         await sb

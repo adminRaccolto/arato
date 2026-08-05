@@ -9206,3 +9206,33 @@ ALTER TABLE contratos
   ADD COLUMN IF NOT EXISTS local_entrega_cep         TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 91: CR por Contrato de Venda — colunas de rastreio em lancamentos
+-- (complementa Seção 80 — rodar se der erro de coluna ao confirmar contrato)
+-- =============================================================================
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS contrato_id UUID REFERENCES contratos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS romaneio_id UUID REFERENCES romaneios(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_contrato_id ON lancamentos(contrato_id);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_romaneio_id ON lancamentos(romaneio_id);
+
+-- Libera status 'previsto' e 'cancelado' para CR de Pedido de Venda
+-- (só executar se der erro de CHECK constraint)
+ALTER TABLE lancamentos DROP CONSTRAINT IF EXISTS lancamentos_status_check;
+ALTER TABLE lancamentos ADD CONSTRAINT lancamentos_status_check
+  CHECK (status IN ('previsto','em_aberto','vencido','vencendo','parcial','baixado','cancelado','liquidado'));
+
+-- Garantias: campos para rastreabilidade fiscal
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS tipo_garantia  text;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS grau           text;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS tipo_bem       text;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS maquina_id     uuid REFERENCES maquinas(id) ON DELETE SET NULL;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS percentual_bem numeric(5,2);
+
+-- Matrículas: município e UF para exibição nas garantias
+ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS municipio text;
+ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS uf        text;
+
+NOTIFY pgrst, 'reload schema';

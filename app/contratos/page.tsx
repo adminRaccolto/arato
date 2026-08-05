@@ -989,6 +989,7 @@ export default function Contratos() {
         const json = await resp.json();
         if (json.num_lancamento) salvo = { ...salvo, num_lancamento: json.num_lancamento };
         if (json.lancamento_cr_id) salvo = { ...salvo, lancamento_cr_id: json.lancamento_cr_id };
+        if (json.error) console.warn("⚠️ confirmar CR:", json.error);
       }
       if (editContrato) {
         setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i._qKg>0) as unknown as ContratoItem[] } : c));
