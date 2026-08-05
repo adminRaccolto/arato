@@ -16,32 +16,38 @@ function amParaAa(am: number): number {
   return (Math.pow(1 + am / 100, 12) - 1) * 100;
 }
 
+type BuscarResult =
+  | { indexador: string; valor_pct: number | null; erro: string }
+  | { indexador: string; valor_pct: number; ano: number; mes: number };
+
 async function buscarIndexador(
   indexador: string,
   cfg: { serie: number; tipo: "mensal_pct" | "aa_direto" },
-  ano: number,
-  mes: number
-): Promise<{ indexador: string; valor_pct: number | null; erro?: string }> {
+  _ano: number,
+  _mes: number
+): Promise<BuscarResult[]> {
   try {
-    const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${cfg.serie}/dados/ultimos/3?formato=json`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(25_000) });
+    const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${cfg.serie}/dados/ultimos/120?formato=json`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(30_000) });
     if (!resp.ok) throw new Error(`BCB HTTP ${resp.status}`);
     const dados: { data: string; valor: string }[] = await resp.json();
     if (!dados.length) throw new Error("Resposta vazia");
 
-    const ultimo = dados[dados.length - 1];
-    const valorRaw = parseFloat(ultimo.valor.replace(",", "."));
-    if (isNaN(valorRaw)) throw new Error("Valor inválido");
-
-    const valorAa = cfg.tipo === "aa_direto" ? valorRaw : amParaAa(valorRaw);
-
-    const partes = ultimo.data.split("/");
-    const obsAno = partes.length === 3 ? parseInt(partes[2]) : ano;
-    const obsMes = partes.length === 3 ? parseInt(partes[1]) : mes;
-
-    return { indexador, valor_pct: parseFloat(valorAa.toFixed(4)), ano: obsAno, mes: obsMes } as never;
+    return dados.flatMap(d => {
+      const valorRaw = parseFloat(d.valor.replace(",", "."));
+      if (isNaN(valorRaw)) return [];
+      const valorAa = cfg.tipo === "aa_direto" ? valorRaw : amParaAa(valorRaw);
+      const partes = d.data.split("/");
+      if (partes.length !== 3) return [];
+      return [{
+        indexador,
+        valor_pct: parseFloat(valorAa.toFixed(4)),
+        ano: parseInt(partes[2]),
+        mes: parseInt(partes[1]),
+      }];
+    });
   } catch (e) {
-    return { indexador, valor_pct: null, erro: (e as Error).message };
+    return [{ indexador, valor_pct: null, erro: (e as Error).message }];
   }
 }
 
@@ -55,38 +61,46 @@ export async function POST() {
   const ano   = agora.getFullYear();
   const mes   = agora.getMonth() + 1;
 
-  // Todas as chamadas BCB em paralelo — muito mais rápido que sequencial
-  const resultados = await Promise.all(
+  // Busca histórico completo (120 meses) de cada indexador em paralelo
+  const porIndexador = await Promise.all(
     Object.entries(BCB_SERIES).map(([idx, cfg]) => buscarIndexador(idx, cfg, ano, mes))
   );
 
-  // Salva os que vieram com sucesso
-  const upserts = await Promise.all(
-    resultados
-      .filter(r => r.valor_pct != null)
-      .map(r => {
-        const rr = r as { indexador: string; valor_pct: number; ano: number; mes: number };
-        return supabase
-          .from("taxas_variaveis_historico")
-          .upsert(
-            { indexador: rr.indexador, ano: rr.ano, mes: rr.mes, valor_pct: parseFloat((rr.valor_pct).toFixed(6)), fonte: "bcb", updated_at: new Date().toISOString() },
-            { onConflict: "indexador,ano,mes" }
-          )
-          .then(({ error }) => error ? { ...rr, erro: error.message, valor_pct: null } : rr);
-      })
-  );
+  // Aplana em lista única, separa ok vs erro por indexador
+  const todos   = porIndexador.flat();
+  const validos = todos.filter((r): r is { indexador: string; valor_pct: number; ano: number; mes: number } => r.valor_pct != null);
+  const falhos  = porIndexador
+    .map(arr => arr.find(r => r.valor_pct == null))
+    .filter((r): r is { indexador: string; valor_pct: null; erro: string } => r != null);
 
-  const final = [
-    ...upserts,
-    ...resultados.filter(r => r.valor_pct == null),
-  ];
+  // Upsert em lote (Supabase aceita array)
+  let erroUpsert: string | null = null;
+  if (validos.length > 0) {
+    const { error } = await supabase
+      .from("taxas_variaveis_historico")
+      .upsert(
+        validos.map(r => ({
+          indexador: r.indexador,
+          ano: r.ano,
+          mes: r.mes,
+          valor_pct: parseFloat(r.valor_pct.toFixed(6)),
+          fonte: "bcb",
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: "indexador,ano,mes" }
+      );
+    if (error) erroUpsert = error.message;
+  }
 
-  const sucessos = final.filter(r => r.valor_pct != null).length;
-  const erros    = final.filter(r => r.valor_pct == null);
+  const indexadoresOk    = Object.keys(BCB_SERIES).length - falhos.length;
+  const indexadoresTotal = Object.keys(BCB_SERIES).length;
 
   return NextResponse.json({
-    ok: erros.length === 0,
-    sucesso: `${sucessos}/${Object.keys(BCB_SERIES).length} indexadores atualizados`,
-    erros: erros.map(e => `${e.indexador}: ${"erro" in e ? e.erro : "erro desconhecido"}`),
+    ok: falhos.length === 0 && !erroUpsert,
+    sucesso: `${indexadoresOk}/${indexadoresTotal} indexadores atualizados (${validos.length} observações salvas)`,
+    erros: [
+      ...falhos.map(e => `${e.indexador}: ${e.erro}`),
+      ...(erroUpsert ? [`Erro ao salvar: ${erroUpsert}`] : []),
+    ],
   });
 }
