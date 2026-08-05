@@ -1503,7 +1503,8 @@ function ImportacaoInner() {
     const fazIds = insumoFazSel
       ? [insumoFazSel]
       : [...new Set(rows.filter(r => r._status === "ok").map(r => r.fazenda_nome?.trim()).filter(Boolean)
-          .map(nome => fazendas.find(f => f.nome === nome)?.id).filter((id): id is string => !!id))];
+          .map(nome => fazendas.find(f => f.nome.trim().toLowerCase() === (nome ?? "").toLowerCase())?.id)
+          .filter((id): id is string => !!id))];
     if (fazIds.length) {
       const { data: existentes } = await supabase
         .from("insumos").select("nome, fazenda_id").in("fazenda_id", fazIds).eq("tipo", "insumo");
@@ -1679,93 +1680,47 @@ function ImportacaoInner() {
 
   // ─── Importar Insumos ─────────────────────────────────────
   async function importarInsumos() {
-    if (!insumosRows.length) return;
+    if (!insumosRows.length || !contaId) return;
     setLoadingInsumos(true);
-    let ok = 0, erros = 0, duplicados = 0;
 
-    // Pré-carrega todos os depósitos das fazendas do usuário (1 query)
-    const fazIds = fazendas.map(f => f.id);
-    const { data: depositosDB } = fazIds.length
-      ? await supabase.from("depositos").select("id, nome, fazenda_id").in("fazenda_id", fazIds)
-      : { data: [] };
-    const depositos: { id: string; nome: string; fazenda_id: string }[] = depositosDB ?? [];
-
-    for (const r of insumosRows) {
-      if (r._status === "erro") { erros++; continue; }
-      if (r._status === "duplicado" && !modoAtualizacaoInsumos) { duplicados++; continue; }
-
-      // Resolve fazenda: seletor de tela tem prioridade; fallback para coluna da planilha
-      let fazLinha: { id: string; nome: string } | undefined;
-      if (insumoFazSel) {
-        fazLinha = fazendas.find(f => f.id === insumoFazSel);
-      } else {
-        fazLinha = fazendas.find(f => f.nome.trim().toLowerCase() === (r.fazenda_nome || "").trim().toLowerCase());
+    // Normaliza fazenda_nome quando seletor de tela está ativo
+    const rowsParaEnviar = insumosRows.map(r => {
+      if (insumoFazSel && !r.fazenda_nome) {
+        const fazNome = fazendas.find(f => f.id === insumoFazSel)?.nome ?? "";
+        return { ...r, fazenda_nome: fazNome };
       }
-      if (!fazLinha) {
-        r._status = "erro"; r._msg = insumoFazSel
-          ? "fazenda selecionada não encontrada"
-          : `fazenda "${r.fazenda_nome}" não encontrada no cadastro`;
-        erros++; continue;
+      if (insumoDepSel && !r.deposito_nome) {
+        const depNome = insumoDepositos.find(d => d.id === insumoDepSel)?.nome ?? "";
+        return { ...r, deposito_nome: depNome };
       }
+      return r;
+    });
 
-      // Resolve depósito: seletor de tela tem prioridade; fallback para coluna da planilha
-      let depLinha: { id: string; nome: string; fazenda_id: string } | null = null;
-      if (insumoDepSel) {
-        const d = depositos.find(d => d.id === insumoDepSel && d.fazenda_id === fazLinha!.id);
-        depLinha = d ?? null;
-      } else {
-        const depNome = (r.deposito_nome || "").trim().toLowerCase();
-        depLinha = depNome
-          ? depositos.find(d => d.fazenda_id === fazLinha!.id && d.nome.trim().toLowerCase() === depNome) ?? null
-          : null;
-      }
+    const resp = await fetch("/api/insumos/importar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conta_id: contaId,
+        fazenda_id_ativo: fazendaId,
+        modo_atualizacao: modoAtualizacaoInsumos,
+        rows: rowsParaEnviar.map(r => ({
+          fazenda_nome:   r.fazenda_nome,
+          deposito_nome:  r.deposito_nome,
+          nome:           r.nome,
+          categoria:      r.categoria,
+          unidade:        r.unidade,
+          estoque:        parseFloat(r.estoque || "0"),
+          estoque_minimo: parseFloat(r.estoque_minimo || "0"),
+          valor_unitario: parseFloat(String(r.valor_unitario || "0").replace(",", ".")),
+          fabricante:     r.fabricante?.trim() || undefined,
+          subgrupo:       r.subgrupo?.trim() || undefined,
+          _status:        r._status,
+        })),
+      }),
+    });
 
-      const estoqueQtd = parseFloat(r.estoque || "0");
-      const valorUnit  = parseFloat(String(r.valor_unitario).replace(",", ".") || "0");
-      const payload = {
-        fazenda_id:     fazLinha.id,
-        tipo:           "insumo",
-        nome:           r.nome.trim(),
-        categoria:      r.categoria.trim(),
-        unidade:        r.unidade.trim(),
-        estoque:        estoqueQtd,
-        estoque_minimo: parseFloat(r.estoque_minimo || "0"),
-        valor_unitario: valorUnit,
-        fabricante:     r.fabricante?.trim() || null,
-        subgrupo:       r.subgrupo?.trim() || null,
-        deposito_id:    depLinha?.id ?? null,
-      };
-      if (r._status === "duplicado" && modoAtualizacaoInsumos) {
-        const { error } = await supabase.from("insumos")
-          .update(payload)
-          .eq("fazenda_id", fazLinha.id)
-          .eq("tipo", "insumo")
-          .eq("nome", r.nome.trim());
-        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-        else { r._status = "ok"; ok++; }
-      } else {
-        const { data: ins, error } = await supabase.from("insumos").insert(payload).select("id").single();
-        if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
-        ok++;
-        // Se há estoque inicial, registra movimentação de entrada (inventário)
-        if (estoqueQtd > 0 && ins?.id) {
-          await supabase.from("movimentacoes_estoque").insert({
-            insumo_id:      ins.id,
-            fazenda_id:     fazLinha.id,
-            tipo:           "entrada",
-            motivo:         "inventario",
-            quantidade:     estoqueQtd,
-            valor_unitario: valorUnit > 0 ? valorUnit : null,
-            data:           new Date().toISOString().split("T")[0],
-            deposito_id:    depLinha?.id ?? null,
-            observacao:     "Saldo inicial — importação",
-            auto:           true,
-          });
-        }
-      }
-    }
-    setInsumosRows([...insumosRows]);
-    setResultInsumos({ ok, erros, duplicados });
+    const json = await resp.json();
+    setResultInsumos({ ok: json.ok ?? 0, erros: json.erros ?? 0, duplicados: json.duplicados ?? 0 });
     setLoadingInsumos(false);
   }
 
