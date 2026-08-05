@@ -165,6 +165,8 @@ const FC_VAZIO = {
   linha_credito: "", moeda: "BRL" as "BRL" | "USD",
   valor_financiado: "", valor_cotacao: "",
   data_contrato: "", numero_documento: "",
+  taxa_tipo: "fixa" as "fixa" | "variavel",
+  indexador: "", spread_aa: "", spread_am: "",
   taxa_juros_aa: "", taxa_juros_am: "",
   iof_pct: "", tac_valor: "", outros_custos: "",
   conta_liberacao_id: "", conta_pagamento_id: "",
@@ -705,6 +707,10 @@ export default function ContratosFinanceiros() {
       tipo: c.tipo, tipo_calculo: c.tipo_calculo, linha_credito: c.linha_credito ?? "",
       moeda: c.moeda, valor_financiado: String(c.valor_financiado), valor_cotacao: String(c.valor_cotacao ?? ""),
       data_contrato: c.data_contrato, numero_documento: c.numero_documento ?? "",
+      taxa_tipo: (c.taxa_tipo ?? "fixa") as "fixa" | "variavel",
+      indexador: c.indexador ?? "",
+      spread_aa: c.spread_aa != null ? String(c.spread_aa) : "",
+      spread_am: c.spread_am != null ? String(c.spread_am) : "",
       taxa_juros_aa: c.taxa_juros_aa != null ? String(c.taxa_juros_aa) : "",
       taxa_juros_am: c.taxa_juros_am != null ? String(c.taxa_juros_am) : "",
       iof_pct: c.iof_pct ? String(c.iof_pct) : "", tac_valor: c.tac_valor ? String(c.tac_valor) : "",
@@ -771,8 +777,12 @@ export default function ContratosFinanceiros() {
         data_contrato:    d.data_contrato     ?? prev.data_contrato,
         moeda:            d.moeda             ?? prev.moeda,
         valor_financiado: d.valor_financiado  ? String(d.valor_financiado)  : prev.valor_financiado,
-        taxa_juros_aa:    d.taxa_juros_aa     ? String(d.taxa_juros_aa)     : prev.taxa_juros_aa,
-        taxa_juros_am:    d.taxa_juros_am     ? String(d.taxa_juros_am)     : prev.taxa_juros_am,
+        taxa_tipo:        (d.taxa_tipo         ?? prev.taxa_tipo) as "fixa" | "variavel",
+        indexador:        d.indexador         ?? prev.indexador,
+        spread_aa:        d.spread_aa != null ? String(d.spread_aa)         : prev.spread_aa,
+        spread_am:        d.spread_am != null ? String(d.spread_am)         : prev.spread_am,
+        taxa_juros_aa:    d.taxa_tipo !== "variavel" && d.taxa_juros_aa ? String(d.taxa_juros_aa) : prev.taxa_juros_aa,
+        taxa_juros_am:    d.taxa_tipo !== "variavel" && d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxa_juros_am,
         tipo_calculo:     d.tipo_calculo      ?? prev.tipo_calculo,
         carencia_meses:   d.carencia_meses != null ? String(d.carencia_meses) : prev.carencia_meses,
         periodicidade_meses: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade_meses,
@@ -807,14 +817,18 @@ export default function ContratosFinanceiros() {
           nParcelas:    String(d.num_parcelas ?? cronograma.length),
           dataPrimeiro: cronograma[0].data_vencimento,
           periodicidade: periodoInferido != null ? String(periodoInferido) : prev.periodicidade,
-          taxaMensal:   d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal,
+          taxaMensal: d.taxa_tipo === "variavel"
+            ? (d.spread_am ? String(d.spread_am) : prev.taxaMensal)
+            : (d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal),
         }));
       } else if (d.num_parcelas || d.periodicidade_meses) {
         setFCalc(prev => ({
           ...prev,
           nParcelas:    d.num_parcelas ? String(d.num_parcelas) : prev.nParcelas,
           periodicidade: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade,
-          taxaMensal:   d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal,
+          taxaMensal: d.taxa_tipo === "variavel"
+            ? (d.spread_am ? String(d.spread_am) : prev.taxaMensal)
+            : (d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal),
         }));
       }
 
@@ -858,8 +872,12 @@ export default function ContratosFinanceiros() {
       moeda: fC.moeda, valor_financiado: vf, valor_cotacao: vc,
       valor_financiado_brl: fC.moeda === "USD" && vc ? vf * vc : vf,
       data_contrato: fC.data_contrato, numero_documento: fC.numero_documento || undefined,
-      taxa_juros_aa: fC.taxa_juros_aa ? parseFloat(fC.taxa_juros_aa.replace(",", ".")) : undefined,
-      taxa_juros_am: fC.taxa_juros_am ? parseFloat(fC.taxa_juros_am.replace(",", ".")) : undefined,
+      taxa_tipo: fC.taxa_tipo as "fixa" | "variavel",
+      indexador: fC.taxa_tipo === "variavel" ? (fC.indexador || undefined) : undefined,
+      spread_aa: fC.taxa_tipo === "variavel" && fC.spread_aa ? parseFloat(fC.spread_aa.replace(",", ".")) : undefined,
+      spread_am: fC.taxa_tipo === "variavel" && fC.spread_am ? parseFloat(fC.spread_am.replace(",", ".")) : undefined,
+      taxa_juros_aa: fC.taxa_tipo === "fixa" && fC.taxa_juros_aa ? parseFloat(fC.taxa_juros_aa.replace(",", ".")) : undefined,
+      taxa_juros_am: fC.taxa_tipo === "fixa" && fC.taxa_juros_am ? parseFloat(fC.taxa_juros_am.replace(",", ".")) : undefined,
       iof_pct: fC.iof_pct ? parseFloat(fC.iof_pct.replace(",", ".")) : undefined,
       tac_valor: fC.tac_valor ? parseFloat(fC.tac_valor.replace(",", ".")) : undefined,
       outros_custos: fC.outros_custos ? parseFloat(fC.outros_custos.replace(",", ".")) : undefined,
@@ -1455,7 +1473,13 @@ export default function ContratosFinanceiros() {
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
                         <td style={{ padding: "10px 14px" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge({ sac: "SAC", sac_crescente: "SACRE", price: "PRICE", outros: "Outros" }[c.tipo_calculo ?? "sac"] ?? (c.tipo_calculo ?? "SAC").toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>
+                          {c.taxa_tipo === "variavel" && c.indexador
+                            ? <span title={`Taxa variável: ${c.indexador}${c.spread_aa != null ? ` + ${fmtNum(c.spread_aa, 2)}% a.a.` : ""}`}>
+                                {c.indexador}{c.spread_aa != null ? <span style={{ fontSize: 10, color: "var(--text-3)" }}> +{fmtNum(c.spread_aa, 2)}%</span> : ""}
+                              </span>
+                            : c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <div style={{ fontWeight: 600 }}>{c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}</div>
                           {c.moeda === "USD" && ptax && <div style={{ fontSize: 10, color: "var(--text-3)" }}>≈ {fmtBRL(c.valor_financiado * ptax)}</div>}
@@ -2018,28 +2042,75 @@ export default function ContratosFinanceiros() {
                   </div>
 
                   <SecTitle>Taxas e Custos da Operação</SecTitle>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
-                    <div>
-                      <label style={lbl}>Taxa de Juros a.a. (%) <span style={{ color: "#E24B4A" }}>*</span></label>
-                      <InputNumerico style={inp} decimais={3} placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={v => onChangeAa(v)} />
-                    </div>
-                    <div>
-                      <label style={lbl}>Taxa de Juros a.m. (%)</label>
-                      <InputNumerico style={inp} decimais={4} placeholder="Auto" value={fC.taxa_juros_am} onChange={v => onChangeAm(v)} />
-                    </div>
-                    <div>
-                      <label style={lbl}>IOF (%)</label>
-                      <InputNumerico style={inp} decimais={3} placeholder="Ex: 0,38" value={fC.iof_pct} onChange={v => setFC(p => ({ ...p, iof_pct: v }))} />
-                    </div>
-                    <div>
-                      <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
-                      <InputMonetario style={inp} placeholder="Ex: 500,00" value={fC.tac_valor} onChange={v => setFC(p => ({ ...p, tac_valor: String(v) }))} />
-                    </div>
-                    <div>
-                      <label style={lbl}>Outros Custos Fixos (R$)</label>
-                      <InputMonetario style={inp} placeholder="Registro, cartório…" value={fC.outros_custos} onChange={v => setFC(p => ({ ...p, outros_custos: String(v) }))} />
-                    </div>
+                  {/* Toggle Fixa / Variável */}
+                  <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+                    {(["fixa", "variavel"] as const).map(t => (
+                      <button key={t} type="button" onClick={() => setFC(p => ({ ...p, taxa_tipo: t }))}
+                        style={{ padding: "4px 14px", borderRadius: 6, border: `0.5px solid ${fC.taxa_tipo === t ? "#1A4870" : "var(--border)"}`, background: fC.taxa_tipo === t ? "#D5E8F5" : "transparent", color: fC.taxa_tipo === t ? "#0B2D50" : "var(--text-3)", fontSize: 12, fontWeight: fC.taxa_tipo === t ? 600 : 400, cursor: "pointer" }}>
+                        {t === "fixa" ? "Taxa Fixa" : "Taxa Variável (CDI, IPCA…)"}
+                      </button>
+                    ))}
                   </div>
+
+                  {fC.taxa_tipo === "fixa" ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                      <div>
+                        <label style={lbl}>Taxa de Juros a.a. (%) <span style={{ color: "#E24B4A" }}>*</span></label>
+                        <InputNumerico style={inp} decimais={3} placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={v => onChangeAa(v)} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Taxa de Juros a.m. (%)</label>
+                        <InputNumerico style={inp} decimais={4} placeholder="Auto" value={fC.taxa_juros_am} onChange={v => onChangeAm(v)} />
+                      </div>
+                      <div>
+                        <label style={lbl}>IOF (%)</label>
+                        <InputNumerico style={inp} decimais={3} placeholder="Ex: 0,38" value={fC.iof_pct} onChange={v => setFC(p => ({ ...p, iof_pct: v }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
+                        <InputMonetario style={inp} placeholder="Ex: 500,00" value={fC.tac_valor} onChange={v => setFC(p => ({ ...p, tac_valor: String(v) }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Outros Custos Fixos (R$)</label>
+                        <InputMonetario style={inp} placeholder="Registro, cartório…" value={fC.outros_custos} onChange={v => setFC(p => ({ ...p, outros_custos: String(v) }))} />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                        <div>
+                          <label style={lbl}>Indexador <span style={{ color: "#E24B4A" }}>*</span></label>
+                          <select style={inp} value={fC.indexador} onChange={e => setFC(p => ({ ...p, indexador: e.target.value }))}>
+                            <option value="">Selecione…</option>
+                            {["CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "INPC", "IGP-M", "Outro"].map(idx => (
+                              <option key={idx} value={idx}>{idx}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Spread a.a. (%)</label>
+                          <InputNumerico style={inp} decimais={3} placeholder="Ex: 2,50" value={fC.spread_aa}
+                            onChange={v => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_aa: v, spread_am: isNaN(aa) ? "" : String(parseFloat(aaParaAm(aa).toFixed(6))) })); }} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Spread a.m. (%)</label>
+                          <InputNumerico style={inp} decimais={4} placeholder="Auto" value={fC.spread_am}
+                            onChange={v => { const am = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_am: v, spread_aa: isNaN(am) ? "" : String(parseFloat(amParaAa(am).toFixed(4))) })); }} />
+                        </div>
+                        <div>
+                          <label style={lbl}>IOF (%)</label>
+                          <InputNumerico style={inp} decimais={3} placeholder="Ex: 0,38" value={fC.iof_pct} onChange={v => setFC(p => ({ ...p, iof_pct: v }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
+                          <InputMonetario style={inp} placeholder="Ex: 500,00" value={fC.tac_valor} onChange={v => setFC(p => ({ ...p, tac_valor: String(v) }))} />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, padding: "6px 10px", background: "#FBF3E0", borderRadius: 6, border: "0.5px solid #EF9F27" }}>
+                        <span style={{ fontSize: 11, color: "#7A4300" }}>⚠ Taxa variável — o cronograma usa apenas o <strong>spread</strong> como estimativa. Os valores reais dependerão do {fC.indexador || "indexador"} na data de cada parcela.</span>
+                      </div>
+                    </>
+                  )}
 
                   <SecTitle>Contas Bancárias</SecTitle>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
@@ -2093,8 +2164,8 @@ export default function ContratosFinanceiros() {
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
                     <button style={btnR} onClick={fecharModal}>Fechar</button>
                     <button
-                      style={{ ...btnV, background: "#1A4870", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (!fC.taxa_juros_aa && !fC.taxa_juros_am) ? 0.5 : 1 }}
-                      disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (!fC.taxa_juros_aa && !fC.taxa_juros_am)}
+                      style={{ ...btnV, background: "#1A4870", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am)) ? 0.5 : 1 }}
+                      disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am))}
                       onClick={salvarContrato}
                     >{salvando ? "Salvando…" : contratoModal ? "Salvar alterações" : "Salvar e continuar"}</button>
                   </div>
@@ -2151,7 +2222,9 @@ export default function ContratosFinanceiros() {
                         : fmtBRL(contratoModal.valor_financiado)}
                     </span>
                     <span style={{ color: "var(--text-3)", fontSize: 11 }}>
-                      · {contratoModal.taxa_juros_aa ? `${fmtNum(contratoModal.taxa_juros_aa, 4)}% a.a.` : ""}
+                      · {contratoModal.taxa_tipo === "variavel" && contratoModal.indexador
+                          ? `${contratoModal.indexador}${contratoModal.spread_aa != null ? ` + ${fmtNum(contratoModal.spread_aa, 2)}% a.a.` : ""}`
+                          : contratoModal.taxa_juros_aa ? `${fmtNum(contratoModal.taxa_juros_aa, 4)}% a.a.` : ""}
                       {contratoModal.periodicidade_meses ? ` · Periodicidade: ${{ 1: "mensal", 3: "trimestral", 6: "semestral", 12: "anual" }[contratoModal.periodicidade_meses] ?? `${contratoModal.periodicidade_meses}m`}` : ""}
                       {(contratoModal.carencia_meses ?? 0) > 0 ? ` · Carência: ${contratoModal.carencia_meses}m` : ""}
                     </span>

@@ -9148,3 +9148,12 @@ NOTIFY pgrst, 'reload schema';
 -- Junto com a correção de cnpj_destino para usar o CNPJ do XML (não do config),
 -- garante que a Manifestação SIEG funcione corretamente.
 ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS nome_destinatario TEXT;
+
+-- Migration: taxa variável em contratos_financeiros (CDI, IPCA, SELIC, TR…)
+-- Adiciona: taxa_tipo, indexador, spread_aa, spread_am
+-- Contratos existentes sem estes campos ficam como taxa_tipo = 'fixa' (default)
+ALTER TABLE contratos_financeiros
+  ADD COLUMN IF NOT EXISTS taxa_tipo   TEXT DEFAULT 'fixa' CHECK (taxa_tipo IN ('fixa','variavel')),
+  ADD COLUMN IF NOT EXISTS indexador   TEXT,
+  ADD COLUMN IF NOT EXISTS spread_aa   NUMERIC(10,6),
+  ADD COLUMN IF NOT EXISTS spread_am   NUMERIC(10,6);

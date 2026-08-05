@@ -22,8 +22,13 @@ export interface CedulaExtraida {
   moeda: "BRL" | "USD" | null;
   valor_financiado: number | null;     // Valor total do crédito concedido pelo banco
   valor_liberado: number | null;       // Valor efetivamente liberado (sem recursos próprios)
-  taxa_juros_aa: number | null;
-  taxa_juros_am: number | null;
+  // Taxa de juros — fixa OU variável (indexador + spread)
+  taxa_tipo: "fixa" | "variavel" | null;
+  indexador: string | null;         // CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M, Outro
+  spread_aa: number | null;         // spread sobre o indexador a.a. (%) — quando variável
+  spread_am: number | null;         // spread a.m. calculado
+  taxa_juros_aa: number | null;     // taxa total a.a. — só quando fixa
+  taxa_juros_am: number | null;     // taxa total a.m. — só quando fixa
   tipo_calculo: "sac" | "sac_crescente" | "price" | "outros" | null;
   carencia_meses: number | null;
   periodicidade_meses: number | null;  // 1=mensal, 3=trim, 6=sem, 12=anual
@@ -82,17 +87,41 @@ CAMPOS A EXTRAIR:
     valor_liberado = apenas o que o banco desembolsou.
     Se não houver distinção, use o mesmo valor de valor_financiado.
 
-14. taxa_juros_aa: Taxa de juros anual (%). Se só encontrar taxa mensal, calcule: ((1 + am/100)^12 - 1) * 100.
+14. taxa_tipo: "fixa" ou "variavel".
+    - "variavel": o contrato menciona um INDEXADOR seguido de um spread. Exemplos:
+      "CDI + 2,50% a.a.", "IPCA + 4% ao ano", "TR + 8,75% a.a.", "TJLP + 2%", "SELIC + 3%".
+      Também identifique pelo campo "Encargos Financeiros" ou "Remuneração" do documento.
+    - "fixa": taxa expressa diretamente como percentual, sem indexador (ex: "8,00% a.a.", "Juro 7% a.a.").
+    - Dúvida → "fixa".
 
-15. taxa_juros_am: Taxa de juros mensal (%). Se só encontrar taxa anual, calcule: ((1 + aa/100)^(1/12) - 1) * 100.
+15. indexador: Apenas quando taxa_tipo = "variavel". Nome EXATO do indexador conforme o documento.
+    Valores esperados: "CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "INPC", "IGP-M".
+    Se o documento usar outro (ex: "ANBIMA", "IPCA-15") → "Outro".
+    null quando taxa_tipo = "fixa".
 
-16. tipo_calculo: "sac" (amortização constante/decrescente), "price" (prestação fixa), "outros"
+16. spread_aa: Percentual do spread sobre o indexador a.a. (%). Apenas quando taxa_tipo = "variavel".
+    Exemplo: "CDI + 2,50% a.a." → spread_aa = 2.50.
+    Se o contrato indicar apenas "CDI" sem spread explícito → spread_aa = 0.
+    null quando taxa_tipo = "fixa".
 
-17. carencia_meses: Meses de carência antes do início dos pagamentos. 0 se não houver.
+17. spread_am: Spread mensal (%). Calcule: ((1 + spread_aa/100)^(1/12) - 1) * 100.
+    null quando taxa_tipo = "fixa" ou quando spread_aa for null.
+
+18. taxa_juros_aa: Taxa de juros TOTAL anual (%). Apenas quando taxa_tipo = "fixa".
+    Se só encontrar taxa mensal, calcule: ((1 + am/100)^12 - 1) * 100.
+    null quando taxa_tipo = "variavel".
+
+19. taxa_juros_am: Taxa de juros TOTAL mensal (%). Apenas quando taxa_tipo = "fixa".
+    Se só encontrar taxa anual, calcule: ((1 + aa/100)^(1/12) - 1) * 100.
+    null quando taxa_tipo = "variavel".
+
+20. tipo_calculo: "sac" (amortização constante/decrescente), "price" (prestação fixa), "outros"
+
+21. carencia_meses: Meses de carência antes do início dos pagamentos. 0 se não houver.
     ATENÇÃO: Carência ≠ periodicidade. Carência = período sem amortização (só juros ou totalizado).
     Se o contrato tem liberação em 2025 e primeira parcela em 2027, carencia = diferença em meses.
 
-18. periodicidade_meses: Intervalo entre parcelas em meses. 1=mensal | 3=trimestral | 6=semestral | 12=anual
+22. periodicidade_meses: Intervalo entre parcelas em meses. 1=mensal | 3=trimestral | 6=semestral | 12=anual
     COMO DETERMINAR:
     a) Se o cronograma tem múltiplas linhas: calcule a diferença em meses entre datas consecutivas.
        Exemplo: 31/08/2027, 31/08/2028, 31/08/2029 → diferença = 12 → periodicidade_meses = 12
@@ -102,7 +131,7 @@ CAMPOS A EXTRAIR:
        entre data_contrato e data_vencimento em meses
     e) Se não conseguir determinar → null
 
-19. num_parcelas: Número total de parcelas NO CRONOGRAMA DE REEMBOLSO (apenas amortização, não juros durante carência).
+23. num_parcelas: Número total de parcelas NO CRONOGRAMA DE REEMBOLSO (apenas amortização, não juros durante carência).
     COMO DETERMINAR:
     a) CONTE as linhas com amortização (não zero) no cronograma de reembolso
     b) Se o cronograma não estiver detalhado mas o contrato diz "X prestações anuais" → use X
@@ -111,19 +140,19 @@ CAMPOS A EXTRAIR:
        Exemplo: "prazo 5 anos, pagamento anual" → num_parcelas = 5
     e) NÃO confunda número de parcelas com prazo total em meses
 
-20. iof_pct: % de IOF, se mencionado. null se não houver.
+24. iof_pct: % de IOF, se mencionado. null se não houver.
 
-21. tac_valor: Valor da TAC em R$. null se não houver.
+25. tac_valor: Valor da TAC em R$. null se não houver.
 
-22. parcelas_cronograma: Array com TODAS as parcelas do cronograma.
+26. parcelas_cronograma: Array com TODAS as parcelas do cronograma.
     - Inclua CADA linha do cronograma como {data_vencimento, valor}.
     - Se houver múltiplos empreendimentos com vencimentos nas mesmas datas, SOME os valores por data.
     - data_vencimento em YYYY-MM-DD. Ordene cronologicamente.
     Exemplo: [{"data_vencimento": "2023-02-01", "valor": 175312.50}, ...]
 
-23. observacao: Garantias (tipo, descrição, valores), finalidade específica e outras informações relevantes.
+27. observacao: Garantias (tipo, descrição, valores), finalidade específica e outras informações relevantes.
 
-24. confianca: "alta" (extraiu credor_nome + valor_financiado + data_contrato + num_parcelas) | "media" (2+ desses) | "baixa"
+28. confianca: "alta" (extraiu credor_nome + valor_financiado + data_contrato + num_parcelas) | "media" (2+ desses) | "baixa"
 
 Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
 {
@@ -140,6 +169,10 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
   "moeda": "BRL",
   "valor_financiado": null,
   "valor_liberado": null,
+  "taxa_tipo": "fixa",
+  "indexador": null,
+  "spread_aa": null,
+  "spread_am": null,
   "taxa_juros_aa": null,
   "taxa_juros_am": null,
   "tipo_calculo": null,
@@ -202,11 +235,15 @@ export function formatarConfirmacaoWhatsApp(d: CedulaExtraida): string {
     const [y, m, dd] = s.split("-");
     return `${dd}/${m}/${y}`;
   };
-  const fmtTaxa = (aa: number | null, am: number | null) => {
-    if (!aa && !am) return "—";
+  const fmtTaxa = (d: CedulaExtraida) => {
+    if (d.taxa_tipo === "variavel" && d.indexador) {
+      const spread = d.spread_aa != null ? `${d.spread_aa.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.a.` : null;
+      return spread ? `${d.indexador} + ${spread}` : d.indexador;
+    }
+    if (!d.taxa_juros_aa && !d.taxa_juros_am) return "—";
     const parts = [];
-    if (aa) parts.push(`${aa.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.a.`);
-    if (am) parts.push(`${am.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.`);
+    if (d.taxa_juros_aa) parts.push(`${d.taxa_juros_aa.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.a.`);
+    if (d.taxa_juros_am) parts.push(`${d.taxa_juros_am.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.`);
     return parts.join(" / ");
   };
   const TIPO_LABEL: Record<string, string> = {
@@ -232,7 +269,7 @@ export function formatarConfirmacaoWhatsApp(d: CedulaExtraida): string {
     d.data_liberacao && d.data_liberacao !== d.data_contrato ? `• Liberação: *${fmtData(d.data_liberacao)}*` : null,
     `• Valor: *${fmtVal(d.valor_financiado)}*`,
     d.valor_liberado != null && d.valor_liberado !== d.valor_financiado ? `• Valor Liberado (banco): *${fmtVal(d.valor_liberado)}*` : null,
-    `• Taxa: *${fmtTaxa(d.taxa_juros_aa, d.taxa_juros_am)}*`,
+    `• Taxa: *${fmtTaxa(d)}*`,
     `• Amortização: *${CALC_LABEL[d.tipo_calculo ?? ""] ?? "—"}*`,
     nParc ? `• Parcelas: *${nParc}x ${periLabel}*${primeiraParc ? ` de *${fmtVal(primeiraParc.valor)}* (1ª em ${fmtData(primeiraParc.data_vencimento)})` : ""}` : null,
     d.carencia_meses ? `• Carência: *${d.carencia_meses} meses*` : null,

@@ -1267,8 +1267,12 @@ export type ContratoFinanceiro = {
   valor_financiado_brl?: number;
   data_contrato: string;
   numero_documento?: string;
-  taxa_juros_aa?: number;        // taxa de juros anual (%)
-  taxa_juros_am?: number;        // taxa de juros mensal (%)
+  taxa_tipo?: "fixa" | "variavel"; // tipo de remuneração
+  indexador?: string;              // CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M, Outro
+  spread_aa?: number;              // spread sobre o indexador a.a. (%)
+  spread_am?: number;              // spread sobre o indexador a.m. (%)
+  taxa_juros_aa?: number;          // taxa de juros anual — só para taxa fixa (%)
+  taxa_juros_am?: number;          // taxa de juros mensal — só para taxa fixa (%)
   iof_pct?: number;              // IOF (%)
   tac_valor?: number;            // TAC — Tarifa de Abertura de Crédito (R$)
   outros_custos?: number;        // outros custos fixos da operação (R$)
