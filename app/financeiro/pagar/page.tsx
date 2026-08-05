@@ -18,7 +18,7 @@ interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?:
 
 // ── Tipos ────────────────────────────────────────────────────
 type Moeda  = "BRL" | "USD" | "barter";
-type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "barter" | "previsao" | "todos";
+type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "barter" | "previsao" | "contrato_financeiro" | "todos";
 
 // ── Constantes ────────────────────────────────────────────────
 const TODAY       = new Date().toISOString().split("T")[0];
@@ -157,7 +157,7 @@ function ContasPagarInner() {
   const [erro,     setErro]     = useState<string | null>(null);
   const [filtro,   setFiltro]   = useState<Filtro>(() => {
     const f = searchParams.get("filtro") as Filtro | null;
-    const valid: Filtro[] = ["aberto","vencido","vencendo","baixado","barter","previsao","todos"];
+    const valid: Filtro[] = ["aberto","vencido","vencendo","baixado","barter","previsao","contrato_financeiro","todos"];
     return f && valid.includes(f) ? f : "aberto";
   });
 
@@ -467,8 +467,9 @@ function ContasPagarInner() {
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
       if (filtro === "vencendo") return isReal && sEfet === "vencendo";
       if (filtro === "baixado")  return isReal && sEfet === "baixado";
-      if (filtro === "barter")   return isReal && l.moeda === "barter";
-      if (filtro === "previsao") return l.natureza === "previsao";
+      if (filtro === "barter")              return isReal && l.moeda === "barter";
+      if (filtro === "previsao")            return l.natureza === "previsao";
+      if (filtro === "contrato_financeiro") return isReal && l.origem_lancamento === "contrato_financeiro";
       return true;
     });
     // Ordenar por vencimento crescente
@@ -969,8 +970,9 @@ function ContasPagarInner() {
                   { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                 cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",   activeBorder: "rgba(239,68,68,0.4)"   },
                   { key: "baixado",  label: "Pagos",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#FBBF24", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
-                  { key: "previsao", label: "Previsões",  count: lancamentos.filter(l => l.natureza === "previsao").length,                             cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
-                  { key: "todos",    label: "Todos",      count: lancamentos.length,                                                                     cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
+                  { key: "previsao",            label: "Previsões",           count: lancamentos.filter(l => l.natureza === "previsao").length,                                                                           cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
+                  { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#378ADD", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
+                  { key: "todos",               label: "Todos",               count: lancamentos.length,                                                                                                    cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
                   <button key={f.key} className="cp-tab" onClick={() => setFiltro(f.key)}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${filtro === f.key ? f.activeBorder : "var(--border)"}`, background: filtro === f.key ? f.activeBg : "transparent", color: filtro === f.key ? f.cor : "var(--text-3)", fontWeight: filtro === f.key ? 700 : 400, fontSize: 12, cursor: "pointer" }}>
