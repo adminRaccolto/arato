@@ -22,8 +22,19 @@ type BuscarResult =
   | { indexador: string; valor_pct: number | null; erro: string }
   | { indexador: string; valor_pct: number; ano: number; mes: number };
 
-async function fetchBCB(serie: number, qtd: number, timeoutMs: number): Promise<{ data: string; valor: string }[]> {
-  const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/${qtd}?formato=json`;
+function fmtDataBCB(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+async function fetchBCBPeriodo(
+  serie: number,
+  dataInicial: string,
+  dataFinal: string,
+  timeoutMs: number
+): Promise<{ data: string; valor: string }[]> {
+  const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados?dataInicial=${dataInicial}&dataFinal=${dataFinal}&formato=json`;
   const resp = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
   if (!resp.ok) throw new Error(`BCB HTTP ${resp.status}`);
   return resp.json();
@@ -53,15 +64,26 @@ async function buscarIndexador(
   indexador: string,
   cfg: { serie: number; tipo: "mensal_pct" | "aa_direto" },
 ): Promise<BuscarResult[]> {
-  // Tenta 120 meses com timeout generoso; se falhar, retry com 24 meses
-  for (const [qtd, ms] of [[120, 28_000], [24, 20_000]] as [number, number][]) {
+  const hoje = new Date();
+  const cincoAnosAtras = new Date(hoje);
+  cincoAnosAtras.setFullYear(hoje.getFullYear() - 5);
+
+  // Tenta 5 anos via dataInicial/dataFinal; se falhar, tenta último ano
+  const tentativas: [string, string, number][] = [
+    [fmtDataBCB(cincoAnosAtras), fmtDataBCB(hoje), 30_000],
+    [fmtDataBCB(new Date(hoje.getFullYear() - 1, hoje.getMonth(), 1)), fmtDataBCB(hoje), 20_000],
+  ];
+
+  for (const [ini, fim, ms] of tentativas) {
     try {
-      const dados = await fetchBCB(cfg.serie, qtd, ms);
+      const dados = await fetchBCBPeriodo(cfg.serie, ini, fim, ms);
       if (!dados.length) throw new Error("Resposta vazia");
       return parseDados(dados, indexador, cfg.tipo);
-    } catch {
-      if (qtd === 24) return [{ indexador, valor_pct: null, erro: `Timeout após ${qtd} registros` }];
-      // continua para o retry com menos registros
+    } catch (e) {
+      if (ini === tentativas[tentativas.length - 1][0]) {
+        return [{ indexador, valor_pct: null, erro: (e as Error).message }];
+      }
+      // continua para próxima tentativa
     }
   }
   return [{ indexador, valor_pct: null, erro: "Falha inesperada" }];
