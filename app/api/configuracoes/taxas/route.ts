@@ -57,17 +57,13 @@ async function buscarIndexador(
   indexador: string,
   cfg: { serie: number; tipo: "mensal_pct" | "aa_direto" },
 ): Promise<BuscarResult[]> {
-  // Tenta 6 meses; se falhar (400/timeout), tenta 3
-  for (const [qtd, ms] of [[6, 15_000], [3, 12_000]] as [number, number][]) {
-    try {
-      const dados = await fetchBCBUltimos(cfg.serie, qtd, ms);
-      if (!dados.length) throw new Error("Resposta vazia");
-      return parseDados(dados, indexador, cfg.tipo);
-    } catch (e) {
-      if (qtd === 3) return [{ indexador, valor_pct: null, erro: (e as Error).message }];
-    }
+  try {
+    const dados = await fetchBCBUltimos(cfg.serie, 3, 15_000);
+    if (!dados.length) throw new Error("Resposta vazia");
+    return parseDados(dados, indexador, cfg.tipo);
+  } catch (e) {
+    return [{ indexador, valor_pct: null, erro: (e as Error).message }];
   }
-  return [{ indexador, valor_pct: null, erro: "Falha inesperada" }];
 }
 
 export async function POST() {
