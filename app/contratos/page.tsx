@@ -403,6 +403,14 @@ export default function Contratos() {
     // triangulação cooperativa
     is_triangulacao: false,
     comprador_final_id: "",
+    // local de entrega
+    local_entrega_pessoa_id: "",
+    local_entrega_nome: "",
+    local_entrega_cnpj: "",
+    local_entrega_logradouro: "",
+    local_entrega_municipio: "",
+    local_entrega_uf: "",
+    local_entrega_cep: "",
   });
 
   const [fC, setFC] = useState(fContratoVazio());
@@ -751,6 +759,14 @@ export default function Contratos() {
       // triangulação
       is_triangulacao: c.is_triangulacao ?? false,
       comprador_final_id: c.comprador_final_id ?? "",
+      // local de entrega
+      local_entrega_pessoa_id: c.local_entrega_pessoa_id ?? "",
+      local_entrega_nome: c.local_entrega_nome ?? "",
+      local_entrega_cnpj: c.local_entrega_cnpj ?? "",
+      local_entrega_logradouro: c.local_entrega_logradouro ?? "",
+      local_entrega_municipio: c.local_entrega_municipio ?? "",
+      local_entrega_uf: c.local_entrega_uf ?? "",
+      local_entrega_cep: c.local_entrega_cep ?? "",
     });
     try {
       const its = await listarItensContrato(c.id);
@@ -909,6 +925,24 @@ export default function Contratos() {
           comprador_final_id: fC.comprador_final_id || undefined,
           comprador_final_nome: pessoas.find(p=>p.id===fC.comprador_final_id)?.nome || undefined,
         } : { is_triangulacao: false, comprador_final_id: undefined, comprador_final_nome: undefined }),
+        // local de entrega — só inclui se diferente do comprador
+        ...(fC.local_entrega_nome ? {
+          local_entrega_pessoa_id: fC.local_entrega_pessoa_id || undefined,
+          local_entrega_nome: fC.local_entrega_nome,
+          local_entrega_cnpj: fC.local_entrega_cnpj || undefined,
+          local_entrega_logradouro: fC.local_entrega_logradouro || undefined,
+          local_entrega_municipio: fC.local_entrega_municipio || undefined,
+          local_entrega_uf: fC.local_entrega_uf || undefined,
+          local_entrega_cep: fC.local_entrega_cep || undefined,
+        } : {
+          local_entrega_pessoa_id: undefined,
+          local_entrega_nome: undefined,
+          local_entrega_cnpj: undefined,
+          local_entrega_logradouro: undefined,
+          local_entrega_municipio: undefined,
+          local_entrega_uf: undefined,
+          local_entrega_cep: undefined,
+        }),
       };
       let salvo: Contrato;
       if (editContrato) {
@@ -1479,6 +1513,11 @@ export default function Contratos() {
                                   )}
                                   {c.is_triangulacao && !c.comprador_final_nome && (
                                     <div style={{ fontSize:9, background:"#FBF3E0", color:"#C9921B", padding:"1px 5px", borderRadius:4, display:"inline-block", marginTop:2 }}>Triangulação</div>
+                                  )}
+                                  {c.local_entrega_nome && (
+                                    <div style={{ fontSize:9, color:"#378ADD", marginTop:2 }} title={[c.local_entrega_nome, c.local_entrega_municipio, c.local_entrega_uf].filter(Boolean).join(", ")}>
+                                      📍 {c.local_entrega_municipio || c.local_entrega_nome.split(" ").slice(0,2).join(" ")}
+                                    </div>
                                   )}
                                 </td>
                                 <td style={{ padding:"10px 12px" }}>
@@ -2350,6 +2389,82 @@ export default function Contratos() {
                         <input type="checkbox" checked={fC.deposito_fiscal} onChange={e => setFC(p=>({...p,deposito_fiscal:e.target.checked}))} /> Depósito Fiscal
                       </label>
                     </div>
+
+                    {/* ── Local de Entrega ──────────────────────────── */}
+                    <div style={{ gridColumn:"1/-1", borderTop:"0.5px solid var(--border-table)", paddingTop:12, marginTop:4 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:"var(--text-2)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>
+                        Local de Entrega <span style={{ fontSize:10, fontWeight:400, color:"var(--text-3)", textTransform:"none" }}>— preencha apenas se diferente do endereço do comprador</span>
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+                        <div style={{ gridColumn:"1/-1" }}>
+                          <label style={lbl}>Armazém / Destino cadastrado</label>
+                          <select style={{ ...inp, color: fC.local_entrega_pessoa_id ? "var(--text-1)" : "var(--text-3)" }}
+                            value={fC.local_entrega_pessoa_id}
+                            onChange={e => {
+                              const p = pessoas.find(x => x.id === e.target.value);
+                              setFC(prev => ({
+                                ...prev,
+                                local_entrega_pessoa_id: e.target.value,
+                                local_entrega_nome: p?.nome ?? prev.local_entrega_nome,
+                                local_entrega_cnpj: p?.cpf_cnpj ?? prev.local_entrega_cnpj,
+                              }));
+                            }}>
+                            <option value="">— selecione um cadastro (opcional) —</option>
+                            {pessoas.map(p => (
+                              <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Razão Social / Nome</label>
+                          <input style={inp} value={fC.local_entrega_nome}
+                            onChange={e => setFC(p=>({...p, local_entrega_nome: e.target.value}))}
+                            placeholder="Ex: Terminal Graneleiro Sorriso" />
+                        </div>
+                        <div>
+                          <label style={lbl}>CNPJ</label>
+                          <input style={inp} value={fC.local_entrega_cnpj}
+                            onChange={e => setFC(p=>({...p, local_entrega_cnpj: e.target.value}))}
+                            placeholder="00.000.000/0000-00" />
+                        </div>
+                        <div>
+                          <label style={lbl}>Logradouro / Endereço</label>
+                          <input style={inp} value={fC.local_entrega_logradouro}
+                            onChange={e => setFC(p=>({...p, local_entrega_logradouro: e.target.value}))}
+                            placeholder="Ex: Rodovia BR-163, km 742" />
+                        </div>
+                        <div>
+                          <label style={lbl}>Município</label>
+                          <input style={inp} value={fC.local_entrega_municipio}
+                            onChange={e => setFC(p=>({...p, local_entrega_municipio: e.target.value}))}
+                            placeholder="Ex: Sorriso" />
+                        </div>
+                        <div style={{ display:"grid", gridTemplateColumns:"80px 1fr", gap:8 }}>
+                          <div>
+                            <label style={lbl}>UF</label>
+                            <input style={inp} value={fC.local_entrega_uf} maxLength={2}
+                              onChange={e => setFC(p=>({...p, local_entrega_uf: e.target.value.toUpperCase()}))}
+                              placeholder="MT" />
+                          </div>
+                          <div>
+                            <label style={lbl}>CEP</label>
+                            <input style={inp} value={fC.local_entrega_cep}
+                              onChange={e => setFC(p=>({...p, local_entrega_cep: e.target.value}))}
+                              placeholder="00000-000" />
+                          </div>
+                        </div>
+                        {fC.local_entrega_nome && (
+                          <div style={{ gridColumn:"1/-1" }}>
+                            <button type="button"
+                              onClick={() => setFC(p=>({...p, local_entrega_pessoa_id:"", local_entrega_nome:"", local_entrega_cnpj:"", local_entrega_logradouro:"", local_entrega_municipio:"", local_entrega_uf:"", local_entrega_cep:""}))}
+                              style={{ fontSize:11, color:"#E24B4A", background:"none", border:"none", cursor:"pointer", padding:0 }}>
+                              ✕ Limpar local de entrega (usar endereço do comprador)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div style={{ gridColumn:"1/-1" }}>
                       <label style={lbl}>Obs.</label>
                       <textarea style={{ ...inp, height:56, resize:"vertical" }} value={fC.observacao} onChange={e => setFC(p=>({...p,observacao:e.target.value}))} />

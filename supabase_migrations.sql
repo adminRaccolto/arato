@@ -9191,3 +9191,18 @@ ALTER TABLE contratos_financeiros
   ADD COLUMN IF NOT EXISTS taxa_variavel_ref NUMERIC(10,6);
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 90: Local de Entrega nos Contratos de Venda
+-- Adiciona campos para informar armazém/destino diferente do endereço do comprador
+-- =============================================================================
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS local_entrega_pessoa_id  UUID REFERENCES pessoas(id),
+  ADD COLUMN IF NOT EXISTS local_entrega_nome        TEXT,
+  ADD COLUMN IF NOT EXISTS local_entrega_cnpj        TEXT,
+  ADD COLUMN IF NOT EXISTS local_entrega_logradouro  TEXT,
+  ADD COLUMN IF NOT EXISTS local_entrega_municipio   TEXT,
+  ADD COLUMN IF NOT EXISTS local_entrega_uf          TEXT,
+  ADD COLUMN IF NOT EXISTS local_entrega_cep         TEXT;
+
+NOTIFY pgrst, 'reload schema';

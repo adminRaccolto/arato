@@ -384,6 +384,14 @@ export type Contrato = {
   is_triangulacao?: boolean;       // true = cooperativa faz a intermediação fiscal
   comprador_final_id?: string;     // FK pessoas — trading/destino final do grão
   comprador_final_nome?: string;   // desnormalizado para histórico
+  // Local de Entrega — pode diferir do endereço do comprador
+  local_entrega_pessoa_id?: string;   // FK pessoas — armazém/destino cadastrado
+  local_entrega_nome?: string;         // razão social do local de entrega
+  local_entrega_cnpj?: string;
+  local_entrega_logradouro?: string;
+  local_entrega_municipio?: string;
+  local_entrega_uf?: string;
+  local_entrega_cep?: string;
   // Documento físico — PDF do contrato no Supabase Storage
   pdf_url?: string | null;
   pdf_nome?: string | null;
