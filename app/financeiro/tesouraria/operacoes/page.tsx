@@ -166,7 +166,7 @@ export default function OperacoesTesourariaPage() {
                       <td style={{ padding: "9px 16px", fontSize: 12, color: "var(--text-2)" }}>{op.categoria ?? "—"}</td>
                       <td style={{ padding: "9px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          <button onClick={() => abrirEditar(op)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
+                          <button onClick={() => abrirEditar(op)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
                           <button onClick={() => excluir(op.id)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>Excluir</button>
                         </div>
                       </td>

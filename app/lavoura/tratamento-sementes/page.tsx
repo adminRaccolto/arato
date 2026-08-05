@@ -835,7 +835,7 @@ export default function TratamentoSementesPage() {
 
                             {/* Editar */}
                             {(t.status === "planejada") && (
-                              <button onClick={() => abrirEditar(t)} style={btnSm("#F4F6FA", "#1A4870")}>Editar</button>
+                              <button onClick={() => abrirEditar(t)} style={btnSm("#F4F6FA", "#1A4870")}>Abrir</button>
                             )}
 
                             {/* Cancelar */}
@@ -894,7 +894,7 @@ export default function TratamentoSementesPage() {
                         setModalReceita(true);
                       }}
                       style={btnSm("#F4F6FA", "#1A4870")}
-                    >Editar</button>
+                    >Abrir</button>
                     <button
                       onClick={async () => {
                         if (!confirm(`Excluir receita "${r.nome}"?`)) return;

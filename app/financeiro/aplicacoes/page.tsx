@@ -732,7 +732,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
             <button onClick={e => { e.stopPropagation(); abrirRendimento(a); }} style={{ padding: "4px 9px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#DCFCE7", cursor: "pointer", fontSize: 11, color: "#166534", fontWeight: 600 }}>Rendimento</button>
             <button onClick={e => { e.stopPropagation(); abrirResgate(a); }} style={{ padding: "4px 9px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Resgatar</button>
           </>}
-          <button onClick={e => { e.stopPropagation(); abrirNova(a); }} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
+          <button onClick={e => { e.stopPropagation(); abrirNova(a); }} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
         </div>
       </div>
 

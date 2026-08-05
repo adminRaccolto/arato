@@ -466,7 +466,7 @@ export default function RomaneioEntradaPage() {
                   </td>
                   <td style={{ padding: "9px 12px" }}>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button style={{ ...btnR, padding: "4px 10px", fontSize: 11 }} onClick={() => abrirEditar(r)}>Editar</button>
+                      <button style={{ ...btnR, padding: "4px 10px", fontSize: 11 }} onClick={() => abrirEditar(r)}>Abrir</button>
                       {r.status === "rascunho" && (
                         <button style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</button>
                       )}

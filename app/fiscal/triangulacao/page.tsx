@@ -465,7 +465,7 @@ export default function TriangulacaoPage() {
                     }}>
                       {exp ? "▲ Fechar" : "▼ Documentos"}
                     </button>
-                    <button style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => abrir(item)}>Editar</button>
+                    <button style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => abrir(item)}>Abrir</button>
                     {item.status === "em_andamento" && (
                       <button style={{ ...btnV, padding: "5px 12px", fontSize: 12, background: "#16A34A" }} onClick={() => marcarConcluido(item)}>
                         ✓ Concluir

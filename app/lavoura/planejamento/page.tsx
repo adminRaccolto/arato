@@ -900,7 +900,7 @@ export default function Planejamento() {
                         {t.status !== "concluida" && t.status !== "cancelada" && (
                           <button style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40" }} onClick={() => concluirTarefa(t)}>✓ Concluir</button>
                         )}
-                        <button style={btnE} onClick={() => abrirEditarTarefa(t)}>Editar</button>
+                        <button style={btnE} onClick={() => abrirEditarTarefa(t)}>Abrir</button>
                         <button style={btnX} onClick={() => removerTarefa(t.id)}>Excluir</button>
                       </div>
                     </div>
@@ -955,7 +955,7 @@ export default function Planejamento() {
                           setEditRec(r);
                           setFR({ titulo: r.titulo, descricao: r.descricao ?? "", tipo: r.tipo, estadio_fenologico: r.estadio_fenologico ?? "", data_recomendacao: r.data_recomendacao ?? hoje(), responsavel_tecnico: r.responsavel_tecnico ?? "", prioridade: r.prioridade, status: r.status, ciclo_id: r.ciclo_id ?? "" });
                           setModalRec(true);
-                        }}>Editar</button>
+                        }}>Abrir</button>
                         <button style={btnX} onClick={() => { if (confirm("Excluir?")) { excluirRecomendacao(r.id); setRecomendacoes(p => p.filter(x => x.id !== r.id)); } }}>Excluir</button>
                       </div>
                     </div>

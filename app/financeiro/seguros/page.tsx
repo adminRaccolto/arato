@@ -460,7 +460,7 @@ export default function SegurosPage() {
                                       <td style={{ padding: "6px 10px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                                       <td style={{ padding: "6px 10px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
                                       <td style={{ padding: "6px 10px" }}>
-                                        <button onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
+                                        <button onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
                                       </td>
                                     </tr>
                                   );
@@ -557,7 +557,7 @@ export default function SegurosPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                           <td style={{ padding: "10px 14px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            {ap && <button onClick={() => abrirSinistro(ap, s)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>}
+                            {ap && <button onClick={() => abrirSinistro(ap, s)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>}
                           </td>
                         </tr>
                       );

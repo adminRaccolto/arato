@@ -690,7 +690,7 @@ export default function ParceriasPage() {
                       <button onClick={e => { e.stopPropagation(); abrirApuracao(p.id, p.nome); }}
                         style={btn(C.mostrClr, C.mostr, { fontSize: 12, padding: "5px 10px" })}>Apurar</button>
                       <button onClick={e => { e.stopPropagation(); abrirModalParceria(p); }}
-                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Editar</button>
+                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</button>
                       <button onClick={e => { e.stopPropagation(); excluirParceria(p.id, p.nome); }}
                         style={btn(C.vermClr, C.verm, { fontSize: 12, padding: "5px 10px" })}>Excluir</button>
                       <span style={{ color: C.ter }}>{aberto ? "▲" : "▼"}</span>
@@ -857,7 +857,7 @@ export default function ParceriasPage() {
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={e => { e.stopPropagation(); abrirModalGrupo(g); }}
-                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Editar</button>
+                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</button>
                       <button onClick={async e => {
                         e.stopPropagation();
                         if (!confirm(`Excluir grupo "${g.nome}"?`)) return;

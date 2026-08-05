@@ -1134,7 +1134,12 @@ function FiscalInner() {
           },
           itens:    itensPayload,
           natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
-          inf_cpl:  fVenda.observacao || undefined,
+          inf_cpl:  [
+            fVenda.observacao || "",
+            fVenda.local_entrega
+              ? `LOCAL DE ENTREGA: ${fVenda.local_entrega}`
+              : "",
+          ].filter(Boolean).join(" | ") || undefined,
           frete:    fVenda.frete_conta,
           tipo:     "1",
           transporte: fVenda.transportadora ? {

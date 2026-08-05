@@ -864,7 +864,7 @@ export default function ComprasPage() {
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>
                               {ped.fiscal ? "NFs Vinculadas" : "Entregas"}
                             </button>
-                            <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped)}>Editar</button>
+                            <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped)}>Abrir</button>
                             <button style={btnX} onClick={async () => {
                               try {
                                 const { nfs } = await listarNfEntradasPorPedido(ped.id);

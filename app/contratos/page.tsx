@@ -345,6 +345,7 @@ export default function Contratos() {
   // ── modal contrato ───────────────────────────────────────────
   const [modalContrato, setModalContrato] = useState(false);
   const [editContrato, setEditContrato]   = useState<ContratoVM|null>(null);
+  const [viewOnly, setViewOnly]           = useState(false); // true = apenas visualizar
   const [abaForm, setAbaForm]             = useState<AbaForm>("principal");
   const [itens, setItens]                 = useState<Omit<ContratoItem,"id"|"created_at"|"contrato_id"|"fazenda_id">[]>([itemVazio()]);
 
@@ -702,6 +703,7 @@ export default function Contratos() {
   // ── abrir modal ───────────────────────────────────────────────
   const abrirNovo = () => {
     setEditContrato(null);
+    setViewOnly(false);
     const vazio = fContratoVazio();
     if (anosSafra[0]) vazio.safra = anosSafra[0].descricao;
     setFC(vazio);
@@ -711,7 +713,8 @@ export default function Contratos() {
     setModalContrato(true);
   };
 
-  const abrirEditar = async (c: ContratoVM) => {
+  const abrirEditar = async (c: ContratoVM, modoEdicao = false) => {
+    setViewOnly(!modoEdicao);
     setEditContrato(c);
     setFC({
       fazenda_id: c.fazenda_id ?? "",
@@ -961,32 +964,31 @@ export default function Contratos() {
       if (fC.dado_em_cessao && Object.keys(cessaoSelecionados).length > 0) {
         await salvarCessaoDebitos(salvo.id, fidContrato, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
       }
-      // cria CR de "Pedido de Venda" (previsão) quando contrato confirmado + sem CR existente
-      // Status "previsto" = entra no fluxo de caixa como previsão, é reduzido a cada entrega faturada
+      // num_lancamento + CR via API route (service_role_key bypassa RLS / JWT expirado)
       const valorTotal = itensCalc.reduce((s, i) => s + i.valor_total, 0);
-      if (fC.confirmado && valorTotal > 0 && !salvo.lancamento_cr_id) {
+      if (fC.confirmado) {
         const compradorNome = pessoas.find(p=>p.id===fC.pessoa_id)?.nome ?? payload.comprador ?? "";
-        const dataRef = fC.data_pagamento || fC.data_entrega || new Date().toISOString().split("T")[0];
-        const { data: crRow } = await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId,
-          tipo: "receber",
-          descricao: `Pedido de Venda — ${compradorNome} (Contrato ${salvo.numero ?? salvo.id.slice(-6)})`,
-          categoria: "Pedido de Venda — Grãos",
-          data_lancamento: new Date().toISOString().split("T")[0],
-          data_vencimento: dataRef,
-          valor: valorTotal,
-          moeda: fC.moeda,
-          status: "previsto",
-          safra_id: fC.ciclo_id || null,
-          ano_safra_id: fC.ano_safra_id || null,
-          contrato_id: salvo.id,
-          pessoa_id: fC.pessoa_id || null,
-          observacao: `Pedido de Venda gerado ao confirmar contrato. Será reduzido conforme faturamento dos romaneios.`,
-          auto: true,
-        }).select("id").maybeSingle();
-        if (crRow?.id) {
-          await supabase.from("contratos").update({ lancamento_cr_id: crRow.id }).eq("id", salvo.id);
-        }
+        const resp = await fetch("/api/contratos/confirmar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contrato_id: salvo.id,
+            fazenda_id: fazendaId,
+            valor_total: valorTotal,
+            moeda: fC.moeda,
+            pessoa_id: fC.pessoa_id || undefined,
+            comprador: compradorNome,
+            numero: salvo.numero,
+            ciclo_id: fC.ciclo_id || undefined,
+            ano_safra_id: fC.ano_safra_id || undefined,
+            data_pagamento: fC.data_pagamento || undefined,
+            data_entrega: fC.data_entrega || undefined,
+            lancamento_cr_id: salvo.lancamento_cr_id || undefined,
+          }),
+        });
+        const json = await resp.json();
+        if (json.num_lancamento) salvo = { ...salvo, num_lancamento: json.num_lancamento };
+        if (json.lancamento_cr_id) salvo = { ...salvo, lancamento_cr_id: json.lancamento_cr_id };
       }
       if (editContrato) {
         setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i._qKg>0) as unknown as ContratoItem[] } : c));
@@ -1550,7 +1552,7 @@ export default function Contratos() {
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"right" }}>
                                   <div style={{ display:"flex", gap:4, justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
-                                    <button style={{ padding:"3px 9px", border:"0.5px solid var(--border-table)", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c)}>Editar</button>
+                                    <button style={{ padding:"3px 9px", border:"0.5px solid var(--border-table)", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c, false)}>Abrir</button>
                                     {c.status !== "encerrado" && c.status !== "cancelado" && (
                                       <button style={{ padding:"3px 9px", border:"0.5px solid #C9921B50", borderRadius:5, background:"#FBF3E0", cursor:"pointer", fontSize:11, color:"#7A5200" }}
                                         onClick={async () => {
@@ -1842,17 +1844,30 @@ export default function Contratos() {
 
             {/* Cabeçalho do modal */}
             <div style={{ padding:"14px 20px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div style={{ fontWeight:600, fontSize:15, color:"var(--text-1)" }}>{editContrato ? `Editando ${editContrato.numero}` : "Novo Contrato"}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ fontWeight:600, fontSize:15, color:"var(--text-1)" }}>
+                  {editContrato ? (viewOnly ? `Contrato ${editContrato.numero}` : `Editando ${editContrato.numero}`) : "Novo Contrato"}
+                </div>
+                {viewOnly && editContrato && (
+                  <span style={{ fontSize:10, background:"#FBF3E0", color:"#7A5200", padding:"2px 8px", borderRadius:6, fontWeight:600 }}>Visualização</span>
+                )}
+              </div>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                 {/* Autorização */}
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <span style={{ fontSize:11, color:"var(--text-2)" }}>Autorização:</span>
-                  <select style={{ ...inp, width:"auto", padding:"5px 8px" }} value={fC.autorizacao} onChange={e => setFC(p=>({...p,autorizacao:e.target.value as Contrato["autorizacao"]}))}>
+                  <select disabled={viewOnly} style={{ ...inp, width:"auto", padding:"5px 8px" }} value={fC.autorizacao} onChange={e => setFC(p=>({...p,autorizacao:e.target.value as Contrato["autorizacao"]}))}>
                     <option value="pendente">Pendente</option>
                     <option value="autorizada">Autorizada</option>
                     <option value="recusada">Recusada</option>
                   </select>
                 </div>
+                {viewOnly && editContrato && (
+                  <button onClick={() => setViewOnly(false)}
+                    style={{ padding:"5px 14px", border:"none", borderRadius:6, background:"#C9921B", color:"white", cursor:"pointer", fontSize:12, fontWeight:600 }}>
+                    ✏ Editar
+                  </button>
+                )}
                 <button onClick={() => setModalContrato(false)} style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:12 }}>✕ Fechar</button>
               </div>
             </div>
@@ -2578,10 +2593,18 @@ export default function Contratos() {
                 })()}
               </div>
               <div style={{ display:"flex", gap:8 }}>
-                <button style={btnR} onClick={() => setModalContrato(false)}>Cancelar</button>
-                <button style={{ ...btnV, opacity: salvando||!fC.data_entrega?0.5:1 }} disabled={salvando||!fC.data_entrega} onClick={salvarContrato}>
-                  {salvando ? "Salvando…" : editContrato ? "Salvar Alterações" : "Salvar Contrato"}
-                </button>
+                <button style={btnR} onClick={() => setModalContrato(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
+                {!viewOnly && (
+                  <button style={{ ...btnV, opacity: salvando||!fC.data_entrega?0.5:1 }} disabled={salvando||!fC.data_entrega} onClick={salvarContrato}>
+                    {salvando ? "Salvando…" : editContrato ? "Salvar Alterações" : "Salvar Contrato"}
+                  </button>
+                )}
+                {viewOnly && editContrato && (
+                  <button onClick={() => setViewOnly(false)}
+                    style={{ padding:"8px 20px", border:"none", borderRadius:8, background:"#C9921B", color:"white", cursor:"pointer", fontSize:13, fontWeight:600 }}>
+                    ✏ Editar este Contrato
+                  </button>
+                )}
               </div>
             </div>
           </div>
