@@ -302,7 +302,7 @@ const NAV_MODULE_MAP: Record<string, string[]> = {
   "comercial":     ["contratos", "expedicao", "arrendamento", "protecao_margem"],
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],
-  "estoque":       ["estoque"],
+  // "estoque" removido — estoque é módulo fixo (sempre visível), não add-on
   "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros"],
   "lavoura":       ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades"],
   "fiscal":        ["fiscal_nfe", "fiscal_sped"],

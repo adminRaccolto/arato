@@ -552,27 +552,29 @@ export default function ComprasPage() {
             }
           } else {
             // Pagamento normal (PIX / Boleto / Transferência) → CP em R$ ou USD
+            // Usa API route com service_role_key para evitar falha silenciosa por JWT expirado
             const isUSD = f.cotacao_moeda === "USD";
-            const lanc = await criarLancamento({
-              fazenda_id:        fidPedido,
-              tipo:              "pagar",
-              moeda:             isUSD ? "USD" : "BRL",
-              cotacao_usd:       isUSD && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
-              descricao:         `Pedido de Compra nº ${f.nr_pedido || pedidoId.slice(0,8)} — ${fornecedorNome}`,
-              categoria:         "Insumos",
-              data_lancamento:   f.data_registro,
-              data_vencimento:   vencimento,
-              valor:             totalItens,
-              status:            "em_aberto",
-              auto:              true,
-              pessoa_id:         f.fornecedor_id || undefined,
-              origem_lancamento: "pedido_compra",
-              pedido_compra_id:  pedidoId,
-              ano_safra_id:      f.ano_safra_id || undefined,
-              ciclo_id:          f.ciclo_id || undefined,
-              produtor_id:       f.produtor_id || undefined,
+            const cpResp = await fetch("/api/compras/gerar-cp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                pedido_id:       pedidoId,
+                fazenda_id:      fidPedido,
+                nr_pedido:       f.nr_pedido || undefined,
+                fornecedor_nome: fornecedorNome,
+                fornecedor_id:   f.fornecedor_id || undefined,
+                moeda:           isUSD ? "USD" : "BRL",
+                cotacao_usd:     isUSD && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
+                valor_total:     totalItens,
+                data_registro:   f.data_registro,
+                data_vencimento: vencimento,
+                ano_safra_id:    f.ano_safra_id || undefined,
+                ciclo_id:        f.ciclo_id || undefined,
+                produtor_id:     f.produtor_id || undefined,
+              }),
             });
-            await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
+            const cpJson = await cpResp.json();
+            if (cpJson.error) throw new Error(cpJson.error);
           }
         } catch (lancErr: unknown) {
           const msg = (lancErr as { message?: string })?.message ?? String(lancErr);
@@ -580,19 +582,30 @@ export default function ComprasPage() {
         }
       }
 
-      // Sincroniza dados do lançamento existente (número, fornecedor, valor, vencimento)
+      // Sincroniza dados do lançamento existente via API route (imune a JWT)
       if (!deveGerarLancamento && pedidoExistente?.lancamento_id && !isBarter && f.status === "aprovado") {
         try {
-          const fornecedorNome = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
-          const vencimento = f.data_vencimento || f.previsao_entrega_unica || f.data_registro;
-          await atualizarLancamento(pedidoExistente.lancamento_id, {
-            descricao:       `Pedido de Compra nº ${f.nr_pedido || pedidoId.slice(0, 8)} — ${fornecedorNome}`,
-            valor:           totalItens,
-            data_vencimento: vencimento,
-            pessoa_id:       f.fornecedor_id || undefined,
-            ano_safra_id:    f.ano_safra_id || undefined,
-            ciclo_id:        f.ciclo_id || undefined,
-            produtor_id:     f.produtor_id || undefined,
+          const isUSD2 = f.cotacao_moeda === "USD";
+          const fNome2 = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
+          const venc2  = f.data_vencimento || f.previsao_entrega_unica || f.data_registro;
+          await fetch("/api/compras/gerar-cp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pedido_id:       pedidoId,
+              fazenda_id:      fidPedido,
+              nr_pedido:       f.nr_pedido || undefined,
+              fornecedor_nome: fNome2,
+              fornecedor_id:   f.fornecedor_id || undefined,
+              moeda:           isUSD2 ? "USD" : "BRL",
+              cotacao_usd:     isUSD2 && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
+              valor_total:     totalItens,
+              data_registro:   f.data_registro,
+              data_vencimento: venc2,
+              ano_safra_id:    f.ano_safra_id || undefined,
+              ciclo_id:        f.ciclo_id || undefined,
+              produtor_id:     f.produtor_id || undefined,
+            }),
           });
         } catch { /* não bloqueia o save */ }
       }
