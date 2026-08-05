@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export const maxDuration = 60; // segundos — necessário para BCB séries lentas
+
 const BCB_SERIES: Record<string, { serie: number; tipo: "mensal_pct" | "aa_direto" }> = {
   CDI:     { serie: 4391,  tipo: "mensal_pct" },
   IPCA:    { serie: 433,   tipo: "mensal_pct" },
@@ -20,35 +22,49 @@ type BuscarResult =
   | { indexador: string; valor_pct: number | null; erro: string }
   | { indexador: string; valor_pct: number; ano: number; mes: number };
 
+async function fetchBCB(serie: number, qtd: number, timeoutMs: number): Promise<{ data: string; valor: string }[]> {
+  const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/${qtd}?formato=json`;
+  const resp = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  if (!resp.ok) throw new Error(`BCB HTTP ${resp.status}`);
+  return resp.json();
+}
+
+function parseDados(
+  dados: { data: string; valor: string }[],
+  indexador: string,
+  tipo: "mensal_pct" | "aa_direto"
+): BuscarResult[] {
+  return dados.flatMap(d => {
+    const valorRaw = parseFloat(d.valor.replace(",", "."));
+    if (isNaN(valorRaw)) return [];
+    const valorAa = tipo === "aa_direto" ? valorRaw : amParaAa(valorRaw);
+    const partes = d.data.split("/");
+    if (partes.length !== 3) return [];
+    return [{
+      indexador,
+      valor_pct: parseFloat(valorAa.toFixed(4)),
+      ano: parseInt(partes[2]),
+      mes: parseInt(partes[1]),
+    }];
+  });
+}
+
 async function buscarIndexador(
   indexador: string,
   cfg: { serie: number; tipo: "mensal_pct" | "aa_direto" },
-  _ano: number,
-  _mes: number
 ): Promise<BuscarResult[]> {
-  try {
-    const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${cfg.serie}/dados/ultimos/120?formato=json`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    if (!resp.ok) throw new Error(`BCB HTTP ${resp.status}`);
-    const dados: { data: string; valor: string }[] = await resp.json();
-    if (!dados.length) throw new Error("Resposta vazia");
-
-    return dados.flatMap(d => {
-      const valorRaw = parseFloat(d.valor.replace(",", "."));
-      if (isNaN(valorRaw)) return [];
-      const valorAa = cfg.tipo === "aa_direto" ? valorRaw : amParaAa(valorRaw);
-      const partes = d.data.split("/");
-      if (partes.length !== 3) return [];
-      return [{
-        indexador,
-        valor_pct: parseFloat(valorAa.toFixed(4)),
-        ano: parseInt(partes[2]),
-        mes: parseInt(partes[1]),
-      }];
-    });
-  } catch (e) {
-    return [{ indexador, valor_pct: null, erro: (e as Error).message }];
+  // Tenta 120 meses com timeout generoso; se falhar, retry com 24 meses
+  for (const [qtd, ms] of [[120, 28_000], [24, 20_000]] as [number, number][]) {
+    try {
+      const dados = await fetchBCB(cfg.serie, qtd, ms);
+      if (!dados.length) throw new Error("Resposta vazia");
+      return parseDados(dados, indexador, cfg.tipo);
+    } catch {
+      if (qtd === 24) return [{ indexador, valor_pct: null, erro: `Timeout após ${qtd} registros` }];
+      // continua para o retry com menos registros
+    }
   }
+  return [{ indexador, valor_pct: null, erro: "Falha inesperada" }];
 }
 
 export async function POST() {
@@ -57,13 +73,9 @@ export async function POST() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const agora = new Date();
-  const ano   = agora.getFullYear();
-  const mes   = agora.getMonth() + 1;
-
   // Busca histórico completo (120 meses) de cada indexador em paralelo
   const porIndexador = await Promise.all(
-    Object.entries(BCB_SERIES).map(([idx, cfg]) => buscarIndexador(idx, cfg, ano, mes))
+    Object.entries(BCB_SERIES).map(([idx, cfg]) => buscarIndexador(idx, cfg))
   );
 
   // Aplana em lista única, separa ok vs erro por indexador
