@@ -724,71 +724,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Linha 2: alertas | acesso rápido */}
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 280px",gap:20,alignItems:"start",marginBottom:12 }}>
-
-            {/* Alertas compactos */}
-            <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4 }}>
-                <span style={{ fontSize:9,fontWeight:700,color:"var(--text-muted)",letterSpacing:".12em",textTransform:"uppercase" }}>ALERTAS &amp; PENDÊNCIAS</span>
-                {!loadAl && (
-                  <span style={{ fontSize:10,fontWeight:700,padding:"1px 8px",borderRadius:10,
-                    background:alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.15)":alertas.some(a=>a.urgencia==="alto")?"rgba(251,191,36,0.1)":"rgba(255,255,255,0.05)",
-                    color:alertas.some(a=>a.urgencia==="critico")?"#EF4444":alertas.some(a=>a.urgencia==="alto")?"#FBBF24":"var(--text-muted)",
-                    border:`0.5px solid ${alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.3)":alertas.some(a=>a.urgencia==="alto")?"rgba(251,191,36,0.25)":"var(--border)"}` }}>
-                    {alertas.length} {alertas.length===1?"item":"itens"}
-                  </span>
-                )}
-              </div>
-              {loadAl ? (
-                <div style={{ fontSize:11,color:"var(--text-muted)" }}>Verificando…</div>
-              ) : alertas.length === 0 ? (
-                <div style={{ display:"flex",alignItems:"center",gap:8,padding:"7px 11px",borderRadius:7,background:"rgba(34,197,94,0.06)",border:"0.5px solid rgba(34,197,94,0.2)" }}>
-                  <span style={{ color:"#22C55E",fontSize:14 }}>✓</span>
-                  <span style={{ fontSize:11,fontWeight:600,color:"#22C55E" }}>Tudo em dia — nenhuma pendência</span>
-                </div>
-              ) : (
-                alertas.slice(0,4).map(a => {
-                  const cor = COR[a.urgencia];
-                  return (
-                    <a key={a.id} href={a.link} style={{ display:"flex",alignItems:"center",gap:8,
-                      padding:"5px 9px",borderRadius:6,
-                      background:"rgba(255,255,255,0.04)",border:"0.5px solid rgba(255,255,255,0.05)",
-                      borderLeft:`3px solid ${cor.badge}`,textDecoration:"none" }}>
-                      <span style={{ fontSize:9,fontWeight:700,color:cor.badge,letterSpacing:".05em",textTransform:"uppercase",
-                        flexShrink:0,padding:"1px 5px",borderRadius:4,background:cor.badge+"18" }}>
-                        {TIPO_LABEL[a.tipo] ?? a.tipo}
-                      </span>
-                      <span style={{ flex:1,fontSize:11,color:"rgba(255,255,255,0.6)",lineHeight:1.3,
-                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-                        {a.desc}
-                      </span>
-                    </a>
-                  );
-                })
-              )}
-              {!loadAl && alertas.length > 4 && (
-                <div style={{ fontSize:10,color:"rgba(255,255,255,0.22)",paddingTop:1 }}>
-                  +{alertas.length - 4} mais
-                </div>
-              )}
-            </div>
-
-            {/* Acesso Rápido */}
-            <div>
-              <div style={{ fontSize:9,fontWeight:700,color:"var(--text-muted)",letterSpacing:".12em",textTransform:"uppercase",marginBottom:6 }}>ACESSO RÁPIDO</div>
-              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:5 }}>
-                {ATALHOS.map(a => (
-                  <a key={a.link} href={a.link} className="atalho-dark"
-                    style={{ display:"flex",alignItems:"center",gap:7,padding:"7px 9px",borderRadius:7,
-                      border:"0.5px solid rgba(255,255,255,0.08)",textDecoration:"none",
-                      background:"rgba(255,255,255,0.04)" }}>
-                    <span style={{ width:24,height:24,borderRadius:6,background:a.cor+"22",color:a.cor,fontWeight:800,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
-                    <span style={{ fontSize:11,color:"rgba(255,255,255,0.55)",fontWeight:500,lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{a.label}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
+          {/* Linha 2: atalhos rápidos (linha horizontal) */}
+          <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap" }}>
+            <span style={{ fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.25)",letterSpacing:".12em",textTransform:"uppercase",marginRight:4,flexShrink:0 }}>ATALHOS</span>
+            {ATALHOS.map(a => (
+              <a key={a.link} href={a.link} className="atalho-dark"
+                style={{ display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:6,
+                  border:"0.5px solid rgba(255,255,255,0.08)",textDecoration:"none",
+                  background:"rgba(255,255,255,0.04)",flexShrink:0 }}>
+                <span style={{ width:18,height:18,borderRadius:4,background:a.cor+"22",color:a.cor,fontWeight:800,fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
+                <span style={{ fontSize:11,color:"rgba(255,255,255,0.55)",fontWeight:500,whiteSpace:"nowrap" }}>{a.label}</span>
+              </a>
+            ))}
           </div>
 
           {/* Linha 3: cotações inline */}
@@ -816,6 +763,51 @@ export default function Dashboard() {
               </span>
             </div>
           )}
+        </div>
+
+        {/* Alertas & Pendências — fora do hero, no conteúdo principal */}
+        <div style={{ padding:"20px 28px 0" }}>
+          <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
+            <div style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+              <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Alertas &amp; Pendências</span>
+              {!loadAl && (
+                <span style={{ fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,
+                  background:alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.1)":alertas.some(a=>a.urgencia==="alto")?"rgba(251,191,36,0.1)":"rgba(22,163,74,0.08)",
+                  color:alertas.some(a=>a.urgencia==="critico")?"#E24B4A":alertas.some(a=>a.urgencia==="alto")?"#EF9F27":"#16A34A",
+                  border:`0.5px solid ${alertas.some(a=>a.urgencia==="critico")?"rgba(226,75,74,0.3)":alertas.some(a=>a.urgencia==="alto")?"rgba(239,159,39,0.3)":"rgba(22,163,74,0.2)"}` }}>
+                  {alertas.length === 0 ? "Tudo em dia" : `${alertas.length} ${alertas.length===1?"item":"itens"}`}
+                </span>
+              )}
+            </div>
+            {loadAl ? (
+              <div style={{ padding:"16px 20px",fontSize:12,color:"var(--text-3)" }}>Verificando alertas…</div>
+            ) : alertas.length === 0 ? (
+              <div style={{ display:"flex",alignItems:"center",gap:10,padding:"14px 20px" }}>
+                <span style={{ color:"#16A34A",fontSize:16 }}>✓</span>
+                <span style={{ fontSize:13,fontWeight:600,color:"#16A34A" }}>Nenhuma pendência no momento</span>
+              </div>
+            ) : (
+              alertas.map(a => {
+                const cor = COR[a.urgencia];
+                return (
+                  <a key={a.id} href={a.link} style={{ display:"flex",alignItems:"center",gap:12,
+                    padding:"10px 20px",borderBottom:"0.5px solid var(--border-table)",
+                    borderLeft:`3px solid ${cor.badge}`,textDecoration:"none",
+                    background:"var(--bg-card)" }}>
+                    <span style={{ fontSize:10,fontWeight:700,color:cor.badge,letterSpacing:".05em",textTransform:"uppercase",
+                      flexShrink:0,padding:"2px 7px",borderRadius:5,background:cor.badge+"14",whiteSpace:"nowrap" }}>
+                      {TIPO_LABEL[a.tipo] ?? a.tipo}
+                    </span>
+                    <span style={{ flex:1,fontSize:12,color:"var(--text-2)",lineHeight:1.4,
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                      {a.desc}
+                    </span>
+                    <span style={{ fontSize:11,color:"var(--text-3)",flexShrink:0 }}>ver →</span>
+                  </a>
+                );
+              })
+            )}
+          </div>
         </div>
 
         {/* Conciliação (apenas se houver pendências) */}
