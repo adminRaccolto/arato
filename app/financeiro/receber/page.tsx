@@ -52,7 +52,7 @@ const fmtUSD  = (v: number) => `US$ ${v.toLocaleString("pt-BR", { minimumFractio
 const fmtData = (iso?: string | null) => { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 
 const paraBRL = (l: Lancamento) =>
-  l.moeda === "USD" ? l.valor * (l.cotacao_usd ?? COTACAO_USD) : l.valor;
+  l.moeda === "USD" ? l.valor * (l.cotacao_usd || COTACAO_USD) : l.valor;
 
 const exibirValor = (l: Lancamento) => {
   if (l.moeda === "USD")    return fmtUSD(l.valor);
@@ -871,7 +871,8 @@ export default function ContasReceber() {
                         const isPrevisao = l.natureza === "previsao";
                         const sEfet      = statusEfetivo(l);
                         const dot        = dotStatus(sEfet);
-                        const conv       = l.moeda === "USD" ? `≈ ${fmtBRL(l.valor * (l.cotacao_usd ?? COTACAO_USD))}` : null;
+                        const semCotacao = l.moeda === "USD" && !l.cotacao_usd;
+                        const conv       = l.moeda === "USD" ? (l.cotacao_usd ? `≈ ${fmtBRL(l.valor * l.cotacao_usd)}` : "⚠ Abra e informe a cotação") : null;
                         const prod       = produtores.find(p => p.id === l.produtor_id)?.nome ?? "—";
                         const safra      = anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? "—";
                         const cicloDesc  = ciclos.find(c => c.id === l.ciclo_id)?.descricao ?? "—";
@@ -940,7 +941,7 @@ export default function ContasReceber() {
                             {/* Valor */}
                             <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                               <div style={{ fontWeight: 700, color: l.moeda === "barter" ? "#FBBF24" : "#22C55E", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{exibirValor(l)}</div>
-                              {conv && <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 1 }}>{conv}</div>}
+                              {conv && <div style={{ fontSize: 9, color: semCotacao ? "#EF9F27" : "var(--text-muted)", marginTop: 1 }}>{conv}</div>}
                             </td>
                             {/* Data Receb */}
                             {col("dt_receb") && <td style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "#22C55E", whiteSpace: "nowrap" }}>
