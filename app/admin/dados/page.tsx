@@ -20,6 +20,8 @@ type SubItem = {
   deleteTables: string[];
   aviso?: string;
   extraFiltro?: Record<string, string>; // filtros adicionais além de fazenda_id
+  // Ações de UPDATE executadas após os deletes (ex: zeramento de estoque)
+  updateActions?: Array<{ table: string; set: Record<string, unknown>; extraFiltro?: Record<string, string> }>;
 };
 
 type Grupo = {
@@ -74,9 +76,12 @@ const GRUPOS: Grupo[] = [
   {
     id: "estoque", label: "Estoque & Compras", icon: "📦", cor: "#378ADD", bg: "#EFF6FF",
     subitens: [
-      { id: "nf_entradas",   label: "NFs de Entrada",             icon: "🧾", countTables: ["nf_entradas"],          deleteTables: ["nf_entrada_itens","nf_entradas"] },
-      { id: "movimentacoes", label: "Movimentações de Estoque",   icon: "📈", countTables: ["movimentacoes_estoque"], deleteTables: ["movimentacoes_estoque"] },
-      { id: "pedidos",       label: "Pedidos de Compra",          icon: "🛒", countTables: ["pedidos_compra"],        deleteTables: ["pedidos_compra_itens","pedidos_compra"] },
+      { id: "nf_entradas",    label: "NFs de Entrada",                    icon: "🧾", countTables: ["nf_entradas"],          deleteTables: ["nf_entrada_itens","nf_entradas"] },
+      { id: "movimentacoes",  label: "Movimentações de Estoque",          icon: "📈", countTables: ["movimentacoes_estoque"], deleteTables: ["movimentacoes_estoque"] },
+      { id: "pedidos",        label: "Pedidos de Compra",                 icon: "🛒", countTables: ["pedidos_compra"],        deleteTables: ["pedidos_compra_itens","pedidos_compra"] },
+      { id: "insumos_est",    label: "Cadastro de Insumos",               icon: "🌱", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "insumo" }, aviso: "Exclua Movimentações de Estoque antes — movimentações referenciam insumos." },
+      { id: "itens_gerais_est", label: "Itens Gerais (peças/materiais)", icon: "🔩", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "produto" }, aviso: "Exclua Movimentações de Estoque antes — movimentações referenciam itens." },
+      { id: "zeramento",      label: "Zeramento de Estoque",              icon: "🔢", countTables: ["insumos"], deleteTables: [], aviso: "Define estoque = 0 em todos os itens sem apagar os registros do cadastro.", updateActions: [{ table: "insumos", set: { estoque: 0 } }] },
     ],
   },
   {
@@ -245,6 +250,23 @@ export default function DadosAdminPage() {
               if (error) { if (!isErroBenigno(error.message)) erros.push(`${table}: ${error.message}`); }
               else deletados += count ?? 0;
             } catch { /* tabela inexistente */ }
+          }
+        }
+        // Ações de UPDATE (ex: zeramento de estoque — zera sem deletar)
+        if (sub.updateActions) {
+          for (const action of sub.updateActions) {
+            for (const fId of fazIds) {
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                let q: any = supabase.from(action.table).update(action.set, { count: "exact" }).eq("fazenda_id", fId);
+                if (action.extraFiltro) {
+                  for (const [k, v] of Object.entries(action.extraFiltro)) q = q.eq(k, v);
+                }
+                const { error, count } = await q;
+                if (error && !isErroBenigno(error.message)) erros.push(`${action.table} (zeramento): ${error.message}`);
+                else deletados += count ?? 0;
+              } catch { /* tabela inexistente */ }
+            }
           }
         }
         resultados.push({ label: `${grupo.label} · ${sub.label}`, ok: erros.length === 0, deletados, erros });
