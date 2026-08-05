@@ -23,6 +23,7 @@ export default function TaxasVariaveisPage() {
   const [loading, setLoading]   = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [msgAtualiz, setMsgAtualiz]   = useState<string | null>(null);
+  const [msgErro,    setMsgErro]      = useState<string | null>(null);
 
   // Filtro de período
   const [anoInicio, setAnoInicio] = useState(anoAtual() - 2);
@@ -51,13 +52,19 @@ export default function TaxasVariaveisPage() {
   async function atualizarAgora() {
     setAtualizando(true);
     setMsgAtualiz(null);
+    setMsgErro(null);
     try {
-      const r = await fetch("/api/cron/atualizar-taxas");
+      const r = await fetch("/api/configuracoes/taxas", { method: "POST" });
       const json = await r.json();
-      setMsgAtualiz(json.sucesso ?? "Atualizado");
-      await carregar();
-    } catch {
-      setMsgAtualiz("Erro ao chamar o serviço de atualização");
+      if (!r.ok) {
+        setMsgErro(json.error ?? `Erro HTTP ${r.status}`);
+      } else {
+        setMsgAtualiz(json.sucesso ?? "Atualizado");
+        if (json.erros?.length) setMsgErro(`Parcial: ${json.erros.join(" | ")}`);
+        await carregar();
+      }
+    } catch (e) {
+      setMsgErro("Erro de rede: " + (e as Error).message);
     }
     setAtualizando(false);
   }
@@ -113,8 +120,22 @@ export default function TaxasVariaveisPage() {
         </div>
 
         {msgAtualiz && (
-          <div style={{ marginBottom: 16, padding: "10px 16px", borderRadius: 8, background: "#EAF4EC", border: "0.5px solid #16A34A", color: "#0F5132", fontSize: 12, fontWeight: 600 }}>
+          <div style={{ marginBottom: 8, padding: "10px 16px", borderRadius: 8, background: "#EAF4EC", border: "0.5px solid #16A34A", color: "#0F5132", fontSize: 12, fontWeight: 600 }}>
             ✓ {msgAtualiz}
+          </div>
+        )}
+        {msgErro && (
+          <div style={{ marginBottom: 16, padding: "10px 16px", borderRadius: 8, background: "#FEF2F2", border: "0.5px solid #E24B4A", color: "#991B1B", fontSize: 12, fontWeight: 600 }}>
+            ⚠ {msgErro}
+            {msgErro.includes("tabela") || msgErro.includes("relation") ? (
+              <div style={{ marginTop: 6, fontWeight: 400, fontSize: 11 }}>
+                Execute a migration <strong>taxas_variaveis_historico</strong> no Supabase SQL Editor e tente novamente.
+              </div>
+            ) : msgErro.includes("does not exist") || msgErro.includes("42P01") ? (
+              <div style={{ marginTop: 6, fontWeight: 400, fontSize: 11 }}>
+                Tabela não encontrada. Execute a migration pendente no Supabase SQL Editor.
+              </div>
+            ) : null}
           </div>
         )}
 
