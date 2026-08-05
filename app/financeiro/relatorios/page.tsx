@@ -160,8 +160,10 @@ function FinanceiroRelatoriosInner() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
+    // Carrega de TODAS as fazendas da conta para incluir previsões de todas as fazendas
+    const fidsParaCarregar = fazendaIds?.length ? fazendaIds : [fazendaId];
     Promise.all([
-      listarLancamentos(fazendaId),
+      Promise.all(fidsParaCarregar.map(fid => listarLancamentos(fid))).then(results => results.flat()),
       listarOperacoesGerenciais(fazendaId),
       temApoio
         ? sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", fazendaIds)
@@ -185,7 +187,7 @@ function FinanceiroRelatoriosInner() {
       if (taxa && taxa > 0) setCotacaoUSD(taxa);
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, temApoio]);
+  }, [fazendaId, temApoio, fazendaIds?.join(",")]);
 
   // localStorage simulações — escopad por fazenda para não vazar entre clientes
   const simKey = fazendaId ? `ractech_sim_fluxo_${fazendaId}` : null;

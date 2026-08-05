@@ -399,10 +399,17 @@ function ContasPagarInner() {
     listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
     listarProdutoresDaConta(contaId ?? "", fazendaId ?? undefined).then(setProdutores).catch(() => {});
     if (fazendaId) {
-      listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
+      // Carrega anos safra de TODAS as fazendas da conta para que o lookup no grid funcione
+      const fids = fazendaIds?.length ? fazendaIds : [fazendaId];
+      Promise.all(fids.map(fid => listarAnosSafra(fid)))
+        .then(results => {
+          const merged = results.flat();
+          const seen = new Set<string>();
+          setAnosSafra(merged.filter(a => seen.has(a.id) ? false : (seen.add(a.id), true)));
+        }).catch(() => {});
       listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
     }
-  }, [contaId, fazendaId]);
+  }, [contaId, fazendaId, fazendaIds?.join(",")]);
 
   // Recarrega ciclos e talhões quando a fazenda selecionada no form muda
   useEffect(() => {
@@ -463,7 +470,7 @@ function ContasPagarInner() {
     let arr = lancamentos.filter(l => {
       const isReal = (l.natureza ?? "real") === "real";
       const sEfet  = statusEfetivo(l);
-      if (filtro === "aberto")   return isReal && sEfet !== "baixado" && l.moeda !== "barter";
+      if (filtro === "aberto")   return (isReal || l.natureza === "previsao") && sEfet !== "baixado" && l.moeda !== "barter";
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
       if (filtro === "vencendo") return isReal && sEfet === "vencendo";
       if (filtro === "baixado")  return isReal && sEfet === "baixado";
