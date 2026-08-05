@@ -658,15 +658,15 @@ export default function Dashboard() {
 
         {/* ═══ HERO COMPACTO ═══ */}
         <div style={{
-          padding:"16px 28px 14px",
+          padding:"22px 28px 20px",
           background:"linear-gradient(160deg,#0A1628 0%,#0D1F38 60%,#091422 100%)",
           borderBottom:"0.5px solid var(--border)",
           animation:"fadeUp .5s ease both",
         }}>
 
           {/* Linha 1: saudação + status bolsas + busca */}
-          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap" }}>
-            <span style={{ fontSize:12,color:"var(--text-3)",fontWeight:500,letterSpacing:".01em" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18,flexWrap:"wrap" }}>
+            <span style={{ fontSize:13,color:"var(--text-3)",fontWeight:500,letterSpacing:".01em" }}>
               {saudar()}, {(nomeUsuario ?? "").split(" ")[0] || "…"}&nbsp;·&nbsp;
               {new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}
               {ciclosAtivos > 0 && <span style={{ color:"#22C55E" }}> · {ciclosAtivos} ciclo{ciclosAtivos>1?"s":""} ativo{ciclosAtivos>1?"s":""}</span>}
@@ -725,22 +725,22 @@ export default function Dashboard() {
           </div>
 
           {/* Linha 2: atalhos rápidos (linha horizontal) */}
-          <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap" }}>
             <span style={{ fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.25)",letterSpacing:".12em",textTransform:"uppercase",marginRight:4,flexShrink:0 }}>ATALHOS</span>
             {ATALHOS.map(a => (
               <a key={a.link} href={a.link} className="atalho-dark"
-                style={{ display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:6,
-                  border:"0.5px solid rgba(255,255,255,0.08)",textDecoration:"none",
-                  background:"rgba(255,255,255,0.04)",flexShrink:0 }}>
-                <span style={{ width:18,height:18,borderRadius:4,background:a.cor+"22",color:a.cor,fontWeight:800,fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
-                <span style={{ fontSize:11,color:"rgba(255,255,255,0.55)",fontWeight:500,whiteSpace:"nowrap" }}>{a.label}</span>
+                style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:7,
+                  border:"0.5px solid rgba(255,255,255,0.1)",textDecoration:"none",
+                  background:"rgba(255,255,255,0.05)",flexShrink:0 }}>
+                <span style={{ width:20,height:20,borderRadius:5,background:a.cor+"22",color:a.cor,fontWeight:800,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
+                <span style={{ fontSize:12,color:"rgba(255,255,255,0.65)",fontWeight:500,whiteSpace:"nowrap" }}>{a.label}</span>
               </a>
             ))}
           </div>
 
           {/* Linha 3: cotações inline */}
           {!loadPr && precos && (
-            <div style={{ display:"flex",alignItems:"center",flexWrap:"wrap",gap:20,borderTop:"0.5px solid rgba(255,255,255,0.06)",paddingTop:10 }}>
+            <div style={{ display:"flex",alignItems:"center",flexWrap:"wrap",gap:24,borderTop:"0.5px solid rgba(255,255,255,0.06)",paddingTop:14 }}>
               {[
                 { nome:"SOJA CBOT", v:`${fmtUsd(precos.soja.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`, d:precos.soja.variacao },
                 { nome:"MILHO",    v:`R$ ${fmtBrl(precos.milho.brl)}/sc`, brl:"",                                 d:precos.milho.variacao },
@@ -749,9 +749,9 @@ export default function Dashboard() {
                 { nome:"PTAX",     v:precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—", brl:"",                 d:0 },
               ].map((m,i) => (
                 <div key={i} style={{ display:"flex",alignItems:"center",gap:7,flexShrink:0 }}>
-                  <span style={{ fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:".06em" }}>{m.nome}</span>
-                  <span style={{ fontSize:12,fontWeight:700,color:"var(--text-1)",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
-                  {m.brl && <span style={{ fontSize:10,color:"rgba(255,255,255,0.35)" }}>{m.brl}</span>}
+                  <span style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:".06em" }}>{m.nome}</span>
+                  <span style={{ fontSize:13,fontWeight:700,color:"var(--text-1)",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
+                  {m.brl && <span style={{ fontSize:11,color:"rgba(255,255,255,0.4)" }}>{m.brl}</span>}
                   {m.d !== 0 && <span style={{ fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:4,
                     background:m.d>0?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",
                     color:m.d>0?"#22C55E":"#EF4444" }}>{fmtPct(m.d)}</span>}
