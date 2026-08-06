@@ -14,10 +14,20 @@ import React, { useState, useRef, useCallback } from "react";
 
 const MIN_WIDTH = 40;
 
-export function useColumnResize(initial: Record<string, number>) {
-  const [widths, setWidths] = useState<Record<string, number>>(initial);
+export function useColumnResize(initial: Record<string, number>, storageKey?: string) {
+  const [widths, setWidths] = useState<Record<string, number>>(() => {
+    if (!storageKey || typeof window === "undefined") return initial;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? { ...initial, ...JSON.parse(saved) } : initial;
+    } catch {
+      return initial;
+    }
+  });
   const widthsRef = useRef(widths);
   widthsRef.current = widths;
+  const storageKeyRef = useRef(storageKey);
+  storageKeyRef.current = storageKey;
 
   // startResize é estável (deps vazias) — lê largura atual via ref
   const startResize = useCallback(
@@ -37,6 +47,10 @@ export function useColumnResize(initial: Record<string, number>) {
         document.removeEventListener("mouseup", onUp);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        // Persiste larguras após o drag
+        if (storageKeyRef.current) {
+          localStorage.setItem(storageKeyRef.current, JSON.stringify(widthsRef.current));
+        }
       }
 
       document.body.style.cursor = "col-resize";

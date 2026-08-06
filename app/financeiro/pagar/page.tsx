@@ -131,7 +131,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 
 // ═══════════════════════════════════════════════════════════════
 function ContasPagarInner() {
-  const { fazendaId, contaId, fazendaIds = [], anoSafraVigenteId } = useAuth();
+  const { fazendaId, contaId, fazendaIds = [], anoSafraVigenteId, emailUsuario } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
@@ -150,6 +150,7 @@ function ContasPagarInner() {
   const [veiculos,      setVeiculos]      = useState<VeiculoUnificado[]>([]);
   const [contas,        setContas]        = useState<ContaBancariaMin[]>([]);
   const [opGerenciais,  setOpGerenciais]  = useState<OperacaoGerencial[]>([]);
+  const [allOgs,        setAllOgs]        = useState<OperacaoGerencial[]>([]);
   const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
   const [opGerBusca,    setOpGerBusca]    = useState("");
   const [arquivoNF,     setArquivoNF]     = useState<File | null>(null);
@@ -346,12 +347,14 @@ function ContasPagarInner() {
     { key: "origem",     label: "Origem" },
     { key: "obs",        label: "Observação" },
   ], []);
-  const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid("cp_colunas", COLS_CP);
+  const colKey = `cp_colunas_${emailUsuario ?? "default"}`;
+  const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid(colKey, COLS_CP);
+  const colWKey = `cp_col_widths_${emailUsuario ?? "default"}`;
   const { w: cw, startResize } = useColumnResize({
     fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
     vencimento: 90, venc_orig: 90, valor: 110, dt_pgto: 85, valor_pago: 100,
     moeda: 65, conta: 110, produtor: 110, origem: 90, obs: 160,
-  });
+  }, colWKey);
   const [fFornecedor, setFFornecedor] = useState("");
   const [fOperacao,   setFOperacao]   = useState("");
   const [fSafra,      setFSafra]      = useState("");
@@ -384,6 +387,7 @@ function ContasPagarInner() {
 
   const carregarOps = () => {
     if (!contaId && !fazendaId) return;
+    // Lista dedup para o SELECT do modal
     listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).then(ops =>
       setOpGerenciais(ops.filter(o => {
         const cls = o.classificacao ?? "";
@@ -392,6 +396,9 @@ function ContasPagarInner() {
         return true;
       }))
     ).catch(() => {});
+    // Lista sem dedup para lookup no grid (preserva todos os UUIDs)
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", semDedup: true }, fazendaId)
+      .then(setAllOgs).catch(() => {});
   };
 
   useEffect(() => {
@@ -464,7 +471,7 @@ function ContasPagarInner() {
                          .reduce((a, l) => a + (l.valor_pago ?? paraBRL(l)), 0);
 
   // Mapa id → descrição da OG para exibição rápida no grid
-  const ogMap = useMemo(() => new Map(opGerenciais.map(o => [o.id, o.descricao])), [opGerenciais]);
+  const ogMap = useMemo(() => new Map(allOgs.map(o => [o.id, o.descricao])), [allOgs]);
 
   // ── Filtragem e ordenação ──────────────────────────────────
 

@@ -119,7 +119,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 
 // ═══════════════════════════════════════════════════════════════
 export default function ContasReceber() {
-  const { fazendaId, contaId, anoSafraVigenteId } = useAuth();
+  const { fazendaId, contaId, anoSafraVigenteId, emailUsuario } = useAuth();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
@@ -131,6 +131,7 @@ export default function ContasReceber() {
   const [pessoas,      setPessoas]      = useState<Pessoa[]>([]);
   const [contas,       setContas]       = useState<ContaBancariaMin[]>([]);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
+  const [allOgs,       setAllOgs]       = useState<OperacaoGerencial[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
@@ -249,12 +250,14 @@ export default function ContasReceber() {
     { key: "origem",     label: "Origem" },
     { key: "obs",        label: "Observação" },
   ], []);
-  const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid("cr_colunas", COLS_CR);
+  const colKey = `cr_colunas_${emailUsuario ?? "default"}`;
+  const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid(colKey, COLS_CR);
+  const colWKey = `cr_col_widths_${emailUsuario ?? "default"}`;
   const { w: cw, startResize } = useColumnResize({
     fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
     vencimento: 90, valor: 110, dt_receb: 85, valor_receb: 100,
     moeda: 65, conta: 110, produtor: 110, origem: 90, obs: 160,
-  });
+  }, colWKey);
   const [fFornecedor, setFFornecedor] = useState("");
   const [fOperacao,   setFOperacao]   = useState("");
   const [fSafra,      setFSafra]      = useState("");
@@ -275,7 +278,12 @@ export default function ContasReceber() {
 
   const carregarOps = () => {
     if (!contaId && !fazendaId) return;
-    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }, fazendaId).then(setOpGerenciais).catch(() => {});
+    // Lista dedup para o SELECT do modal
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }, fazendaId)
+      .then(setOpGerenciais).catch(() => {});
+    // Lista sem dedup para lookup no grid (preserva todos os UUIDs)
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", semDedup: true }, fazendaId)
+      .then(setAllOgs).catch(() => {});
   };
 
   useEffect(() => {
@@ -349,7 +357,7 @@ export default function ContasReceber() {
   const qtdBarter   = lancamentos.filter(l => l.moeda === "barter" && statusEfetivo(l) !== "baixado").length;
 
   // Mapa id → descrição da OG para exibição rápida no grid
-  const ogMap = useMemo(() => new Map(opGerenciais.map(o => [o.id, o.descricao])), [opGerenciais]);
+  const ogMap = useMemo(() => new Map(allOgs.map(o => [o.id, o.descricao])), [allOgs]);
 
   // ── Filtragem e ordenação ──────────────────────────────────
 

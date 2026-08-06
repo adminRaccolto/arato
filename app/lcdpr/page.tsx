@@ -51,6 +51,7 @@ function codigoAuto(l: Lancamento): string {
 const hoje = () => new Date().toISOString().split("T")[0];
 const fmtData = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const toTitleCase = (s: string) => s.toLowerCase().replace(/(?:^|\s)\w/g, c => c.toUpperCase());
 
 type AbaLCDPR = "livro" | "plano" | "importacao" | "resumo" | "exportacao";
 
@@ -128,10 +129,12 @@ export default function LCDPR() {
 
       const apoioIds = new Set((apoioBaixas ?? []).map((b: { lancamento_id: string }) => b.lancamento_id));
 
-      // LCDPR é caixa — usa data do efetivo pagamento
+      // LCDPR é caixa — usa data do efetivo pagamento; somente PF (produtor rural)
       const filtradas = lans.filter(l => {
         if (l.status !== "baixado") return false;
         if (apoioIds.has(l.id)) return false;
+        // Exclui lançamentos de entidade PJ — LCDPR é exclusivo de pessoa física rural
+        if (l.entidade_contabil && l.entidade_contabil !== "pf") return false;
         const dataCaixa = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
         return dataCaixa.slice(0, 4) === String(anoSel);
       });
@@ -499,7 +502,7 @@ export default function LCDPR() {
                               return (
                                 <tr key={og.id} style={{ borderTop: "0.5px solid var(--border-row)" }}>
                                   <td style={{ padding: "8px 14px", width: 130, color: "var(--text-2)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>{og.classificacao}</td>
-                                  <td style={{ padding: "8px 14px", color: "var(--text-1)" }}>{og.descricao}</td>
+                                  <td style={{ padding: "8px 14px", color: "var(--text-1)" }}>{toTitleCase(og.descricao ?? "")}</td>
                                   <td style={{ padding: "8px 14px", width: 220 }}>
                                     <select
                                       value={codEdit ?? ""}
@@ -564,7 +567,7 @@ export default function LCDPR() {
                               return (
                                 <tr key={og.id} style={{ borderTop: "0.5px solid var(--border-row)" }}>
                                   <td style={{ padding: "8px 14px", width: 130, color: "var(--text-2)", fontSize: 11 }}>{og.classificacao}</td>
-                                  <td style={{ padding: "8px 14px", color: "var(--text-1)" }}>{og.descricao}</td>
+                                  <td style={{ padding: "8px 14px", color: "var(--text-1)" }}>{toTitleCase(og.descricao ?? "")}</td>
                                   <td style={{ padding: "8px 14px", width: 220 }}>
                                     <select
                                       value={codEdit ?? ""}

@@ -3949,7 +3949,7 @@ export async function listarOperacoesGerenciaisAtivas(
 
 // Carrega operações gerenciais ativas: global + conta + TODAS as fazendas (Option A)
 export async function listarOperacoesGerenciaisAtivasDaConta(
-  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" },
+  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque"; semDedup?: boolean },
   fazenda_id_fallback?: string | null,
 ): Promise<OperacaoGerencial[]> {
   const conta_id = await resolverContaIdDaFazenda(fazenda_id_fallback);
@@ -3977,10 +3977,18 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
     op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
   );
 
+  // semDedup=true: retorna todas as OGs sem deduplicar — usado para lookup de ids em lançamentos
+  if (filtro?.semDedup) return comPermissao;
+
   // Deduplica por classificação: mesma operação pode existir em múltiplas fazendas da conta
-  // (resultado de seed de templates). Mantém a primeira ocorrência por código.
+  // (resultado de seed de templates). Prefere mais específica: fazenda > conta > global.
+  const scored = comPermissao.map(op => ({
+    op,
+    score: op.fazenda_id ? 2 : op.conta_id ? 1 : 0,
+  }));
+  scored.sort((a, b) => b.score - a.score || (a.op.classificacao ?? "").localeCompare(b.op.classificacao ?? ""));
   const seen = new Set<string>();
-  return comPermissao.filter(op => {
+  return scored.map(s => s.op).filter(op => {
     const key = op.classificacao ?? op.id;
     if (seen.has(key)) return false;
     seen.add(key);
