@@ -940,18 +940,30 @@ export default function NfCompraPage() {
     }
   }
 
-  // ── Excluir NF com reversão ───────────────────────────────
+  // ── Excluir NF — API route com service_role_key ──────────
+  async function chamarApiExcluir(nfId: string): Promise<void> {
+    const res = await fetch("/api/compras/excluir-nf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nf_id: nfId, fazenda_id: fazendaId }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error((json as { error?: string }).error ?? `Erro HTTP ${res.status}`);
+    }
+  }
+
   async function iniciarExclusaoNf(nf: NfEntrada) {
     if (nf.status !== "processada") {
-      // NF não processada: exclusão simples, sem reversões
-      if (!confirm(`Excluir NF ${nf.numero}? Esta NF ainda não foi processada — nenhuma movimentação será revertida.`)) return;
+      // NF não processada: sem movimentações a reverter
+      if (!confirm(`Excluir NF ${nf.numero}?\n\nEsta NF ainda não foi processada — nenhuma movimentação de estoque será revertida.`)) return;
       try {
-        await excluirNfEntrada(nf.id, fazendaId!);
+        await chamarApiExcluir(nf.id);
         await carregar();
       } catch (e: unknown) { alert(e instanceof Error ? e.message : "Erro ao excluir"); }
       return;
     }
-    // NF processada: verificar lancamento
+    // NF processada: verificar lancamento (lote = bloqueado)
     setModalExcluir({ nf, lancamento: null, verificando: true, excluindo: false, bloqueado: false });
     try {
       const { lancamento } = await verificarExclusaoNf(nf.id);
@@ -966,7 +978,7 @@ export default function NfCompraPage() {
     if (!modalExcluir || !fazendaId) return;
     setModalExcluir(p => p ? { ...p, excluindo: true } : null);
     try {
-      await excluirNfEntrada(modalExcluir.nf.id, fazendaId);
+      await chamarApiExcluir(modalExcluir.nf.id);
       setModalExcluir(null);
       await carregar();
     } catch (e: unknown) {
@@ -1547,7 +1559,12 @@ export default function NfCompraPage() {
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{fmtData(nf.data_entrada)}</td>
                       <td style={{ padding: "10px 12px" }}>{tm ? badge(tm.label, tm.bg, "#333") : <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>}</td>
                       <td style={{ padding: "10px 12px" }}>{om ? badge(om.label) : <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>}</td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right" }}>{fmtBRL(nf.valor_total)}</td>
+                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right" }}>
+                        {fmtBRL(nf.valor_total)}
+                        {nf.observacao?.includes("WhatsApp") && (
+                          <div title="Lançado via WhatsApp" style={{ fontSize: 10, fontWeight: 500, color: "#25D366", marginTop: 2 }}>📱 WhatsApp</div>
+                        )}
+                      </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         {nf.origem === "sieg" ? (() => {
