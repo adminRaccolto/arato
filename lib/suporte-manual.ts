@@ -331,7 +331,12 @@ Soja, Milho 1ª, Milho 2ª (Safrinha), Algodão, Sorgo, Trigo, Feijão
 - **Autorização** — código de autorização do comprador
 - **Tipo** — Normal, À Fixar, Venda a Ordem
 - Flags: Confirmado, À Fixar, Venda a Ordem
-- **Produtor** (*), **Cliente/Comprador** (*), Nº Contrato Cliente
+- **Produtor** (*) — dropdown com nome do produtor; ao selecionar, aparece automaticamente o campo **Inscrição Estadual (IE)**:
+  - Se o produtor tem 0 IEs cadastradas: campo de texto livre para digitar manualmente
+  - Se o produtor tem 1 IE: campo preenchido automaticamente (somente leitura)
+  - Se o produtor tem 2 ou mais IEs: dropdown para escolher a correta
+  - Para cadastrar IEs de um produtor: Cadastros → Produtores → editar → aba IEs
+- **Cliente/Comprador** (*), Nº Contrato Cliente
 - **Modalidade de Preço** — fixo, a fixar, basis, prêmio
 - **Natureza da Operação** (*) — com CFOP preenchido automaticamente:
   - VFE-PF (Venda p/ Fora do Estado - Produtor Físico) → CFOP 6501 (soja/milho via trading)
@@ -901,6 +906,7 @@ rascunho → aprovado → parcialmente_entregue → entregue / cancelado
 **Aba Principal:**
 - Fazenda (*), Data (*), Fornecedor (*), Tipo (produto / serviço / ambos)
 - **Nº do Pedido** — campo editável (identificador do pedido)
+- **Produtor responsável** — seletor de produtor com três colunas: Nome | I.E. | Município. A coluna I.E. exibe a Inscrição Estadual registrada em Cadastros → Produtores → IEs. Se a IE aparecer "—" para um produtor, é porque ela ainda não foi cadastrada (acesse Cadastros → Produtores → editar produtor → aba IEs para adicionar).
 - Fiscal: emite NF? Sim/Não (pedidos fiscais têm aba "NFs Vinculadas" em vez de "Entregas")
 - Cotação da moeda (para pedidos em USD), Possui Ordem de Compra, Entrega única ou fracionada
 
