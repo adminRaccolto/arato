@@ -1506,6 +1506,12 @@ export async function listarDepositos(fazenda_id: string): Promise<Deposito[]> {
   if (error) throw error;
   return data ?? [];
 }
+export async function listarDepositosMulti(fazenda_ids: string[]): Promise<Deposito[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase.from("depositos").select("*").in("fazenda_id", fazenda_ids).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
 export async function criarDeposito(d: Omit<Deposito, "id" | "created_at">): Promise<Deposito> {
   const { data, error } = await supabase.from("depositos").insert(d).select().single();
   if (error) throw error;

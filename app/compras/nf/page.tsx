@@ -9,6 +9,7 @@ import {
   listarInsumos,
   criarInsumo,
   listarDepositos,
+  listarDepositosMulti,
   listarPessoas,
   criarPessoa,
   listarCentrosCustoGeral,
@@ -199,6 +200,7 @@ export default function NfCompraPage() {
   const [wDepositos, setWDepositos] = useState<Deposito[]>([]);
   const [wPedidos,   setWPedidos]   = useState<PedidoMin[]>([]);
   const [sugestaoNome, setSugestaoNome] = useState<string | null>(null); // nome da regra aplicada
+  const [depFiltro, setDepFiltro] = useState<"proprio" | "terceiro">("proprio");
 
   // Filtros lista
   const [filtroStatus, setFiltroStatus] = useState("");
@@ -350,7 +352,7 @@ export default function NfCompraPage() {
     const [nfsData, insData, depData, pesData] = await Promise.all([
       listarNfEntradasPorFazendas(idsParaNf),
       listarInsumos(fazendaId),
-      listarDepositos(fazendaId),
+      listarDepositosMulti(idsParaNf),
       listarPessoas(fazendaId),
     ]);
     setNfs(nfsData);
@@ -405,9 +407,10 @@ export default function NfCompraPage() {
 
   // ── Helper: carrega dados do wizard para uma fazenda específica ──
   async function carregarWizardData(fId: string) {
+    const allFazIds = fazendaIds.length > 1 ? fazendaIds : (fId ? [fId] : []);
     const [ccData, depData] = await Promise.all([
       listarCentrosCustoGeral(fId).catch(() => [] as CentroCusto[]),
-      listarDepositos(fId).catch(() => [] as Deposito[]),
+      listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
     ]);
     setWCentros(ccData);
     setWDepositos(depData);
@@ -581,7 +584,7 @@ export default function NfCompraPage() {
       emitente_cnpj: nf.emitente_cnpj ?? "",
       emitente_municipio: "",
       emitente_estado: "",
-      pessoa_id: nf.pessoa_id ?? "",
+      pessoa_id: nf.pessoa_id ?? pessoaPorCnpj(nf.emitente_cnpj ?? ""),
       cfop: nf.cfop ?? "",
       data_emissao: nf.data_emissao,
       data_entrada: nf.data_entrada ?? new Date().toISOString().split("T")[0],
@@ -673,6 +676,7 @@ export default function NfCompraPage() {
       const regraHeader = aplicarRegraClassificacao(regrasClass, cnpj, xNome, "", "", "");
       setSugestaoNome(regraHeader?.nome ?? null);
 
+      const pessoaAutoId = pessoaPorCnpj(cnpj);
       setCab(p => ({
         ...p,
         numero: nNF,
@@ -685,6 +689,8 @@ export default function NfCompraPage() {
         data_emissao: dhEmi ? dhEmi.substring(0, 10) : p.data_emissao,
         valor_total: vNF,
         natureza: natOp,
+        // auto-preenche fornecedor se CNPJ bater com cadastro
+        pessoa_id: pessoaAutoId || p.pessoa_id,
         // aplica sugestão apenas se o campo ainda não foi preenchido
         operacao_gerencial_id: regraHeader?.operacao_gerencial_id ?? p.operacao_gerencial_id,
         centro_custo_id:       regraHeader?.centro_custo_id       ?? p.centro_custo_id,
@@ -1141,6 +1147,13 @@ export default function NfCompraPage() {
     } finally {
       setDevSaving(false);
     }
+  }
+
+  // ── Busca pessoa por CNPJ/CPF no cadastro ──────────────────
+  function pessoaPorCnpj(cnpj: string): string {
+    if (!cnpj) return "";
+    const norm = cnpj.replace(/\D/g, "");
+    return pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm)?.id ?? "";
   }
 
   // ── Auto-fill emitente quando pessoa selecionada ─────────
@@ -1931,9 +1944,10 @@ export default function NfCompraPage() {
                       </div>
                       <select value={cab.pessoa_id} onChange={e => onPessoaChange(e.target.value)} style={inp}>
                         <option value="">Selecionar do cadastro…</option>
-                        {pessoas.map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}</option>
-                        ))}
+                        {pessoas.map(p => {
+                          const cnpjFmt = p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : "";
+                          return <option key={p.id} value={p.id}>{p.nome}{cnpjFmt}</option>;
+                        })}
                       </select>
                     </div>
                     <div>
@@ -1949,17 +1963,19 @@ export default function NfCompraPage() {
                         value={cab.emitente_cnpj}
                         onChange={e => setCab(p => ({ ...p, emitente_cnpj: e.target.value }))}
                         onBlur={e => {
-                          // Classificação automática ao sair do campo CNPJ (entrada manual)
+                          // Classificação automática + match de fornecedor ao sair do campo CNPJ
                           const cnpj = e.target.value;
+                          const pessoaId = pessoaPorCnpj(cnpj);
                           const regra = aplicarRegraClassificacao(regrasClass, cnpj, cab.emitente_nome, "", "", "");
-                          if (regra) {
-                            setSugestaoNome(regra.nome);
-                            setCab(p => ({
-                              ...p,
+                          setCab(p => ({
+                            ...p,
+                            pessoa_id: pessoaId || p.pessoa_id,
+                            ...(regra ? {
                               operacao_gerencial_id: regra.operacao_gerencial_id ?? p.operacao_gerencial_id,
                               centro_custo_id:       regra.centro_custo_id       ?? p.centro_custo_id,
-                            }));
-                          }
+                            } : {}),
+                          }));
+                          if (regra) setSugestaoNome(regra.nome);
                         }}
                         placeholder="00.000.000/0001-00"
                         style={inp}
@@ -2564,18 +2580,34 @@ export default function NfCompraPage() {
                   {/* Depósito padrão para itens sem depósito (somente insumos que vão para estoque) */}
                   {tipo === "insumos" && itens.some(i => i.tipo_apropiacao !== "direto") && (
                     <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Depósito padrão para itens sem depósito individual</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Depósito padrão para itens sem depósito individual</div>
+                        <div style={{ display: "flex", gap: 4, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
+                          {(["proprio", "terceiro"] as const).map(t => (
+                            <button key={t} onClick={() => setDepFiltro(t)}
+                              style={{ fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
+                                background: depFiltro === t ? "#1A4870" : "transparent",
+                                color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
+                              {t === "proprio" ? "Próprio" : "Terceiro"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <select
                         onChange={e => {
                           const dep = e.target.value;
                           setItens(p => p.map(it => it.deposito_id ? it : { ...it, deposito_id: dep }));
                         }}
-                        style={{ ...inp, maxWidth: 320 }}
+                        style={{ ...inp, maxWidth: 380 }}
                       >
                         <option value="">Não definir padrão</option>
-                        {depositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
-                          <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
-                        ))}
+                        {depositos
+                          .filter(d => depFiltro === "terceiro"
+                            ? ["terceiro","armazem_terceiro"].includes(d.tipo)
+                            : !["terceiro","armazem_terceiro"].includes(d.tipo))
+                          .map(d => (
+                            <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
+                          ))}
                       </select>
                     </div>
                   )}
@@ -3006,12 +3038,28 @@ export default function NfCompraPage() {
                 </select>
               </div>
               <div>
-                <label style={lbl}>Depósito de Entrada</label>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Depósito de Entrada</label>
+                  <div style={{ display: "flex", gap: 3, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
+                    {(["proprio", "terceiro"] as const).map(t => (
+                      <button key={t} onClick={() => setDepFiltro(t)}
+                        style={{ fontSize: 9, fontWeight: 600, padding: "1px 8px", borderRadius: 4, border: "none", cursor: "pointer",
+                          background: depFiltro === t ? "#1A4870" : "transparent",
+                          color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
+                        {t === "proprio" ? "Próprio" : "Terceiro"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <select value={batchSettings.deposito_destino_id} onChange={e => setBatchSettings(p => ({ ...p, deposito_destino_id: e.target.value }))} style={inp}>
                   <option value="">— manter individual —</option>
-                  {wDepositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
-                    <option key={d.id} value={d.id}>{d.nome}</option>
-                  ))}
+                  {wDepositos
+                    .filter(d => depFiltro === "terceiro"
+                      ? ["terceiro","armazem_terceiro"].includes(d.tipo)
+                      : !["terceiro","armazem_terceiro"].includes(d.tipo))
+                    .map(d => (
+                      <option key={d.id} value={d.id}>{d.nome}</option>
+                    ))}
                 </select>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
