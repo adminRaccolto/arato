@@ -233,6 +233,7 @@ export default function NfCompraPage() {
   const [siegJustModal,  setSiegJustModal]  = useState<{nf: NfEntrada; tipo: number}|null>(null);
   const [siegJustText,   setSiegJustText]   = useState("");
   const [manDropdown,    setManDropdown]    = useState<string|null>(null);
+  const [acaoDropdown,   setAcaoDropdown]   = useState<string|null>(null);
 
   // Dropdown customizado de fornecedor (nome + CNPJ em colunas separadas)
   const [pessoaDropOpen, setPessoaDropOpen] = useState(false);
@@ -1340,7 +1341,7 @@ export default function NfCompraPage() {
   // ─────────────────────────────────────────────────────────
   if (!podeAcessarPlano("nf_entrada")) return <PlanoGate modulo="nf_entrada" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }} onClick={() => setManDropdown(null)}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }} onClick={() => { setManDropdown(null); setAcaoDropdown(null); }}>
       <TopNav />
 
       <main style={{ flex: 1, padding: "24px 28px", width: "100%" }}>
@@ -1598,54 +1599,80 @@ export default function NfCompraPage() {
                         })() : <span style={{ fontSize: 11, color: "#ccc" }}>—</span>}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center" }}>
+                          {/* Ver */}
                           <button onClick={() => abrirVisualizador(nf)} disabled={nfViewerLoading}
-                            style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
+                            style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600, whiteSpace: "nowrap" }}>
                             Ver
                           </button>
+
+                          {/* DANFE */}
                           {nf.chave_acesso && (
-                            <a
-                              href={`/api/fiscal/danfe?chave=${nf.chave_acesso}&fazenda_id=${nf.fazenda_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#F0FDF4", cursor: "pointer", fontSize: 11, color: "#15803D", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
-                            >
+                            <a href={`/api/fiscal/danfe?chave=${nf.chave_acesso}&fazenda_id=${nf.fazenda_id}`}
+                              target="_blank" rel="noopener noreferrer"
+                              style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#F0FDF4", fontSize: 11, color: "#15803D", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, whiteSpace: "nowrap" }}>
                               ↗ DANFE
                             </a>
                           )}
+
+                          {/* Editar (não-sieg, não-processada) */}
                           {nf.status !== "processada" && nf.status !== "cancelada" && nf.origem !== "sieg" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600 }}>
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600, whiteSpace: "nowrap" }}>
                               Editar
                             </button>
                           )}
+
+                          {/* Processar (pendente) */}
                           {nf.status === "pendente" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A5C38", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A5C38", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
                               Processar
                             </button>
                           )}
-                          {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
-                            <button onClick={() => abrirDevolucao(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>
-                              Devolver
-                            </button>
-                          )}
-                          {nf.status === "processada" && (
-                            <button onClick={() => abrirReclassificar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #C9921B50", borderRadius: 6, background: "#FBF3E0", cursor: "pointer", fontSize: 11, color: "#7B4A00", fontWeight: 600 }}>
-                              Reclassificar
-                            </button>
-                          )}
-                          {nf.status === "processada" && (
-                            <button onClick={() => estornarNFClick(nf)} style={{ padding: "4px 10px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FFF8EC", cursor: "pointer", fontSize: 11, color: "#8A4A00", fontWeight: 600 }}>
-                              Estornar
-                            </button>
-                          )}
+
+                          {/* Re-import. (sieg pendente) */}
                           {nf.origem === "sieg" && nf.status === "pendente" && (
                             <button onClick={() => reimportarNf(nf)} disabled={siegReimporting[nf.id]}
-                              style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600, opacity: siegReimporting[nf.id] ? 0.5 : 1 }}>
+                              style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600, opacity: siegReimporting[nf.id] ? 0.5 : 1, whiteSpace: "nowrap" }}>
                               {siegReimporting[nf.id] ? "…" : "↻ Re-import."}
                             </button>
                           )}
+
+                          {/* ⋮ dropdown — ações secundárias para processadas */}
+                          {nf.status === "processada" && (() => {
+                            const aberto = acaoDropdown === nf.id;
+                            return (
+                              <div style={{ position: "relative" }}>
+                                <button
+                                  onClick={e => { e.stopPropagation(); setAcaoDropdown(aberto ? null : nf.id); setManDropdown(null); }}
+                                  style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: aberto ? "#F4F6FA" : "transparent", cursor: "pointer", fontSize: 14, color: "var(--text-2)", fontWeight: 700, lineHeight: 1 }}>
+                                  ⋮
+                                </button>
+                                {aberto && (
+                                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 140, overflow: "hidden" }}
+                                    onClick={e => e.stopPropagation()}>
+                                    {nf.tipo_entrada === "insumos" && (
+                                      <button onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
+                                        Devolver
+                                      </button>
+                                    )}
+                                    <button onClick={() => { setAcaoDropdown(null); abrirReclassificar(nf); }}
+                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#7B4A00", fontWeight: 600, textAlign: "left" }}>
+                                      Reclassificar
+                                    </button>
+                                    <button onClick={() => { setAcaoDropdown(null); estornarNFClick(nf); }}
+                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
+                                      Estornar
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Excluir */}
                           {nf.status !== "cancelada" && (
-                            <button onClick={() => iniciarExclusaoNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                            <button onClick={() => iniciarExclusaoNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", whiteSpace: "nowrap" }}>
                               Excluir
                             </button>
                           )}
