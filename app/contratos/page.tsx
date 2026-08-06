@@ -2090,21 +2090,40 @@ export default function Contratos() {
                         onChange={id => setFC(p => ({ ...p, produtor_id: id, ie_id: "" }))}
                         placeholder="— selecione —"
                       />
-                      {iesProdutor.length > 1 && (
+                      {fC.produtor_id && (
                         <div style={{ marginTop: 6 }}>
-                          <label style={{ ...lbl, color: "#C9921B" }}>IE do Produtor *</label>
-                          <select
-                            style={{ ...inp, borderColor: !fC.ie_id ? "#E24B4A" : undefined }}
-                            value={fC.ie_id ?? ""}
-                            onChange={e => setFC(p => ({ ...p, ie_id: e.target.value || undefined }))}
-                          >
-                            <option value="">— selecione a IE —</option>
-                            {iesProdutor.map(ie => (
-                              <option key={ie.id} value={ie.id}>
-                                {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
-                              </option>
-                            ))}
-                          </select>
+                          <label style={{ ...lbl, color: "#C9921B" }}>
+                            Inscrição Estadual (IE)
+                            {iesProdutor.length > 1 && <span style={{ fontWeight: 400, color: "#888" }}> — {iesProdutor.length} registradas</span>}
+                          </label>
+                          {iesProdutor.length > 1 ? (
+                            <select
+                              style={{ ...inp, borderColor: !fC.ie_id ? "#E24B4A" : undefined }}
+                              value={fC.ie_id ?? ""}
+                              onChange={e => setFC(p => ({ ...p, ie_id: e.target.value || undefined }))}
+                            >
+                              <option value="">— selecione a IE —</option>
+                              {iesProdutor.map(ie => (
+                                <option key={ie.id} value={ie.id}>
+                                  {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
+                                  {ie.ativa ? "" : " (inativa)"}
+                                </option>
+                              ))}
+                            </select>
+                          ) : iesProdutor.length === 1 ? (
+                            <input
+                              style={{ ...inp, background: "#F8F8F8", color: "#555", cursor: "default" }}
+                              value={`${iesProdutor[0].inscricao_estadual} — ${iesProdutor[0].municipio ?? ""}/${iesProdutor[0].estado}`}
+                              readOnly
+                            />
+                          ) : (
+                            <input
+                              style={{ ...inp, borderColor: "#DDE2EE" }}
+                              placeholder="Não cadastrada — informe manualmente"
+                              value={fC.ie_id ?? ""}
+                              onChange={e => setFC(p => ({ ...p, ie_id: e.target.value || undefined }))}
+                            />
+                          )}
                         </div>
                       )}
                     </div>

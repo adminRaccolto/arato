@@ -298,7 +298,7 @@ const NAV: NavItem[] = [
 // IDs batem com MODULOS_PERM em admin/usuarios/page.tsx
 // Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
 const NAV_MODULE_MAP: Record<string, string[]> = {
-  "cadastros":     ["cadastros"],
+  // "cadastros" sem entrada → sempre visível (módulo base, igual ao dashboard/mapa)
   "comercial":     ["contratos", "expedicao", "arrendamento", "protecao_margem"],
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],

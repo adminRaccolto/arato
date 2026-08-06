@@ -1261,6 +1261,7 @@ function ImportacaoInner() {
   const [resultApoio,        setResultApoio]        = useState<ResultadoApoio | null>(null);
   const [resultCr,           setResultCr]           = useState<Resultado | null>(null);
   const [resultInsumos,      setResultInsumos]      = useState<Resultado | null>(null);
+  const [resultInsumosErros, setResultInsumosErros] = useState<{nome:string;_msg:string}[]>([]);
   const [resultProdutos,     setResultProdutos]     = useState<Resultado | null>(null);
   const [resultMaquinas,     setResultMaquinas]     = useState<Resultado | null>(null);
   const [resultContratoFin,  setResultContratoFin]  = useState<Resultado | null>(null);
@@ -1682,18 +1683,18 @@ function ImportacaoInner() {
   async function importarInsumos() {
     if (!insumosRows.length || !contaId) return;
     setLoadingInsumos(true);
+    setResultInsumosErros([]);
 
-    // Normaliza fazenda_nome quando seletor de tela está ativo
+    // Normaliza fazenda_nome e deposito_nome com seletores de tela (sem early return)
     const rowsParaEnviar = insumosRows.map(r => {
+      let updated = { ...r };
       if (insumoFazSel && !r.fazenda_nome) {
-        const fazNome = fazendas.find(f => f.id === insumoFazSel)?.nome ?? "";
-        return { ...r, fazenda_nome: fazNome };
+        updated.fazenda_nome = fazendas.find(f => f.id === insumoFazSel)?.nome ?? "";
       }
       if (insumoDepSel && !r.deposito_nome) {
-        const depNome = insumoDepositos.find(d => d.id === insumoDepSel)?.nome ?? "";
-        return { ...r, deposito_nome: depNome };
+        updated.deposito_nome = insumoDepositos.find(d => d.id === insumoDepSel)?.nome ?? "";
       }
-      return r;
+      return updated;
     });
 
     const resp = await fetch("/api/insumos/importar", {
@@ -1720,7 +1721,9 @@ function ImportacaoInner() {
     });
 
     const json = await resp.json();
-    setResultInsumos({ ok: json.ok ?? 0, erros: json.erros ?? 0, duplicados: json.duplicados ?? 0 });
+    setResultInsumos({ ok: json.ok ?? 0, erros: json.erros ?? 0, duplicados: json.duplicados ?? 0, atualizados: json.atualizados ?? 0 });
+    const erroRows: {nome:string;_msg:string}[] = (json.resultRows ?? []).filter((r: {_status:string;_msg:string;nome:string}) => r._status === "erro");
+    setResultInsumosErros(erroRows);
     setLoadingInsumos(false);
   }
 
@@ -3160,6 +3163,39 @@ function ImportacaoInner() {
                 total={cfg.result.ok + cfg.result.erros + cfg.result.duplicados}
                 labelDuplicados={aba === "produtores_imp" ? "IEs mescladas" : "Duplicadas"}
               />
+            )}
+
+            {/* Diagnóstico de importação — Insumos: erros por linha */}
+            {aba === "insumos" && resultInsumosErros.length > 0 && (
+              <div style={{ marginTop: 12, padding: "12px 14px", background: "#FEF2F2", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 12 }}>
+                <div style={{ fontWeight: 700, color: "#7A1A1A", marginBottom: 8 }}>
+                  ✗ {resultInsumosErros.length} linha{resultInsumosErros.length !== 1 ? "s" : ""} com erro na importação — verifique os nomes de fazenda e depósito
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ background: "#FECACA" }}>
+                      <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "#7A1A1A" }}>Insumo</th>
+                      <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "#7A1A1A" }}>Motivo do erro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultInsumosErros.slice(0, 20).map((r, i) => (
+                      <tr key={i} style={{ background: i % 2 === 0 ? "#FFF5F5" : "#FEF2F2" }}>
+                        <td style={{ padding: "3px 8px", color: "#1a1a1a", fontWeight: 500 }}>{r.nome || "—"}</td>
+                        <td style={{ padding: "3px 8px", color: "#7A1A1A" }}>{r._msg}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {resultInsumosErros.length > 20 && (
+                  <div style={{ marginTop: 6, color: "#7A1A1A", fontStyle: "italic" }}>
+                    … e mais {resultInsumosErros.length - 20} erros. Corrija as fazendas/depósitos na planilha e tente novamente.
+                  </div>
+                )}
+                <div style={{ marginTop: 8, color: "#555" }}>
+                  <strong>Causa mais comum:</strong> nome da fazenda na planilha diferente do cadastro. Use os nomes exatos: {fazendas.map(f => `"${f.nome}"`).join(", ")}.
+                </div>
+              </div>
             )}
 
             {/* Diagnóstico de importação — só para Apoio Financeiro */}

@@ -928,6 +928,17 @@ export async function adicionarIEAoProdutor(ie: Omit<ProdutorIE, "id" | "created
   if (error) throw error;
 }
 
+// Carrega IEs de múltiplos produtores em uma só query — para popular dropdowns
+export async function listarIEsDeMultiplosProdutores(produtor_ids: string[]): Promise<ProdutorIE[]> {
+  if (!produtor_ids.length) return [];
+  const { data } = await supabase
+    .from("produtor_inscricoes_estaduais")
+    .select("*")
+    .in("produtor_id", produtor_ids)
+    .order("estado");
+  return data ?? [];
+}
+
 // ————————————————————————————————————————
 // MATRÍCULAS DE IMÓVEIS
 // ————————————————————————————————————————

@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok, erros, duplicados, atualizados });
+    return NextResponse.json({ ok, erros, duplicados, atualizados, resultRows });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

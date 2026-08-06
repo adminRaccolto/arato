@@ -9,6 +9,7 @@ import {
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
+  listarIEsDeMultiplosProdutores,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -25,9 +26,10 @@ const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid va
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
 function ProdutorSelect({
-  value, onChange, produtores,
+  value, onChange, produtores, ieMap = {},
 }: {
   value: string; onChange: (id: string) => void; produtores: Produtor[];
+  ieMap?: Record<string, string>;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen]   = useState(false);
@@ -83,7 +85,7 @@ function ProdutorSelect({
               onMouseLeave={e => { if (pr.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-card)"; }}
             >
               <span style={{ ...colStyle, fontWeight: pr.id === value ? 600 : 400 }}>{pr.nome}</span>
-              <span style={{ ...colStyle, color: pr.id === value ? "#0B2D50" : "var(--text-2)" }}>{pr.inscricao_est || "—"}</span>
+              <span style={{ ...colStyle, color: pr.id === value ? "#0B2D50" : "var(--text-2)" }}>{ieMap[pr.id] || pr.inscricao_est || "—"}</span>
               <span style={{ ...colStyle, color: pr.id === value ? "#0B2D50" : "var(--text-2)" }}>{pr.municipio || "—"}</span>
             </div>
           ))}
@@ -240,6 +242,7 @@ export default function ComprasPage() {
   const [fazendas,        setFazendas]        = useState<Fazenda[]>([]);
   const [produtores,      setProdutores]      = useState<Produtor[]>([]);
   const [ieOpcoes,        setIeOpcoes]        = useState<ProdutorIE[]>([]);
+  const [ieMap,           setIeMap]           = useState<Record<string, string>>({});
   const [fazendaFiltro,   setFazendaFiltro]   = useState("");
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
@@ -291,6 +294,17 @@ export default function ComprasPage() {
       setOperacoes(ops);
       setFazendas(fzs);
       setProdutores(prods);
+      // Carrega IEs de todos os produtores para exibir no dropdown
+      if (prods.length > 0) {
+        const allIEs = await listarIEsDeMultiplosProdutores(prods.map(p => p.id));
+        const map: Record<string, string> = {};
+        for (const ie of allIEs) {
+          if (!map[ie.produtor_id] || ie.ativa) {
+            map[ie.produtor_id] = ie.inscricao_estadual;
+          }
+        }
+        setIeMap(map);
+      }
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
@@ -1092,6 +1106,7 @@ export default function ComprasPage() {
                         setF(p => ({ ...p, produtor_id: id, ie_produtor: ieDefault }));
                       }}
                       produtores={produtores}
+                      ieMap={ieMap}
                     />
                   </div>
                   <div>
