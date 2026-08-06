@@ -1627,7 +1627,7 @@ async function buscarDepositoTerceiroPorCnpj(fazenda_id: string, cnpj: string): 
 }
 
 // Atualiza custo médio ponderado e saldo do insumo
-async function creditarInsumo(insumo_id: string, quantidade: number, valor_unitario: number, fazenda_id?: string): Promise<void> {
+async function creditarInsumo(insumo_id: string, quantidade: number, valor_unitario: number, fazenda_id?: string, deposito_id?: string | null): Promise<void> {
   const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", insumo_id).single();
   if (!ins) return;
 
@@ -1655,6 +1655,8 @@ async function creditarInsumo(insumo_id: string, quantidade: number, valor_unita
     estoque:        (ins.estoque ?? 0) + quantidade,
     custo_medio:    Math.round(novoCusto * 10000) / 10000,
     valor_unitario, // sempre atualiza para o preço da última compra
+    // Propaga depósito para o insumo quando informado (vindo de NF ou movimento manual)
+    ...(deposito_id !== undefined ? { deposito_id: deposito_id ?? null } : {}),
   }).eq("id", insumo_id);
 }
 
@@ -1724,7 +1726,7 @@ export async function processarNfEntrada(
         deposito_id:        item.deposito_id ?? null,
         nf_entrada_item_id: item.id,
       });
-      await creditarInsumo(item.insumo_id, item.quantidade, custoUnitarioCatalogo, fazenda_id);
+      await creditarInsumo(item.insumo_id, item.quantidade, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
     }
 
     // ── Manutenção de máquina ────────────────────────────────────
@@ -1829,7 +1831,7 @@ export async function processarNfEntrada(
         deposito_id:        item.deposito_id ?? null,
         nf_entrada_item_id: item.id,
       });
-      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id);
+      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id, item.deposito_id ?? null);
     }
   }
 
