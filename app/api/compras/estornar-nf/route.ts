@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     const { error: errStatus } = await sb
       .from("nf_entradas")
-      .update({ status: "rascunho" })
+      .update({ status: "pendente" })
       .eq("id", nf_id);
 
     if (errStatus) throw new Error(`Erro ao atualizar status: ${errStatus.message}`);

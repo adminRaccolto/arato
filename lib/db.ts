@@ -2038,9 +2038,9 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
     await supabase.from("nf_entradas").update({ lancamento_id: null }).eq("id", nfId);
   }
 
-  // 5. Itens + volta status para rascunho
+  // 5. Itens + volta status para pendente (pronta para reprocessar)
   await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);
-  await supabase.from("nf_entradas").update({ status: "rascunho" }).eq("id", nfId);
+  await supabase.from("nf_entradas").update({ status: "pendente" }).eq("id", nfId);
 }
 
 // Processa NF de Devolução de Compra:
