@@ -2335,7 +2335,8 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
       }
     }
 
-    await sb().from("nf_entrada_itens").insert({
+    // Captura o ID do item para vincular a movimentação de estoque
+    const { data: itemRow } = await sb().from("nf_entrada_itens").insert({
       nf_entrada_id:    nfId,
       fazenda_id:       fazendaId,
       descricao_produto: String(i.descricao).slice(0, 200),
@@ -2347,7 +2348,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
       tipo_apropiacao:  insumo ? "estoque" : "direto",
       insumo_id:        insumo?.id ?? null,
       alerta_preco:     false,
-    });
+    }).select("id").maybeSingle();
 
     if (insumo) {
       const saldoAtual  = Number(insumo.estoque ?? 0);
@@ -2362,16 +2363,18 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
         custo_medio: novoMedio > 0 ? novoMedio : custoAtual,
       }).eq("id", insumo.id);
 
+      // nf_entrada_item_id vinculado para que o estorno funcione corretamente
       await sb().from("movimentacoes_estoque").insert({
-        fazenda_id:    fazendaId,
-        insumo_id:     insumo.id,
-        tipo:          "entrada",
-        quantidade:    qtd,
-        valor_unitario: vlUnit,
-        motivo:        "compra",
-        observacao:    `NF ${numeroNf || "s/n"} — ${razao} (via WhatsApp)`,
-        data:          hoje,
-        auto:          false,
+        fazenda_id:         fazendaId,
+        insumo_id:          insumo.id,
+        tipo:               "entrada",
+        quantidade:         qtd,
+        valor_unitario:     vlUnit,
+        motivo:             "compra",
+        observacao:         `NF ${numeroNf || "s/n"} — ${razao} (via WhatsApp)`,
+        data:               hoje,
+        auto:               false,
+        nf_entrada_item_id: itemRow?.id ?? null,
       });
       vinculados++;
     } else {
@@ -2394,10 +2397,11 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     auto:            false,
   }).select("id").maybeSingle();
 
-  // 5. Vincular lancamento → NF
-  if (lancRow?.id) {
-    await sb().from("nf_entradas").update({ lancamento_id: lancRow.id }).eq("id", nfId);
-  }
+  // 5. Vincular lancamento → NF e marcar como processada
+  await sb().from("nf_entradas").update({
+    lancamento_id: lancRow?.id ?? null,
+    status: "processada",
+  }).eq("id", nfId);
 
   // 6. Pendência fiscal
   await sb().from("pendencias_fiscais").insert({

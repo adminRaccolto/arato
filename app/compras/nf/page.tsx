@@ -6,7 +6,6 @@ import {
   listarNfEntradaItens, criarNfEntradaItem,
   processarNfEntrada,
   processarDevolucaoCompra,
-  estornarNfProcessamento,
   listarInsumos,
   criarInsumo,
   listarDepositos,
@@ -985,7 +984,16 @@ export default function NfCompraPage() {
     );
     if (!ok) return;
     try {
-      await estornarNfProcessamento(nf.id);
+      // Usa API route com service_role_key — imune a JWT expirado e RLS
+      const res = await fetch("/api/compras/estornar-nf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nf_id: nf.id }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error((json as { error?: string }).error ?? `Erro HTTP ${res.status}`);
+      }
       await carregar();
       alert(`NF ${nf.numero} estornada. O estoque foi revertido. Reabra a NF para corrigir os itens e reprocessar.`);
     } catch (e: unknown) {
