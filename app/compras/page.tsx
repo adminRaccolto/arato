@@ -230,7 +230,7 @@ const PEDIDO_VAZIO: FormPedido = {
 };
 
 export default function ComprasPage() {
-  const { fazendaId, contaId, podeAcessarPlano, anoSafraVigenteId } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano, anoSafraVigenteId, contaModulosOverrides } = useAuth();
 
   const [pedidos,         setPedidos]         = useState<PedidoCompra[]>([]);
   const [pessoas,         setPessoas]         = useState<Pessoa[]>([]);
@@ -267,6 +267,11 @@ export default function ComprasPage() {
 
   // Modal relatório NFs
   const [modalRelatorio, setModalRelatorio] = useState<{ pedido: PedidoCompra; itens: PedidoCompraItem[]; entregas: PedidoCompraEntrega[] } | null>(null);
+
+  // IA — Lançamento por PDF (add-on ia_pedido_compra)
+  const [iaExtraindo, setIaExtraindo] = useState(false);
+  const [iaConfianca, setIaConfianca] = useState<"alta" | "media" | "baixa" | null>(null);
+  const [iaPdfNome,   setIaPdfNome]   = useState<string | null>(null);
 
   // ── Carregamento ─────────────────────────────────────────────
 
@@ -353,6 +358,8 @@ export default function ComprasPage() {
     setPedidoEdit(null);
     setAbaModal("principal");
     setAbaItens("itens");
+    setIaConfianca(null);
+    setIaPdfNome(null);
     setModal(true);
   };
 
@@ -408,6 +415,81 @@ export default function ComprasPage() {
   };
 
   // ── Salvar pedido ─────────────────────────────────────────────
+
+  // ── IA: extrai dados do PDF de orçamento/cotação e auto-preenche o formulário ──
+  const handlePdfCompra = async (file: File) => {
+    setIaExtraindo(true);
+    setIaConfianca(null);
+    setIaPdfNome(file.name);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/ai/extrair-pedido-compra", { method: "POST", body: form });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Erro ao extrair"); }
+      const d = await res.json();
+      setIaConfianca(d.confianca ?? "baixa");
+
+      // Tenta match do fornecedor pelo CNPJ
+      const fornecedorMatch = d.fornecedor_cnpj
+        ? pessoas.find(p => {
+            const cnpjP = (p.cpf_cnpj ?? "").replace(/\D/g, "");
+            const cnpjIA = (d.fornecedor_cnpj ?? "").replace(/\D/g, "");
+            return cnpjP.length > 0 && cnpjIA.length > 0 && cnpjP === cnpjIA;
+          })
+        : null;
+
+      // Calcula data de vencimento a partir do prazo
+      let dataVenc = "";
+      if (d.prazo_pagamento_dias != null && d.data_emissao) {
+        const base = new Date(d.data_emissao + "T12:00:00");
+        base.setDate(base.getDate() + d.prazo_pagamento_dias);
+        dataVenc = base.toISOString().split("T")[0];
+      }
+
+      setF(prev => ({
+        ...prev,
+        fornecedor_id:         fornecedorMatch?.id              ?? prev.fornecedor_id,
+        nr_pedido_fornecedor:  d.numero_documento               ?? prev.nr_pedido_fornecedor,
+        frete_total:           d.frete_valor != null ? String(d.frete_valor) : prev.frete_total,
+        frete_tipo:            d.frete_tipo                     ?? prev.frete_tipo,
+        previsao_entrega_unica: d.data_entrega                  ?? prev.previsao_entrega_unica,
+        data_vencimento:       dataVenc || prev.data_vencimento,
+        observacao:            d.observacao
+          ? (prev.observacao ? `${prev.observacao}\n${d.observacao}` : d.observacao)
+          : prev.observacao,
+      }));
+
+      // Auto-preenche itens se extraiu algum
+      if (Array.isArray(d.itens) && d.itens.length > 0) {
+        const novosItens: ItemForm[] = d.itens.map((it: {
+          descricao: string; unidade?: string; quantidade?: number; valor_unitario?: number;
+        }) => {
+          const descLower = (it.descricao ?? "").toLowerCase();
+          const insumoMatch = insumos.find(ins => {
+            const nomeLower = ins.nome.toLowerCase();
+            return nomeLower.includes(descLower.slice(0, 10)) || descLower.includes(nomeLower.slice(0, 10));
+          });
+          return {
+            tipo_item: "produto" as const,
+            insumo_id: insumoMatch?.id ?? "",
+            nome_item: it.descricao,
+            unidade: it.unidade || insumoMatch?.unidade || "UN",
+            quantidade: String(it.quantidade ?? ""),
+            valor_unitario: String(it.valor_unitario ?? ""),
+            qtd_cancelada: "0",
+            qtd_entregue: 0,
+            centro_custo_id: "",
+          };
+        });
+        setItens(novosItens);
+      }
+    } catch (e) {
+      console.error("[handlePdfCompra]", e);
+      setIaConfianca("baixa");
+    } finally {
+      setIaExtraindo(false);
+    }
+  };
 
   function extrairProdutoBarter(cultura?: string): string {
     const c = (cultura ?? "").toLowerCase();
@@ -963,6 +1045,53 @@ export default function ComprasPage() {
 
               {/* ── ABA PRINCIPAL ── */}
               {abaModal === "principal" && (<>
+
+                {/* ── Banner IA — upload PDF orçamento/cotação (Add-on ia_pedido_compra) ── */}
+                {!pedidoEdit && contaModulosOverrides["ia_pedido_compra"] === true && (
+                  <div style={{ marginBottom: 18, border: "0.5px solid #C9921B", borderRadius: 10, background: "#FBF3E0", padding: "12px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#7A4300", marginBottom: 3 }}>
+                          📄 Deixe que o Arato lança pra você. Anexe o PDF do orçamento ou cotação.
+                        </div>
+                        <div style={{ fontSize: 11, color: "#7A4300" }}>
+                          Envie o PDF — o sistema extrai fornecedor, itens, quantidades, preços e datas automaticamente.
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                        {iaExtraindo && (
+                          <span style={{ fontSize: 11, color: "#7A4300" }}>Lendo documento…</span>
+                        )}
+                        {iaConfianca && !iaExtraindo && (
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 5,
+                            background: iaConfianca === "alta" ? "#DCFCE7" : iaConfianca === "media" ? "#FBF3E0" : "#FCEBEB",
+                            color: iaConfianca === "alta" ? "#166534" : iaConfianca === "media" ? "#7A4300" : "#791F1F",
+                            border: `0.5px solid ${iaConfianca === "alta" ? "#16A34A" : iaConfianca === "media" ? "#C9921B" : "#E24B4A"}`,
+                          }}>
+                            {iaConfianca === "alta" ? "✓ Alta confiança" : iaConfianca === "media" ? "⚠ Revisar campos" : "⚠ Baixa — confira tudo"}
+                          </span>
+                        )}
+                        {iaPdfNome && !iaExtraindo && (
+                          <span style={{ fontSize: 11, color: "#7A4300", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {iaPdfNome}</span>
+                        )}
+                        <label style={{ padding: "6px 14px", background: iaExtraindo ? "#ccc" : "#C9921B", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: iaExtraindo ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                          {iaExtraindo ? "Processando…" : iaPdfNome ? "Trocar PDF" : "Selecionar PDF"}
+                          <input type="file" accept="application/pdf" style={{ display: "none" }} disabled={iaExtraindo}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfCompra(f); e.target.value = ""; }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    {iaConfianca && !iaExtraindo && (
+                      <div style={{ marginTop: 8, fontSize: 11, color: "#7A4300", borderTop: "0.5px solid #C9921B40", paddingTop: 7 }}>
+                        {iaPdfNome && <>📎 <strong>{iaPdfNome}</strong> — </>}
+                        Fornecedor, itens, quantidades e preços foram preenchidos automaticamente. Revise e ajuste antes de salvar.
+                        {iaConfianca === "alta" && <span style={{ marginLeft: 8, color: "#16A34A" }}>Itens da aba Itens foram preenchidos com os dados do PDF.</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Linha 1: Operação + Safra + Pedido + Datas */}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                   <div>
