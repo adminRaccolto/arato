@@ -1824,6 +1824,7 @@ export type OperacaoGerencial = {
   tipo: "receita" | "despesa";
   parent_id?: string;           // hierarquia de plano de contas
   tipo_lcdpr?: string;          // "1-NF", "2-Recibo", "3-Folha", "4-Pró-Labore", "5-Outros"
+  codigo_lcdpr?: string | null; // "101"-"199" receita, "201"-"299" despesa; null = não entra no LCDPR
   inativo?: boolean;
   informa_complemento?: boolean;
   escopo_cc?: "global" | "fazenda" | "ciclo" | null; // escopo de alocação de custo (Migration 158)

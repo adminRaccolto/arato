@@ -9280,3 +9280,15 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS data_prorrogacao DATE;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- Seção XX — codigo_lcdpr em operacoes_gerenciais (Plano de Contas LCDPR)
+-- ═══════════════════════════════════════════════════════════════
+-- Vincula cada Operação Gerencial a um código de receita/despesa do LCDPR.
+-- NULL = OG não entra no LCDPR (usa fallback automático por categoria/descrição).
+-- Valores válidos: 101-199 (receitas) | 201-299 (despesas)
+ALTER TABLE operacoes_gerenciais
+  ADD COLUMN IF NOT EXISTS codigo_lcdpr TEXT
+  CHECK (codigo_lcdpr IN ('101','102','103','104','199','201','202','203','204','205','299'));
+
+NOTIFY pgrst, 'reload schema';

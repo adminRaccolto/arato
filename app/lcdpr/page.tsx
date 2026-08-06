@@ -1,17 +1,15 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import { useAuth } from "../../components/AuthProvider";
-import { listarLancamentos } from "../../lib/db";
-import type { Lancamento } from "../../lib/supabase";
+import { listarLancamentos, listarOperacoesGerenciaisAtivasDaConta, atualizarOperacaoGerencial } from "../../lib/db";
+import type { Lancamento, OperacaoGerencial } from "../../lib/supabase";
 import { createBrowserClient } from "@supabase/ssr";
 import PlanoGate from "../../components/PlanoGate";
 
-// ─────────────────────────────────────────────────────────────
-// TABELA DE CÓDIGOS LCDPR — Receita Federal
-// ─────────────────────────────────────────────────────────────
+// ─── Tabela de códigos LCDPR — IN RFB 1.848/2018 ────────────────────────────
 const CODIGOS_LCDPR = {
   receita: [
     { cod: "101", desc: "Venda de produto rural" },
@@ -30,43 +28,31 @@ const CODIGOS_LCDPR = {
   ],
 } as const;
 
-// Mapeamento automático categoria → código LCDPR
-const MAPA_CATEGORIA: Record<string, string> = {
-  // Receitas
-  "Venda de grãos":      "101",
-  "Venda de soja":       "101",
-  "Venda de milho":      "101",
-  "Venda de algodão":    "101",
-  "Serviço rural":       "102",
-  "Financiamento":       "103",
-  "ITR":                 "104",
-  // Despesas
-  "Insumos":             "201",
-  "Sementes":            "201",
-  "Fertilizantes":       "201",
-  "Defensivos":          "201",
-  "Mão de obra":         "201",
-  "Frete":               "201",
-  "Arrendamento":        "201",
-  "Máquinas":            "202",
-  "Investimento":        "202",
-  "Amortização":         "203",
-  "Impostos e taxas":    "205",
-};
+const TODOS_CODIGOS = [...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa];
+const MAP_CODIGO = new Map<string, string>(TODOS_CODIGOS.map(c => [c.cod, c.desc]));
 
-function codigoAuto(lan: Lancamento): string {
+// Fallback por categoria/descrição quando OG não tem codigo_lcdpr
+const MAPA_CATEGORIA: Record<string, string> = {
+  "Venda de grãos": "101", "Venda de soja": "101", "Venda de milho": "101", "Venda de algodão": "101",
+  "Serviço rural": "102", "Financiamento": "103", "ITR": "104",
+  "Insumos": "201", "Sementes": "201", "Fertilizantes": "201", "Defensivos": "201",
+  "Mão de obra": "201", "Frete": "201", "Arrendamento": "201",
+  "Máquinas": "202", "Investimento": "202", "Amortização": "203",
+  "Impostos e taxas": "205",
+};
+function codigoAuto(l: Lancamento): string {
   for (const [key, cod] of Object.entries(MAPA_CATEGORIA)) {
-    if (lan.categoria?.toLowerCase().includes(key.toLowerCase())) return cod;
-    if (lan.descricao?.toLowerCase().includes(key.toLowerCase())) return cod;
+    if (l.categoria?.toLowerCase().includes(key.toLowerCase())) return cod;
+    if (l.descricao?.toLowerCase().includes(key.toLowerCase())) return cod;
   }
-  return lan.tipo === "receber" ? "199" : "299";
+  return l.tipo === "receber" ? "199" : "299";
 }
 
 const hoje = () => new Date().toISOString().split("T")[0];
-const fmtData = (s: string) => { const [y,m,d] = s.split("-"); return `${d}/${m}/${y}`; };
+const fmtData = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-type AbaLCDPR = "livro" | "resumo" | "exportacao";
+type AbaLCDPR = "livro" | "plano" | "importacao" | "resumo" | "exportacao";
 
 interface EntradaLCDPR {
   id: string;
@@ -77,59 +63,103 @@ interface EntradaLCDPR {
   codigo: string;
   receita: number;
   despesa: number;
-  origem: "auto" | "manual";
+  origem: "auto" | "manual" | "importado";
   lancId?: string;
 }
 
-// ─────────────────────────────────────────────────────────────
+interface ImportRow {
+  data: string;
+  historico: string;
+  doc: string;
+  cpf_cnpj: string;
+  codigo: string;
+  receita: number;
+  despesa: number;
+  _status: "ok" | "erro";
+  _msg: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function LCDPR() {
   const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
-  const [aba, setAba]         = useState<AbaLCDPR>("livro");
-  const [anoSel, setAnoSel]   = useState(new Date().getFullYear());
-  const [loading, setLoading] = useState(true);
+
+  const [aba, setAba]           = useState<AbaLCDPR>("livro");
+  const [anoSel, setAnoSel]     = useState(new Date().getFullYear());
+  const [loading, setLoading]   = useState(true);
   const [entradas, setEntradas] = useState<EntradaLCDPR[]>([]);
   const [saldoInicial, setSaldoInicial] = useState(0);
-  const [modalManual, setModalManual] = useState(false);
+  const [modalManual, setModalManual]   = useState(false);
   const [fManual, setFManual] = useState({ data: hoje(), historico: "", doc: "", cpf_cnpj: "", codigo: "101", valor: 0, tipo: "receita" as "receita" | "despesa" });
 
+  // Plano de Contas LCDPR
+  const [ogs, setOgs] = useState<OperacaoGerencial[]>([]);
+  const [ogMap, setOgMap] = useState<Map<string, OperacaoGerencial>>(new Map());
+  const [ogEditCodigos, setOgEditCodigos] = useState<Map<string, string | null>>(new Map());
+  const [savingOgIds, setSavingOgIds] = useState<Set<string>>(new Set());
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set(["semcod"]));
+
+  // Importação
+  const importRef = useRef<HTMLInputElement>(null);
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importFeedback, setImportFeedback] = useState("");
+
+  // ── Carga principal ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!fazendaId) return;
+    const ids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (!ids.length) return;
     setLoading(true);
     const sb = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     Promise.all([
-      listarLancamentos(fazendaId),
-      // Carrega IDs baixados via Apoio Financeiro para excluir do LCDPR
-      sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", fazendaIds),
-    ]).then(([lans, { data: apoioBaixas }]) => {
+      // Lança de TODAS as fazendas da conta (LCDPR é por CPF, não por fazenda)
+      Promise.all(ids.map(fid => listarLancamentos(fid))).then(all => all.flat()),
+      // Baixas do Apoio Financeiro — excluídas do LCDPR
+      sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids),
+      // OGs para resolução de código LCDPR
+      listarOperacoesGerenciaisAtivasDaConta(undefined, fazendaId),
+    ]).then(([lans, { data: apoioBaixas }, ogsData]) => {
+      setOgs(ogsData);
+      const map = new Map(ogsData.map(og => [og.id, og]));
+      setOgMap(map);
+      setOgEditCodigos(new Map(ogsData.map(og => [og.id, og.codigo_lcdpr ?? null])));
+
       const apoioIds = new Set((apoioBaixas ?? []).map((b: { lancamento_id: string }) => b.lancamento_id));
+
+      // LCDPR é caixa — usa data do efetivo pagamento
       const filtradas = lans.filter(l => {
-        const ano = l.data_baixa?.slice(0, 4) ?? l.data_vencimento?.slice(0, 4);
-        // Exclui baixados via Apoio Financeiro — não entram no LCDPR
-        return ano === String(anoSel) && l.status === "baixado" && !apoioIds.has(l.id);
+        if (l.status !== "baixado") return false;
+        if (apoioIds.has(l.id)) return false;
+        const dataCaixa = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
+        return dataCaixa.slice(0, 4) === String(anoSel);
       });
-      const items: EntradaLCDPR[] = filtradas.map(l => ({
-        id: l.id,
-        data: l.data_baixa ?? l.data_vencimento,
-        historico: l.descricao,
-        doc: l.tipo_documento_lcdpr ?? "OUTROS",
-        cpf_cnpj: "",
-        codigo: codigoAuto(l),
-        receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor) : 0,
-        despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor) : 0,
-        origem: "auto",
-        lancId: l.id,
-      }));
+
+      const items: EntradaLCDPR[] = filtradas.map(l => {
+        const og = l.operacao_gerencial_id ? map.get(l.operacao_gerencial_id) : undefined;
+        const codigo = og?.codigo_lcdpr ?? codigoAuto(l);
+        return {
+          id: l.id,
+          data: l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "",
+          historico: l.descricao ?? "",
+          doc: l.tipo_documento_lcdpr ?? "OUTROS",
+          cpf_cnpj: "",
+          codigo,
+          receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor ?? 0) : 0,
+          despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor ?? 0) : 0,
+          origem: "auto",
+          lancId: l.id,
+        };
+      });
       items.sort((a, b) => a.data.localeCompare(b.data));
       setEntradas(items);
     }).finally(() => setLoading(false));
-  }, [fazendaId, anoSel]);
+  }, [fazendaId, fazendaIds?.join(","), anoSel]);
 
+  // ── Manual ────────────────────────────────────────────────────────────────
   const adicionarManual = () => {
-    const v = fManual.valor;
-    if (!v || !fManual.historico) return;
+    if (!fManual.valor || !fManual.historico) return;
     const nova: EntradaLCDPR = {
       id: `manual-${Date.now()}`,
       data: fManual.data,
@@ -137,23 +167,112 @@ export default function LCDPR() {
       doc: fManual.doc || "OUTROS",
       cpf_cnpj: fManual.cpf_cnpj,
       codigo: fManual.codigo,
-      receita: fManual.tipo === "receita" ? v : 0,
-      despesa: fManual.tipo === "despesa" ? v : 0,
+      receita: fManual.tipo === "receita" ? fManual.valor : 0,
+      despesa: fManual.tipo === "despesa" ? fManual.valor : 0,
       origem: "manual",
     };
     setEntradas(prev => [...prev, nova].sort((a, b) => a.data.localeCompare(b.data)));
     setModalManual(false);
     setFManual({ data: hoje(), historico: "", doc: "", cpf_cnpj: "", codigo: "101", valor: 0, tipo: "receita" });
   };
-
   const removerManual = (id: string) => setEntradas(prev => prev.filter(e => e.id !== id));
 
-  // Totais com saldo acumulado
+  // ── Plano de Contas LCDPR — salvar código por OG ─────────────────────────
+  const salvarCodigoOG = async (ogId: string, codigo: string | null) => {
+    setSavingOgIds(prev => new Set(prev).add(ogId));
+    try {
+      await atualizarOperacaoGerencial(ogId, { codigo_lcdpr: codigo } as Partial<OperacaoGerencial>);
+      setOgMap(prev => {
+        const next = new Map(prev);
+        const og = next.get(ogId);
+        if (og) next.set(ogId, { ...og, codigo_lcdpr: codigo ?? undefined });
+        return next;
+      });
+      setOgs(prev => prev.map(og => og.id === ogId ? { ...og, codigo_lcdpr: codigo ?? undefined } : og));
+    } finally {
+      setSavingOgIds(prev => { const next = new Set(prev); next.delete(ogId); return next; });
+    }
+  };
+
+  // ── Importação XLS/CSV ────────────────────────────────────────────────────
+  const handleImportFile = async (file: File) => {
+    setImportLoading(true);
+    setImportFeedback("");
+    try {
+      const XLSX = await import("xlsx");
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+      const parsed: ImportRow[] = rows.map(r => {
+        const get = (...keys: string[]) => keys.reduce<string>((acc, k) => acc || String(r[k] ?? ""), "").trim();
+        const dataRaw = get("Data", "data", "DATA");
+        const hist    = get("Histórico", "Historico", "historico", "HISTÓRICO", "Descrição", "descricao");
+        const doc     = get("Documento", "documento", "DOCUMENTO") || "OUTROS";
+        const cpf     = get("CPF/CNPJ", "cpf_cnpj", "CPF", "CNPJ");
+        const codRaw  = get("Código LCDPR", "Codigo LCDPR", "codigo", "CÓDIGO");
+        const tipoRaw = get("Tipo", "tipo", "TIPO").toLowerCase();
+        const valRaw  = parseFloat(get("Valor", "valor", "VALOR").replace(/\./g, "").replace(",", ".")) || 0;
+
+        const erros: string[] = [];
+        if (!hist) erros.push("Histórico vazio");
+        let dataIso = dataRaw;
+        if (dataRaw.includes("/")) {
+          const p = dataRaw.split("/");
+          if (p.length === 3) dataIso = `${p[2].length === 4 ? p[2] : `20${p[2]}`}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dataIso)) erros.push("Data inválida (use DD/MM/AAAA)");
+        const isReceita = tipoRaw.startsWith("r");
+        const codigo = codRaw && MAP_CODIGO.has(codRaw) ? codRaw : (isReceita ? "199" : "299");
+        if (codRaw && !MAP_CODIGO.has(codRaw)) erros.push(`Código "${codRaw}" inválido`);
+
+        return {
+          data: dataIso, historico: hist, doc, cpf_cnpj: cpf, codigo,
+          receita: isReceita ? valRaw : 0,
+          despesa: isReceita ? 0 : valRaw,
+          _status: erros.length ? "erro" : "ok",
+          _msg: erros.join("; "),
+        };
+      });
+      setImportRows(parsed);
+    } catch {
+      setImportFeedback("Erro ao ler o arquivo. Use o modelo fornecido.");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const confirmarImport = () => {
+    const validas = importRows.filter(r => r._status === "ok");
+    const novas: EntradaLCDPR[] = validas.map((r, i) => ({
+      id: `imp-${Date.now()}-${i}`,
+      data: r.data, historico: r.historico, doc: r.doc, cpf_cnpj: r.cpf_cnpj, codigo: r.codigo,
+      receita: r.receita, despesa: r.despesa, origem: "importado",
+    }));
+    setEntradas(prev => [...prev, ...novas].sort((a, b) => a.data.localeCompare(b.data)));
+    setImportRows([]);
+    setImportFeedback(`✓ ${validas.length} lançamento${validas.length !== 1 ? "s" : ""} adicionado${validas.length !== 1 ? "s" : ""} ao Livro Caixa.`);
+    setAba("livro");
+  };
+
+  const baixarModelo = async () => {
+    const XLSX = await import("xlsx");
+    const modelo = [
+      ["Data", "Histórico", "Documento", "CPF/CNPJ", "Código LCDPR", "Tipo", "Valor"],
+      ["15/03/2026", "Venda de soja — Bunge", "NF-e 1234", "03.755.877/0001-00", "101", "Receita", "185000,00"],
+      ["20/03/2026", "Adubo NPK — Cofco", "NF-e 5678", "04.803.396/0001-44", "201", "Despesa", "42000,00"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(modelo);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+    XLSX.writeFile(wb, "Modelo_LCDPR.xlsx");
+  };
+
+  // ── Totais ────────────────────────────────────────────────────────────────
   const totalReceitas = entradas.reduce((s, e) => s + e.receita, 0);
   const totalDespesas = entradas.reduce((s, e) => s + e.despesa, 0);
   const saldoFinal    = saldoInicial + totalReceitas - totalDespesas;
 
-  // Resumo mensal
   const meses = Array.from({ length: 12 }, (_, i) => {
     const m = String(i + 1).padStart(2, "0");
     const itens = entradas.filter(e => e.data.slice(5, 7) === m);
@@ -164,18 +283,42 @@ export default function LCDPR() {
     };
   });
 
-  // Resumo por código
-  const porCodigo = [...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa].map(c => {
+  const porCodigo = TODOS_CODIGOS.map(c => {
     const total = entradas.filter(e => e.codigo === c.cod).reduce((s, e) => s + e.receita + e.despesa, 0);
     return { ...c, total, tipo: c.cod.startsWith("1") ? "receita" : "despesa" };
   }).filter(c => c.total > 0);
+
+  // ── Plano: OGs agrupadas por código ──────────────────────────────────────
+  const ogsPorCodigo = useMemo(() => {
+    const grupos = new Map<string | null, OperacaoGerencial[]>();
+    TODOS_CODIGOS.forEach(c => grupos.set(c.cod, []));
+    grupos.set(null, []);
+    for (const og of ogs) {
+      const cod = og.codigo_lcdpr ?? null;
+      const lista = grupos.get(cod);
+      if (lista !== undefined) lista.push(og);
+      else grupos.get(null)!.push(og);
+    }
+    return grupos;
+  }, [ogs]);
+
+  const ogsTotal    = ogs.length;
+  const ogsMapeadas = ogs.filter(o => o.codigo_lcdpr).length;
 
   const anos = [2023, 2024, 2025, 2026, 2027];
 
   const inpS: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
   const lblS: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
+  const btnPrimario: React.CSSProperties = { padding: "8px 16px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 
   if (!podeAcessarPlano("fiscal_sped")) return <PlanoGate modulo="fiscal_sped" />;
+
+  const toggleExpandido = (key: string) => setExpandidos(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
@@ -185,7 +328,7 @@ export default function LCDPR() {
         <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>LCDPR — Livro Caixa Digital do Produtor Rural</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Obrigação acessória · Receita Federal · Instrução Normativa RFB nº 1.848/2018</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Obrigação acessória · Receita Federal · IN RFB nº 1.848/2018</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <select value={anoSel} onChange={e => setAnoSel(Number(e.target.value))} style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", cursor: "pointer" }}>
@@ -199,13 +342,13 @@ export default function LCDPR() {
 
         <div style={{ padding: "16px 22px", flex: 1 }}>
 
-          {/* Cards de resumo */}
+          {/* KPI cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
-              { label: "Saldo Inicial",   valor: saldoInicial,   cor: "var(--text-1)", bg: "var(--bg-card)" },
-              { label: "Total Receitas",  valor: totalReceitas,  cor: "#1A5C38", bg: "#EAF3DE" },
-              { label: "Total Despesas",  valor: totalDespesas,  cor: "#E24B4A", bg: "#FCEBEB" },
-              { label: "Saldo Final",     valor: saldoFinal,     cor: saldoFinal >= 0 ? "#1A5C38" : "#E24B4A", bg: saldoFinal >= 0 ? "#EAF3DE" : "#FCEBEB" },
+              { label: "Saldo Inicial",  valor: saldoInicial, cor: "var(--text-1)", bg: "var(--bg-card)" },
+              { label: "Total Receitas", valor: totalReceitas, cor: "#1A5C38", bg: "#EAF3DE" },
+              { label: "Total Despesas", valor: totalDespesas, cor: "#E24B4A", bg: "#FCEBEB" },
+              { label: "Saldo Final",    valor: saldoFinal,   cor: saldoFinal >= 0 ? "#1A5C38" : "#E24B4A", bg: saldoFinal >= 0 ? "#EAF3DE" : "#FCEBEB" },
             ].map((c, i) => (
               <div key={i} style={{ background: c.bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4 }}>{c.label}</div>
@@ -214,33 +357,40 @@ export default function LCDPR() {
             ))}
           </div>
 
-          {/* Saldo inicial editável */}
+          {/* Saldo inicial */}
           <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "8px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}>
-            <span style={{ color: "#7A5A12" }}>⚠ Saldo inicial do ano:</span>
-            <InputNumerico
-              value={saldoInicial}
-              onChange={v => setSaldoInicial(Number(v))}
-              style={{ padding: "4px 8px", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, width: 140, color: "var(--text-1)" }}
-            />
-            <span style={{ color: "#7A5A12" }}>Informe o saldo em caixa em 1º de janeiro de {anoSel}</span>
+            <span style={{ color: "#7A5A12" }}>⚠ Saldo inicial em 01/01/{anoSel}:</span>
+            <InputNumerico value={saldoInicial} onChange={v => setSaldoInicial(Number(v))} style={{ padding: "4px 8px", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, width: 140, color: "var(--text-1)" }} />
+            <span style={{ color: "#7A5A12", fontSize: 11 }}>Informe o saldo em caixa no início do exercício.</span>
           </div>
 
           {/* Abas */}
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
-              {([["livro", "Livro Caixa"], ["resumo", "Resumo Anual"], ["exportacao", "Exportação"]] as [AbaLCDPR, string][]).map(([key, label]) => (
+            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", overflowX: "auto" }}>
+              {([
+                ["livro",      "Livro Caixa"],
+                ["plano",      "Plano de Contas LCDPR"],
+                ["importacao", "Importação"],
+                ["resumo",     "Resumo Anual"],
+                ["exportacao", "Exportação"],
+              ] as [AbaLCDPR, string][]).map(([key, label]) => (
                 <button key={key} onClick={() => setAba(key)} style={{
-                  padding: "10px 20px", border: "none", background: aba === key ? "#fff" : "var(--bg-card)",
+                  padding: "10px 18px", border: "none", background: aba === key ? "#fff" : "var(--bg-card)",
                   borderBottom: aba === key ? "2px solid #1A5C38" : "2px solid transparent",
                   cursor: "pointer", fontSize: 13, fontWeight: aba === key ? 600 : 400,
-                  color: aba === key ? "#1A5C38" : "var(--text-2)",
+                  color: aba === key ? "#1A5C38" : "var(--text-2)", whiteSpace: "nowrap",
                 }}>
                   {label}
+                  {key === "plano" && ogsMapeadas < ogsTotal && ogsTotal > 0 && (
+                    <span style={{ marginLeft: 6, fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>
+                      {ogsTotal - ogsMapeadas} sem código
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
 
-            {/* ── ABA: LIVRO CAIXA ── */}
+            {/* ══════════════ ABA: LIVRO CAIXA ══════════════ */}
             {aba === "livro" && (
               <div>
                 {loading ? (
@@ -249,68 +399,347 @@ export default function LCDPR() {
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>
                     <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)" }}>Nenhum lançamento baixado em {anoSel}</div>
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>Os lançamentos aparecem aqui após a baixa no Financeiro, ou adicione manualmente.</div>
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 4, lineHeight: 1.6 }}>
+                      Lançamentos baixados no Financeiro aparecem aqui automaticamente.<br />
+                      Verifique se o ano selecionado está correto ou adicione um lançamento manual.
+                    </div>
                   </div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "var(--bg-page)" }}>
-                        {["Data", "Cód.", "Histórico", "Documento", "CPF/CNPJ", "Receita", "Despesa", "Saldo", ""].map((h, i) => (
-                          <th key={i} style={{ padding: "8px 12px", textAlign: i >= 5 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        let saldo = saldoInicial;
-                        return entradas.map((e, i) => {
-                          saldo += e.receita - e.despesa;
-                          const cod = [...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa].find(c => c.cod === e.codigo);
-                          return (
-                            <tr key={e.id} style={{ borderBottom: i < entradas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: e.origem === "manual" ? "#FFFDF5" : "transparent" }}>
-                              <td style={{ padding: "8px 12px", color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtData(e.data)}</td>
-                              <td style={{ padding: "8px 12px" }}>
-                                <span style={{ fontSize: 10, background: e.codigo.startsWith("1") ? "#EAF3DE" : "#FCEBEB", color: e.codigo.startsWith("1") ? "#1A5C38" : "#791F1F", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>{e.codigo}</span>
-                              </td>
-                              <td style={{ padding: "8px 12px", color: "var(--text-1)", maxWidth: 260 }}>
-                                <div style={{ fontWeight: 500 }}>{e.historico}</div>
-                                {cod && <div style={{ fontSize: 10, color: "#666" }}>{cod.desc}</div>}
-                              </td>
-                              <td style={{ padding: "8px 12px", color: "var(--text-1)", fontSize: 11 }}>{e.doc}</td>
-                              <td style={{ padding: "8px 12px", color: "var(--text-2)", fontSize: 11 }}>{e.cpf_cnpj || "—"}</td>
-                              <td style={{ padding: "8px 12px", textAlign: "right", color: e.receita > 0 ? "#1A5C38" : "var(--text-muted)", fontWeight: e.receita > 0 ? 600 : 400 }}>{e.receita > 0 ? fmtBRL(e.receita) : "—"}</td>
-                              <td style={{ padding: "8px 12px", textAlign: "right", color: e.despesa > 0 ? "#E24B4A" : "var(--text-muted)", fontWeight: e.despesa > 0 ? 600 : 400 }}>{e.despesa > 0 ? fmtBRL(e.despesa) : "—"}</td>
-                              <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: saldo >= 0 ? "var(--text-1)" : "#E24B4A" }}>{fmtBRL(saldo)}</td>
-                              <td style={{ padding: "8px 12px" }}>
-                                {e.origem === "manual" && (
-                                  <button onClick={() => removerManual(e.id)} style={{ fontSize: 11, padding: "2px 7px", borderRadius: 6, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>✕</button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        });
-                      })()}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border-table)" }}>
-                        <td colSpan={5} style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text-1)" }}>TOTAL {anoSel}</td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#1A5C38" }}>{fmtBRL(totalReceitas)}</td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(totalDespesas)}</td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: saldoFinal >= 0 ? "#1A5C38" : "#E24B4A" }}>{fmtBRL(saldoFinal)}</td>
-                        <td />
-                      </tr>
-                    </tfoot>
-                  </table>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
+                      <thead>
+                        <tr style={{ background: "var(--bg-page)" }}>
+                          {["Data", "Cód.", "Histórico", "Documento", "CPF/CNPJ", "Receita", "Despesa", "Saldo", ""].map((h, i) => (
+                            <th key={i} style={{ padding: "8px 12px", textAlign: i >= 5 && i <= 7 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          let saldo = saldoInicial;
+                          return entradas.map((e, i) => {
+                            saldo += e.receita - e.despesa;
+                            return (
+                              <tr key={e.id} style={{ borderBottom: i < entradas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: e.origem !== "auto" ? "#FFFDF5" : "transparent" }}>
+                                <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>{fmtData(e.data)}</td>
+                                <td style={{ padding: "8px 12px" }}>
+                                  <span title={MAP_CODIGO.get(e.codigo)} style={{ fontSize: 10, background: e.codigo.startsWith("1") ? "#EAF3DE" : "#FCEBEB", color: e.codigo.startsWith("1") ? "#1A5C38" : "#791F1F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, cursor: "help" }}>{e.codigo}</span>
+                                </td>
+                                <td style={{ padding: "8px 12px", maxWidth: 280 }}>
+                                  <div style={{ fontWeight: 500, color: "var(--text-1)" }}>{e.historico}</div>
+                                  <div style={{ fontSize: 10, color: "#888" }}>{MAP_CODIGO.get(e.codigo)}</div>
+                                </td>
+                                <td style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-2)" }}>{e.doc}</td>
+                                <td style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-2)" }}>{e.cpf_cnpj || "—"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right", color: e.receita > 0 ? "#1A5C38" : "var(--text-muted)", fontWeight: e.receita > 0 ? 600 : 400 }}>{e.receita > 0 ? fmtBRL(e.receita) : "—"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right", color: e.despesa > 0 ? "#E24B4A" : "var(--text-muted)", fontWeight: e.despesa > 0 ? 600 : 400 }}>{e.despesa > 0 ? fmtBRL(e.despesa) : "—"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: saldo >= 0 ? "var(--text-1)" : "#E24B4A" }}>{fmtBRL(saldo)}</td>
+                                <td style={{ padding: "8px 6px" }}>
+                                  {e.origem !== "auto" && (
+                                    <button onClick={() => removerManual(e.id)} style={{ fontSize: 11, padding: "2px 7px", borderRadius: 6, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>✕</button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border-table)" }}>
+                          <td colSpan={5} style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text-1)" }}>TOTAL {anoSel}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#1A5C38" }}>{fmtBRL(totalReceitas)}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(totalDespesas)}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: saldoFinal >= 0 ? "#1A5C38" : "#E24B4A" }}>{fmtBRL(saldoFinal)}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* ── ABA: RESUMO ANUAL ── */}
+            {/* ══════════════ ABA: PLANO DE CONTAS LCDPR ══════════════ */}
+            {aba === "plano" && (
+              <div style={{ padding: 20 }}>
+                {/* Cabeçalho explicativo */}
+                <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 18, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
+                  <strong>Como funciona:</strong> cada Operação Gerencial pode ter um código LCDPR associado. Quando um lançamento é baixado com uma OG mapeada, o código correto é atribuído automaticamente no Livro Caixa — sem depender do campo "categoria".
+                </div>
+
+                <div style={{ display: "flex", gap: 12, marginBottom: 18, fontSize: 12 }}>
+                  <div style={{ background: "#EAF3DE", borderRadius: 8, padding: "8px 14px", color: "#1A5C38", fontWeight: 600 }}>{ogsMapeadas} OGs mapeadas</div>
+                  <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 14px", color: "#791F1F", fontWeight: 600 }}>{ogsTotal - ogsMapeadas} sem código LCDPR</div>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "8px 14px", color: "var(--text-2)" }}>{ogsTotal} total de OGs</div>
+                </div>
+
+                {/* Seções por código */}
+                {TODOS_CODIGOS.map(c => {
+                  const lista = ogsPorCodigo.get(c.cod) ?? [];
+                  if (!lista.length) return null;
+                  const exp = expandidos.has(c.cod);
+                  return (
+                    <div key={c.cod} style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, marginBottom: 8, overflow: "hidden" }}>
+                      <button
+                        onClick={() => toggleExpandido(c.cod)}
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--bg-page)", border: "none", cursor: "pointer", textAlign: "left" }}
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 5, background: c.cod.startsWith("1") ? "#EAF3DE" : "#FCEBEB", color: c.cod.startsWith("1") ? "#1A5C38" : "#791F1F" }}>{c.cod}</span>
+                        <span style={{ fontWeight: 600, color: "var(--text-1)", fontSize: 13 }}>{c.desc}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto" }}>{lista.length} OG{lista.length !== 1 ? "s" : ""}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>{exp ? "▲" : "▼"}</span>
+                      </button>
+                      {exp && (
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <tbody>
+                            {lista.map(og => {
+                              const codAtual = og.codigo_lcdpr ?? null;
+                              const codEdit  = ogEditCodigos.get(og.id) ?? null;
+                              const mudou    = codEdit !== codAtual;
+                              return (
+                                <tr key={og.id} style={{ borderTop: "0.5px solid var(--border-row)" }}>
+                                  <td style={{ padding: "8px 14px", width: 130, color: "var(--text-2)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>{og.classificacao}</td>
+                                  <td style={{ padding: "8px 14px", color: "var(--text-1)" }}>{og.descricao}</td>
+                                  <td style={{ padding: "8px 14px", width: 220 }}>
+                                    <select
+                                      value={codEdit ?? ""}
+                                      onChange={e => {
+                                        const v = e.target.value || null;
+                                        setOgEditCodigos(prev => new Map(prev).set(og.id, v));
+                                      }}
+                                      style={{ width: "100%", padding: "5px 8px", border: `0.5px solid ${mudou ? "#C9921B" : "var(--border-table)"}`, borderRadius: 6, fontSize: 12, color: "var(--text-1)", background: mudou ? "#FFFDF5" : "var(--bg-input)" }}
+                                    >
+                                      <option value="">— não incluir no LCDPR —</option>
+                                      <optgroup label="Receitas">
+                                        {CODIGOS_LCDPR.receita.map(cc => <option key={cc.cod} value={cc.cod}>{cc.cod} — {cc.desc}</option>)}
+                                      </optgroup>
+                                      <optgroup label="Despesas">
+                                        {CODIGOS_LCDPR.despesa.map(cc => <option key={cc.cod} value={cc.cod}>{cc.cod} — {cc.desc}</option>)}
+                                      </optgroup>
+                                    </select>
+                                  </td>
+                                  <td style={{ padding: "8px 10px", width: 80, textAlign: "center" }}>
+                                    {mudou && (
+                                      <button
+                                        onClick={() => salvarCodigoOG(og.id, ogEditCodigos.get(og.id) ?? null)}
+                                        disabled={savingOgIds.has(og.id)}
+                                        style={{ padding: "4px 12px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer", fontSize: 11 }}
+                                      >
+                                        {savingOgIds.has(og.id) ? "..." : "Salvar"}
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* OGs sem código */}
+                {(() => {
+                  const semCod = ogsPorCodigo.get(null) ?? [];
+                  if (!semCod.length) return null;
+                  const exp = expandidos.has("semcod");
+                  return (
+                    <div style={{ border: "0.5px solid #C9921B60", borderRadius: 10, marginTop: 8, overflow: "hidden" }}>
+                      <button
+                        onClick={() => toggleExpandido("semcod")}
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#FFFDF5", border: "none", cursor: "pointer", textAlign: "left" }}
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 5, background: "#FBF3E0", color: "#7A5A12" }}>—</span>
+                        <span style={{ fontWeight: 600, color: "#7A5A12", fontSize: 13 }}>Sem código LCDPR</span>
+                        <span style={{ fontSize: 11, color: "#7A5A12", marginLeft: "auto" }}>{semCod.length} OG{semCod.length !== 1 ? "s" : ""} — lançamentos com essas OGs usarão o código automático</span>
+                        <span style={{ fontSize: 11, color: "#7A5A12" }}>{exp ? "▲" : "▼"}</span>
+                      </button>
+                      {exp && (
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <tbody>
+                            {semCod.map(og => {
+                              const codEdit = ogEditCodigos.get(og.id) ?? null;
+                              const mudou   = codEdit !== null;
+                              return (
+                                <tr key={og.id} style={{ borderTop: "0.5px solid var(--border-row)" }}>
+                                  <td style={{ padding: "8px 14px", width: 130, color: "var(--text-2)", fontSize: 11 }}>{og.classificacao}</td>
+                                  <td style={{ padding: "8px 14px", color: "var(--text-1)" }}>{og.descricao}</td>
+                                  <td style={{ padding: "8px 14px", width: 220 }}>
+                                    <select
+                                      value={codEdit ?? ""}
+                                      onChange={e => {
+                                        const v = e.target.value || null;
+                                        setOgEditCodigos(prev => new Map(prev).set(og.id, v));
+                                      }}
+                                      style={{ width: "100%", padding: "5px 8px", border: `0.5px solid ${mudou ? "#C9921B" : "var(--border-table)"}`, borderRadius: 6, fontSize: 12, color: "var(--text-1)", background: mudou ? "#FFFDF5" : "var(--bg-input)" }}
+                                    >
+                                      <option value="">— não incluir no LCDPR —</option>
+                                      <optgroup label="Receitas">
+                                        {CODIGOS_LCDPR.receita.map(cc => <option key={cc.cod} value={cc.cod}>{cc.cod} — {cc.desc}</option>)}
+                                      </optgroup>
+                                      <optgroup label="Despesas">
+                                        {CODIGOS_LCDPR.despesa.map(cc => <option key={cc.cod} value={cc.cod}>{cc.cod} — {cc.desc}</option>)}
+                                      </optgroup>
+                                    </select>
+                                  </td>
+                                  <td style={{ padding: "8px 10px", width: 80, textAlign: "center" }}>
+                                    {mudou && (
+                                      <button
+                                        onClick={() => salvarCodigoOG(og.id, ogEditCodigos.get(og.id) ?? null)}
+                                        disabled={savingOgIds.has(og.id)}
+                                        style={{ padding: "4px 12px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer", fontSize: 11 }}
+                                      >
+                                        {savingOgIds.has(og.id) ? "..." : "Salvar"}
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* ══════════════ ABA: IMPORTAÇÃO ══════════════ */}
+            {aba === "importacao" && (
+              <div style={{ padding: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+
+                  {/* Coluna esquerda: upload */}
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 12 }}>Importar lançamentos via planilha</div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 16 }}>
+                      Importe lançamentos históricos ou de sistemas externos. Use o modelo para garantir o formato correto.
+                      Lançamentos importados <strong>não são salvos no banco</strong> — ficam na sessão atual e podem ser exportados junto com os automáticos.
+                    </div>
+
+                    <button onClick={baixarModelo} style={{ ...btnPrimario, background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border-table)", marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+                      ⬇ Baixar modelo Excel
+                    </button>
+
+                    {/* Drop zone */}
+                    <div
+                      onClick={() => importRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = "#1A5C38"; }}
+                      onDragLeave={e => { e.currentTarget.style.borderColor = "var(--border-table)"; }}
+                      onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--border-table)"; const f = e.dataTransfer.files[0]; if (f) handleImportFile(f); }}
+                      style={{ border: "1.5px dashed var(--border-table)", borderRadius: 10, padding: "28px 20px", textAlign: "center", cursor: "pointer", transition: "border-color 0.2s" }}
+                    >
+                      <div style={{ fontSize: 24, marginBottom: 8 }}>📂</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)" }}>
+                        {importLoading ? "Processando..." : "Arraste o arquivo ou clique para selecionar"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>XLS, XLSX ou CSV</div>
+                    </div>
+                    <input ref={importRef} type="file" accept=".xls,.xlsx,.csv" style={{ display: "none" }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
+
+                    {importFeedback && (
+                      <div style={{ marginTop: 12, background: "#EAF3DE", borderRadius: 8, padding: "8px 14px", color: "#1A5C38", fontSize: 12, fontWeight: 600 }}>
+                        {importFeedback}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Coluna direita: campos esperados */}
+                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "16px 18px", border: "0.5px solid var(--border-table)" }}>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Colunas esperadas na planilha</div>
+                    {[
+                      { col: "Data", desc: "DD/MM/AAAA ou AAAA-MM-DD", req: true },
+                      { col: "Histórico", desc: "Descrição do lançamento", req: true },
+                      { col: "Documento", desc: "NF-e, Recibo, PIX, Boleto…", req: false },
+                      { col: "CPF/CNPJ", desc: "Contraparte (opcional)", req: false },
+                      { col: "Código LCDPR", desc: "101 a 199 (receita) ou 201 a 299 (despesa)", req: false },
+                      { col: "Tipo", desc: "Receita ou Despesa", req: true },
+                      { col: "Valor", desc: "Número com vírgula. Ex: 185.000,00", req: true },
+                    ].map(f => (
+                      <div key={f.col} style={{ display: "flex", gap: 8, marginBottom: 7, fontSize: 12 }}>
+                        <span style={{ fontWeight: 600, color: "var(--text-1)", minWidth: 120 }}>{f.col}{f.req ? " *" : ""}</span>
+                        <span style={{ color: "var(--text-2)" }}>{f.desc}</span>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-3)" }}>* obrigatório</div>
+                    <div style={{ marginTop: 14, borderTop: "0.5px solid var(--border-table)", paddingTop: 12 }}>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Códigos LCDPR válidos</div>
+                      {TODOS_CODIGOS.map(c => (
+                        <div key={c.cod} style={{ display: "flex", gap: 8, marginBottom: 4, fontSize: 11 }}>
+                          <span style={{ fontWeight: 700, color: c.cod.startsWith("1") ? "#1A5C38" : "#E24B4A", width: 28, flexShrink: 0 }}>{c.cod}</span>
+                          <span style={{ color: "#444" }}>{c.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preview da importação */}
+                {importRows.length > 0 && (
+                  <div style={{ marginTop: 24 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)" }}>
+                        Preview — {importRows.length} linha{importRows.length !== 1 ? "s" : ""} &nbsp;
+                        <span style={{ fontSize: 11, color: "#1A5C38" }}>✓ {importRows.filter(r => r._status === "ok").length} ok</span>
+                        {importRows.some(r => r._status === "erro") && (
+                          <span style={{ fontSize: 11, color: "#E24B4A", marginLeft: 8 }}>✕ {importRows.filter(r => r._status === "erro").length} com erro</span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setImportRows([])} style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", color: "var(--text-1)", cursor: "pointer", fontSize: 12 }}>Cancelar</button>
+                        <button
+                          onClick={confirmarImport}
+                          disabled={!importRows.some(r => r._status === "ok")}
+                          style={{ ...btnPrimario, fontSize: 12, padding: "6px 14px", opacity: importRows.some(r => r._status === "ok") ? 1 : 0.5 }}
+                        >
+                          ✓ Adicionar {importRows.filter(r => r._status === "ok").length} ao Livro Caixa
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "var(--bg-page)" }}>
+                            {["Status", "Data", "Cód.", "Histórico", "Documento", "CPF/CNPJ", "Receita", "Despesa"].map((h, i) => (
+                              <th key={i} style={{ padding: "6px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {importRows.map((r, i) => (
+                            <tr key={i} style={{ borderBottom: "0.5px solid var(--border-row)", background: r._status === "erro" ? "#FFF5F5" : "transparent" }}>
+                              <td style={{ padding: "6px 10px" }}>
+                                {r._status === "ok"
+                                  ? <span style={{ color: "#1A5C38", fontWeight: 600 }}>✓</span>
+                                  : <span title={r._msg} style={{ color: "#E24B4A", fontWeight: 600, cursor: "help" }}>✕ {r._msg}</span>
+                                }
+                              </td>
+                              <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>{r.data ? fmtData(r.data) : "—"}</td>
+                              <td style={{ padding: "6px 10px" }}>
+                                <span style={{ fontSize: 10, background: r.codigo.startsWith("1") ? "#EAF3DE" : "#FCEBEB", color: r.codigo.startsWith("1") ? "#1A5C38" : "#791F1F", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>{r.codigo}</span>
+                              </td>
+                              <td style={{ padding: "6px 10px", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.historico || "—"}</td>
+                              <td style={{ padding: "6px 10px", color: "var(--text-2)" }}>{r.doc}</td>
+                              <td style={{ padding: "6px 10px", color: "var(--text-2)" }}>{r.cpf_cnpj || "—"}</td>
+                              <td style={{ padding: "6px 10px", textAlign: "right", color: "#1A5C38" }}>{r.receita > 0 ? fmtBRL(r.receita) : "—"}</td>
+                              <td style={{ padding: "6px 10px", textAlign: "right", color: "#E24B4A" }}>{r.despesa > 0 ? fmtBRL(r.despesa) : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ══════════════ ABA: RESUMO ANUAL ══════════════ */}
             {aba === "resumo" && (
               <div style={{ padding: 20 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-
-                  {/* Resumo mensal */}
                   <div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Movimentação mensal — {anoSel}</div>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -324,21 +753,19 @@ export default function LCDPR() {
                       <tbody>
                         {meses.map((m, i) => {
                           const res = m.rec - m.desp;
-                          const temDados = m.rec > 0 || m.desp > 0;
+                          const tem = m.rec > 0 || m.desp > 0;
                           return (
-                            <tr key={i} style={{ borderBottom: "0.5px solid var(--border-row)", opacity: temDados ? 1 : 0.4 }}>
+                            <tr key={i} style={{ borderBottom: "0.5px solid var(--border-row)", opacity: tem ? 1 : 0.4 }}>
                               <td style={{ padding: "7px 10px", color: "var(--text-1)", textTransform: "capitalize" }}>{m.mes}</td>
                               <td style={{ padding: "7px 10px", textAlign: "right", color: "#1A5C38", fontWeight: m.rec > 0 ? 600 : 400 }}>{m.rec > 0 ? fmtBRL(m.rec) : "—"}</td>
                               <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A", fontWeight: m.desp > 0 ? 600 : 400 }}>{m.desp > 0 ? fmtBRL(m.desp) : "—"}</td>
-                              <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: temDados ? 600 : 400, color: res >= 0 ? "#1A5C38" : "#E24B4A" }}>{temDados ? fmtBRL(res) : "—"}</td>
+                              <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: tem ? 600 : 400, color: res >= 0 ? "#1A5C38" : "#E24B4A" }}>{tem ? fmtBRL(res) : "—"}</td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
                   </div>
-
-                  {/* Resumo por código */}
                   <div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Por código LCDPR</div>
                     {porCodigo.length === 0 ? (
@@ -349,19 +776,17 @@ export default function LCDPR() {
                           <div key={c.cod} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid var(--border-row)" }}>
                             <span style={{ fontSize: 11, background: c.tipo === "receita" ? "#EAF3DE" : "#FCEBEB", color: c.tipo === "receita" ? "#1A5C38" : "#791F1F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, flexShrink: 0 }}>{c.cod}</span>
                             <span style={{ flex: 1, fontSize: 12, color: "var(--text-1)" }}>{c.desc}</span>
-                            <span style={{ fontWeight: 700, color: c.tipo === "receita" ? "#1A5C38" : "#E24B4A", fontSize: 13 }}>{fmtBRL(c.total)}</span>
+                            <span style={{ fontWeight: 700, color: c.tipo === "receita" ? "#1A5C38" : "#E24B4A" }}>{fmtBRL(c.total)}</span>
                           </div>
                         ))}
                       </div>
                     )}
-
-                    {/* Resultado apurado */}
                     <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border-table)" }}>
                       <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 8 }}>Resultado apurado {anoSel}</div>
                       {[
-                        { label: "(+) Total Receitas",     valor: totalReceitas,  cor: "#1A5C38" },
-                        { label: "(-) Total Despesas",     valor: -totalDespesas, cor: "#E24B4A" },
-                        { label: "(=) Resultado Líquido",  valor: totalReceitas - totalDespesas, cor: (totalReceitas - totalDespesas) >= 0 ? "#1A5C38" : "#E24B4A", bold: true },
+                        { label: "(+) Total Receitas",    valor: totalReceitas,  cor: "#1A5C38" },
+                        { label: "(-) Total Despesas",    valor: -totalDespesas, cor: "#E24B4A" },
+                        { label: "(=) Resultado Líquido", valor: totalReceitas - totalDespesas, cor: (totalReceitas - totalDespesas) >= 0 ? "#1A5C38" : "#E24B4A", bold: true },
                       ].map((l, i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: i < 2 ? "0.5px solid var(--border-row)" : "none" }}>
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>{l.label}</span>
@@ -374,20 +799,17 @@ export default function LCDPR() {
               </div>
             )}
 
-            {/* ── ABA: EXPORTAÇÃO ── */}
+            {/* ══════════════ ABA: EXPORTAÇÃO ══════════════ */}
             {aba === "exportacao" && (
               <div style={{ padding: 28 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-
                   <div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Arquivo LCDPR para entrega à Receita Federal</div>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.8, marginBottom: 20 }}>
-                      O LCDPR deve ser entregue anualmente até <strong>30 de junho</strong> do ano seguinte ao período de apuração, através do programa <strong>ReceitaNet</strong> ou via portal e-CAC.
+                      O LCDPR deve ser entregue anualmente até <strong>30 de junho</strong> do ano seguinte, através do programa <strong>ReceitaNet</strong> ou via portal e-CAC.
                     </div>
-
                     {[
                       { label: "Prazo de entrega",       val: `30/06/${anoSel + 1}` },
-                      { label: "Programa",               val: "LCDPR (Receita Federal)" },
                       { label: "Período apurado",        val: `01/01/${anoSel} a 31/12/${anoSel}` },
                       { label: "Lançamentos no período", val: `${entradas.length} registros` },
                       { label: "Total receitas",         val: fmtBRL(totalReceitas) },
@@ -398,43 +820,48 @@ export default function LCDPR() {
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{r.val}</span>
                       </div>
                     ))}
-
-                    <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                    <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
                       <button
                         onClick={() => {
                           let csv = "DATA;CODIGO;HISTORICO;DOCUMENTO;CPF_CNPJ;RECEITA;DESPESA\n";
                           entradas.forEach(e => {
                             csv += `${e.data};${e.codigo};"${e.historico}";${e.doc};${e.cpf_cnpj};${e.receita.toFixed(2)};${e.despesa.toFixed(2)}\n`;
                           });
-                          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                          const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement("a"); a.href = url;
                           a.download = `LCDPR_${anoSel}.csv`; a.click();
                         }}
-                        style={{ padding: "10px 20px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
-                      >
-                        ⬇ Exportar CSV
-                      </button>
+                        style={btnPrimario}
+                      >⬇ Exportar CSV</button>
+                      <button
+                        onClick={async () => {
+                          const XLSX = await import("xlsx");
+                          const dados = entradas.map(e => ({
+                            Data: e.data, Código: e.codigo, "Desc. Código": MAP_CODIGO.get(e.codigo) ?? "",
+                            Histórico: e.historico, Documento: e.doc, "CPF/CNPJ": e.cpf_cnpj,
+                            "Receita (R$)": e.receita, "Despesa (R$)": e.despesa,
+                          }));
+                          const ws = XLSX.utils.json_to_sheet(dados);
+                          const wb = XLSX.utils.book_new();
+                          XLSX.utils.book_append_sheet(wb, ws, `LCDPR ${anoSel}`);
+                          XLSX.writeFile(wb, `LCDPR_${anoSel}.xlsx`);
+                        }}
+                        style={{ ...btnPrimario, background: "#1A4870" }}
+                      >⬇ Exportar Excel</button>
                     </div>
                   </div>
-
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "18px 20px" }}>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Quem é obrigado a entregar?</div>
-                    {[
-                      "Produtor rural Pessoa Física",
-                      "Receita bruta rural acima de R$ 56.112,00 no ano",
-                      "Ou que tenha optado pela escrituração pelo Livro Caixa",
-                      "Cônjuge que exerce atividade rural em separado",
-                    ].map((t, i) => (
+                    {["Produtor rural Pessoa Física", "Receita bruta rural acima de R$ 56.112,00 no ano", "Ou que tenha optado pela escrituração pelo Livro Caixa", "Cônjuge que exerce atividade rural em separado"].map((t, i) => (
                       <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, fontSize: 12 }}>
                         <span style={{ color: "#1A5C38", flexShrink: 0 }}>✓</span>
                         <span style={{ color: "#444" }}>{t}</span>
                       </div>
                     ))}
-
                     <div style={{ borderTop: "0.5px solid var(--border-table)", marginTop: 14, paddingTop: 14 }}>
-                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Categorias obrigatórias no LCDPR</div>
-                      {[...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa].map(c => (
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Categorias LCDPR</div>
+                      {TODOS_CODIGOS.map(c => (
                         <div key={c.cod} style={{ display: "flex", gap: 8, marginBottom: 5, fontSize: 11 }}>
                           <span style={{ fontWeight: 700, color: c.cod.startsWith("1") ? "#1A5C38" : "#E24B4A", flexShrink: 0, width: 28 }}>{c.cod}</span>
                           <span style={{ color: "#444" }}>{c.desc}</span>
@@ -449,10 +876,10 @@ export default function LCDPR() {
         </div>
       </main>
 
-      {/* Modal lançamento manual */}
+      {/* Modal — lançamento manual */}
       {modalManual && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: 20 }}>Lançamento Manual LCDPR</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
@@ -461,7 +888,7 @@ export default function LCDPR() {
               </div>
               <div>
                 <label style={lblS}>Tipo *</label>
-                <select style={inpS} value={fManual.tipo} onChange={e => setFManual(p => ({ ...p, tipo: e.target.value as "receita"|"despesa", codigo: e.target.value === "receita" ? "101" : "201" }))}>
+                <select style={inpS} value={fManual.tipo} onChange={e => setFManual(p => ({ ...p, tipo: e.target.value as "receita" | "despesa", codigo: e.target.value === "receita" ? "101" : "201" }))}>
                   <option value="receita">Receita</option>
                   <option value="despesa">Despesa</option>
                 </select>
@@ -487,13 +914,13 @@ export default function LCDPR() {
                 <input style={inpS} value={fManual.doc} onChange={e => setFManual(p => ({ ...p, doc: e.target.value }))} placeholder="NF, Recibo, PIX..." />
               </div>
               <div>
-                <label style={lblS}>CPF / CNPJ da contraparte</label>
+                <label style={lblS}>CPF / CNPJ</label>
                 <input style={inpS} value={fManual.cpf_cnpj} onChange={e => setFManual(p => ({ ...p, cpf_cnpj: e.target.value }))} placeholder="000.000.000-00" />
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
               <button onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-1)" }}>Cancelar</button>
-              <button onClick={adicionarManual} style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Adicionar</button>
+              <button onClick={adicionarManual} style={{ ...btnPrimario, padding: "8px 20px" }}>Adicionar</button>
             </div>
           </div>
         </div>
