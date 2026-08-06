@@ -206,6 +206,13 @@ export default function NfCompraPage() {
   const [filtroOrigem, setFiltroOrigem] = useState("");
   const [busca,        setBusca]        = useState("");
 
+  // Lê ?busca= da URL para deep-link direto a uma NF (ex: vindo de Pedido de Compra)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const b = params.get("busca");
+    if (b) setBusca(b);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filtro de data na tabela
   const [filtroDataDe,   setFiltroDataDe]   = useState("");
   const [filtroDataAte,  setFiltroDataAte]  = useState("");

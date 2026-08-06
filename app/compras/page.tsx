@@ -300,6 +300,7 @@ export default function ComprasPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+
   // ── Helpers de label ─────────────────────────────────────────
 
   const nomePessoa = (id?: string) => id ? (pessoas.find(p => p.id === id)?.nome ?? "—") : "—";
@@ -1612,7 +1613,7 @@ export default function ComprasPage() {
                                 <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
                               </td>
                               <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                <a href="/estoque?tab=nf_entrada" style={{ fontSize: 11, color: "#1A5CB8", textDecoration: "none", fontWeight: 600 }}>Ver NF →</a>
+                                <a href={`/compras/nf?busca=${encodeURIComponent(nf.numero ?? "")}`} style={{ fontSize: 11, color: "#1A5CB8", textDecoration: "none", fontWeight: 600 }}>Ver NF →</a>
                               </td>
                             </tr>
                           );
