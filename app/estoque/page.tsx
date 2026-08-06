@@ -10,7 +10,7 @@ import {
   listarBombas,
   listarMaquinas,
   listarNfEntradas, criarNfEntrada,
-  listarNfEntradaItens, criarNfEntradaItem,
+  listarNfEntradaItens, criarNfEntradaItem, limparNfEntradaItens,
   processarNfEntrada,
   listarEstoqueTerceiros,
   listarPessoas, criarPessoa,
@@ -545,6 +545,9 @@ export default function Estoque() {
       alert(`Informe o fator de conversão antes de processar.\n\nItens com unidade incompatível: ${nomes}`);
       return;
     }
+
+    // Limpa itens anteriores (evita duplicação se houve tentativa anterior com falha parcial)
+    await limparNfEntradaItens(nfCriada.id);
 
     // Criar itens no banco
     for (const item of itensNf) {

@@ -1596,6 +1596,12 @@ export async function listarNfEntradasPorPedido(pedido_id: string): Promise<{ nf
   if (e2) throw e2;
   return { nfs: allNfs, itens: (itens ?? []) as NfEntradaItem[] };
 }
+// Remove todos os itens de uma NF (chamado antes de re-inserir para evitar duplicação em retry)
+export async function limparNfEntradaItens(nf_entrada_id: string): Promise<void> {
+  const { error } = await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_entrada_id);
+  if (error) throw error;
+}
+
 export async function criarNfEntradaItem(i: Omit<NfEntradaItem, "id" | "created_at">): Promise<NfEntradaItem> {
   const { data, error } = await supabase.from("nf_entrada_itens").insert(i).select().single();
   if (error) throw error;
@@ -1713,6 +1719,13 @@ export async function processarNfEntrada(
 
     // ── Compra normal (semente/outro) → estoque insumo ──────────
     if (item.tipo_apropiacao === "estoque" && item.insumo_id && !item.principio_ativo_id) {
+      // Guarda de idempotência: se já existe movimento para este item, pula (evita duplo crédito em retry)
+      const { count: movExiste } = await supabase
+        .from("movimentacoes_estoque")
+        .select("id", { count: "exact", head: true })
+        .eq("nf_entrada_item_id", item.id);
+      if ((movExiste ?? 0) > 0) continue;
+
       // Insere movimento ANTES de atualizar custo_medio (inclui esta entrada no cálculo dos 6 meses)
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id:          item.insumo_id,
