@@ -640,18 +640,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             </div>
           )}
 
-          {anoSafraVigenteDesc && (
-            <div title="Ano Safra vigente" style={{
-              background: "rgba(22,163,74,0.15)",
-              border: "0.5px solid rgba(22,163,74,0.35)",
-              borderRadius: 6, padding: "3px 9px",
-              fontSize: 11, fontWeight: 700, color: "#4ADE80",
-              letterSpacing: "0.02em", whiteSpace: "nowrap",
-            }}>
-              {anoSafraVigenteDesc}
-            </div>
-          )}
-
           <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.1)" }} />
 
           {userRole === "raccotlo" && fazendaId && nomeProdutor && (

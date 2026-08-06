@@ -388,7 +388,10 @@ export default function ContasReceber() {
       if (fVencDe     && (l.data_vencimento ?? "") < fVencDe)                                   return false;
       if (fVencAte    && (l.data_vencimento ?? "") > fVencAte)                                  return false;
       if (fMoedaOrig  && l.moeda !== fMoedaOrig)                                                return false;
-      if (fConta      && !(l.conta_bancaria ?? "").toLowerCase().includes(fConta.toLowerCase())) return false;
+      if (fConta) {
+        const contaNomeFiltro = contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "";
+        if (!contaNomeFiltro.toLowerCase().includes(fConta.toLowerCase())) return false;
+      }
       if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))             return false;
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))       return false;
       return true;
@@ -941,30 +944,30 @@ export default function ContasReceber() {
                             </td>}
                             {/* Vencimento */}
                             <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
-                              <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>{fmtData(l.data_vencimento)}</div>
+                              <div style={{ fontSize: 11, color: sEfet === "baixado" ? "var(--text-3)" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>{fmtData(l.data_vencimento)}</div>
                               {relativo && <div style={{ fontSize: 9, color: relativo.cor, fontWeight: 700, marginTop: 1 }}>{relativo.txt}</div>}
                             </td>
                             {/* Valor */}
                             <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
-                              <div style={{ fontWeight: 700, color: l.moeda === "barter" ? "#FBBF24" : "#22C55E", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{exibirValor(l)}</div>
+                              <div style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{exibirValor(l)}</div>
                               {conv && <div style={{ fontSize: 9, color: semCotacao ? "#EF9F27" : "var(--text-muted)", marginTop: 1 }}>{conv}</div>}
                             </td>
                             {/* Data Receb */}
-                            {col("dt_receb") && <td style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "#22C55E", whiteSpace: "nowrap" }}>
+                            {col("dt_receb") && <td style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>
                               {fmtData(l.data_baixa)}
                             </td>}
                             {/* Valor Recebido */}
                             {col("valor_receb") && <td style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>
                               {l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0
                                 ? <div>
-                                    <span style={{ color: "#FBBF24", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
+                                    <span style={{ color: "var(--text-2)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
                                     <div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div>
                                     <div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}>
-                                      <div style={{ height: 3, borderRadius: 2, background: "#FBBF24", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
+                                      <div style={{ height: 3, borderRadius: 2, background: "#1A4870", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
                                     </div>
                                   </div>
                                 : l.valor_pago != null && l.valor_pago > 0
-                                ? <span style={{ color: "#22C55E", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
+                                ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
                                 : <span style={{ color: "#1E3A5F" }}>—</span>}
                             </td>}
                             {/* Moeda */}
@@ -975,7 +978,7 @@ export default function ContasReceber() {
                             </td>}
                             {/* Conta */}
                             {col("conta") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>
-                              {l.conta_bancaria ?? "—"}
+                              {contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "—"}
                             </td>}
                             {/* Produtor */}
                             {col("produtor") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>
@@ -1273,7 +1276,7 @@ export default function ContasReceber() {
                         <option value="">— Selecionar conta —</option>
                         {contas.map(c => {
                           const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
-                          return <option key={c.id} value={label}>{label}</option>;
+                          return <option key={c.id} value={c.id}>{label}</option>;
                         })}
                         {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
                       </select>
@@ -1536,7 +1539,7 @@ export default function ContasReceber() {
                         <option value="">— Selecionar —</option>
                         {contas.map(c => {
                           const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
-                          return <option key={c.id} value={label}>{label}</option>;
+                          return <option key={c.id} value={c.id}>{label}</option>;
                         })}
                         {contas.length === 0 && <option disabled>Cadastre contas em Cadastros</option>}
                       </select>

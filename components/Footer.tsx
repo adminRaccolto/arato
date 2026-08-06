@@ -2,10 +2,9 @@
 import { useAuth } from "./AuthProvider";
 
 export default function Footer() {
-  const { anoSafraVigenteDesc, nomeFazendaSelecionada } = useAuth();
+  const { anoSafraVigenteDesc } = useAuth();
 
-  // Só renderiza se o usuário estiver logado
-  if (!anoSafraVigenteDesc && !nomeFazendaSelecionada) return null;
+  if (!anoSafraVigenteDesc) return null;
 
   return (
     <footer style={{
@@ -25,30 +24,10 @@ export default function Footer() {
       color: "var(--footer-text, #666)",
       userSelect: "none",
     }}>
-      {anoSafraVigenteDesc && (
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ color: "#999", fontWeight: 400 }}>Ano Safra</span>
-          <span style={{ fontWeight: 700, color: "var(--footer-text-strong, #444)" }}>
-            {anoSafraVigenteDesc}
-          </span>
-        </span>
-      )}
+      <span style={{ fontWeight: 600, color: "var(--footer-text-strong, #444)" }}>
+        {anoSafraVigenteDesc}
+      </span>
 
-      {/* Divisor — só quando há mais de uma informação */}
-      {anoSafraVigenteDesc && nomeFazendaSelecionada && (
-        <span style={{ width: 1, height: 14, background: "#CCC", display: "inline-block" }} />
-      )}
-
-      {nomeFazendaSelecionada && (
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ color: "#999" }}>Fazenda</span>
-          <span style={{ fontWeight: 600, color: "var(--footer-text-strong, #444)" }}>
-            {nomeFazendaSelecionada}
-          </span>
-        </span>
-      )}
-
-      {/* Espaço reservado para futuras informações (versão, status de sync, etc.) */}
       <span style={{ marginLeft: "auto", color: "#BBB", fontWeight: 400 }}>
         Arato
       </span>

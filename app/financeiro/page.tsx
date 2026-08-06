@@ -736,7 +736,7 @@ export default function Financeiro() {
                                   {fmtData(l.data_vencimento)}
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "right", whiteSpace: "nowrap" }}>
-                                  <div style={{ fontWeight: 600, color: l.moeda === "barter" ? "#8B5E14" : "var(--text-1)", fontSize: 12 }}>{exibirValor(l)}</div>
+                                  <div style={{ fontWeight: 600, color: l.moeda === "barter" ? "#8B5E14" : l.natureza === "previsao" ? "#378ADD" : l.origem_lancamento === "pedido_compra" ? "#16A34A" : l.tipo === "pagar" ? "#E24B4A" : "var(--text-1)", fontSize: 12 }}>{exibirValor(l)}</div>
                                   {conv && <div style={{ fontSize: 10, color: "#444", marginTop: 1 }}>{conv}</div>}
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "center" }}>
