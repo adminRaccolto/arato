@@ -495,9 +495,13 @@ function FinanceiroRelatoriosInner() {
                 const mostrarAntPeriodo = filtro.tipoVis !== "realizado" && filtro.inicio && (cpAntPeriodo > 0 || crAntPeriodo > 0);
 
                 // Separa realizados x pendentes x previsões
-                const lanRealizados = lansFiltMoeda.filter(l => l.status === "baixado");
+                // Lancamentos baixados via Apoio Financeiro → realizado (mesmo que status ainda seja "em_aberto" no lancamento principal)
+                const isBaixadoViaApoio = (l: { id: string }) => temApoio && incluirApoio && apoioBaixasIds.has(l.id);
+                const lanRealizados = lansFiltMoeda.filter(l => l.status === "baixado" || isBaixadoViaApoio(l));
                 const lanPendentes  = lansFiltMoeda.filter(l =>
-                  (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.natureza !== "previsao"
+                  (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") &&
+                  l.natureza !== "previsao" &&
+                  !isBaixadoViaApoio(l)
                 );
                 const lanPrevisoes  = lansFiltMoeda.filter(l =>
                   (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.natureza === "previsao"
