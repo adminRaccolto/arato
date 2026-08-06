@@ -235,6 +235,10 @@ export default function NfCompraPage() {
   const [siegJustText,   setSiegJustText]   = useState("");
   const [manDropdown,    setManDropdown]    = useState<string|null>(null);
 
+  // Dropdown customizado de fornecedor (nome + CNPJ em colunas separadas)
+  const [pessoaDropOpen, setPessoaDropOpen] = useState(false);
+  const [pessoaBusca,    setPessoaBusca]    = useState("");
+
   // Wizard
   const [wizard,  setWizard]  = useState(false);
   const [etapa,   setEtapa]   = useState<Etapa>("origem");
@@ -1319,7 +1323,7 @@ export default function NfCompraPage() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }} onClick={() => setManDropdown(null)}>
       <TopNav />
 
-      <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+      <main style={{ flex: 1, padding: "24px 28px", width: "100%" }}>
 
         {/* ── Cabeçalho ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -1465,13 +1469,28 @@ export default function NfCompraPage() {
         )}
 
         {/* ── Tabela ── */}
-        <div style={card}>
+        <div style={{ ...card, padding: "0", overflow: "hidden" }}>
           {nfsFiltradas.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-3)", fontSize: 13 }}>
               Nenhuma NF encontrada. Clique em &ldquo;+ Nova NF de Compra&rdquo; para começar.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1100 }}>
+              <colgroup>
+                <col style={{ width: 36 }} />     {/* checkbox */}
+                <col style={{ width: 90 }} />     {/* Nº/Série */}
+                <col style={{ width: "22%" }} />  {/* Emitente — flex */}
+                <col style={{ width: "18%" }} />  {/* Destinatário — flex */}
+                <col style={{ width: 82 }} />     {/* Emissão */}
+                <col style={{ width: 82 }} />     {/* Entrada */}
+                <col style={{ width: 80 }} />     {/* Tipo */}
+                <col style={{ width: 60 }} />     {/* Origem */}
+                <col style={{ width: 110 }} />    {/* Valor Total */}
+                <col style={{ width: 90 }} />     {/* Status */}
+                <col style={{ width: 100 }} />    {/* Manifest. */}
+                <col />                           {/* Ações — ocupa o restante */}
+              </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Manifest.", "Ações"].map((c, i) => (
@@ -1503,11 +1522,11 @@ export default function NfCompraPage() {
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
                         {nf.numero}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-1)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {nf.emitente_nome}
-                        {nf.emitente_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{nf.emitente_cnpj}</div>}
+                      <td style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-1)", overflow: "hidden" }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nf.emitente_nome}</div>
+                        {nf.emitente_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)", fontFamily: "monospace" }}>{nf.emitente_cnpj}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-1)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-1)", overflow: "hidden" }}>
                         {(() => {
                           if (nf.nome_destinatario) return <>{nf.nome_destinatario}{nf.cnpj_destino && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDoc(nf.cnpj_destino.replace(/\D/g,""))}</div>}</>;
                           if (!nf.cnpj_destino) return <span style={{ color: "var(--text-3)" }}>—</span>;
@@ -1612,6 +1631,7 @@ export default function NfCompraPage() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </main>
@@ -1973,13 +1993,73 @@ export default function NfCompraPage() {
                           </button>
                         )}
                       </div>
-                      <select value={cab.pessoa_id} onChange={e => onPessoaChange(e.target.value)} style={inp}>
-                        <option value="">Selecionar do cadastro…</option>
-                        {pessoas.map(p => {
-                          const cnpjFmt = p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : "";
-                          return <option key={p.id} value={p.id}>{p.nome}{cnpjFmt}</option>;
-                        })}
-                      </select>
+                      {/* Dropdown customizado — nome e CNPJ em colunas separadas */}
+                      <div style={{ position: "relative" }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setPessoaDropOpen(false); setPessoaBusca(""); } }}>
+                        <div
+                          tabIndex={0}
+                          onClick={() => { setPessoaDropOpen(o => !o); setPessoaBusca(""); }}
+                          style={{ ...inp, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" as const }}
+                        >
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: cab.pessoa_id ? "var(--text-1)" : "var(--text-3)" }}>
+                            {cab.pessoa_id ? (pessoas.find(p => p.id === cab.pessoa_id)?.nome ?? "Selecionar…") : "Selecionar do cadastro…"}
+                          </span>
+                          <span style={{ fontSize: 10, marginLeft: 6, color: "var(--text-3)", flexShrink: 0 }}>▾</span>
+                        </div>
+                        {pessoaDropOpen && (
+                          <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, zIndex: 900, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, boxShadow: "0 6px 24px rgba(0,0,0,0.14)", overflow: "hidden" }}>
+                            <div style={{ padding: "6px 8px", borderBottom: "0.5px solid var(--border-table)" }}>
+                              <input
+                                autoFocus
+                                placeholder="Buscar por nome ou CNPJ/CPF…"
+                                value={pessoaBusca}
+                                onChange={e => setPessoaBusca(e.target.value)}
+                                style={{ width: "100%", border: "none", outline: "none", fontSize: 12, background: "transparent", color: "var(--text-1)", boxSizing: "border-box" as const }}
+                              />
+                            </div>
+                            <div style={{ maxHeight: 240, overflowY: "auto" }}>
+                              <div
+                                onClick={() => { onPessoaChange(""); setPessoaDropOpen(false); setPessoaBusca(""); }}
+                                style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 0, padding: "7px 10px", cursor: "pointer", fontSize: 12, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)" }}
+                              >
+                                <span>— Nenhum —</span><span />
+                              </div>
+                              {/* Cabeçalho das colunas */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", padding: "4px 10px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Nome</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>CNPJ / CPF</span>
+                              </div>
+                              {pessoas
+                                .filter(p => {
+                                  if (!pessoaBusca) return true;
+                                  const q = pessoaBusca.toLowerCase();
+                                  return p.nome.toLowerCase().includes(q) || (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, ""));
+                                })
+                                .map(p => (
+                                  <div
+                                    key={p.id}
+                                    onClick={() => { onPessoaChange(p.id); setPessoaDropOpen(false); setPessoaBusca(""); }}
+                                    style={{ display: "grid", gridTemplateColumns: "1fr 160px", padding: "7px 10px", cursor: "pointer", fontSize: 12, borderBottom: "0.5px solid var(--bg-page)", background: p.id === cab.pessoa_id ? "var(--bg-tag)" : undefined }}
+                                  >
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)", fontWeight: p.id === cab.pessoa_id ? 600 : 400 }}>
+                                      {p.id === cab.pessoa_id && "✓ "}{p.nome}
+                                    </span>
+                                    <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                                      {p.cpf_cnpj ?? "—"}
+                                    </span>
+                                  </div>
+                                ))
+                              }
+                              {pessoas.filter(p => {
+                                if (!pessoaBusca) return true;
+                                const q = pessoaBusca.toLowerCase();
+                                return p.nome.toLowerCase().includes(q) || (p.cpf_cnpj ?? "").replace(/\D/g,"").includes(q.replace(/\D/g,""));
+                              }).length === 0 && (
+                                <div style={{ padding: "12px 10px", fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>Nenhum resultado</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label style={lbl}>Nome do emitente *</label>
