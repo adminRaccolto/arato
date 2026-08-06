@@ -574,6 +574,9 @@ Se um recebimento não ocorreu na data prevista e a data deve ser alterada:
 - **Contrato Financeiro** — captação de crédito
 - **Plantio** — vinculado a operação de lavoura
 
+### Memória de colunas por usuário
+O grid de CR também lembra, por usuário logado, quais colunas estão visíveis e a largura de cada coluna. Ajuste arrastando as bordas dos cabeçalhos ou pelo menu de contexto (botão direito no cabeçalho).
+
 ### CR em dólar (USD) — cotação obrigatória
 Mesma regra da CP: se o campo de cotação não estiver informado, aparece "⚠ Abra e informe a cotação" em laranja. Abra a CR, preencha o campo **Cotação (R$/US$)** e salve.
 
@@ -642,6 +645,15 @@ Se um pagamento não ocorreu na data prevista e a data deve ser alterada:
 
 ### Reclassificar
 CP já criada pode ter a categoria/OG alterada sem tocar nos lançamentos contábeis. Use **Reclassificar**.
+
+### Coluna "Operação" no grid
+Exibe a Operação Gerencial analítica vinculada ao lançamento (ex: "Compra de Adubos e Fertilizantes"). Se aparecer a categoria sintética (ex: "Insumos") em vez da analítica, isso indica que a OG foi configurada quando o sistema usava outro modelo de tenant — o valor não está errado, apenas o lookup encontrou a OG pai.
+
+### Memória de colunas por usuário
+O grid de CP lembra, por usuário logado, quais colunas estão visíveis e a largura de cada coluna. Para ajustar:
+- **Adicionar/remover colunas:** clique com o botão direito sobre o cabeçalho da tabela → menu de colunas
+- **Redimensionar:** arraste a borda direita do cabeçalho de qualquer coluna
+- As preferências ficam salvas e não se perdem ao sair da tela
 
 ### Origens automáticas (badge azul)
 - **NF Entrada** — CP gerada ao processar uma NF de compra no módulo de Estoque
@@ -1001,16 +1013,19 @@ Campos principais:
 - **Fornecedor não preenchido automaticamente pelo Sieg:** o CNPJ da NF pode não estar cadastrado em Pessoas. Vá em **Cadastros → Pessoas**, cadastre o fornecedor com o CNPJ correto e volte para processar a NF.
 - **Depósito não aparece:** os depósitos listados dependem do toggle Próprio/Terceiro. Mude o toggle e verifique se o depósito desejado aparece.
 - **"Associar ao insumo":** se um item não é encontrado no catálogo, clique no select da coluna "Insumo / Centro Custo" e busque pelo nome. Se não houver, crie o insumo em **Cadastros → Insumos**.
-- **Estoque duplicado / saldo incorreto após processar NF:** clique em **Estornar** na linha da NF processada (botão laranja claro). Isso reverte todo o estoque creditado e o lançamento financeiro, retornando a NF para Rascunho. Depois, reabra a NF via "Processar", corrija os itens e processe uma única vez.
+- **Estoque duplicado / saldo incorreto após processar NF:** clique em **Estornar** na linha da NF processada (botão laranja claro). Isso reverte todo o estoque creditado e o lançamento financeiro (CP), retornando a NF para "Pendente". Depois reabra via "Processar", corrija os itens e processe uma única vez.
 - **Não consigo reprocessar uma NF já processada:** proposital — o sistema bloqueia reprocessamento para evitar duplicação de estoque. Use o botão **Estornar** primeiro.
+- **NF lançada pelo WhatsApp:** aparece na grade com o badge "📱 WhatsApp" em verde abaixo do valor. Tem os mesmos botões de ação que qualquer outra NF (Estornar, Excluir). Para excluí-la completamente (inclusive a pendência fiscal e o CP associado), clique em **Excluir** — o sistema remove todos os registros vinculados automaticamente.
+- **Não estou encontrando a NF do WhatsApp:** acesse **Compras → NF de Produtos** e limpe todos os filtros (Status, Tipo, Origem). Busque pelo nome do emitente ou pelo número da NF. As NFs do WhatsApp ficam com o badge "📱 WhatsApp" na coluna de valor.
 
 ### Botões de ação por status — NF de Produtos
 | Status | Botões disponíveis |
 |---|---|
-| Pendente (Sieg) | Processar |
-| Rascunho | Editar, Processar |
-| Processada | Reclassificar, Estornar, Devolver (se tipo = insumos), DANFE |
-| Cancelada | — |
+| Pendente | Processar, Excluir |
+| Processada | Ver, DANFE, Devolver (se tipo = insumos), Reclassificar, Estornar, Excluir |
+| Cancelada | Excluir |
+
+> **Excluir NF Processada:** o sistema reverte automaticamente todo o estoque, movimentações PA, lançamento CP e pendências fiscais antes de excluir o registro. A operação é segura e usa processamento servidor.
 
 ---
 
@@ -1213,12 +1228,24 @@ Campo para ativar destaque de IBS e CBS na NF-e. Manter desativado enquanto não
 **Caminho:** Menu superior → **Fiscal** → **LCDPR**
 
 ### O que faz
-Gera o Livro Caixa Digital do Produtor Rural, obrigação da Receita Federal para produtores rurais PF. Exporta arquivo no formato exigido pelo programa GCAP/LCDPR.
+Gera o Livro Caixa Digital do Produtor Rural, obrigação da Receita Federal para produtores rurais PF. Exporta arquivo no formato exigido pelo programa GCAP/LCDPR. Inclui **apenas lançamentos de entidade PF** — lançamentos de empresas (PJ) são automaticamente excluídos.
 
 ### Abas disponíveis
-1. **Livro** — entradas manuais e importadas dos lançamentos
-2. **Resumo** — totais de receitas e despesas por código LCDPR
-3. **Exportação** — gerar arquivo para entrega à Receita Federal
+1. **Livro Caixa** — entradas dos lançamentos baixados (somente PF), lançamentos manuais e importados. Filtro por ano no topo.
+2. **Plano de Contas LCDPR** — lista todas as Operações Gerenciais (OGs) da conta e permite vincular cada uma a um código LCDPR (101–299). OGs sem código atribuído usam mapeamento automático por categoria. As descrições das OGs aparecem em letras minúsculas com inicial maiúscula.
+3. **Importação** — upload de planilha XLS/CSV com lançamentos históricos para complementar o Livro Caixa.
+4. **Resumo Anual** — totais de receitas e despesas por código LCDPR.
+5. **Exportação** — gera arquivo .txt no formato da Receita Federal para transmissão pelo GCAP.
+
+### Filtro de entidade — somente PF
+O LCDPR é por CPF de produtor rural. **Lançamentos de fazendas com entidade contábil = PJ são excluídos automaticamente.** Lançamentos sem entidade definida (legados) são incluídos. Configure a entidade contábil da fazenda em **Cadastros → Fazendas → Dados Gerais → Escrituração Fiscal**.
+
+### Plano de Contas LCDPR — como vincular OGs
+1. Acesse a aba **Plano de Contas LCDPR**
+2. A tabela lista todas as OGs ativas da conta com classificação e descrição
+3. Na coluna "Código LCDPR", selecione o código correspondente para cada OG
+4. Clique em **Salvar** na linha (ou o sistema salva automaticamente ao sair do select)
+5. OGs com código atribuído exibem o código com descrição; sem código, o sistema usa mapeamento automático
 
 ### Códigos LCDPR — Receitas
 - 101: Venda de produto rural
@@ -1235,8 +1262,7 @@ Gera o Livro Caixa Digital do Produtor Rural, obrigação da Receita Federal par
 - 205: Outros impostos e taxas
 - 299: Outras despesas rurais
 
-### Mapeamento automático
-O sistema atribui o código LCDPR automaticamente com base na categoria e descrição do lançamento:
+### Mapeamento automático (quando OG não tem código vinculado)
 - "Venda de grãos" / "Venda de soja" / "Venda de milho" → 101
 - "Insumos" / "Sementes" / "Fertilizantes" / "Defensivos" → 201
 - "Máquinas" / "Investimento" → 202
@@ -1244,12 +1270,12 @@ O sistema atribui o código LCDPR automaticamente com base na categoria e descri
 - "ITR" → 104
 
 ### Filtro de atividade rural
-Apenas lançamentos com **Vínculo de Atividade = rural** entram no LCDPR. Configure esse campo ao criar CP/CR.
+Além do filtro de entidade PF, somente lançamentos com **Vínculo de Atividade = rural** entram no LCDPR. Configure esse campo ao criar CP/CR ou em lote via edição.
 
 ### Exportar
-1. Selecione o exercício (ano)
-2. Revise os lançamentos na aba Livro
-3. Clique em **Exportar** → baixa o arquivo texto no formato da Receita Federal
+1. Selecione o exercício (ano) no topo
+2. Revise os lançamentos na aba Livro Caixa
+3. Acesse a aba **Exportação** → clique em **Gerar Arquivo** → baixa o .txt para transmissão pelo GCAP
 
 ---
 
@@ -1733,7 +1759,10 @@ R: Veja o código de rejeição:
 R: Verifique em **Estoque → Movimentações** qual baixa foi feita. Se necessário, crie um lançamento de ajuste manual (entrada no estoque) e refaça o plantio corretamente.
 
 **P: O LCDPR está vazio mesmo tendo lançamentos.**
-R: Somente lançamentos com **Vínculo de Atividade = rural** aparecem no LCDPR. Edite os lançamentos e defina esse campo.
+R: Verifique duas coisas: (1) somente lançamentos com **Vínculo de Atividade = rural** entram no LCDPR — edite os lançamentos e defina esse campo; (2) somente lançamentos de fazendas com **Entidade Contábil = PF** entram — verifique em **Cadastros → Fazendas → Dados Gerais → Escrituração Fiscal**. Lançamentos de entidade PJ são excluídos automaticamente.
+
+**P: O LCDPR está trazendo lançamentos de contas bancárias de empresa (PJ).**
+R: A fazenda está configurada sem entidade contábil definida. Acesse **Cadastros → Fazendas → editar → Dados Gerais → Escrituração Fiscal** e defina a Entidade Contábil como "PF — Produtor Rural (CPF)". Os novos lançamentos passarão a ser excluídos do LCDPR automaticamente.
 
 **P: Como funciona o custo médio no estoque?**
 R: O sistema usa custo médio ponderado. Ao dar entrada por NF, o novo custo médio é calculado como: (saldo atual × custo_médio_atual + quantidade_entrada × custo_unitário_NF) ÷ (saldo atual + quantidade_entrada).
