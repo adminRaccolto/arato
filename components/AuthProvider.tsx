@@ -39,6 +39,9 @@ type AuthCtx = {
   permissoes:             Record<string, ModuloPermissao>;
   // Add-ons habilitados por conta (via conta_modulos)
   contaModulosOverrides:  ContaModulosOverrides;
+  // Ano Safra Vigente (calculado por data_inicio/data_fim vs hoje)
+  anoSafraVigenteId:      string | null;
+  anoSafraVigenteDesc:    string | null; // ex: "2025/2026"
   // Helpers
   podeAcessar:            (modulo: string) => boolean;  // false quando 'nenhum'
   podeEscrever:           (modulo: string) => boolean;  // true quando 'escrita'
@@ -70,6 +73,8 @@ const Ctx = createContext<AuthCtx>({
   inadimplente:           false,
   permissoes:             {},
   contaModulosOverrides:  {},
+  anoSafraVigenteId:      null,
+  anoSafraVigenteDesc:    null,
   podeAcessar:            () => true,
   podeEscrever:           () => true,
   podeAcessarPlano:       () => true,
@@ -101,6 +106,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [logoCliente,            setLogoCliente]            = useState<string | null>(null);
   const [planoAtual,             setPlanoAtual]             = useState<PlanoId | null>(null);
   const [contaStatus,            setContaStatus]            = useState<string | null>(null);
+  const [anoSafraVigenteId,      setAnoSafraVigenteId]      = useState<string | null>(null);
+  const [anoSafraVigenteDesc,    setAnoSafraVigenteDesc]    = useState<string | null>(null);
   const router = useRouter();
   const inactivityTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeChannelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -471,6 +478,41 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fazendaId, userRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Carrega o Ano Safra vigente (data_inicio <= hoje <= data_fim) quando a fazenda muda
+  useEffect(() => {
+    if (!fazendaId) return;
+    const hoje = new Date().toISOString().split("T")[0];
+    supabase
+      .from("anos_safra")
+      .select("id, descricao, data_inicio, data_fim")
+      .eq("fazenda_id", fazendaId)
+      .lte("data_inicio", hoje)
+      .gte("data_fim", hoje)
+      .order("data_inicio", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setAnoSafraVigenteId(data.id);
+          setAnoSafraVigenteDesc(data.descricao);
+        } else {
+          // Fallback: ano safra mais recente com início no passado
+          supabase
+            .from("anos_safra")
+            .select("id, descricao")
+            .eq("fazenda_id", fazendaId)
+            .lte("data_inicio", hoje)
+            .order("data_inicio", { ascending: false })
+            .limit(1)
+            .single()
+            .then(({ data: d }) => {
+              setAnoSafraVigenteId(d?.id ?? null);
+              setAnoSafraVigenteDesc(d?.descricao ?? null);
+            });
+        }
+      });
+  }, [fazendaId]);
+
   const podeAcessar = useCallback((modulo: string) => {
     // Módulos exclusivos da Raccolto — bloqueados para todos os usuários clientes
     if (modulo === "conf_raccotlo" && userRole !== "raccotlo") return false;
@@ -534,6 +576,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,
       permissoes, contaModulosOverrides, podeAcessar, podeEscrever, podeAcessarPlano,
+      anoSafraVigenteId, anoSafraVigenteDesc,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,
     }}>
       {children}

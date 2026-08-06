@@ -114,7 +114,7 @@ function saudar(): string {
 
 // ─── Dashboard ────────────────────────────────────────────────
 export default function Dashboard() {
-  const { fazendaId, fazendaIds, onboardingAtivo, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, onboardingAtivo, nomeUsuario, anoSafraVigenteDesc } = useAuth();
 
   const [alertas,    setAlertas]    = useState<Alerta[]>([]);
   const [loadAl,     setLoadAl]     = useState(true);
@@ -686,6 +686,14 @@ export default function Dashboard() {
                 background:"rgba(239,68,68,0.1)",border:"0.5px solid rgba(239,68,68,0.3)" }}>
                 <span style={{ width:5,height:5,borderRadius:"50%",background:"#EF4444",display:"inline-block",animation:"pulso 1s ease infinite" }} />
                 {alertas.filter(a=>a.urgencia==="critico").length} crítico{alertas.filter(a=>a.urgencia==="critico").length>1?"s":""}
+              </span>
+            )}
+            {anoSafraVigenteDesc && (
+              <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,
+                color:"#4ADE80",padding:"3px 10px",borderRadius:20,
+                background:"rgba(22,163,74,0.12)",border:"0.5px solid rgba(22,163,74,0.3)",
+                whiteSpace:"nowrap" }}>
+                Safra {anoSafraVigenteDesc}
               </span>
             )}
             {/* Busca global */}

@@ -486,7 +486,7 @@ function CadastrosInner() {
   const [fTipoPes, setFTipoPes]               = useState({ nome: "", descricao: "" });
   const [modalCC, setModalCC]                 = useState(false);
   const [editCC, setEditCC]                   = useState<CentroCusto | null>(null);
-  const [fCC, setFCC]                         = useState({ codigo: "", nome: "", tipo: "despesa" as CentroCusto["tipo"], parent_id: "", manutencao_maquinas: false });
+  const [fCC, setFCC]                         = useState({ fazenda_id: "", codigo: "", nome: "", tipo: "despesa" as CentroCusto["tipo"], parent_id: "", manutencao_maquinas: false });
   const [modalCatLanc, setModalCatLanc]       = useState(false);
   const [editCatLanc, setEditCatLanc]         = useState<CategoriaLancamento | null>(null);
   const [fCatLanc, setFCatLanc]               = useState({ nome: "", tipo: "ambos" as CategoriaLancamento["tipo"] });
@@ -2106,7 +2106,7 @@ function CadastrosInner() {
             </p>
           </div>
           {/* Seletor de fazenda — obrigatório, usado em todos os modais desta página */}
-          {fazendas.length > 0 && aba !== "empresas" && (
+          {fazendas.length > 0 && aba !== "empresas" && aba !== "fazendas" && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Fazenda:</span>
               <select
@@ -3451,7 +3451,7 @@ function CadastrosInner() {
                       <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Centros de Custo</div>
                       <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Estrutura hierárquica para rateio de receitas e despesas por área, safra ou atividade</div>
                     </div>
-                    <button style={btnV} onClick={() => { setEditCC(null); setFCC({ codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</button>
+                    <button style={btnV} onClick={() => { setEditCC(null); setFCC({ fazenda_id: fazTrabalho || fazIdEff || "", codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</button>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <TH cols={["Código", "Nome", "Tipo", "Centro Pai", ""]} />
@@ -3473,7 +3473,7 @@ function CadastrosInner() {
                             <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>{pai?.nome || "—"}</td>
                             <td style={{ padding: "10px 14px", textAlign: "right" }}>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                                <button style={btnE} onClick={() => { setEditCC(c); setFCC({ codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</button>
+                                <button style={btnE} onClick={() => { setEditCC(c); setFCC({ fazenda_id: c.fazenda_id, codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</button>
                                 <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</button>
                               </div>
                             </td>
@@ -3530,40 +3530,58 @@ function CadastrosInner() {
           {/* ══ CENTROS DE CUSTO (aba dedicada) ══ */}
           {aba === "centros_custo" && (
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div>
                   <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Centros de Custo</div>
                   <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Estrutura hierárquica para rateio de receitas e despesas por área, safra ou atividade</div>
                 </div>
-                <button style={btnV} onClick={() => { setEditCC(null); setFCC({ codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: "auto" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Fazenda:</span>
+                    <select
+                      value={fazTrabalho}
+                      onChange={e => setFazTrabalho(e.target.value)}
+                      style={{ padding: "5px 10px", border: "1.5px solid #1A5CB8", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", outline: "none" }}
+                    >
+                      <option value="">Todas</option>
+                      {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                    </select>
+                  </div>
+                  <button style={btnV} onClick={() => { setEditCC(null); setFCC({ fazenda_id: fazTrabalho || fazIdEff || "", codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</button>
+                </div>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Código", "Nome", "Tipo", "Centro Pai", ""]} />
+                <TH cols={["Código", "Nome", "Tipo", "Centro Pai", "Fazenda", ""]} />
                 <tbody>
-                  {centrosCusto.length === 0 && <tr><td colSpan={5} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum centro de custo cadastrado</td></tr>}
-                  {centrosCusto.map((c, i) => {
-                    const pai = centrosCusto.find(x => x.id === c.parent_id);
-                    const corTipo: Record<string, [string,string]> = {
-                      receita: ["#D5E8F5","#0B2D50"],
-                      despesa: ["#FCEBEB","#791F1F"],
-                      neutro:  ["#F1EFE8","#666"],
-                    };
-                    const [bg, cl] = corTipo[c.tipo] ?? ["#F1EFE8","#666"];
-                    return (
-                      <tr key={c.id} style={{ borderBottom: i < centrosCusto.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                        <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{c.codigo || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{c.nome}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo, bg, cl)}</td>
-                        <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>{pai?.nome || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={() => { setEditCC(c); setFCC({ codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {(() => {
+                    const lista = fazTrabalho ? centrosCusto.filter(c => c.fazenda_id === fazTrabalho) : centrosCusto;
+                    if (lista.length === 0) return <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum centro de custo cadastrado{fazTrabalho ? " para esta fazenda" : ""}</td></tr>;
+                    return lista.map((c, i) => {
+                      const pai = centrosCusto.find(x => x.id === c.parent_id);
+                      const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? "—";
+                      const corTipo: Record<string, [string,string]> = {
+                        receita: ["#D5E8F5","#0B2D50"],
+                        despesa: ["#FCEBEB","#791F1F"],
+                        neutro:  ["#F1EFE8","#666"],
+                      };
+                      const [bg, cl] = corTipo[c.tipo] ?? ["#F1EFE8","#666"];
+                      return (
+                        <tr key={c.id} style={{ borderBottom: i < lista.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{c.codigo || "—"}</td>
+                          <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{c.nome}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo, bg, cl)}</td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>{pai?.nome || "—"}</td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{fazNome}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              <button style={btnE} onClick={() => { setEditCC(c); setFCC({ fazenda_id: c.fazenda_id, codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</button>
+                              <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -8405,6 +8423,13 @@ function CadastrosInner() {
       {modalCC && (
         <Modal titulo={editCC ? "Editar Centro de Custo" : "Novo Centro de Custo"} onClose={() => setModalCC(false)}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={lbl}>Fazenda *</label>
+              <select style={inp} value={fCC.fazenda_id} onChange={e => setFCC(p => ({ ...p, fazenda_id: e.target.value }))}>
+                <option value="">— selecionar —</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            </div>
             <div><label style={lbl}>Código</label><input style={inp} placeholder="Ex: 1.1.01" value={fCC.codigo} onChange={e => setFCC(p => ({ ...p, codigo: e.target.value }))} /></div>
             <div>
               <label style={lbl}>Tipo *</label>
@@ -8419,7 +8444,7 @@ function CadastrosInner() {
               <label style={lbl}>Centro Pai (opcional)</label>
               <select style={inp} value={fCC.parent_id} onChange={e => setFCC(p => ({ ...p, parent_id: e.target.value }))}>
                 <option value="">— Nenhum (raiz) —</option>
-                {centrosCusto.filter(c => !editCC || c.id !== editCC.id).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                {centrosCusto.filter(c => (!editCC || c.id !== editCC.id) && (!fCC.fazenda_id || c.fazenda_id === fCC.fazenda_id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
               </select>
             </div>
             <div style={{ gridColumn: "1/-1" }}>
@@ -8442,11 +8467,11 @@ function CadastrosInner() {
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalCC(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fCC.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fCC.nome.trim()}
+            <button style={{ ...btnV, opacity: salvando || !fCC.nome.trim() || !fCC.fazenda_id ? 0.5 : 1 }} disabled={salvando || !fCC.nome.trim() || !fCC.fazenda_id}
               onClick={async () => {
                 setSalvando(true);
                 try {
-                  const payload = { fazenda_id: (fazTrabalho || fazIdEff)!, codigo: fCC.codigo || undefined, nome: fCC.nome, tipo: fCC.tipo, parent_id: fCC.parent_id || undefined, manutencao_maquinas: fCC.manutencao_maquinas };
+                  const payload = { fazenda_id: fCC.fazenda_id || (fazTrabalho || fazIdEff)!, codigo: fCC.codigo || undefined, nome: fCC.nome, tipo: fCC.tipo, parent_id: fCC.parent_id || undefined, manutencao_maquinas: fCC.manutencao_maquinas };
                   if (editCC) {
                     await atualizarCentroCusto(editCC.id, payload);
                     setCentrosCusto(x => x.map(r => r.id === editCC.id ? { ...r, ...payload } : r));

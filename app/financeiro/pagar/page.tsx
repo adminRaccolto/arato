@@ -131,7 +131,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 
 // ═══════════════════════════════════════════════════════════════
 function ContasPagarInner() {
-  const { fazendaId, contaId, fazendaIds = [] } = useAuth();
+  const { fazendaId, contaId, fazendaIds = [], anoSafraVigenteId } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
@@ -164,12 +164,9 @@ function ContasPagarInner() {
   });
 
   // ── Janela padrão: 2 anos atrás até 12 meses à frente (cobre vencidos antigos) ────
-  const [periodoInicio, setPeriodoInicio] = useState(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() - 2); d.setDate(1);
-    return d.toISOString().split("T")[0];
-  });
+  const [periodoInicio, setPeriodoInicio] = useState(() => new Date().toISOString().split("T")[0]);
   const [periodoFim, setPeriodoFim] = useState(() => {
-    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 13); d.setDate(0);
+    const d = new Date(); d.setMonth(d.getMonth() + 3); d.setDate(0);
     return d.toISOString().split("T")[0];
   });
 
@@ -942,7 +939,7 @@ function ContasPagarInner() {
                   const lc = lastCascadeRef.current;
                   setCascade(lc);
                   setModalTab("principal");
-                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId ?? "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: lc.talhaoId ?? "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "" });
+                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId ?? anoSafraVigenteId ?? "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: lc.talhaoId ?? "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "" });
                   setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true);
                 }}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>

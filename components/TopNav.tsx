@@ -332,7 +332,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const prevQtdTransfRef   = useRef<number>(0);
 
   const pathname = usePathname();
-  const { fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente, anoSafraVigenteDesc } = useAuth();
   const { toggle: toggleTheme, isDark } = useTheme();
   const navRef = useRef<HTMLDivElement>(null);
 
@@ -637,6 +637,20 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                   {nomeIdentidade ?? "—"}
                 </div>
               </div>
+            </div>
+          )}
+
+          {anoSafraVigenteDesc && (
+            <div title="Ano Safra vigente" style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "rgba(22,163,74,0.15)",
+              border: "0.5px solid rgba(22,163,74,0.35)",
+              borderRadius: 6, padding: "3px 9px",
+              fontSize: 11, fontWeight: 700, color: "#4ADE80",
+              letterSpacing: "0.02em", whiteSpace: "nowrap",
+            }}>
+              <span style={{ opacity: 0.7, fontWeight: 400 }}>Safra</span>
+              {anoSafraVigenteDesc}
             </div>
           )}
 

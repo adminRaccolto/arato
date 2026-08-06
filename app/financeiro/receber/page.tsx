@@ -119,7 +119,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 
 // ═══════════════════════════════════════════════════════════════
 export default function ContasReceber() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, anoSafraVigenteId } = useAuth();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
@@ -137,12 +137,9 @@ export default function ContasReceber() {
   const [filtro,   setFiltro]   = useState<Filtro>("aberto");
 
   // ── Janela padrão: 2 anos atrás até 12 meses à frente ────
-  const [periodoInicio, setPeriodoInicio] = useState(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() - 2); d.setDate(1);
-    return d.toISOString().split("T")[0];
-  });
+  const [periodoInicio, setPeriodoInicio] = useState(() => new Date().toISOString().split("T")[0]);
   const [periodoFim, setPeriodoFim] = useState(() => {
-    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 13); d.setDate(0);
+    const d = new Date(); d.setMonth(d.getMonth() + 3); d.setDate(0);
     return d.toISOString().split("T")[0];
   });
 
@@ -721,7 +718,7 @@ export default function ContasReceber() {
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>até</span>
               <input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)}
                 style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
-              <button onClick={() => { setCascade({}); setModalTab("principal"); carregarOps(); setModalNovo(true); }}
+              <button onClick={() => { setEditandoId(null); setCascade({}); setForm(p => ({ ...p, pessoa_id: "", descricao: "", categoria: CATS_CR[0], vencimento: "", valorMask: "", cotacaoMask: "", sacasMask: "", obs: "", parcelar: false, totalParcelas: "1", intervaloMeses: "1", chave_xml: "", centro_custo: "", ano_safra_id: anoSafraVigenteId ?? "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", data_emissao: TODAY, numero_documento: "", serie: "", meses_diferido: "0" })); setModalTab("principal"); carregarOps(); setModalNovo(true); }}
                 style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Nova CR
               </button>

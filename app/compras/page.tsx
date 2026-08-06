@@ -230,7 +230,7 @@ const PEDIDO_VAZIO: FormPedido = {
 };
 
 export default function ComprasPage() {
-  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano, anoSafraVigenteId } = useAuth();
 
   const [pedidos,         setPedidos]         = useState<PedidoCompra[]>([]);
   const [pessoas,         setPessoas]         = useState<Pessoa[]>([]);
@@ -347,7 +347,7 @@ export default function ComprasPage() {
   // ── Abrir modal novo/editar ──────────────────────────────────
 
   const abrirNovo = () => {
-    setF({ ...PEDIDO_VAZIO });
+    setF({ ...PEDIDO_VAZIO, ano_safra_id: anoSafraVigenteId ?? "" });
     setItens([{ ...ITEM_VAZIO }]);
     setIeOpcoes([]);
     setPedidoEdit(null);
