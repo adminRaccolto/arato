@@ -2285,6 +2285,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     origem:            "manual",
     tipo_entrada:      "insumos",
     data_vencimento_cp: vencimento,
+    observacao:        "Lançado via foto NF — WhatsApp",
   }).select("id").maybeSingle();
 
   if (errNf || !nfRow) return { ok: false, mensagem: `❌ Erro ao criar NF: ${errNf?.message ?? "sem retorno"}` };

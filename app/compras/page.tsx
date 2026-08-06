@@ -1641,11 +1641,14 @@ export default function ComprasPage() {
       {modalEntrega && (() => {
         const ehFiscal = modalEntrega.pedido.fiscal ?? false;
 
-        // Agregar qtd entregue por insumo_id (modo fiscal)
+        // Agregar qtd entregue por insumo_id — apenas NFs processadas contam como entregue
+        const nfsProcessadasIds = new Set(nfsFiscais.filter(n => n.status === "processada").map(n => n.id));
         const qtdByInsumo = new Map<string, number>();
-        nfsFiscaisItens.forEach(it => {
-          if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
-        });
+        nfsFiscaisItens
+          .filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? ""))
+          .forEach(it => {
+            if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
+          });
 
         const NF_STATUS: Record<string, { label: string; bg: string; color: string }> = {
           digitando:  { label: "Digitando",  bg: "#F4F6FA",  color: "#555"     },
@@ -1654,7 +1657,7 @@ export default function ComprasPage() {
           cancelada:  { label: "Cancelada",   bg: "#FCEBEB",  color: "#791F1F"  },
         };
 
-        const totalNFs    = nfsFiscais.filter(n => n.status !== "cancelada").reduce((s, n) => s + (n.valor_total ?? 0), 0);
+        const totalNFs    = nfsFiscais.filter(n => n.status === "processada").reduce((s, n) => s + (n.valor_total ?? 0), 0);
         const totalPedido = modalEntrega.pedido.total_financeiro ?? 0;
 
         return (

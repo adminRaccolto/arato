@@ -90,12 +90,12 @@ export async function POST(req: NextRequest) {
       await sb.from("nf_entradas").update({ lancamento_id: null }).eq("id", nf_id);
     }
 
-    // 6. Itens → depois status para rascunho
+    // 6. Itens → depois status para pendente e desvincular do pedido de compra
     await sb.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_id);
 
     const { error: errStatus } = await sb
       .from("nf_entradas")
-      .update({ status: "pendente" })
+      .update({ status: "pendente", lancamento_id: null, pedido_compra_id: null })
       .eq("id", nf_id);
 
     if (errStatus) throw new Error(`Erro ao atualizar status: ${errStatus.message}`);
