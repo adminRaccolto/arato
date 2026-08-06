@@ -252,8 +252,22 @@ export default function DadosAdminPage() {
             } catch { /* tabela inexistente */ }
           }
         }
-        // Ações de UPDATE (ex: zeramento de estoque — zera sem deletar)
-        if (sub.updateActions) {
+        // Zeramento via API route (service_role — zera insumos + pa_saldos sem JWT issues)
+        if (sub.id === "zeramento") {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch("/api/admin/zeramento-estoque", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+              body: JSON.stringify({ fazenda_ids: fazIds }),
+            });
+            const json = await res.json() as { ok: boolean; total: number; erros?: string[] };
+            if (!json.ok) erros.push(...(json.erros ?? ["Erro no zeramento"]));
+            else deletados += json.total;
+          } catch (e) {
+            erros.push(e instanceof Error ? e.message : "Erro ao chamar zeramento");
+          }
+        } else if (sub.updateActions) {
           for (const action of sub.updateActions) {
             for (const fId of fazIds) {
               try {
