@@ -11,7 +11,7 @@ import {
   listarMaquinas,
   listarNfEntradas, criarNfEntrada,
   listarNfEntradaItens, criarNfEntradaItem, limparNfEntradaItens,
-  processarNfEntrada,
+  processarNfEntrada, estornarNfProcessamento,
   listarCentrosCustoGeral,
   listarEstoqueTerceiros,
   listarPessoas, criarPessoa,
@@ -114,6 +114,7 @@ interface ItemRascunho {
   deposito_id: string;
   bomba_id: string;
   maquina_id: string;
+  centro_custo_id: string;
   alerta_preco: boolean;
 }
 
@@ -214,7 +215,7 @@ function parsearXmlNfe(xml: string): { numero: string; serie: string; chave: str
         valor_unitario: vUni,
         valor_total:    parseFloat(prod.querySelector("vProd")?.textContent ?? "0"),
         tipo_apropiacao,
-        insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", alerta_preco: false,
+        insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", alerta_preco: false,
       });
     });
 
@@ -481,12 +482,12 @@ export default function Estoque() {
     });
     setNfCriada(nf);
     if (itensNf.length === 0) {
-      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", alerta_preco: false }]);
+      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", alerta_preco: false }]);
     }
     setModalNf("passo2");
   });
 
-  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", alerta_preco: false }]);
+  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", alerta_preco: false }]);
 
   const atualizarItem = (key: string, patch: Partial<ItemRascunho>) => {
     setItensNf(p => p.map(i => {
@@ -550,7 +551,14 @@ export default function Estoque() {
       return;
     }
 
-    // Limpa itens anteriores (evita duplicação se houve tentativa anterior com falha parcial)
+    // Se a NF já foi processada (reprocessamento), estorna o estoque antes de limpar os itens
+    // — deve vir ANTES de limparNfEntradaItens, que deleta os itens necessários para o estorno
+    if (nfCriada.status === "processada") {
+      await estornarNfProcessamento(nfCriada.id);
+      setNfCriada(p => p ? { ...p, status: "pendente" } : null);
+    }
+
+    // Limpa itens (agora seguro: estoque já foi revertido acima se necessário)
     await limparNfEntradaItens(nfCriada.id);
 
     // Criar itens no banco
@@ -568,6 +576,7 @@ export default function Estoque() {
         quantidade: item.quantidade,
         valor_unitario: item.valor_unitario, valor_total: item.valor_total,
         tipo_apropiacao: item.tipo_apropiacao, alerta_preco: item.alerta_preco,
+        centro_custo_id: item.centro_custo_id || undefined,
       });
     }
     // Buscar itens salvos (com id completo) e processar
@@ -1882,6 +1891,24 @@ export default function Estoque() {
                     </div>
                   )}
                 </div>
+
+                {/* Centro de Custo por item */}
+                {centros.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <label style={lbl}>Centro de Custo do item (opcional)</label>
+                    <select style={{ ...inp, maxWidth: 340 }} value={item.centro_custo_id} onChange={e => atualizarItem(item.key, { centro_custo_id: e.target.value })}>
+                      <option value="">— Herdar o CC da NF —</option>
+                      {centros.filter(c => !c.parent_id).map(pai => (
+                        <>
+                          <option key={pai.id} value={pai.id} style={{ fontWeight: 600 }}>{pai.nome}</option>
+                          {centros.filter(c => c.parent_id === pai.id).map(filho => (
+                            <option key={filho.id} value={filho.id}>&nbsp;&nbsp;↳ {filho.nome}</option>
+                          ))}
+                        </>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Custo médio preview */}
                 {(item.tipo_apropiacao === "estoque" || item.tipo_apropiacao === "remessa") && item.insumo_id && (() => {
