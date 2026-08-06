@@ -6,6 +6,7 @@ import {
   listarNfEntradaItens, criarNfEntradaItem,
   processarNfEntrada,
   processarDevolucaoCompra,
+  estornarNfProcessamento,
   listarInsumos,
   criarInsumo,
   listarDepositos,
@@ -856,10 +857,18 @@ export default function NfCompraPage() {
   // ── Processar NF (finalizar) ──────────────────────────────
   async function processarNF() {
     if (!fazendaId || !nfEdit) return;
+    // Guard: NF já processada não pode ser reprocessada — use "Estornar" antes
+    if (nfEdit.status === "processada") {
+      alert("Esta NF já foi processada. Para reprocessar, clique em 'Estornar' primeiro para reverter o estoque e o lançamento financeiro.");
+      return;
+    }
     setSaving(true);
     setErr("");
     try {
-      // 1. Salvar / atualizar itens
+      // 1. Limpar itens existentes (evita duplicação se houve falha parcial anterior)
+      await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfEdit.id);
+
+      // 1b. Recriar todos os itens do estado atual
       for (const it of itens) {
         if (!it.descricao_nf.trim()) continue;
         const tipoAprp: NfEntradaItem["tipo_apropiacao"] =
@@ -960,6 +969,23 @@ export default function NfCompraPage() {
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Erro ao excluir NF");
       setModalExcluir(p => p ? { ...p, excluindo: false } : null);
+    }
+  }
+
+  // ── Estornar processamento de NF ─────────────────────────
+  async function estornarNFClick(nf: NfEntrada) {
+    const ok = confirm(
+      `Estornar NF ${nf.numero}?\n\n` +
+      `Isso irá:\n• Reverter todo o estoque creditado por esta NF\n• Cancelar o lançamento financeiro (CP) associado\n• Retornar a NF para "Rascunho" para reprocessamento\n\n` +
+      `Use isto se o estoque ficou duplicado ou incorreto.`
+    );
+    if (!ok) return;
+    try {
+      await estornarNfProcessamento(nf.id);
+      await carregar();
+      alert(`NF ${nf.numero} estornada. O estoque foi revertido. Reabra a NF para corrigir os itens e reprocessar.`);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Erro ao estornar NF");
     }
   }
 
@@ -1561,6 +1587,11 @@ export default function NfCompraPage() {
                           {nf.status === "processada" && (
                             <button onClick={() => abrirReclassificar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #C9921B50", borderRadius: 6, background: "#FBF3E0", cursor: "pointer", fontSize: 11, color: "#7B4A00", fontWeight: 600 }}>
                               Reclassificar
+                            </button>
+                          )}
+                          {nf.status === "processada" && (
+                            <button onClick={() => estornarNFClick(nf)} style={{ padding: "4px 10px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FFF8EC", cursor: "pointer", fontSize: 11, color: "#8A4A00", fontWeight: 600 }}>
+                              Estornar
                             </button>
                           )}
                           {nf.origem === "sieg" && nf.status === "pendente" && (

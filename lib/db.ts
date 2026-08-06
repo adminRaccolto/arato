@@ -1975,6 +1975,48 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
   if (error) throw new Error(error.message);
 }
 
+// Estorna processamento de uma NF sem excluí-la: reverte estoque, deleta itens e CP, volta status para "rascunho"
+export async function estornarNfProcessamento(nfId: string): Promise<void> {
+  // 1. Reverter movimentações de estoque (insumos regulares)
+  const { data: itens } = await supabase
+    .from("nf_entrada_itens").select("id, insumo_id, quantidade")
+    .eq("nf_entrada_id", nfId);
+  const itemIds = (itens ?? []).map(i => i.id as string);
+
+  if (itemIds.length > 0) {
+    const { data: movs } = await supabase
+      .from("movimentacoes_estoque").select("insumo_id, quantidade")
+      .in("nf_entrada_item_id", itemIds).eq("tipo", "entrada");
+    for (const mov of movs ?? []) {
+      const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", mov.insumo_id).single();
+      if (ins) {
+        await supabase.from("insumos")
+          .update({ estoque: (ins.estoque as number) - (mov.quantidade as number) })
+          .eq("id", mov.insumo_id);
+      }
+    }
+    await supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds);
+    await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
+  }
+
+  // 2. Reverter movimentações PA
+  await estornarMovimentacoesPA(nfId);
+
+  // 3. Estoque de terceiros
+  await supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId);
+
+  // 4. Lançamento financeiro (CP)
+  const { data: nfRow } = await supabase.from("nf_entradas").select("lancamento_id").eq("id", nfId).single();
+  if (nfRow?.lancamento_id) {
+    await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
+    await supabase.from("nf_entradas").update({ lancamento_id: null }).eq("id", nfId);
+  }
+
+  // 5. Itens + volta status para rascunho
+  await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);
+  await supabase.from("nf_entradas").update({ status: "rascunho" }).eq("id", nfId);
+}
+
 // Processa NF de Devolução de Compra:
 //   - Para cada item devolvido: cria saída de estoque
 //   - Cria CR (Conta a Receber) pelo valor devolvido — fornecedor deve o dinheiro de volta

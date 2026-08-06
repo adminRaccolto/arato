@@ -995,6 +995,16 @@ Campos principais:
 - **Fornecedor não preenchido automaticamente pelo Sieg:** o CNPJ da NF pode não estar cadastrado em Pessoas. Vá em **Cadastros → Pessoas**, cadastre o fornecedor com o CNPJ correto e volte para processar a NF.
 - **Depósito não aparece:** os depósitos listados dependem do toggle Próprio/Terceiro. Mude o toggle e verifique se o depósito desejado aparece.
 - **"Associar ao insumo":** se um item não é encontrado no catálogo, clique no select da coluna "Insumo / Centro Custo" e busque pelo nome. Se não houver, crie o insumo em **Cadastros → Insumos**.
+- **Estoque duplicado / saldo incorreto após processar NF:** clique em **Estornar** na linha da NF processada (botão laranja claro). Isso reverte todo o estoque creditado e o lançamento financeiro, retornando a NF para Rascunho. Depois, reabra a NF via "Processar", corrija os itens e processe uma única vez.
+- **Não consigo reprocessar uma NF já processada:** proposital — o sistema bloqueia reprocessamento para evitar duplicação de estoque. Use o botão **Estornar** primeiro.
+
+### Botões de ação por status — NF de Produtos
+| Status | Botões disponíveis |
+|---|---|
+| Pendente (Sieg) | Processar |
+| Rascunho | Editar, Processar |
+| Processada | Reclassificar, Estornar, Devolver (se tipo = insumos), DANFE |
+| Cancelada | — |
 
 ---
 
@@ -1882,7 +1892,7 @@ Ferramenta de manutenção de dados: permite contar, limpar e zerar registros de
 - **Limpar:** exclui os itens. Exclua Movimentações antes
 
 **Zeramento de Estoque:**
-- **Não apaga** os registros do catálogo — apenas define `estoque = 0` em todos os insumos e itens da fazenda
+- **Não apaga** os registros do catálogo — apenas define estoque = 0 em todos os insumos e itens da fazenda
 - Útil para reiniciar o saldo físico sem perder o cadastro (nomes, NCM, preço médio, etc.)
 - Para reverter, é necessário fazer nova entrada de estoque via NF ou ajuste manual
 
