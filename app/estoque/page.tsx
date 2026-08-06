@@ -12,6 +12,7 @@ import {
   listarNfEntradas, criarNfEntrada,
   listarNfEntradaItens, criarNfEntradaItem, limparNfEntradaItens,
   processarNfEntrada,
+  listarCentrosCustoGeral,
   listarEstoqueTerceiros,
   listarPessoas, criarPessoa,
   registrarLog,
@@ -23,7 +24,7 @@ import type {
   Insumo, MovimentacaoEstoque,
   Deposito, BombaCombustivel, Maquina,
   NfEntrada, NfEntradaItem, EstoqueTerceiro, Pessoa,
-  PASaldo, MovimentacaoPA,
+  PASaldo, MovimentacaoPA, CentroCusto,
 } from "../../lib/supabase";
 
 // ── Hook mobile ──────────────────────────────────────────
@@ -235,6 +236,7 @@ export default function Estoque() {
   const [insumos, setInsumos]       = useState<Insumo[]>([]);
   const [movs, setMovs]             = useState<MovimentacaoEstoque[]>([]);
   const [depositos, setDepositos]   = useState<Deposito[]>([]);
+  const [centros, setCentros]       = useState<CentroCusto[]>([]);
   const [_bombas, setBombas]        = useState<BombaCombustivel[]>([]);
   const [maquinas, setMaquinas]     = useState<Maquina[]>([]);
   const [nfEntradas, setNfEntradas] = useState<NfEntrada[]>([]);
@@ -276,7 +278,7 @@ export default function Estoque() {
   // modal NF Entrada — passo 1: dados da NF / passo 2: itens
   const [modalNf, setModalNf] = useState<"off" | "passo1" | "passo2">("off");
   const [nfMode, setNfMode]   = useState<"xml" | "manual">("manual");
-  const [fNf, setFNf] = useState({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "" });
+  const [fNf, setFNf] = useState({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "", centro_custo_id: "" });
   const [itensNf, setItensNf] = useState<ItemRascunho[]>([]);
   const [nfCriada, setNfCriada] = useState<NfEntrada | null>(null);
 
@@ -309,6 +311,7 @@ export default function Estoque() {
     listarMaquinas(fazendaId).then(setMaquinas).catch(() => {});
     listarPessoas(fazendaId).then(setPessoas).catch(() => {});
     listarPASaldos(fazendaId).then(setPASaldos).catch(() => {});
+    listarCentrosCustoGeral(fazendaId).then(setCentros).catch(() => {});
   }, [fazendaId]);
 
   useEffect(() => {
@@ -393,7 +396,7 @@ export default function Estoque() {
 
   // ── NF Passo 1: criar NF ──
   const abrirNovaFf = () => {
-    setFNf({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "" });
+    setFNf({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "", centro_custo_id: "" });
     setItensNf([]);
     setNfCriada(null);
     setNfMode("manual");
@@ -433,7 +436,7 @@ export default function Estoque() {
         numero: parsed.numero, serie: parsed.serie, chave_acesso: parsed.chave,
         emitente_nome: parsed.emitente, emitente_cnpj: parsed.cnpj,
         data_emissao: parsed.data, valor_total: Number(parsed.valor) || 0,
-        natureza: "", observacao: "",
+        natureza: "", observacao: "", centro_custo_id: "",
       });
       setItensNf(itensComMatch);
       setXmlFeedback({
@@ -473,6 +476,7 @@ export default function Estoque() {
       data_entrada: new Date().toISOString().slice(0,10),
       valor_total: fNf.valor_total || 0,
       natureza: fNf.natureza || undefined, observacao: fNf.observacao || undefined,
+      centro_custo_id: fNf.centro_custo_id || undefined,
       status: "pendente",
     });
     setNfCriada(nf);
@@ -574,7 +578,7 @@ export default function Estoque() {
       fNf.valor_total || 0,
       fNf.emitente_nome, fNf.data_emissao,
       fNf.emitente_cnpj || undefined,
-      { nfeNumero: fNf.numero },
+      { nfeNumero: fNf.numero, centroCustoId: fNf.centro_custo_id || undefined },
     );
     // Recarregar
     const [nfs, ins] = await Promise.all([listarNfEntradas(fazendaId!), listarInsumos(fazendaId!)]);
@@ -1680,6 +1684,20 @@ export default function Estoque() {
             <div><label style={lbl}>Valor Total (R$)</label><InputMonetario style={inp} value={fNf.valor_total} onChange={v => setFNf(p => ({ ...p, valor_total: v }))} /></div>
             <div><label style={lbl}>Chave de Acesso</label><input style={inp} value={fNf.chave_acesso} onChange={e => setFNf(p => ({ ...p, chave_acesso: e.target.value }))} /></div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Natureza da Operação</label><input style={inp} placeholder="Ex: Compra de defensivos" value={fNf.natureza} onChange={e => setFNf(p => ({ ...p, natureza: e.target.value }))} /></div>
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={lbl}>Centro de Custo</label>
+              <select style={inp} value={fNf.centro_custo_id} onChange={e => setFNf(p => ({ ...p, centro_custo_id: e.target.value }))}>
+                <option value="">— Nenhum —</option>
+                {centros.filter(c => !c.parent_id).map(pai => (
+                  <>
+                    <option key={pai.id} value={pai.id} style={{ fontWeight: 600 }}>{pai.nome}</option>
+                    {centros.filter(c => c.parent_id === pai.id).map(filho => (
+                      <option key={filho.id} value={filho.id}>&nbsp;&nbsp;↳ {filho.nome}</option>
+                    ))}
+                  </>
+                ))}
+              </select>
+            </div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Observação</label><input style={inp} value={fNf.observacao} onChange={e => setFNf(p => ({ ...p, observacao: e.target.value }))} /></div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
