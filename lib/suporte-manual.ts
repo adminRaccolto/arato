@@ -569,6 +569,9 @@ Se um recebimento não ocorreu na data prevista e a data deve ser alterada:
 - **Contrato Financeiro** — captação de crédito
 - **Plantio** — vinculado a operação de lavoura
 
+### CR em dólar (USD) — cotação obrigatória
+Mesma regra da CP: se o campo de cotação não estiver informado, aparece "⚠ Abra e informe a cotação" em laranja. Abra a CR, preencha o campo **Cotação (R$/US$)** e salve.
+
 ---
 
 ## MÓDULO 15 — CONTAS A PAGAR
@@ -642,6 +645,17 @@ CP já criada pode ter a categoria/OG alterada sem tocar nos lançamentos contá
 - **Arrendamento** — CP gerada pelo módulo de arrendamento (quando em BRL)
 - **Pedido Compra** — ao aprovar um pedido de compra
 - **SIEG** — CP gerada automaticamente pela importação automática de NF-e
+
+### CP em dólar (USD) — cotação obrigatória
+Quando a CP está em USD, o sistema exibe abaixo do valor em dólar a linha de conversão em reais. Se a cotação ainda não foi informada, aparece o aviso laranja **"⚠ Abra e informe a cotação"**.
+
+**Como informar a cotação:**
+1. Clique em **Abrir / Editar** na CP
+2. Na aba Principal, o campo **Cotação (R$/US$)** estará **em branco** (campo vazio = não salvo)
+3. Digite a cotação (ex: 5,12) e clique em **Salvar alterações**
+4. A linha de conversão passará a exibir o equivalente em reais
+
+> **Atenção:** o campo de cotação não é pré-preenchido automaticamente — ele ficará em branco até que seja informado e salvo. Ao abrir o modal sem digitar nada e fechar, a cotação **não** é salva.
 
 ---
 
@@ -930,15 +944,57 @@ Pedidos com NFs de entrada vinculadas **não podem ser excluídos**. Para cancel
 **Caminho:** Menu superior → **Compras & Estoque** → **NF de Produtos**
 
 ### O que faz
-Lança notas fiscais de compra de produtos (mercadorias) com CFOP, NCM e movimentação de estoque. Separado da NF de Serviços.
+Lança notas fiscais de compra de produtos (mercadorias). Fluxo em 3 passos (Cabeçalho → Dados → Itens & Processamento). Integra com Sieg para importação automática de NF-e recebidas.
 
-### Campos da NF de Produtos
+### Passo 1 — Upload / Sieg
+- **Sincronizar SIEG:** botão para importar NF-e recebidas automaticamente do serviço Sieg
+- **Nova NF Manual:** preenche todos os campos manualmente
+- Ao clicar em **Processar** numa NF do Sieg, ela avança para o Passo 2 (Cabeçalho)
+
+### Passo 2 — Cabeçalho
+Campos principais:
+- **Número da NF** (*), Série, CFOP
+- **Emitente (Fornecedor)** — select com nome e CNPJ do cadastro de Pessoas
+
+  > **Auto-preenchimento por CNPJ:** ao importar um XML ou NF do Sieg, o sistema compara o CNPJ do emitente com o cadastro de Pessoas da conta. Se houver correspondência, o campo **Emitente (Fornecedor)** é preenchido automaticamente. O mesmo ocorre ao digitar o CNPJ manualmente e sair do campo.
+  >
+  > Se o fornecedor não estiver cadastrado, aparece o botão **+ Cadastrar** que cria a pessoa direto com os dados da NF.
+
+- **Nome do emitente** — preenchido automaticamente pelo XML/Sieg; editável manualmente
+- **CNPJ do Emitente** — auto-preenchido pelo XML; ao sair do campo, aplica classificação automática e tenta vincular o fornecedor
+- Data de emissão (*), Data de entrada, Valor Produtos (R$)
+- Natureza da Operação, Chave de Acesso NF-e (44 dígitos)
+- **Vencimento da CP** — data de vencimento da conta a pagar gerada
+- **Ano Safra** e **Ciclo** — vinculação contábil e de custo
+- **Operação Gerencial** — classificação no plano de contas
+- **Vínculo de Atividade**: Atividade Rural (LCDPR), Pessoa Física, Investimento, Não tributável
+- **Entidade Contábil**: PF — Produtor Rural (CPF) ou PJ — Empresa (CNPJ)
+- Impostos adicionados ao total: IPI, ST, FCP-ST, DIFAL, Desconto
+
+### Passo 3 — Itens & Processamento
+- **Tabela de itens**: cada item da NF é associado a um insumo/produto do catálogo
+- **Toggle Estoque / C. Custo** por item: define se vai para estoque (contagem física) ou direto para centro de custo
+- **Conversão de unidade**: ex. BAG→KG, TON→KG detectado automaticamente pelo XML
+
+**Depósito padrão:**
+- Select de depósito para todos os itens que irão para estoque e não têm depósito individual
+- **Toggle Próprio / Terceiro** acima do select — filtra a lista:
+  - **Próprio:** armazéns e silos da fazenda (insumo_fazenda, armazem_fazenda, almoxarifado, oficina)
+  - **Terceiro:** depósitos de fornecedores ou armazenadores externos (terceiro, armazem_terceiro)
+- A lista exibe **todos os depósitos de todas as fazendas da conta** (não apenas a fazenda ativa)
+
+### Campos da NF de Produtos (resumo técnico)
 - Fornecedor, CNPJ, IE, Número da NF, Série, CFOP, Natureza da Operação
 - Data de emissão, Data de entrada
 - Itens: descrição, NCM, CFOP do item, quantidade, unidade, valor unitário
 - Impostos: ICMS CST/alíq, PIS CST/alíq, COFINS CST/alíq
 - Vínculo de Atividade (rural / PF / investimento / não tributável)
 - Entidade Contábil (PF produtor ou PJ empresa)
+
+### Erros comuns — NF de Produtos
+- **Fornecedor não preenchido automaticamente pelo Sieg:** o CNPJ da NF pode não estar cadastrado em Pessoas. Vá em **Cadastros → Pessoas**, cadastre o fornecedor com o CNPJ correto e volte para processar a NF.
+- **Depósito não aparece:** os depósitos listados dependem do toggle Próprio/Terceiro. Mude o toggle e verifique se o depósito desejado aparece.
+- **"Associar ao insumo":** se um item não é encontrado no catálogo, clique no select da coluna "Insumo / Centro Custo" e busque pelo nome. Se não houver, crie o insumo em **Cadastros → Insumos**.
 
 ---
 
@@ -1808,6 +1864,41 @@ Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção
 
 ---
 
+## MÓDULO 40 — ADMIN → DADOS & LIMPEZA
+
+**Caminho:** Acessível apenas para usuários Raccotlo via /admin/dados
+
+### O que faz
+Ferramenta de manutenção de dados: permite contar, limpar e zerar registros de uma fazenda. Organizado em acordeões por categoria.
+
+### Grupo: Estoque & Compras
+
+**Cadastro de Insumos:**
+- Conta e lista todos os insumos cadastrados na fazenda
+- **Limpar:** exclui todos os insumos. Pré-requisito: exclua as Movimentações de Estoque antes (insumos têm FK de movimentações)
+
+**Itens Gerais (peças/materiais):**
+- Mesma lógica dos Insumos, mas filtra apenas itens do tipo "produto"
+- **Limpar:** exclui os itens. Exclua Movimentações antes
+
+**Zeramento de Estoque:**
+- **Não apaga** os registros do catálogo — apenas define `estoque = 0` em todos os insumos e itens da fazenda
+- Útil para reiniciar o saldo físico sem perder o cadastro (nomes, NCM, preço médio, etc.)
+- Para reverter, é necessário fazer nova entrada de estoque via NF ou ajuste manual
+
+### Outros grupos disponíveis
+- **Financeiro:** limpar CP, CR, Lançamentos
+- **Lavoura:** limpar Ciclos, Talhões, Operações
+- **Contratos:** limpar Contratos de Grãos, Arrendamentos
+- **Comercial:** limpar Romaneios, Expedições
+
+### Importante
+- Todas as limpezas são **irreversíveis** — confirme com o cliente antes de executar
+- O sistema solicita confirmação dupla antes de excluir
+- Apenas raccotlo tem acesso a esta tela (clientes não enxergam)
+
+---
+
 ## REFERÊNCIA RÁPIDA — CAMINHOS DO MENU
 
 | O que fazer | Caminho |
@@ -1845,6 +1936,7 @@ Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção
 | Dar entrada em NF de insumos | Compras & Estoque → Estoque → NF Entrada |
 | Criar pedido de compra | Compras & Estoque → Pedidos de Compra |
 | Lançar NF de produtos recebida | Compras & Estoque → NF de Produtos |
+| Processar NF do Sieg | Compras & Estoque → NF de Produtos → Processar |
 | Lançar NF de serviços recebida | Compras & Estoque → NF de Serviços |
 | Emitir NF-e de venda | Fiscal → NF-e |
 | Gerar LCDPR | Fiscal → LCDPR |
@@ -1865,4 +1957,6 @@ Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção
 | Importar dados em massa | Configurações → Importação |
 | Importar lançamentos do Apoio (raccotlo) | Financeiro → Apoio Financeiro → aba Importação |
 | Definir regras de rateio | Configurações → Regras de Rateio |
+| Limpar ou zerar dados de uma fazenda (raccotlo) | /admin/dados |
+| Zerar estoque sem apagar cadastro (raccotlo) | /admin/dados → Estoque & Compras → Zeramento de Estoque |
 `;
