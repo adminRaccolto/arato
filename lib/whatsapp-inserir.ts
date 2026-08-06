@@ -2372,7 +2372,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
         quantidade:         qtd,
         valor_unitario:     vlUnit,
         motivo:             "compra",
-        observacao:         `NF ${numeroNf || "s/n"} — ${razao} (via WhatsApp)`,
+        observacao:         `NF ${numeroNf || "s/n"} — ${razao}`,
         data:               hoje,
         auto:               false,
         nf_entrada_item_id: itemRow?.id ?? null,
