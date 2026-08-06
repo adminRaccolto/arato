@@ -318,175 +318,216 @@ function OperacoesGerenciaisContent() {
     );
   }
 
+  // helpers de badge inline
+  const ESCOPO_META: Record<string, { label: string; bg: string; cl: string }> = {
+    global:  { label: "Global",   bg: "#EDE9FB", cl: "#4B3B9B" },
+    fazenda: { label: "Fazenda",  bg: "#D5E8F5", cl: "#0B2D50" },
+    ciclo:   { label: "Ciclo",    bg: "#EAF3DE", cl: "#1A5C38" },
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
+      <div style={{ padding: "16px 24px" }}>
 
-        {/* Cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Operações Gerenciais</div>
-            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
+        {/* ── Cabeçalho ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.2 }}>Operações Gerenciais</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
               Categorias de lançamento · CP/CR · NF · Estoque · Financeiro · Contabilidade
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
             <button onClick={exportarXlsx}
-              style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #16A34A", borderRadius: 8, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}>
+              style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #16A34A", borderRadius: 7, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}>
               ⬇ XLSX
             </button>
             <button onClick={importarPadrao} disabled={seeding}
-              style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #C9921B", borderRadius: 8, background: "#FBF3E0", color: "#7A5A10", cursor: seeding ? "not-allowed" : "pointer", fontWeight: 600, opacity: seeding ? 0.7 : 1 }}>
+              style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #C9921B", borderRadius: 7, background: "#FBF3E0", color: "#7A5A10", cursor: seeding ? "not-allowed" : "pointer", fontWeight: 600, opacity: seeding ? 0.7 : 1 }}>
               {seeding ? "Importando…" : "↓ Importar Padrão"}
             </button>
             <a href="/configuracoes/plano-contas"
-              style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+              style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #1A4870", borderRadius: 7, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
               → Plano de Contas
             </a>
             <button onClick={abrirNovo}
-              style={{ fontSize: 12, padding: "7px 14px", border: "none", borderRadius: 8, background: "#1A4870", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+              style={{ fontSize: 11, padding: "6px 14px", border: "none", borderRadius: 7, background: "#1A4870", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
               + Nova Operação
             </button>
           </div>
         </div>
 
-        {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+        {/* ── KPI strip ── */}
+        <div style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
           {[
-            { label: "Total Ativas",       value: totalAtivos,   color: "#1A4870", bg: "#D5E8F5" },
-            { label: "Receitas",           value: totalReceita,  color: "#1A5C38", bg: "#EAF3DE" },
-            { label: "Despesas",           value: totalDespesa,  color: "#633806", bg: "#FAEEDA" },
-            { label: "Com Conta Contábil", value: totalComConta, color: "#4B1A8A", bg: "#F0EAF8" },
-          ].map(k => (
-            <div key={k.label} style={{ background: k.bg, border: `0.5px solid ${k.color}20`, borderRadius: 10, padding: "14px 18px" }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: k.color }}>{k.value}</div>
-              <div style={{ fontSize: 11, color: k.color, opacity: 0.8, marginTop: 2 }}>{k.label}</div>
-            </div>
+            { label: "Total Ativas",       value: totalAtivos,   color: "#1A4870", bg: "#D5E8F5", onClick: () => setFiltroTipo("todos")    },
+            { label: "Receitas",           value: totalReceita,  color: "#1A5C38", bg: "#EAF3DE", onClick: () => setFiltroTipo("receita")  },
+            { label: "Despesas",           value: totalDespesa,  color: "#633806", bg: "#FAEEDA", onClick: () => setFiltroTipo("despesa")  },
+            { label: "Com Conta Contábil", value: totalComConta, color: "#4B1A8A", bg: "#F0EAF8", onClick: () => {} },
+          ].map((k, i) => (
+            <button key={k.label} onClick={k.onClick} style={{
+              flex: 1, padding: "10px 18px", border: "none", borderRight: i < 3 ? "0.5px solid var(--border-table)" : "none",
+              background: "transparent", cursor: "pointer", textAlign: "left",
+              display: "flex", alignItems: "center", gap: 12,
+            }}>
+              <span style={{ fontSize: 24, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{k.value}</span>
+              <span style={{ fontSize: 11, color: k.color, opacity: 0.75, lineHeight: 1.3 }}>{k.label}</span>
+            </button>
           ))}
         </div>
 
-        {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "10px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          {(["todos", "receita", "despesa"] as const).map(f => (
-            <button key={f} onClick={() => setFiltroTipo(f)} style={{
-              padding: "4px 12px", borderRadius: 16, border: "0.5px solid",
-              borderColor: filtroTipo === f ? "#1A4870" : "var(--border-table)",
-              background: filtroTipo === f ? "#D5E8F5" : "transparent",
-              color: filtroTipo === f ? "#0B2D50" : "var(--text-3)", fontWeight: filtroTipo === f ? 600 : 400, fontSize: 12, cursor: "pointer",
-            }}>
-              {f === "todos" ? "Todos" : f === "receita" ? "Receitas" : "Despesas"}
-            </button>
-          ))}
+        {/* ── Filtros ── */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+            {(["todos", "receita", "despesa"] as const).map(f => (
+              <button key={f} onClick={() => setFiltroTipo(f)} style={{
+                padding: "5px 14px", border: "none", borderRight: f !== "despesa" ? "0.5px solid var(--border-table)" : "none",
+                background: filtroTipo === f ? "#D5E8F5" : "var(--bg-card)",
+                color: filtroTipo === f ? "#0B2D50" : "var(--text-3)",
+                fontWeight: filtroTipo === f ? 600 : 400, fontSize: 12, cursor: "pointer",
+              }}>
+                {f === "todos" ? "Todos" : f === "receita" ? "Receitas" : "Despesas"}
+              </button>
+            ))}
+          </div>
           <input
             value={busca} onChange={e => setBusca(e.target.value)}
             placeholder="Buscar por código, descrição ou conta: (ex: conta:5.01)"
-            style={{ ...inp, padding: "5px 10px", width: 340 }}
+            style={{ ...inp, padding: "5px 10px", flex: 1, minWidth: 240, maxWidth: 400 }}
           />
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-2)", cursor: "pointer", marginLeft: "auto" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap" }}>
             <input type="checkbox" checked={mostrarInativos} onChange={e => setMostrarInativos(e.target.checked)} />
             Mostrar inativas
           </label>
-          <span style={{ fontSize: 11, color: "var(--text-3)" }}>{opsFiltradas.length} de {ops.length}</span>
+          <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{opsFiltradas.length} de {ops.length}</span>
         </div>
 
-        {/* Tabela */}
+        {/* ── Tabela full-width ── */}
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
           {loading ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando operações…</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-              <colgroup>
-                <col style={{ width: 140 }} />
-                <col />
-                <col style={{ width: 80 }} />
-                <col style={{ width: 230 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 70 }} />
-              </colgroup>
-              <thead>
-                <tr style={{ background: "var(--bg-page)" }}>
-                  {["Código", "Descrição", "Tipo", "Débito → Crédito (Plano de Contas)", "Telas", ""].map((h, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {opsFiltradas.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-                    Nenhuma operação encontrada. Use "↓ Importar Padrão" ou "+ Nova Operação".
-                  </td></tr>
-                )}
-                {opsFiltradas.map((o, i) => {
-                  const nivel    = (o.classificacao?.match(/\./g) || []).length;
-                  const isGrupo  = nivel <= 1;
-                  const telas: string[] = [];
-                  if (o.permite_notas_fiscais) telas.push("NF");
-                  if (o.permite_cp_cr)         telas.push("CP/CR");
-                  if (o.permite_tesouraria)    telas.push("Tesouraria");
-                  if (o.permite_estoque)       telas.push("Estoque");
-                  if (o.permite_pedidos_venda) telas.push("Ped.Venda");
-                  const temConta = !!(o.conta_debito || o.conta_credito);
-                  return (
-                    <tr key={o.id} style={{
-                      borderBottom: "0.5px solid var(--border-row)",
-                      background: o.inativo ? "var(--bg-page)" : isGrupo ? "#F8FAFC" : i % 2 === 0 ? "var(--bg-card)" : "transparent",
-                      opacity: o.inativo ? 0.55 : 1,
-                    }}>
-                      <td style={{ padding: "7px 12px", fontFamily: "monospace", fontSize: 12, color: isGrupo ? "#1A4870" : "var(--text-2)", fontWeight: isGrupo ? 700 : 400 }}>
-                        {o.classificacao}
-                      </td>
-                      <td style={{ padding: "7px 12px", fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 600 : 400, color: "var(--text-1)" }}>
-                        <span style={{ paddingLeft: nivel * 12, display: "inline-block" }}>
-                          {!isGrupo && <span style={{ color: "var(--text-3)", marginRight: 4 }}>└</span>}
-                          {o.descricao}
-                          {o.inativo && <span style={{ marginLeft: 6, fontSize: 9, background: "#FCEBEB", color: "#791F1F", padding: "1px 5px", borderRadius: 4 }}>INATIVA</span>}
-                        </span>
-                      </td>
-                      <td style={{ padding: "7px 12px", textAlign: "center" }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: o.tipo === "receita" ? "#EAF3DE" : "#FBF3E0", color: o.tipo === "receita" ? "#1A5C38" : "#8B5E14" }}>
-                          {o.tipo === "receita" ? "Receita" : "Despesa"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "7px 12px", textAlign: "center" }}>
-                        {temConta ? (
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                            <BadgeConta codigo={o.conta_debito ?? ""} contas={plano} />
-                            {(o.conta_debito || o.conta_credito) && <span style={{ color: "var(--text-3)", fontSize: 11 }}>→</span>}
-                            <BadgeConta codigo={o.conta_credito ?? ""} contas={plano} />
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
+                <colgroup>
+                  <col style={{ width: 130 }} />  {/* Código */}
+                  <col />                          {/* Descrição — flex */}
+                  <col style={{ width: 72 }} />   {/* Tipo */}
+                  <col style={{ width: 190 }} />  {/* Plano de Contas */}
+                  <col style={{ width: 80 }} />   {/* Escopo CC */}
+                  <col style={{ width: 210 }} />  {/* Telas */}
+                  <col style={{ width: 64 }} />   {/* Ações */}
+                </colgroup>
+                <thead>
+                  <tr style={{ background: "var(--bg-page)", position: "sticky", top: 0, zIndex: 1 }}>
+                    {[
+                      { h: "Código",                   align: "left"   },
+                      { h: "Descrição",                align: "left"   },
+                      { h: "Tipo",                     align: "center" },
+                      { h: "D → C  (Plano de Contas)", align: "center" },
+                      { h: "Escopo CC",                align: "center" },
+                      { h: "Telas habilitadas",        align: "center" },
+                      { h: "",                         align: "right"  },
+                    ].map((col, i) => (
+                      <th key={i} style={{ padding: "7px 10px", textAlign: col.align as React.CSSProperties["textAlign"], fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>
+                        {col.h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {opsFiltradas.length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                      Nenhuma operação encontrada. Use "↓ Importar Padrão" ou "+ Nova Operação".
+                    </td></tr>
+                  )}
+                  {opsFiltradas.map((o, i) => {
+                    const nivel   = (o.classificacao?.match(/\./g) || []).length;
+                    const isGrupo = nivel <= 1;
+                    const telas: { label: string; bg: string; cl: string }[] = [];
+                    if (o.permite_notas_fiscais)       telas.push({ label: "NF",         bg: "#EDE9FB", cl: "#4B3B9B" });
+                    if (o.permite_cp_cr)               telas.push({ label: "CP/CR",      bg: "#D5E8F5", cl: "#0B2D50" });
+                    if (o.permite_tesouraria)          telas.push({ label: "Tesouraria", bg: "#FBF3E0", cl: "#7A5A10" });
+                    if (o.permite_estoque)             telas.push({ label: "Estoque",    bg: "#EAF3DE", cl: "#1A5C38" });
+                    if (o.permite_pedidos_venda)       telas.push({ label: "Ped.Venda",  bg: "#FBF0D8", cl: "#633806" });
+                    if (o.permite_contrato_financeiro) telas.push({ label: "Contrato",   bg: "#F0F4FF", cl: "#1A4870" });
+                    const temConta = !!(o.conta_debito || o.conta_credito);
+                    const escopoMeta = o.escopo_cc ? ESCOPO_META[o.escopo_cc] : null;
+                    return (
+                      <tr key={o.id} style={{
+                        borderBottom: "0.5px solid var(--border-row)",
+                        background: o.inativo ? "var(--bg-page)" : isGrupo ? "#F5F7FA" : i % 2 === 0 ? "var(--bg-card)" : "transparent",
+                        opacity: o.inativo ? 0.5 : 1,
+                      }}>
+                        {/* Código */}
+                        <td style={{ padding: "5px 10px", fontFamily: "monospace", fontSize: 12, color: isGrupo ? "#1A4870" : "var(--text-2)", fontWeight: isGrupo ? 700 : 400, whiteSpace: "nowrap" }}>
+                          {o.classificacao}
+                        </td>
+                        {/* Descrição */}
+                        <td style={{ padding: "5px 10px", fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 600 : 400, color: "var(--text-1)" }}>
+                          <span style={{ paddingLeft: Math.max(0, nivel - 1) * 14, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            {nivel > 1 && <span style={{ color: "var(--text-4, #CCC)", fontSize: 10 }}>└</span>}
+                            {o.descricao}
+                            {o.inativo && <span style={{ marginLeft: 4, fontSize: 9, background: "#FCEBEB", color: "#791F1F", padding: "1px 5px", borderRadius: 4 }}>INATIVA</span>}
+                          </span>
+                        </td>
+                        {/* Tipo */}
+                        <td style={{ padding: "5px 10px", textAlign: "center" }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: o.tipo === "receita" ? "#EAF3DE" : "#FBF3E0", color: o.tipo === "receita" ? "#1A5C38" : "#8B5E14" }}>
+                            {o.tipo === "receita" ? "Rec." : "Desp."}
+                          </span>
+                        </td>
+                        {/* Plano de Contas D→C */}
+                        <td style={{ padding: "5px 10px", textAlign: "center" }}>
+                          {temConta ? (
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
+                              <BadgeConta codigo={o.conta_debito ?? ""} contas={plano} />
+                              <span style={{ color: "var(--text-3)", fontSize: 10 }}>→</span>
+                              <BadgeConta codigo={o.conta_credito ?? ""} contas={plano} />
+                            </div>
+                          ) : (
+                            <span style={{ color: "var(--text-4, #CCC)", fontSize: 10 }}>—</span>
+                          )}
+                        </td>
+                        {/* Escopo CC */}
+                        <td style={{ padding: "5px 10px", textAlign: "center" }}>
+                          {escopoMeta
+                            ? <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: escopoMeta.bg, color: escopoMeta.cl }}>{escopoMeta.label}</span>
+                            : <span style={{ color: "var(--text-4, #CCC)", fontSize: 10 }}>—</span>
+                          }
+                        </td>
+                        {/* Telas */}
+                        <td style={{ padding: "5px 10px" }}>
+                          {telas.length > 0 ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "flex-start" }}>
+                              {telas.map(t => (
+                                <span key={t.label} style={{ fontSize: 10, background: t.bg, color: t.cl, padding: "2px 6px", borderRadius: 4, fontWeight: 600, whiteSpace: "nowrap" }}>{t.label}</span>
+                              ))}
+                            </div>
+                          ) : <span style={{ color: "var(--text-4, #CCC)", fontSize: 10 }}>—</span>}
+                        </td>
+                        {/* Ações */}
+                        <td style={{ padding: "5px 10px" }}>
+                          <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                            <button onClick={() => abrirEditar(o)} title="Editar"
+                              style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>✎</button>
+                            <button onClick={() => excluir(o)} title="Excluir"
+                              style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "#791F1F" }}>✕</button>
                           </div>
-                        ) : (
-                          <span style={{ color: "var(--text-3)", fontSize: 11 }}>Não vinculada</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "7px 12px", textAlign: "center" }}>
-                        {telas.length > 0 ? (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center" }}>
-                            {telas.map(t => (
-                              <span key={t} style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>{t}</span>
-                            ))}
-                          </div>
-                        ) : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
-                      </td>
-                      <td style={{ padding: "7px 12px" }}>
-                        <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                          <button onClick={() => abrirEditar(o)} title="Editar"
-                            style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>✎</button>
-                          <button onClick={() => excluir(o)} title="Excluir"
-                            style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12, color: "#791F1F" }}>✕</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
-        <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-3)" }}>
-          Busca especial: <code style={{ background: "var(--bg-page)", padding: "1px 5px", borderRadius: 4 }}>conta:5.01</code> filtra todas as OGs que usam contas do grupo 5.01 no Plano de Contas
+        <div style={{ marginTop: 8, fontSize: 10, color: "var(--text-3)" }}>
+          Busca especial: <code style={{ background: "var(--bg-page)", padding: "1px 5px", borderRadius: 4 }}>conta:5.01</code> filtra todas as OGs vinculadas ao grupo 5.01 no Plano de Contas
         </div>
       </div>
 
