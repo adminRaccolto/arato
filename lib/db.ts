@@ -3533,7 +3533,21 @@ export async function listarRegrasRateio(fazenda_id: string): Promise<RateioRegr
     .from("regras_rateio").select("*").eq("fazenda_id", fazenda_id).order("nome");
   if (error) throw error;
   if (!regras || regras.length === 0) return [];
-  // carrega linhas de todas as regras em uma única query
+  const ids = regras.map(r => r.id);
+  const { data: linhas } = await supabase
+    .from("regras_rateio_linhas").select("*").in("regra_id", ids).order("ordem");
+  return regras.map(r => ({
+    ...r,
+    linhas: (linhas ?? []).filter(l => l.regra_id === r.id),
+  }));
+}
+
+export async function listarRegrasRateioTodasFazendas(fazenda_ids: string[]): Promise<RateioRegra[]> {
+  if (!fazenda_ids.length) return [];
+  const { data: regras, error } = await supabase
+    .from("regras_rateio").select("*").in("fazenda_id", fazenda_ids).order("nome");
+  if (error) throw error;
+  if (!regras || regras.length === 0) return [];
   const ids = regras.map(r => r.id);
   const { data: linhas } = await supabase
     .from("regras_rateio_linhas").select("*").in("regra_id", ids).order("ordem");

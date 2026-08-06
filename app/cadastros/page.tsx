@@ -3691,7 +3691,7 @@ function CadastrosInner() {
                 </div>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Código / Descrição", "Tipo", "Telas", "Tesouraria", "Ativo", ""]} />
+                <TH cols={["Código / Descrição", "Tipo", "Telas", "Tesouraria", "Escopo CC", "Ativo", ""]} />
                 <tbody>
                   {opGers.length === 0 && <tr><td colSpan={4} style={{ padding: 32, textAlign: "center", color: "var(--text-3)" }}>Nenhuma operação cadastrada. Clique em "+ Nova Operação" para começar.</td></tr>}
                   {[...opGers].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: false })).map((o, i, arr) => {
@@ -3728,6 +3728,22 @@ function CadastrosInner() {
                           {o.historico_tesouraria_nome
                             ? <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 4 }}>{o.historico_tesouraria_nome}</span>
                             : <span style={{ color: "#ccc" }}>—</span>}
+                        </td>
+                        <td style={{ padding: "7px 14px" }}>
+                          <select
+                            value={o.escopo_cc ?? ""}
+                            onChange={async e => {
+                              const val = e.target.value as "global" | "fazenda" | "ciclo" | "";
+                              await atualizarOperacaoGerencial(o.id, { escopo_cc: val || null });
+                              setOpGers(x => x.map(r => r.id === o.id ? { ...r, escopo_cc: val || null } : r));
+                            }}
+                            style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, background: o.escopo_cc === "global" ? "#FBF3E0" : o.escopo_cc === "fazenda" ? "#EFF6FF" : o.escopo_cc === "ciclo" ? "#DCFCE7" : "var(--bg-page)", color: o.escopo_cc ? "var(--text-1)" : "var(--text-3)", cursor: "pointer", outline: "none" }}
+                          >
+                            <option value="">— não classif. —</option>
+                            <option value="global">Global (conta)</option>
+                            <option value="fazenda">Fazenda</option>
+                            <option value="ciclo">Ciclo</option>
+                          </select>
                         </td>
                         <td style={{ padding: "9px 14px", textAlign: "center" }}>
                           <button

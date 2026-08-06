@@ -9236,3 +9236,40 @@ ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS municipio text;
 ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS uf        text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Migration 158 — escopo_cc em operacoes_gerenciais + tipo nas regras de rateio
+-- =============================================================================
+
+-- 1. Campo escopo_cc nas Operações Gerenciais
+--    Classifica se o custo é alocado na conta (global), por fazenda ou por ciclo
+ALTER TABLE operacoes_gerenciais
+  ADD COLUMN IF NOT EXISTS escopo_cc TEXT
+  CHECK (escopo_cc IN ('global', 'fazenda', 'ciclo'));
+
+-- 2. Tipo de distribuição nas regras N2 (Fazenda → Ciclo)
+--    area_plantada = calculado automaticamente pela área dos ciclos
+--    atribuido     = percentuais manuais
+ALTER TABLE regras_rateio
+  ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'atribuido'
+  CHECK (tipo IN ('area_plantada', 'atribuido'));
+
+-- 3. Tipo de distribuição nas regras N1 (Global → Fazendas)
+--    area_ciclos = calculado pela soma das áreas dos ciclos por fazenda no ano safra
+--    atribuido   = percentuais manuais
+ALTER TABLE regras_rateio_global
+  ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'atribuido'
+  CHECK (tipo IN ('area_ciclos', 'atribuido'));
+
+-- 4. FK para ano_safra em regras_rateio_global (substitui label livre)
+ALTER TABLE regras_rateio_global
+  ADD COLUMN IF NOT EXISTS ano_safra_id UUID REFERENCES anos_safra(id) ON DELETE SET NULL;
+
+-- Backfill: tenta popular ano_safra_id a partir do label existente
+UPDATE regras_rateio_global rg
+SET ano_safra_id = a.id
+FROM anos_safra a
+WHERE a.descricao = rg.ano_safra_label
+  AND rg.ano_safra_id IS NULL;
+
+NOTIFY pgrst, 'reload schema';

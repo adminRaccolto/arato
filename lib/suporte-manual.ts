@@ -1634,17 +1634,38 @@ Todas as configurações são salvas por fazenda. Um novo cliente deve preencher
 **Caminho:** Menu superior → **Configurações** → **Regras de Rateio**
 
 ### O que faz
-Define como os custos são distribuídos (rateados) entre ciclos (culturas) quando uma despesa atende a múltiplas culturas.
+Define como os custos são distribuídos (rateados) entre fazendas (Nível 1) e entre ciclos dentro da fazenda (Nível 2), quando uma despesa atende a múltiplas culturas ou fazendas.
 
-### Como criar uma regra
-1. Selecione o Ano Safra
-2. Clique em **+ Nova Regra**
-3. Selecione quais tipos de custo esta regra abrange (checkboxes: Sementes, Fertilizantes, Defensivos, Combustível, etc.)
-4. Defina a proporção: ex. 50% Soja / 50% Milho (barra visual em tempo real)
-5. Salve
+### Dois níveis de rateio
 
-### Regra de exceção
-Para tipos de custo com proporção diferente da regra principal, crie uma **Regra de Exceção** separada para aquele tipo específico.
+**Nível 2 — Fazenda → Ciclos** (tab padrão):
+- Distribui um custo entre os ciclos (culturas) de *uma única fazenda*
+- Dois modos:
+  - **Atribuído**: você define o % de cada ciclo manualmente (barra visual em tempo real)
+  - **Por Área Plantada**: o sistema calcula automaticamente a proporção com base na área plantada (ha) de cada ciclo no Ano Safra
+- Campos: Fazenda, Ano Safra, Tipo (Atribuído/Por Área), Centro(s) de Custo, Nome, linhas de ciclo + %
+
+**Nível 1 — Global → Fazendas** (segunda tab):
+- Distribui um custo entre *todas as fazendas* da conta
+- Dois modos:
+  - **Atribuído**: você define o % de cada fazenda manualmente
+  - **Por Área dos Ciclos**: o sistema calcula automaticamente pela soma das áreas de todos os ciclos de cada fazenda no Ano Safra
+- Campos: Nome, Ano Safra, Tipo (Atribuído/Por Área), CC de Origem (opcional), lista de fazendas participantes
+
+### Escopo CC nas Operações Gerenciais
+No cadastro de Operações Gerenciais (aba Operações Gerenciais em Cadastros), há uma coluna **Escopo CC** em cada linha. Ela classifica onde o custo é alocado:
+- **Global (conta)**: custo compartilhado entre todas as fazendas — usa regras N1
+- **Fazenda**: custo de uma fazenda específica, mas distribuído entre ciclos — usa regras N2
+- **Ciclo**: custo de um ciclo específico — não precisa de rateio
+- **Não classificado**: sem rateio definido
+
+Para alterar o Escopo CC: clique no dropdown na coluna "Escopo CC" na tabela de Operações Gerenciais — salva automaticamente.
+
+### Fluxo de alocação de custo
+1. Custo lançado com uma OG que tem Escopo CC = "global"
+2. O sistema aplica a Regra N1 para distribuir entre fazendas (pelo % atribuído ou pela área dos ciclos)
+3. Para cada fazenda, aplica a Regra N2 para distribuir entre ciclos (pelo % atribuído ou pela área plantada)
+4. O custo aparece na DRE por ciclo/cultura no valor proporcional calculado
 
 ---
 

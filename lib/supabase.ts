@@ -1758,6 +1758,7 @@ export type RateioRegra = {
   ano_safra_id: string;
   centro_custo_id: string;        // primeiro CC (retrocompat)
   centros_custo_ids?: string[];   // todos os CCs selecionados
+  tipo?: "area_plantada" | "atribuido"; // modo de distribuição N2
   nome: string;
   descricao?: string;
   ativo?: boolean;
@@ -1779,7 +1780,9 @@ export type RateioRegraLinha = {
 export type RateioGlobal = {
   id: string;
   conta_id: string;
-  ano_safra_label: string;        // "2025/2026" — label, não FK
+  ano_safra_label: string;        // legado — label livre
+  ano_safra_id?: string;          // FK preferida (Migration 158)
+  tipo?: "area_ciclos" | "atribuido"; // modo de distribuição N1
   centro_custo_id?: string;
   nome: string;
   descricao?: string;
@@ -1823,6 +1826,7 @@ export type OperacaoGerencial = {
   tipo_lcdpr?: string;          // "1-NF", "2-Recibo", "3-Folha", "4-Pró-Labore", "5-Outros"
   inativo?: boolean;
   informa_complemento?: boolean;
+  escopo_cc?: "global" | "fazenda" | "ciclo" | null; // escopo de alocação de custo (Migration 158)
 
   // ── Aba Principal — Lançamentos nas telas ──
   permite_notas_fiscais?: boolean;
