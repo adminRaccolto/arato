@@ -101,8 +101,10 @@ interface ItemRascunho {
   descricao_produto: string;
   ncm: string;
   cfop: string;
-  unidade: string;
-  quantidade: number;
+  unidade: string;           // unidade original da NF (display)
+  quantidade: number;        // quantidade JÁ convertida para a unidade do catálogo
+  quantidade_nf: number;     // quantidade original da NF (antes do fator)
+  fator_conversao: number;   // fator: 1 NF-unit = X catálogo-units (ex: 1 TON = 1000 kg → fator=1000)
   valor_unitario: number;
   valor_total: number;
   // Apropriação:
@@ -112,6 +114,35 @@ interface ItemRascunho {
   bomba_id: string;
   maquina_id: string;
   alerta_preco: boolean;
+}
+
+// ── Unidade de medida — normalização e conversões comuns ──
+function normalizarUnidadeMed(u: string): string {
+  const s = u.trim().toLowerCase().replace(/[.]/g, "");
+  if (["t","ton","tons","tn","tonelada","toneladas"].includes(s)) return "t";
+  if (["kg","kgs","kilo","kilos","kilograma","kilogramas","quilograma","quilogramas"].includes(s)) return "kg";
+  if (["g","gr","grama","gramas"].includes(s)) return "g";
+  if (["l","lt","lts","litro","litros"].includes(s)) return "l";
+  if (["ml","mililitro","mililitros"].includes(s)) return "ml";
+  if (["sc","saco","sacas","bag","bags"].includes(s)) return "sc";
+  if (["un","uni","unid","unidade","unidades","und","unit","pç","pc","peca","pecas"].includes(s)) return "un";
+  if (["ha","hect","hectare","hectares"].includes(s)) return "ha";
+  if (["cx","caixa","caixas"].includes(s)) return "cx";
+  return s;
+}
+
+// Fatores de conversão automáticos: [unidade_nf_norm, unidade_catalogo_norm] → fator
+const CONVERSOES_AUTOMATICAS: Record<string, number> = {
+  "t→kg": 1000, "t→g": 1000000,
+  "kg→g": 1000, "kg→t": 0.001,
+  "g→kg": 0.001, "g→t": 0.000001,
+  "l→ml": 1000, "ml→l": 0.001,
+  "sc→kg": 60,  "kg→sc": 1/60,
+};
+
+function fatorConversaoAutomatico(unNf: string, unCatalogo: string): number | null {
+  const k = `${normalizarUnidadeMed(unNf)}→${normalizarUnidadeMed(unCatalogo)}`;
+  return CONVERSOES_AUTOMATICAS[k] ?? null;
 }
 
 // ── Auto-match helpers ────────────────────────────────────
@@ -177,6 +208,8 @@ function parsearXmlNfe(xml: string): { numero: string; serie: string; chave: str
         cfop,
         unidade: prod.querySelector("uCom")?.textContent ?? "",
         quantidade:    qtd,
+        quantidade_nf: qtd,
+        fator_conversao: 1,
         valor_unitario: vUni,
         valor_total:    parseFloat(prod.querySelector("vProd")?.textContent ?? "0"),
         tipo_apropiacao,
@@ -444,34 +477,75 @@ export default function Estoque() {
     });
     setNfCriada(nf);
     if (itensNf.length === 0) {
-      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", alerta_preco: false }]);
+      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", alerta_preco: false }]);
     }
     setModalNf("passo2");
   });
 
-  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", alerta_preco: false }]);
+  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", alerta_preco: false }]);
 
   const atualizarItem = (key: string, patch: Partial<ItemRascunho>) => {
     setItensNf(p => p.map(i => {
       if (i.key !== key) return i;
-      const upd = { ...i, ...patch };
-      if ("quantidade" in patch || "valor_unitario" in patch) {
-        upd.valor_total = upd.quantidade * upd.valor_unitario;
+      let upd = { ...i, ...patch };
+
+      // Quando o fator muda → recalcula quantidade convertida (quantidade_nf × fator)
+      if ("fator_conversao" in patch) {
+        const fator = Number(patch.fator_conversao) || 1;
+        upd.quantidade = upd.quantidade_nf * fator;
       }
-      // alerta de preço: novo preço difere >10% do custo médio atual
-      if ("insumo_id" in patch || "valor_unitario" in patch) {
+
+      // Quando quantidade manual muda (sem fator, digitação livre) → sincroniza quantidade_nf
+      if ("quantidade" in patch && !("fator_conversao" in patch)) {
+        upd.quantidade_nf = upd.quantidade;
+      }
+
+      // Quando insumo muda → tenta auto-preencher fator de conversão
+      if ("insumo_id" in patch) {
+        const ins = insumos.find(x => x.id === patch.insumo_id);
+        if (ins) {
+          const fatorAuto = fatorConversaoAutomatico(upd.unidade, ins.unidade);
+          if (fatorAuto !== null && fatorAuto !== 1) {
+            upd.fator_conversao = fatorAuto;
+            upd.quantidade = upd.quantidade_nf * fatorAuto;
+          }
+        }
+      }
+
+      if ("quantidade" in patch || "valor_unitario" in patch || "fator_conversao" in patch) {
+        upd.valor_total = upd.quantidade_nf * upd.valor_unitario;
+      }
+
+      // alerta de preço: custo/unidade-catálogo difere >10% do custo médio atual
+      if ("insumo_id" in patch || "valor_unitario" in patch || "fator_conversao" in patch) {
         const ins = insumos.find(x => x.id === upd.insumo_id);
-        if (ins && ins.valor_unitario > 0 && upd.valor_unitario > 0) {
-          const diff = Math.abs(upd.valor_unitario - ins.valor_unitario) / ins.valor_unitario;
+        if (ins && ins.valor_unitario > 0 && upd.valor_total > 0 && upd.quantidade > 0) {
+          const custoCatalogo = upd.valor_total / upd.quantidade;
+          const diff = Math.abs(custoCatalogo - ins.valor_unitario) / ins.valor_unitario;
           upd.alerta_preco = diff > 0.10;
         }
       }
+
       return upd;
     }));
   };
 
   const processarNf = () => salvar(async () => {
     if (!nfCriada) return;
+
+    // ── Validação: bloqueia se há mismatch de unidade sem conversão confirmada ──
+    const itensBloqueados = itensNf.filter(item => {
+      if (!item.insumo_id || item.tipo_apropiacao !== "estoque") return false;
+      const ins = insumos.find(x => x.id === item.insumo_id);
+      if (!ins) return false;
+      return normalizarUnidadeMed(item.unidade) !== normalizarUnidadeMed(ins.unidade) && item.fator_conversao === 1;
+    });
+    if (itensBloqueados.length > 0) {
+      const nomes = itensBloqueados.map(i => i.descricao_produto || "(sem nome)").join(", ");
+      alert(`Informe o fator de conversão antes de processar.\n\nItens com unidade incompatível: ${nomes}`);
+      return;
+    }
+
     // Criar itens no banco
     for (const item of itensNf) {
       if (!item.descricao_produto.trim()) continue;
@@ -480,7 +554,11 @@ export default function Estoque() {
         insumo_id: item.insumo_id || undefined, deposito_id: item.deposito_id || undefined,
         bomba_id: item.bomba_id || undefined, maquina_id: item.maquina_id || undefined,
         descricao_produto: item.descricao_produto, ncm: item.ncm || undefined,
-        cfop: item.cfop || undefined, unidade: item.unidade, quantidade: item.quantidade,
+        cfop: item.cfop || undefined,
+        unidade: item.insumo_id ? (insumos.find(x => x.id === item.insumo_id)?.unidade ?? item.unidade) : item.unidade,
+        unidade_nf: item.unidade,
+        fator_conversao: item.fator_conversao !== 1 ? item.fator_conversao : undefined,
+        quantidade: item.quantidade,
         valor_unitario: item.valor_unitario, valor_total: item.valor_total,
         tipo_apropiacao: item.tipo_apropiacao, alerta_preco: item.alerta_preco,
       });
@@ -1660,7 +1738,13 @@ export default function Estoque() {
                     </select>
                   </div>
 
-                  {item.tipo_apropiacao === "estoque" && (
+                  {item.tipo_apropiacao === "estoque" && (() => {
+                    const insumoSel = insumos.find(x => x.id === item.insumo_id);
+                    const unNfNorm  = normalizarUnidadeMed(item.unidade);
+                    const unCatNorm = insumoSel ? normalizarUnidadeMed(insumoSel.unidade) : unNfNorm;
+                    const mismatch  = !!insumoSel && unNfNorm !== unCatNorm;
+                    const naoConfirmado = mismatch && item.fator_conversao === 1;
+                    return (
                     <>
                       <div>
                         <label style={lbl}>Insumo no estoque</label>
@@ -1676,8 +1760,49 @@ export default function Estoque() {
                           {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                         </select>
                       </div>
+
+                      {/* Painel de conversão de unidade */}
+                      {mismatch && (
+                        <div style={{ gridColumn: "1/-1", background: naoConfirmado ? "#FFF3CD" : "#E8F5E9", border: `0.5px solid ${naoConfirmado ? "#FFC107" : "#4CAF50"}`, borderRadius: 8, padding: "10px 14px" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: naoConfirmado ? "#856404" : "#2E7D32", marginBottom: 6 }}>
+                            {naoConfirmado ? "⚠ Unidade da NF diferente do cadastro — informe o fator de conversão" : "✓ Conversão configurada"}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, alignItems: "flex-end" }}>
+                            <div>
+                              <label style={{ ...lbl, color: "#666" }}>Unidade na NF</label>
+                              <div style={{ ...inp, background: "#F5F5F5", color: "#555", display: "flex", alignItems: "center" }}>{item.unidade || "—"}</div>
+                            </div>
+                            <div>
+                              <label style={{ ...lbl, color: "#666" }}>
+                                Fator: 1 {item.unidade} =  <span style={{ color: "#1A4870", fontWeight: 700 }}>? {insumoSel?.unidade}</span>
+                              </label>
+                              <input
+                                type="number" step="0.000001" min="0"
+                                style={{ ...inp, textAlign: "right", borderColor: naoConfirmado ? "#FFC107" : "#4CAF50", fontWeight: 700 }}
+                                value={item.fator_conversao === 1 ? "" : item.fator_conversao}
+                                placeholder="Ex: 1000"
+                                onChange={e => atualizarItem(item.key, { fator_conversao: parseFloat(e.target.value) || 1 })}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ ...lbl, color: "#666" }}>Qtd. que entrará ({insumoSel?.unidade})</label>
+                              <div style={{ ...inp, background: item.fator_conversao !== 1 ? "#E8F5E9" : "#FFF8E1", color: "#1A4870", fontWeight: 700, display: "flex", alignItems: "center" }}>
+                                {item.fator_conversao !== 1
+                                  ? `${(item.quantidade_nf * item.fator_conversao).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} ${insumoSel?.unidade}`
+                                  : "— (aguardando fator)"}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ marginTop: 8, fontSize: 11, color: "#666", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                            <span>Qtd. na NF: <strong>{item.quantidade_nf} {item.unidade}</strong></span>
+                            {item.fator_conversao !== 1 && <span style={{ color: "#2E7D32" }}>→ Estoque: <strong>{(item.quantidade_nf * item.fator_conversao).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} {insumoSel?.unidade}</strong> · Custo: <strong>R$ {item.quantidade_nf * item.fator_conversao > 0 ? (item.valor_total / (item.quantidade_nf * item.fator_conversao)).toFixed(4) : "—"}/{insumoSel?.unidade}</strong></span>}
+                            <a href="/cadastros?tab=insumos" target="_blank" style={{ color: "#1A4870", textDecoration: "underline", marginLeft: "auto" }}>Alterar unidade no cadastro ↗</a>
+                          </div>
+                        </div>
+                      )}
                     </>
-                  )}
+                    );
+                  })()}
 
                   {item.tipo_apropiacao === "vef" && (
                     <>
