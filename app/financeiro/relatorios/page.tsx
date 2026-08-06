@@ -57,6 +57,17 @@ const fmtBRL = (v: number, decimais = 0) =>
 const fmtNum = (v: number, dec = 0) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
+// Replica a lógica do statusEfetivo do módulo CP/CR para filtros no relatório
+const hoje = new Date().toISOString().split("T")[0];
+const statusEfetivo = (l: { status: string; natureza?: string; data_vencimento?: string }): string => {
+  if (l.status === "baixado" || l.status === "parcial") return l.status;
+  if (l.natureza === "previsao") return l.status;
+  const venc = l.data_vencimento ?? "";
+  if (venc && venc < hoje) return "vencido";
+  if (venc && venc === hoje) return "vencendo";
+  return l.status;
+};
+
 const aplicarMascara = (raw: string): string => {
   const nums = raw.replace(/\D/g, "");
   if (!nums) return "";
@@ -1425,7 +1436,7 @@ function FinanceiroRelatoriosInner() {
                   if (inicioCPCR && dt < inicioCPCR) return false;
                   if (fimCPCR   && dt > fimCPCR)   return false;
                   if (tipoCPCR !== "todos" && l.tipo !== tipoCPCR) return false;
-                  if (statusCPCR !== "todos" && l.status !== statusCPCR) return false;
+                  if (statusCPCR !== "todos" && statusEfetivo(l) !== statusCPCR) return false;
                   if (catCPCR && l.categoria !== catCPCR) return false;
                   return true;
                 });
@@ -1434,7 +1445,7 @@ function FinanceiroRelatoriosInner() {
 
                 const totalCR    = lancsCPCR.filter(l => l.tipo === "receber").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
                 const totalCP    = lancsCPCR.filter(l => l.tipo === "pagar").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
-                const totalVenc  = lancsCPCR.filter(l => l.status === "vencido").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const totalVenc  = lancsCPCR.filter(l => statusEfetivo(l) === "vencido").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
                 const totalBaixado = lancsCPCR.filter(l => l.status === "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
 
                 const corStatus: Record<string, { bg: string; color: string; label: string }> = {
@@ -1576,7 +1587,7 @@ function FinanceiroRelatoriosInner() {
                           </thead>
                           <tbody>
                             {lancsCPCR.map((l, i) => {
-                              const st = corStatus[l.status] ?? corStatus.em_aberto;
+                              const st = corStatus[statusEfetivo(l)] ?? corStatus.em_aberto;
                               const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome;
                               const brl = paraBRLRel(l, cotacaoUSD);
                               return (
@@ -1584,7 +1595,7 @@ function FinanceiroRelatoriosInner() {
                                   <td style={{ padding: "9px 12px" }}>
                                     <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#D5E8F5" : "#FCEBEB", color: l.tipo === "receber" ? "#0B2D50" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
                                   </td>
-                                  <td style={{ padding: "9px 12px", color: l.status === "vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap" }}>
+                                  <td style={{ padding: "9px 12px", color: statusEfetivo(l) === "vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap" }}>
                                     {l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}
                                   </td>
                                   <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? ""}>{l.descricao || "—"}</td>

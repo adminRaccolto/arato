@@ -336,6 +336,7 @@ function ContasPagarInner() {
     { key: "safra",      label: "Safra" },
     { key: "ciclo",      label: "Ciclo" },
     { key: "vencimento", label: "Vencimento", fixo: true },
+    { key: "venc_orig",  label: "Venc. Original" },
     { key: "valor",      label: "Valor", fixo: true },
     { key: "dt_pgto",    label: "Dt. Pgto" },
     { key: "valor_pago", label: "Valor Pago" },
@@ -348,7 +349,7 @@ function ContasPagarInner() {
   const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid("cp_colunas", COLS_CP);
   const { w: cw, startResize } = useColumnResize({
     fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
-    vencimento: 90, valor: 110, dt_pgto: 85, valor_pago: 100,
+    vencimento: 90, venc_orig: 90, valor: 110, dt_pgto: 85, valor_pago: 100,
     moeda: 65, conta: 110, produtor: 110, origem: 90, obs: 160,
   });
   const [fFornecedor, setFFornecedor] = useState("");
@@ -616,14 +617,17 @@ function ContasPagarInner() {
       const novaObs = reprogForm.obs.trim()
         ? `[Reprogramado para ${new Date(novaData + "T12:00:00").toLocaleDateString("pt-BR")}] ${reprogForm.obs.trim()}`
         : `[Reprogramado para ${new Date(novaData + "T12:00:00").toLocaleDateString("pt-BR")}]`;
+      // Preserva a data original em data_prorrogacao (sinalizador de renegociação)
+      const dataOriginal = modalReprog.data_prorrogacao ?? modalReprog.data_vencimento;
       await atualizarLancamento(modalReprog.id, {
-        data_vencimento: novaData,
-        valor:           novoValor,
-        status:          novoStatus,
-        observacao:      novaObs,
+        data_vencimento:  novaData,
+        data_prorrogacao: dataOriginal,
+        valor:            novoValor,
+        status:           novoStatus,
+        observacao:       novaObs,
       });
       setLancamentos(prev => prev.map(x =>
-        x.id !== modalReprog.id ? x : { ...x, data_vencimento: novaData, valor: novoValor!, status: novoStatus, observacao: novaObs }
+        x.id !== modalReprog.id ? x : { ...x, data_vencimento: novaData, data_prorrogacao: dataOriginal, valor: novoValor!, status: novoStatus, observacao: novaObs }
       ));
       setModalReprog(null);
     } catch (e: unknown) {
@@ -1019,7 +1023,7 @@ function ContasPagarInner() {
                 {filtradosBase.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Nenhuma conta encontrada para este filtro.</div>
                 ) : (
-                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 44 + cw("fornecedor") + (col("operacao") ? cw("operacao") : 0) + (col("safra") ? cw("safra") : 0) + (col("ciclo") ? cw("ciclo") : 0) + cw("vencimento") + cw("valor") + (col("dt_pgto") ? cw("dt_pgto") : 0) + (col("valor_pago") ? cw("valor_pago") : 0) + (col("moeda") ? cw("moeda") : 0) + (col("conta") ? cw("conta") : 0) + (col("produtor") ? cw("produtor") : 0) + (col("origem") ? cw("origem") : 0) + (col("obs") ? cw("obs") : 0) + 110, 600), borderCollapse: "collapse" }}>
+                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 44 + cw("fornecedor") + (col("operacao") ? cw("operacao") : 0) + (col("safra") ? cw("safra") : 0) + (col("ciclo") ? cw("ciclo") : 0) + cw("vencimento") + (col("venc_orig") ? cw("venc_orig") : 0) + cw("valor") + (col("dt_pgto") ? cw("dt_pgto") : 0) + (col("valor_pago") ? cw("valor_pago") : 0) + (col("moeda") ? cw("moeda") : 0) + (col("conta") ? cw("conta") : 0) + (col("produtor") ? cw("produtor") : 0) + (col("origem") ? cw("origem") : 0) + (col("obs") ? cw("obs") : 0) + 110, 600), borderCollapse: "collapse" }}>
                     <thead style={{ position: "sticky", top: 0, zIndex: 3 }}
                       onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
                       title="Clique com botão direito para configurar colunas">
@@ -1035,6 +1039,7 @@ function ContasPagarInner() {
                         {col("safra")      && <th style={{ ...thS(cw("safra"),      "left"),   width: cw("safra"),      position: "relative", userSelect: "none" }}>Safra<ResizeHandle onMouseDown={startResize("safra")} /></th>}
                         {col("ciclo")      && <th style={{ ...thS(cw("ciclo"),      "left"),   width: cw("ciclo"),      position: "relative", userSelect: "none" }}>Ciclo<ResizeHandle onMouseDown={startResize("ciclo")} /></th>}
                         <th style={{ ...thS(cw("vencimento"), "center"), width: cw("vencimento"), position: "relative", userSelect: "none" }}>Vencimento ↑<ResizeHandle onMouseDown={startResize("vencimento")} /></th>
+                        {col("venc_orig")   && <th style={{ ...thS(cw("venc_orig"),   "center"), width: cw("venc_orig"),   position: "relative", userSelect: "none" }}>Venc. Original<ResizeHandle onMouseDown={startResize("venc_orig")} /></th>}
                         <th style={{ ...thS(cw("valor"), "right"), width: cw("valor"), position: "relative", userSelect: "none" }}>Valor<ResizeHandle onMouseDown={startResize("valor")} /></th>
                         {col("dt_pgto")    && <th style={{ ...thS(cw("dt_pgto"),    "center"), width: cw("dt_pgto"),    position: "relative", userSelect: "none" }}>Dt. Pgto<ResizeHandle onMouseDown={startResize("dt_pgto")} /></th>}
                         {col("valor_pago") && <th style={{ ...thS(cw("valor_pago"), "right"),  width: cw("valor_pago"), position: "relative", userSelect: "none" }}>Valor Pago<ResizeHandle onMouseDown={startResize("valor_pago")} /></th>}
@@ -1053,7 +1058,9 @@ function ContasPagarInner() {
                         {col("operacao")   && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} /></td>}
                         {col("safra")      && <td style={{ padding: "3px 6px" }}><select style={inpF} value={fSafra} onChange={e => setFSafra(e.target.value)}><option value="">Todas</option>{anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}</select></td>}
                         {col("ciclo")      && <td></td>}
-                        <td></td><td></td>
+                        <td></td>
+                        {col("venc_orig")  && <td></td>}
+                        <td></td>
                         {col("dt_pgto")    && <td></td>}
                         {col("valor_pago") && <td></td>}
                         {col("moeda")      && <td></td>}
@@ -1132,9 +1139,16 @@ function ContasPagarInner() {
                             {col("ciclo") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ciclo_id ? cicloDesc : "—"}</td>}
                             {/* Vencimento */}
                             <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
-                              <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>{fmtData(l.data_vencimento)}</div>
+                              <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>
+                                {l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
+                                {fmtData(l.data_vencimento)}
+                              </div>
                               {relativo && <div style={{ fontSize: 9, color: relativo.cor, fontWeight: 700, marginTop: 1 }}>{relativo.txt}</div>}
                             </td>
+                            {/* Vencimento Original (antes da renegociação) */}
+                            {col("venc_orig") && <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 10, fontStyle: "italic", color: "var(--text-3)" }}>
+                              {l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}
+                            </td>}
                             {/* Valor */}
                             <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                               <div style={{ fontWeight: 700, color: l.moeda === "barter" ? "#FBBF24" : "#EF4444", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{exibirValor(l)}</div>

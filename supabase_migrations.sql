@@ -9273,3 +9273,10 @@ WHERE a.descricao = rg.ano_safra_label
   AND rg.ano_safra_id IS NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- Seção XX — data_prorrogacao em lancamentos (renegociação de CP/CR)
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS data_prorrogacao DATE;
+
+NOTIFY pgrst, 'reload schema';
