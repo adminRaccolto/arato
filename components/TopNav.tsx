@@ -303,11 +303,12 @@ const NAV_MODULE_MAP: Record<string, string[]> = {
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],
   // "estoque" removido — estoque é módulo fixo (sempre visível), não add-on
-  "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros"],
-  "lavoura":       ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades"],
+  "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros", "apoio_financeiro", "fin_relatorios"],
+  // "lavoura" inclui tanto IDs granulares (PLANOS_DEFAULT) quanto ID coarse "lavoura" (MODULOS_GRUPOS / conta_modulos)
+  "lavoura":       ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades", "lavoura", "lavoura_planejamento", "lavoura_relatorios"],
   "fiscal":        ["fiscal_nfe", "fiscal_sped"],
-  "custos":        ["custos", "fin_relatorios"],
-  "configuracoes": ["conf_empresa", "conf_fiscal", "conf_financeiro", "conf_contabilidade", "conf_sistema", "conf_importacao", "usuarios", "logs"],
+  "custos":        ["custos", "fin_relatorios", "bi"],
+  "configuracoes": ["conf_empresa", "conf_fiscal", "conf_financeiro", "conf_contabilidade", "conf_sistema", "conf_importacao", "usuarios", "logs", "cadastros"],
   "algodao":       ["algodao"],
 };
 

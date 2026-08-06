@@ -494,6 +494,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     // Sem override: raccotlo tem acesso irrestrito
     if (userRole === "raccotlo") return true;
     if (!planoAtual) return true; // sem plano carregado ainda → não bloqueia
+    // Plano desconhecido (ID inválido ou legado) → não bloquear para evitar sumiço de menus
+    if (!["essencial", "gestao", "performance"].includes(planoAtual)) return true;
     return planoInclui(planoAtual, modulo);
   }, [planoAtual, userRole, contaModulosOverrides]);
 
