@@ -186,7 +186,7 @@ const FA_VAZIO = {
 
 
 export default function ContratosFinanceiros() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides, anoSafraVigenteId } = useAuth();
   const [fazendas, setFazendas]         = useState<{ id: string; nome: string }[]>([]);
   const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
@@ -236,6 +236,8 @@ export default function ContratosFinanceiros() {
   const [centrosForm, setCentrosForm] = useState<{ ciclo_id: string; centro_custo_id: string; percentual: string; valor: string }[]>([{ ciclo_id: "", centro_custo_id: "", percentual: "100", valor: "" }]);
   const [fCalc, setFCalc] = useState({ nParcelas: "12", taxaMensal: "1.5", dataPrimeiro: "", periodicidade: "1", acessorios: "0" });
   const [fAdit, setFAdit] = useState({ ...FA_VAZIO });
+  const [cnpjBusca, setCnpjBusca] = useState("");
+  const [cnpjBuscaStatus, setCnpjBuscaStatus] = useState<"idle"|"encontrado"|"nao_encontrado">("idle");
 
   // ── Carregar base ──
   useEffect(() => {
@@ -273,6 +275,25 @@ export default function ContratosFinanceiros() {
     setTaxaVariavelRef(taxa);
     setFC(p => ({ ...p, taxa_variavel_ref: taxa != null ? String(taxa) : "" }));
     setLoadingTaxaRef(false);
+  };
+
+  // ── Busca credor por CNPJ/CPF ──
+  const buscarCredorPorCnpj = async () => {
+    const doc = cnpjBusca.replace(/\D/g, "");
+    if (doc.length < 11) return;
+    // 1. Tenta na lista já carregada
+    const local = pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
+    if (local) { onPessoaChange(local.id); setCnpjBuscaStatus("encontrado"); return; }
+    // 2. Busca no banco (inclui pessoas sem flag fornecedor)
+    const { data } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).limit(500);
+    const match = (data ?? []).find((p: { cpf_cnpj?: string }) => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
+    if (match) {
+      setPessoas(prev => prev.find(p => p.id === match.id) ? prev : [...prev, match as Pessoa]);
+      onPessoaChange(match.id);
+      setCnpjBuscaStatus("encontrado");
+    } else {
+      setCnpjBuscaStatus("nao_encontrado");
+    }
   };
 
   // ── Carregar dados ao mudar aba ──
@@ -370,6 +391,7 @@ export default function ContratosFinanceiros() {
     setPdfUrl(c?.pdf_url ?? null); setPdfNome(c?.pdf_nome ?? null);
     if (c?.taxa_tipo === "variavel" && c.indexador) buscarTaxaVariavelRef(c.indexador);
     setParcelasLiberacao([]); setParcelasPagamento([]); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
+    setCnpjBusca(""); setCnpjBuscaStatus("idle");
     setModalAberto(true);
   };
 
@@ -588,29 +610,40 @@ export default function ContratosFinanceiros() {
   // ── Calcular parcelas ──
   const calcularParcelas = () => salvar(async () => {
     if (!contratoModal || !fCalc.dataPrimeiro) return;
+    // Usa fC (formulário atual) para parâmetros de cálculo — não exige salvar antes
+    const valorBase = parseFloat(String(fC.valor_financiado).replace(",", ".")) || contratoModal.valor_financiado;
+    const tipoCalc = fC.tipo_calculo || contratoModal.tipo_calculo;
+    const crescPct = Number(fC.crescimento_pct) || 0;
+    const moedaCalc = fC.moeda || contratoModal.moeda;
+    const descricaoCalc = fC.descricao || contratoModal.descricao;
+    const tipoContrato = fC.tipo || contratoModal.tipo;
+    const pessoaId = fC.pessoa_id || contratoModal.pessoa_id || undefined;
+    const nrDoc = fC.numero_documento || contratoModal.numero_documento || undefined;
+
     const n = Math.max(1, Number(fCalc.nParcelas) || 12);
     const i_mensal = (Number(fCalc.taxaMensal) || 0) / 100;
-    const period = Number(fCalc.periodicidade) || (contratoModal.periodicidade_meses ?? 1);
+    const period = Number(fCalc.periodicidade) || (Number(fC.periodicidade_meses) || contratoModal.periodicidade_meses || 1);
     // Taxa efetiva para o período: capitalização composta da taxa mensal
-    // Ex: 0.7138% a.m. × 12 meses → taxa anual efetiva = (1.007138)^12 - 1 ≈ 8.92% a.a.
     const i_periodo = period <= 1 ? i_mensal : Math.pow(1 + i_mensal, period) - 1;
-    // Carência em meses → converter para unidades do período
-    const carMeses = Number(contratoModal.carencia_meses ?? 0);
-    const car = period > 1 ? Math.round(carMeses / period) : carMeses;
-    const carTipo = (contratoModal.carencia_tipo ?? "so_juros") as CarenciaTipo;
-    const crescPct = contratoModal.crescimento_pct ?? 0;
+    // Carência em meses → converter para unidades do período.
+    // Usa Math.floor: para pagamentos anuais (period=12), carencia_meses < 12 não gera período de carência
+    // (o intervalo até o 1º pagamento já é a periodicidade normal; carência real ocorre só a partir de 12m)
+    const carMeses = Number(fC.carencia_meses ?? 0);
+    const car = period > 1 ? Math.floor(carMeses / period) : carMeses;
+    const carTipo = fC.carencia_tipo as CarenciaTipo;
     const acessMensal = parseFloat(fCalc.acessorios.replace(",", ".")) || 0;
+
     let base: ParcelaBase[];
-    if (contratoModal.tipo_calculo === "sac_crescente") base = calcularSACRE(contratoModal.valor_financiado, i_periodo, n, crescPct, car, carTipo);
-    else if (contratoModal.tipo_calculo === "sac") base = calcularSAC(contratoModal.valor_financiado, i_periodo, n, car, carTipo);
-    else base = calcularPRICE(contratoModal.valor_financiado, i_periodo, n, car, carTipo);
+    if (tipoCalc === "sac_crescente") base = calcularSACRE(valorBase, i_periodo, n, crescPct, car, carTipo);
+    else if (tipoCalc === "sac") base = calcularSAC(valorBase, i_periodo, n, car, carTipo);
+    else base = calcularPRICE(valorBase, i_periodo, n, car, carTipo);
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
     const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
     // Remove CP automáticos não baixados antes de recriar (evita duplicatas ao recalcular)
-    if (contratoModal.numero_documento) {
+    if (nrDoc) {
       await supabase.from("lancamentos").delete()
         .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
-        .eq("numero_documento", contratoModal.numero_documento).neq("status", "baixado");
+        .eq("numero_documento", nrDoc).neq("status", "baixado");
     }
     const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
     // Gera CP lançamentos para cada parcela
@@ -618,12 +651,12 @@ export default function ContratosFinanceiros() {
     const lancsParcelas: Record<string, unknown>[] = [];
     for (const p of salvas) {
       const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
-      const descBase = `${contratoModal.descricao} — Parcela ${p.num_parcela}`;
-      const nrDoc = contratoModal.numero_documento || undefined;
-      if (p.amortizacao > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.amortizacao, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
-      if (p.juros > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[contratoModal.tipo], data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.juros, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
-      if (p.despesas_acessorios > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.despesas_acessorios, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
-      if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: descBase, categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.valor_parcela, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
+      const descBase = `${descricaoCalc} — Parcela ${p.num_parcela}`;
+      const camposBase = { fazenda_id: fazendaId, tipo: "pagar", moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro", pessoa_id: pessoaId || null, ano_safra_id: anoSafraVigenteId || null };
+      if (p.amortizacao > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[tipoContrato], valor: p.amortizacao });
+      if (p.juros > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[tipoContrato], valor: p.juros });
+      if (p.despesas_acessorios > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", valor: p.despesas_acessorios });
+      if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ ...camposBase, descricao: descBase, categoria: CAT_AMORT[tipoContrato], valor: p.valor_parcela });
     }
     if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
     setParcelasPagamento(salvas);
@@ -669,6 +702,8 @@ export default function ContratosFinanceiros() {
           data_vencimento: p.data_vencimento, valor: p.valor_parcela ?? 0, status: statusLanc,
           auto: true, numero_documento: contratoModal.numero_documento || undefined,
           origem_lancamento: "contrato_financeiro",
+          pessoa_id: (fC.pessoa_id || contratoModal.pessoa_id) || null,
+          ano_safra_id: anoSafraVigenteId || null,
         });
       }
       if (lancsParcelas.length > 0) {
@@ -1137,11 +1172,39 @@ export default function ContratosFinanceiros() {
                   </div>
 
                   <SecTitle>Credor / Instituição Financeira</SecTitle>
+                  {/* Busca por CNPJ/CPF */}
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={lbl}>Buscar credor por CNPJ / CPF</label>
+                      <input
+                        style={inp}
+                        placeholder="Digite o CNPJ ou CPF e pressione Enter"
+                        value={cnpjBusca}
+                        onChange={e => { setCnpjBusca(e.target.value); setCnpjBuscaStatus("idle"); }}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); buscarCredorPorCnpj(); } }}
+                      />
+                    </div>
+                    <button style={{ ...btnV, background: "#1A4870", whiteSpace: "nowrap" }} onClick={buscarCredorPorCnpj} type="button">
+                      Buscar
+                    </button>
+                    {cnpjBuscaStatus === "encontrado" && (
+                      <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 600, whiteSpace: "nowrap" }}>✓ Encontrado</span>
+                    )}
+                    {cnpjBuscaStatus === "nao_encontrado" && (
+                      <button
+                        style={{ ...btnV, background: "#C9921B", whiteSpace: "nowrap" }}
+                        type="button"
+                        onClick={() => window.open("/cadastros?tab=pessoas", "_blank")}
+                      >
+                        + Cadastrar Fornecedor
+                      </button>
+                    )}
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
-                      <label style={lbl}>Credor (fornecedor cadastrado)</label>
-                      <select style={inp} value={fC.pessoa_id} onChange={e => onPessoaChange(e.target.value)}>
-                        <option value="">— Buscar em pessoas cadastradas —</option>
+                      <label style={lbl}>Credor (fornecedor cadastrado){fC.pessoa_id ? " ✓" : ""}</label>
+                      <select style={inp} value={fC.pessoa_id} onChange={e => { onPessoaChange(e.target.value); setCnpjBuscaStatus("idle"); }}>
+                        <option value="">— Selecionar —</option>
                         {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
                       </select>
                     </div>
@@ -1183,8 +1246,18 @@ export default function ContratosFinanceiros() {
                       </select>
                     </div>
                     <div>
-                      <label style={lbl}>Carência (meses)</label>
+                      <label style={lbl}>
+                        Carência (meses)
+                        {Number(fC.carencia_meses) > 0 && Number(fC.periodicidade_meses) > 1 && Number(fC.carencia_meses) < Number(fC.periodicidade_meses) && (
+                          <span title="Carência menor que a periodicidade não gera período de carência. Para pagamento anual, carência real ocorre a partir de 12 meses." style={{ marginLeft: 4, color: "#C9921B", cursor: "help" }}>⚠</span>
+                        )}
+                      </label>
                       <InputNumerico style={inp} decimais={0} min="0" value={fC.carencia_meses} onChange={v => setFC(p => ({ ...p, carencia_meses: v }))} />
+                      {Number(fC.carencia_meses) > 0 && Number(fC.periodicidade_meses) > 1 && Number(fC.carencia_meses) < Number(fC.periodicidade_meses) && (
+                        <div style={{ fontSize: 10, color: "#C9921B", marginTop: 3 }}>
+                          Carência inferior à periodicidade ({fC.periodicidade_meses}m) — intervalo normal, sem período de carência real.
+                        </div>
+                      )}
                     </div>
                     {Number(fC.carencia_meses) > 0 && (
                       <div>
