@@ -250,7 +250,7 @@ function ContasPagarInner() {
       categoria:             l.categoria             ?? CATS_CP[0],
       vencimento:            l.data_vencimento       ?? "",
       valorMask:             l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
-      cotacaoMask:           l.cotacao_usd?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "5,12",
+      cotacaoMask:           l.cotacao_usd ? l.cotacao_usd.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "",
       sacasMask:             l.sacas?.toString()     ?? "",
       culturaBarter:         l.cultura_barter        ?? "soja",
       precoSacaMask:         l.preco_saca_barter?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "120,00",
@@ -764,7 +764,7 @@ function ContasPagarInner() {
         };
         const { error, count } = await supabase.from("lancamentos").update(patch, { count: "exact" }).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
-        if (count === 0) { alert("Sessão expirada — reconecte e tente novamente (0 linhas atualizadas)."); return; }
+        if (!count) { alert("Sessão expirada — reconecte e tente novamente (0 linhas atualizadas)."); return; }
         setLancamentos(prev => prev.map(x =>
           x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
         ));

@@ -171,7 +171,7 @@ export default function ContasReceber() {
       categoria:             l.categoria             ?? CATS_CR[0],
       vencimento:            l.data_vencimento       ?? "",
       valorMask:             l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
-      cotacaoMask:           l.cotacao_usd?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "5,12",
+      cotacaoMask:           l.cotacao_usd ? l.cotacao_usd.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "",
       sacasMask:             l.sacas?.toString()     ?? "",
       culturaBarter:         l.cultura_barter        ?? "soja",
       precoSacaMask:         l.preco_saca_barter?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "120,00",
@@ -218,7 +218,7 @@ export default function ContasReceber() {
   const [form, setForm] = useState({
     moeda: "BRL" as Moeda,
     pessoa_id: "", descricao: "", categoria: CATS_CR[0], vencimento: "",
-    valorMask: "", cotacaoMask: "5,12",
+    valorMask: "", cotacaoMask: "",
     sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "",
     parcelar: false, totalParcelas: "1", intervaloMeses: "1",
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
@@ -591,8 +591,9 @@ export default function ContasReceber() {
           natureza:              form.natureza,
           forma_pagamento:       form.forma_recebimento    || null,
         };
-        const { error } = await supabase.from("lancamentos").update(patch).eq("id", editandoId);
+        const { error, count } = await supabase.from("lancamentos").update(patch, { count: "exact" }).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
+        if (!count) { alert("Sessão expirada — reconecte e tente novamente (0 linhas atualizadas)."); return; }
         setLancamentos(prev => prev.map(x =>
           x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
         ));
