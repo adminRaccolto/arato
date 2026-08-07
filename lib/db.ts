@@ -2485,6 +2485,9 @@ export async function baixarParcelaPagamento(
     data_lancamento: hoje, data_vencimento: parcela.data_vencimento,
     conta_bancaria: contaId ?? null, status: "em_aberto" as const, auto: true,
     contrato_financeiro_id: contrato.id,
+    pessoa_id:       contrato.pessoa_id ?? null,
+    cotacao_usd:     contrato.moeda === "USD" ? (contrato.valor_cotacao ?? null) : null,
+    origem_lancamento: "contrato_financeiro" as const,
   };
 
   // Lançamento de amortização (principal)
