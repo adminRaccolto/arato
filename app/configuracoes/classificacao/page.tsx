@@ -5,8 +5,9 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { RegraClassificacaoNf } from "../../../lib/supabase";
 
-type Insumo      = { id: string; nome: string; categoria?: string };
-type CentroCusto = { id: string; nome: string; codigo?: string; parent_id?: string };
+type Insumo        = { id: string; nome: string; categoria?: string };
+type CentroCusto   = { id: string; nome: string; codigo?: string; parent_id?: string };
+type OGOption      = { id: string; descricao: string; classificacao: string };
 
 const CATEGORIAS_PRODUTO = [
   "sementes", "fertilizantes", "defensivos", "correcao_solo",
@@ -70,16 +71,17 @@ const REGRAS_PADRAO_ARATO: PadraoNcm[] = [
 ];
 
 const VAZIO: Omit<RegraClassificacaoNf, "id" | "created_at" | "qtd_aplicacoes" | "ultima_aplicacao"> = {
-  fazenda_id:       "",
-  nome_regra:       "",
-  tipo_nf:          "produto",
-  cnpj_emitente:    "",
-  ncm:              "",
-  descricao_contem: "",
-  insumo_id:        "",
-  categoria:        "",
-  centro_custo_id:  "",
-  ativo:            true,
+  fazenda_id:            "",
+  nome_regra:            "",
+  tipo_nf:               "produto",
+  cnpj_emitente:         "",
+  ncm:                   "",
+  descricao_contem:      "",
+  insumo_id:             "",
+  categoria:             "",
+  centro_custo_id:       "",
+  operacao_gerencial_id: "",
+  ativo:                 true,
 };
 
 export default function ClassificacaoPage() {
@@ -96,6 +98,7 @@ export default function ClassificacaoPage() {
 
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
+  const [ogsDisponiveis, setOgsDisponiveis] = useState<OGOption[]>([]);
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -117,6 +120,9 @@ export default function ClassificacaoPage() {
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
     supabase.from("centros_custo").select("id, nome, codigo").eq("fazenda_id", fazendaId).order("nome")
       .then(({ data }) => setCentrosCusto((data ?? []) as CentroCusto[]));
+    supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
+      .or(`fazenda_id.eq.${fazendaId},fazenda_id.is.null`).eq("inativo", false).order("classificacao")
+      .then(({ data }) => setOgsDisponiveis((data ?? []) as OGOption[]));
   }, [fazendaId]);
 
   function abrirNova() {
@@ -131,12 +137,13 @@ export default function ClassificacaoPage() {
       nome_regra:       r.nome_regra       ?? "",
       tipo_nf:          r.tipo_nf          ?? "produto",
       cnpj_emitente:    r.cnpj_emitente    ?? "",
-      ncm:              r.ncm              ?? "",
-      descricao_contem: r.descricao_contem ?? "",
-      insumo_id:        r.insumo_id        ?? "",
-      categoria:        r.categoria        ?? "",
-      centro_custo_id:  r.centro_custo_id  ?? "",
-      ativo:            r.ativo,
+      ncm:                   r.ncm                   ?? "",
+      descricao_contem:      r.descricao_contem      ?? "",
+      insumo_id:             r.insumo_id             ?? "",
+      categoria:             r.categoria             ?? "",
+      centro_custo_id:       r.centro_custo_id       ?? "",
+      operacao_gerencial_id: r.operacao_gerencial_id ?? "",
+      ativo:                 r.ativo,
     });
     setEditId(r.id);
     setModal(true);
@@ -154,10 +161,10 @@ export default function ClassificacaoPage() {
       ncm:              form.ncm              || null,
       descricao_contem: form.descricao_contem || null,
       categoria:        form.categoria        || null,
-      // insumo e CC só fazem sentido para serviço ou quando explicitamente informados
-      insumo_id:        ehProduto ? null : (form.insumo_id || null),
-      centro_custo_id:  ehProduto ? null : (form.centro_custo_id || null),
-      ativo:            form.ativo,
+      insumo_id:             ehProduto ? null : (form.insumo_id             || null),
+      centro_custo_id:       ehProduto ? null : (form.centro_custo_id       || null),
+      operacao_gerencial_id: form.operacao_gerencial_id || null,
+      ativo:                 form.ativo,
     };
     if (editId) {
       await supabase.from("regras_classificacao_nf").update(payload).eq("id", editId);
@@ -455,7 +462,7 @@ export default function ClassificacaoPage() {
               {/* Classificação Destino */}
               <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.05em" }}>Classificação Destino</div>
-                <div style={{ display: "grid", gridTemplateColumns: ehProduto ? "1fr" : "1fr 1fr 1fr", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: ehProduto ? "1fr 1fr" : "1fr 1fr 1fr", gap: 12 }}>
                   <div>
                     <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Categoria</label>
                     <select
@@ -465,6 +472,24 @@ export default function ClassificacaoPage() {
                     >
                       <option value="">— Nenhuma —</option>
                       {(ehProduto ? CATEGORIAS_PRODUTO : CATEGORIAS_SERVICO).map(c => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
+                    </select>
+                  </div>
+
+                  {/* OG esperada — disponível para ambos os tipos */}
+                  <div>
+                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>
+                      Operação Gerencial esperada
+                      <span style={{ color: "var(--text-muted)", fontWeight: 400 }}> (auditoria)</span>
+                    </label>
+                    <select
+                      value={form.operacao_gerencial_id ?? ""}
+                      onChange={e => setForm(f => ({ ...f, operacao_gerencial_id: e.target.value }))}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
+                    >
+                      <option value="">— Não verificar —</option>
+                      {ogsDisponiveis.map(og => (
+                        <option key={og.id} value={og.id}>{og.classificacao} — {og.descricao}</option>
+                      ))}
                     </select>
                   </div>
 

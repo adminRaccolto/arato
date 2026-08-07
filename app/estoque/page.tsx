@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
+import { supabase } from "../../lib/supabase";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
   listarMovimentacoes, criarMovimentacaoManual,
@@ -115,6 +116,7 @@ interface ItemRascunho {
   bomba_id: string;
   maquina_id: string;
   centro_custo_id: string;
+  operacao_gerencial_id: string;
   alerta_preco: boolean;
 }
 
@@ -215,7 +217,7 @@ function parsearXmlNfe(xml: string): { numero: string; serie: string; chave: str
         valor_unitario: vUni,
         valor_total:    parseFloat(prod.querySelector("vProd")?.textContent ?? "0"),
         tipo_apropiacao,
-        insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", alerta_preco: false,
+        insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false,
       });
     });
 
@@ -238,6 +240,7 @@ export default function Estoque() {
   const [movs, setMovs]             = useState<MovimentacaoEstoque[]>([]);
   const [depositos, setDepositos]   = useState<Deposito[]>([]);
   const [centros, setCentros]       = useState<CentroCusto[]>([]);
+  const [ogsNf, setOgsNf]           = useState<{ id: string; descricao: string; classificacao: string }[]>([]);
   const [_bombas, setBombas]        = useState<BombaCombustivel[]>([]);
   const [maquinas, setMaquinas]     = useState<Maquina[]>([]);
   const [nfEntradas, setNfEntradas] = useState<NfEntrada[]>([]);
@@ -313,6 +316,9 @@ export default function Estoque() {
     listarPessoas(fazendaId).then(setPessoas).catch(() => {});
     listarPASaldos(fazendaId).then(setPASaldos).catch(() => {});
     listarCentrosCustoGeral(fazendaId).then(setCentros).catch(() => {});
+    supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
+      .or(`fazenda_id.eq.${fazendaId},fazenda_id.is.null`).eq("inativo", false).eq("tipo", "despesa").order("classificacao")
+      .then(({ data }) => setOgsNf((data ?? []) as { id: string; descricao: string; classificacao: string }[]));
   }, [fazendaId]);
 
   useEffect(() => {
@@ -482,12 +488,12 @@ export default function Estoque() {
     });
     setNfCriada(nf);
     if (itensNf.length === 0) {
-      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", alerta_preco: false }]);
+      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false }]);
     }
     setModalNf("passo2");
   });
 
-  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", alerta_preco: false }]);
+  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false }]);
 
   const atualizarItem = (key: string, patch: Partial<ItemRascunho>) => {
     setItensNf(p => p.map(i => {
@@ -577,6 +583,7 @@ export default function Estoque() {
         valor_unitario: item.valor_unitario, valor_total: item.valor_total,
         tipo_apropiacao: item.tipo_apropiacao, alerta_preco: item.alerta_preco,
         centro_custo_id: item.centro_custo_id || undefined,
+        operacao_gerencial_id: item.operacao_gerencial_id || undefined,
       });
     }
     // Buscar itens salvos (com id completo) e processar
@@ -1891,6 +1898,19 @@ export default function Estoque() {
                     </div>
                   )}
                 </div>
+
+                {/* Operação Gerencial — obrigatória para itens de custo direto (alimenta auditoria NCM×OG) */}
+                {item.tipo_apropiacao === "direto" && ogsNf.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <label style={lbl}>Operação Gerencial <span style={{ color: "#E24B4A" }}>*</span></label>
+                    <select style={{ ...inp, maxWidth: 480, borderColor: !item.operacao_gerencial_id ? "#EF9F27" : "var(--border)" }}
+                      value={item.operacao_gerencial_id}
+                      onChange={e => atualizarItem(item.key, { operacao_gerencial_id: e.target.value })}>
+                      <option value="">— Selecione a operação gerencial —</option>
+                      {ogsNf.map(og => <option key={og.id} value={og.id}>{og.classificacao} — {og.descricao}</option>)}
+                    </select>
+                  </div>
+                )}
 
                 {/* Centro de Custo por item */}
                 {centros.length > 0 && (

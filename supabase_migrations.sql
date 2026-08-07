@@ -9313,3 +9313,9 @@ ALTER TABLE regras_classificacao_nf
     CHECK (tipo_nf IN ('produto', 'servico'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- operacao_gerencial_id em nf_entrada_itens (auditoria NCMxOG)
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS operacao_gerencial_id UUID REFERENCES operacoes_gerenciais(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';

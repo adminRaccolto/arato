@@ -1172,6 +1172,7 @@ export type NfEntradaItem = {
   valor_total: number;
   tipo_apropiacao: "estoque" | "maquinario" | "direto" | "terceiro" | "vef" | "remessa";
   centro_custo_id?: string;
+  operacao_gerencial_id?: string;   // preenchido para itens direto — base da auditoria NCM×OG
   alerta_preco: boolean;
   created_at?: string;
 };

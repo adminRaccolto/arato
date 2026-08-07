@@ -259,6 +259,7 @@ const NAV: NavItem[] = [
       { id: "conf-op-fiscais",     label: "Operações Fiscais",          path: "/configuracoes/modulos?aba=operacoes", moduleId: "conf_fiscal" },
       { id: "conf-historico-cfop", label: "Histórico Fiscal (CFOPs)",   path: "/cadastros?tab=historico_fiscal",      moduleId: "conf_fiscal" },
       { id: "conf-classificacao",  label: "Classificação Automática",   path: "/configuracoes/classificacao",         moduleId: "conf_fiscal" },
+      { id: "conf-auditoria-class", label: "Auditoria de Classificação", path: "/auditoria/classificacao",           moduleId: "conf_fiscal" },
 
       { type: "divider", label: "Financeiro" },
       { id: "conf-plano-contas",  label: "Plano de Contas",       path: "/configuracoes/plano-contas",            moduleId: "conf_financeiro" },
@@ -453,7 +454,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "lavoura")         return pathname.startsWith("/lavoura") || pathname === "/estoque/romaneio-entrada";
     if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias" || pathname.startsWith("/fiscal");
     if (item.id === "custos")          return pathname.startsWith("/custos") || pathname.startsWith("/relatorios/dre");
-    if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
+    if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin") || pathname.startsWith("/auditoria");
     if (item.id === "algodao")         return pathname.startsWith("/algodao");
     if (item.id === "ajuda")           return pathname === "/learning" || pathname === "/suporte";
     return false;
