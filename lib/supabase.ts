@@ -2044,6 +2044,7 @@ export type RegraClassificacaoNf = {
   id: string;
   fazenda_id: string;
   nome_regra?: string;
+  tipo_nf?: "produto" | "servico";
   cnpj_emitente?: string;
   ncm?: string;
   descricao_contem?: string;

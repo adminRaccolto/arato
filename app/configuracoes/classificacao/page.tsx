@@ -8,9 +8,12 @@ import type { RegraClassificacaoNf } from "../../../lib/supabase";
 type Insumo      = { id: string; nome: string; categoria?: string };
 type CentroCusto = { id: string; nome: string; codigo?: string; parent_id?: string };
 
-const CATEGORIAS = [
+const CATEGORIAS_PRODUTO = [
   "sementes", "fertilizantes", "defensivos", "correcao_solo",
-  "combustivel", "pecas_manutencao", "servicos", "outros",
+  "combustivel", "pecas_manutencao", "outros",
+];
+const CATEGORIAS_SERVICO = [
+  "servicos", "outros",
 ];
 const CAT_LABEL: Record<string, string> = {
   sementes:         "Sementes",
@@ -23,9 +26,53 @@ const CAT_LABEL: Record<string, string> = {
   outros:           "Outros",
 };
 
+// ── Padrões Arato — NCMs de insumos agrícolas mais comuns no MT ──────────────
+type PadraoNcm = { ncm: string; nome_regra: string; categoria: string; descricao_contem?: string };
+const REGRAS_PADRAO_ARATO: PadraoNcm[] = [
+  // Defensivos
+  { ncm: "3808.91", nome_regra: "Inseticidas",                   categoria: "defensivos" },
+  { ncm: "3808.92", nome_regra: "Fungicidas",                    categoria: "defensivos" },
+  { ncm: "3808.93", nome_regra: "Herbicidas",                    categoria: "defensivos" },
+  { ncm: "3808.94", nome_regra: "Desinfetantes Agrícolas",       categoria: "defensivos" },
+  { ncm: "3808.99", nome_regra: "Outros Defensivos",             categoria: "defensivos" },
+  { ncm: "3002.90", nome_regra: "Inoculantes Biológicos",        categoria: "defensivos" },
+  // Fertilizantes nitrogenados
+  { ncm: "3102.10", nome_regra: "Ureia (N)",                     categoria: "fertilizantes" },
+  { ncm: "3102.21", nome_regra: "Sulfato de Amônio",             categoria: "fertilizantes" },
+  // Fertilizantes fosfatados
+  { ncm: "3103.10", nome_regra: "Superfosfato Simples / Triplo", categoria: "fertilizantes" },
+  // Fertilizantes potássicos
+  { ncm: "3104.20", nome_regra: "Cloreto de Potássio (KCl)",     categoria: "fertilizantes" },
+  { ncm: "3104.30", nome_regra: "Sulfato de Potássio",           categoria: "fertilizantes" },
+  // Fertilizantes compostos
+  { ncm: "3105.20", nome_regra: "NPK Composto (N+P+K)",          categoria: "fertilizantes" },
+  { ncm: "3105.30", nome_regra: "DAP — Diamônio Fosfato",        categoria: "fertilizantes" },
+  { ncm: "3105.40", nome_regra: "MAP — Monoamônio Fosfato",      categoria: "fertilizantes" },
+  { ncm: "3105.59", nome_regra: "Outros Adubos Compostos",       categoria: "fertilizantes" },
+  { ncm: "3105.90", nome_regra: "Outros Fertilizantes",          categoria: "fertilizantes" },
+  // Correção de solo
+  { ncm: "2521.00", nome_regra: "Calcário Agrícola",             categoria: "correcao_solo" },
+  { ncm: "2520.20", nome_regra: "Gesso Agrícola",                categoria: "correcao_solo" },
+  // Sementes
+  { ncm: "1201.90", nome_regra: "Sementes de Soja",              categoria: "sementes" },
+  { ncm: "1005.10", nome_regra: "Sementes de Milho",             categoria: "sementes" },
+  { ncm: "5201.00", nome_regra: "Sementes de Algodão",           categoria: "sementes" },
+  { ncm: "1007.10", nome_regra: "Sementes de Sorgo",             categoria: "sementes" },
+  { ncm: "1001.19", nome_regra: "Sementes de Trigo",             categoria: "sementes" },
+  // Combustível
+  { ncm: "2710.19", nome_regra: "Óleo Diesel / Combustível",     categoria: "combustivel" },
+  // Peças e manutenção
+  { ncm: "3403.19", nome_regra: "Graxas / Lubrificantes",        categoria: "pecas_manutencao" },
+  { ncm: "8708.99", nome_regra: "Peças para Máquinas Agrícolas", categoria: "pecas_manutencao" },
+  { ncm: "4010.39", nome_regra: "Correias de Transmissão",       categoria: "pecas_manutencao" },
+  // Embalagens
+  { ncm: "6305.33", nome_regra: "Sacaria de Polipropileno",      categoria: "outros" },
+];
+
 const VAZIO: Omit<RegraClassificacaoNf, "id" | "created_at" | "qtd_aplicacoes" | "ultima_aplicacao"> = {
   fazenda_id:       "",
   nome_regra:       "",
+  tipo_nf:          "produto",
   cnpj_emitente:    "",
   ncm:              "",
   descricao_contem: "",
@@ -37,13 +84,15 @@ const VAZIO: Omit<RegraClassificacaoNf, "id" | "created_at" | "qtd_aplicacoes" |
 
 export default function ClassificacaoPage() {
   const { fazendaId } = useAuth();
-  const [regras,  setRegras]  = useState<RegraClassificacaoNf[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modal,   setModal]   = useState(false);
-  const [form,    setForm]    = useState({ ...VAZIO });
-  const [editId,  setEditId]  = useState<string | null>(null);
-  const [saving,  setSaving]  = useState(false);
-  const [busca,   setBusca]   = useState("");
+  const [regras,          setRegras]          = useState<RegraClassificacaoNf[]>([]);
+  const [loading,         setLoading]         = useState(true);
+  const [modal,           setModal]           = useState(false);
+  const [form,            setForm]            = useState({ ...VAZIO });
+  const [editId,          setEditId]          = useState<string | null>(null);
+  const [saving,          setSaving]          = useState(false);
+  const [busca,           setBusca]           = useState("");
+  const [carregandoPad,   setCarregandoPad]   = useState(false);
+  const [msgPadroes,      setMsgPadroes]      = useState<string | null>(null);
 
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
@@ -80,6 +129,7 @@ export default function ClassificacaoPage() {
     setForm({
       fazenda_id:       r.fazenda_id,
       nome_regra:       r.nome_regra       ?? "",
+      tipo_nf:          r.tipo_nf          ?? "produto",
       cnpj_emitente:    r.cnpj_emitente    ?? "",
       ncm:              r.ncm              ?? "",
       descricao_contem: r.descricao_contem ?? "",
@@ -95,15 +145,18 @@ export default function ClassificacaoPage() {
   async function salvar() {
     if (!fazendaId) return;
     setSaving(true);
+    const ehProduto = form.tipo_nf !== "servico";
     const payload = {
       fazenda_id:       fazendaId,
       nome_regra:       form.nome_regra       || null,
+      tipo_nf:          form.tipo_nf          || "produto",
       cnpj_emitente:    form.cnpj_emitente    || null,
       ncm:              form.ncm              || null,
       descricao_contem: form.descricao_contem || null,
-      insumo_id:        form.insumo_id        || null,
       categoria:        form.categoria        || null,
-      centro_custo_id:  form.centro_custo_id  || null,
+      // insumo e CC só fazem sentido para serviço ou quando explicitamente informados
+      insumo_id:        ehProduto ? null : (form.insumo_id || null),
+      centro_custo_id:  ehProduto ? null : (form.centro_custo_id || null),
       ativo:            form.ativo,
     };
     if (editId) {
@@ -113,6 +166,38 @@ export default function ClassificacaoPage() {
     }
     setSaving(false);
     setModal(false);
+    carregar();
+  }
+
+  async function carregarPadroesArato() {
+    if (!fazendaId) return;
+    setCarregandoPad(true);
+    setMsgPadroes(null);
+    // Busca NCMs já cadastrados para não duplicar
+    const { data: existentes } = await supabase
+      .from("regras_classificacao_nf")
+      .select("ncm")
+      .eq("fazenda_id", fazendaId);
+    const ncmsExistentes = new Set((existentes ?? []).map((r: { ncm?: string }) => r.ncm).filter(Boolean));
+    const novos = REGRAS_PADRAO_ARATO.filter(p => !ncmsExistentes.has(p.ncm));
+    if (novos.length === 0) {
+      setMsgPadroes("Todos os padrões Arato já estão cadastrados.");
+      setCarregandoPad(false);
+      return;
+    }
+    const rows = novos.map(p => ({
+      fazenda_id:    fazendaId,
+      nome_regra:    p.nome_regra,
+      tipo_nf:       "produto" as const,
+      ncm:           p.ncm,
+      categoria:     p.categoria,
+      descricao_contem: p.descricao_contem || null,
+      ativo:         true,
+      qtd_aplicacoes: 0,
+    }));
+    await supabase.from("regras_classificacao_nf").insert(rows);
+    setMsgPadroes(`${novos.length} regra(s) padrão carregada(s) com sucesso.`);
+    setCarregandoPad(false);
     carregar();
   }
 
@@ -136,6 +221,12 @@ export default function ClassificacaoPage() {
 
   const ativas     = regras.filter(r => r.ativo).length;
   const aplicacoes = regras.reduce((s, r) => s + (r.qtd_aplicacoes ?? 0), 0);
+  const ehProduto  = form.tipo_nf !== "servico";
+
+  const btnTab = (ativo: boolean) => ({
+    padding: "6px 18px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer",
+    background: ativo ? "#1A4870" : "var(--bg-page)", color: ativo ? "#fff" : "var(--text-3)",
+  } as React.CSSProperties);
 
   return (
     <>
@@ -149,20 +240,36 @@ export default function ClassificacaoPage() {
               Critérios para o sistema classificar NFs da SIEG sem intervenção manual. Quanto mais regras, menos pendências.
             </p>
           </div>
-          <button
-            onClick={abrirNova}
-            style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-          >
-            + Nova Regra
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={carregarPadroesArato}
+              disabled={carregandoPad}
+              style={{ padding: "9px 16px", borderRadius: 8, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#7A4300", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              {carregandoPad ? "Carregando…" : "Padrões Arato"}
+            </button>
+            <button
+              onClick={abrirNova}
+              style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              + Nova Regra
+            </button>
+          </div>
         </div>
+
+        {msgPadroes && (
+          <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#166534", display: "flex", justifyContent: "space-between" }}>
+            {msgPadroes}
+            <button onClick={() => setMsgPadroes(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: 700 }}>✕</button>
+          </div>
+        )}
 
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
-            { label: "Regras Ativas",      valor: `${ativas} / ${regras.length}`,                    cor: "#16A34A" },
-            { label: "Total Aplicações",   valor: aplicacoes.toLocaleString("pt-BR"),                cor: "#1A4870" },
-            { label: "Eficácia",           valor: regras.length > 0 ? `${Math.round((ativas / regras.length) * 100)}%` : "—", cor: "#C9921B" },
+            { label: "Regras Ativas",    valor: `${ativas} / ${regras.length}`,                                                cor: "#16A34A" },
+            { label: "Total Aplicações", valor: aplicacoes.toLocaleString("pt-BR"),                                           cor: "#1A4870" },
+            { label: "Eficácia",         valor: regras.length > 0 ? `${Math.round((ativas / regras.length) * 100)}%` : "—",  cor: "#C9921B" },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
               <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
@@ -173,9 +280,8 @@ export default function ClassificacaoPage() {
 
         {/* Banner */}
         <div style={{ background: "#EBF5FF", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
-          <strong>Como funciona:</strong> cada regra define critérios de match (CNPJ do fornecedor, NCM, ou parte da descrição) e uma classificação destino.
-          Na importação SIEG o sistema testa cada item sequencialmente — o primeiro match classifica automaticamente.
-          Regras mais específicas devem vir antes das mais genéricas.
+          <strong>Fluxo NF Produto:</strong> regra classifica a categoria do CP e gera vencimento D+30. Centro de custo e insumo são completados em <em>Pendências</em> após a entrada.{" "}
+          <strong>Fluxo NFS Serviço:</strong> classificação completa na regra — sem pendências adicionais.
         </div>
 
         {/* Busca */}
@@ -197,11 +303,12 @@ export default function ClassificacaoPage() {
               {regras.length === 0 ? "Nenhuma regra criada ainda" : "Nenhuma regra encontrada"}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>
-              Classifique uma NF manualmente — o sistema pergunta se quer criar uma regra automaticamente.
+              Use <strong>Padrões Arato</strong> para carregar os NCMs mais comuns do agronegócio de uma vez.
             </div>
             {regras.length === 0 && (
-              <button onClick={abrirNova} style={{ padding: "8px 18px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                + Criar primeira regra
+              <button onClick={carregarPadroesArato} disabled={carregandoPad}
+                style={{ padding: "8px 18px", borderRadius: 7, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                Carregar Padrões Arato
               </button>
             )}
           </div>
@@ -210,8 +317,8 @@ export default function ClassificacaoPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
-                  {["Regra", "Critérios de Match", "Classificação Destino", "Aplicações", "Última Aplicação", "Ativa", ""].map(h => (
-                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                  {["Regra", "Tipo NF", "Critérios de Match", "Classificação", "Aplicações", "Última", "Ativa", ""].map(h => (
+                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -219,24 +326,33 @@ export default function ClassificacaoPage() {
                 {regrasFiltradas.map((r, i) => {
                   const insumo = insumos.find(ins => ins.id === r.insumo_id);
                   const cc     = centrosCusto.find(c => c.id === r.centro_custo_id);
+                  const isProd = r.tipo_nf !== "servico";
                   return (
                     <tr key={r.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: i % 2 === 1 ? "#FAFBFD" : "var(--bg-card)", opacity: r.ativo ? 1 : 0.5 }}>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ fontWeight: 600 }}>{r.nome_regra || `Regra #${i + 1}`}</div>
                       </td>
                       <td style={{ padding: "10px 14px" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4,
+                          background: isProd ? "#E8EEFA" : "#FBF3E0",
+                          color:      isProd ? "#1A4870" : "#7A4300" }}>
+                          {isProd ? "Produto" : "Serviço"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                           {r.cnpj_emitente    && <span style={{ fontSize: 11, color: "var(--text-2)" }}>CNPJ: {fmtCnpj(r.cnpj_emitente)}</span>}
                           {r.ncm              && <span style={{ fontSize: 11, color: "var(--text-2)" }}>NCM: {r.ncm}</span>}
-                          {r.descricao_contem && <span style={{ fontSize: 11, color: "var(--text-2)" }}>Desc: "{r.descricao_contem}"</span>}
+                          {r.descricao_contem && <span style={{ fontSize: 11, color: "var(--text-2)" }}>Desc: &ldquo;{r.descricao_contem}&rdquo;</span>}
                           {!r.cnpj_emitente && !r.ncm && !r.descricao_contem && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Match universal</span>}
                         </div>
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                           {r.categoria && <span style={{ fontSize: 11, background: "#EBF5FF", color: "#1A4870", padding: "1px 7px", borderRadius: 8, display: "inline-block" }}>{CAT_LABEL[r.categoria] || r.categoria}</span>}
-                          {insumo      && <span style={{ fontSize: 11, color: "var(--text-2)" }}>↳ {insumo.nome}</span>}
-                          {cc          && <span style={{ fontSize: 11, color: "var(--text-3)" }}>CC: {cc.nome}</span>}
+                          {!isProd && insumo && <span style={{ fontSize: 11, color: "var(--text-2)" }}>↳ {insumo.nome}</span>}
+                          {!isProd && cc     && <span style={{ fontSize: 11, color: "var(--text-3)" }}>CC: {cc.nome}</span>}
+                          {isProd            && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>CC via Pendências</span>}
                         </div>
                       </td>
                       <td style={{ padding: "10px 14px", fontWeight: 700, color: "#1A4870" }}>{(r.qtd_aplicacoes ?? 0).toLocaleString("pt-BR")}</td>
@@ -264,31 +380,57 @@ export default function ClassificacaoPage() {
         )}
       </main>
 
-      {/* Modal */}
+      {/* ── Modal ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(660px, 97vw)", maxHeight: "90vh", overflow: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(640px, 97vw)", maxHeight: "90vh", overflow: "auto" }}>
             <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>{editId ? "Editar Regra" : "Nova Regra de Classificação"}</div>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Todos os critérios são opcionais — preencha apenas os que tornam a regra específica.</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Os critérios de match são cumulativos (AND) — preencha apenas os que tornam a regra específica.</div>
             </div>
 
             <div style={{ padding: 24 }}>
+
+              {/* Tipo NF */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>Tipo de NF</div>
+                <div style={{ display: "inline-flex", background: "var(--bg-page)", borderRadius: 8, padding: 3, gap: 2 }}>
+                  <button style={btnTab(ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "produto", insumo_id: "", centro_custo_id: "" }))}>NF Produto</button>
+                  <button style={btnTab(!ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "servico" }))}>NFS Serviço</button>
+                </div>
+                {ehProduto && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: "#1e40af", background: "#EBF5FF", border: "0.5px solid #93C5FD", borderRadius: 6, padding: "6px 10px" }}>
+                    Produto: o sistema gera o CP com vencimento D+30 e envia para <strong>Pendências</strong> para apontar centro de custo e insumo.
+                  </div>
+                )}
+              </div>
+
+              {/* Nome */}
               <div style={{ marginBottom: 18 }}>
                 <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Nome da Regra</label>
                 <input
                   value={form.nome_regra ?? ""}
                   onChange={e => setForm(f => ({ ...f, nome_regra: e.target.value }))}
-                  placeholder="Ex: Agrícola Premium — Defensivos"
+                  placeholder={ehProduto ? "Ex: Herbicidas — 3808.93" : "Ex: Serviço de Aviação Agrícola"}
                   style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
                 />
               </div>
 
+              {/* Critérios */}
               <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.05em" }}>Critérios de Match (AND)</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>CNPJ do Fornecedor</label>
+                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>NCM{ehProduto ? " (principal)" : " (opcional)"}</label>
+                    <input
+                      value={form.ncm ?? ""}
+                      onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))}
+                      placeholder="3808.93"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: `0.5px solid ${ehProduto ? "#1A4870" : "var(--border)"}`, fontSize: 13, boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>CNPJ do Fornecedor (opcional)</label>
                     <input
                       value={form.cnpj_emitente ?? ""}
                       onChange={e => setForm(f => ({ ...f, cnpj_emitente: e.target.value }))}
@@ -296,30 +438,22 @@ export default function ClassificacaoPage() {
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
                     />
                   </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>NCM</label>
-                    <input
-                      value={form.ncm ?? ""}
-                      onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))}
-                      placeholder="3808.93"
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
-                    />
-                  </div>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Descrição contém</label>
+                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Descrição contém (opcional)</label>
                     <input
                       value={form.descricao_contem ?? ""}
                       onChange={e => setForm(f => ({ ...f, descricao_contem: e.target.value }))}
-                      placeholder="Ex: GLIFOSATO, ADUBO NPK"
+                      placeholder="Ex: GLIFOSATO, UREIA, NPK"
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
                     />
                   </div>
                 </div>
               </div>
 
+              {/* Classificação Destino */}
               <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.05em" }}>Classificação Destino</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: ehProduto ? "1fr" : "1fr 1fr 1fr", gap: 12 }}>
                   <div>
                     <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Categoria</label>
                     <select
@@ -328,34 +462,48 @@ export default function ClassificacaoPage() {
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
                     >
                       <option value="">— Nenhuma —</option>
-                      {CATEGORIAS.map(c => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
+                      {(ehProduto ? CATEGORIAS_PRODUTO : CATEGORIAS_SERVICO).map(c => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Insumo</label>
-                    <select
-                      value={form.insumo_id ?? ""}
-                      onChange={e => setForm(f => ({ ...f, insumo_id: e.target.value }))}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
-                    >
-                      <option value="">— Nenhum —</option>
-                      {insumos
-                        .filter(ins => !form.categoria || ins.categoria === form.categoria)
-                        .map(ins => <option key={ins.id} value={ins.id}>{ins.nome}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Centro de Custo</label>
-                    <select
-                      value={form.centro_custo_id ?? ""}
-                      onChange={e => setForm(f => ({ ...f, centro_custo_id: e.target.value }))}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
-                    >
-                      <option value="">— Nenhum —</option>
-                      {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
-                    </select>
-                  </div>
+
+                  {/* Insumo e CC só para serviço */}
+                  {!ehProduto && (
+                    <>
+                      <div>
+                        <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Insumo</label>
+                        <select
+                          value={form.insumo_id ?? ""}
+                          onChange={e => setForm(f => ({ ...f, insumo_id: e.target.value }))}
+                          style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
+                        >
+                          <option value="">— Nenhum —</option>
+                          {insumos
+                            .filter(ins => !form.categoria || ins.categoria === form.categoria)
+                            .map(ins => <option key={ins.id} value={ins.id}>{ins.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Centro de Custo</label>
+                        <select
+                          value={form.centro_custo_id ?? ""}
+                          onChange={e => setForm(f => ({ ...f, centro_custo_id: e.target.value }))}
+                          style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
+                        >
+                          <option value="">— Nenhum —</option>
+                          {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => (
+                            <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {ehProduto && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
+                    Centro de custo e insumo específico serão apontados na tela de <strong>Pendências</strong> após a entrada da NF.
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>

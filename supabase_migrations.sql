@@ -9303,3 +9303,13 @@ ALTER TABLE funcionarios
   ADD COLUMN IF NOT EXISTS data_admissao DATE;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ─── Migration: tipo_nf em regras_classificacao_nf ───────────────────────────
+-- Distingue regras para NF Produto (só categoria, CC via Pendências)
+-- de regras para NFS Serviço (classificação completa).
+ALTER TABLE regras_classificacao_nf
+  ADD COLUMN IF NOT EXISTS tipo_nf TEXT NOT NULL DEFAULT 'produto'
+    CHECK (tipo_nf IN ('produto', 'servico'));
+
+NOTIFY pgrst, 'reload schema';
