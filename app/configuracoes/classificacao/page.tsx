@@ -173,50 +173,32 @@ export default function ClassificacaoPage() {
     if (!fazendaId) return;
     setCarregandoPad(true);
     setMsgPadroes(null);
-    // Busca NCMs já cadastrados para não duplicar
-    const { data: existentes } = await supabase
-      .from("regras_classificacao_nf")
-      .select("ncm")
-      .eq("fazenda_id", fazendaId);
-    const ncmsExistentes = new Set((existentes ?? []).map((r: { ncm?: string }) => r.ncm).filter(Boolean));
-    const novos = REGRAS_PADRAO_ARATO.filter(p => !ncmsExistentes.has(p.ncm));
-    if (novos.length === 0) {
-      setMsgPadroes("Todos os padrões Arato já estão cadastrados.");
-      setCarregandoPad(false);
-      return;
-    }
-    // Tenta com tipo_nf; se a coluna ainda não existir no banco, tenta sem ela
-    const rowsComTipo = novos.map(p => ({
-      fazenda_id:       fazendaId,
+    const rows = REGRAS_PADRAO_ARATO.map(p => ({
       nome_regra:       p.nome_regra,
-      tipo_nf:          "produto" as const,
+      tipo_nf:          "produto",
       ncm:              p.ncm,
       categoria:        p.categoria,
       descricao_contem: p.descricao_contem || null,
       ativo:            true,
       qtd_aplicacoes:   0,
     }));
-    let { error: errIns } = await supabase.from("regras_classificacao_nf").insert(rowsComTipo);
-    if (errIns && errIns.message?.includes("tipo_nf")) {
-      // Migration ainda não rodou — insere sem o campo (usa default do banco futuramente)
-      const rowsSemTipo = novos.map(p => ({
-        fazenda_id:       fazendaId,
-        nome_regra:       p.nome_regra,
-        ncm:              p.ncm,
-        categoria:        p.categoria,
-        descricao_contem: p.descricao_contem || null,
-        ativo:            true,
-        qtd_aplicacoes:   0,
-      }));
-      const { error: errIns2 } = await supabase.from("regras_classificacao_nf").insert(rowsSemTipo);
-      errIns = errIns2 ?? null;
-    }
-    if (errIns) {
-      setMsgPadroes(`Erro ao inserir: ${errIns.message}`);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch("/api/configuracoes/classificacao-padroes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token ?? ""}` },
+      body: JSON.stringify({ fazenda_id: fazendaId, rows }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setMsgPadroes(`Erro ao inserir: ${json.error ?? res.statusText}`);
       setCarregandoPad(false);
       return;
     }
-    setMsgPadroes(`${novos.length} regra(s) padrão carregada(s) com sucesso.`);
+    if (json.inseridos === 0) {
+      setMsgPadroes(json.msg ?? "Todos os padrões Arato já estão cadastrados.");
+    } else {
+      setMsgPadroes(`${json.inseridos} regra(s) padrão carregada(s) com sucesso.`);
+    }
     setCarregandoPad(false);
     carregar();
   }
