@@ -9292,3 +9292,14 @@ ALTER TABLE operacoes_gerenciais
   CHECK (codigo_lcdpr IN ('101','102','103','104','199','201','202','203','204','205','299'));
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ─── Migration: tipo, funcao e data_admissao em funcionarios ──────────────────
+-- Esses campos existiam no TypeScript mas nunca foram adicionados ao banco
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS tipo         TEXT NOT NULL DEFAULT 'clt'
+                                        CHECK (tipo IN ('clt','diarista','empreiteiro','outro')),
+  ADD COLUMN IF NOT EXISTS funcao       TEXT,
+  ADD COLUMN IF NOT EXISTS data_admissao DATE;
+
+NOTIFY pgrst, 'reload schema';
