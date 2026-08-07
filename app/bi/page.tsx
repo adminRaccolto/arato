@@ -366,6 +366,18 @@ export default function BI() {
   const [custoMask, setCustoMask] = useState("");
   const [areaStr,   setAreaStr]   = useState("");
 
+  // ── Auditoria ────────────────────────────────────────────────
+  const [auditLancs,    setAuditLancs]    = useState<Record<string, { count: number; total: number; primeiro: string; ultimo: string }>>({});
+  const [auditDups,     setAuditDups]     = useState<{ contrato_id: string; descricao: string; credor: string; data_vencimento: string; categoria: string; count: number; total: number; valor_unitario: number }[]>([]);
+  const [auditLoading,  setAuditLoading]  = useState(false);
+  const [deletandoDup,  setDeletandoDup]  = useState(false);
+  const [dupSelecionadas, setDupSelecionadas] = useState<Set<string>>(new Set());
+  const [auditExpand,   setAuditExpand]   = useState<Set<string>>(new Set());
+  const [auditRomaneios, setAuditRomaneios] = useState<{ id: string; numero?: string; fazenda_id: string; data: string; produto?: string; status?: string }[]>([]);
+  const [auditUomDiv,    setAuditUomDiv]    = useState<{ id: string; nf_entrada_id: string; produto_nome?: string; unidade_nf?: string; unidade?: string }[]>([]);
+  const [auditSemCC,     setAuditSemCC]     = useState<{ id: string; descricao?: string; quantidade?: number; unidade_medida?: string; created_at: string }[]>([]);
+  const [auditExtraLoading, setAuditExtraLoading] = useState(false);
+
   // ── Posição Comercial (sub-aba de Produção) ───────────────────
   const [fazendas,     setFazendas]     = useState<FazendaBI[]>([]);
   const [cicloTals,    setCicloTals]    = useState<CicloTalhao[]>([]);
@@ -455,9 +467,102 @@ export default function BI() {
     finally { setAlertasLoading(false); }
   }, [fazendaId]);
 
+  const carregarAuditContratos = useCallback(async (contratoIds: string[], contratos: CFContrato[]) => {
+    if (!contratoIds.length) return;
+    setAuditLoading(true);
+    try {
+      // Busca lançamentos CP vinculados E parcelas do cronograma (salvarParcelasPagamento não cria lancamento)
+      const [{ data: lancData }, { data: parcData }] = await Promise.all([
+        supabase
+          .from("lancamentos")
+          .select("id,contrato_financeiro_id,valor,data_vencimento,categoria")
+          .in("contrato_financeiro_id", contratoIds)
+          .eq("tipo", "pagar"),
+        supabase
+          .from("parcelas_pagamento")
+          .select("id,contrato_id,valor_parcela,data_vencimento")
+          .in("contrato_id", contratoIds),
+      ]);
+      const lancRows = lancData ?? [];
+      const parcRows = parcData ?? [];
+
+      // Constrói mapa por contrato_id — contabiliza parcelas_pagamento se não há lancamentos
+      const map: Record<string, { count: number; total: number; primeiro: string; ultimo: string }> = {};
+      // Primeiro registra os lancamentos
+      for (const l of lancRows) {
+        const cid = l.contrato_financeiro_id as string;
+        if (!map[cid]) map[cid] = { count: 0, total: 0, primeiro: l.data_vencimento, ultimo: l.data_vencimento };
+        map[cid].count++;
+        map[cid].total += Number(l.valor ?? 0);
+        if (l.data_vencimento < map[cid].primeiro) map[cid].primeiro = l.data_vencimento;
+        if (l.data_vencimento > map[cid].ultimo)   map[cid].ultimo   = l.data_vencimento;
+      }
+      // Para contratos sem lancamentos, usa parcelas_pagamento como fonte
+      for (const p of parcRows) {
+        const cid = p.contrato_id as string;
+        if (map[cid]) continue; // já tem lancamentos — não sobrescrever
+        if (!map[cid]) map[cid] = { count: 0, total: 0, primeiro: p.data_vencimento, ultimo: p.data_vencimento };
+        map[cid].count++;
+        map[cid].total += Number(p.valor_parcela ?? 0);
+        if (p.data_vencimento < map[cid].primeiro) map[cid].primeiro = p.data_vencimento;
+        if (p.data_vencimento > map[cid].ultimo)   map[cid].ultimo   = p.data_vencimento;
+      }
+      setAuditLancs(map);
+
+      // Detecta duplicatas apenas nos lancamentos (parcelas_pagamento não tem duplicatas por design)
+      // Chave: contrato + vencimento + categoria + valor — mesmo lançamento repetido literalmente
+      const dupKey = (l: { contrato_financeiro_id: string; data_vencimento: string; categoria: string; valor: number }) =>
+        `${l.contrato_financeiro_id}|${l.data_vencimento}|${l.categoria}|${Number(l.valor ?? 0).toFixed(2)}`;
+      const dupMap: Record<string, { count: number; total: number; valor_unitario: number }> = {};
+      for (const l of lancRows) {
+        const k = dupKey(l as any);
+        if (!dupMap[k]) dupMap[k] = { count: 0, total: 0, valor_unitario: Number(l.valor ?? 0) };
+        dupMap[k].count++;
+        dupMap[k].total += Number(l.valor ?? 0);
+      }
+      const contrMap: Record<string, CFContrato> = Object.fromEntries(contratos.map(c => [c.id, c]));
+      setAuditDups(Object.entries(dupMap)
+        .filter(([, v]) => v.count > 1)
+        .map(([k, v]) => {
+          const [cid, dv, cat] = k.split("|");
+          const c = contrMap[cid];
+          return { contrato_id: cid, descricao: (c as any)?.descricao ?? cid, credor: (c as any)?.credor ?? "—", data_vencimento: dv, categoria: cat, ...v };
+        })
+        .sort((a, b) => b.count - a.count));
+    } finally { setAuditLoading(false); }
+  }, []);
+
+  const carregarAuditExtra = useCallback(async () => {
+    if (!fazendaId) return;
+    setAuditExtraLoading(true);
+    try {
+      const limiteData = new Date();
+      limiteData.setDate(limiteData.getDate() - 3);
+      const dataLimite = limiteData.toISOString().slice(0, 10);
+      const [romRes, uomRes, ccRes] = await Promise.all([
+        supabase.from("romaneios").select("id,numero,fazenda_id,data,produto,status")
+          .eq("fazenda_id", fazendaId).lte("data", dataLimite).is("nfe_numero", null)
+          .in("status", ["aberto", "em_andamento", "pendente"]),
+        supabase.from("nf_entrada_itens").select("id,nf_entrada_id,produto_nome,unidade_nf,unidade")
+          .eq("fazenda_id", fazendaId).not("unidade_nf", "is", null).not("unidade", "is", null),
+        supabase.from("movimentacoes_estoque")
+          .select("id,descricao,quantidade,unidade_medida,created_at")
+          .eq("fazenda_id", fazendaId).eq("tipo", "saida").eq("auto", false)
+          .is("centro_custo_id", null).order("created_at", { ascending: false }).limit(100),
+      ]);
+      setAuditRomaneios(romRes.data ?? []);
+      setAuditUomDiv((uomRes.data ?? []).filter(r => r.unidade_nf && r.unidade && r.unidade_nf.toLowerCase() !== r.unidade.toLowerCase()));
+      setAuditSemCC(ccRes.data ?? []);
+    } finally { setAuditExtraLoading(false); }
+  }, [fazendaId]);
+
   useEffect(() => {
-    if (aba === "controller" && fazendaId) carregarAlertas();
-  }, [aba, fazendaId, carregarAlertas]);
+    if (aba === "controller" && fazendaId) { carregarAlertas(); carregarAuditExtra(); }
+  }, [aba, fazendaId, carregarAlertas, carregarAuditExtra]);
+
+  useEffect(() => {
+    if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos);
+  }, [cfContratos, carregarAuditContratos]);
 
   const carregarCF = useCallback(async () => {
     if (!fazendaId) return;
@@ -482,7 +587,7 @@ export default function BI() {
   }, [fazendaId, userRole, carregarCF]);
 
   useEffect(() => {
-    if ((aba === "evolucao" || aba === "terceiros" || aba === "cambio") && fazendaId) carregarCF();
+    if ((aba === "evolucao" || aba === "terceiros" || aba === "cambio" || aba === "controller") && fazendaId) carregarCF();
   }, [aba, fazendaId, carregarCF]);
 
   const carregarOps = useCallback(async () => {
@@ -537,6 +642,25 @@ export default function BI() {
     await resolverAlerta(id);
     setAlertas(prev => prev.filter(a => a.id !== id));
   }
+
+  // useEffect de inicialização das máscaras da Sensibilidade — DEVE ficar antes dos early returns
+  useEffect(() => {
+    if (!loading && precoMask === "") {
+      const precoBrlSojaLocal = precos?.soja?.brl ?? 128;
+      const sojaPs  = plantios.filter(p => { const c = ciclos.find(x => x.id === p.ciclo_id); return c && c.cultura.toLowerCase().includes("soja"); });
+      const areaS   = sojaPs.reduce((s, p) => s + (p.area_ha || 0), 0);
+      const prodS   = sojaPs.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
+      const prodRef = areaS > 0 ? prodS / areaS : 60;
+      const cpTotal = lancamentos.filter(l => l.tipo === "pagar" && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
+      const custoRef = cpTotal > 0 && (fazenda?.area_total_ha ?? 0) > 0 ? cpTotal / (fazenda!.area_total_ha!) : 4800;
+      const areaRef  = fazenda?.area_total_ha ?? 1000;
+      setPrecoMask(aplicarMascara(String(Math.round(precoBrlSojaLocal * 100))));
+      setProdMask(aplicarMascara(String(Math.round(prodRef * 100))));
+      setCustoMask(aplicarMascara(String(Math.round(custoRef * 100))));
+      setAreaStr(String(Math.round(areaRef)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // ── Guard visual ──────────────────────────────────────────────
   if (userRole === null || userRole !== "raccotlo") {
@@ -751,16 +875,6 @@ export default function BI() {
   const custoHaRef    = totalCP > 0 && (fazenda?.area_total_ha ?? 0) > 0 ? totalCP / (fazenda!.area_total_ha!) : 4800;
   const areaRef       = fazenda?.area_total_ha ?? 1000;
 
-  useEffect(() => {
-    if (!loading && precoMask === "") {
-      setPrecoMask(aplicarMascara(String(Math.round(precoBrlSoja * 100))));
-      setProdMask(aplicarMascara(String(Math.round(prodBaseRef * 100))));
-      setCustoMask(aplicarMascara(String(Math.round(custoHaRef * 100))));
-      setAreaStr(String(Math.round(areaRef)));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
-
   // ── Recursos de Terceiros ─────────────────────────────────────
   const RT_TERMOS = ["cpr","empréstimo","emprestimo","custeio","egf","pronaf","financiamento","crédito rural","credito rural","custeio agricola","bco brasil","banco do brasil","sicoob","cresol","rabobank","financ","consórcio","consorcio","compra terra","compra de terra","compra imóvel","compra imovel","compra de imóvel","compra de imovel"];
   const JUROS_TERMOS = ["juro","encargo financ","iof","mora "];
@@ -918,7 +1032,7 @@ export default function BI() {
     { key: "terceiros",       label: "Recursos de Terceiros" },
     { key: "evolucao",        label: "Evolução de Endividamento" },
     { key: "sensibilidade",   label: "Sensibilidade" },
-    { key: "controller",      label: "Controller", badge: alertasCriticos > 0 ? alertasCriticos : (alertasAtivos > 0 ? alertasAtivos : undefined) },
+    { key: "controller",      label: "Auditoria", badge: alertasCriticos > 0 ? alertasCriticos : (alertasAtivos > 0 ? alertasAtivos : undefined) },
   ];
 
   const inputSt: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
@@ -4873,134 +4987,322 @@ export default function BI() {
 
         {/* ── ABA CONTROLLER ─────────────────────────────────── */}
         {aba === "controller" && (() => {
-          const alertasFiltrados = alertas
-            .filter(a => filtroSev === "todos" || a.severidade === filtroSev)
-            .filter(a => filtroCatCtrl === "todos" || a.categoria === filtroCatCtrl)
-            .filter(a => mostrarResolvidos || !a.resolved_at);
-          const contadores: Record<Severidade, number> = {
-            critico: alertas.filter(a => a.severidade === "critico" && !a.resolved_at).length,
-            alto:    alertas.filter(a => a.severidade === "alto"    && !a.resolved_at).length,
-            medio:   alertas.filter(a => a.severidade === "medio"   && !a.resolved_at).length,
-            baixo:   alertas.filter(a => a.severidade === "baixo"   && !a.resolved_at).length,
-          };
-          const totalAtivos = alertas.filter(a => !a.resolved_at).length;
           return (
             <div>
-              {/* Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Monitoramento Automático</div>
-                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Inconsistências e alertas operacionais da fazenda</div>
-                </div>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  {checkMsg && <span style={{ fontSize: 12, color: "var(--text-2)", fontStyle: "italic" }}>{checkMsg}</span>}
-                  <button onClick={executarVerificacoes} disabled={executandoChecks} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: executandoChecks ? "not-allowed" : "pointer", opacity: executandoChecks ? 0.7 : 1 }}>
-                    {executandoChecks ? "⟳ Verificando…" : "⟳ Executar Verificações"}
-                  </button>
-                </div>
-              </div>
-
-              {/* KPI cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
-                {(["critico","alto","medio","baixo"] as Severidade[]).map(sev => (
-                  <button key={sev} onClick={() => setFiltroSev(filtroSev === sev ? "todos" : sev)} style={{ background: filtroSev === sev ? SEV_BG[sev] : "var(--bg-card)", border: `0.5px solid ${filtroSev === sev ? SEV_COR[sev] : "var(--border)"}`, borderLeft: `4px solid ${SEV_COR[sev]}`, borderRadius: 8, padding: "14px 16px", textAlign: "left", cursor: "pointer" }}>
-                    <div style={{ fontSize: 24, fontWeight: 700, color: SEV_COR[sev] }}>{contadores[sev]}</div>
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Alertas {SEV_LABEL[sev]}s</div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Filtros */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600 }}>FILTRAR:</span>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {(["todos","Fiscal","Financeiro","Contratos","Lavoura","Cadastros","Estoque","Arrendamentos"] as (Categoria|"todos")[]).map(cat => (
-                    <button key={cat} onClick={() => setFiltroCatCtrl(cat)} style={{ background: filtroCatCtrl === cat ? "#D5E8F5" : "var(--bg-page)", border: `0.5px solid ${filtroCatCtrl === cat ? "#1A4870" : "var(--border)"}`, color: filtroCatCtrl === cat ? "#1A4870" : "var(--text-2)", borderRadius: 99, padding: "4px 12px", fontSize: 12, cursor: "pointer", fontWeight: filtroCatCtrl === cat ? 600 : 400 }}>
-                      {cat === "todos" ? "Todas" : `${CAT_ICONE[cat as Categoria]} ${cat}`}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-                  <input type="checkbox" id="ctrl-resolvidos" checked={mostrarResolvidos} onChange={e => setMostrarResolvidos(e.target.checked)} style={{ cursor: "pointer" }} />
-                  <label htmlFor="ctrl-resolvidos" style={{ fontSize: 12, color: "var(--text-3)", cursor: "pointer" }}>Mostrar resolvidos</label>
-                </div>
-              </div>
-
-              {/* Lista */}
-              {alertasLoading ? (
-                <div style={{ textAlign: "center", padding: 48, color: "#999", fontSize: 14 }}>Carregando alertas…</div>
-              ) : alertasFiltrados.length === 0 ? (
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>{totalAtivos === 0 ? "✅" : "🔍"}</div>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: totalAtivos === 0 ? "#16A34A" : "#1A4870" }}>
-                    {totalAtivos === 0 ? "Tudo em ordem!" : "Nenhum alerta para os filtros selecionados"}
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
-                    {totalAtivos === 0 ? "Execute as verificações para atualizar." : "Tente ajustar os filtros acima."}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {alertasFiltrados.map(a => {
-                    const resolved = !!a.resolved_at;
-                    const acked = !!a.acknowledged_at;
-                    return (
-                      <div key={a.id} style={{ background: resolved ? "#F9FAFB" : SEV_BG[a.severidade], border: `0.5px solid ${resolved ? "var(--border)" : SEV_COR[a.severidade]}`, borderLeft: `4px solid ${resolved ? "#ccc" : SEV_COR[a.severidade]}`, borderRadius: 10, padding: "14px 16px", opacity: resolved ? 0.65 : 1 }}>
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                          <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{CAT_ICONE[a.categoria]}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: "flex", gap: 8, marginBottom: 4, flexWrap: "wrap", alignItems: "center" }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", background: resolved ? "#ccc" : SEV_COR[a.severidade], color: "#fff", padding: "2px 7px", borderRadius: 99 }}>{resolved ? "Resolvido" : SEV_LABEL[a.severidade]}</span>
-                              <span style={{ fontSize: 10, background: "var(--bg-page)", border: "0.5px solid var(--border)", color: "var(--text-2)", padding: "2px 7px", borderRadius: 99 }}>{a.categoria}</span>
-                              {acked && !resolved && <span style={{ fontSize: 10, color: "#16A34A" }}>✓ Reconhecido</span>}
-                            </div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>{a.titulo}</div>
-                            <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}>{a.descricao}</div>
-                            {a.suggested_action && (
-                              <div style={{ marginTop: 8, padding: "6px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 6, fontSize: 12, color: "#333" }}>
-                                <strong>Ação sugerida:</strong> {a.suggested_action}
-                              </div>
-                            )}
-                            <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)" }}>
-                              Detectado em {a.first_seen_at ? new Date(a.first_seen_at).toLocaleString("pt-BR") : "—"}
-                              {a.acknowledged_at && ` · Reconhecido em ${new Date(a.acknowledged_at).toLocaleString("pt-BR")}`}
-                              {a.resolved_at && ` · Resolvido em ${new Date(a.resolved_at).toLocaleString("pt-BR")}`}
-                            </div>
+              {/* ── Contratos Financeiros × CP ───────────────────── */}
+              {(() => {
+                const fmtV = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const fmtD = (s: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
+                const semParcelas = cfContratos.filter(c => !(auditLancs[c.id]?.count > 0));
+                const comParcelas = cfContratos.filter(c => auditLancs[c.id]?.count > 0);
+                const expanded = auditExpand.has("contratos_cp");
+                const cor = semParcelas.length > 0 ? "#E24B4A" : "#16A34A";
+                return (
+                  <div style={{ marginTop: 24, border: `0.5px solid ${semParcelas.length > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+                    <button onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("contratos_cp") ? n.delete("contratos_cp") : n.add("contratos_cp"); return n; })}
+                      style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>📑</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Contratos Financeiros × Contas a Pagar</span>
+                        <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>Contratos sem parcelas de CP vinculadas</span>
+                      </span>
+                      {cfLoading || auditLoading ? <span style={{ fontSize: 11, color: "var(--text-3)" }}>carregando…</span> : (
+                        <div style={{ display: "flex", border: "0.5px solid var(--border)", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+                          <div style={{ background: semParcelas.length > 0 ? "#FEE2E2" : "#DCFCE7", padding: "3px 10px", display: "flex", alignItems: "center", gap: 5, borderRight: "0.5px solid var(--border)" }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: semParcelas.length > 0 ? "#991B1B" : "#166534" }}>{semParcelas.length}</span>
+                            <span style={{ fontSize: 10, color: semParcelas.length > 0 ? "#991B1B" : "#166534" }}>sem CP</span>
                           </div>
-                          {!resolved && (
-                            <div style={{ display: "flex", gap: 6, flexShrink: 0, flexDirection: "column", alignItems: "flex-end" }}>
-                              {!acked && (
-                                <button onClick={() => ackAlerta(a.id)} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 6, padding: "5px 10px", fontSize: 11, color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>Reconhecer</button>
-                              )}
-                              <button onClick={() => fecharAlerta(a.id)} style={{ background: "#16A34A", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 11, color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>Resolver ✓</button>
-                            </div>
-                          )}
+                          <div style={{ background: "#DCFCE7", padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>{comParcelas.length}</span>
+                            <span style={{ fontSize: 10, color: "#166534" }}>com CP</span>
+                          </div>
                         </div>
+                      )}
+                      <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expanded ? "▲" : "▼"}</span>
+                    </button>
+                    {expanded && (
+                      <div style={{ borderTop: "0.5px solid var(--border)" }}>
+                        {cfLoading || auditLoading ? (
+                          <div style={{ textAlign: "center", padding: 24, color: "#999", fontSize: 13 }}>Carregando contratos…</div>
+                        ) : cfContratos.length === 0 ? (
+                          <div style={{ padding: 20, color: "var(--text-3)", fontSize: 13, textAlign: "center" }}>Nenhum contrato financeiro cadastrado</div>
+                        ) : (
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead>
+                                <tr style={{ background: "var(--bg-page)" }}>
+                                  {["Contrato","Credor","Status","Parcelas CP","Total CP","1º Venc.","Últ. Venc."].map(h => (
+                                    <th key={h} style={{ padding: "9px 12px", textAlign: h === "Parcelas CP" || h === "Total CP" ? "right" : "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[...cfContratos].sort((a, b) => (auditLancs[a.id]?.count ?? 0) - (auditLancs[b.id]?.count ?? 0)).map((c, i) => {
+                                  const audit = auditLancs[c.id];
+                                  const semParc = !audit || audit.count === 0;
+                                  return (
+                                    <tr key={c.id} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)", background: semParc ? "rgba(226,75,74,0.04)" : "transparent" }}>
+                                      <td style={{ padding: "9px 12px", maxWidth: 240 }}>
+                                        <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={(c as any).descricao}>{(c as any).descricao}</div>
+                                        {(c as any).numero_documento && <div style={{ fontSize: 10, color: "var(--text-3)" }}>Nº {(c as any).numero_documento}</div>}
+                                      </td>
+                                      <td style={{ padding: "9px 12px", color: "var(--text-2)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(c as any).credor ?? "—"}</td>
+                                      <td style={{ padding: "9px 12px" }}>
+                                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, fontWeight: 600, background: (c as any).status === "ativo" ? "#D5E8F5" : "#F1EFE8", color: (c as any).status === "ativo" ? "#0B2D50" : "var(--text-2)" }}>{(c as any).status ?? "—"}</span>
+                                      </td>
+                                      <td style={{ padding: "9px 12px", textAlign: "right" }}>
+                                        {semParc ? <span style={{ color: "#E24B4A", fontWeight: 700 }}>⚠ 0</span> : <span style={{ color: "#16A34A", fontWeight: 600 }}>{audit.count}</span>}
+                                      </td>
+                                      <td style={{ padding: "9px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: semParc ? "#E24B4A" : "var(--text-1)" }}>
+                                        {audit ? `R$ ${fmtV(audit.total)}` : "—"}
+                                      </td>
+                                      <td style={{ padding: "9px 12px", color: "var(--text-3)" }}>{audit ? fmtD(audit.primeiro) : "—"}</td>
+                                      <td style={{ padding: "9px 12px", color: "var(--text-3)" }}>{audit ? fmtD(audit.ultimo) : "—"}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })()}
 
-              {/* Verificações disponíveis */}
-              <div style={{ marginTop: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8 }}>VERIFICAÇÕES DISPONÍVEIS</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 8 }}>
-                  {[
-                    { cat: "Fiscal",        checks: ["Certificado A1 vencendo"] },
-                    { cat: "Financeiro",    checks: ["CP vencidas sem baixa","CR em atraso"] },
-                    { cat: "Contratos",     checks: ["Contrato sem embarque 30 dias"] },
-                    { cat: "Lavoura",       checks: ["Ciclo sem operação 20 dias"] },
-                    { cat: "Arrendamentos", checks: ["Parcela vencendo em 15 dias"] },
-                    { cat: "Estoque",       checks: ["Produto abaixo do mínimo"] },
-                  ].map(g => (
-                    <div key={g.cat} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>{CAT_ICONE[g.cat as Categoria]} {g.cat}</div>
-                      {g.checks.map(c => <div key={c} style={{ fontSize: 11, color: "#666", padding: "1px 0" }}>• {c}</div>)}
+              {/* ── Parcelas Duplicadas no CP ─────────────────────── */}
+              {auditDups.length > 0 && (() => {
+                const expDup = auditExpand.has("parcelas_dup");
+                const dupKeys = auditDups.map(d => `${d.contrato_id}|${d.data_vencimento}|${d.categoria}`);
+                const todasSel = dupKeys.length > 0 && dupKeys.every(k => dupSelecionadas.has(k));
+                const algumaSel = dupKeys.some(k => dupSelecionadas.has(k));
+
+                const excluirSelecionadas = async () => {
+                  const selecionadas = auditDups.filter(d => dupSelecionadas.has(`${d.contrato_id}|${d.data_vencimento}|${d.categoria}`));
+                  if (!selecionadas.length) return;
+                  if (!confirm(`Excluir extras de ${selecionadas.length} linha(s) selecionada(s)? Esta ação não pode ser desfeita.`)) return;
+                  setDeletandoDup(true);
+                  const { data: { session } } = await supabase.auth.getSession();
+                  const token = session?.access_token ?? "";
+                  let totalDel = 0;
+                  const erros: string[] = [];
+                  for (const d of selecionadas) {
+                    try {
+                      const res = await fetch("/api/bi/excluir-duplicatas", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                        body: JSON.stringify({ contrato_financeiro_id: d.contrato_id, data_vencimento: d.data_vencimento, categoria: d.categoria, valor: d.valor_unitario }),
+                      });
+                      const json = await res.json();
+                      if (!res.ok) { erros.push(`${d.descricao}: ${json.error}`); continue; }
+                      totalDel += json.deletados ?? 0;
+                      setAuditDups(prev => prev.filter(x => !(x.contrato_id === d.contrato_id && x.data_vencimento === d.data_vencimento && x.categoria === d.categoria)));
+                      setAuditLancs(prev => {
+                        const entry = prev[d.contrato_id];
+                        return entry ? { ...prev, [d.contrato_id]: { ...entry, count: entry.count - (json.deletados ?? 0) } } : prev;
+                      });
+                    } catch { erros.push(d.descricao); }
+                  }
+                  setDupSelecionadas(new Set());
+                  setDeletandoDup(false);
+                  if (erros.length) alert(`Concluído com erros:\n${erros.join("\n")}`);
+                  else alert(`${totalDel} lançamento(s) extra(s) excluído(s) com sucesso.`);
+                };
+
+                return (
+                <div style={{ marginTop: 8, border: "0.5px solid rgba(226,75,74,0.3)", borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+                  <button onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("parcelas_dup") ? n.delete("parcelas_dup") : n.add("parcelas_dup"); return n; })}
+                    style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", flexShrink: 0, display: "inline-block" }} />
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Parcelas Duplicadas no CP</span>
+                      <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>Lançamentos de CP duplicados para o mesmo contrato e vencimento</span>
+                    </span>
+                    <span style={{ background: "#FEE2E2", color: "#991B1B", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>{auditDups.length} duplicatas</span>
+                    <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expDup ? "▲" : "▼"}</span>
+                  </button>
+                  {expDup && <div style={{ borderTop: "0.5px solid var(--border)" }}>
+                    {/* Toolbar de seleção */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: algumaSel ? "#FEF2F2" : "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
+                        <input type="checkbox" checked={todasSel} onChange={e => {
+                          if (e.target.checked) setDupSelecionadas(new Set(dupKeys));
+                          else setDupSelecionadas(new Set());
+                        }} style={{ cursor: "pointer" }} />
+                        {algumaSel ? `${dupSelecionadas.size} selecionada(s)` : "Selecionar todas"}
+                      </label>
+                      {algumaSel && (
+                        <button onClick={excluirSelecionadas} disabled={deletandoDup}
+                          style={{ background: deletandoDup ? "#ccc" : "#E24B4A", color: "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 600, cursor: deletandoDup ? "not-allowed" : "pointer" }}>
+                          {deletandoDup ? "Excluindo…" : `🗑 Excluir ${dupSelecionadas.size} selecionada(s)`}
+                        </button>
+                      )}
+                      {!algumaSel && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Selecione linhas e clique em excluir</span>}
                     </div>
-                  ))}
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "var(--bg-page)" }}>
+                            <th style={{ width: 36, padding: "8px 12px", borderBottom: "0.5px solid var(--border)" }} />
+                            {["Contrato","Credor","Categoria","Vencimento","Qtd","Total duplicado"].map(h => (
+                              <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {auditDups.map((d, i) => {
+                            const dupKey = `${d.contrato_id}|${d.data_vencimento}|${d.categoria}`;
+                            const sel = dupSelecionadas.has(dupKey);
+                            return (
+                              <tr key={i} onClick={() => setDupSelecionadas(prev => { const n = new Set(prev); sel ? n.delete(dupKey) : n.add(dupKey); return n; })}
+                                style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)", background: sel ? "#FEF2F2" : i % 2 === 0 ? "transparent" : "rgba(0,0,0,0.01)", cursor: "pointer" }}>
+                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                                  <input type="checkbox" checked={sel} readOnly style={{ cursor: "pointer" }} />
+                                </td>
+                                <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text-1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.descricao}</td>
+                                <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{d.credor}</td>
+                                <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{d.categoria}</td>
+                                <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{new Date(d.data_vencimento + "T12:00:00").toLocaleDateString("pt-BR")}</td>
+                                <td style={{ padding: "8px 12px" }}><span style={{ background: "#FEE2E2", color: "#991B1B", padding: "1px 8px", borderRadius: 5, fontWeight: 700 }}>{d.count}×</span></td>
+                                <td style={{ padding: "8px 12px", color: "#E24B4A", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>R$ {d.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>}
                 </div>
-              </div>
+                );
+              })()}
+
+              {/* ── 4 Cards de Auditoria (accordion) ─────────────── */}
+              {(() => {
+                const toggleAudit = (key: string) => setAuditExpand(prev => {
+                  const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next;
+                });
+                const AuditCard = ({ id, icon, titulo, subtitulo, count, corBadge, loading: ld, children }: { id: string; icon: string; titulo: string; subtitulo: string; count: number; corBadge: string; loading?: boolean; children: React.ReactNode }) => {
+                  const expanded = auditExpand.has(id);
+                  const cor = ld ? "#ccc" : count > 0 ? "#E24B4A" : "#16A34A";
+                  return (
+                    <div style={{ border: `0.5px solid ${count > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+                      <button onClick={() => toggleAudit(id)} style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
+                        <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{titulo}</span>
+                          <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{subtitulo}</span>
+                        </span>
+                        {ld ? <span style={{ fontSize: 11, color: "var(--text-3)" }}>carregando…</span> : (
+                          <span style={{ background: count > 0 ? corBadge : "#DCFCE7", color: count > 0 ? "#991B1B" : "#166534", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
+                            {count > 0 ? count : "✓"}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expanded ? "▲" : "▼"}</span>
+                      </button>
+                      {expanded && <div style={{ borderTop: "0.5px solid var(--border)" }}>{children}</div>}
+                    </div>
+                  );
+                };
+                return (
+                  <div style={{ marginTop: 24 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Verificações de Dados</div>
+                        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Clique em cada item para ver os detalhes</div>
+                      </div>
+                      <button onClick={() => { carregarAuditExtra(); if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos); }} disabled={auditExtraLoading}
+                        style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: auditExtraLoading ? "not-allowed" : "pointer", opacity: auditExtraLoading ? 0.6 : 1 }}>
+                        ⟳ Reprocessar
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+                      <AuditCard id="romaneios_sem_nf" icon="📋" titulo="Romaneios sem NF vinculada" subtitulo="Abertos há mais de 3 dias sem nota fiscal lançada" count={auditRomaneios.length} corBadge="#FEE2E2" loading={auditExtraLoading}>
+                        {auditRomaneios.length === 0 ? (
+                          <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Nenhum romaneio pendente</div>
+                        ) : (
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead><tr style={{ background: "var(--bg-page)" }}>
+                                {["Número","Data","Produto","Status"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
+                              </tr></thead>
+                              <tbody>{auditRomaneios.map((r, i) => (
+                                <tr key={r.id} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
+                                  <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text-1)" }}>{r.numero ?? "—"}</td>
+                                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{fmtDt(r.data)}</td>
+                                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{r.produto ?? "—"}</td>
+                                  <td style={{ padding: "8px 12px" }}><span style={{ background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 600 }}>{r.status ?? "aberto"}</span></td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                        )}
+                      </AuditCard>
+
+                      <AuditCard id="uom_divergente" icon="⚖️" titulo="Entradas com unidade de medida divergente" subtitulo="Unidade na NF difere da unidade cadastrada no sistema" count={auditUomDiv.length} corBadge="#FEE2E2" loading={auditExtraLoading}>
+                        {auditUomDiv.length === 0 ? (
+                          <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Todas as unidades consistentes</div>
+                        ) : (
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead><tr style={{ background: "var(--bg-page)" }}>
+                                {["Produto","Unidade na NF","Unidade no sistema","NF Entrada"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
+                              </tr></thead>
+                              <tbody>{auditUomDiv.map((r, i) => (
+                                <tr key={r.id} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
+                                  <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text-1)" }}>{r.produto_nome ?? "—"}</td>
+                                  <td style={{ padding: "8px 12px" }}><span style={{ background: "#FEE2E2", color: "#991B1B", padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{r.unidade_nf}</span></td>
+                                  <td style={{ padding: "8px 12px" }}><span style={{ background: "#DBEAFE", color: "#1E40AF", padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{r.unidade}</span></td>
+                                  <td style={{ padding: "8px 12px", color: "var(--text-3)", fontSize: 11 }}>{r.nf_entrada_id.slice(0, 8)}…</td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                        )}
+                      </AuditCard>
+
+                      <AuditCard id="saidas_uom" icon="📦" titulo="Saídas de estoque com unidade divergente" subtitulo="Saídas onde a unidade registrada difere do cadastro do produto" count={0} corBadge="#FEE2E2" loading={auditExtraLoading}>
+                        <div style={{ padding: "12px 16px", fontSize: 12, color: "#92400E", background: "#FEF3C7" }}>
+                          ⚠️ Esta verificação requer que a coluna <strong>unidade_medida</strong> seja adicionada à tabela <strong>movimentacoes_estoque</strong> (migration pendente). Após executar a migration, as saídas passarão a registrar a unidade e poderão ser auditadas.
+                        </div>
+                      </AuditCard>
+
+                      <AuditCard id="consumo_sem_cc" icon="🏷️" titulo="Consumo manual sem centro de custo" subtitulo="Saídas manuais de estoque sem CC apontado" count={auditSemCC.length} corBadge="#FEE2E2" loading={auditExtraLoading}>
+                        {auditSemCC.length === 0 ? (
+                          <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Todos os consumos manuais têm centro de custo</div>
+                        ) : (
+                          <>
+                            <div style={{ padding: "10px 16px 6px", fontSize: 12, color: "#92400E", background: "#FEF3C7", borderBottom: "0.5px solid var(--border)" }}>
+                              ⚠️ Esses consumos não têm CC apontado — o custo não foi apropriado corretamente.
+                            </div>
+                            <div style={{ overflowX: "auto" }}>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <thead><tr style={{ background: "var(--bg-page)" }}>
+                                  {["Descrição","Quantidade","Unidade","Data"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
+                                </tr></thead>
+                                <tbody>{auditSemCC.map((r, i) => (
+                                  <tr key={r.id} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
+                                    <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{r.descricao ?? "—"}</td>
+                                    <td style={{ padding: "8px 12px", fontVariantNumeric: "tabular-nums" }}>{fmtN(r.quantidade ?? 0, 3)}</td>
+                                    <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{r.unidade_medida ?? "—"}</td>
+                                    <td style={{ padding: "8px 12px", color: "var(--text-3)", fontSize: 11 }}>{fmtDt(r.created_at?.slice(0, 10))}</td>
+                                  </tr>
+                                ))}</tbody>
+                              </table>
+                            </div>
+                          </>
+                        )}
+                      </AuditCard>
+
+                    </div>
+                  </div>
+                );
+              })()}
+
             </div>
           );
         })()}

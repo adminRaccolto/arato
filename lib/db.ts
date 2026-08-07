@@ -2355,30 +2355,8 @@ export async function atualizarContratoFinanceiro(id: string, c: Partial<Contrat
 }
 
 export async function excluirContratoFinanceiro(id: string): Promise<void> {
-  // Exclui lancamentos CP gerados pelas parcelas (criados via baixarParcelaPagamento)
-  const { data: lancsVinculados } = await supabase
-    .from("lancamentos")
-    .select("id")
-    .eq("contrato_financeiro_id", id);
-  if (lancsVinculados && lancsVinculados.length > 0) {
-    await supabase.from("lancamentos").delete().in("id", lancsVinculados.map(l => l.id));
-  }
-
-  const r1 = await supabase.from("parcelas_liberacao").delete().eq("contrato_id", id);
-  if (r1.error) throw new Error(`Erro ao excluir parcelas de liberação: ${r1.error.message}`);
-
-  const r2 = await supabase.from("parcelas_pagamento").delete().eq("contrato_id", id);
-  if (r2.error) throw new Error(`Erro ao excluir parcelas de pagamento: ${r2.error.message}`);
-
-  const r3 = await supabase.from("garantias_contrato").delete().eq("contrato_id", id);
-  if (r3.error) throw new Error(`Erro ao excluir garantias: ${r3.error.message}`);
-
-  const r4 = await supabase.from("centros_custo_contrato").delete().eq("contrato_id", id);
-  if (r4.error) throw new Error(`Erro ao excluir centros de custo: ${r4.error.message}`);
-
-  const r5 = await supabase.from("aditivos_contrato").delete().eq("contrato_id", id);
-  if (r5.error) throw new Error(`Erro ao excluir aditivos: ${r5.error.message}`);
-
+  // CASCADE no banco cuida de: parcelas_liberacao, parcelas_pagamento,
+  // garantias_contrato, centros_custo_contrato, aditivos_contrato, lancamentos
   const { error } = await supabase.from("contratos_financeiros").delete().eq("id", id);
   if (error) throw error;
 }

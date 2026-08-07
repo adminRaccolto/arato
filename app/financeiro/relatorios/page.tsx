@@ -157,8 +157,10 @@ function FinanceiroRelatoriosInner() {
 
   // CP/CR — filtros (devem ficar no topo — Rules of Hooks)
   const [tipoCPCR,    setTipoCPCR]    = useState<"todos"|"receber"|"pagar">("todos");
-  const [statusCPCR,  setStatusCPCR]  = useState<"todos"|"em_aberto"|"vencido"|"baixado">("todos");
-  const [catCPCR,     setCatCPCR]     = useState("");
+  const [statusCPCR,  setStatusCPCR]  = useState<Set<string>>(new Set());   // vazio = todos
+  const [catCPCR,     setCatCPCR]     = useState<Set<string>>(new Set());   // vazio = todas
+  const [statusDDOpen, setStatusDDOpen] = useState(false);
+  const [catDDOpen,    setCatDDOpen]    = useState(false);
   const [inicioCPCR,  setInicioCPCR]  = useState(`${anoAtual}-01-01`);
   const [fimCPCR,     setFimCPCR]     = useState(`${anoAtual}-12-31`);
 
@@ -1440,8 +1442,8 @@ function FinanceiroRelatoriosInner() {
                   if (inicioCPCR && dt < inicioCPCR) return false;
                   if (fimCPCR   && dt > fimCPCR)   return false;
                   if (tipoCPCR !== "todos" && l.tipo !== tipoCPCR) return false;
-                  if (statusCPCR !== "todos" && statusEfetivo(l) !== statusCPCR) return false;
-                  if (catCPCR && l.categoria !== catCPCR) return false;
+                  if (statusCPCR.size > 0 && !statusCPCR.has(statusEfetivo(l))) return false;
+                  if (catCPCR.size > 0 && !catCPCR.has(l.categoria ?? "")) return false;
                   return true;
                 });
 
@@ -1469,8 +1471,8 @@ function FinanceiroRelatoriosInner() {
                     ["Relatório CP / CR"],
                     ["Período", `${inicioCPCR} a ${fimCPCR}`],
                     ["Tipo", tipoCPCR === "todos" ? "Todos (CR + CP)" : tipoCPCR === "receber" ? "Contas a Receber" : "Contas a Pagar"],
-                    ["Status", statusCPCR === "todos" ? "Todos" : statusCPCR],
-                    ["Categoria", catCPCR || "Todas"],
+                    ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].join(", ")],
+                    ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
                     [],
                     ["Total a Receber (CR)", totalCR],
                     ["Total a Pagar (CP)", totalCP],
@@ -1537,21 +1539,66 @@ function FinanceiroRelatoriosInner() {
                           <option value="pagar">Contas a Pagar (CP)</option>
                         </select>
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {/* Status — multi-select dropdown */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
                         <label style={labelStyle}>Status</label>
-                        <select value={statusCPCR} onChange={e => setStatusCPCR(e.target.value as typeof statusCPCR)} style={{ ...inputStyle, width: 140 }}>
-                          <option value="todos">Todos</option>
-                          <option value="em_aberto">Em Aberto</option>
-                          <option value="vencido">Vencido</option>
-                          <option value="baixado">Baixado / Pago</option>
-                        </select>
+                        <button onClick={() => { setStatusDDOpen(p => !p); setCatDDOpen(false); }}
+                          style={{ ...inputStyle, width: 160, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: "#fff" }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
+                            {statusCPCR.size === 0 ? "Todos" : `${statusCPCR.size} selecionado(s)`}
+                          </span>
+                          <span style={{ fontSize: 10, color: "var(--text-3)", marginLeft: 4 }}>▼</span>
+                        </button>
+                        {statusDDOpen && (
+                          <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 200, background: "#fff", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 180, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", marginTop: 2 }}>
+                            {[{v:"em_aberto",l:"Em Aberto"},{v:"vencido",l:"Vencido"},{v:"baixado",l:"Baixado / Pago"},{v:"parcial",l:"Parcial"}].map(opt => (
+                              <label key={opt.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
+                                onMouseEnter={e => (e.currentTarget.style.background="#F4F6FA")}
+                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}>
+                                <input type="checkbox" checked={statusCPCR.has(opt.v)} onChange={e => {
+                                  setStatusCPCR(prev => { const n = new Set(prev); e.target.checked ? n.add(opt.v) : n.delete(opt.v); return n; });
+                                }} style={{ cursor: "pointer" }} />
+                                {opt.l}
+                              </label>
+                            ))}
+                            <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
+                            <button onClick={() => { setStatusCPCR(new Set()); setStatusDDOpen(false); }}
+                              style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+                              Limpar seleção
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+
+                      {/* Categoria — multi-select dropdown */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
                         <label style={labelStyle}>Categoria</label>
-                        <select value={catCPCR} onChange={e => setCatCPCR(e.target.value)} style={{ ...inputStyle, width: 160 }}>
-                          <option value="">Todas</option>
-                          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <button onClick={() => { setCatDDOpen(p => !p); setStatusDDOpen(false); }}
+                          style={{ ...inputStyle, width: 200, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: "#fff" }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
+                            {catCPCR.size === 0 ? "Todas" : `${catCPCR.size} selecionada(s)`}
+                          </span>
+                          <span style={{ fontSize: 10, color: "var(--text-3)", marginLeft: 4 }}>▼</span>
+                        </button>
+                        {catDDOpen && (
+                          <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 200, background: "#fff", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 220, maxHeight: 260, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", marginTop: 2 }}>
+                            {categorias.map(c => (
+                              <label key={c} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
+                                onMouseEnter={e => (e.currentTarget.style.background="#F4F6FA")}
+                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}>
+                                <input type="checkbox" checked={catCPCR.has(c)} onChange={e => {
+                                  setCatCPCR(prev => { const n = new Set(prev); e.target.checked ? n.add(c) : n.delete(c); return n; });
+                                }} style={{ cursor: "pointer" }} />
+                                {c}
+                              </label>
+                            ))}
+                            <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
+                            <button onClick={() => { setCatCPCR(new Set()); setCatDDOpen(false); }}
+                              style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+                              Limpar seleção
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end" }}>
                         <button onClick={exportarXLSX} disabled={lancsCPCR.length === 0}

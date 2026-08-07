@@ -229,6 +229,7 @@ export default function ContratosFinanceiros() {
   const [matriculas, setMatriculas]               = useState<MatriculaImovel[]>([]);
   const [maquinas, setMaquinas]                   = useState<Maquina[]>([]);
   const [imoveisUrbanos, setImoveisUrbanos]       = useState<ImovelUrbano[]>([]);
+  const [prazoMap, setPrazoMap]                   = useState<Record<string, number>>({});
 
   // forms das abas
   const [fLib, setFLib]   = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
@@ -259,6 +260,19 @@ export default function ContratosFinanceiros() {
     const timer = setInterval(buscarPtax, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [fazendaId]);
+
+  // ── Carrega contagem de parcelas por contrato para coluna Prazo ──
+  useEffect(() => {
+    if (contratos.length === 0) { setPrazoMap({}); return; }
+    const ids = contratos.map(c => c.id);
+    supabase.from("parcelas_pagamento").select("contrato_id").in("contrato_id", ids)
+      .then(({ data }) => {
+        if (!data) return;
+        const m: Record<string, number> = {};
+        for (const p of data) m[p.contrato_id] = (m[p.contrato_id] ?? 0) + 1;
+        setPrazoMap(m);
+      });
+  }, [contratos]);
 
   // ── Busca taxa variável de referência da tabela taxas_variaveis_historico ──
   const buscarTaxaVariavelRef = async (indexador: string) => {
@@ -639,12 +653,10 @@ export default function ContratosFinanceiros() {
     else base = calcularPRICE(valorBase, i_periodo, n, car, carTipo);
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
     const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
-    // Remove CP automáticos não baixados antes de recriar (evita duplicatas ao recalcular)
-    if (nrDoc) {
-      await supabase.from("lancamentos").delete()
-        .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
-        .eq("numero_documento", nrDoc).neq("status", "baixado");
-    }
+    // Remove CP automáticos não baixados — usa contrato_financeiro_id (sempre presente, não depende de numero_documento)
+    await supabase.from("lancamentos").delete()
+      .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
+      .eq("contrato_financeiro_id", contratoModal.id).neq("status", "baixado");
     const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
     // Gera CP lançamentos para cada parcela
     const hoje = new Date().toISOString().slice(0, 10);
@@ -652,7 +664,7 @@ export default function ContratosFinanceiros() {
     for (const p of salvas) {
       const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
       const descBase = `${descricaoCalc} — Parcela ${p.num_parcela}`;
-      const camposBase = { fazenda_id: fazendaId, tipo: "pagar", moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro", pessoa_id: pessoaId || null, ano_safra_id: anoSafraVigenteId || null };
+      const camposBase = { fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar", moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro", pessoa_id: pessoaId || null, ano_safra_id: anoSafraVigenteId || null };
       if (p.amortizacao > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[tipoContrato], valor: p.amortizacao });
       if (p.juros > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[tipoContrato], valor: p.juros });
       if (p.despesas_acessorios > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", valor: p.despesas_acessorios });
@@ -668,12 +680,10 @@ export default function ContratosFinanceiros() {
     setErroModal(null);
     setSalvando(true);
     try {
-      // 1. Remove CP automáticos não baixados antes de recriar
-      if (contratoModal.numero_documento) {
-        await supabase.from("lancamentos").delete()
-          .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
-          .eq("numero_documento", contratoModal.numero_documento).neq("status", "baixado");
-      }
+      // 1. Remove CP automáticos não baixados — usa contrato_financeiro_id (sempre presente)
+      await supabase.from("lancamentos").delete()
+        .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
+        .eq("contrato_financeiro_id", contratoModal.id).neq("status", "baixado");
 
       // 2. Monta parcelas — garante que valor nunca seja null
       const hoje = new Date().toISOString().slice(0, 10);
@@ -696,7 +706,7 @@ export default function ContratosFinanceiros() {
       for (const p of salvas) {
         const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
         lancsParcelas.push({
-          fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda,
+          fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar", moeda: contratoModal.moeda,
           descricao: `${contratoModal.descricao} — Parcela ${p.num_parcela}`,
           categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento,
           data_vencimento: p.data_vencimento, valor: p.valor_parcela ?? 0, status: statusLanc,
@@ -884,8 +894,8 @@ export default function ContratosFinanceiros() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Descrição / Credor", "Nº Operação", "Tipo", "Cálculo", "Taxa a.a.", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 4 && i <= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                    {["Descrição / Credor", "Nº Operação", "Tipo", "Moeda", "Cálculo", "Taxa a.a.", "Prazo", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "10px 14px", textAlign: i < 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -900,9 +910,15 @@ export default function ContratosFinanceiros() {
                         <td style={{ padding: "10px 14px" }}>
                           <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao}</div>
                           <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
+                          {c.produtor_id && (() => { const p = produtores.find(x => x.id === c.produtor_id); return p ? <div style={{ fontSize: 11, color: "#1A4870", fontWeight: 500, marginTop: 2 }}>{p.nome}</div> : null; })()}
                         </td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
-                        <td style={{ padding: "10px 14px" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          {c.moeda === "USD"
+                            ? <span style={{ background: "#E8F4E8", color: "#166534", fontWeight: 700, fontSize: 11, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.3px" }}>USD</span>
+                            : <span style={{ background: "#E8EEFA", color: "#1A4870", fontWeight: 700, fontSize: 11, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.3px" }}>BRL</span>}
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge({ sac: "SAC", sac_crescente: "SACRE", price: "PRICE", outros: "Outros" }[c.tipo_calculo ?? "sac"] ?? (c.tipo_calculo ?? "SAC").toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>
                           {c.taxa_tipo === "variavel" && c.indexador
@@ -910,6 +926,11 @@ export default function ContratosFinanceiros() {
                                 {c.indexador}{c.spread_aa != null ? <span style={{ fontSize: 10, color: "var(--text-3)" }}> +{fmtNum(c.spread_aa, 2)}%</span> : ""}
                               </span>
                             : c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", whiteSpace: "nowrap" }}>
+                          {prazoMap[c.id]
+                            ? <><span style={{ fontWeight: 600 }}>{prazoMap[c.id]}×</span> <span style={{ fontSize: 11, color: "var(--text-3)" }}>{{ 1: "mensal", 3: "trimestral", 6: "semestral", 12: "anual" }[c.periodicidade_meses ?? 1] ?? `${c.periodicidade_meses ?? 1}m`}</span></>
+                            : "—"}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <div style={{ fontWeight: 600 }}>{c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}</div>
