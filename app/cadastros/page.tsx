@@ -4438,7 +4438,7 @@ function CadastrosInner() {
 
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
                       <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                      <button style={{ ...btnV, opacity: salvando || (["defensivo","fertilizante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (["defensivo","fertilizante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
+                      <button style={{ ...btnV, opacity: salvando || (fIns.categoria === "defensivo" ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (fIns.categoria === "defensivo" ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
                         {salvando ? "Salvando…" : "Salvar"}
                       </button>
                     </div>
