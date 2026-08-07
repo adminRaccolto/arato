@@ -185,17 +185,37 @@ export default function ClassificacaoPage() {
       setCarregandoPad(false);
       return;
     }
-    const rows = novos.map(p => ({
-      fazenda_id:    fazendaId,
-      nome_regra:    p.nome_regra,
-      tipo_nf:       "produto" as const,
-      ncm:           p.ncm,
-      categoria:     p.categoria,
+    // Tenta com tipo_nf; se a coluna ainda não existir no banco, tenta sem ela
+    const rowsComTipo = novos.map(p => ({
+      fazenda_id:       fazendaId,
+      nome_regra:       p.nome_regra,
+      tipo_nf:          "produto" as const,
+      ncm:              p.ncm,
+      categoria:        p.categoria,
       descricao_contem: p.descricao_contem || null,
-      ativo:         true,
-      qtd_aplicacoes: 0,
+      ativo:            true,
+      qtd_aplicacoes:   0,
     }));
-    await supabase.from("regras_classificacao_nf").insert(rows);
+    let { error: errIns } = await supabase.from("regras_classificacao_nf").insert(rowsComTipo);
+    if (errIns && errIns.message?.includes("tipo_nf")) {
+      // Migration ainda não rodou — insere sem o campo (usa default do banco futuramente)
+      const rowsSemTipo = novos.map(p => ({
+        fazenda_id:       fazendaId,
+        nome_regra:       p.nome_regra,
+        ncm:              p.ncm,
+        categoria:        p.categoria,
+        descricao_contem: p.descricao_contem || null,
+        ativo:            true,
+        qtd_aplicacoes:   0,
+      }));
+      const { error: errIns2 } = await supabase.from("regras_classificacao_nf").insert(rowsSemTipo);
+      errIns = errIns2 ?? null;
+    }
+    if (errIns) {
+      setMsgPadroes(`Erro ao inserir: ${errIns.message}`);
+      setCarregandoPad(false);
+      return;
+    }
     setMsgPadroes(`${novos.length} regra(s) padrão carregada(s) com sucesso.`);
     setCarregandoPad(false);
     carregar();
