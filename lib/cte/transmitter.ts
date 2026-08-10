@@ -37,7 +37,9 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         },
         cert: pem.cert,
         key:  pem.key,
-        rejectUnauthorized: true,
+        // Domínios *.gov.br usam ICP-Brasil não incluída no bundle Node.js.
+        // A autenticação é feita por mTLS — desabilitamos apenas para SEFAZ.
+        rejectUnauthorized: !u.hostname.endsWith(".gov.br"),
       },
       (res) => {
         let data = "";
