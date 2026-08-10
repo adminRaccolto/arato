@@ -17,15 +17,12 @@ const ENDPOINT_PROD: Record<string, string> = {
   _svrs: "https://cte.svrs.rs.gov.br/ws/CTeAutorizacao/CTeAutorizacao4.asmx",
 };
 
-const ENDPOINT_HOM: Record<string, string> = {
-  // Caminho correto: /portal/ é obrigatório no servidor federal de homologação
-  _svcAN: "https://hom.cte.fazenda.gov.br/portal/CTeAutorizacao4/CTeAutorizacao4.asmx",
-};
+// Homologação: o SVRS hom foi descontinuado (NXDOMAIN) e o SVC-AN federal
+// não expõe endpoint SOAP sem mTLS. Usamos o SVRS produção com tpAmb=2 no XML.
+// O SVRS processa tpAmb=2 como teste sem registrar na base de produção.
+// REQUISITO: certificado A1 real emitido por AC ICP-Brasil (Certisign, Soluti, Valid, SERPRO...).
 
-function endpoint(uf: string, ambiente: "producao" | "homologacao"): string {
-  if (ambiente === "homologacao") {
-    return ENDPOINT_HOM[uf] ?? ENDPOINT_HOM["_svcAN"];
-  }
+function endpoint(uf: string, _ambiente: "producao" | "homologacao"): string {
   return ENDPOINT_PROD[uf] ?? ENDPOINT_PROD["_svrs"];
 }
 
@@ -66,7 +63,12 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         });
       }
     );
-    req.on("error", reject);
+    req.on("error", (err: NodeJS.ErrnoException) => {
+      const msg = err.code === "ECONNRESET" || err.code === "ECONNREFUSED"
+        ? `Servidor SEFAZ recusou a conexão (${err.code}). Verifique o certificado A1 — deve ser emitido por AC ICP-Brasil (Certisign, Soluti, Valid, SERPRO).`
+        : String(err);
+      reject(new Error(msg));
+    });
     req.write(body);
     req.end();
   });
