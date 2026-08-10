@@ -153,7 +153,16 @@ export async function POST(req: NextRequest) {
       }
 
       if (parentUpdates.length) {
-        await chunkUpsert(sb, "operacoes_gerenciais", parentUpdates, "id");
+        // UPDATE direto — não upsert, pois upsert tenta INSERT sem classificacao
+        // e o PostgreSQL valida NOT NULL antes de detectar o conflito de PK
+        const PARENT_BATCH = 50;
+        for (let i = 0; i < parentUpdates.length; i += PARENT_BATCH) {
+          await Promise.all(
+            parentUpdates.slice(i, i + PARENT_BATCH).map(({ id, parent_id }) =>
+              sb.from("operacoes_gerenciais").update({ parent_id }).eq("id", id)
+            )
+          );
+        }
       }
 
       resultados.push({
