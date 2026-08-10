@@ -76,15 +76,15 @@ const exibirValor = (l: Lancamento) => {
 
 type OrigemLanc = "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "manual";
 const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: string; border: string }> = {
-  nf_entrada:          { label: "NF Entrada",      bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
-  nf_saida:            { label: "NF Saída",        bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
+  nf_entrada:          { label: "NF Entrada",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
+  nf_saida:            { label: "NF Saída",        bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
   pedido_compra:       { label: "Pedido Compra",   bg: "#FBF3E0", cl: "#7A4300",  border: "#C9921B" },
   arrendamento:        { label: "Arrendamento",    bg: "#FEF3E2", cl: "#7A4800",  border: "#EF9F27" },
   tesouraria:          { label: "Tesouraria",      bg: "#EEE6F8", cl: "#4A1A7A",  border: "#8B5CF6" },
   plantio:             { label: "Plantio",         bg: "#DCFCE7", cl: "#166534",  border: "#16A34A" },
-  contrato_financeiro: { label: "Contrato",        bg: "#E6F1FB", cl: "#0C447C",  border: "#378ADD" },
+  contrato_financeiro: { label: "Contrato",        bg: "#E6F1FB", cl: "#0C447C",  border: "#444444" },
   manual:              { label: "Manual",          bg: "#F1EFE8", cl: "var(--text-2)",     border: "var(--border)" },
-  auto:                { label: "Automático",      bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
+  auto:                { label: "Automático",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
 };
 const origemMeta = (l: { origem_lancamento?: string; auto?: boolean }) => {
   const k = (l.origem_lancamento as OrigemLanc | undefined) ?? (l.auto ? "auto" : "manual");
@@ -117,7 +117,7 @@ const desmascarar = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")
 const numParaMascara = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const dotStatus = (s: string) => ({
-  em_aberto: { cor: "#378ADD", title: "Em aberto"  },
+  em_aberto: { cor: "#444444", title: "Em aberto"  },
   vencido:   { cor: "#E24B4A", title: "Vencido"    },
   vencendo:  { cor: "#EF9F27", title: "Vencendo"   },
   parcial:   { cor: "#C9921B", title: "Parcial"     },
@@ -996,9 +996,9 @@ function ContasPagarInner() {
                   { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => statusEfetivo(l) !== "baixado" && l.moeda !== "barter").length, cor: "#60A5FA", activeBg: "rgba(59,130,246,0.15)",  activeBorder: "rgba(59,130,246,0.4)"  },
                   { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                 cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",   activeBorder: "rgba(239,68,68,0.4)"   },
                   { key: "baixado",  label: "Pagos",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
-                  { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#FBBF24", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
+                  { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#555555", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
                   { key: "previsao",            label: "Previsões",           count: lancamentos.filter(l => l.natureza === "previsao").length,                                                                           cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
-                  { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#378ADD", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
+                  { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#444444", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
                   { key: "todos",               label: "Todos",               count: lancamentos.length,                                                                                                    cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
                   <button key={f.key} className="cp-tab" onClick={() => setFiltro(f.key)}
@@ -1055,7 +1055,10 @@ function ContasPagarInner() {
                         {col("produtor")   && <th style={{ ...thS(cw("produtor"),   "left"),   width: cw("produtor"),   position: "relative", userSelect: "none" }}>Produtor<ResizeHandle onMouseDown={startResize("produtor")} /></th>}
                         {col("origem")     && <th style={{ ...thS(cw("origem"),     "center"), width: cw("origem"),     position: "relative", userSelect: "none" }}>Origem<ResizeHandle onMouseDown={startResize("origem")} /></th>}
                         {col("obs")        && <th style={{ ...thS(cw("obs"),        "left"),   width: cw("obs"),        position: "relative", userSelect: "none" }}>Observação<ResizeHandle onMouseDown={startResize("obs")} /></th>}
-                        <th style={{ ...thS(110, "center"), width: 110 }}>Ações</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Baixar</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Reprog.</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Editar</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>NF</th>
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
@@ -1075,12 +1078,12 @@ function ContasPagarInner() {
                         {col("produtor")   && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} /></td>}
                         {col("origem")     && <td></td>}
                         {col("obs")        && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} /></td>}
-                        <td></td>
+                        <td></td><td></td><td></td><td></td>
                       </tr>
                     </thead>
                     <tbody>
                       {filtrados.length === 0 ? (
-                        <tr><td colSpan={16} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
+                        <tr><td colSpan={19} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
                       ) : filtrados.map((l, li) => {
                         const isPrevisao = l.natureza === "previsao";
                         const sEfet      = statusEfetivo(l);
@@ -1136,7 +1139,7 @@ function ContasPagarInner() {
                             </td>
                             {/* Operação */}
                             {col("operacao") && <td style={{ padding: "8px 8px" }}>
-                              <span style={{ fontSize: 10, background: "rgba(251,191,36,0.1)", color: "#FBBF24", padding: "2px 7px", borderRadius: 5, border: "0.5px solid rgba(251,191,36,0.2)", whiteSpace: "nowrap" }}>
+                              <span style={{ fontSize: 10, background: "#F0F0F0", color: "#555555", padding: "2px 7px", borderRadius: 5, border: "0.5px solid #DEDEDE", whiteSpace: "nowrap" }}>
                                 {l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}
                               </span>
                             </td>}
@@ -1170,7 +1173,7 @@ function ContasPagarInner() {
                                     <span style={{ color: "var(--text-2)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
                                     <div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div>
                                     <div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}>
-                                      <div style={{ height: 3, borderRadius: 2, background: "#1A4870", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
+                                      <div style={{ height: 3, borderRadius: 2, background: "#111111", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
                                     </div>
                                   </div>
                                 : l.valor_pago != null && l.valor_pago > 0
@@ -1179,7 +1182,7 @@ function ContasPagarInner() {
                             </td>}
                             {/* Moeda */}
                             {col("moeda") && <td style={{ padding: "8px 8px", textAlign: "center" }}>
-                              <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "rgba(251,191,36,0.1)" : l.moeda === "barter" ? "rgba(251,191,36,0.1)" : "var(--bg-input)", color: l.moeda === "USD" ? "#FBBF24" : l.moeda === "barter" ? "#FBBF24" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)" }}>
+                              <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "#F0F0F0" : l.moeda === "barter" ? "#F0F0F0" : "var(--bg-input)", color: l.moeda === "USD" ? "#555555" : l.moeda === "barter" ? "#555555" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)" }}>
                                 {l.moeda === "barter" ? "Barter" : (l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `${l.moeda}→${l.moeda_pagamento}` : l.moeda)}
                               </span>
                             </td>}
@@ -1198,35 +1201,42 @@ function ContasPagarInner() {
                             </td>}
                             {/* Observação */}
                             {col("obs") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", maxWidth: 160 }}>{obsExibir}</td>}
-                            {/* Ação */}
-                            <td style={{ padding: "5px 6px", textAlign: "center" }}>
-                              <div style={{ display: "flex", gap: 3, justifyContent: "center", alignItems: "center" }}>
-                                {isPrevisao ? (
-                                  <button onClick={() => confirmarPrevisao(l)} title="Confirmar previsão"
-                                    style={btnAcao("#1A5CB8", "#fff")}>✓</button>
-                                ) : l.moeda === "barter" ? (
-                                  <span title="Liquidar no fechamento da safra" style={{ ...btnAcao("#FBF3E0", "#7A5200"), border: "0.5px solid #C9921B50", display: "flex", alignItems: "center", justifyContent: "center" }}>🌾</span>
-                                ) : l.status !== "baixado" ? (
-                                  <button onClick={() => abrirBaixa(l)} title="Baixar / Registrar pagamento"
-                                    style={btnAcao("#C9921B", "#fff")}>↓</button>
-                                ) : (
-                                  <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de pagamento"
-                                    style={btnAcao("#FBF3E0", "#7A5C00", "0.5px solid #C9921B")}>↺</button>
-                                )}
-                                {l.status !== "baixado" && (
-                                  <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
-                                    style={btnAcao("#EFF6FF", "#1E40AF", "0.5px solid #BFDBFE")}>↕</button>
-                                )}
-                                {l.status !== "baixado" && (
-                                  <button onClick={() => abrirEditar(l)} title="Editar lançamento"
-                                    style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
-                                )}
-                                {l.nfe_numero && (
-                                  <span title={`NF vinculada: ${l.nfe_numero}`} style={{ fontSize: 9, padding: "2px 5px", borderRadius: 4, background: "rgba(96,165,250,0.1)", color: "#60A5FA", border: "0.5px solid rgba(96,165,250,0.25)", fontWeight: 700, whiteSpace: "nowrap" }}>
-                                    NF
-                                  </span>
-                                )}
-                              </div>
+                            {/* Baixar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {isPrevisao ? (
+                                <button onClick={() => confirmarPrevisao(l)} title="Confirmar previsão"
+                                  style={btnAcao("#2A2A2A", "#fff")}>✓</button>
+                              ) : l.moeda === "barter" ? (
+                                <span title="Liquidar no fechamento da safra" style={{ ...btnAcao("#F5F5F5", "#7A5200"), border: "0.5px solid #C9921B50", display: "flex", alignItems: "center", justifyContent: "center" }}>🌾</span>
+                              ) : l.status !== "baixado" ? (
+                                <button onClick={() => abrirBaixa(l)} title="Baixar / Registrar pagamento"
+                                  style={btnAcao("#C9921B", "#fff")}>↓</button>
+                              ) : (
+                                <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de pagamento"
+                                  style={btnAcao("#F5F5F5", "#7A5C00", "0.5px solid #C9921B")}>↺</button>
+                              )}
+                            </td>
+                            {/* Reprogramar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {l.status !== "baixado" && (
+                                <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
+                                  style={btnAcao("#F2F2F2", "#333", "0.5px solid #D0D0D0")}>↕</button>
+                              )}
+                            </td>
+                            {/* Editar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {l.status !== "baixado" && (
+                                <button onClick={() => abrirEditar(l)} title="Editar lançamento"
+                                  style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
+                              )}
+                            </td>
+                            {/* NF */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {l.nfe_numero && (
+                                <span title={`NF vinculada: ${l.nfe_numero}`} style={{ fontSize: 9, padding: "2px 5px", borderRadius: 4, background: "#F0F0F0", color: "#444", border: "0.5px solid #D0D0D0", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                  NF
+                                </span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1237,7 +1247,7 @@ function ContasPagarInner() {
               </div>
 
               <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-3)", background: "var(--bg-nav)" }}>
-                <span>CP automáticas: <strong style={{ color: "#FBBF24" }}>{lancamentos.filter(l => l.auto).length}</strong></span>
+                <span>CP automáticas: <strong style={{ color: "#555555" }}>{lancamentos.filter(l => l.auto).length}</strong></span>
                 <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
                   <span>Exibindo {filtrados.length} de {filtradosBase.length} registros</span>
                   {filtrados.length > 0 && (
@@ -1305,7 +1315,7 @@ function ContasPagarInner() {
                           Importe NFs via SIEG ou cadastre manualmente em <strong>Compras &gt; NF de Produtos</strong>,<br/>
                           depois clique em <strong>Processar</strong> — o financeiro é gerado automaticamente.
                         </div>
-                        <a href="/compras/nf" style={{ display: "inline-block", padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                        <a href="/compras/nf" style={{ display: "inline-block", padding: "8px 18px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
                           Ir para NFs de Produtos →
                         </a>
                       </>
@@ -1331,8 +1341,8 @@ function ContasPagarInner() {
                         return (
                           <tr key={nf.id}
                             onClick={() => setNfVinculoSelecionada(sel ? null : nf)}
-                            style={{ cursor: "pointer", background: sel ? "#D5E8F5" : "transparent", borderBottom: "0.5px solid #F0F2F7" }}>
-                            <td style={{ padding: "8px 10px", fontWeight: 700, color: sel ? "#0B2D50" : "#1A4870" }}>{nf.numero}/{nf.serie}</td>
+                            style={{ cursor: "pointer", background: sel ? "#E8E8E8" : "transparent", borderBottom: "0.5px solid #F0F2F7" }}>
+                            <td style={{ padding: "8px 10px", fontWeight: 700, color: sel ? "#0D0D0D" : "#111111" }}>{nf.numero}/{nf.serie}</td>
                             <td style={{ padding: "8px 10px", color: "var(--text-1)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nf.emitente_nome || "—"}</td>
                             <td style={{ padding: "8px 10px", textAlign: "center", color: "var(--text-2)" }}>{fmtD(nf.data_emissao)}</td>
                             <td style={{ padding: "8px 10px", textAlign: "center", color: nf.data_vencimento_cp ? "#7A4300" : "var(--text-3)", fontWeight: nf.data_vencimento_cp ? 600 : 400 }}>{fmtD(nf.data_vencimento_cp)}</td>
@@ -1356,7 +1366,7 @@ function ContasPagarInner() {
             {/* Footer */}
             <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
               {nfVinculoSelecionada && (
-                <span style={{ fontSize: 12, color: "#0B2D50", background: "#D5E8F5", padding: "4px 12px", borderRadius: 8, fontWeight: 600, marginRight: "auto" }}>
+                <span style={{ fontSize: 12, color: "#0D0D0D", background: "#E8E8E8", padding: "4px 12px", borderRadius: 8, fontWeight: 600, marginRight: "auto" }}>
                   NF {nfVinculoSelecionada.numero} selecionada
                 </span>
               )}
@@ -1401,7 +1411,7 @@ function ContasPagarInner() {
                     ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
                   });
                 }}
-                style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: nfVinculoSelecionada ? "#1A4870" : "#CCC", color: "#fff", cursor: nfVinculoSelecionada ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700 }}>
+                style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: nfVinculoSelecionada ? "#111111" : "#CCC", color: "#fff", cursor: nfVinculoSelecionada ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700 }}>
                 Vincular e Baixar
               </button>
             </div>
@@ -1416,7 +1426,7 @@ function ContasPagarInner() {
         return (
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: "#1A4870", color: "#fff", borderRadius: 14,
+          background: "#111111", color: "#fff", borderRadius: 14,
           padding: "12px 22px", display: "flex", alignItems: "center", gap: 18,
           boxShadow: "0 2px 8px rgba(11,45,80,0.07)", zIndex: 90, whiteSpace: "nowrap",
           maxWidth: "calc(100vw - 32px)",
@@ -1499,7 +1509,7 @@ function ContasPagarInner() {
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
               <button onClick={() => setModalReprog(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-input)", color: "var(--text-2)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarReprog} disabled={salvando || !reprogForm.nova_data} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A5CB8", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando || !reprogForm.nova_data ? "not-allowed" : "pointer", opacity: salvando || !reprogForm.nova_data ? 0.5 : 1 }}>
+              <button onClick={salvarReprog} disabled={salvando || !reprogForm.nova_data} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#2A2A2A", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando || !reprogForm.nova_data ? "not-allowed" : "pointer", opacity: salvando || !reprogForm.nova_data ? 0.5 : 1 }}>
                 {salvando ? "Salvando..." : "Confirmar Reprogramação"}
               </button>
             </div>
@@ -1531,7 +1541,7 @@ function ContasPagarInner() {
             <div style={{ background: "var(--border-row)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap", border: "0.5px solid var(--border)" }}>
               <span>Valor original: <strong style={{ color: "#EF4444" }}>{fmtBRL(valorTotal)}</strong></span>
               {jaPago > 0 && <span>Já pago: <strong style={{ color: "#22C55E" }}>{fmtBRL(jaPago)}</strong></span>}
-              {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#FBBF24" }}>{fmtBRL(valorOrig)}</strong></span>}
+              {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#555555" }}>{fmtBRL(valorOrig)}</strong></span>}
               <span>Vencimento: <strong style={{ color: "var(--text-1)" }}>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
             </div>
 
@@ -1551,7 +1561,7 @@ function ContasPagarInner() {
 
                 {/* ── Classificação ── */}
                 <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
                       <label style={lbl}>Fornecedor / Credor</label>
@@ -1605,7 +1615,7 @@ function ContasPagarInner() {
 
                 {/* ── Encargos ── */}
                 <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                     <div>
                       <label style={lbl}>Multa (%)</label>
@@ -1636,7 +1646,7 @@ function ContasPagarInner() {
                     </div>
                   </div>
                   {temEncargo && (
-                    <div style={{ marginTop: 10, background: "#F0F7FF", borderRadius: 7, padding: "7px 12px", fontSize: 12, color: "#0B2D50", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ marginTop: 10, background: "#F0F7FF", borderRadius: 7, padding: "7px 12px", fontSize: 12, color: "#0D0D0D", display: "flex", gap: 16, flexWrap: "wrap" }}>
                       {multaV > 0 && <span>Multa: +{fmtBRL(multaV)}</span>}
                       {jurosV > 0 && <span>Juros: +{fmtBRL(jurosV)}</span>}
                       {descV  > 0 && <span>Desconto: -{fmtBRL(descV)}</span>}
@@ -1647,7 +1657,7 @@ function ContasPagarInner() {
 
                 {/* ── Pagamento ── */}
                 <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Pagamento</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Pagamento</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                     <div style={{ gridColumn: "1/-1" }}>
                       <label style={lbl}>Valor pago (R$) <span style={{ color: "#E24B4A" }}>*</span></label>
@@ -1798,7 +1808,7 @@ function ContasPagarInner() {
                     {(["real", "previsao"] as const).map(n => (
                       <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
                         style={{ padding: "4px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
-                          background: form.natureza === n ? (n === "previsao" ? "#1A5CB8" : "#C9921B") : "var(--border-row)",
+                          background: form.natureza === n ? (n === "previsao" ? "#2A2A2A" : "#C9921B") : "var(--border-row)",
                           color: form.natureza === n ? "#fff" : "var(--text-2)" }}>
                         {n === "real" ? "Real" : "Previsão"}
                       </button>
@@ -1881,7 +1891,7 @@ function ContasPagarInner() {
                     const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
                     if (!op?.conta_debito && !op?.conta_credito) return null;
                     return (
-                      <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 20 }}>
+                      <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0D0D0D", display: "flex", gap: 20 }}>
                         <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
                         <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
                       </div>
@@ -2034,7 +2044,7 @@ function ContasPagarInner() {
                               padding: "7px 14px", fontSize: 12, fontWeight: form.condicao === v ? 600 : 400,
                               cursor: "pointer", border: "none",
                               borderRight: idx < 2 ? "0.5px solid var(--border)" : "none",
-                              background: form.condicao === v ? "#1A4870" : "var(--border-row)",
+                              background: form.condicao === v ? "#111111" : "var(--border-row)",
                               color: form.condicao === v ? "#fff" : "var(--text-2)",
                               whiteSpace: "nowrap",
                             }}>
@@ -2124,7 +2134,7 @@ function ContasPagarInner() {
                     const freqLabel  = ({ "1": "mensal", "2": "bimestral", "3": "trimestral", "6": "semestral", "12": "anual" } as Record<string, string>)[form.frequencia] ?? "mensal";
                     return (
                       <div>
-                        <div style={{ background: "rgba(251,191,36,0.08)", border: "0.5px solid rgba(251,191,36,0.25)", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#FBBF24" }}>
+                        <div style={{ background: "rgba(251,191,36,0.08)", border: "0.5px solid rgba(251,191,36,0.25)", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#555555" }}>
                           O mesmo valor é lançado <strong>{qtdRecorr}×</strong> com frequência <strong>{freqLabel}</strong>. Ideal para custos fixos.
                           {valorRec > 0 && <span style={{ float: "right", fontWeight: 700 }}>Total: {fmtBRL(valorRec * qtdRecorr)}</span>}
                         </div>
@@ -2216,8 +2226,8 @@ function ContasPagarInner() {
                     const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
                     if (!og || !(og.classificacao ?? "").startsWith("2.01.01.10")) return null;
                     return (
-                      <div style={{ background: "#F0F7FF", border: "0.5px solid #1A487040", borderRadius: 8, padding: 14 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Mão de Obra</div>
+                      <div style={{ background: "#F0F7FF", border: "0.5px solid #11111140", borderRadius: 8, padding: 14 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Mão de Obra</div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 140px 120px", gap: 12 }}>
                           <div>
                             <label style={lbl}>Funcionário / Prestador</label>
@@ -2285,7 +2295,7 @@ function ContasPagarInner() {
                             href={form.chave_xml}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 11, color: "#1A4870", textDecoration: "none", background: "#D5E8F5", borderRadius: 5, padding: "3px 8px", border: "0.5px solid #97C3E0", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 11, color: "#111111", textDecoration: "none", background: "#E8E8E8", borderRadius: 5, padding: "3px 8px", border: "0.5px solid #97C3E0", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                           >
                             📎 <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{decodedNome}</span> ↗
                           </a>

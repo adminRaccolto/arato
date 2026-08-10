@@ -62,15 +62,15 @@ const exibirValor = (l: Lancamento) => {
 
 type OrigemLanc = "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "manual";
 const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: string; border: string }> = {
-  nf_entrada:          { label: "NF Entrada",      bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
-  nf_saida:            { label: "NF Saída",        bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
+  nf_entrada:          { label: "NF Entrada",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
+  nf_saida:            { label: "NF Saída",        bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
   pedido_compra:       { label: "Pedido Compra",   bg: "#FBF3E0", cl: "#7A4300",  border: "#C9921B" },
   arrendamento:        { label: "Arrendamento",    bg: "#FEF3E2", cl: "#7A4800",  border: "#EF9F27" },
   tesouraria:          { label: "Tesouraria",      bg: "#EEE6F8", cl: "#4A1A7A",  border: "#8B5CF6" },
   plantio:             { label: "Plantio",         bg: "#DCFCE7", cl: "#166534",  border: "#16A34A" },
-  contrato_financeiro: { label: "Contrato",        bg: "#E6F1FB", cl: "#0C447C",  border: "#378ADD" },
+  contrato_financeiro: { label: "Contrato",        bg: "#E6F1FB", cl: "#0C447C",  border: "#444444" },
   manual:              { label: "Manual",          bg: "#F1EFE8", cl: "var(--text-2)",     border: "var(--border)" },
-  auto:                { label: "Automático",      bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
+  auto:                { label: "Automático",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
 };
 const origemMeta = (l: { origem_lancamento?: string; auto?: boolean }) => {
   const k = (l.origem_lancamento as OrigemLanc | undefined) ?? (l.auto ? "auto" : "manual");
@@ -104,7 +104,7 @@ const numParaMascara = (n: number) => n.toLocaleString("pt-BR", { minimumFractio
 
 const dotStatus = (s: string) => ({
   previsto:  { cor: "#8B80D1", title: "Pedido de Venda (previsão)" },
-  em_aberto: { cor: "#378ADD", title: "Em aberto"  },
+  em_aberto: { cor: "#444444", title: "Em aberto"  },
   vencido:   { cor: "#E24B4A", title: "Vencido"    },
   vencendo:  { cor: "#EF9F27", title: "Vencendo"   },
   parcial:   { cor: "#C9921B", title: "Parcial"    },
@@ -757,7 +757,7 @@ export default function ContasReceber() {
 
           {/* Banner barter */}
           {qtdBarter > 0 && (
-            <div style={{ background: "rgba(251,191,36,0.08)", border: "0.5px solid rgba(251,191,36,0.2)", borderRadius: 8, padding: "9px 14px", marginBottom: 12, fontSize: 12, color: "#FBBF24", display: "flex", gap: 8 }}>
+            <div style={{ background: "rgba(251,191,36,0.08)", border: "0.5px solid #DEDEDE", borderRadius: 8, padding: "9px 14px", marginBottom: 12, fontSize: 12, color: "#555555", display: "flex", gap: 8 }}>
               <span>⇄</span>
               <span><strong>{qtdBarter} lançamento(s) em barter</strong> — equivalente gerencial: <strong>{fmtBRL(totalBarter)}</strong> · não compõem o fluxo de caixa</span>
             </div>
@@ -782,7 +782,7 @@ export default function ContasReceber() {
                   { key: "pedidos",  label: "Pedidos de Venda", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "previsto").length, cor: "#8B80D1", activeBg: "rgba(139,128,209,0.12)", activeBorder: "rgba(139,128,209,0.35)" },
                   { key: "vencido",  label: "Vencidos",         count: qVencido + qVencendo,                                                                          cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",    activeBorder: "rgba(239,68,68,0.4)"    },
                   { key: "baixado",  label: "Recebidos",        count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length,   cor: "#60A5FA", activeBg: "rgba(59,130,246,0.12)",   activeBorder: "rgba(59,130,246,0.35)"  },
-                  { key: "barter",   label: "Barter",           count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,     cor: "#FBBF24", activeBg: "rgba(251,191,36,0.12)",   activeBorder: "rgba(251,191,36,0.35)"  },
+                  { key: "barter",   label: "Barter",           count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,     cor: "#555555", activeBg: "rgba(251,191,36,0.12)",   activeBorder: "rgba(251,191,36,0.35)"  },
                   { key: "previsao", label: "Previsões",        count: lancamentos.filter(l => l.natureza === "previsao").length,                                    cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)",  activeBorder: "rgba(129,140,248,0.35)" },
                   { key: "todos",    label: "Todos",            count: lancamentos.length,                                                                           cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
@@ -845,7 +845,10 @@ export default function ContasReceber() {
                         {col("produtor")    && <th style={{ ...thS(cw("produtor"),    "left"),   width: cw("produtor"),    position: "relative", userSelect: "none" }}>Produtor   <ResizeHandle onMouseDown={startResize("produtor")}    /></th>}
                         {col("origem")      && <th style={{ ...thS(cw("origem"),      "center"), width: cw("origem"),      position: "relative", userSelect: "none" }}>Origem     <ResizeHandle onMouseDown={startResize("origem")}      /></th>}
                         {col("obs")         && <th style={{ ...thS(cw("obs"),         "left"),   width: cw("obs"),         position: "relative", userSelect: "none" }}>Observação <ResizeHandle onMouseDown={startResize("obs")}         /></th>}
-                        <th style={{ ...thS(110, "center"), width: 110 }}>Ações</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Receber</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Reprog.</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Editar</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>NF</th>
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
@@ -866,13 +869,13 @@ export default function ContasReceber() {
                         {col("produtor")    && <td style={{ padding: "3px 8px" }}><input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} /></td>}
                         {col("origem")      && <td></td>}
                         {col("obs")         && <td style={{ padding: "3px 8px" }}><input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} /></td>}
-                        <td></td>
+                        <td></td><td></td><td></td><td></td>
                       </tr>
                     </thead>
                     <tbody>
                       {filtrados.length === 0 ? (
                         <tr>
-                          <td colSpan={15} style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 11 }}>
+                          <td colSpan={18} style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 11 }}>
                             Nenhum resultado para os filtros aplicados.
                           </td>
                         </tr>
@@ -963,7 +966,7 @@ export default function ContasReceber() {
                                     <span style={{ color: "var(--text-2)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
                                     <div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div>
                                     <div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}>
-                                      <div style={{ height: 3, borderRadius: 2, background: "#1A4870", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
+                                      <div style={{ height: 3, borderRadius: 2, background: "#111111", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
                                     </div>
                                   </div>
                                 : l.valor_pago != null && l.valor_pago > 0
@@ -972,7 +975,7 @@ export default function ContasReceber() {
                             </td>}
                             {/* Moeda */}
                             {col("moeda") && <td style={{ padding: "8px 8px", textAlign: "center" }}>
-                              <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "rgba(251,191,36,0.1)" : l.moeda === "barter" ? "rgba(251,191,36,0.1)" : "var(--bg-input)", color: l.moeda === "USD" ? "#FBBF24" : l.moeda === "barter" ? "#FBBF24" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>
+                              <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "#F0F0F0" : l.moeda === "barter" ? "#F0F0F0" : "var(--bg-input)", color: l.moeda === "USD" ? "#555555" : l.moeda === "barter" ? "#555555" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>
                                 {l.moeda === "barter" ? "Barter" : l.moeda}{l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `→${l.moeda_pagamento}` : ""}
                               </span>
                             </td>}
@@ -992,31 +995,43 @@ export default function ContasReceber() {
                             {col("obs") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>
                               {obsExibir}
                             </td>}
-                            {/* Ação */}
-                            <td style={{ padding: "5px 6px", textAlign: "center" }}>
-                              <div style={{ display: "flex", gap: 3, justifyContent: "center", alignItems: "center" }}>
-                                {isPrevisao ? (
-                                  <button onClick={() => confirmarPrevisao(l)} title="Confirmar previsão"
-                                    style={btnAcao("#1A5CB8", "#fff")}>✓</button>
-                                ) : l.moeda === "barter" ? (
-                                  <button onClick={() => abrirBaixa(l)} title="Confirmar entrega barter"
-                                    style={btnAcao("rgba(251,191,36,0.1)", "#FBBF24", "0.5px solid rgba(251,191,36,0.3)")}>⇄</button>
-                                ) : l.status !== "baixado" ? (
-                                  <button onClick={() => abrirBaixa(l)} title="Receber / Registrar recebimento"
-                                    style={btnAcao("#16A34A", "#fff")}>↓</button>
-                                ) : (
-                                  <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de recebimento"
-                                    style={btnAcao("rgba(251,191,36,0.08)", "#FBBF24", "0.5px solid rgba(251,191,36,0.25)")}>↺</button>
-                                )}
-                                {l.status !== "baixado" && (
-                                  <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
-                                    style={btnAcao("#EFF6FF", "#1E40AF", "0.5px solid #BFDBFE")}>↕</button>
-                                )}
-                                {!l.auto && (
-                                  <button onClick={() => abrirEditar(l)} title="Editar lançamento"
-                                    style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
-                                )}
-                              </div>
+                            {/* Receber */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {isPrevisao ? (
+                                <button onClick={() => confirmarPrevisao(l)} title="Confirmar previsão"
+                                  style={btnAcao("#2A2A2A", "#fff")}>✓</button>
+                              ) : l.moeda === "barter" ? (
+                                <button onClick={() => abrirBaixa(l)} title="Confirmar entrega barter"
+                                  style={btnAcao("#F0F0F0", "#555555", "0.5px solid #D8D8D8")}>⇄</button>
+                              ) : l.status !== "baixado" ? (
+                                <button onClick={() => abrirBaixa(l)} title="Receber / Registrar recebimento"
+                                  style={btnAcao("#16A34A", "#fff")}>↓</button>
+                              ) : (
+                                <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de recebimento"
+                                  style={btnAcao("#F5F5F5", "#555555", "0.5px solid #D0D0D0")}>↺</button>
+                              )}
+                            </td>
+                            {/* Reprogramar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {l.status !== "baixado" && (
+                                <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
+                                  style={btnAcao("#F2F2F2", "#333", "0.5px solid #D0D0D0")}>↕</button>
+                              )}
+                            </td>
+                            {/* Editar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {!l.auto && (
+                                <button onClick={() => abrirEditar(l)} title="Editar lançamento"
+                                  style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
+                              )}
+                            </td>
+                            {/* NF */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {l.nfe_numero && (
+                                <span title={`NF vinculada: ${l.nfe_numero}`} style={{ fontSize: 9, padding: "2px 5px", borderRadius: 4, background: "#F0F0F0", color: "#444", border: "0.5px solid #D0D0D0", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                  NF
+                                </span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1052,7 +1067,7 @@ export default function ContasReceber() {
         return (
           <div style={{
             position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-            background: "#1A4870", color: "#fff", borderRadius: 14,
+            background: "#111111", color: "#fff", borderRadius: 14,
             padding: "12px 22px", display: "flex", alignItems: "center", gap: 18,
             boxShadow: "0 2px 8px rgba(11,45,80,0.07)", zIndex: 90, whiteSpace: "nowrap",
           }}>
@@ -1120,7 +1135,7 @@ export default function ContasReceber() {
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
               <button onClick={() => setModalReprog(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-input)", color: "var(--text-2)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarReprog} disabled={salvando || !reprogForm.nova_data} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A5CB8", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando || !reprogForm.nova_data ? "not-allowed" : "pointer", opacity: salvando || !reprogForm.nova_data ? 0.5 : 1 }}>
+              <button onClick={salvarReprog} disabled={salvando || !reprogForm.nova_data} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#2A2A2A", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando || !reprogForm.nova_data ? "not-allowed" : "pointer", opacity: salvando || !reprogForm.nova_data ? 0.5 : 1 }}>
                 {salvando ? "Salvando..." : "Confirmar Reprogramação"}
               </button>
             </div>
@@ -1150,7 +1165,7 @@ export default function ContasReceber() {
             </div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>{modalBaixa.descricao}</div>
             <div style={{ background: "var(--bg-card)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
-              <span>Valor original: <strong style={{ color: "#1A4870" }}>{fmtBRL(valorTotal)}</strong></span>
+              <span>Valor original: <strong style={{ color: "#111111" }}>{fmtBRL(valorTotal)}</strong></span>
               {jaPago > 0 && <span>Já recebido: <strong style={{ color: "#16A34A" }}>{fmtBRL(jaPago)}</strong></span>}
               {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#C9921B" }}>{fmtBRL(valorOrig)}</strong></span>}
               <span>Vencimento: <strong>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
@@ -1173,7 +1188,7 @@ export default function ContasReceber() {
 
                 {/* ── Classificação ── */}
                 <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
                       <label style={lbl}>Cliente / Devedor</label>
@@ -1212,7 +1227,7 @@ export default function ContasReceber() {
 
                 {/* ── Encargos ── */}
                 <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                     <div>
                       <label style={lbl}>Acréscimo (%)</label>
@@ -1243,7 +1258,7 @@ export default function ContasReceber() {
                     </div>
                   </div>
                   {temEncargo && (
-                    <div style={{ marginTop: 10, background: "#F0F7FF", borderRadius: 7, padding: "7px 12px", fontSize: 12, color: "#0B2D50", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ marginTop: 10, background: "#F0F7FF", borderRadius: 7, padding: "7px 12px", fontSize: 12, color: "#0D0D0D", display: "flex", gap: 16, flexWrap: "wrap" }}>
                       {multaV > 0 && <span>Acréscimo: +{fmtBRL(multaV)}</span>}
                       {jurosV > 0 && <span>Juros: +{fmtBRL(jurosV)}</span>}
                       {descV  > 0 && <span>Desconto: -{fmtBRL(descV)}</span>}
@@ -1254,7 +1269,7 @@ export default function ContasReceber() {
 
                 {/* ── Recebimento ── */}
                 <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Recebimento</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Recebimento</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                     <div style={{ gridColumn: "1/-1" }}>
                       <label style={lbl}>Valor recebido (R$) <span style={{ color: "#E24B4A" }}>*</span></label>
@@ -1290,14 +1305,14 @@ export default function ContasReceber() {
               </div>
             )}
 
-            <div style={{ marginTop: 14, background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50" }}>
+            <div style={{ marginTop: 14, background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0D0D0D" }}>
               ◈ Ação manual — você confirma que o valor foi recebido na conta selecionada.
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
               <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={confirmarBaixa}
                 disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta))}
-                style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Salvando…" : "↓ Confirmar recebimento"}
               </button>
             </div>
@@ -1354,11 +1369,11 @@ export default function ContasReceber() {
                 ))}
                 <div style={{ background: "var(--bg-page)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border-table)" }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do lote</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1A4870" }}>{fmtBRL(totalLote)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#111111" }}>{fmtBRL(totalLote)}</span>
                 </div>
               </div>
 
-              <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 7, padding: "8px 12px", fontSize: 11, color: "#0B2D50", marginBottom: 14 }}>
+              <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 7, padding: "8px 12px", fontSize: 11, color: "#0D0D0D", marginBottom: 14 }}>
                 Este lote será registrado como <strong>uma única entrada de caixa</strong> de {fmtBRL(totalLote)} na conciliação bancária.
                 Cada título será baixado individualmente.
               </div>
@@ -1399,7 +1414,7 @@ export default function ContasReceber() {
                     {(["real", "previsao"] as const).map(n => (
                       <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
                         style={{ padding: "4px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
-                          background: form.natureza === n ? (n === "previsao" ? "#1A5CB8" : "#1A4870") : "#fff",
+                          background: form.natureza === n ? (n === "previsao" ? "#2A2A2A" : "#111111") : "#fff",
                           color: form.natureza === n ? "#fff" : "#666" }}>
                         {n === "real" ? "Real" : "Previsão"}
                       </button>
@@ -1417,8 +1432,8 @@ export default function ContasReceber() {
                   <button key={t.id} onClick={() => setModalTab(t.id)}
                     style={{ padding: "7px 20px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                       fontWeight: modalTab === t.id ? 700 : 400,
-                      color: modalTab === t.id ? "#1A4870" : "#666",
-                      borderBottom: modalTab === t.id ? "2px solid #1A4870" : "2px solid transparent" }}>
+                      color: modalTab === t.id ? "#111111" : "#666",
+                      borderBottom: modalTab === t.id ? "2px solid #111111" : "2px solid transparent" }}>
                     {t.label}
                   </button>
                 ))}
@@ -1477,7 +1492,7 @@ export default function ContasReceber() {
                     const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
                     if (!op?.conta_debito && !op?.conta_credito) return null;
                     return (
-                      <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 20 }}>
+                      <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0D0D0D", display: "flex", gap: 20 }}>
                         <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
                         <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
                       </div>
@@ -1602,7 +1617,7 @@ export default function ContasReceber() {
                               padding: "7px 14px", fontSize: 12, fontWeight: form.parcelar === v ? 600 : 400,
                               cursor: "pointer", border: "none",
                               borderRight: idx === 0 ? "0.5px solid var(--border-table)" : "none",
-                              background: form.parcelar === v ? "#1A4870" : "var(--bg-card)",
+                              background: form.parcelar === v ? "#111111" : "var(--bg-card)",
                               color: form.parcelar === v ? "#fff" : "var(--text-2)",
                               whiteSpace: "nowrap",
                             }}>
@@ -1727,7 +1742,7 @@ export default function ContasReceber() {
               )}
               <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={adicionarLancamento} disabled={disabled}
-                style={{ padding: "8px 20px", background: disabled ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                style={{ padding: "8px 20px", background: disabled ? "var(--text-muted)" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.parcelar && totalParcDisplay > 1 ? `◈ Criar ${totalParcDisplay} repetições` : "◈ Salvar"}
               </button>
             </div>
