@@ -2,6 +2,10 @@
  * lib/cte/transmitter.ts
  * Transmite o CT-e assinado para os webservices da SEFAZ via SOAP 1.2 com mTLS.
  * MT usa SVRS (RS) como autorizador para CT-e.
+ *
+ * PROBLEMA DE IP: o SVRS bloqueia IPs não-brasileiros (Vercel roda nos EUA).
+ * SOLUÇÃO: quando SUPABASE_URL está definida, roteia via Supabase Edge Function
+ * "cte-transmit" que roda em São Paulo (sa-east-1) e faz o mTLS de um IP BR.
  */
 
 import https from "https";
@@ -26,7 +30,41 @@ function endpoint(uf: string, _ambiente: "producao" | "homologacao"): string {
   return ENDPOINT_PROD[uf] ?? ENDPOINT_PROD["_svrs"];
 }
 
-// ─── SOAP request com mTLS ────────────────────────────────────────────────────
+// ─── Relay via Supabase Edge Function (IP brasileiro) ────────────────────────
+async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise<string> {
+  const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey   = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const edgeFnUrl    = `${supabaseUrl}/functions/v1/cte-transmit`;
+
+  const resp = await fetch(edgeFnUrl, {
+    method:  "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({
+      endpoint:  url,
+      soapBody:  body,
+      certPem:   pem.cert,
+      keyPem:    pem.key,
+    }),
+  });
+
+  const result = await resp.json() as { httpStatus?: number; body?: string; error?: string };
+  if (result.error) throw new Error(`Edge Function erro: ${result.error}`);
+
+  const httpStatus = result.httpStatus ?? 0;
+  const soapResp   = result.body ?? "";
+
+  console.log(`[CT-e via Edge] → HTTP ${httpStatus}`);
+  if (httpStatus !== 200) {
+    console.log("[CT-e via Edge body]", soapResp.slice(0, 500));
+    return `__HTTP_${httpStatus}__${soapResp.slice(0, 300)}`;
+  }
+  return soapResp;
+}
+
+// ─── SOAP request com mTLS — direto (fallback local/dev) ─────────────────────
 function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -182,6 +220,13 @@ export async function transmitirCTe(
   const tpAmb = ambiente === "producao" ? "1" : "2";
 
   const soapBody = envelopeCTe(cteXmlAssinado, cuf, tpAmb as "1" | "2");
-  const resp     = await soapPost(ep, soapBody, pem);
+
+  // Usa Edge Function quando rodando em produção (Vercel EUA → SEFAZ rejeita por IP).
+  // Em desenvolvimento local (Mac no Brasil) chama direto.
+  const useEdge = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const resp = useEdge
+    ? await soapPostViaEdge(ep, soapBody, pem)
+    : await soapPost(ep, soapBody, pem);
+
   return parseResposta(resp);
 }
