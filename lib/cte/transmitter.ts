@@ -11,10 +11,11 @@ import type { PemPair } from "../nfe/signer";
 const ENDPOINT_PROD: Record<string, string> = {
   SP: "https://nfe.fazenda.sp.gov.br/cteWEB/services/CTeAutorizacao4.asmx",
   MG: "https://cte.fazenda.mg.gov.br/cte/services/CTeAutorizacao4",
-  _svrs: "https://cte.svrs.rs.gov.br/ws/CteAutorizacao/CteAutorizacao4.asmx",
+  _svrs: "https://cte.svrs.rs.gov.br/ws/CTeAutorizacao/CTeAutorizacao4.asmx",
 };
 
-const ENDPOINT_HOM = "https://homologacao.cte.svrs.rs.gov.br/ws/CteAutorizacao/CteAutorizacao4.asmx";
+// Portal Nacional CT-e homologação — homologacao.cte.svrs.rs.gov.br foi descontinuado
+const ENDPOINT_HOM = "https://hom.cte.fazenda.gov.br/CTeWS/ws/CTeAutorizacao4.asmx";
 
 function endpoint(uf: string, ambiente: "producao" | "homologacao"): string {
   if (ambiente === "homologacao") return ENDPOINT_HOM;
