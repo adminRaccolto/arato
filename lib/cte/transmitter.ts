@@ -35,15 +35,19 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
   // SUPABASE_SEFAZ_URL/KEY = projeto separado em sa-east-1 (São Paulo) para IP BR.
   // Fallback para o projeto principal (pode estar em região diferente).
   const supabaseUrl = process.env.SUPABASE_SEFAZ_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey  = process.env.SUPABASE_SEFAZ_KEY  ?? process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const edgeFnUrl   = `${supabaseUrl}/functions/v1/cte-transmit`;
+
+  // EDGE_BEARER_SECRET: secret compartilhado entre Vercel e Supabase Edge Function.
+  // Define nas variáveis de ambiente do Supabase (Edge Functions → Secrets → EDGE_BEARER_SECRET)
+  // e na Vercel (Settings → Environment Variables → EDGE_BEARER_SECRET).
+  // A Edge Function usa JWT verification DESABILITADO e valida com esse secret.
+  const edgeSecret = process.env.EDGE_BEARER_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   const resp = await fetch(edgeFnUrl, {
     method:  "POST",
     headers: {
       "Content-Type":  "application/json",
-      // O Supabase verifica este JWT antes de executar a Edge Function
-      "Authorization": `Bearer ${serviceKey}`,
+      "Authorization": `Bearer ${edgeSecret}`,
     },
     body: JSON.stringify({
       endpoint: url,
@@ -52,6 +56,22 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
       keyPem:   pem.key,
     }),
   });
+
+  // Supabase pode retornar texto puro (ex: "Unauthorized") se JWT verification estiver ativo
+  // e o token não passar. Tratamos isso como erro claro em vez de SyntaxError.
+  const contentType = resp.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    const text = await resp.text().catch(() => "");
+    console.error(`[CT-e via Edge] HTTP ${resp.status}, content-type: ${contentType}, body: ${text.slice(0, 200)}`);
+    if (resp.status === 401 || text.toLowerCase().includes("unauthorized")) {
+      throw new Error(
+        "Edge Function: acesso negado (401). " +
+        "Desabilite JWT verification na Edge Function (Supabase Dashboard → Edge Functions → cte-transmit → Settings) " +
+        "e adicione EDGE_BEARER_SECRET nas variáveis de ambiente do Supabase e da Vercel."
+      );
+    }
+    throw new Error(`Edge Function retornou HTTP ${resp.status}: ${text.slice(0, 300)}`);
+  }
 
   const result = await resp.json() as { httpStatus?: number; body?: string; error?: string };
   if (result.error) throw new Error(`Edge Function erro: ${result.error}`);
