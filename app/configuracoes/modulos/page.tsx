@@ -1613,63 +1613,213 @@ function ParametrosSistemaContent() {
           {aba === "cte" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros CT-e 3.00</h2>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros CT-e 3.00 — por Emitente</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
-                  Conhecimento de Transporte Eletrônico — Modelo 57. Emitido pela frota própria do produtor.
+                  Cada empresa emissora tem sua própria série, numeração, RNTRC e certificado.
                   MT usa SVRS (RS) como autorizador.
                 </p>
               </div>
 
-              {/* Ref. ao emitente fiscal */}
-              <div style={{ background: "#EFF6FF", border: "0.5px solid #378ADD", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#1A4870", lineHeight: 1.6 }}>
-                <strong>Emitente:</strong> o CT-e usa a mesma identidade (CNPJ/CPF, endereço, IE) e o mesmo certificado A1 do módulo NF-e selecionado abaixo.
-                Só preencha Certificado A1 CT-e se for usar um certificado diferente.
-              </div>
+              {empresas.length === 0 && (
+                <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "14px 16px", fontSize: 12, color: "#7A5A12" }}>
+                  Nenhuma empresa cadastrada. Cadastre em <strong>Fiscal — NF-e</strong> antes de configurar o CT-e.
+                </div>
+              )}
 
-              {/* modulo_fiscal_ref — select dos emissores cadastrados */}
-              {(() => {
-                const emitters: EmitterEntry[] = [
-                  ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cpf_cnpj, moduloKey: `fiscal_emp_${(e.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
-                  ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${(p.cpf_cnpj ?? "").replace(/\D/g, "")}` })),
-                ];
-                const cteC = cfgs["cte"] ?? {};
-                const currentRef = String(cteC.modulo_fiscal_ref ?? "");
+              {empresas.map(emp => {
+                const mk = `cte_emp_${(emp.cpf_cnpj ?? "").replace(/\D/g, "")}`;
+                const c = cfgs[mk] ?? {};
+                const aberto = expandedEmitter === mk;
+                const ambienteBadge = String(c.ambiente ?? "homologacao") === "producao"
+                  ? { label: "Produção", bg: "#DCFCE7", cor: "#166534" }
+                  : { label: "Homologação", bg: "#FEF3C7", cor: "#92400E" };
+
                 return (
-                  <div style={{ marginBottom: 20 }}>
-                    {campo("Emitente NF-e de referência", (
-                      <select
-                        value={currentRef}
-                        onChange={e => setCfgs(prev => ({ ...prev, cte: { ...(prev["cte"] ?? {}), modulo_fiscal_ref: e.target.value } }))}
-                        style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
-                      >
-                        <option value="">— selecione o emitente —</option>
-                        {emitters.map(em => (
-                          <option key={em.moduloKey} value={em.moduloKey}>
-                            {em.nome}{em.cpf_cnpj ? ` — ${em.cpf_cnpj}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    ), true)}
+                  <div key={mk} style={{ border: "0.5px solid var(--border)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
+                    {/* Header clicável */}
+                    <div
+                      onClick={() => setExpandedEmitter(aberto ? null : mk)}
+                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer", background: aberto ? "#EFF6FF" : "var(--bg-card)", userSelect: "none" }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>{emp.razao_social ?? emp.nome}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{emp.cpf_cnpj ?? "—"}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {c.serie_cte && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Série {String(c.serie_cte)}</span>}
+                        {c.rntrc    && <span style={{ fontSize: 11, color: "var(--text-3)" }}>RNTRC {String(c.rntrc)}</span>}
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: ambienteBadge.bg, color: ambienteBadge.cor }}>{ambienteBadge.label}</span>
+                        <span style={{ fontSize: 14, color: "var(--text-3)", transform: aberto ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+                      </div>
+                    </div>
+
+                    {/* Corpo expandido */}
+                    {aberto && (
+                      <div style={{ padding: "20px 22px", borderTop: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
+                        {/* Linha 1: Ambiente + Série + Próx. Número + RNTRC */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Ambiente CT-e</label>
+                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                              value={String(c.ambiente ?? "homologacao")}
+                              onChange={e => setCfg(mk, "ambiente", e.target.value)}>
+                              <option value="homologacao">Homologação</option>
+                              <option value="producao">Produção</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Série CT-e</label>
+                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.serie_cte ?? "001")} placeholder="001"
+                              onChange={e => setCfg(mk, "serie_cte", e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Próx. Número CT-e</label>
+                            <input type="number" style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.numero_inicial ?? "1")} placeholder="1"
+                              onChange={e => setCfg(mk, "numero_inicial", e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>RNTRC (Transportador)</label>
+                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.rntrc ?? "")} placeholder="12345678"
+                              onChange={e => setCfg(mk, "rntrc", e.target.value)} />
+                          </div>
+                        </div>
+
+                        {/* Linha 2: Certificado A1 */}
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10, marginTop: 4 }}>Certificado A1 (opcional — usa o do NF-e se vazio)</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Caminho do Certificado A1</label>
+                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.cert_a1_path ?? "")} placeholder="/certs/empresa.pfx"
+                              onChange={e => setCfg(mk, "cert_a1_path", e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Senha do Certificado A1</label>
+                            <input type="password" style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.cert_a1_senha ?? "")} placeholder="••••••••"
+                              onChange={e => setCfg(mk, "cert_a1_senha", e.target.value)} />
+                          </div>
+                        </div>
+
+                        <button onClick={() => salvar(mk)} disabled={salvando === mk}
+                          style={{ padding: "8px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                          {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
-              })()}
-
-              {renderFields("cte", CTE_BASE_FIELDS)}
-
-              <div style={{ marginTop: 20 }}>
-                {secHeader("Certificado A1 (opcional)")}
-                {renderFields("cte", CTE_CERT_FIELDS)}
-              </div>
+              })}
             </div>
           )}
 
           {aba === "mdfe" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros MDF-e</h2>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros MDF-e — por Emitente</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Manifesto Eletrônico de Documentos Fiscais — obrigatório no transporte interestadual de grãos.</p>
               </div>
-              {renderFields("mdfe", MDFE_FIELDS)}
+
+              {empresas.length === 0 && (
+                <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "14px 16px", fontSize: 12, color: "#7A5A12" }}>
+                  Nenhuma empresa cadastrada. Cadastre em <strong>Fiscal — NF-e</strong> antes de configurar o MDF-e.
+                </div>
+              )}
+
+              {empresas.map(emp => {
+                const mk = `mdfe_emp_${(emp.cpf_cnpj ?? "").replace(/\D/g, "")}`;
+                const c = cfgs[mk] ?? {};
+                const aberto = expandedEmitter === mk;
+                const ambienteBadge = String(c.ambiente ?? "homologacao") === "producao"
+                  ? { label: "Produção", bg: "#DCFCE7", cor: "#166534" }
+                  : { label: "Homologação", bg: "#FEF3C7", cor: "#92400E" };
+
+                return (
+                  <div key={mk} style={{ border: "0.5px solid var(--border)", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}>
+                    <div
+                      onClick={() => setExpandedEmitter(aberto ? null : mk)}
+                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer", background: aberto ? "#EFF6FF" : "var(--bg-card)", userSelect: "none" }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>{emp.razao_social ?? emp.nome}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{emp.cpf_cnpj ?? "—"}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {c.rntrc && <span style={{ fontSize: 11, color: "var(--text-3)" }}>RNTRC {String(c.rntrc)}</span>}
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: ambienteBadge.bg, color: ambienteBadge.cor }}>{ambienteBadge.label}</span>
+                        <span style={{ fontSize: 14, color: "var(--text-3)", transform: aberto ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+                      </div>
+                    </div>
+
+                    {aberto && (
+                      <div style={{ padding: "20px 22px", borderTop: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Ambiente MDF-e</label>
+                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                              value={String(c.ambiente ?? "homologacao")}
+                              onChange={e => setCfg(mk, "ambiente", e.target.value)}>
+                              <option value="homologacao">Homologação</option>
+                              <option value="producao">Produção</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Série MDF-e</label>
+                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.serie_mdfe ?? "001")} placeholder="001"
+                              onChange={e => setCfg(mk, "serie_mdfe", e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Próx. Número MDF-e</label>
+                            <input type="number" style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.numero_inicial ?? "1")} placeholder="1"
+                              onChange={e => setCfg(mk, "numero_inicial", e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>RNTRC (Emitente)</label>
+                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.rntrc ?? "")} placeholder="12345678"
+                              onChange={e => setCfg(mk, "rntrc", e.target.value)} />
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Tipo Emitente</label>
+                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                              value={String(c.tpEmit ?? "2")}
+                              onChange={e => setCfg(mk, "tpEmit", e.target.value)}>
+                              <option value="1">1 – Transp. Autônomo (TAC)</option>
+                              <option value="2">2 – ETC</option>
+                              <option value="3">3 – CTC</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>UF Início padrão</label>
+                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.uf_ini ?? "MT")} placeholder="MT"
+                              onChange={e => setCfg(mk, "uf_ini", e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>UF Fim padrão</label>
+                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                              value={String(c.uf_fim ?? "")} placeholder="PR"
+                              onChange={e => setCfg(mk, "uf_fim", e.target.value)} />
+                          </div>
+                        </div>
+
+                        <button onClick={() => salvar(mk)} disabled={salvando === mk}
+                          style={{ padding: "8px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                          {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
