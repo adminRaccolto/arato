@@ -167,6 +167,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, resultados, total_templates: templates.length });
   } catch (err) {
     console.error("[sincronizar-padroes]", err);
-    return NextResponse.json({ erro: String(err) }, { status: 500 });
+    const msg =
+      err instanceof Error
+        ? err.message
+        : typeof err === "object" && err !== null
+          ? ((err as Record<string, unknown>).message as string)
+              ?? ((err as Record<string, unknown>).details as string)
+              ?? JSON.stringify(err)
+          : String(err);
+    return NextResponse.json({ erro: msg }, { status: 500 });
   }
 }
