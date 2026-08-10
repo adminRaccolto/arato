@@ -101,6 +101,15 @@ export interface RespostaCTe {
 }
 
 function parseResposta(soapResp: string): RespostaCTe {
+  // Log para debug em Vercel Functions
+  console.log("[CT-e SOAP response]", soapResp.slice(0, 2000));
+
+  // SOAP Fault — extrai faultstring e retorna como xMotivo
+  const faultMatch = soapResp.match(/<faultstring[^>]*>([\s\S]*?)<\/faultstring>/i);
+  if (faultMatch) {
+    return { cStat: "500", xMotivo: `SOAP Fault: ${faultMatch[1].trim()}` };
+  }
+
   const cStat   = tagVal(soapResp, "cStat");
   const xMotivo = tagVal(soapResp, "xMotivo");
   const protocolo = tagVal(soapResp, "nProt");
@@ -108,6 +117,12 @@ function parseResposta(soapResp: string): RespostaCTe {
   const chave     = tagVal(soapResp, "chCTe");
   const xmlProtMatch = soapResp.match(/<cteProc[\s\S]*?<\/cteProc>/);
   const xmlProt = xmlProtMatch ? xmlProtMatch[0] : undefined;
+
+  // Se não achou cStat, devolve trecho da resposta para diagnóstico
+  if (!cStat) {
+    return { cStat: "???", xMotivo: `Resposta inesperada da SEFAZ: ${soapResp.slice(0, 500)}` };
+  }
+
   return { cStat, xMotivo, protocolo: protocolo || undefined, dhRecbto: dhRecbto || undefined, chave: chave || undefined, xmlProt };
 }
 
