@@ -8,18 +8,17 @@ import https from "https";
 import type { PemPair } from "../nfe/signer";
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
-const ENDPOINT_PROD: Record<string, string> = {
-  SP: "https://nfe.fazenda.sp.gov.br/cteWEB/services/CTeAutorizacao4.asmx",
-  MG: "https://cte.fazenda.mg.gov.br/cte/services/CTeAutorizacao4",
+// O SVRS aceita tpAmb=1 (prod) e tpAmb=2 (hom) no mesmo endpoint.
+// O servidor de homologação SVRS (homologacao.cte.svrs.rs.gov.br) foi descontinuado.
+// tpAmb no corpo do XML controla o ambiente — o endpoint não muda.
+const ENDPOINT: Record<string, string> = {
+  SP:    "https://nfe.fazenda.sp.gov.br/cteWEB/services/CTeAutorizacao4.asmx",
+  MG:    "https://cte.fazenda.mg.gov.br/cte/services/CTeAutorizacao4",
   _svrs: "https://cte.svrs.rs.gov.br/ws/CTeAutorizacao/CTeAutorizacao4.asmx",
 };
 
-// Portal Nacional CT-e homologação — homologacao.cte.svrs.rs.gov.br foi descontinuado
-const ENDPOINT_HOM = "https://hom.cte.fazenda.gov.br/CTeWS/ws/CTeAutorizacao4.asmx";
-
-function endpoint(uf: string, ambiente: "producao" | "homologacao"): string {
-  if (ambiente === "homologacao") return ENDPOINT_HOM;
-  return ENDPOINT_PROD[uf] ?? ENDPOINT_PROD["_svrs"];
+function endpoint(uf: string, _ambiente: "producao" | "homologacao"): string {
+  return ENDPOINT[uf] ?? ENDPOINT["_svrs"];
 }
 
 // ─── SOAP request com mTLS ────────────────────────────────────────────────────
