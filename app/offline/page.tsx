@@ -87,7 +87,7 @@ export default function OfflinePage() {
             Você está sem internet no momento.<br />
             Verifique o sinal e tente novamente.
           </p>
-          <button onclick="window.location.reload()">
+          <button onClick={() => window.location.reload()}>
             Tentar novamente
           </button>
           <div className="tip">Os dados ficam salvos até a conexão voltar</div>
