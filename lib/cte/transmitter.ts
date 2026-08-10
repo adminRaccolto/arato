@@ -18,7 +18,8 @@ const ENDPOINT_PROD: Record<string, string> = {
 };
 
 const ENDPOINT_HOM: Record<string, string> = {
-  _svcAN: "https://hom.cte.fazenda.gov.br/CTeAutorizacao4/CTeAutorizacao4.asmx",
+  // Caminho correto: /portal/ é obrigatório no servidor federal de homologação
+  _svcAN: "https://hom.cte.fazenda.gov.br/portal/CTeAutorizacao4/CTeAutorizacao4.asmx",
 };
 
 function endpoint(uf: string, ambiente: "producao" | "homologacao"): string {
