@@ -1687,22 +1687,38 @@ function ParametrosSistemaContent() {
                           </div>
                         </div>
 
-                        {/* Linha 2: Certificado A1 */}
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10, marginTop: 4 }}>Certificado A1 (opcional — usa o do NF-e se vazio)</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
-                          <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Caminho do Certificado A1</label>
-                            <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
-                              value={String(c.cert_a1_path ?? "")} placeholder="/certs/empresa.pfx"
-                              onChange={e => setCfg(mk, "cert_a1_path", e.target.value)} />
-                          </div>
-                          <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Senha do Certificado A1</label>
-                            <input type="password" style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
-                              value={String(c.cert_a1_senha ?? "")} placeholder="••••••••"
-                              onChange={e => setCfg(mk, "cert_a1_senha", e.target.value)} />
-                          </div>
-                        </div>
+                        {/* Certificado A1 — read-only, lido de Fiscal > Certificado Digital */}
+                        {(() => {
+                          const certMeta = cfgs[`certificado_a1_${emp.id}`] as Record<string, unknown> | undefined;
+                          const storagePath = String(certMeta?.storage_path ?? "");
+                          const vencStr    = String(certMeta?.data_vencimento ?? "");
+                          const nomeArq    = storagePath ? storagePath.split("/").pop() : null;
+                          const diasRestantes = vencStr ? Math.ceil((new Date(vencStr).getTime() - Date.now()) / 86400000) : null;
+                          const vencCor = diasRestantes === null ? "#555" : diasRestantes <= 30 ? "#E24B4A" : diasRestantes <= 90 ? "#EF9F27" : "#16A34A";
+                          return certMeta && storagePath ? (
+                            <div style={{ background: "#F8FAFC", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                              <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>Certificado A1</div>
+                                <div style={{ fontSize: 12, color: "var(--text-1)", fontWeight: 500 }}>{nomeArq ?? storagePath}</div>
+                              </div>
+                              {vencStr && (
+                                <div style={{ textAlign: "right" }}>
+                                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Validade</div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: vencCor }}>
+                                    {new Date(vencStr + "T12:00:00").toLocaleDateString("pt-BR")}
+                                    {diasRestantes !== null && <span style={{ fontSize: 11, marginLeft: 6 }}>({diasRestantes}d)</span>}
+                                  </div>
+                                </div>
+                              )}
+                              <a href="/configuracoes/modulos?aba=fiscal" style={{ fontSize: 11, color: "#1A4870", textDecoration: "underline" }}>Gerenciar em Fiscal</a>
+                            </div>
+                          ) : (
+                            <div style={{ background: "#FEF3C7", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5A12" }}>
+                              Certificado A1 não cadastrado para esta empresa.{" "}
+                              <a href="/configuracoes/modulos?aba=fiscal" style={{ color: "#7A5A12", fontWeight: 700 }}>Cadastrar em Fiscal → Certificado Digital</a>
+                            </div>
+                          );
+                        })()}
 
                         <button onClick={() => salvar(mk)} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
