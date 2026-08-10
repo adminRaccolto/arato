@@ -46,3 +46,7 @@ Arquivos_locais/
 
 # Biblioteca ANTT CIOT (análise local — não commitar binários)
 GeradorCIOT_DLL/
+backup/
+
+# PWA workbox (se usar next-pwa no futuro)
+/public/workbox-*.js
