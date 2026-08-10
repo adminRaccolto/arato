@@ -80,6 +80,16 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
   const soapResp   = result.body ?? "";
 
   console.log(`[CT-e via Edge] → HTTP ${httpStatus}`);
+  if (httpStatus === 0) {
+    // status 0 = conexão silenciada antes de resposta HTTP (Deno.createHttpClient não funciona
+    // em Deno Deploy). A Edge Function deve usar node:https para mTLS. Atualize o código
+    // da Edge Function no Supabase Dashboard Editor com a versão mais recente.
+    throw new Error(
+      "mTLS falhou na Edge Function (HTTP 0 — conexão sem resposta). " +
+      "Atualize o código da Edge Function no Supabase Dashboard → Edge Functions → cte-transmit → Via Editor " +
+      "com o arquivo supabase/functions/cte-transmit/index.ts mais recente do repositório."
+    );
+  }
   if (httpStatus !== 200) {
     console.log("[CT-e via Edge body]", soapResp.slice(0, 500));
     return `__HTTP_${httpStatus}__${soapResp.slice(0, 300)}`;
