@@ -19,8 +19,11 @@ export function assinarCTe(xmlSemAssinatura: string, pem: PemPair): string {
   const id = match[1];
 
   const sig = new SignedXml({
-    privateKey: pem.key,
+    privateKey:  pem.key,
+    publicCert:  pem.cert,
     signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+    // xml-crypto v6 exige canonicalizationAlgorithm explícito
+    canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
   });
 
   sig.addReference({
@@ -29,7 +32,8 @@ export function assinarCTe(xmlSemAssinatura: string, pem: PemPair): string {
       "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
       "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
     ],
-    digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256",
+    // SEFAZ exige SHA-1 para o digest do CT-e (igual à NF-e)
+    digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
   });
 
   sig.computeSignature(xmlSemAssinatura, {
