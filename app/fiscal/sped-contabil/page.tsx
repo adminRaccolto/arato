@@ -380,7 +380,7 @@ export default function SpedContabilPage() {
 
   const VINCULOS_DISPONIVEIS = [
     { id: "rural",           label: "Atividade Rural",       cor: "#16A34A", bg: "#E8F5E9" },
-    { id: "pessoa_fisica",   label: "Pessoa Física (não rural)", cor: "#1A5CB8", bg: "#D5E8F5" },
+    { id: "pessoa_fisica",   label: "Pessoa Física (não rural)", cor: "#2A2A2A", bg: "#E8E8E8" },
     { id: "investimento",    label: "Investimentos",         cor: "#C9921B", bg: "#FBF3E0" },
     { id: "nao_tributavel",  label: "Não Tributável",        cor: "var(--text-3)",    bg: "var(--bg-page)" },
   ];
@@ -393,14 +393,14 @@ export default function SpedContabilPage() {
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>SPED ECD — Escrituração Contábil Digital</h1>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>SPED ECD — Escrituração Contábil Digital</h1>
               <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
                 Gera o arquivo de transmissão no formato aceito pelo Domínio e pela Receita Federal (Leiaute 10).
               </p>
             </div>
             <a
               href="/configuracoes/contabilidade"
-              style={{ fontSize: 12, color: "#1A5CB8", textDecoration: "none", whiteSpace: "nowrap" as const }}
+              style={{ fontSize: 12, color: "#2A2A2A", textDecoration: "none", whiteSpace: "nowrap" as const }}
             >
               ⚙ Configurar dados contábeis →
             </a>
@@ -408,16 +408,16 @@ export default function SpedContabilPage() {
         </div>
 
         {/* Como funciona */}
-        <div style={{ background: "#D5E8F5", border: "0.5px solid #A8CDE8", borderRadius: 10, padding: "14px 18px", marginBottom: 24, fontSize: 13, color: "#0B2D50" }}>
+        <div style={{ background: "#E8E8E8", border: "0.5px solid #A8CDE8", borderRadius: 10, padding: "14px 18px", marginBottom: 24, fontSize: 13, color: "#0D0D0D" }}>
           <strong>Como funciona:</strong> os lançamentos contábeis são derivados automaticamente dos lançamentos gerenciais.
           Cada operação gerencial tem <em>conta_débito</em> e <em>conta_crédito</em> configuradas — essa é a ponte.
           Configure as contas em{" "}
-          <a href="/cadastros?tab=operacoes_gerenciais" style={{ color: "#1A5CB8" }}>Cadastros → Operações Gerenciais</a>.
+          <a href="/cadastros?tab=operacoes_gerenciais" style={{ color: "#2A2A2A" }}>Cadastros → Operações Gerenciais</a>.
         </div>
 
         {/* Parâmetros */}
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" }}>
             Parâmetros de Geração
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
@@ -430,7 +430,7 @@ export default function SpedContabilPage() {
                     onClick={() => setEntidade(v as "pf" | "pj")}
                     style={{
                       flex: 1, padding: "9px 0", border: entidade === v ? "none" : "0.5px solid var(--border-table)",
-                      borderRadius: 8, background: entidade === v ? "#1A5CB8" : "var(--bg-card)",
+                      borderRadius: 8, background: entidade === v ? "#2A2A2A" : "var(--bg-card)",
                       color: entidade === v ? "#fff" : "var(--text-2)", fontWeight: entidade === v ? 700 : 400,
                       cursor: "pointer", fontSize: 13,
                     }}
@@ -481,7 +481,7 @@ export default function SpedContabilPage() {
         {/* Preview / resultado */}
         {preview && (
           <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" }}>
               Resultado da Análise
             </div>
             <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
@@ -526,7 +526,7 @@ export default function SpedContabilPage() {
           <button
             onClick={() => gerar(false)}
             disabled={loading}
-            style={{ padding: "10px 24px", background: "var(--bg-page)", border: "0.5px solid #1A5CB8", color: "#1A5CB8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+            style={{ padding: "10px 24px", background: "var(--bg-page)", border: "0.5px solid #2A2A2A", color: "#2A2A2A", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
           >
             {loading ? "Analisando..." : "Analisar (sem baixar)"}
           </button>
@@ -535,7 +535,7 @@ export default function SpedContabilPage() {
             disabled={loading || (preview !== null && preview.total === 0)}
             style={{
               padding: "10px 28px",
-              background: loading || (preview !== null && preview.total === 0) ? "#ccc" : "#1A5CB8",
+              background: loading || (preview !== null && preview.total === 0) ? "#ccc" : "#2A2A2A",
               color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14,
             }}
           >
@@ -545,7 +545,7 @@ export default function SpedContabilPage() {
 
         {/* Nota rodapé */}
         <div style={{ marginTop: 32, padding: "14px 18px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", fontSize: 12, color: "#666", lineHeight: 1.6 }}>
-          <strong style={{ color: "#1A4870" }}>Sobre o arquivo gerado:</strong>
+          <strong style={{ color: "#111111" }}>Sobre o arquivo gerado:</strong>
           <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
             <li>Formato: texto plano, separado por pipe <code style={{ background: "var(--bg-page)", padding: "1px 4px", borderRadius: 4 }}>|</code>, CRLF, codificação UTF-8</li>
             <li>Leiaute: SPED ECD Leiaute 10 (vigente desde 2022)</li>

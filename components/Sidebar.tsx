@@ -117,7 +117,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
       {/* Logo */}
       <div style={{ padding: "14px 12px", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
-          width: 30, height: 30, background: "#1A4870", borderRadius: 7,
+          width: 30, height: 30, background: "#111111", borderRadius: 7,
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
         }}>
           <span style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>RT</span>
@@ -158,11 +158,11 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
                   style={{
                     width: "100%", display: "flex", alignItems: "center",
                     gap: 10, padding: aberto ? "9px 14px" : "9px 16px",
-                    background: ativo ? "#D5E8F5" : "transparent",
+                    background: ativo ? "#E8E8E8" : "transparent",
                     border: "none",
-                    borderLeft: ativo ? "2px solid #1A4870" : "2px solid transparent",
+                    borderLeft: ativo ? "2px solid #111111" : "2px solid transparent",
                     cursor: "pointer",
-                    color: ativo ? "#0B2D50" : "#666",
+                    color: ativo ? "#0D0D0D" : "#666",
                     fontWeight: ativo ? 600 : 400,
                     fontSize: 13, textAlign: "left",
                   }}
@@ -172,7 +172,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
                     <>
                       <span style={{ flex: 1 }}>{item.label}</span>
                       <span style={{
-                        fontSize: 10, color: ativo ? "#0B2D50" : "#444",
+                        fontSize: 10, color: ativo ? "#0D0D0D" : "#444",
                         transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
                         transition: "transform 0.15s", display: "inline-block",
                       }}>▶</span>
@@ -192,15 +192,15 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
                           style={{
                             display: "flex", alignItems: "center",
                             gap: 8, padding: "7px 14px 7px 36px",
-                            background: ativoChild ? "#D5E8F5" : "transparent",
-                            borderLeft: ativoChild ? "2px solid #1A4870" : "2px solid transparent",
+                            background: ativoChild ? "#E8E8E8" : "transparent",
+                            borderLeft: ativoChild ? "2px solid #111111" : "2px solid transparent",
                             textDecoration: "none",
-                            color: ativoChild ? "#0B2D50" : "#444",
+                            color: ativoChild ? "#0D0D0D" : "#444",
                             fontWeight: ativoChild ? 600 : 400,
                             fontSize: 12,
                           }}
                         >
-                          <span style={{ fontSize: 10, color: ativoChild ? "#1A4870" : "#666" }}>◆</span>
+                          <span style={{ fontSize: 10, color: ativoChild ? "#111111" : "#666" }}>◆</span>
                           {child.label}
                         </Link>
                       );
@@ -220,10 +220,10 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
               style={{
                 display: "flex", alignItems: "center",
                 gap: 10, padding: aberto ? "9px 14px" : "9px 16px",
-                background: ativa ? "#D5E8F5" : "transparent",
-                borderLeft: ativa ? "2px solid #1A4870" : "2px solid transparent",
+                background: ativa ? "#E8E8E8" : "transparent",
+                borderLeft: ativa ? "2px solid #111111" : "2px solid transparent",
                 textDecoration: "none",
-                color: ativa ? "#0B2D50" : "#666",
+                color: ativa ? "#0D0D0D" : "#666",
                 fontWeight: ativa ? 600 : 400,
                 fontSize: 13,
               }}
@@ -232,7 +232,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
               {aberto && item.label}
               {aberto && item.id === "automacoes" && (
                 <span style={{
-                  marginLeft: "auto", background: "#1A4870", color: "#fff",
+                  marginLeft: "auto", background: "#111111", color: "#fff",
                   fontSize: 10, padding: "1px 6px", borderRadius: 10,
                 }}>
                   {automacoesAtivas}

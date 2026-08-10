@@ -236,7 +236,7 @@ export default function PendenciasFiscaisPage() {
         <div>
           <button
             onClick={() => router.back()}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#1A4870", fontWeight: 600, padding: "0 0 8px 0", display: "flex", alignItems: "center", gap: 4 }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#111111", fontWeight: 600, padding: "0 0 8px 0", display: "flex", alignItems: "center", gap: 4 }}
           >
             ← Voltar
           </button>
@@ -262,8 +262,8 @@ export default function PendenciasFiscaisPage() {
             style={{
               padding: "5px 14px", borderRadius: 20, border: "0.5px solid",
               fontSize: 12, cursor: "pointer", fontWeight: filtroStatus === s ? 600 : 400,
-              borderColor: filtroStatus === s ? "#1A4870" : "var(--border-table)",
-              background: filtroStatus === s ? "#1A4870" : "var(--bg-card)",
+              borderColor: filtroStatus === s ? "#111111" : "var(--border-table)",
+              background: filtroStatus === s ? "#111111" : "var(--bg-card)",
               color: filtroStatus === s ? "#fff" : "#444",
             }}
           >
@@ -357,7 +357,7 @@ export default function PendenciasFiscaisPage() {
                       <span style={{
                         padding: "3px 8px", borderRadius: 20, fontWeight: 500,
                         background: p.origem === "whatsapp" ? "#EEF5FF" : "var(--bg-page)",
-                        color: p.origem === "whatsapp" ? "#1A4870" : "var(--text-2)",
+                        color: p.origem === "whatsapp" ? "#111111" : "var(--text-2)",
                         border: "0.5px solid",
                         borderColor: p.origem === "whatsapp" ? "#B8D0EE" : "var(--border-table)",
                       }}>
@@ -442,9 +442,9 @@ export default function PendenciasFiscaisPage() {
                     style={{
                       padding: "7px 16px", borderRadius: 8, border: "0.5px solid",
                       fontSize: 13, cursor: "pointer", fontWeight: modoAnexo === m ? 600 : 400,
-                      borderColor: modoAnexo === m ? "#1A4870" : "var(--border-table)",
-                      background: modoAnexo === m ? "#D5E8F5" : "var(--bg-card)",
-                      color: modoAnexo === m ? "#0B2D50" : "var(--text-2)",
+                      borderColor: modoAnexo === m ? "#111111" : "var(--border-table)",
+                      background: modoAnexo === m ? "#E8E8E8" : "var(--bg-card)",
+                      color: modoAnexo === m ? "#0D0D0D" : "var(--text-2)",
                     }}
                   >
                     {m === "chave" ? "🔑 Chave de Acesso" : "📷 Foto da Nota"}
@@ -473,7 +473,7 @@ export default function PendenciasFiscaisPage() {
                     style={{
                       marginTop: 14, width: "100%", padding: "10px", borderRadius: 8,
                       border: "none", cursor: consultando ? "wait" : "pointer",
-                      background: consultando ? "var(--text-muted)" : "#1A4870", color: "#fff",
+                      background: consultando ? "var(--text-muted)" : "#111111", color: "#fff",
                       fontSize: 13, fontWeight: 600,
                     }}
                   >
@@ -509,7 +509,7 @@ export default function PendenciasFiscaisPage() {
                     style={{
                       marginTop: 14, width: "100%", padding: "10px", borderRadius: 8,
                       border: "none", cursor: consultando || !fotoBase64 ? "not-allowed" : "pointer",
-                      background: consultando || !fotoBase64 ? "var(--text-muted)" : "#1A4870", color: "#fff",
+                      background: consultando || !fotoBase64 ? "var(--text-muted)" : "#111111", color: "#fff",
                       fontSize: 13, fontWeight: 600,
                     }}
                   >

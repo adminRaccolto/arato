@@ -18,7 +18,7 @@ const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", 
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
@@ -30,7 +30,7 @@ const TIPOS: Record<PulverizacaoOp["tipo"], { label: string; bg: string; color: 
   inseticida:         { label: "Inseticida",            bg: "#FBF0D8", color: "#7A5A12" },
   nematicida:         { label: "Nematicida",            bg: "#FBF3E0", color: "#8B5E14" },
   acaricida:          { label: "Acaricida",             bg: "#F1EFE8", color: "var(--text-2)"    },
-  fertilizante_foliar:{ label: "Fertilizante Foliar",   bg: "#D5E8F5", color: "#0B2D50" },
+  fertilizante_foliar:{ label: "Fertilizante Foliar",   bg: "#E8E8E8", color: "#0D0D0D" },
   regulador:          { label: "Regulador Crescimento", bg: "#FFF8EC", color: "#7A5200" },
   dessecacao:         { label: "Dessecação",            bg: "#F8EBE0", color: "#7A2E00" },
   outros:             { label: "Outros",                bg: "var(--bg-page)", color: "var(--text-2)"    },
@@ -175,7 +175,7 @@ export default function PulverizacaoPage() {
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
           {[
-            { label: "Total de aplicações", valor: String(pulverizacoes.length), cor: "#1A4870" },
+            { label: "Total de aplicações", valor: String(pulverizacoes.length), cor: "#111111" },
             { label: "Custo total defensivos", valor: fmtBRL(pulverizacoes.reduce((s, p) => s + (p.custo_total ?? 0), 0)), cor: "#E24B4A" },
             { label: "Área total tratada", valor: `${pulverizacoes.reduce((s, p) => s + p.area_ha, 0).toLocaleString("pt-BR")} ha`, cor: "#C9921B" },
           ].map((s, i) => (
@@ -214,7 +214,7 @@ export default function PulverizacaoPage() {
                       <tr key={p.id} style={{ borderBottom: i < pulverizacoes.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         {fazendas.length > 1 && (
                           <td style={{ padding: "10px 14px" }}>
-                            <span style={{ fontSize: 11, background: "#EFF6FF", color: "#1A4870", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
+                            <span style={{ fontSize: 11, background: "#F2F2F2", color: "#111111", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
                               {fazendas.find(f => f.id === p.fazenda_id)?.nome ?? "—"}
                             </span>
                           </td>
@@ -335,7 +335,7 @@ export default function PulverizacaoPage() {
               />
             </div>
 
-            <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
+            <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
               ⟳ Ao salvar: baixa automática do estoque de cada produto + lançamento CP "Defensivos Agrícolas" no financeiro.
             </div>
 
@@ -436,7 +436,7 @@ export default function PulverizacaoPage() {
                         </td>
                         <td style={{ padding: "6px 8px", width: 70 }}>
                           {it.insumo_id ? (
-                            <div style={{ ...inp, fontSize: 12, background: "var(--bg-page)", color: "#1A4870", fontWeight: 600, textAlign: "center", cursor: "default" }}
+                            <div style={{ ...inp, fontSize: 12, background: "var(--bg-page)", color: "#111111", fontWeight: 600, textAlign: "center", cursor: "default" }}
                               title="Unidade travada pelo cadastro do insumo">
                               {it.unidade}
                             </div>

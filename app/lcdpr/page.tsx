@@ -466,7 +466,7 @@ export default function LCDPR() {
             {aba === "plano" && (
               <div style={{ padding: 20 }}>
                 {/* Cabeçalho explicativo */}
-                <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 18, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
+                <div style={{ background: "#F2F2F2", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 18, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
                   <strong>Como funciona:</strong> cada Operação Gerencial pode ter um código LCDPR associado. Quando um lançamento é baixado com uma OG mapeada, o código correto é atribuído automaticamente no Livro Caixa — sem depender do campo "categoria".
                 </div>
 
@@ -850,7 +850,7 @@ export default function LCDPR() {
                           XLSX.utils.book_append_sheet(wb, ws, `LCDPR ${anoSel}`);
                           XLSX.writeFile(wb, `LCDPR_${anoSel}.xlsx`);
                         }}
-                        style={{ ...btnPrimario, background: "#1A4870" }}
+                        style={{ ...btnPrimario, background: "#111111" }}
                       >⬇ Exportar Excel</button>
                     </div>
                   </div>

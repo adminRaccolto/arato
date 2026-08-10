@@ -82,7 +82,7 @@ const STATUS_COR: Record<StatusCarga, { bg: string; color: string }> = {
   em_transito:     { bg: "#FEF3C7", color: "#92400E" },
   entregue:        { bg: "#DCFCE7", color: "#16A34A" },
   corrigindo_peso: { bg: "#FEE2E2", color: "#B91C1C" },
-  encerrada:       { bg: "#D5E8F5", color: "#1A4870" },
+  encerrada:       { bg: "#E8E8E8", color: "#111111" },
 };
 const PIPELINE: StatusCarga[] = ["rascunho","em_transito","entregue","corrigindo_peso","encerrada"];
 
@@ -479,23 +479,23 @@ export default function Expedicao() {
                     padding: "14px 20px", cursor: "pointer",
                     borderBottom: "0.5px solid var(--bg-tag)",
                     background: sel ? "#EBF4FF" : "transparent",
-                    borderLeft: sel ? "3px solid #1A4870" : "3px solid transparent",
+                    borderLeft: sel ? "3px solid #111111" : "3px solid transparent",
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: sel ? "#0B2D50" : "var(--text-1)", fontFamily: "monospace" }}>{c.numero}</div>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: sel ? "#0D0D0D" : "var(--text-1)", fontFamily: "monospace" }}>{c.numero}</div>
                       <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 1 }}>{c.comprador}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: "#1A4870" }}>{c.produto}</div>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: "#111111" }}>{c.produto}</div>
                       <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.safra}</div>
                     </div>
                   </div>
                   {/* Barra de progresso */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div style={{ flex: 1, height: 5, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#1A4870", borderRadius: 3 }} />
+                      <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#111111", borderRadius: 3 }} />
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                       {(c.entregue_sc ?? 0).toLocaleString("pt-BR",{maximumFractionDigits:0})} / {(c.quantidade_sc??0).toLocaleString("pt-BR",{maximumFractionDigits:0})} sc
@@ -523,7 +523,7 @@ export default function Expedicao() {
                   >
                     ←
                   </button>
-                  <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "monospace", color: "#1A4870" }}>{contratoSel.numero}</span>
+                  <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "monospace", color: "#111111" }}>{contratoSel.numero}</span>
                   <span style={{ fontSize: 13, color: "var(--text-2)" }}>—</span>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{contratoSel.comprador}</span>
                 </div>
@@ -533,7 +533,7 @@ export default function Expedicao() {
               </div>
               <button
                 onClick={() => { setNova({ data_saida: hoje(), rota: "direto_comprador", destino_razao_social: contratoSel.comprador }); setModalNova(true); }}
-                style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 + Nova Carga
               </button>
@@ -543,7 +543,7 @@ export default function Expedicao() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, padding: "16px 24px" }}>
               {[
                 { label: "Contratado",   value: `${(contratoSel.quantidade_sc??0).toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "var(--bg-page)", txt: "var(--text-1)" },
-                { label: "Embarcado",    value: `${scEmbarcado.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "#D5E8F5", txt: "#1A4870" },
+                { label: "Embarcado",    value: `${scEmbarcado.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "#E8E8E8", txt: "#111111" },
                 { label: "Em Trânsito", value: `${scTransito.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "#FEF3C7", txt: "#92400E" },
                 { label: "Saldo",        value: `${scSaldo.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: scSaldo > 0 ? "#FBF3E0" : "#DCFCE7", txt: scSaldo > 0 ? "#C9921B" : "#16A34A" },
               ].map(k => (
@@ -563,7 +563,7 @@ export default function Expedicao() {
                   <br />
                   <button
                     onClick={() => { setNova({ data_saida: hoje(), rota: "direto_comprador", destino_razao_social: contratoSel.comprador }); setModalNova(true); }}
-                    style={{ marginTop: 14, padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                    style={{ marginTop: 14, padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                   >
                     Registrar primeira carga
                   </button>
@@ -585,7 +585,7 @@ export default function Expedicao() {
                         return (
                           <tr key={c.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", cursor: "pointer" }}
                               onClick={() => setModalCarga(c)}>
-                            <td style={{ padding: "9px 12px", fontWeight: 700, color: "#1A4870", fontFamily: "monospace" }}>
+                            <td style={{ padding: "9px 12px", fontWeight: 700, color: "#111111", fontFamily: "monospace" }}>
                               {c.numero}
                               {c._origem === "romaneio" && (
                                 <span style={{ fontSize: 9, fontWeight: 700, background: "#DCFCE7", color: "#16A34A", borderRadius: 4, padding: "1px 5px", marginLeft: 5, verticalAlign: "middle", fontFamily: "sans-serif" }}>ROM</span>
@@ -610,7 +610,7 @@ export default function Expedicao() {
                                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                   <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{c.nfe_numero} ✔</span>
                                   <button onClick={e => { e.stopPropagation(); setModalDanfe(c); }}
-                                    style={{ padding: "1px 7px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
+                                    style={{ padding: "1px 7px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
                                     Ver
                                   </button>
                                 </div>
@@ -634,13 +634,13 @@ export default function Expedicao() {
                               <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
                                 {c.rota !== "transbordo_sem_nf" && !c.nfe_chave && (
                                   <button onClick={() => gerarNFe(c)}
-                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Gerar NF-e
                                   </button>
                                 )}
                                 {c.nfe_chave && (
                                   <button onClick={() => setModalDanfe(c)}
-                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Ver NF-e
                                   </button>
                                 )}
@@ -698,10 +698,10 @@ export default function Expedicao() {
                   <button key={r} onClick={() => setNova(p => ({ ...p, rota: r }))}
                     style={{
                       padding: "11px 10px", borderRadius: 8, cursor: "pointer", textAlign: "center",
-                      border: nova.rota === r ? "2px solid #1A4870" : "0.5px solid var(--border)",
-                      background: nova.rota === r ? "#D5E8F5" : "var(--bg-card)",
+                      border: nova.rota === r ? "2px solid #111111" : "0.5px solid var(--border)",
+                      background: nova.rota === r ? "#E8E8E8" : "var(--bg-card)",
                       fontWeight: nova.rota === r ? 700 : 400, fontSize: 12,
-                      color: nova.rota === r ? "#0B2D50" : "#333",
+                      color: nova.rota === r ? "#0D0D0D" : "#333",
                     }}>
                     <div style={{ fontSize: 18, marginBottom: 3 }}>
                       {r === "transbordo_sem_nf" ? "🏭" : r === "transbordo_com_remessa" ? "📋" : "🚚"}
@@ -748,7 +748,7 @@ export default function Expedicao() {
               {campo("Peso Líquido (kg) — auto", inp({
                 value: nova.peso_liquido_kg != null ? String(nova.peso_liquido_kg) : "",
                 readOnly: true,
-                style: { background: "var(--bg-page)", color: "#1A4870", fontWeight: 700 },
+                style: { background: "var(--bg-page)", color: "#111111", fontWeight: 700 },
               }))}
               {campo("Peso Aprox. (kg) — se estimado", inp({
                 type: "number", value: nova.peso_aproximado_kg ?? "",
@@ -765,7 +765,7 @@ export default function Expedicao() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
               <button onClick={() => setModalNova(false)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarNovaCarga} disabled={saving || !nova.rota}
-                style={{ padding: "8px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {saving ? "Salvando..." : "Registrar Carga"}
               </button>
             </div>
@@ -801,11 +801,11 @@ export default function Expedicao() {
                   <React.Fragment key={s}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
                       <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                        background: isCurr ? "#1A4870" : isPast ? "#16A34A" : "var(--border)",
+                        background: isCurr ? "#111111" : isPast ? "#16A34A" : "var(--border)",
                         color: isCurr || isPast ? "#fff" : "var(--text-3)", fontSize: 11, fontWeight: 700 }}>
                         {isPast ? "✔" : i + 1}
                       </div>
-                      <div style={{ fontSize: 10, color: isCurr ? "#1A4870" : isPast ? "#16A34A" : "var(--text-3)", fontWeight: isCurr ? 700 : 400, whiteSpace: "nowrap" }}>{STATUS_LABEL[s]}</div>
+                      <div style={{ fontSize: 10, color: isCurr ? "#111111" : isPast ? "#16A34A" : "var(--text-3)", fontWeight: isCurr ? 700 : 400, whiteSpace: "nowrap" }}>{STATUS_LABEL[s]}</div>
                     </div>
                     {i < PIPELINE.length - 1 && <div style={{ flex: 1, height: 2, background: isPast ? "#16A34A" : "var(--border)", margin: "0 4px", marginBottom: 14, minWidth: 20 }} />}
                   </React.Fragment>
@@ -844,7 +844,7 @@ export default function Expedicao() {
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>Série {modalCarga.nfe_serie} Nº {modalCarga.nfe_numero} — Autorizada</div>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button onClick={() => { setModalDanfe(modalCarga); setModalCarga(null); }}
-                          style={{ padding: "3px 10px", background: "#D5E8F5", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                          style={{ padding: "3px 10px", background: "#E8E8E8", color: "#111111", border: "0.5px solid #111111", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                           Ver / Imprimir
                         </button>
                         <button onClick={() => { window.open(`/fiscal?busca=${modalCarga.nfe_numero}`, "_blank"); }}
@@ -861,7 +861,7 @@ export default function Expedicao() {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#EF9F27" }}>Pendente</span>
                     <button onClick={() => { gerarNFe(modalCarga); setModalCarga(null); }}
-                      style={{ padding: "4px 12px", background: "#D5E8F5", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      style={{ padding: "4px 12px", background: "#E8E8E8", color: "#111111", border: "0.5px solid #111111", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                       Gerar NF-e
                     </button>
                   </div>
@@ -897,7 +897,7 @@ export default function Expedicao() {
               )}
               {modalCarga.status !== "encerrada" && (
                 <button onClick={() => { avancarStatus(modalCarga); setModalCarga(null); }}
-                  style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Avançar Status →
                 </button>
               )}
@@ -921,7 +921,7 @@ export default function Expedicao() {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => window.print()}
-                  style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   🖨 Imprimir
                 </button>
                 <button onClick={() => setModalDanfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
@@ -938,9 +938,9 @@ export default function Expedicao() {
                   <div style={{ fontSize: 10, marginTop: 8 }}>Emitente: {contratoSel?.produto ? `Produtor Rural — ${contratoSel.produto}` : "Produtor Rural"}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: "#1A4870" }}>NF-e</div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "#111111" }}>NF-e</div>
                   <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>Série {modalDanfe.nfe_serie}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#1A4870" }}>Nº {modalDanfe.nfe_numero}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#111111" }}>Nº {modalDanfe.nfe_numero}</div>
                 </div>
               </div>
 
@@ -1007,7 +1007,7 @@ export default function Expedicao() {
               {/* Chave de acesso */}
               <div style={{ background: "var(--bg-page)", borderRadius: 4, padding: "8px 10px", marginBottom: 8 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", marginBottom: 3 }}>Chave de Acesso</div>
-                <div style={{ fontSize: 11, fontFamily: "monospace", wordBreak: "break-all", color: "#1A4870", fontWeight: 600 }}>{modalDanfe.nfe_chave}</div>
+                <div style={{ fontSize: 11, fontFamily: "monospace", wordBreak: "break-all", color: "#111111", fontWeight: 600 }}>{modalDanfe.nfe_chave}</div>
               </div>
 
               {/* Observações */}
@@ -1020,7 +1020,7 @@ export default function Expedicao() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
               <button onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
-              <button onClick={() => window.print()} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</button>
+              <button onClick={() => window.print()} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</button>
             </div>
           </div>
         </div>
@@ -1066,7 +1066,7 @@ export default function Expedicao() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
               <button onClick={() => setModalPeso(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarCorrecaoPeso} disabled={!pesoDestino || saving}
-                style={{ padding: "8px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: pesoDestino ? "pointer" : "not-allowed" }}>
+                style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: pesoDestino ? "pointer" : "not-allowed" }}>
                 {saving ? "Salvando..." : "Confirmar e Encerrar Carga"}
               </button>
             </div>
@@ -1092,7 +1092,7 @@ export default function Expedicao() {
                 NF-e vinculada: <strong>Série {modalMdfe.nfe_serie} Nº {modalMdfe.nfe_numero}</strong>
               </div>
             ) : modalMdfe.rota === "transbordo_sem_nf" ? (
-              <div style={{ background: "#D5E8F5", border: "0.5px solid #1A4870", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#1A4870" }}>
+              <div style={{ background: "#E8E8E8", border: "0.5px solid #111111", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#111111" }}>
                 Transbordo sem NF — MDF-e emitido sem NF-e vinculada.
               </div>
             ) : (

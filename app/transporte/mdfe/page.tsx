@@ -11,7 +11,7 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid var(--bg-tag)", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" };
 
@@ -19,7 +19,7 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
 
-function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{texto}</span>;
 }
 
@@ -72,7 +72,7 @@ interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; 
 
 const STATUS_META: Record<StatusMdfe, { label: string; bg: string; cl: string }> = {
   rascunho:   { label: "Rascunho",   bg: "#FBF3E0", cl: "#7B4A00" },
-  autorizado: { label: "Autorizado", bg: "#D5E8F5", cl: "#0B2D50" },
+  autorizado: { label: "Autorizado", bg: "#E8E8E8", cl: "#0D0D0D" },
   encerrado:  { label: "Encerrado",  bg: "#E8F5E9", cl: "#1A6B3C" },
   cancelado:  { label: "Cancelado",  bg: "#FCEBEB", cl: "#791F1F" },
 };
@@ -375,7 +375,7 @@ export default function MdfePage() {
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
-            { label: "Em Trânsito",          value: emTransito.length.toString(),  sub: "manifestos autorizados",  color: "#1A4870" },
+            { label: "Em Trânsito",          value: emTransito.length.toString(),  sub: "manifestos autorizados",  color: "#111111" },
             { label: "Encerrados",            value: encerrados.length.toString(),  sub: "viagens concluídas",      color: "#1A6B3C" },
             { label: "Carga em Trânsito",     value: pesoTransito > 0 ? `${(pesoTransito/1000).toFixed(0)} ton` : "—", sub: "peso total", color: "#C9921B" },
             { label: "Cancelados",            value: mdfes.filter(m => m.status === "cancelado").length.toString(), sub: "total", color: "var(--text-2)" },
@@ -423,7 +423,7 @@ export default function MdfePage() {
                   const nNfes = m.documentos.filter(d => d.tipo === "nfe").length;
                   return (
                     <tr key={m.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
-                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1A4870" }}>
+                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "#111111" }}>
                         {m.numero_mdfe}/{m.serie}
                         {m.chave_acesso && <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 400, fontFamily: "monospace" }}>{m.chave_acesso.slice(0, 12)}…</div>}
                       </td>
@@ -459,7 +459,7 @@ export default function MdfePage() {
                             </button>
                           )}
                           {m.status === "autorizado" && (
-                            <button onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A4870", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <button onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Encerrar
                             </button>
                           )}
@@ -484,7 +484,7 @@ export default function MdfePage() {
         )}
 
         {/* Nota sobre DAEE */}
-        <div style={{ marginTop: 16, padding: "10px 14px", background: "#D5E8F5", borderRadius: 8, fontSize: 12, color: "#0B2D50" }}>
+        <div style={{ marginTop: 16, padding: "10px 14px", background: "#E8E8E8", borderRadius: 8, fontSize: 12, color: "#0D0D0D" }}>
           <strong>MDF-e obrigatório</strong> para transporte interestadual de cargas e sempre que houver múltiplos documentos fiscais por veículo.
           Motoristas <strong>TAC</strong>: CIOT gerado automaticamente via API ANTT. Motoristas <strong>CLT</strong> (frota própria): isento de CIOT.
         </div>
@@ -549,7 +549,7 @@ export default function MdfePage() {
                     return (
                       <button key={u} type="button"
                         onClick={() => setForm(f => ({ ...f, percurso_ufs: sel ? f.percurso_ufs.filter(x => x !== u) : [...f.percurso_ufs, u] }))}
-                        style={{ padding: "3px 8px", borderRadius: 6, fontSize: 11, border: `1px solid ${sel ? "#1A4870" : "var(--border-table)"}`, background: sel ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", color: sel ? "#0B2D50" : "var(--text-2)", fontWeight: sel ? 600 : 400 }}>
+                        style={{ padding: "3px 8px", borderRadius: 6, fontSize: 11, border: `1px solid ${sel ? "#111111" : "var(--border-table)"}`, background: sel ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", color: sel ? "#0D0D0D" : "var(--text-2)", fontWeight: sel ? 600 : 400 }}>
                         {u}
                       </button>
                     );
@@ -677,7 +677,7 @@ export default function MdfePage() {
                     {ctes.map(c => {
                       const sel = form.cte_ids.includes(c.id);
                       return (
-                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sel ? "#D5E8F5" : "var(--bg-card)", border: `0.5px solid ${sel ? "#1A487050" : "transparent"}` }}>
+                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sel ? "#E8E8E8" : "var(--bg-card)", border: `0.5px solid ${sel ? "#11111150" : "transparent"}` }}>
                           <input type="checkbox" checked={sel} onChange={() => toggleCte(c.id)} style={{ width: 14, height: 14 }} />
                           <span style={{ fontSize: 12, flex: 1 }}>
                             <strong>CT-e {c.numero_cte}/{c.serie}</strong> — {c.remetente_nome} → {c.destinatario_nome}
@@ -731,7 +731,7 @@ export default function MdfePage() {
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#1A4870", cursor: saving ? "default" : "pointer" }}>
+                <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
                   {saving ? "Salvando…" : (mdfeEdit ? "Salvar alterações" : "Salvar MDF-e")}
                 </button>
               </div>

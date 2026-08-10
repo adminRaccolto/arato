@@ -18,8 +18,8 @@ const NOME_PLANO: Record<PlanoId, string> = {
 };
 
 const COR_PLANO: Record<PlanoId, string> = {
-  essencial:   "#1A4870",
-  gestao:      "#1A4870",
+  essencial:   "#111111",
+  gestao:      "#111111",
   performance: "#C9921B",
 };
 
@@ -52,7 +52,7 @@ function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
           {vencido ? "Conta encerrada" : "Acesso suspenso"}
         </span>
 
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 10px" }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 10px" }}>
           {vencido ? "Sua assinatura foi encerrada" : "Pagamento em atraso"}
         </h2>
 
@@ -129,7 +129,7 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
         {/* Ícone */}
         <div style={{
           width: 64, height: 64, borderRadius: "50%",
-          background: planoNecessario === "performance" ? "#FBF3E0" : "#D5E8F5",
+          background: planoNecessario === "performance" ? "#FBF3E0" : "#E8E8E8",
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 20px", fontSize: 28,
         }}>
@@ -141,14 +141,14 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
           <span style={{
             display: "inline-block", fontSize: 11, fontWeight: 700,
             color: cor, textTransform: "uppercase", letterSpacing: 2,
-            background: planoNecessario === "performance" ? "#FBF3E0" : "#D5E8F5",
+            background: planoNecessario === "performance" ? "#FBF3E0" : "#E8E8E8",
             padding: "3px 12px", borderRadius: 20, marginBottom: 14,
           }}>
             Plano {NOME_PLANO[planoNecessario]}
           </span>
         </div>
 
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 10px" }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 10px" }}>
           Este módulo não está incluso no seu plano
         </h2>
 
@@ -177,7 +177,7 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
 
         {/* Preço */}
         <div style={{ marginBottom: 24 }}>
-          <span style={{ fontSize: 32, fontWeight: 900, color: "#0B2D50" }}>
+          <span style={{ fontSize: 32, fontWeight: 900, color: "#0D0D0D" }}>
             {plano.preco_mensal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </span>
           <span style={{ fontSize: 14, color: "var(--text-3)" }}>/mês</span>

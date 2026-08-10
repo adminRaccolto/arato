@@ -17,7 +17,7 @@ const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", margin
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
@@ -176,7 +176,7 @@ export default function AdubacaoBasePage() {
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
-              { label: "Total de aplicações",    valor: String(registros.length),                                                           cor: "#1A4870" },
+              { label: "Total de aplicações",    valor: String(registros.length),                                                           cor: "#111111" },
               { label: "Área total adubada",     valor: `${registros.reduce((s, r) => s + r.area_ha, 0).toLocaleString("pt-BR")} ha`,       cor: "#C9921B" },
               { label: "Custo total fertilizantes", valor: fmtBRL(registros.reduce((s, r) => s + (r.custo_total ?? 0), 0)),                cor: "#E24B4A" },
             ].map((s, i) => (
@@ -253,7 +253,7 @@ export default function AdubacaoBasePage() {
               />
             </div>
 
-            <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
+            <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
               ⟳ Ao salvar: baixa automática do estoque dos fertilizantes + lançamento CP "Insumos / Fertilizantes" no financeiro.
             </div>
 
@@ -307,7 +307,7 @@ export default function AdubacaoBasePage() {
                     {qtd > 0 ? fmtN(qtd, 0) : "—"} kg
                   </div>
                   <button style={btnX} onClick={() => removeItem(idx)}>✕</button>
-                  {ins && <div style={{ gridColumn: "1/-1", fontSize: 10, color: "#1A4870", marginTop: -4 }}>
+                  {ins && <div style={{ gridColumn: "1/-1", fontSize: 10, color: "#111111", marginTop: -4 }}>
                     Estoque atual: {fmtN(ins.estoque, 0)} {ins.unidade} · Custo médio: {fmtBRL(ins.custo_medio ?? ins.valor_unitario ?? 0)}/kg
                   </div>}
                 </div>

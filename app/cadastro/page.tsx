@@ -9,8 +9,8 @@ import type { PlanoId } from "../../lib/planos";
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR_PLANO: Record<PlanoId, { borda: string; badge: string; btn: string }> = {
-  essencial:   { borda: "var(--border-table)", badge: "var(--bg-page)", btn: "#1A4870" },
-  gestao:      { borda: "#1A4870", badge: "#1A4870", btn: "#1A4870" },
+  essencial:   { borda: "var(--border-table)", badge: "var(--bg-page)", btn: "#111111" },
+  gestao:      { borda: "#111111", badge: "#111111", btn: "#111111" },
   performance: { borda: "#C9921B", badge: "#C9921B", btn: "#C9921B" },
 };
 
@@ -127,7 +127,7 @@ function CadastroInner() {
               <div style={{
                 width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 12, fontWeight: 700, flexShrink: 0,
-                background: step > s ? "#16A34A" : step === s ? "#1A4870" : "#E4EAF3",
+                background: step > s ? "#16A34A" : step === s ? "#111111" : "#E4EAF3",
                 color: step >= s ? "#fff" : "var(--text-3)",
               }}>
                 {step > s ? "✓" : s}
@@ -139,15 +139,15 @@ function CadastroInner() {
           ))}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: -28, marginBottom: 32, padding: "0 0" }}>
-          <span style={{ fontSize: 11, color: step === 1 ? "#1A4870" : "var(--text-3)", fontWeight: step === 1 ? 700 : 400 }}>Plano</span>
-          <span style={{ fontSize: 11, color: step === 2 ? "#1A4870" : "var(--text-3)", fontWeight: step === 2 ? 700 : 400 }}>Seus dados</span>
-          <span style={{ fontSize: 11, color: step === 3 ? "#1A4870" : "var(--text-3)", fontWeight: step === 3 ? 700 : 400 }}>Confirmação</span>
+          <span style={{ fontSize: 11, color: step === 1 ? "#111111" : "var(--text-3)", fontWeight: step === 1 ? 700 : 400 }}>Plano</span>
+          <span style={{ fontSize: 11, color: step === 2 ? "#111111" : "var(--text-3)", fontWeight: step === 2 ? 700 : 400 }}>Seus dados</span>
+          <span style={{ fontSize: 11, color: step === 3 ? "#111111" : "var(--text-3)", fontWeight: step === 3 ? 700 : 400 }}>Confirmação</span>
         </div>
 
         {/* ── PASSO 1 — Seleção de plano ── */}
         {step === 1 && (
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 6px" }}>Escolha seu plano</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 6px" }}>Escolha seu plano</h1>
             <p style={{ fontSize: 14, color: "var(--text-2)", margin: "0 0 24px" }}>14 dias grátis, sem cartão de crédito</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -175,15 +175,15 @@ function CadastroInner() {
                       </div>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50" }}>{pp.nome}</span>
-                          {pid === "gestao" && <span style={{ fontSize: 10, background: "#1A4870", color: "#fff", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>Popular</span>}
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D" }}>{pp.nome}</span>
+                          {pid === "gestao" && <span style={{ fontSize: 10, background: "#111111", color: "#fff", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>Popular</span>}
                           {pid === "performance" && <span style={{ fontSize: 10, background: "#C9921B", color: "#fff", borderRadius: 20, padding: "1px 8px", fontWeight: 700 }}>Completo</span>}
                         </div>
                         <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{pp.descricao}</div>
                       </div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#0B2D50" }}>{fmtPreco(pp.preco_mensal)}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/mês</span></div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "#0D0D0D" }}>{fmtPreco(pp.preco_mensal)}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/mês</span></div>
                     </div>
                   </div>
                 );
@@ -211,18 +211,18 @@ function CadastroInner() {
         {step === 2 && (
           <div>
             {/* Resumo do plano */}
-            <div style={{ background: "#F0F7FF", border: "0.5px solid #1A4870", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ background: "#F0F7FF", border: "0.5px solid #111111", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <span style={{ fontSize: 12, color: "var(--text-2)" }}>Plano selecionado: </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{p.nome}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#111111" }}>{p.nome}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50" }}>{fmtPreco(p.preco_mensal)}/mês</span>
-                <button onClick={() => setStep(1)} style={{ fontSize: 12, color: "#1A4870", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>Trocar</button>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D" }}>{fmtPreco(p.preco_mensal)}/mês</span>
+                <button onClick={() => setStep(1)} style={{ fontSize: 12, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>Trocar</button>
               </div>
             </div>
 
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 6px" }}>Seus dados</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 6px" }}>Seus dados</h1>
             <p style={{ fontSize: 14, color: "var(--text-2)", margin: "0 0 24px" }}>Crie sua conta — leva menos de 2 minutos</p>
 
             {erros.geral && (
@@ -317,7 +317,7 @@ function CadastroInner() {
               <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>
                 ✓
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 8px" }}>Conta criada com sucesso!</h1>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 8px" }}>Conta criada com sucesso!</h1>
               <p style={{ fontSize: 14, color: "var(--text-2)", margin: 0 }}>
                 Seu trial de <strong>{resultado.trial_dias} dias</strong> começa agora.
                 {resultado.trial_fim && ` Vence em ${new Date(resultado.trial_fim + "T12:00:00").toLocaleDateString("pt-BR")}.`}
@@ -330,7 +330,7 @@ function CadastroInner() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <span style={{ fontSize: 20 }}>💳</span>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50" }}>Primeira mensalidade — PIX</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D" }}>Primeira mensalidade — PIX</div>
                     <div style={{ fontSize: 12, color: "#666" }}>Vence ao final do trial · {fmtPreco(p.preco_mensal)}/mês</div>
                   </div>
                 </div>
@@ -339,7 +339,7 @@ function CadastroInner() {
                 </div>
                 <button onClick={copiarPix} style={{
                   width: "100%", padding: "10px 0",
-                  background: pixCopiado ? "#16A34A" : "#1A4870",
+                  background: pixCopiado ? "#16A34A" : "#111111",
                   color: "#fff", border: "none", borderRadius: 8,
                   fontSize: 13, fontWeight: 700, cursor: "pointer",
                 }}>
@@ -348,9 +348,9 @@ function CadastroInner() {
               </div>
             ) : resultado.invoice_url ? (
               <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50", marginBottom: 8 }}>Link de pagamento</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D", marginBottom: 8 }}>Link de pagamento</div>
                 <a href={resultado.invoice_url} target="_blank" rel="noreferrer"
-                  style={{ display: "block", textAlign: "center", padding: "10px 0", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
+                  style={{ display: "block", textAlign: "center", padding: "10px 0", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
                   Acessar link de pagamento →
                 </a>
               </div>
@@ -360,7 +360,7 @@ function CadastroInner() {
               </div>
             )}
 
-            <div style={{ background: "#F0F7FF", border: "0.5px solid #D5E8F5", borderRadius: 10, padding: "14px 16px", marginBottom: 24, fontSize: 13, color: "#1A4870" }}>
+            <div style={{ background: "#F0F7FF", border: "0.5px solid #E8E8E8", borderRadius: 10, padding: "14px 16px", marginBottom: 24, fontSize: 13, color: "#111111" }}>
               <strong>O que acontece agora?</strong>
               <ul style={{ margin: "8px 0 0", paddingLeft: 18, lineHeight: 1.8, color: "var(--text-2)" }}>
                 <li>Você tem <strong>{resultado.trial_dias} dias</strong> para usar o Arato sem restrições</li>

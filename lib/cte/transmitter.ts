@@ -8,17 +8,24 @@ import https from "https";
 import type { PemPair } from "../nfe/signer";
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
-// O SVRS aceita tpAmb=1 (prod) e tpAmb=2 (hom) no mesmo endpoint.
-// O servidor de homologação SVRS (homologacao.cte.svrs.rs.gov.br) foi descontinuado.
-// tpAmb no corpo do XML controla o ambiente — o endpoint não muda.
-const ENDPOINT: Record<string, string> = {
+// Produção: SVRS para MT e demais estados que usam SVRS.
+// Homologação: SVC-AN (hom.cte.fazenda.gov.br) — o SVRS homologação foi descontinuado.
+// O campo tpAmb no XML também deve refletir o ambiente correto.
+const ENDPOINT_PROD: Record<string, string> = {
   SP:    "https://nfe.fazenda.sp.gov.br/cteWEB/services/CTeAutorizacao4.asmx",
   MG:    "https://cte.fazenda.mg.gov.br/cte/services/CTeAutorizacao4",
   _svrs: "https://cte.svrs.rs.gov.br/ws/CTeAutorizacao/CTeAutorizacao4.asmx",
 };
 
-function endpoint(uf: string, _ambiente: "producao" | "homologacao"): string {
-  return ENDPOINT[uf] ?? ENDPOINT["_svrs"];
+const ENDPOINT_HOM: Record<string, string> = {
+  _svcAN: "https://hom.cte.fazenda.gov.br/CTeAutorizacao4/CTeAutorizacao4.asmx",
+};
+
+function endpoint(uf: string, ambiente: "producao" | "homologacao"): string {
+  if (ambiente === "homologacao") {
+    return ENDPOINT_HOM[uf] ?? ENDPOINT_HOM["_svcAN"];
+  }
+  return ENDPOINT_PROD[uf] ?? ENDPOINT_PROD["_svrs"];
 }
 
 // ─── SOAP request com mTLS ────────────────────────────────────────────────────
@@ -32,19 +39,30 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         path: u.pathname + u.search,
         method: "POST",
         headers: {
-          "Content-Type": "application/soap+xml; charset=utf-8",
+          // SOAP 1.2: action fica no Content-Type
+          "Content-Type": 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/cte/wsdl/CTeAutorizacao4/cteDadosMsg"',
           "Content-Length": Buffer.byteLength(body, "utf8"),
         },
         cert: pem.cert,
         key:  pem.key,
         // Domínios *.gov.br usam ICP-Brasil não incluída no bundle Node.js.
-        // A autenticação é feita por mTLS — desabilitamos apenas para SEFAZ.
+        // A autenticação é feita pelo assinatura digital no XML.
         rejectUnauthorized: !u.hostname.endsWith(".gov.br"),
       },
       (res) => {
+        const status = res.statusCode ?? 0;
         let data = "";
         res.on("data", (c) => { data += c; });
-        res.on("end", () => resolve(data));
+        res.on("end", () => {
+          console.log(`[CT-e SOAP] ${u.hostname} → HTTP ${status}`);
+          if (status !== 200) {
+            console.log("[CT-e SOAP body]", data.slice(0, 500));
+            // Converte erro HTTP em mensagem legível
+            resolve(`__HTTP_${status}__${data.slice(0, 300)}`);
+          } else {
+            resolve(data);
+          }
+        });
       }
     );
     req.on("error", reject);
@@ -63,6 +81,8 @@ const CUF_MAP: Record<string, string> = {
 
 // ─── Envelope SOAP — CTeAutorizacao4 ─────────────────────────────────────────
 function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
+  // Remove a declaração XML <?xml...?> que não pode aparecer dentro de um elemento SOAP
+  const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
   const idLote = Date.now().toString().slice(-15);
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -79,7 +99,7 @@ function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
       <enviCTe versao="3.00" xmlns="http://www.portalfiscal.inf.br/cte">
         <idLote>${idLote}</idLote>
         <indSinc>1</indSinc>
-        ${cteXml}
+        ${cteXmlBody}
       </enviCTe>
     </cteDadosMsg>
   </soap12:Body>
@@ -102,6 +122,26 @@ export interface RespostaCTe {
 }
 
 function parseResposta(soapResp: string): RespostaCTe {
+  // Sentinela injetada pelo soapPost quando HTTP ≠ 200
+  const httpErr = soapResp.match(/^__HTTP_(\d+)__([\s\S]*)/);
+  if (httpErr) {
+    const httpStatus = httpErr[1];
+    const body = httpErr[2];
+    if (httpStatus === "403") {
+      return {
+        cStat: "403",
+        xMotivo: "Acesso negado pelo servidor SEFAZ (HTTP 403 Forbidden). " +
+                 "Possíveis causas: (1) IP fora do Brasil — ative a região GRU1 no Vercel; " +
+                 "(2) Certificado A1 inválido ou não-ICP-Brasil; " +
+                 "(3) CNPJ não habilitado no ambiente escolhido.",
+      };
+    }
+    if (httpStatus === "404") {
+      return { cStat: "404", xMotivo: `Endpoint SEFAZ não encontrado (HTTP 404). Verifique a URL do webservice: ${body.slice(0, 200)}` };
+    }
+    return { cStat: httpStatus, xMotivo: `HTTP ${httpStatus} da SEFAZ: ${body.slice(0, 300)}` };
+  }
+
   // Log para debug em Vercel Functions
   console.log("[CT-e SOAP response]", soapResp.slice(0, 2000));
 

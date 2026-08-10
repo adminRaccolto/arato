@@ -77,7 +77,7 @@ const TIPOS_OP: Record<TipoOp, { label: string; cor: string; bg: string }> = {
 
 const STATUS_META: Record<StatusRec, { label: string; cor: string; bg: string }> = {
   pendente:     { label: "Pendente",      cor: "#C9921B", bg: "#FBF3E0" },
-  em_execucao:  { label: "Em Execução",   cor: "#1A4870", bg: "#D5E8F5" },
+  em_execucao:  { label: "Em Execução",   cor: "#111111", bg: "#E8E8E8" },
   concluida:    { label: "Concluída",     cor: "#16A34A", bg: "#F0FFF4" },
   cancelada:    { label: "Cancelada",     cor: "#E24B4A", bg: "#FCEBEB" },
 };
@@ -287,9 +287,9 @@ function ModalNova({
           <div style={{ display:"flex", gap:0 }}>
             {abas.map(a => (
               <button key={a.id} onClick={() => setAba(a.id)}
-                style={{ padding:"10px 18px", border:"none", borderBottom: aba === a.id ? "2px solid #1A4870" : "2px solid transparent",
+                style={{ padding:"10px 18px", border:"none", borderBottom: aba === a.id ? "2px solid #111111" : "2px solid transparent",
                   background:"none", fontSize:13, fontWeight: aba === a.id ? 700 : 400,
-                  color: aba === a.id ? "#1A4870" : "#666", cursor:"pointer" }}>
+                  color: aba === a.id ? "#111111" : "#666", cursor:"pointer" }}>
                 {a.label}
               </button>
             ))}
@@ -375,7 +375,7 @@ function ModalNova({
                     </div>
                   )}
                 </div>
-                <button onClick={addTalhao} style={{ padding:"7px 16px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                <button onClick={addTalhao} style={{ padding:"7px 16px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
                   + Talhão
                 </button>
               </div>
@@ -416,12 +416,12 @@ function ModalNova({
                         onChange={v => setF(fv => ({...fv, vazao_lha: v}))}
                         style={{ ...inp, width:120 }} />
                       <button onClick={arredondarPorTanque}
-                        style={{ padding:"8px 14px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+                        style={{ padding:"8px 14px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
                         Arredondar / tanque
                       </button>
                     </div>
                   )}
-                  <button onClick={addProduto} style={{ padding:"7px 16px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  <button onClick={addProduto} style={{ padding:"7px 16px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
                     + Produto
                   </button>
                 </div>
@@ -580,7 +580,7 @@ function ModalNova({
               Cancelar
             </button>
             <button onClick={salvar} disabled={saving}
-              style={{ padding:"9px 24px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
+              style={{ padding:"9px 24px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
               {saving ? "Salvando..." : isEditing ? "Salvar Alterações" : "Salvar Recomendação"}
             </button>
           </div>
@@ -672,7 +672,7 @@ function ModalExecutar({
                   {p.produto_nome}
                   {!p.insumo_id && <span style={{ fontSize:10, color:"#EF9F27", background:"#FBF3E0", padding:"1px 6px", borderRadius:4 }}>sem estoque</span>}
                 </span>
-                <span style={{ color:"#1A4870", fontWeight:600 }}>{p.dose_ha} {p.unidade}</span>
+                <span style={{ color:"#111111", fontWeight:600 }}>{p.dose_ha} {p.unidade}</span>
               </div>
             ))}
             {produtos.some(p => !p.insumo_id) && (
@@ -1016,7 +1016,7 @@ export default function RecomendacoesPage() {
               📱 Modo Campo
             </a>
             <button onClick={() => setModalNova(true)}
-              style={{ padding:"9px 20px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
+              style={{ padding:"9px 20px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
               + Nova Recomendação
             </button>
           </div>
@@ -1105,12 +1105,12 @@ export default function RecomendacoesPage() {
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
                     {(rec.status === "pendente" || rec.status === "em_execucao") && (
                       <button onClick={() => abrirExecucao(rec)}
-                        style={{ padding:"7px 14px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                        style={{ padding:"7px 14px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
                         {rec.status === "pendente" ? "Executar" : "Continuar"}
                       </button>
                     )}
                     <button onClick={() => editarRec(rec)}
-                      style={{ padding:"7px 12px", background:"#F0F5FA", border:"0.5px solid #1A487040", borderRadius:8, fontSize:12, cursor:"pointer", color:"#1A4870" }}>
+                      style={{ padding:"7px 12px", background:"#F0F5FA", border:"0.5px solid #11111140", borderRadius:8, fontSize:12, cursor:"pointer", color:"#111111" }}>
                       Editar
                     </button>
                     {rec.status === "pendente" && (

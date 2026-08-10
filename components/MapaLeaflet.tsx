@@ -112,7 +112,7 @@ export default function MapaLeaflet({ talhoes, selecionado, onSelect, corCultura
 
               const layer = L.geoJSON(geojson, {
                 style: () => ({
-                  color:       selecionadoAqui ? "#1A4870" : cor,
+                  color:       selecionadoAqui ? "#111111" : cor,
                   fillColor:   cor,
                   fillOpacity: selecionadoAqui ? 0.55 : 0.30,
                   weight:      selecionadoAqui ? 3 : 1.5,
@@ -173,7 +173,7 @@ export default function MapaLeaflet({ talhoes, selecionado, onSelect, corCultura
     const circle = L.circleMarker([t.lat, t.lng], {
       radius:      selecionado ? 14 : 10,
       fillColor:   cor,
-      color:       selecionado ? "#1A4870" : "#fff",
+      color:       selecionado ? "#111111" : "#fff",
       weight:      selecionado ? 3 : 1.5,
       fillOpacity: 0.75,
     });

@@ -172,7 +172,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
               >
                 <div style={{
                   width: 44, height: 44, borderRadius: "50%",
-                  background: "#1A4870",
+                  background: "#111111",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   boxShadow: "0 2px 10px rgba(26,72,112,0.4)",
                   marginTop: -20,
@@ -188,7 +188,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           const content = (
             <>
               <span style={{ fontSize: 20 }}>{tab.icon}</span>
-              <span style={{ fontSize: 10, color: isActive ? "#1A4870" : "var(--text-3)" }}>{tab.label}</span>
+              <span style={{ fontSize: 10, color: isActive ? "#111111" : "var(--text-3)" }}>{tab.label}</span>
             </>
           );
           if (isMais) {
@@ -216,7 +216,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
                 alignItems: "center", justifyContent: "center",
                 textDecoration: "none",
                 background: isActive ? "#F0F5FA" : "none", gap: 2,
-                borderTop: isActive ? "2px solid #1A4870" : "2px solid transparent",
+                borderTop: isActive ? "2px solid #111111" : "2px solid transparent",
               }}
             >
               {content}

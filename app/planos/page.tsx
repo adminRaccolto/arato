@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic"; // sempre busca preços atuais do banco
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR: Record<PlanoId, { borda: string; bg: string; badge: string; btn: string }> = {
-  essencial:   { borda: "var(--border-table)", bg: "var(--bg-card)",    badge: "var(--bg-page)", btn: "#1A4870" },
-  gestao:      { borda: "#1A4870", bg: "#F0F7FF", badge: "#1A4870", btn: "#1A4870" },
+  essencial:   { borda: "var(--border-table)", bg: "var(--bg-card)",    badge: "var(--bg-page)", btn: "#111111" },
+  gestao:      { borda: "#111111", bg: "#F0F7FF", badge: "#111111", btn: "#111111" },
   performance: { borda: "#C9921B", bg: "#FEFCF5", badge: "#C9921B", btn: "#C9921B" },
 };
 
@@ -30,7 +30,7 @@ export default async function PlanosPage() {
           <Link href="/login" style={{ fontSize: 13, color: "var(--text-2)", textDecoration: "none", padding: "7px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8 }}>
             Já tenho conta
           </Link>
-          <Link href="/cadastro" style={{ fontSize: 13, color: "#fff", textDecoration: "none", padding: "8px 20px", background: "#1A4870", borderRadius: 8, fontWeight: 600 }}>
+          <Link href="/cadastro" style={{ fontSize: 13, color: "#fff", textDecoration: "none", padding: "8px 20px", background: "#111111", borderRadius: 8, fontWeight: 600 }}>
             Começar grátis
           </Link>
         </div>
@@ -40,10 +40,10 @@ export default async function PlanosPage() {
 
         {/* ── Hero ── */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <div style={{ display: "inline-block", padding: "4px 14px", background: "#D5E8F5", borderRadius: 20, fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 16 }}>
+          <div style={{ display: "inline-block", padding: "4px 14px", background: "#E8E8E8", borderRadius: 20, fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 16 }}>
             🌱 14 dias grátis — sem cartão
           </div>
-          <h1 style={{ margin: "0 0 16px", fontSize: 38, fontWeight: 800, color: "#0B2D50", lineHeight: 1.2 }}>
+          <h1 style={{ margin: "0 0 16px", fontSize: 38, fontWeight: 800, color: "#0D0D0D", lineHeight: 1.2 }}>
             Escolha o plano certo<br />para a sua fazenda
           </h1>
           <p style={{ margin: "0 auto 0", fontSize: 16, color: "var(--text-2)", maxWidth: 540, lineHeight: 1.6 }}>
@@ -70,7 +70,7 @@ export default async function PlanosPage() {
                 {pid === "gestao" && (
                   <div style={{
                     position: "absolute", top: -13, left: "50%", transform: "translateX(-50%)",
-                    background: "#1A4870", color: "#fff", borderRadius: 20,
+                    background: "#111111", color: "#fff", borderRadius: 20,
                     padding: "3px 16px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
                   }}>
                     ⭐ Mais popular
@@ -97,7 +97,7 @@ export default async function PlanosPage() {
                 </div>
 
                 <div style={{ marginBottom: 4 }}>
-                  <span style={{ fontSize: 36, fontWeight: 800, color: "#0B2D50" }}>
+                  <span style={{ fontSize: 36, fontWeight: 800, color: "#0D0D0D" }}>
                     {fmtPreco(precos[pid])}
                   </span>
                   <span style={{ fontSize: 13, color: "var(--text-3)" }}>/mês</span>
@@ -138,7 +138,7 @@ export default async function PlanosPage() {
         {/* ── Comparativo completo ── */}
         <div style={{ background: "var(--bg-card)", borderRadius: 16, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 64 }}>
           <div style={{ padding: "24px 32px", borderBottom: "0.5px solid #E4E9F0" }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0B2D50" }}>Comparativo completo</h2>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0D0D0D" }}>Comparativo completo</h2>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -179,7 +179,7 @@ export default async function PlanosPage() {
                         v ? <span style={{ color: "#16A34A", fontSize: 16 }}>✓</span>
                           : <span style={{ color: "var(--border-table)", fontSize: 14 }}>—</span>
                       ) : (
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "#1A4870" }}>{v}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#111111" }}>{v}</span>
                       )}
                     </td>
                   ))}
@@ -191,7 +191,7 @@ export default async function PlanosPage() {
 
         {/* ── FAQ ── */}
         <div style={{ maxWidth: 680, margin: "0 auto", marginBottom: 64 }}>
-          <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 700, color: "#0B2D50", marginBottom: 32 }}>Perguntas frequentes</h2>
+          <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 700, color: "#0D0D0D", marginBottom: 32 }}>Perguntas frequentes</h2>
           {[
             ["Como funciona o período de teste gratuito?", "Você tem 14 dias para testar todas as funcionalidades do plano escolhido, sem precisar de cartão de crédito. Ao final do trial, você receberá um link de pagamento via PIX."],
             ["Posso mudar de plano depois?", "Sim. Você pode fazer upgrade ou downgrade a qualquer momento pelo painel Configurações > Plano. O valor é ajustado na próxima mensalidade."],
@@ -200,7 +200,7 @@ export default async function PlanosPage() {
             ["Aceita PIX e boleto?", "Sim. A cobrança é feita via Asaas — aceita PIX, boleto bancário e cartão de crédito."],
           ].map(([q, a], i) => (
             <details key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, marginBottom: 10, padding: "16px 20px" }}>
-              <summary style={{ fontSize: 14, fontWeight: 600, color: "#0B2D50", cursor: "pointer", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <summary style={{ fontSize: 14, fontWeight: 600, color: "#0D0D0D", cursor: "pointer", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 {q} <span style={{ fontSize: 18, color: "var(--text-3)" }}>+</span>
               </summary>
               <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{a}</p>
@@ -209,7 +209,7 @@ export default async function PlanosPage() {
         </div>
 
         {/* ── CTA final ── */}
-        <div style={{ textAlign: "center", background: "#1A4870", borderRadius: 16, padding: "48px 32px", color: "#fff" }}>
+        <div style={{ textAlign: "center", background: "#111111", borderRadius: 16, padding: "48px 32px", color: "#fff" }}>
           <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 800 }}>Comece hoje, gratuitamente</h2>
           <p style={{ margin: "0 0 28px", fontSize: 15, opacity: 0.8 }}>14 dias de teste sem cartão. Configure em minutos.</p>
           <Link href="/cadastro" style={{
@@ -224,7 +224,7 @@ export default async function PlanosPage() {
       </main>
 
       <footer style={{ textAlign: "center", padding: "24px", fontSize: 12, color: "var(--text-muted)", borderTop: "0.5px solid var(--border-table)", background: "var(--bg-card)" }}>
-        © {new Date().getFullYear()} Arato — Gestão Agrícola · <a href="/login" style={{ color: "#1A4870", textDecoration: "none" }}>Entrar</a>
+        © {new Date().getFullYear()} Arato — Gestão Agrícola · <a href="/login" style={{ color: "#111111", textDecoration: "none" }}>Entrar</a>
       </footer>
     </div>
   );

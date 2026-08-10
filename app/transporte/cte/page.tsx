@@ -12,7 +12,7 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid var(--bg-tag)", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" };
 
@@ -20,7 +20,7 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
 
-function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{texto}</span>;
 }
 
@@ -141,7 +141,7 @@ td{border:0.3mm solid #000;padding:1mm}
   <!-- CABEÇALHO -->
   <div class="row" style="margin-bottom:1.5mm;align-items:stretch">
     <div class="box" style="flex:0 0 45mm;display:flex;align-items:center;justify-content:center;padding:2mm">
-      ${logoUrl ? `<img src="${logoUrl}" style="max-width:40mm;max-height:18mm;object-fit:contain" />` : `<span style="font-size:9pt;font-weight:700;color:#1A4870">DACTE</span>`}
+      ${logoUrl ? `<img src="${logoUrl}" style="max-width:40mm;max-height:18mm;object-fit:contain" />` : `<span style="font-size:9pt;font-weight:700;color:#111111">DACTE</span>`}
     </div>
     <div class="box" style="flex:1;text-align:center">
       <div style="font-size:11pt;font-weight:700">DACTE</div>
@@ -614,10 +614,10 @@ function CtePageInner() {
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
-            { label: "Emitidos (total)",    value: ctes.length.toString(),        sub: "todos os status",       color: "#1A4870" },
+            { label: "Emitidos (total)",    value: ctes.length.toString(),        sub: "todos os status",       color: "#111111" },
             { label: "Autorizados",         value: autorizados.length.toString(), sub: "transmitidos SEFAZ",    color: "#1A6B3C" },
             { label: "Rascunho",            value: ctes.filter(c => c.status === "rascunho").length.toString(), sub: "aguardando autorização", color: "#C9921B" },
-            { label: "Valor Total Fretes",  value: fmtBRL(totalFretes),           sub: "autorizados",           color: "#1A4870" },
+            { label: "Valor Total Fretes",  value: fmtBRL(totalFretes),           sub: "autorizados",           color: "#111111" },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
@@ -663,7 +663,7 @@ function CtePageInner() {
                   const sm = STATUS_META[c.status];
                   return (
                     <tr key={c.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
-                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1A4870" }}>
+                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "#111111" }}>
                         {c.numero_cte}/{c.serie}
                         <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{c.cfop}</div>
                       </td>
@@ -690,7 +690,7 @@ function CtePageInner() {
                               Autorizar SEFAZ
                             </button>
                           )}
-                          <button onClick={() => imprimirDacte(c, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
+                          <button onClick={() => imprimirDacte(c, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                             DACTE
                           </button>
                           {c.status !== "cancelado" && (
@@ -932,7 +932,7 @@ function CtePageInner() {
               </div>
               <div>
                 <label style={lbl}>Valor ICMS (calculado)</label>
-                <div style={{ ...inp, background: "var(--bg-card)", color: "#1A4870", fontWeight: 600 }}>{fmtBRL(valorIcms)}</div>
+                <div style={{ ...inp, background: "var(--bg-card)", color: "#111111", fontWeight: 600 }}>{fmtBRL(valorIcms)}</div>
               </div>
               <div />
 
@@ -955,7 +955,7 @@ function CtePageInner() {
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#1A4870", cursor: saving ? "default" : "pointer" }}>
+                <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
                   {saving ? "Salvando…" : (cteEdit ? "Salvar alterações" : "Salvar CT-e")}
                 </button>
               </div>

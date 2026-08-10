@@ -146,7 +146,7 @@ export default function SelectBusca({ value, onChange, options, placeholder = "â
             {hasGroups
               ? Object.entries(grupos).map(([grupo, items]) => (
                   <div key={grupo}>
-                    <div style={{ padding: "5px 12px 3px", fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.07em", background: "#F3F7FC", borderTop: "0.5px solid #E0EAF6" }}>
+                    <div style={{ padding: "5px 12px 3px", fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.07em", background: "#F3F7FC", borderTop: "0.5px solid #E0EAF6" }}>
                       {grupo}
                     </div>
                     {items.map(o => <OptionRow key={o.value} o={o} selected={o.value === value} onSelect={selectOption} />)}
@@ -168,15 +168,15 @@ function OptionRow({ o, selected, onSelect }: { o: SelectBuscaOption; selected: 
       style={{
         padding: "7px 12px 7px 16px",
         fontSize: 12,
-        color: selected ? "#0B2D50" : "var(--text-1)",
-        background: selected ? "#D5E8F5" : "transparent",
+        color: selected ? "#0D0D0D" : "var(--text-1)",
+        background: selected ? "#E8E8E8" : "transparent",
         cursor: "pointer",
         borderBottom: "0.5px solid #F4F6FA",
         fontWeight: selected ? 600 : 400,
         transition: "background 0.08s",
       }}
       onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "#EDF3FA"; }}
-      onMouseLeave={e => { if (!selected) e.currentTarget.style.background = selected ? "#D5E8F5" : "transparent"; }}
+      onMouseLeave={e => { if (!selected) e.currentTarget.style.background = selected ? "#E8E8E8" : "transparent"; }}
     >
       {o.label}
     </div>

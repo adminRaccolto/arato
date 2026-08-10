@@ -20,8 +20,8 @@ import type {
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 20, paddingBottom: 5, borderBottom: "0.5px solid var(--border-table)" };
-const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 20, paddingBottom: 5, borderBottom: "0.5px solid var(--border-table)" };
+const btnV: React.CSSProperties = { padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 const btnS: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
@@ -35,7 +35,7 @@ const fmtDate = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 // ─── Configs ─────────────────────────────────────────────────────────────────
 
 const TIPO_AERONAVE: Partial<Record<TipoAeronave, { label: string; icon: string; bg: string; cor: string }>> = {
-  aviao: { label: "Avião Agrícola", icon: "✈️", bg: "#E6F1FB", cor: "#0B2D50" },
+  aviao: { label: "Avião Agrícola", icon: "✈️", bg: "#E6F1FB", cor: "#0D0D0D" },
   drone: { label: "Drone / RPAS",   icon: "🚁", bg: "#F0FDF4", cor: "#14532D" },
 };
 
@@ -43,7 +43,7 @@ const TIPO_APLIC: Record<TipoAplicacaoAerea, { label: string; bg: string; cor: s
   fungicida:          { label: "Fungicida",             bg: "#E6F1FB", cor: "#0C447C" },
   inseticida:         { label: "Inseticida",            bg: "#FBF0D8", cor: "#7A5A12" },
   herbicida:          { label: "Herbicida",             bg: "#FAEEDA", cor: "#633806" },
-  fertilizante_foliar:{ label: "Fertilizante Foliar",   bg: "#D5E8F5", cor: "#0B2D50" },
+  fertilizante_foliar:{ label: "Fertilizante Foliar",   bg: "#E8E8E8", cor: "#0D0D0D" },
   dessecacao:         { label: "Dessecação",            bg: "#F8EBE0", cor: "#7A2E00" },
   bactericida:        { label: "Bactericida",           bg: "#EDE9FE", cor: "#4C1D95" },
   outros:             { label: "Outros",                bg: "#F3F4F6", cor: "#374151" },
@@ -379,8 +379,8 @@ export default function AplicacaoAereaPage() {
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
           {[
-            { label: "Aplicações no período", valor: aplicacoesFiltradas.length.toString(), unit: "", cor: "#1A4870" },
-            { label: "Área total aplicada",   valor: fmtN(haTotal, 1),  unit: "ha",     cor: "#1A4870" },
+            { label: "Aplicações no período", valor: aplicacoesFiltradas.length.toString(), unit: "", cor: "#111111" },
+            { label: "Área total aplicada",   valor: fmtN(haTotal, 1),  unit: "ha",     cor: "#111111" },
             { label: "Custo total",           valor: fmtBRL(custoTotalGeral), unit: "", cor: "#C9921B" },
             { label: "Custo médio",           valor: fmtBRL(mediaHa),   unit: "/ha",    cor: "#C9921B" },
           ].map(k => (
@@ -397,8 +397,8 @@ export default function AplicacaoAereaPage() {
             <button key={t} onClick={() => setAba(t)} style={{
               padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === t ? 700 : 400,
-              color: aba === t ? "#1A4870" : "var(--text-3)",
-              borderBottom: aba === t ? "2px solid #1A4870" : "2px solid transparent", marginBottom: -1,
+              color: aba === t ? "#111111" : "var(--text-3)",
+              borderBottom: aba === t ? "2px solid #111111" : "2px solid transparent", marginBottom: -1,
             }}>
               {t === "operacoes" ? `Operações (${aplicacoes.length})` : `Empresas Aplicadoras (${empresas.length})`}
             </button>
@@ -432,7 +432,7 @@ export default function AplicacaoAereaPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {aplicacoesFiltradas.map(a => {
                   const tAplic = TIPO_APLIC[a.tipo] ?? TIPO_APLIC.outros;
-                  const tAero  = TIPO_AERONAVE[a.tipo_aeronave] ?? { label: "Avião Agrícola", icon: "✈️", bg: "#E6F1FB", cor: "#0B2D50" };
+                  const tAero  = TIPO_AERONAVE[a.tipo_aeronave] ?? { label: "Avião Agrícola", icon: "✈️", bg: "#E6F1FB", cor: "#0D0D0D" };
                   const empresa = a.empresa_aplicadora?.razao_social ?? a.empresa_nome ?? "—";
                   const isExp = expandido === a.id;
 
@@ -442,7 +442,7 @@ export default function AplicacaoAereaPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", cursor: "pointer" }} onClick={() => abrirDetalhe(a.id)}>
                         {/* Data */}
                         <div style={{ minWidth: 80, textAlign: "center", background: "var(--bg-page)", borderRadius: 8, padding: "6px 10px" }}>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: "#1A4870" }}>{fmtDate(a.data_aplicacao).slice(0,5)}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: "#111111" }}>{fmtDate(a.data_aplicacao).slice(0,5)}</div>
                           <div style={{ fontSize: 10, color: "var(--text-3)" }}>{fmtDate(a.data_aplicacao).slice(6)}</div>
                         </div>
                         {/* Tipo aeronave */}
@@ -463,7 +463,7 @@ export default function AplicacaoAereaPage() {
                         {/* Métricas */}
                         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
                           <div style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>{fmtN(a.area_ha, 1)}</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: "#111111" }}>{fmtN(a.area_ha, 1)}</div>
                             <div style={{ fontSize: 10, color: "var(--text-3)" }}>ha</div>
                           </div>
                           {a.custo_ha && (
@@ -506,7 +506,7 @@ export default function AplicacaoAereaPage() {
                             ) : (
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                 {detalheTalhoes.map(t => (
-                                  <span key={t.id} style={{ fontSize: 12, padding: "3px 10px", background: "#D5E8F5", color: "#0B2D50", borderRadius: 20, fontWeight: 600 }}>
+                                  <span key={t.id} style={{ fontSize: 12, padding: "3px 10px", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 20, fontWeight: 600 }}>
                                     {t.talhao?.nome ?? t.talhao_id} · {fmtN(t.area_ha, 1)} ha
                                   </span>
                                 ))}
@@ -663,9 +663,9 @@ export default function AplicacaoAereaPage() {
                 <div style={{ display: "flex", gap: 10 }}>
                   {(Object.entries(TIPO_AERONAVE) as [TipoAeronave, typeof TIPO_AERONAVE[TipoAeronave]][]).map(([k, v]) => (
                     <button key={k} onClick={() => sf("tipo_aeronave", k)} style={{
-                      flex: 1, padding: "10px 16px", border: `2px solid ${form.tipo_aeronave === k ? "#1A4870" : "var(--border-table)"}`,
-                      borderRadius: 10, cursor: "pointer", background: form.tipo_aeronave === k ? "#D5E8F5" : "var(--bg-card)",
-                      fontWeight: form.tipo_aeronave === k ? 700 : 400, fontSize: 13, color: form.tipo_aeronave === k ? "#0B2D50" : "var(--text-2)",
+                      flex: 1, padding: "10px 16px", border: `2px solid ${form.tipo_aeronave === k ? "#111111" : "var(--border-table)"}`,
+                      borderRadius: 10, cursor: "pointer", background: form.tipo_aeronave === k ? "#E8E8E8" : "var(--bg-card)",
+                      fontWeight: form.tipo_aeronave === k ? 700 : 400, fontSize: 13, color: form.tipo_aeronave === k ? "#0D0D0D" : "var(--text-2)",
                       transition: "all 0.12s",
                     }}>
                       <span style={{ fontSize: 22, display: "block", marginBottom: 4 }}>{k === "aviao" ? "✈️" : "🚁"}</span>
@@ -746,16 +746,16 @@ export default function AplicacaoAereaPage() {
                           const sel = talhoesSelec.some(x => x.talhao_id === t.id);
                           return (
                             <button key={t.id} onClick={() => toggleTalhao(t)} style={{
-                              padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`,
-                              background: sel ? "#D5E8F5" : "transparent", cursor: "pointer", fontSize: 12,
-                              fontWeight: sel ? 700 : 400, color: sel ? "#0B2D50" : "var(--text-2)", transition: "all 0.1s",
+                              padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${sel ? "#111111" : "var(--border-table)"}`,
+                              background: sel ? "#E8E8E8" : "transparent", cursor: "pointer", fontSize: 12,
+                              fontWeight: sel ? 700 : 400, color: sel ? "#0D0D0D" : "var(--text-2)", transition: "all 0.1s",
                             }}>
                               {t.nome} · {fmtN(t.area_ha, 1)} ha
                             </button>
                           );
                         })}
                       </div>
-                      <div style={{ fontSize: 13, color: "#1A4870", fontWeight: 600 }}>
+                      <div style={{ fontSize: 13, color: "#111111", fontWeight: 600 }}>
                         {talhoesSelec.length > 0
                           ? `${talhoesSelec.length} talhão(ões) selecionado(s) → Área total: ${fmtN(areaTotal, 2)} ha`
                           : <span style={{ color: "#E24B4A" }}>Selecione ao menos 1 talhão *</span>}

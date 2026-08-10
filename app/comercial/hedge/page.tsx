@@ -52,7 +52,7 @@ const PORTOS = ["Paranaguá (PNG)","Santos (STS)","Miritituba","São Francisco d
 // ─── Estilos base ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 7, fontSize: 13, background: "var(--bg-card,#fff)", color: "var(--text-1,#1a1a1a)", boxSizing: "border-box" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2,#555)", fontWeight: 600, display: "block", marginBottom: 4 };
-const btnV: React.CSSProperties = { padding: "8px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
+const btnV: React.CSSProperties = { padding: "8px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { padding: "8px 16px", background: "transparent", color: "var(--text-2,#555)", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 8, fontSize: 13, cursor: "pointer" };
 const btnM: React.CSSProperties = { padding: "6px 14px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" };
 const card: React.CSSProperties = { background: "var(--bg-card,#fff)", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 12, padding: "16px 20px" };
@@ -359,7 +359,7 @@ export default function HedgePage() {
   function corCelula(m: number) {
     if (m < 0)   return { bg: "#FCEBEB", cl: "#791F1F" };
     if (m < 15)  return { bg: "#FFF3CD", cl: "#7A4300" };
-    if (m < 30)  return { bg: "#D5E8F5", cl: "#0B2D50" };
+    if (m < 30)  return { bg: "#E8E8E8", cl: "#0D0D0D" };
     return { bg: "#D5F5E3", cl: "#1A5C35" };
   }
 
@@ -472,14 +472,14 @@ export default function HedgePage() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {precoAoVivo && (
-            <div style={{ fontSize: 11, color: "#0B2D50", background: "#D5E8F5", padding: "5px 10px", borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: "#0D0D0D", background: "#E8E8E8", padding: "5px 10px", borderRadius: 8 }}>
               CBOT Soja {(precoAoVivo.cbot_soja).toFixed(0)}¢ · USD/BRL {precoAoVivo.usd_brl.toFixed(2)}
             </div>
           )}
           {/* Toggle moeda */}
           <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 8, overflow: "hidden" }}>
             {(["BRL","USD"] as const).map(m => (
-              <button key={m} onClick={() => setMoeda(m)} style={{ padding: "6px 14px", background: moeda === m ? "#1A4870" : "transparent", color: moeda === m ? "#fff" : "#666", border: "none", fontSize: 12, fontWeight: moeda === m ? 600 : 400, cursor: "pointer" }}>{m}</button>
+              <button key={m} onClick={() => setMoeda(m)} style={{ padding: "6px 14px", background: moeda === m ? "#111111" : "transparent", color: moeda === m ? "#fff" : "#666", border: "none", fontSize: 12, fontWeight: moeda === m ? 600 : 400, cursor: "pointer" }}>{m}</button>
             ))}
           </div>
           {isSuperadmin && badge("Superadmin — módulo em desenvolvimento", "#FBF3E0", "#8B5A00")}
@@ -496,7 +496,7 @@ export default function HedgePage() {
         {cicloSel && (
           <>
             <div style={{ fontSize: 12, color: "var(--text-2,#555)" }}>Produção estimada:</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#1A4870" }}>{prodEstimada.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#111111" }}>{prodEstimada.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc</div>
           </>
         )}
         {carregando && <div style={{ fontSize: 12, color: "#888" }}>Carregando…</div>}
@@ -505,7 +505,7 @@ export default function HedgePage() {
       {/* Abas */}
       <div style={{ display: "flex", gap: 0, background: "var(--bg-card,#fff)", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
         {ABAS.map(a => (
-          <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: "11px 8px", border: "none", borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 12, fontWeight: aba === a.key ? 700 : 400, color: aba === a.key ? "#1A4870" : "var(--text-2,#555)", cursor: "pointer" }}>
+          <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: "11px 8px", border: "none", borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontSize: 12, fontWeight: aba === a.key ? 700 : 400, color: aba === a.key ? "#111111" : "var(--text-2,#555)", cursor: "pointer" }}>
             {a.label}
           </button>
         ))}
@@ -518,9 +518,9 @@ export default function HedgePage() {
           {/* 4 blocos de componente */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
             {[
-              { comp: "BOARD"  as const, label: "BOARD (CBOT)", valor: mediaFixada("BOARD"), uni: "¢/bu",  pct: pctB, cor: "#1A4870", info: precoAoVivo ? `Spot: ${(precoAoVivo.cbot_soja).toFixed(0)} ¢/bu` : "—" },
+              { comp: "BOARD"  as const, label: "BOARD (CBOT)", valor: mediaFixada("BOARD"), uni: "¢/bu",  pct: pctB, cor: "#111111", info: precoAoVivo ? `Spot: ${(precoAoVivo.cbot_soja).toFixed(0)} ¢/bu` : "—" },
               { comp: "PREMIO" as const, label: "PRÊMIO",       valor: mediaFixada("PREMIO"), uni: "¢/bu", pct: pctP, cor: "#0C447C", info: "Entrada manual" },
-              { comp: "CAMBIO" as const, label: "CÂMBIO",       valor: mediaFixada("CAMBIO"), uni: "R$/USD",pct: pctC, cor: "#378ADD", info: precoAoVivo ? `PTAX: ${precoAoVivo.usd_brl.toFixed(4)}` : "—" },
+              { comp: "CAMBIO" as const, label: "CÂMBIO",       valor: mediaFixada("CAMBIO"), uni: "R$/USD",pct: pctC, cor: "#444444", info: precoAoVivo ? `PTAX: ${precoAoVivo.usd_brl.toFixed(4)}` : "—" },
               { comp: "FRETE"  as const, label: "FRETE",        valor: mediaFixada("FRETE"),  uni: "R$/sc", pct: pctF, cor: "#C9921B", info: "Médio das rotas" },
             ].map(bl => (
               <div key={bl.comp} style={{ ...card }}>
@@ -538,7 +538,7 @@ export default function HedgePage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div style={{ ...card }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2,#555)", marginBottom: 6 }}>Preço líquido (parâmetros atuais)</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: "#1A4870" }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#111111" }}>
                 {moeda === "BRL" ? `R$ ${calc.precLiqFinal.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}/sc`
                                  : `USD ${usd_sc.toFixed(2)}/sc`}
               </div>
@@ -577,7 +577,7 @@ export default function HedgePage() {
                 </tr></thead>
                 <tbody>
                   {fixacoes.sort((a,b) => a.data_fixacao.localeCompare(b.data_fixacao)).map((f, i) => {
-                    const corComp: Record<string,[string,string]> = { BOARD: ["#D5E8F5","#0B2D50"], PREMIO: ["#E6F1FB","#0C447C"], CAMBIO: ["#FBF3E0","#8B5E14"], FRETE: ["#FBF0D8","#7A5A12"] };
+                    const corComp: Record<string,[string,string]> = { BOARD: ["#E8E8E8","#0D0D0D"], PREMIO: ["#E6F1FB","#0C447C"], CAMBIO: ["#FBF3E0","#8B5E14"], FRETE: ["#FBF0D8","#7A5A12"] };
                     const [bg,cl] = corComp[f.componente] ?? ["#F1F5F9","#475569"];
                     return (
                       <tr key={f.id} style={{ borderBottom: i < fixacoes.length-1 ? "0.5px solid var(--border-row,#eee)" : "none" }}>
@@ -613,7 +613,7 @@ export default function HedgePage() {
                 <label style={lbl}>Cultura</label>
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["soja","milho"] as const).map(c => (
-                    <button key={c} onClick={() => setPCultura(c)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: `0.5px solid ${pCultura===c?"#1A4870":"var(--border-table,#DDE2EE)"}`, background: pCultura===c?"#D5E8F5":"transparent", color: pCultura===c?"#0B2D50":"#666", fontSize: 13, fontWeight: pCultura===c?700:400, cursor: "pointer" }}>
+                    <button key={c} onClick={() => setPCultura(c)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: `0.5px solid ${pCultura===c?"#111111":"var(--border-table,#DDE2EE)"}`, background: pCultura===c?"#E8E8E8":"transparent", color: pCultura===c?"#0D0D0D":"#666", fontSize: 13, fontWeight: pCultura===c?700:400, cursor: "pointer" }}>
                       {c.charAt(0).toUpperCase()+c.slice(1)} (×{c==="soja"?FATOR_SOJA.toFixed(4):FATOR_MILHO.toFixed(4)})
                     </button>
                   ))}
@@ -682,7 +682,7 @@ export default function HedgePage() {
                       onClick={() => setCbotTrigger(t => t + 1)}
                       disabled={cbotFetching}
                       title={`Buscar ${CME_ROOT[pCultura] ?? "ZS"}${blocoVenc}=F na CME agora`}
-                      style={{ padding: "8px 11px", background: "transparent", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 7, fontSize: 14, cursor: "pointer", color: cbotFetching ? "#aaa" : "#1A4870" }}
+                      style={{ padding: "8px 11px", background: "transparent", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 7, fontSize: 14, cursor: "pointer", color: cbotFetching ? "#aaa" : "#111111" }}
                     >
                       {cbotFetching ? "…" : "↻"}
                     </button>
@@ -763,12 +763,12 @@ export default function HedgePage() {
               <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 12 }}>Decomposição do Preço</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
-                  { label: "Preço porto (FOB)",               val: calc.precPorto,     cor: "#0B2D50",  bold: false },
+                  { label: "Preço porto (FOB)",               val: calc.precPorto,     cor: "#0D0D0D",  bold: false },
                   { label: `Frete (−R$ ${frete_n.toFixed(0)}/sc)`,      val: -frete_n,            cor: "#E24B4A",  bold: false },
                   { label: `Despesas originação (−R$ ${calc.despOriginacao.toFixed(2)}/sc)`, val: -calc.despOriginacao, cor: "#E24B4A", bold: false },
-                  { label: "= Preço líquido pré-impostos",   val: calc.precLiquido,   cor: "#1A4870",  bold: true  },
+                  { label: "= Preço líquido pré-impostos",   val: calc.precLiquido,   cor: "#111111",  bold: true  },
                   { label: `Funrural+SENAR (−${funr?"1,7%":"0%"})`,     val: -calc.descFunrural,  cor: "#E24B4A",  bold: false },
-                  { label: "= Preço líquido final (R$/sc)",  val: calc.precLiqFinal,  cor: "#1A5CB8",  bold: true  },
+                  { label: "= Preço líquido final (R$/sc)",  val: calc.precLiqFinal,  cor: "#2A2A2A",  bold: true  },
                   { label: `Custo de produção (−R$ ${custo_n.toFixed(2)}/sc)`, val: -custo_n, cor: "#E24B4A", bold: false },
                   { label: "= MARGEM DO PRODUTOR",            val: margem_n,           cor: margem_n>=0?"#16A34A":"#E24B4A", bold: true },
                 ].map((row, i) => (
@@ -790,7 +790,7 @@ export default function HedgePage() {
               </div>
               <div style={{ ...card, textAlign: "center" }}>
                 <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Em USD/sc</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "#1A4870" }}>USD {usd_sc.toFixed(2)}</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: "#111111" }}>USD {usd_sc.toFixed(2)}</div>
                 <div style={{ fontSize: 11, color: "#888" }}>câmbio {cambio_n.toFixed(2)}</div>
               </div>
             </div>
@@ -798,7 +798,7 @@ export default function HedgePage() {
             {/* Fórmula explícita */}
             <div style={{ ...card, background: "#F8FAFC" }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Fórmula</div>
-              <div style={{ fontFamily: "monospace", fontSize: 12, color: "#0B2D50", lineHeight: 1.8 }}>
+              <div style={{ fontFamily: "monospace", fontSize: 12, color: "#0D0D0D", lineHeight: 1.8 }}>
                 ({cbot_n} + ({premio_n})) ÷ 100 × {fator.toFixed(4)} × {cambio_n.toFixed(2)}<br/>
                 = R$ {calc.precPorto.toFixed(2)}/sc (porto)<br/>
                 − R$ {frete_n.toFixed(0)} (frete) − R$ {calc.despOriginacao.toFixed(2)} (desp.)<br/>
@@ -832,7 +832,7 @@ export default function HedgePage() {
 
           {/* Legenda */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            {[{ bg:"#FCEBEB",cl:"#791F1F",l:"Negativa"},{bg:"#FFF3CD",cl:"#7A4300",l:"0–15 R$/sc"},{bg:"#D5E8F5",cl:"#0B2D50",l:"15–30 R$/sc"},{bg:"#D5F5E3",cl:"#1A5C35",l:"+ 30 R$/sc"}].map(s => (
+            {[{ bg:"#FCEBEB",cl:"#791F1F",l:"Negativa"},{bg:"#FFF3CD",cl:"#7A4300",l:"0–15 R$/sc"},{bg:"#E8E8E8",cl:"#0D0D0D",l:"15–30 R$/sc"},{bg:"#D5F5E3",cl:"#1A5C35",l:"+ 30 R$/sc"}].map(s => (
               <div key={s.l} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <div style={{ width: 14, height: 14, background: s.bg, border: `1px solid ${s.cl}`, borderRadius: 3 }} />
                 <span style={{ fontSize: 11, color: "#555" }}>{s.l}</span>
@@ -849,7 +849,7 @@ export default function HedgePage() {
                     Y ↓ / X →
                   </th>
                   {exX.map(x => (
-                    <th key={x} style={{ padding: "8px 12px", background: Math.abs(x - (sensiEixoX==="cbot"?cbot_n:sensiEixoX==="cambio"?cambio_n:premio_n)) < 1 ? "#D5E8F5" : "#F4F6FA", border: "0.5px solid #DDE2EE", fontVariantNumeric: "tabular-nums", color: "#0B2D50", fontWeight: 700 }}>
+                    <th key={x} style={{ padding: "8px 12px", background: Math.abs(x - (sensiEixoX==="cbot"?cbot_n:sensiEixoX==="cambio"?cambio_n:premio_n)) < 1 ? "#E8E8E8" : "#F4F6FA", border: "0.5px solid #DDE2EE", fontVariantNumeric: "tabular-nums", color: "#0D0D0D", fontWeight: 700 }}>
                       {sensiEixoX==="cambio" ? x.toFixed(2) : x}
                     </th>
                   ))}
@@ -858,7 +858,7 @@ export default function HedgePage() {
               <tbody>
                 {exY.map(y => (
                   <tr key={y}>
-                    <td style={{ padding: "8px 12px", background: Math.abs(y - (sensiEixoY==="cambio"?cambio_n:sensiEixoY==="cbot"?cbot_n:frete_n)) < 0.1 ? "#D5E8F5" : "#F4F6FA", border: "0.5px solid #DDE2EE", fontVariantNumeric: "tabular-nums", fontWeight: 700, color: "#0B2D50" }}>
+                    <td style={{ padding: "8px 12px", background: Math.abs(y - (sensiEixoY==="cambio"?cambio_n:sensiEixoY==="cbot"?cbot_n:frete_n)) < 0.1 ? "#E8E8E8" : "#F4F6FA", border: "0.5px solid #DDE2EE", fontVariantNumeric: "tabular-nums", fontWeight: 700, color: "#0D0D0D" }}>
                       {sensiEixoY==="cambio" ? y.toFixed(2) : y}
                     </td>
                     {exX.map(x => {
@@ -866,7 +866,7 @@ export default function HedgePage() {
                       const { bg, cl } = corCelula(m);
                       const isCurr = Math.abs(x-(sensiEixoX==="cbot"?cbot_n:sensiEixoX==="cambio"?cambio_n:premio_n))<1 && Math.abs(y-(sensiEixoY==="cambio"?cambio_n:sensiEixoY==="cbot"?cbot_n:frete_n))<0.11;
                       return (
-                        <td key={x} style={{ padding: "10px 14px", border: `${isCurr?"2px":"0.5px"} solid ${isCurr?"#1A4870":"#DDE2EE"}`, background: bg, color: cl, fontWeight: isCurr ? 800 : 600, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                        <td key={x} style={{ padding: "10px 14px", border: `${isCurr?"2px":"0.5px"} solid ${isCurr?"#111111":"#DDE2EE"}`, background: bg, color: cl, fontWeight: isCurr ? 800 : 600, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                           R$ {m.toFixed(1)}
                         </td>
                       );
@@ -905,12 +905,12 @@ export default function HedgePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* CBOT necessário */}
             {(buscaTravar === "cbot" || buscaTravar === "ambos") && (
-              <div style={{ ...card, borderLeft: "4px solid #1A4870" }}>
+              <div style={{ ...card, borderLeft: "4px solid #111111" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Via BOARD (câmbio fixo em {cambio_n.toFixed(2)})</div>
                 <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
                   <div>
                     <div style={{ fontSize: 11, color: "#888" }}>CBOT necessário</div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: "#1A4870" }}>{cbotNecessario.toFixed(0)} ¢/bu</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: "#111111" }}>{cbotNecessario.toFixed(0)} ¢/bu</div>
                   </div>
                   <div style={{ fontSize: 28, color: "#DDE2EE" }}>→</div>
                   <div>
@@ -932,12 +932,12 @@ export default function HedgePage() {
 
             {/* Câmbio necessário */}
             {(buscaTravar === "cambio" || buscaTravar === "ambos") && (
-              <div style={{ ...card, borderLeft: "4px solid #378ADD" }}>
+              <div style={{ ...card, borderLeft: "4px solid #444444" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Via CÂMBIO (CBOT fixo em {cbot_n} ¢/bu)</div>
                 <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
                   <div>
                     <div style={{ fontSize: 11, color: "#888" }}>Câmbio necessário</div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: "#378ADD" }}>R$ {cambioNecessario.toFixed(4)}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: "#444444" }}>R$ {cambioNecessario.toFixed(4)}</div>
                   </div>
                   <div style={{ fontSize: 28, color: "#DDE2EE" }}>→</div>
                   <div>
@@ -1001,7 +1001,7 @@ export default function HedgePage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
                 <div style={{ ...card }}>
                   <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Produção estimada</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "#1A4870" }}>{prodEstimada.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "#111111" }}>{prodEstimada.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc</div>
                   <div style={{ fontSize: 11, color: "#888" }}>{cicloSel.area_ha.toLocaleString("pt-BR")} ha × {cicloSel.produtividade_esperada_sc_ha ?? 60} sc/ha</div>
                 </div>
                 <div style={{ ...card }}>
@@ -1031,7 +1031,7 @@ export default function HedgePage() {
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{ms.label}</div>
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 11, color: "#888" }}>Meta</div>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>{metaPct}%</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#111111" }}>{metaPct}%</div>
                         </div>
                         <div>
                           <div style={{ height: 8, background: "#E8EDF5", borderRadius: 4, overflow: "hidden" }}>
@@ -1143,7 +1143,7 @@ export default function HedgePage() {
                 <tfoot>
                   <tr style={{ background: "#F4F6FA" }}>
                     <td colSpan={4} style={{ padding: "8px 10px", fontSize: 11, color: "#555" }}>Total originação</td>
-                    <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 800, color: "#1A4870" }}>R$ {despesas.reduce((s,d) => s+d.valor_brl_sc,0).toFixed(2)}/sc</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 800, color: "#111111" }}>R$ {despesas.reduce((s,d) => s+d.valor_brl_sc,0).toFixed(2)}/sc</td>
                     <td />
                   </tr>
                 </tfoot>

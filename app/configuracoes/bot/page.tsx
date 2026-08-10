@@ -219,7 +219,7 @@ export default function BotDiagPage() {
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Bot IA — WhatsApp</h1>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>Diagnóstico e controle do assistente via WhatsApp</p>
           </div>
-          <button onClick={carregar} disabled={carregando} style={{ ...btn("#1A4870"), opacity: carregando ? 0.6 : 1 }}>
+          <button onClick={carregar} disabled={carregando} style={{ ...btn("#111111"), opacity: carregando ? 0.6 : 1 }}>
             {carregando ? "Verificando…" : "↻ Atualizar status"}
           </button>
         </div>
@@ -262,7 +262,7 @@ export default function BotDiagPage() {
             <button onClick={gerarQr} disabled={qrLoading} style={{ ...btn("#25D366"), opacity: qrLoading ? 0.6 : 1 }}>
               {qrLoading ? "Gerando…" : "Gerar QR Code"}
             </button>
-            <button onClick={testarBot} disabled={testLoading} style={{ ...btn("#1A4870"), opacity: testLoading ? 0.6 : 1 }}>
+            <button onClick={testarBot} disabled={testLoading} style={{ ...btn("#111111"), opacity: testLoading ? 0.6 : 1 }}>
               {testLoading ? "Testando…" : "Verificar endpoint webhook"}
             </button>
           </div>
@@ -276,7 +276,7 @@ export default function BotDiagPage() {
             </div>
           )}
           {testMsg && (
-            <div style={{ marginTop: 10, fontSize: 12, padding: "8px 12px", borderRadius: 8, background: "#F0F4FA", color: "#1A4870", border: "0.5px solid #B0CEF0" }}>
+            <div style={{ marginTop: 10, fontSize: 12, padding: "8px 12px", borderRadius: 8, background: "#F0F4FA", color: "#111111", border: "0.5px solid #B0CEF0" }}>
               {testMsg}
             </div>
           )}
@@ -290,7 +290,7 @@ export default function BotDiagPage() {
                 3. Toque em <em>Conectar um aparelho</em><br />
                 4. Escaneie o QR code ao lado<br /><br />
                 <span style={{ color: "#D97706" }}>⚠️ O QR expira em ~60 segundos.</span><br />
-                <button onClick={gerarQr} disabled={qrLoading} style={{ marginTop: 8, padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 11, cursor: "pointer", color: "#1A4870" }}>
+                <button onClick={gerarQr} disabled={qrLoading} style={{ marginTop: 8, padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 11, cursor: "pointer", color: "#111111" }}>
                   Renovar QR
                 </button>
               </div>
@@ -446,7 +446,7 @@ export default function BotDiagPage() {
                     <td style={{ padding: "8px 12px", color: "var(--text-1)", fontWeight: 600 }}>{u.nome}</td>
                     <td style={{ padding: "8px 12px", fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>+{u.whatsapp}</td>
                     <td style={{ padding: "8px 12px" }}>
-                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: u.ativo ? "#D5E8F5" : "#F1EFE8", color: u.ativo ? "#0B2D50" : "var(--text-2)" }}>
+                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: u.ativo ? "#E8E8E8" : "#F1EFE8", color: u.ativo ? "#0D0D0D" : "var(--text-2)" }}>
                         {u.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
@@ -484,7 +484,7 @@ export default function BotDiagPage() {
             <button
               onClick={testarFluxo}
               disabled={testeLoading || !testeNum.trim()}
-              style={{ ...btn("#1A4870"), opacity: testeLoading || !testeNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}
+              style={{ ...btn("#111111"), opacity: testeLoading || !testeNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}
             >
               {testeLoading ? "Testando…" : "▶ Executar teste"}
             </button>
@@ -506,7 +506,7 @@ export default function BotDiagPage() {
                 {testeResult.resposta && (
                   <div style={{ marginTop: 10, background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px", fontSize: 12 }}>
                     <strong>Resposta do Claude:</strong><br />
-                    <span style={{ color: "#1A4870" }}>{testeResult.resposta.slice(0, 300)}{testeResult.resposta.length > 300 ? "…" : ""}</span>
+                    <span style={{ color: "#111111" }}>{testeResult.resposta.slice(0, 300)}{testeResult.resposta.length > 300 ? "…" : ""}</span>
                   </div>
                 )}
               </div>
@@ -574,7 +574,7 @@ export default function BotDiagPage() {
               { n: "5", titulo: "Timeout no Vercel", desc: "O plano Pro tem limite de 5 min de execução. Mensagens muito longas podem estourar. Verifique os logs em Vercel → Deployments → Functions." },
             ].map(item => (
               <div key={item.n} style={{ display: "flex", gap: 12, padding: "10px 14px", background: "#F4F6FA", borderRadius: 8 }}>
-                <span style={{ minWidth: 24, height: 24, background: "#1A4870", color: "#fff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.n}</span>
+                <span style={{ minWidth: 24, height: 24, background: "#111111", color: "#fff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.n}</span>
                 <div>
                   <div style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 13, marginBottom: 3 }}>{item.titulo}</div>
                   <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5 }}>{item.desc}</div>

@@ -61,7 +61,7 @@ const diasAte = (iso?: string | null) => {
 // ── estilos ───────────────────────────────────────────────
 const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
@@ -532,7 +532,7 @@ export default function Planejamento() {
               </select>
             </div>
             {cicloSelOrc && (
-              <div style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, paddingBottom: 2 }}>
+              <div style={{ fontSize: 12, color: "#111111", fontWeight: 600, paddingBottom: 2 }}>
                 {labelCiclo(cicloSelOrc)}
               </div>
             )}
@@ -545,8 +545,8 @@ export default function Planejamento() {
             <button key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
-              color: aba === a.key ? "#1A4870" : "#666",
-              borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
+              color: aba === a.key ? "#111111" : "#666",
+              borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent",
             }}>{a.label}</button>
           ))}
         </div>
@@ -704,15 +704,15 @@ export default function Planejamento() {
                           );
                         })}
                         {/* total geral */}
-                        <tr style={{ background: "#1A4870" }}>
+                        <tr style={{ background: "#111111" }}>
                           <td colSpan={4} style={{ padding: "10px 14px", fontWeight: 700, fontSize: 13, color: "#fff" }}>TOTAL GERAL</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#fff" }}>{fmtR(totalOrc)}</td>
                           <td></td>
                         </tr>
                         {areaHa > 0 && (
-                          <tr style={{ background: "#D5E8F5" }}>
-                            <td colSpan={4} style={{ padding: "7px 14px", fontSize: 12, color: "#0B2D50" }}>Custo por hectare ({fmtN(areaHa)} ha)</td>
-                            <td style={{ padding: "7px 14px", textAlign: "right", fontWeight: 600, fontSize: 13, color: "#0B2D50" }}>{fmtR(custHa)}</td>
+                          <tr style={{ background: "#E8E8E8" }}>
+                            <td colSpan={4} style={{ padding: "7px 14px", fontSize: 12, color: "#0D0D0D" }}>Custo por hectare ({fmtN(areaHa)} ha)</td>
+                            <td style={{ padding: "7px 14px", textAlign: "right", fontWeight: 600, fontSize: 13, color: "#0D0D0D" }}>{fmtR(custHa)}</td>
                             <td></td>
                           </tr>
                         )}
@@ -798,14 +798,14 @@ export default function Planejamento() {
                         );
                       })}
                       {/* totais */}
-                      <tr style={{ background: "#1A4870" }}>
+                      <tr style={{ background: "#111111" }}>
                         <td style={{ padding: "10px 14px", fontWeight: 700, fontSize: 13, color: "#fff" }}>TOTAL</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 13, color: "#fff" }}>{fmtR(totalPlanejado)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 13, color: "#fff" }}>{fmtR(totalRealizado)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 13, color: totalRealizado > totalPlanejado ? "#FFBBBB" : "#BBFFCC" }}>
                           {totalRealizado - totalPlanejado > 0 ? "+" : ""}{fmtR(totalRealizado - totalPlanejado)}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 13, color: "#D5E8F5" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 13, color: "#E8E8E8" }}>
                           {totalPlanejado > 0 ? `${totalRealizado > totalPlanejado ? "+" : ""}${fmtN((totalRealizado - totalPlanejado) / totalPlanejado * 100, 1)}%` : "—"}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 13, color: "#fff" }}>
@@ -892,7 +892,7 @@ export default function Planejamento() {
                           {t.data_prevista && <span>Previsto: {fmtData(t.data_prevista)}</span>}
                           {t.data_conclusao && <span>Concluído: {fmtData(t.data_conclusao)}</span>}
                           {t.responsavel && <span>Resp.: {t.responsavel}</span>}
-                          {t.ciclo_id && <span style={{ color: "#1A4870" }}>{labelCiclo(t.ciclo_id)}</span>}
+                          {t.ciclo_id && <span style={{ color: "#111111" }}>{labelCiclo(t.ciclo_id)}</span>}
                         </div>
                         {t.descricao && <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-2)" }}>{t.descricao}</div>}
                       </div>
@@ -943,7 +943,7 @@ export default function Planejamento() {
                           {r.data_recomendacao && <span>Data: {fmtData(r.data_recomendacao)}</span>}
                           {r.estadio_fenologico && <span>Estádio: {r.estadio_fenologico}</span>}
                           {r.responsavel_tecnico && <span>Técnico: {r.responsavel_tecnico}</span>}
-                          {r.ciclo_id && <span style={{ color: "#1A4870" }}>{labelCiclo(r.ciclo_id)}</span>}
+                          {r.ciclo_id && <span style={{ color: "#111111" }}>{labelCiclo(r.ciclo_id)}</span>}
                         </div>
                         {r.descricao && <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-2)" }}>{r.descricao}</div>}
                       </div>

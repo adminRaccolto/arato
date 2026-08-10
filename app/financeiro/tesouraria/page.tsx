@@ -11,7 +11,7 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -199,7 +199,7 @@ export default function TesourariaPage() {
           {[
             { label: "Total Entradas",    value: fmtBRL(totalEntradas), color: "#16A34A" },
             { label: "Total Saídas",      value: fmtBRL(totalSaidas),   color: "#E24B4A" },
-            { label: "Lançamentos em Aberto", value: String(emAberto),  color: "#1A4870" },
+            { label: "Lançamentos em Aberto", value: String(emAberto),  color: "#111111" },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
@@ -367,7 +367,7 @@ export default function TesourariaPage() {
                         <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                     </div>
-                    <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
+                    <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
                       Dois lançamentos serão criados: débito na conta origem e crédito na conta destino, ambos com status Baixado.
                     </div>
                   </div>
@@ -404,7 +404,7 @@ export default function TesourariaPage() {
                         <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                     </div>
-                    <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
+                    <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
                       Dois lançamentos criados: <strong>saída</strong> da conta corrente + <strong>entrada</strong> na conta investimento — ambos Baixados. Saldo de cada conta atualizado nos relatórios.
                     </div>
                   </div>
@@ -455,7 +455,7 @@ export default function TesourariaPage() {
                       <label style={lbl}>Data</label>
                       <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                     </div>
-                    <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
+                    <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
                       Lançamentos criados: saída bruta da conta investimento · entrada líquida na conta corrente{(lForm.iof || 0) > 0 ? " · saída IOF" : ""}{(lForm.ir || 0) > 0 ? " · saída IR" : ""} — todos Baixados.
                     </div>
                   </div>
@@ -470,7 +470,7 @@ export default function TesourariaPage() {
                         <div style={{ display: "flex", gap: 8 }}>
                           {(["pagar", "receber"] as const).map(t => (
                             <button key={t} onClick={() => setLForm(f => ({ ...f, tipo: t }))}
-                              style={{ flex: 1, padding: "9px 14px", border: `2px solid ${lForm.tipo === t ? "#1A4870" : "var(--border-table)"}`, borderRadius: 8, background: lForm.tipo === t ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: lForm.tipo === t ? "#0B2D50" : "var(--text-2)" }}>
+                              style={{ flex: 1, padding: "9px 14px", border: `2px solid ${lForm.tipo === t ? "#111111" : "var(--border-table)"}`, borderRadius: 8, background: lForm.tipo === t ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: lForm.tipo === t ? "#0D0D0D" : "var(--text-2)" }}>
                               {t === "pagar" ? "Saída (Pagar)" : "Entrada (Receber)"}
                             </button>
                           ))}
@@ -512,7 +512,7 @@ export default function TesourariaPage() {
               </div>
               <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button style={btnR} onClick={() => setModalLanc(false)}>Cancelar</button>
-                <button onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#1A4870", cursor: lSaving ? "default" : "pointer" }}>
+                <button onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#111111", cursor: lSaving ? "default" : "pointer" }}>
                   {lSaving ? "Salvando…" : "Salvar"}
                 </button>
               </div>

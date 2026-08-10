@@ -65,7 +65,7 @@ const lbl: React.CSSProperties = {
 const STATUS_LABEL: Record<string, { txt: string; bg: string; cor: string }> = {
   solicitada:          { txt: "Solicitada (App)",  bg: "#FBF3E0", cor: "#C9921B" },
   rascunho:            { txt: "Rascunho",           bg: "#F4F6FA", cor: "#555"    },
-  emitida:             { txt: "NF Emitida",         bg: "#EFF6FF", cor: "#1A4870" },
+  emitida:             { txt: "NF Emitida",         bg: "#F2F2F2", cor: "#111111" },
   entrada_confirmada:  { txt: "Entrada Confirmada", bg: "#F0FDF4", cor: "#16A34A" },
   cancelada:           { txt: "Cancelada",          bg: "#FFF1F1", cor: "#E24B4A" },
 };
@@ -319,7 +319,7 @@ export default function TransferenciasEstoquePage() {
           <button onClick={() => carregar()} style={btn("#F4F6FA", "#555")} title="Atualizar lista">
             🔄 Atualizar
           </button>
-          <button onClick={() => { resetForm(); setModal(true); }} style={btn("#1A4870")}>
+          <button onClick={() => { resetForm(); setModal(true); }} style={btn("#111111")}>
             + Nova Transferência
           </button>
         </div>
@@ -329,7 +329,7 @@ export default function TransferenciasEstoquePage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 22 }}>
         {[
           { label: "Solicitações Pendentes",  val: solicitacoes.length,                                cor: solicitacoes.length > 0 ? "#C9921B" : "#888" },
-          { label: "NFs Emitidas",            val: historico.filter(t => t.status === "emitida").length, cor: "#1A4870" },
+          { label: "NFs Emitidas",            val: historico.filter(t => t.status === "emitida").length, cor: "#111111" },
           { label: "Entradas Confirmadas",    val: historico.filter(t => t.status === "entrada_confirmada").length, cor: "#16A34A" },
           { label: "Canceladas",              val: historico.filter(t => t.status === "cancelada").length,          cor: "#E24B4A" },
         ].map(k => (
@@ -349,8 +349,8 @@ export default function TransferenciasEstoquePage() {
           <button key={t.id} onClick={() => setAba(t.id)} style={{
             padding: "10px 20px", border: "none", background: "transparent", cursor: "pointer",
             fontSize: 13, fontWeight: aba === t.id ? 700 : 400,
-            color: aba === t.id ? "#1A4870" : "#666",
-            borderBottom: aba === t.id ? "2.5px solid #1A4870" : "2.5px solid transparent",
+            color: aba === t.id ? "#111111" : "#666",
+            borderBottom: aba === t.id ? "2.5px solid #111111" : "2.5px solid transparent",
           }}>
             {t.label}
             {t.id === "solicitacoes" && solicitacoes.length > 0 && (
@@ -404,7 +404,7 @@ export default function TransferenciasEstoquePage() {
                         <button
                           onClick={() => emitirSolicitacao(t)}
                           disabled={acaoId === t.id}
-                          style={btn("#1A4870")}
+                          style={btn("#111111")}
                         >
                           {acaoId === t.id ? "…" : "Emitir NF"}
                         </button>
@@ -474,7 +474,7 @@ export default function TransferenciasEstoquePage() {
                               href={`/api/fiscal/danfe?chave=${t.nf_chave}&fazenda_id=${t.fazenda_origem_id}`}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ ...btn("#1A4870"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                              style={{ ...btn("#111111"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                             >
                               DANFE
                             </a>
@@ -524,7 +524,7 @@ export default function TransferenciasEstoquePage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               {/* Origem */}
               <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Origem
                 </div>
                 <div style={{ marginBottom: 10 }}>
@@ -609,7 +609,7 @@ export default function TransferenciasEstoquePage() {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Itens da Transferência</span>
-                <button onClick={addItem} style={{ ...btn("#F4F6FA", "#1A4870"), border: "0.5px solid #1A4870" }}>+ Adicionar Item</button>
+                <button onClick={addItem} style={{ ...btn("#F4F6FA", "#111111"), border: "0.5px solid #111111" }}>+ Adicionar Item</button>
               </div>
               <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -682,7 +682,7 @@ export default function TransferenciasEstoquePage() {
               <button onClick={() => salvar("rascunho")} disabled={salvando} style={btn("#888")}>
                 {salvando ? "…" : "Salvar Rascunho"}
               </button>
-              <button onClick={() => salvar("emitida")} disabled={salvando} style={btn("#1A4870")}>
+              <button onClick={() => salvar("emitida")} disabled={salvando} style={btn("#111111")}>
                 {salvando ? "…" : "✓ Emitir NF de Transferência"}
               </button>
             </div>
@@ -722,7 +722,7 @@ export default function TransferenciasEstoquePage() {
                 <div style={{ fontWeight: 700, color: "#1a1a1a" }}>{detalhe.fazenda_origem_nome}</div>
                 <div style={{ fontSize: 12, color: "#555" }}>{detalhe.deposito_origem_nome !== "—" ? detalhe.deposito_origem_nome : "Sem depósito"}</div>
               </div>
-              <div style={{ fontSize: 24, color: "#1A4870" }}>→</div>
+              <div style={{ fontSize: 24, color: "#111111" }}>→</div>
               <div style={{ background: "#F4F6FA", borderRadius: 10, padding: "12px 16px" }}>
                 <div style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Destino</div>
                 <div style={{ fontWeight: 700, color: "#1a1a1a" }}>{detalhe.fazenda_destino_nome}</div>

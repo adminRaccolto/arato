@@ -234,7 +234,7 @@ export default function ClassificacaoPage() {
 
   const btnTab = (ativo: boolean) => ({
     padding: "6px 18px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer",
-    background: ativo ? "#1A4870" : "var(--bg-page)", color: ativo ? "#fff" : "var(--text-3)",
+    background: ativo ? "#111111" : "var(--bg-page)", color: ativo ? "#fff" : "var(--text-3)",
   } as React.CSSProperties);
 
   return (
@@ -259,7 +259,7 @@ export default function ClassificacaoPage() {
             </button>
             <button
               onClick={abrirNova}
-              style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               + Nova Regra
             </button>
@@ -277,7 +277,7 @@ export default function ClassificacaoPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Regras Ativas",    valor: `${ativas} / ${regras.length}`,                                                cor: "#16A34A" },
-            { label: "Total Aplicações", valor: aplicacoes.toLocaleString("pt-BR"),                                           cor: "#1A4870" },
+            { label: "Total Aplicações", valor: aplicacoes.toLocaleString("pt-BR"),                                           cor: "#111111" },
             { label: "Eficácia",         valor: regras.length > 0 ? `${Math.round((ativas / regras.length) * 100)}%` : "—",  cor: "#C9921B" },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
@@ -288,7 +288,7 @@ export default function ClassificacaoPage() {
         </div>
 
         {/* Banner */}
-        <div style={{ background: "#EBF5FF", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
+        <div style={{ background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
           <strong>Fluxo NF Produto:</strong> regra classifica a categoria do CP e gera vencimento D+30. Centro de custo e insumo são completados em <em>Pendências</em> após a entrada.{" "}
           <strong>Fluxo NFS Serviço:</strong> classificação completa na regra — sem pendências adicionais.
         </div>
@@ -344,7 +344,7 @@ export default function ClassificacaoPage() {
                       <td style={{ padding: "10px 14px" }}>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4,
                           background: isProd ? "#E8EEFA" : "#FBF3E0",
-                          color:      isProd ? "#1A4870" : "#7A4300" }}>
+                          color:      isProd ? "#111111" : "#7A4300" }}>
                           {isProd ? "Produto" : "Serviço"}
                         </span>
                       </td>
@@ -358,13 +358,13 @@ export default function ClassificacaoPage() {
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                          {r.categoria && <span style={{ fontSize: 11, background: "#EBF5FF", color: "#1A4870", padding: "1px 7px", borderRadius: 8, display: "inline-block" }}>{CAT_LABEL[r.categoria] || r.categoria}</span>}
+                          {r.categoria && <span style={{ fontSize: 11, background: "#EEEEEE", color: "#111111", padding: "1px 7px", borderRadius: 8, display: "inline-block" }}>{CAT_LABEL[r.categoria] || r.categoria}</span>}
                           {!isProd && insumo && <span style={{ fontSize: 11, color: "var(--text-2)" }}>↳ {insumo.nome}</span>}
                           {!isProd && cc     && <span style={{ fontSize: 11, color: "var(--text-3)" }}>CC: {cc.nome}</span>}
                           {isProd            && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>CC via Pendências</span>}
                         </div>
                       </td>
-                      <td style={{ padding: "10px 14px", fontWeight: 700, color: "#1A4870" }}>{(r.qtd_aplicacoes ?? 0).toLocaleString("pt-BR")}</td>
+                      <td style={{ padding: "10px 14px", fontWeight: 700, color: "#111111" }}>{(r.qtd_aplicacoes ?? 0).toLocaleString("pt-BR")}</td>
                       <td style={{ padding: "10px 14px", color: "var(--text-3)", fontSize: 12 }}>{fmtDate(r.ultima_aplicacao)}</td>
                       <td style={{ padding: "10px 14px" }}>
                         <button
@@ -408,7 +408,7 @@ export default function ClassificacaoPage() {
                   <button style={btnTab(!ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "servico" }))}>NFS Serviço</button>
                 </div>
                 {ehProduto && (
-                  <div style={{ marginTop: 8, fontSize: 11, color: "#1e40af", background: "#EBF5FF", border: "0.5px solid #93C5FD", borderRadius: 6, padding: "6px 10px" }}>
+                  <div style={{ marginTop: 8, fontSize: 11, color: "#1e40af", background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 6, padding: "6px 10px" }}>
                     Produto: o sistema gera o CP com vencimento D+30 e envia para <strong>Pendências</strong> para apontar centro de custo e insumo.
                   </div>
                 )}
@@ -435,7 +435,7 @@ export default function ClassificacaoPage() {
                       value={form.ncm ?? ""}
                       onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))}
                       placeholder="3808.93"
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: `0.5px solid ${ehProduto ? "#1A4870" : "var(--border)"}`, fontSize: 13, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: `0.5px solid ${ehProduto ? "#111111" : "var(--border)"}`, fontSize: 13, boxSizing: "border-box" }}
                     />
                   </div>
                   <div>
@@ -540,7 +540,7 @@ export default function ClassificacaoPage() {
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
-                <button onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   {saving ? "Salvando…" : editId ? "Salvar" : "Criar Regra"}
                 </button>
               </div>

@@ -11,13 +11,13 @@ type Categoria = ControllerAlerta["categoria"];
 const SEV_COR: Record<Severidade, string> = {
   critico: "#E24B4A",
   alto: "#EF9F27",
-  medio: "#378ADD",
+  medio: "#444444",
   baixo: "var(--text-3)",
 };
 const SEV_BG: Record<Severidade, string> = {
   critico: "#FEF2F2",
   alto: "#FFF7ED",
-  medio: "#EFF6FF",
+  medio: "#F2F2F2",
   baixo: "#F9FAFB",
 };
 const SEV_LABEL: Record<Severidade, string> = {
@@ -105,7 +105,7 @@ export default function ControllerPage() {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 600, color: "#1A4870", margin: 0 }}>Controller</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Controller</h1>
             <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
               Monitoramento automático de inconsistências e alertas operacionais
             </p>
@@ -116,7 +116,7 @@ export default function ControllerPage() {
               onClick={executarVerificacoes}
               disabled={executando}
               style={{
-                background: "#1A4870", color: "#fff", border: "none", borderRadius: 8,
+                background: "#111111", color: "#fff", border: "none", borderRadius: 8,
                 padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: executando ? "not-allowed" : "pointer",
                 opacity: executando ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6,
               }}
@@ -155,9 +155,9 @@ export default function ControllerPage() {
                 key={cat}
                 onClick={() => setFiltroCat(cat)}
                 style={{
-                  background: filtroCat === cat ? "#D5E8F5" : "var(--bg-page)",
-                  border: `0.5px solid ${filtroCat === cat ? "#1A4870" : "var(--border)"}`,
-                  color: filtroCat === cat ? "#1A4870" : "var(--text-2)",
+                  background: filtroCat === cat ? "#E8E8E8" : "var(--bg-page)",
+                  border: `0.5px solid ${filtroCat === cat ? "#111111" : "var(--border)"}`,
+                  color: filtroCat === cat ? "#111111" : "var(--text-2)",
                   borderRadius: 99, padding: "4px 12px", fontSize: 12, cursor: "pointer", fontWeight: filtroCat === cat ? 600 : 400,
                 }}
               >
@@ -186,7 +186,7 @@ export default function ControllerPage() {
         ) : alertasFiltrados.length === 0 ? (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>{totalAtivos === 0 ? "✅" : "🔍"}</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: totalAtivos === 0 ? "#16A34A" : "#1A4870" }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: totalAtivos === 0 ? "#16A34A" : "#111111" }}>
               {totalAtivos === 0 ? "Tudo em ordem!" : "Nenhum alerta para os filtros selecionados"}
             </div>
             <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
@@ -297,7 +297,7 @@ export default function ControllerPage() {
               { cat: "Estoque", checks: ["Produto abaixo do mínimo", "NF entrada sem conferência"] },
             ].map(grupo => (
               <div key={grupo.cat} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 4 }}>
                   {CAT_ICONE[grupo.cat as Categoria]} {grupo.cat}
                 </div>
                 {grupo.checks.map(c => (

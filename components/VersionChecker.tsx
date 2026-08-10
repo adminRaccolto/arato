@@ -32,7 +32,7 @@ export default function VersionChecker() {
   return (
     <div style={{
       position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-      zIndex: 9999, background: "#1A4870", color: "#fff",
+      zIndex: 9999, background: "#111111", color: "#fff",
       borderRadius: 12, padding: "14px 24px",
       boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
       display: "flex", alignItems: "center", gap: 16,

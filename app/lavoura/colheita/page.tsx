@@ -407,7 +407,7 @@ export default function ColheitaPage() {
               </select>
             )}
             <Link href="/estoque/romaneio-entrada" style={{
-              background: "#F0F4FA", color: "#1A5CB8", border: "0.5px solid #B8CEED",
+              background: "#F0F4FA", color: "#2A2A2A", border: "0.5px solid #B8CEED",
               borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600,
               textDecoration: "none", display: "inline-block",
             }}>
@@ -428,8 +428,8 @@ export default function ColheitaPage() {
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
           {[
-            { label: "Registros de colheita", valor: colheitas.length.toString(), cor: "#1A4870" },
-            { label: "Total sacas colhidas",  valor: fmt(totalSacas) + " sc", cor: "#378ADD" },
+            { label: "Registros de colheita", valor: colheitas.length.toString(), cor: "#111111" },
+            { label: "Total sacas colhidas",  valor: fmt(totalSacas) + " sc", cor: "#444444" },
             { label: "Total kg classificado", valor: fmt(totalKgClass / 1000, 1) + " t", cor: "#EF9F27" },
             { label: "Produtividade média",   valor: totalArea > 0 ? fmt(prodMedia, 1) + " sc/ha" : "—", cor: "#C9921B" },
           ].map(st => (
@@ -482,7 +482,7 @@ export default function ColheitaPage() {
                   <div style={{ padding: "16px 20px", display: "flex", flexDirection: "row", alignItems: "center", gap: 14 }}>
                     {/* Ícone produto */}
                     <div style={{
-                      width: 40, height: 40, background: "#D5E8F5", borderRadius: 10,
+                      width: 40, height: 40, background: "#E8E8E8", borderRadius: 10,
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: 18, flexShrink: 0,
                     }}>
@@ -512,11 +512,11 @@ export default function ColheitaPage() {
                       </div>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Classificado</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1A4870" }}>{fmt(col.total_kg_classificado / 1000, 1)} t</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#111111" }}>{fmt(col.total_kg_classificado / 1000, 1)} t</div>
                       </div>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Sacas</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: "#1A4870" }}>{fmt(col.total_sacas, 1)} sc</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "#111111" }}>{fmt(col.total_sacas, 1)} sc</div>
                       </div>
                       {col.produtividade_sc_ha && (
                         <div style={{ textAlign: "center" }}>
@@ -533,7 +533,7 @@ export default function ColheitaPage() {
                       </>) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: "#FBF3E0", borderRadius: 8, border: "0.5px solid #F0D888" }}>
                           <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600 }}>⚖ Aguardando pesagem</span>
-                          <button onClick={() => abrirRomaneio(col.id)} style={{ fontSize: 11, color: "#1A5CB8", background: "#EBF3FF", border: "0.5px solid #B8CEED", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
+                          <button onClick={() => abrirRomaneio(col.id)} style={{ fontSize: 11, color: "#2A2A2A", background: "#EBF3FF", border: "0.5px solid #B8CEED", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
                             + 1º Romaneio
                           </button>
                         </div>
@@ -545,7 +545,7 @@ export default function ColheitaPage() {
                       <button
                         onClick={() => abrirRomaneio(col.id)}
                         style={{
-                          background: "#F0FAF6", color: "#1A4870", border: "0.5px solid #1A4870",
+                          background: "#F0FAF6", color: "#111111", border: "0.5px solid #111111",
                           borderRadius: 7, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
                         }}
                       >
@@ -645,8 +645,8 @@ export default function ColheitaPage() {
                                   <td style={{ padding: "8px 12px", textAlign: "right", color: "#EF9F27" }}>
                                     {(rom.desconto_avariados_kg ?? 0) > 0 ? `-${fmt(rom.desconto_avariados_kg ?? 0, 1)}` : "—"}
                                   </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>{fmt(rom.peso_classificado_kg, 1)} kg</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmt(rom.sacas, 2)} sc</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#111111" }}>{fmt(rom.peso_classificado_kg, 1)} kg</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{fmt(rom.sacas, 2)} sc</td>
                                   <td style={{ padding: "8px 12px" }}>
                                     <button
                                       onClick={() => removerRomaneio(rom.id, col.id)}
@@ -660,10 +660,10 @@ export default function ColheitaPage() {
                             </tbody>
                             {/* Totais */}
                             <tfoot>
-                              <tr style={{ background: "#D5E8F5", color: "var(--text-1)", fontWeight: 600 }}>
-                                <td colSpan={3} style={{ padding: "8px 12px", color: "#0B2D50" }}>Total</td>
+                              <tr style={{ background: "#E8E8E8", color: "var(--text-1)", fontWeight: 600 }}>
+                                <td colSpan={3} style={{ padding: "8px 12px", color: "#0D0D0D" }}>Total</td>
                                 <td colSpan={2} style={{ padding: "8px 12px" }} />
-                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0B2D50" }}>
+                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0D0D0D" }}>
                                   {fmt(col.romaneios!.reduce((s, r) => s + r.peso_liquido_kg, 0))} kg
                                 </td>
                                 <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", color: "#E24B4A" }}>
@@ -673,10 +673,10 @@ export default function ColheitaPage() {
                                   {col.impureza_media ? `${fmt(col.impureza_media, 1)}% méd.` : "—"}
                                 </td>
                                 <td colSpan={2} style={{ padding: "8px 12px" }} />
-                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0B2D50" }}>
+                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0D0D0D" }}>
                                   {fmt(col.total_kg_classificado, 1)} kg
                                 </td>
-                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0B2D50" }}>
+                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0D0D0D" }}>
                                   {fmt(col.total_sacas, 2)} sc
                                 </td>
                                 <td />
@@ -760,7 +760,7 @@ export default function ColheitaPage() {
 
               {/* Peso colhido — entrada rápida (opcional) */}
               <div style={{ background: "#F3F8FF", borderRadius: 10, border: "0.5px solid #C5D9F0", padding: "14px 16px" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 4 }}>Peso colhido (opcional)</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 4 }}>Peso colhido (opcional)</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 12 }}>
                   Informe o total colhido agora, ou deixe em branco e registre romaneio a romaneio depois (pesagem caminhão a caminhão).
                 </div>
@@ -886,7 +886,7 @@ export default function ColheitaPage() {
                     </label>
                     <div>
                       <div style={lbStyle}>Peso Líquido (calculado)</div>
-                      <div style={{ ...inpStyle, background: "var(--bg-page)", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#1A4870" : "var(--text-3)", display: "flex", alignItems: "center" }}>
+                      <div style={{ ...inpStyle, background: "var(--bg-page)", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#111111" : "var(--text-3)", display: "flex", alignItems: "center" }}>
                         {fmt(pl)} kg
                       </div>
                     </div>
@@ -900,7 +900,7 @@ export default function ColheitaPage() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid var(--border-table)", paddingBottom: 6, marginBottom: 14 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Classificação do Grão</div>
                       <button type="button" onClick={applyPadrao}
-                        style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", background: "#D5E8F5", border: "0.5px solid #A8C8E8", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+                        style={{ fontSize: 11, fontWeight: 600, color: "#111111", background: "#E8E8E8", border: "0.5px solid #A8C8E8", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
                         ✦ Class. Padrão
                       </button>
                     </div>
@@ -1012,8 +1012,8 @@ export default function ColheitaPage() {
                     </div>
 
                     {/* Apuração */}
-                    <div style={{ background: temClassif && totalDescKg > 0 ? "#FFF3E0" : "#D5E8F5", borderRadius: 8, padding: "12px 14px" }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#0B2D50", marginBottom: 8 }}>Apuração — Balança de Entrada (Fazenda)</div>
+                    <div style={{ background: temClassif && totalDescKg > 0 ? "#FFF3E0" : "#E8E8E8", borderRadius: 8, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#0D0D0D", marginBottom: 8 }}>Apuração — Balança de Entrada (Fazenda)</div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 10, color: "var(--text-2)" }}>Peso Líquido</div>
@@ -1027,11 +1027,11 @@ export default function ColheitaPage() {
                         )}
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 10, color: "var(--text-2)" }}>Peso Classificado</div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#0B2D50" }}>{fmt(temClassif ? classificado : pl, 1)} kg</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#0D0D0D" }}>{fmt(temClassif ? classificado : pl, 1)} kg</div>
                         </div>
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 10, color: "var(--text-2)" }}>Sacas ({cls.kg_saca} kg/sc)</div>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>{fmt(sacas, 2)} sc</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#111111" }}>{fmt(sacas, 2)} sc</div>
                         </div>
                       </div>
                       {!temClassif && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6 }}>Preencha a classificação para calcular descontos.</div>}
@@ -1066,27 +1066,27 @@ export default function ColheitaPage() {
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* Resumo */}
-              <div style={{ background: "#D5E8F5", borderRadius: 10, padding: 16 }}>
-                <div style={{ fontWeight: 600, fontSize: 14, color: "#0B2D50", marginBottom: 8 }}>
+              <div style={{ background: "#E8E8E8", borderRadius: 10, padding: 16 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "#0D0D0D", marginBottom: 8 }}>
                   {PRODUTOS_PADRAO[modalFinalizar.produto]?.label ?? modalFinalizar.produto}
                   {modalFinalizar.variedade ? ` — ${modalFinalizar.variedade}` : ""}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "var(--text-2)" }}>Peso Líquido</div>
-                    <div style={{ fontWeight: 600, color: "#0B2D50" }}>{fmt(modalFinalizar.total_kg_bruto / 1000, 2)} t</div>
+                    <div style={{ fontWeight: 600, color: "#0D0D0D" }}>{fmt(modalFinalizar.total_kg_bruto / 1000, 2)} t</div>
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "var(--text-2)" }}>Classificado</div>
-                    <div style={{ fontWeight: 600, color: "#0B2D50" }}>{fmt(modalFinalizar.total_kg_classificado / 1000, 2)} t</div>
+                    <div style={{ fontWeight: 600, color: "#0D0D0D" }}>{fmt(modalFinalizar.total_kg_classificado / 1000, 2)} t</div>
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "var(--text-2)" }}>Sacas</div>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: "#1A4870" }}>{fmt(modalFinalizar.total_sacas, 1)} sc</div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: "#111111" }}>{fmt(modalFinalizar.total_sacas, 1)} sc</div>
                   </div>
                 </div>
                 {modalFinalizar.produtividade_sc_ha && (
-                  <div style={{ marginTop: 8, textAlign: "center", fontSize: 13, color: "#0B2D50" }}>
+                  <div style={{ marginTop: 8, textAlign: "center", fontSize: 13, color: "#0D0D0D" }}>
                     Produtividade: <strong>{fmt(modalFinalizar.produtividade_sc_ha, 1)} sc/ha</strong>
                   </div>
                 )}
@@ -1100,7 +1100,7 @@ export default function ColheitaPage() {
                   <label>
                     <div style={lbStyle}>Produto colhido — entrada no estoque</div>
                     {produtoNoCiclo ? (
-                      <div style={{ fontSize: 12, background: "#D5E8F5", color: "#0B2D50", padding: "8px 12px", borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ fontSize: 12, background: "#E8E8E8", color: "#0D0D0D", padding: "8px 12px", borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 16 }}>⚡</span>
                         <span>Definido no planejamento do ciclo: <strong>{produtoNoCiclo.nome}</strong></span>
                       </div>
@@ -1166,7 +1166,7 @@ const secTitle: React.CSSProperties = {
 };
 
 const btnPrimStyle: React.CSSProperties = {
-  background: "#1A4870", color: "#fff", border: "none", borderRadius: 8,
+  background: "#111111", color: "#fff", border: "none", borderRadius: 8,
   padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 

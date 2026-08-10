@@ -14,12 +14,12 @@ type Resumo = {
 const ACOES = [
   { href: "/campo/monitoramento", label: "Monitoramento",  sub: "Pragas, doenças e invasoras", icon: "🐛", cor: "#7C2D12", bg: "#FEF2F2" },
   { href: "/campo/plantio",       label: "Plantio",        sub: "Registrar operação de plantio", icon: "🌱", cor: "#14532D", bg: "#F0FDF4" },
-  { href: "/campo/pulverizacao",  label: "Pulverização Terrestre", sub: "Defensivos e foliares (máquina)", icon: "💧", cor: "#1E3A5F", bg: "#EFF6FF" },
-  { href: "/campo/aerea",         label: "Aplicação Aérea",        sub: "Avião agrícola · Drone · Helicóptero", icon: "✈️", cor: "#0B2D50", bg: "#D5E8F5" },
+  { href: "/campo/pulverizacao",  label: "Pulverização Terrestre", sub: "Defensivos e foliares (máquina)", icon: "💧", cor: "#1E3A5F", bg: "#F2F2F2" },
+  { href: "/campo/aerea",         label: "Aplicação Aérea",        sub: "Avião agrícola · Drone · Helicóptero", icon: "✈️", cor: "#0D0D0D", bg: "#E8E8E8" },
   { href: "/campo/colheita",       label: "Colheita",       sub: "Romaneio e produtividade", icon: "🌾", cor: "#7D4A00", bg: "#FFFBEB" },
   { href: "/campo/abastecimento",  label: "Abastecimento",  sub: "Combustível para máquinas", icon: "⛽", cor: "#4B3B0F", bg: "#FEFCE8" },
-  { href: "/campo/transferencias", label: "Transferência",  sub: "Insumos entre fazendas/depósitos", icon: "🔄", cor: "#1A4870", bg: "#EFF6FF" },
-  { href: "/lavoura/pluviometria", label: "Pluviometria",   sub: "Leituras do pluviômetro", icon: "🌧", cor: "#1E3A5F", bg: "#EFF6FF" },
+  { href: "/campo/transferencias", label: "Transferência",  sub: "Insumos entre fazendas/depósitos", icon: "🔄", cor: "#111111", bg: "#F2F2F2" },
+  { href: "/lavoura/pluviometria", label: "Pluviometria",   sub: "Leituras do pluviômetro", icon: "🌧", cor: "#1E3A5F", bg: "#F2F2F2" },
   { href: "/lavoura/recomendacoes", label: "Recomendações", sub: "Laudos agronômicos", icon: "📋", cor: "#166534", bg: "#F0FDF4" },
 ];
 
@@ -63,7 +63,7 @@ export default function CampoHome() {
     <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
 
       {/* Header / saudação */}
-      <div style={{ background: "#1A4870", borderRadius: 14, padding: "18px 20px", color: "#fff" }}>
+      <div style={{ background: "#111111", borderRadius: 14, padding: "18px 20px", color: "#fff" }}>
         <div style={{ fontSize: 13, color: "#B0C8E0" }}>{hora} · {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
         <div style={{ fontSize: 20, fontWeight: 700, marginTop: 6 }}>{saudacao()}, {emailUsuario?.split("@")[0] ?? "operador"}!</div>
         <div style={{ fontSize: 13, color: "#B0C8E0", marginTop: 4 }}>📍 {nomeFazendaSelecionada ?? "Fazenda"}</div>

@@ -203,12 +203,12 @@ const FRETE_LBL: Record<string,string> = { destinatario:"Destinatário", remeten
 const corStatus = (s: string) => ({
   aberto:    { bg: "#E6F1FB", color: "#0C447C", label: "Em aberto"  },
   parcial:   { bg: "#FAEEDA", color: "#633806", label: "Parcial"    },
-  encerrado: { bg: "#D5E8F5", color: "#0B2D50", label: "Encerrado"  },
+  encerrado: { bg: "#E8E8E8", color: "#0D0D0D", label: "Encerrado"  },
   cancelado: { bg: "#FCEBEB", color: "#791F1F", label: "Cancelado"  },
 }[s] ?? { bg: "#F1EFE8", color: "var(--text-2)", label: s });
 
 const corProduto = (p: string) => {
-  if (p === "Soja")          return { bg: "#D5E8F5", color: "#0B2D50" };
+  if (p === "Soja")          return { bg: "#E8E8E8", color: "#0D0D0D" };
   if (p.startsWith("Milho")) return { bg: "#FAEEDA", color: "#633806" };
   if (p === "Algodão")       return { bg: "#E6F1FB", color: "#0C447C" };
   return { bg: "#F1EFE8", color: "var(--text-2)" };
@@ -217,10 +217,10 @@ const corProduto = (p: string) => {
 // ── estilos base ─────────────────────────────────────────────────
 const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", boxSizing:"border-box", outline:"none" };
 const lbl: React.CSSProperties = { fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" };
-const btnV: React.CSSProperties = { padding:"8px 18px", background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
+const btnV: React.CSSProperties = { padding:"8px 18px", background:"#2A2A2A", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
 const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(--border-table)", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13, color:"var(--text-1)" };
 const btnX: React.CSSProperties = { padding:"3px 8px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" };
-const badge = (t: string, bg="#D5E8F5", c="#0B2D50") => <span style={{ fontSize:10, background:bg, color:c, padding:"2px 7px", borderRadius:8, fontWeight:600 }}>{t}</span>;
+const badge = (t: string, bg="#E8E8E8", c="#0D0D0D") => <span style={{ fontSize:10, background:bg, color:c, padding:"2px 7px", borderRadius:8, fontWeight:600 }}>{t}</span>;
 
 // ── item vazio ───────────────────────────────────────────────────
 // unidade padrão = "kg" — storage sempre em kg; display em sc nos grids
@@ -1359,7 +1359,7 @@ export default function Contratos() {
               ⊘ Encerramento em Lote
             </button>
             <button onClick={() => { setFRom(ROM_VAZIO()); setModalRomaneio(true); }}
-              style={{ background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+              style={{ background:"#2A2A2A", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               + Romaneio
             </button>
             <button onClick={abrirNovo}
@@ -1404,11 +1404,11 @@ export default function Contratos() {
                     padding:"11px 20px", border:"none", background:"transparent", cursor:"pointer",
                     fontWeight: abaLista===a.key ? 600 : 400, fontSize:13,
                     color: abaLista===a.key ? "var(--text-1)" : "var(--text-2)",
-                    borderBottom: abaLista===a.key ? "2px solid #1A4870" : "2px solid transparent",
+                    borderBottom: abaLista===a.key ? "2px solid #111111" : "2px solid transparent",
                     display:"flex", alignItems:"center", gap:8,
                   }}>
                     {a.label}
-                    {a.count !== null && <span style={{ fontSize:10, background: abaLista===a.key?"#D5E8F5":"var(--border-row)", color: abaLista===a.key?"#0B2D50":"var(--text-2)", padding:"1px 6px", borderRadius:8 }}>{a.count}</span>}
+                    {a.count !== null && <span style={{ fontSize:10, background: abaLista===a.key?"#E8E8E8":"var(--border-row)", color: abaLista===a.key?"#0D0D0D":"var(--text-2)", padding:"1px 6px", borderRadius:8 }}>{a.count}</span>}
                   </button>
                 ))}
               </div>
@@ -1518,7 +1518,7 @@ export default function Contratos() {
                                     <div style={{ fontSize:9, background:"#FBF3E0", color:"#C9921B", padding:"1px 5px", borderRadius:4, display:"inline-block", marginTop:2 }}>Triangulação</div>
                                   )}
                                   {c.local_entrega_nome && (
-                                    <div style={{ fontSize:9, color:"#378ADD", marginTop:2 }} title={[c.local_entrega_nome, c.local_entrega_municipio, c.local_entrega_uf].filter(Boolean).join(", ")}>
+                                    <div style={{ fontSize:9, color:"#444444", marginTop:2 }} title={[c.local_entrega_nome, c.local_entrega_municipio, c.local_entrega_uf].filter(Boolean).join(", ")}>
                                       📍 {c.local_entrega_municipio || c.local_entrega_nome.split(" ").slice(0,2).join(" ")}
                                     </div>
                                   )}
@@ -1528,23 +1528,23 @@ export default function Contratos() {
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:600, color:"var(--text-1)" }}>{(c.quantidade_sc??0).toLocaleString("pt-BR")} sc</td>
                                 <td style={{ padding:"10px 12px", textAlign:"center" }}>
-                                  <div style={{ fontWeight:600, color:"#1A4870" }}>{(c.entregue_sc??0).toLocaleString("pt-BR")} sc</div>
+                                  <div style={{ fontWeight:600, color:"#111111" }}>{(c.entregue_sc??0).toLocaleString("pt-BR")} sc</div>
                                   <div style={{ height:3, background:"var(--border-row)", borderRadius:2, marginTop:3, width:56, margin:"3px auto 0" }}>
-                                    <div style={{ height:"100%", width:`${pct}%`, background: pct===100?"#1A4870":"#EF9F27", borderRadius:2 }} />
+                                    <div style={{ height:"100%", width:`${pct}%`, background: pct===100?"#111111":"#EF9F27", borderRadius:2 }} />
                                   </div>
                                 </td>
-                                <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:600, color: ((c.quantidade_sc??0)-(c.entregue_sc??0))>0?"#EF9F27":"#1A4870" }}>
+                                <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:600, color: ((c.quantidade_sc??0)-(c.entregue_sc??0))>0?"#EF9F27":"#111111" }}>
                                   {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"center", fontSize:12, whiteSpace:"nowrap", color:"var(--text-1)" }}>
                                   {c.modalidade==="fixo" && c.moeda==="USD" && (
                                     <div>
                                       <div style={{ fontWeight:600 }}>US$ {(c.preco??0).toLocaleString("pt-BR",{minimumFractionDigits:2})}/sc</div>
-                                      <div style={{ fontSize:10, color:"#378ADD", marginTop:1 }}>≈ {fmtR$(Math.round((c.preco??0)*ptaxAtual*100)/100)}/sc</div>
+                                      <div style={{ fontSize:10, color:"#444444", marginTop:1 }}>≈ {fmtR$(Math.round((c.preco??0)*ptaxAtual*100)/100)}/sc</div>
                                     </div>
                                   )}
                                   {c.modalidade==="fixo" && c.moeda!=="USD" && <span style={{ fontWeight:600 }}>{fmtR$(c.preco??0)}/sc</span>}
-                                  {c.modalidade==="a_fixar" && <span style={{ color:"#378ADD", fontWeight:600 }}>A fixar</span>}
+                                  {c.modalidade==="a_fixar" && <span style={{ color:"#444444", fontWeight:600 }}>A fixar</span>}
                                   {c.modalidade==="barter"  && <span style={{ color:"#8B5E14", fontWeight:600 }}>Barter</span>}
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"center", fontSize:11, color: c.data_entrega&&new Date(c.data_entrega)<new Date(TODAY)&&c.status!=="encerrado"?"#E24B4A":"#666", whiteSpace:"nowrap" }}>{fmtData(c.data_entrega)}</td>
@@ -1610,7 +1610,7 @@ export default function Contratos() {
                                                   <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{(it.quantidade??0).toLocaleString("pt-BR")}</td>
                                                   <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{it.unidade}</td>
                                                   <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{fmtR$(it.valor_unitario??0)}</td>
-                                                  <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11, fontWeight:600, color:"#1A4870" }}>{fmtR$(it.valor_total??0)}</td>
+                                                  <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11, fontWeight:600, color:"#111111" }}>{fmtR$(it.valor_total??0)}</td>
                                                   <td style={{ padding:"6px 10px", fontSize:10, color:"#666" }}>{it.classificacao || "—"}</td>
                                                 </tr>
                                               ))}
@@ -1640,7 +1640,7 @@ export default function Contratos() {
                                                 <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{fmtPeso(r.peso_bruto_kg??0)}</td>
                                                 <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{fmtPeso(r.tara_kg??0)}</td>
                                                 <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11, fontWeight:600 }}>{fmtPeso(r.peso_liquido_kg??0)}</td>
-                                                <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11, fontWeight:600, color:"#1A4870" }}>{(r.sacas??0).toLocaleString("pt-BR")}</td>
+                                                <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11, fontWeight:600, color:"#111111" }}>{(r.sacas??0).toLocaleString("pt-BR")}</td>
                                                 <td style={{ padding:"6px 10px", textAlign:"center" }}>
                                                   {r.nfe_numero ? badge(`✓ ${r.nfe_numero}`) : <span style={{ fontSize:10, background:"#FAEEDA", color:"#633806", padding:"2px 6px", borderRadius:6 }}>⟳ Gerando…</span>}
                                                 </td>
@@ -1652,7 +1652,7 @@ export default function Contratos() {
                                       <div style={{ marginTop:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                                         <span style={{ fontSize:11, color:"var(--text-2)" }}>{c.romaneios.length} romaneio(s) · {(c.entregue_sc??0).toLocaleString("pt-BR")} sc expedidas · saldo {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc</span>
                                         <button onClick={e => { e.stopPropagation(); setFRom(p=>({...p,contratoId:c.id})); setModalRomaneio(true); }}
-                                          style={{ fontSize:11, padding:"5px 12px", border:"0.5px solid #1A4870", borderRadius:6, background:"#D5E8F5", color:"#0B2D50", cursor:"pointer", fontWeight:600 }}>
+                                          style={{ fontSize:11, padding:"5px 12px", border:"0.5px solid #111111", borderRadius:6, background:"#E8E8E8", color:"#0D0D0D", cursor:"pointer", fontWeight:600 }}>
                                           + Lançar Romaneio
                                         </button>
                                       </div>
@@ -1663,7 +1663,7 @@ export default function Contratos() {
                                         const totalRec    = adts.reduce((s, a) => s + a.valor, 0);
                                         const totalApl    = adts.reduce((s, a) => s + a.valor_aplicado, 0);
                                         const saldo       = totalRec - totalApl;
-                                        const statusCor   = (st: string) => st === "quitado" ? "#16A34A" : st === "parcial" ? "#C9921B" : "#1A4870";
+                                        const statusCor   = (st: string) => st === "quitado" ? "#16A34A" : st === "parcial" ? "#C9921B" : "#111111";
                                         const statusLabel = (st: string) => st === "quitado" ? "Quitado" : st === "parcial" ? "Parcial" : "Disponível";
                                         return (
                                           <div style={{ marginTop:16, borderTop:"0.5px solid var(--bg-tag)", paddingTop:12 }}>
@@ -1671,7 +1671,7 @@ export default function Contratos() {
                                               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                                                 <span style={{ fontSize:11, fontWeight:600, color:"var(--text-2)" }}>💰 Adiantamentos</span>
                                                 {saldo > 0 && (
-                                                  <span style={{ background:"#D5E8F5", color:"#1A4870", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10 }}>
+                                                  <span style={{ background:"#E8E8E8", color:"#111111", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10 }}>
                                                     Saldo disponível: {fmtR$(saldo)}
                                                   </span>
                                                 )}
@@ -1702,7 +1702,7 @@ export default function Contratos() {
                                                         <td style={{ padding:"6px 10px" }}>{fmtData(a.data)}</td>
                                                         <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600 }}>{fmtR$(a.valor)}</td>
                                                         <td style={{ padding:"6px 10px", textAlign:"center", color:"var(--text-3)" }}>{a.valor_aplicado > 0 ? fmtR$(a.valor_aplicado) : "—"}</td>
-                                                        <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600, color: a.valor-a.valor_aplicado>0?"#1A4870":"var(--text-3)" }}>{fmtR$(a.valor - a.valor_aplicado)}</td>
+                                                        <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600, color: a.valor-a.valor_aplicado>0?"#111111":"var(--text-3)" }}>{fmtR$(a.valor - a.valor_aplicado)}</td>
                                                         <td style={{ padding:"6px 10px", textAlign:"center" }}>
                                                           <span style={{ background: statusCor(a.status)+"22", color: statusCor(a.status), fontWeight:600, padding:"2px 7px", borderRadius:8, fontSize:10 }}>{statusLabel(a.status)}</span>
                                                         </td>
@@ -1713,7 +1713,7 @@ export default function Contratos() {
                                                 <div style={{ display:"flex", gap:20, padding:"6px 10px", fontSize:11, color:"var(--text-2)" }}>
                                                   <span>Total recebido: <strong>{fmtR$(totalRec)}</strong></span>
                                                   <span>Aplicado em entregas: <strong>{fmtR$(totalApl)}</strong></span>
-                                                  <span style={{ fontWeight:700, color: saldo>0?"#1A4870":"var(--text-3)" }}>Saldo: {fmtR$(saldo)}</span>
+                                                  <span style={{ fontWeight:700, color: saldo>0?"#111111":"var(--text-3)" }}>Saldo: {fmtR$(saldo)}</span>
                                                 </div>
                                               </>
                                             )}
@@ -1738,7 +1738,7 @@ export default function Contratos() {
                 <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
                   <div style={{ padding:"12px 16px", borderBottom:"0.5px solid var(--border-row)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <span style={{ fontSize:12, color:"var(--text-2)" }}>{todosRomaneios.length} romaneios · {todosRomaneios.reduce((a,r)=>a+(r.sacas??0),0).toLocaleString("pt-BR")} sc expedidas</span>
-                    <button onClick={() => setModalRomaneio(true)} style={{ fontSize:12, padding:"5px 14px", border:"0.5px solid #1A4870", borderRadius:6, background:"#D5E8F5", color:"#0B2D50", cursor:"pointer", fontWeight:600 }}>+ Novo Romaneio</button>
+                    <button onClick={() => setModalRomaneio(true)} style={{ fontSize:12, padding:"5px 14px", border:"0.5px solid #111111", borderRadius:6, background:"#E8E8E8", color:"#0D0D0D", cursor:"pointer", fontWeight:600 }}>+ Novo Romaneio</button>
                   </div>
                   {todosRomaneios.length === 0 ? (
                     <div style={{ padding:24, textAlign:"center", color:"#444", fontSize:12 }}>Nenhum romaneio registrado.</div>
@@ -1769,7 +1769,7 @@ export default function Contratos() {
                               </td>
                               <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11 }}>{r.is_peso_estimado ? "—" : fmtPeso(r.tara_kg??0)}</td>
                               <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11, fontWeight:600, color: r.is_peso_estimado ? "#C9921B" : "inherit" }}>{fmtPeso(r.peso_liquido_kg??0)}</td>
-                              <td style={{ padding:"9px 12px", textAlign:"center", fontWeight:600, color:"#1A4870" }}>{(r.sacas??0).toLocaleString("pt-BR")}</td>
+                              <td style={{ padding:"9px 12px", textAlign:"center", fontWeight:600, color:"#111111" }}>{(r.sacas??0).toLocaleString("pt-BR")}</td>
                               <td style={{ padding:"9px 12px", textAlign:"center" }}>
                                 {r.nfe_numero
                                   ? badge(`✓ ${r.nfe_numero}`)
@@ -1819,10 +1819,10 @@ export default function Contratos() {
                               <td style={{ padding:"10px 16px", textAlign:"right", color:p.saldo>0?"#E24B4A":"#16A34A", fontWeight:600 }}>{p.saldo.toLocaleString("pt-BR")}</td>
                               <td style={{ padding:"10px 16px", minWidth:140 }}>
                                 <div style={{ height:8, background:"var(--bg-tag)", borderRadius:4, overflow:"hidden" }}>
-                                  <div style={{ height:"100%", width:p.pct+"%", background:p.pct===100?"#16A34A":"#1A4870", borderRadius:4 }} />
+                                  <div style={{ height:"100%", width:p.pct+"%", background:p.pct===100?"#16A34A":"#111111", borderRadius:4 }} />
                                 </div>
                               </td>
-                              <td style={{ padding:"10px 16px", textAlign:"right", fontWeight:700, color:p.pct===100?"#16A34A":"#1A4870" }}>{p.pct}%</td>
+                              <td style={{ padding:"10px 16px", textAlign:"right", fontWeight:700, color:p.pct===100?"#16A34A":"#111111" }}>{p.pct}%</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1880,7 +1880,7 @@ export default function Contratos() {
                   padding:"9px 20px", border:"none", background:"transparent", cursor:"pointer",
                   fontWeight: abaForm===a?600:400, fontSize:13,
                   color: abaForm===a?"var(--text-1)":"var(--text-2)",
-                  borderBottom: abaForm===a?"2px solid #1A4870":"2px solid transparent",
+                  borderBottom: abaForm===a?"2px solid #111111":"2px solid transparent",
                 }}>
                   {a==="principal" ? "Principal" : "Adicionais"}
                 </button>
@@ -1891,11 +1891,11 @@ export default function Contratos() {
             <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
               {/* Fazenda — seletor explícito */}
               {fazendas.length > 1 && (
-                <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
+                <div style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:10 }}>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:700, color:"#1A4870", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
+                      <label style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
                       <select style={inp} value={fC.fazenda_id ?? fazendaId ?? ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
                         <option value="">— Selecionar —</option>
                         {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
@@ -2266,8 +2266,8 @@ export default function Contratos() {
                     if (!nat) return null;
                     return (
                       <div style={{ background:"#EBF4FB", border:"0.5px solid #93C5E8", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:11 }}>
-                        <div style={{ fontWeight:600, color:"#0B2D50", marginBottom:4 }}>Informação Fiscal — {nat.descricao}</div>
-                        <div style={{ display:"flex", gap:24, flexWrap:"wrap", color:"#1A4870" }}>
+                        <div style={{ fontWeight:600, color:"#0D0D0D", marginBottom:4 }}>Informação Fiscal — {nat.descricao}</div>
+                        <div style={{ display:"flex", gap:24, flexWrap:"wrap", color:"#111111" }}>
                           <span>CFOP: <strong>{nat.cfop}</strong></span>
                           <span>CST ICMS: <strong>{nat.cst_icms}</strong></span>
                         </div>
@@ -2280,7 +2280,7 @@ export default function Contratos() {
                   <div style={{ border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden", marginBottom:8 }}>
                     <div style={{ padding:"8px 14px", background:"var(--bg-page)", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens do Contrato</span>
-                      <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #1A5CB8", borderRadius:5, background:"#E6F1FB", color:"#1A5CB8", cursor:"pointer" }}
+                      <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }}
                         onClick={() => setItens(p => [...p, itemVazio()])}>+ Item</button>
                     </div>
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
@@ -2325,7 +2325,7 @@ export default function Contratos() {
                               <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} min="0" value={it.valor_unitario||""} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,00" />
                             </td>
                             <td style={{ padding:"6px 8px", width:130 }}>
-                              <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }}
+                              <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#111111" }}
                                 value={(it.valor_total??0).toLocaleString("pt-BR",{style:"currency",currency: fC.moeda === "USD" ? "USD" : "BRL"})} readOnly />
                             </td>
                             <td style={{ padding:"6px 8px", width:34 }}>
@@ -2342,7 +2342,7 @@ export default function Contratos() {
                         <div style={{ padding:"8px 14px", background:"var(--bg-page)", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:32 }}>
                           <span style={{ fontSize:12, color:"var(--text-2)" }}>Valor Financeiro: <strong style={{ color:"var(--text-1)" }}>{fmtValor(valorFinanceiro)}</strong></span>
                           <span style={{ fontSize:12, color:"var(--text-2)" }}>Frete: <strong style={{ color:"var(--text-1)" }}>{fmtR$(fC.valor_frete||0)}</strong></span>
-                          <span style={{ fontSize:13, fontWeight:600, color:"#1A4870" }}>Valor Total: {fmtValor(valorTotal)}</span>
+                          <span style={{ fontSize:13, fontWeight:600, color:"#111111" }}>Valor Total: {fmtValor(valorTotal)}</span>
                         </div>
                       );
                     })()}
@@ -2514,10 +2514,10 @@ export default function Contratos() {
                   <div style={{ borderTop:"0.5px solid var(--border-table)", paddingTop:14, marginTop:4, marginBottom:14 }}>
                     <div style={{ fontSize:11, fontWeight:700, color:"var(--text-2)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Documento / Anexo</div>
                     {fC.pdf_url ? (
-                      <div style={{ display:"flex", alignItems:"center", gap:10, background:"#E8F3FB", border:"0.5px solid #1A487040", borderRadius:8, padding:"8px 14px" }}>
-                        <span style={{ fontSize:12, color:"#0B2D50" }}>📎 <strong>{fC.pdf_nome ?? "contrato.pdf"}</strong></span>
-                        <a href={fC.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:"#1A4870", fontWeight:600, textDecoration:"none" }}>Abrir ↗</a>
-                        <label style={{ marginLeft:"auto", padding:"4px 12px", background:"#1A4870", color:"#fff", borderRadius:6, fontSize:11, fontWeight:600, cursor: anexandoPdf ? "default" : "pointer" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:10, background:"#E8F3FB", border:"0.5px solid #11111140", borderRadius:8, padding:"8px 14px" }}>
+                        <span style={{ fontSize:12, color:"#0D0D0D" }}>📎 <strong>{fC.pdf_nome ?? "contrato.pdf"}</strong></span>
+                        <a href={fC.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:"#111111", fontWeight:600, textDecoration:"none" }}>Abrir ↗</a>
+                        <label style={{ marginLeft:"auto", padding:"4px 12px", background:"#111111", color:"#fff", borderRadius:6, fontSize:11, fontWeight:600, cursor: anexandoPdf ? "default" : "pointer" }}>
                           {anexandoPdf ? "Enviando…" : "Trocar PDF"}
                           <input type="file" accept="application/pdf" style={{ display:"none" }} disabled={anexandoPdf}
                             onChange={e => { const f = e.target.files?.[0]; if (f) handleAnexarPdf(f); e.target.value=""; }} />
@@ -2544,7 +2544,7 @@ export default function Contratos() {
                         checked={fC.dado_em_cessao}
                         onChange={e => setFC(p=>({...p, dado_em_cessao:e.target.checked, cessao_fornecedor_id:"", cessao_fornecedor_nome:""}))}
                       />
-                      <span style={{ fontSize:13, fontWeight:600, color: fC.dado_em_cessao ? "#1A4870" : "#444" }}>Dado em Cessão</span>
+                      <span style={{ fontSize:13, fontWeight:600, color: fC.dado_em_cessao ? "#111111" : "#444" }}>Dado em Cessão</span>
                       <span style={{ fontSize:11, color:"var(--text-3)", fontWeight:400 }}>— o recebível deste contrato será cedido a um fornecedor</span>
                     </label>
 
@@ -2577,7 +2577,7 @@ export default function Contratos() {
                             <span style={{ fontSize:12, color:"var(--text-2)" }}>
                               Débitos vinculados: <strong>{Object.keys(cessaoSelecionados).length}</strong>
                               {Object.keys(cessaoSelecionados).length > 0 && (
-                                <span style={{ marginLeft:8, color:"#1A4870" }}>
+                                <span style={{ marginLeft:8, color:"#111111" }}>
                                   Total: R$ {Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}
                                 </span>
                               )}
@@ -2588,9 +2588,9 @@ export default function Contratos() {
                             disabled={!fC.cessao_fornecedor_id}
                             onClick={abrirModalCessao}
                             style={{
-                              padding:"6px 14px", border:"0.5px solid #1A4870", borderRadius:7,
-                              background: fC.cessao_fornecedor_id ? "#EBF5FF" : "var(--bg-page)",
-                              color: fC.cessao_fornecedor_id ? "#1A4870" : "var(--text-muted)",
+                              padding:"6px 14px", border:"0.5px solid #111111", borderRadius:7,
+                              background: fC.cessao_fornecedor_id ? "#EEEEEE" : "var(--bg-page)",
+                              color: fC.cessao_fornecedor_id ? "#111111" : "var(--text-muted)",
                               fontSize:12, fontWeight:600, cursor: fC.cessao_fornecedor_id ? "pointer" : "not-allowed",
                             }}
                           >
@@ -2609,7 +2609,7 @@ export default function Contratos() {
               <div style={{ fontSize:11, color:"var(--text-2)" }}>
                 {(() => {
                   const fv = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });
-                  return <>Valor Financeiro: <strong>{fv(valorFinanceiro)}</strong><span style={{ marginLeft:20 }}>Valor Total: <strong style={{ color:"#1A4870" }}>{fv(valorTotal)}</strong></span></>;
+                  return <>Valor Financeiro: <strong>{fv(valorFinanceiro)}</strong><span style={{ marginLeft:20 }}>Valor Total: <strong style={{ color:"#111111" }}>{fv(valorTotal)}</strong></span></>;
                 })()}
               </div>
               <div style={{ display:"flex", gap:8 }}>
@@ -2650,7 +2650,7 @@ export default function Contratos() {
               </select>
             </div>
             {contratoSel && (
-              <div style={{ background:"#D5E8F5", borderRadius:8, padding:"8px 14px", fontSize:11, display:"flex", gap:20, flexWrap:"wrap", marginBottom:14 }}>
+              <div style={{ background:"#E8E8E8", borderRadius:8, padding:"8px 14px", fontSize:11, display:"flex", gap:20, flexWrap:"wrap", marginBottom:14 }}>
                 <span>Comprador: <strong>{contratoSel.comprador.split(" ").slice(0,2).join(" ")}</strong></span>
                 <span>Produto: <strong>{produto_rom}</strong></span>
                 {contratoSel.modalidade==="fixo" && <span>Preço: <strong>{fmtR$(contratoSel.preco??0)}/sc</strong></span>}
@@ -2729,7 +2729,7 @@ export default function Contratos() {
                       carunchados:      "0",
                       outros_avariados: "0",
                     }))}
-                    style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", border:"0.5px solid #A8C8E8", borderRadius:6, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" }}
+                    style={{ fontSize:11, fontWeight:600, color:"#111111", background:"#E8E8E8", border:"0.5px solid #A8C8E8", borderRadius:6, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" }}
                   >
                     ✦ Class. Padrão
                   </button>
@@ -2813,8 +2813,8 @@ export default function Contratos() {
                 </div>
 
                 {/* ── Apuração ── */}
-                <div style={{ background: temClassif&&(descUmid+descImpur+descAvar)>0 ? "#FFF3E0" : "#D5E8F5", borderRadius:8, padding:"12px 14px", marginBottom:12 }}>
-                  <div style={{ fontSize:11, fontWeight:600, color:"#0B2D50", marginBottom:8 }}>Apuração — Balança de Saída (Fazenda)</div>
+                <div style={{ background: temClassif&&(descUmid+descImpur+descAvar)>0 ? "#FFF3E0" : "#E8E8E8", borderRadius:8, padding:"12px 14px", marginBottom:12 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:"#0D0D0D", marginBottom:8 }}>Apuração — Balança de Saída (Fazenda)</div>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
                     <div style={{ textAlign:"center" }}>
                       <div style={{ fontSize:10, color:"var(--text-2)" }}>Peso Líquido</div>
@@ -2828,11 +2828,11 @@ export default function Contratos() {
                     )}
                     <div style={{ textAlign:"center" }}>
                       <div style={{ fontSize:10, color:"var(--text-2)" }}>Peso Classificado</div>
-                      <div style={{ fontSize:13, fontWeight:600, color:"#0B2D50" }}>{fmtPeso(temClassif?pesoClass:plCalc)}</div>
+                      <div style={{ fontSize:13, fontWeight:600, color:"#0D0D0D" }}>{fmtPeso(temClassif?pesoClass:plCalc)}</div>
                     </div>
                     <div style={{ textAlign:"center" }}>
                       <div style={{ fontSize:10, color:"var(--text-2)" }}>Sacas ({clsComm.kg_saca} kg)</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:"#1A4870" }}>{sacasCalc.toLocaleString("pt-BR")} sc</div>
+                      <div style={{ fontSize:15, fontWeight:600, color:"#111111" }}>{sacasCalc.toLocaleString("pt-BR")} sc</div>
                       {contratoSel?.modalidade==="fixo" && (
                         <div style={{ fontSize:10, color:"var(--text-2)" }}>{fmtR$(sacasCalc*(contratoSel.preco??0))}</div>
                       )}
@@ -2894,9 +2894,9 @@ export default function Contratos() {
 
             {/* ── Adiantamento disponível ── */}
             {contratoSel && sacasCalc > 0 && adiantSaldo(contratoSel.id) > 0 && (
-              <div style={{ background:"#D5E8F5", border:"0.5px solid #1A4870", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
+              <div style={{ background:"#E8E8E8", border:"0.5px solid #111111", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: fRom.aplicarAdiant ? 10 : 0 }}>
-                  <div style={{ fontSize:11, fontWeight:600, color:"#0B2D50" }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:"#0D0D0D" }}>
                     💰 Adiantamento disponível: <strong>{fmtR$(adiantSaldo(contratoSel.id))}</strong>
                   </div>
                   <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer" }}>
@@ -2906,13 +2906,13 @@ export default function Contratos() {
                         const sugestao = on ? String(Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0)).toFixed(2)) : "";
                         setFRom(p => ({ ...p, aplicarAdiant: on, adiantValor: sugestao }));
                       }} />
-                    <span style={{ fontSize:12, color:"#0B2D50", fontWeight:600 }}>Aplicar nesta entrega</span>
+                    <span style={{ fontSize:12, color:"#0D0D0D", fontWeight:600 }}>Aplicar nesta entrega</span>
                   </label>
                 </div>
                 {fRom.aplicarAdiant && (
                   <div>
-                    <label style={{ ...lbl, color:"#0B2D50" }}>Valor a abater (R$) — máx. {fmtR$(Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0)))}</label>
-                    <InputNumerico style={{ ...inp, borderColor:"#1A4870" }} min="0"
+                    <label style={{ ...lbl, color:"#0D0D0D" }}>Valor a abater (R$) — máx. {fmtR$(Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0)))}</label>
+                    <InputNumerico style={{ ...inp, borderColor:"#111111" }} min="0"
                       max={Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0))}
                       value={fRom.adiantValor}
                       onChange={v => setFRom(p => ({ ...p, adiantValor: v }))} />
@@ -2921,7 +2921,7 @@ export default function Contratos() {
                       const vAbate = Math.min(parseFloat(fRom.adiantValor||"0"), vBruto, adiantSaldo(contratoSel.id));
                       const vCR    = Math.max(0, vBruto - vAbate);
                       return (
-                        <div style={{ marginTop:6, fontSize:11, color:"#0B2D50", display:"flex", gap:16, flexWrap:"wrap" }}>
+                        <div style={{ marginTop:6, fontSize:11, color:"#0D0D0D", display:"flex", gap:16, flexWrap:"wrap" }}>
                           <span>Valor bruto: <strong>{fmtR$(vBruto)}</strong></span>
                           <span>Abate: <strong style={{ color:"#E24B4A" }}>−{fmtR$(vAbate)}</strong></span>
                           <span>CR a lançar: <strong style={{ color:"#16A34A" }}>{fmtR$(vCR)}</strong></span>
@@ -2958,7 +2958,7 @@ export default function Contratos() {
                 <button onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
               </div>
               <div style={{ display:"flex", gap:16, marginTop:10, fontSize:12 }}>
-                <span>Valor do Contrato: <strong style={{ color:"#1A4870" }}>R$ {valorFinanceiro.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+                <span>Valor do Contrato: <strong style={{ color:"#111111" }}>R$ {valorFinanceiro.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
                 <span>Total Cedido: <strong style={{ color: Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0) > valorFinanceiro ? "#E24B4A" : "#16A34A" }}>R$ {Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
               </div>
             </div>
@@ -2985,7 +2985,7 @@ export default function Contratos() {
                       const sel = l.id in cessaoSelecionados;
                       const valCessao = cessaoSelecionados[l.id] ?? l.valor;
                       return (
-                        <tr key={l.id} style={{ borderBottom:"0.5px solid var(--bg-tag)", background: sel ? "#EBF5FF" : "transparent" }}>
+                        <tr key={l.id} style={{ borderBottom:"0.5px solid var(--bg-tag)", background: sel ? "#EEEEEE" : "transparent" }}>
                           <td style={{ padding:"8px" }}>
                             <input type="checkbox" checked={sel}
                               onChange={e => {
@@ -3050,8 +3050,8 @@ export default function Contratos() {
                   { id:"safra"     as const, label:"Encerrar safra completa", sub:"Encerra a safra e bloqueia novos lançamentos. Inclui todos os contratos abertos." },
                 ] as { id:"contratos"|"safra"; label:string; sub:string }[]).map(op => (
                   <button key={op.id} onClick={() => setLoteOp(op.id)}
-                    style={{ flex:1, textAlign:"left", padding:"12px 14px", borderRadius:10, border: loteOp===op.id ? "2px solid #1A5CB8" : "1.5px solid var(--border-table)", background: loteOp===op.id ? "#D5E8F5" : "var(--bg-card)", cursor:"pointer" }}>
-                    <div style={{ fontWeight:600, fontSize:13, color: loteOp===op.id ? "#0B2D50" : "var(--text-1)" }}>{op.label}</div>
+                    style={{ flex:1, textAlign:"left", padding:"12px 14px", borderRadius:10, border: loteOp===op.id ? "2px solid #2A2A2A" : "1.5px solid var(--border-table)", background: loteOp===op.id ? "#E8E8E8" : "var(--bg-card)", cursor:"pointer" }}>
+                    <div style={{ fontWeight:600, fontSize:13, color: loteOp===op.id ? "#0D0D0D" : "var(--text-1)" }}>{op.label}</div>
                     <div style={{ fontSize:11, color:"var(--text-2)", marginTop:3 }}>{op.sub}</div>
                     {op.id === "safra" && loteOp === "safra" && (
                       <div style={{ marginTop:6, fontSize:11, background:"#FFF3CD", color:"#7A5A12", borderRadius:6, padding:"4px 8px", border:"0.5px solid #F0D080" }}>
@@ -3078,8 +3078,8 @@ export default function Contratos() {
                         if (isEnc && loteOp === "safra") return; // já encerrada, skip
                         setLoteSafras(prev => { const s = new Set(prev); sel ? s.delete(a.id) : s.add(a.id); return s; });
                       }}
-                      style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", borderRadius:10, border: sel ? "1.5px solid #1A5CB8" : "0.5px solid var(--border-table)", background: sel ? "#EEF5FF" : isEnc ? "#F8F8F8" : "var(--bg-card)", cursor: isEnc && loteOp==="safra" ? "default" : "pointer", opacity: isEnc && loteOp==="safra" ? 0.65 : 1 }}>
-                      <input type="checkbox" checked={sel} readOnly style={{ accentColor:"#1A5CB8", width:16, height:16, flexShrink:0 }} />
+                      style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", borderRadius:10, border: sel ? "1.5px solid #2A2A2A" : "0.5px solid var(--border-table)", background: sel ? "#EEF5FF" : isEnc ? "#F8F8F8" : "var(--bg-card)", cursor: isEnc && loteOp==="safra" ? "default" : "pointer", opacity: isEnc && loteOp==="safra" ? 0.65 : 1 }}>
+                      <input type="checkbox" checked={sel} readOnly style={{ accentColor:"#2A2A2A", width:16, height:16, flexShrink:0 }} />
                       <div style={{ flex:1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                           <span style={{ fontWeight:600, fontSize:13, color:"var(--text-1)" }}>{a.descricao}</span>
@@ -3096,7 +3096,7 @@ export default function Contratos() {
                       </div>
                       {isEnc && loteOp === "contratos" && (
                         <button onClick={async e => { e.stopPropagation(); if (!confirm(`Reabrir a safra "${a.descricao}"?`)) return; await reabrirAnoSafra(a.id); setAnosSafra(prev => prev.map(x => x.id === a.id ? { ...x, status: "ativa" as const } : x)); }}
-                          style={{ fontSize:11, background:"var(--bg-card)", color:"#1A4870", border:"0.5px solid #1A4870", borderRadius:6, padding:"4px 10px", cursor:"pointer" }}>
+                          style={{ fontSize:11, background:"var(--bg-card)", color:"#111111", border:"0.5px solid #111111", borderRadius:6, padding:"4px 10px", cursor:"pointer" }}>
                           ↩ Reabrir
                         </button>
                       )}
@@ -3126,7 +3126,7 @@ export default function Contratos() {
                   Fechar
                 </button>
                 <button onClick={executarLote} disabled={loteSafras.size === 0 || loteSalvando}
-                  style={{ background: loteSalvando||loteSafras.size===0 ? "#ccc" : loteOp==="safra" ? "#E24B4A" : "#1A5CB8", color:"#fff", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:600, cursor: loteSafras.size===0||loteSalvando ? "default" : "pointer" }}>
+                  style={{ background: loteSalvando||loteSafras.size===0 ? "#ccc" : loteOp==="safra" ? "#E24B4A" : "#2A2A2A", color:"#fff", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:600, cursor: loteSafras.size===0||loteSalvando ? "default" : "pointer" }}>
                   {loteSalvando ? "Processando…" : loteOp==="safra" ? "⊘ Encerrar Safras Selecionadas" : "⊘ Encerrar Contratos Selecionados"}
                 </button>
               </div>
@@ -3179,7 +3179,7 @@ export default function Contratos() {
 
             {/* Preview */}
             {fAdiant.valor && parseFloat(fAdiant.valor) > 0 && (
-              <div style={{ background:"#D5E8F5", border:"0.5px solid #1A4870", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, color:"#0B2D50" }}>
+              <div style={{ background:"#E8E8E8", border:"0.5px solid #111111", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, color:"#0D0D0D" }}>
                 💡 Será gerado CR de <strong>{fmtR$(parseFloat(fAdiant.valor))}</strong> como <strong>Liquidado</strong> em Contas a Receber.
                 O saldo ficará disponível para abatimento no próximo romaneio de expedição deste contrato.
               </div>

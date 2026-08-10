@@ -18,7 +18,7 @@ const TIPO_META: Record<ContaContabil["tipo"], { bg: string; color: string; labe
   ativo:   { bg: "#EAF3DE", color: "#1A5C38", label: "ATIVO"    },
   passivo: { bg: "#FCEBEB", color: "#791F1F", label: "PASSIVO"  },
   pl:      { bg: "#F0EAF8", color: "#4B1A8A", label: "PL"       },
-  receita: { bg: "#D5E8F5", color: "#0B2D50", label: "RECEITA"  },
+  receita: { bg: "#E8E8E8", color: "#0D0D0D", label: "RECEITA"  },
   custo:   { bg: "#FAEEDA", color: "#633806", label: "CUSTO"    },
   despesa: { bg: "#FBF3E0", color: "#8B5E14", label: "DESPESA"  },
 };
@@ -263,7 +263,7 @@ export default function PlanoContasPage() {
               {seeding ? "Importando…" : "↓ Importar Padrão"}
             </button>
             <button onClick={abrirNova}
-              style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#1A4870", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+              style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #111111", borderRadius: 8, background: "#111111", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
               + Nova Conta
             </button>
           </div>
@@ -277,12 +277,12 @@ export default function PlanoContasPage() {
           ] as [FiltroTipo, string][]).map(([k, label]) => (
             <button key={k} onClick={() => setFiltro(k)} style={{
               padding: "4px 12px", borderRadius: 16, border: "0.5px solid",
-              borderColor: filtro === k ? "#1A4870" : "var(--border-table)",
-              background: filtro === k ? "#D5E8F5" : "transparent",
-              color: filtro === k ? "#0B2D50" : "var(--text-3)", fontWeight: filtro === k ? 600 : 400, fontSize: 12, cursor: "pointer",
+              borderColor: filtro === k ? "#111111" : "var(--border-table)",
+              background: filtro === k ? "#E8E8E8" : "transparent",
+              color: filtro === k ? "#0D0D0D" : "var(--text-3)", fontWeight: filtro === k ? 600 : 400, fontSize: 12, cursor: "pointer",
             }}>
               {label}
-              <span style={{ marginLeft: 5, fontSize: 10, background: filtro === k ? "#1A4870" : "var(--border-row)", color: filtro === k ? "#fff" : "var(--text-3)", padding: "1px 5px", borderRadius: 6 }}>
+              <span style={{ marginLeft: 5, fontSize: 10, background: filtro === k ? "#111111" : "var(--border-row)", color: filtro === k ? "#fff" : "var(--text-3)", padding: "1px 5px", borderRadius: 6 }}>
                 {counts[k] ?? 0}
               </span>
             </button>
@@ -367,7 +367,7 @@ export default function PlanoContasPage() {
                       <td style={{ padding: "7px 12px", textAlign: "center" }}>
                         {ogCount > 0 ? (
                           <a href={`/configuracoes/operacoes-gerenciais?conta=${c.codigo}`}
-                            style={{ background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, textDecoration: "none" }}
+                            style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, textDecoration: "none" }}
                             title="Ver operações gerenciais que usam esta conta">
                             {ogCount} OG
                           </a>
@@ -413,7 +413,7 @@ export default function PlanoContasPage() {
               </div>
             </div>
             <button onClick={abrirNovaOg}
-              style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#1A4870", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+              style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #111111", borderRadius: 8, background: "#111111", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
               + Nova Operação
             </button>
           </div>
@@ -423,12 +423,12 @@ export default function PlanoContasPage() {
             {(["todos","receita","despesa"] as const).map(k => (
               <button key={k} onClick={() => setFiltroOg(k)} style={{
                 padding: "4px 12px", borderRadius: 16, border: "0.5px solid",
-                borderColor: filtroOg === k ? "#1A4870" : "var(--border-table)",
-                background: filtroOg === k ? "#D5E8F5" : "transparent",
-                color: filtroOg === k ? "#0B2D50" : "var(--text-3)", fontWeight: filtroOg === k ? 600 : 400, fontSize: 12, cursor: "pointer",
+                borderColor: filtroOg === k ? "#111111" : "var(--border-table)",
+                background: filtroOg === k ? "#E8E8E8" : "transparent",
+                color: filtroOg === k ? "#0D0D0D" : "var(--text-3)", fontWeight: filtroOg === k ? 600 : 400, fontSize: 12, cursor: "pointer",
               }}>
                 {k === "todos" ? "Todos" : k === "receita" ? "Receitas" : "Despesas"}
-                <span style={{ marginLeft: 5, fontSize: 10, background: filtroOg === k ? "#1A4870" : "var(--border-table)", color: filtroOg === k ? "#fff" : "var(--text-3)", padding: "1px 5px", borderRadius: 6 }}>
+                <span style={{ marginLeft: 5, fontSize: 10, background: filtroOg === k ? "#111111" : "var(--border-table)", color: filtroOg === k ? "#fff" : "var(--text-3)", padding: "1px 5px", borderRadius: 6 }}>
                   {ogs.filter(o => filtroOg === "todos" || o.tipo === k).length}
                 </span>
               </button>
@@ -436,7 +436,7 @@ export default function PlanoContasPage() {
             <input value={buscaOg} onChange={e => setBuscaOg(e.target.value)} placeholder="Buscar…"
               style={{ padding: "5px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none", width: 220 }} />
             <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto" }}>
-              <span style={{ background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 5, fontWeight: 600, marginRight: 4 }}>
+              <span style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "1px 6px", borderRadius: 5, fontWeight: 600, marginRight: 4 }}>
                 {ogs.filter(o => o.conta_id === null && o.fazenda_id === null).length}
               </span>
               padrão Raccotlo ·
@@ -484,7 +484,7 @@ export default function PlanoContasPage() {
                           <td style={{ padding: "7px 12px", fontSize: 12, color: "var(--text-1)" }}>
                             {og.descricao}
                             {isGlobal && (
-                              <span style={{ marginLeft: 8, fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>RACCOTLO</span>
+                              <span style={{ marginLeft: 8, fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>RACCOTLO</span>
                             )}
                           </td>
                           <td style={{ padding: "7px 12px", textAlign: "center" }}>
@@ -702,7 +702,7 @@ export default function PlanoContasPage() {
             </div>
             <div style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={salvar} disabled={salvando} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
+              <button onClick={salvar} disabled={salvando} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando…" : editCod ? "Salvar Alterações" : "Criar Conta"}
               </button>
             </div>

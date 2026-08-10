@@ -67,7 +67,7 @@ const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: str
     permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id, [...m.acoes]])),
   },
   gerente: {
-    label: "Gerente Geral", cor: "#1A4870",
+    label: "Gerente Geral", cor: "#111111",
     descricao: "Acesso completo às operações. Gerencia usuários e permissões. Sem acesso a parâmetros fiscais e integrações.",
     permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
       m.id === "usuarios"           ? ["visualizar","criar","editar","excluir"] as Acao[] :
@@ -116,7 +116,7 @@ const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: str
 
 // Ação → cor e label
 const ACAO_META: Record<Acao, { label: string; cor: string; bg: string }> = {
-  visualizar: { label: "Ver",      cor: "#1A4870", bg: "#D5E8F5" },
+  visualizar: { label: "Ver",      cor: "#111111", bg: "#E8E8E8" },
   criar:      { label: "Criar",    cor: "#16A34A", bg: "#DCFCE7" },
   editar:     { label: "Editar",   cor: "#C9921B", bg: "#FBF3E0" },
   excluir:    { label: "Excluir",  cor: "#E24B4A", bg: "#FCEBEB" },
@@ -156,7 +156,7 @@ const inp: React.CSSProperties = {
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
+const btnV: React.CSSProperties = { padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" };
 
 function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
@@ -222,7 +222,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
               <>
                 {/* Linha de grupo */}
                 <tr key={`g-${grupo}`} style={{ background: "var(--bg-tag)" }}>
-                  <td style={{ padding: "6px 12px", fontWeight: 700, fontSize: 11, color: "#1A4870", letterSpacing: "0.5px" }}>
+                  <td style={{ padding: "6px 12px", fontWeight: 700, fontSize: 11, color: "#111111", letterSpacing: "0.5px" }}>
                     {grupo.toUpperCase()}
                   </td>
                   {(Object.keys(ACAO_META) as Acao[]).map(acao => {
@@ -559,8 +559,8 @@ export default function AdminUsuarios() {
           <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
             {[
               { role: "raccotlo", label: "Superadmin", cor: "#7A5A12", bg: "#FBF3E0", desc: "Acesso total ao sistema" },
-              { role: "raccotlo_gestor", label: "Hub Completo", cor: "#1A4870", bg: "#D5E8F5", desc: "Gestão Arato + Seletor" },
-              { role: "raccotlo_seletor", label: "Seletor", cor: "#378ADD", bg: "#EFF6FF", desc: "Apenas Seletor de Clientes" },
+              { role: "raccotlo_gestor", label: "Hub Completo", cor: "#111111", bg: "#E8E8E8", desc: "Gestão Arato + Seletor" },
+              { role: "raccotlo_seletor", label: "Seletor", cor: "#444444", bg: "#F2F2F2", desc: "Apenas Seletor de Clientes" },
               { role: "client", label: "Sem Acesso", cor: "var(--text-3)", bg: "#F3F4F6", desc: "Sem acesso interno" },
             ].map(n => (
               <div key={n.role} style={{ padding: "7px 12px", background: n.bg, border: `0.5px solid ${n.cor}40`, borderRadius: 8, fontSize: 11 }}>
@@ -583,7 +583,7 @@ export default function AdminUsuarios() {
                     padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                     color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
-                    borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
+                    borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent",
                   }}>
                     {a.label}
                   </button>
@@ -610,13 +610,13 @@ export default function AdminUsuarios() {
                   <tbody>
                     {usuarios.length === 0 && (
                       <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                        Nenhum usuário cadastrado. <button onClick={() => abrirModalUser()} style={{ color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                        Nenhum usuário cadastrado. <button onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
                       </td></tr>
                     )}
                     {usuarios.map((u, i) => {
                       const hub = (u as any).hub_acesso as string | null;
-                      const hubCfg = hub === "raccotlo_gestor"  ? { label: "Hub Completo",   cor: "#1A4870", bg: "#D5E8F5" }
-                                   : hub === "raccotlo_seletor" ? { label: "Seletor",         cor: "#378ADD", bg: "#EFF6FF" }
+                      const hubCfg = hub === "raccotlo_gestor"  ? { label: "Hub Completo",   cor: "#111111", bg: "#E8E8E8" }
+                                   : hub === "raccotlo_seletor" ? { label: "Seletor",         cor: "#444444", bg: "#F2F2F2" }
                                    : hub === "raccotlo"         ? { label: "Superadmin",      cor: "#7A5A12", bg: "#FBF3E0" }
                                    :                             { label: "Sem Acesso",        cor: "var(--text-3)",    bg: "#F3F4F6" };
                       return (
@@ -642,12 +642,12 @@ export default function AdminUsuarios() {
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               {hub !== "raccotlo" && hub !== null && (
                                 <button onClick={() => abrirModalClientes(u)}
-                                  style={{ padding: "4px 12px", background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 6, fontSize: 11, color: "#378ADD", cursor: "pointer", fontWeight: 600 }}>
+                                  style={{ padding: "4px 12px", background: "#F2F2F2", border: "0.5px solid #93C5FD", borderRadius: 6, fontSize: 11, color: "#444444", cursor: "pointer", fontWeight: 600 }}>
                                   Clientes
                                 </button>
                               )}
                               <button onClick={() => abrirModalUser(u)}
-                                style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                                style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                                 Editar
                               </button>
                               <button onClick={() => excluirUser(u.id)}
@@ -673,7 +673,7 @@ export default function AdminUsuarios() {
       {modalClientes && (
         <Modal titulo={`Acesso a Clientes — ${modalClientes.nome}`} onClose={() => setModalClientes(null)} width={540}>
           <div>
-            <div style={{ marginBottom: 14, padding: "10px 14px", background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, fontSize: 12, color: "#1A4870" }}>
+            <div style={{ marginBottom: 14, padding: "10px 14px", background: "#F2F2F2", border: "0.5px solid #93C5FD", borderRadius: 8, fontSize: 12, color: "#111111" }}>
               <strong>Sem seleção:</strong> o usuário vê todos os clientes disponíveis no seletor.
               Marque contas específicas para restringir o acesso.
             </div>
@@ -700,14 +700,14 @@ export default function AdminUsuarios() {
               {contasDisponiveis.map(c => {
                 const sel = contasSelecionadas.has(c.id);
                 return (
-                  <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, background: sel ? "#EFF6FF" : "var(--bg-page)", border: `0.5px solid ${sel ? "#93C5FD" : "var(--border-table)"}`, cursor: "pointer" }}>
+                  <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, background: sel ? "#F2F2F2" : "var(--bg-page)", border: `0.5px solid ${sel ? "#93C5FD" : "var(--border-table)"}`, cursor: "pointer" }}>
                     <input type="checkbox" checked={sel} onChange={() => {
                       setContasSelecionadas(prev => {
                         const next = new Set(prev);
                         if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
                         return next;
                       });
-                    }} style={{ accentColor: "#378ADD", width: 14, height: 14 }} />
+                    }} style={{ accentColor: "#444444", width: 14, height: 14 }} />
                     <span style={{ fontSize: 13, color: "var(--text-1)", fontWeight: sel ? 600 : 400 }}>{c.nome}</span>
                   </label>
                 );
@@ -873,7 +873,7 @@ export default function AdminUsuarios() {
 
               {/* Produtor */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Produtor / Empresa</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Produtor / Empresa</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
                     <label style={lbl}>Tipo *</label>
@@ -911,7 +911,7 @@ export default function AdminUsuarios() {
 
               {/* Fazenda */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Fazenda</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Fazenda</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div style={{ gridColumn: "span 2" }}>
                     <label style={lbl}>Nome da Fazenda *</label>
@@ -934,7 +934,7 @@ export default function AdminUsuarios() {
 
               {/* Usuário de acesso */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Usuário de Acesso ao Arato</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Usuário de Acesso ao Arato</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
                     <label style={lbl}>Nome do usuário *</label>

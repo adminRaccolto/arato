@@ -1268,14 +1268,14 @@ create index if not exists idx_nf_entradas_status    on nf_entradas(fazenda_id, 
 alter table nf_entradas
   add column if not exists nf_origem_id uuid references nf_entradas(id);
 
--- 2. Atualiza o check constraint de tipo_entrada para incluir 'devolucao_compra'
+-- 2. Atualiza o check constraint de tipo_entrada para incluir 'devolucao_compra' e 'custo_direto'
 --    Remove o constraint gerado automaticamente e recria com o novo valor
 alter table nf_entradas
   drop constraint if exists nf_entradas_tipo_entrada_check;
 
 alter table nf_entradas
   add constraint nf_entradas_tipo_entrada_check
-  check (tipo_entrada in ('consumo','insumos','vef','remessa','devolucao_compra'));
+  check (tipo_entrada in ('consumo','insumos','vef','remessa','devolucao_compra','custo_direto'));
 
 -- 3. Índice para localizar devoluções por NF de origem
 create index if not exists idx_nf_entradas_origem on nf_entradas(nf_origem_id);

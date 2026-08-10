@@ -22,7 +22,7 @@ const lbl: React.CSSProperties = {
   fontSize: 12, color: "#555", fontWeight: 700, display: "block", marginBottom: 6,
 };
 const btnPrimary: React.CSSProperties = {
-  width: "100%", padding: "14px", background: "#1A4870", color: "#fff",
+  width: "100%", padding: "14px", background: "#111111", color: "#fff",
   border: "none", borderRadius: 12, fontWeight: 700, cursor: "pointer", fontSize: 16,
 };
 const btnSecondary: React.CSSProperties = {
@@ -210,7 +210,7 @@ export default function CampoTransferenciasPage() {
       </p>
       <button onClick={novaSolicitacao} style={btnPrimary}>Nova Solicitação</button>
       <div style={{ marginTop: 12 }}>
-        <a href="/campo" style={{ fontSize: 13, color: "#1A4870" }}>← Voltar ao App Campo</a>
+        <a href="/campo" style={{ fontSize: 13, color: "#111111" }}>← Voltar ao App Campo</a>
       </div>
     </div>
   );
@@ -230,7 +230,7 @@ export default function CampoTransferenciasPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 }}>
         {(["insumos", "maquinas"] as const).map(a => (
           <button key={a} onClick={() => { setAba(a); setErro(null); }}
-            style={{ padding: "12px", border: aba === a ? "2px solid #1A4870" : "0.5px solid #DDE2EE", borderRadius: 10, background: aba === a ? "#EFF4FA" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14, color: aba === a ? "#1A4870" : "#555" }}>
+            style={{ padding: "12px", border: aba === a ? "2px solid #111111" : "0.5px solid #DDE2EE", borderRadius: 10, background: aba === a ? "#EFF4FA" : "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14, color: aba === a ? "#111111" : "#555" }}>
             {a === "insumos" ? "📦 Insumos" : "🚜 Máquinas"}
           </button>
         ))}
@@ -254,7 +254,7 @@ export default function CampoTransferenciasPage() {
           </div>
 
           <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>📦 Origem</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>📦 Origem</div>
             <div style={{ marginBottom: 12 }}>
               <label style={lbl}>Fazenda de Origem</label>
               <select value={fazendaOrigemId} onChange={e => { setFazendaOrigemId(e.target.value); setDepositoOrigemId(""); }} style={inp}>
@@ -296,7 +296,7 @@ export default function CampoTransferenciasPage() {
           <div style={{ ...card, padding: "16px 16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Itens a Transferir</span>
-              <button onClick={addItem} style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>+ Adicionar</button>
+              <button onClick={addItem} style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>+ Adicionar</button>
             </div>
             {itens.map((it, i) => (
               <div key={i} style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 14px", marginBottom: 10, background: "#FAFBFC" }}>
@@ -353,7 +353,7 @@ export default function CampoTransferenciasPage() {
           </div>
 
           <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>🚜 Máquina</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>🚜 Máquina</div>
             <div style={{ marginBottom: 12 }}>
               <label style={lbl}>Fazenda de Origem (onde está a máquina)</label>
               <select value={fMaqOrigem} onChange={e => { setFMaqOrigem(e.target.value); setMaquinaId(""); }} style={inp}>

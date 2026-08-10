@@ -253,8 +253,8 @@ function ModalSieg({
           ] as const).map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               style={{ padding: "9px 20px", border: "none", background: "transparent",
-                       borderBottom: tab === t.id ? "2px solid #1A4870" : "2px solid transparent",
-                       color: tab === t.id ? "#1A4870" : "#666",
+                       borderBottom: tab === t.id ? "2px solid #111111" : "2px solid transparent",
+                       color: tab === t.id ? "#111111" : "#666",
                        fontWeight: tab === t.id ? 700 : 400, fontSize: 13, cursor: "pointer" }}>
               {t.label}
             </button>
@@ -315,9 +315,9 @@ function ModalSieg({
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 {cfg.cnpjs_destino.map(doc => (
                   <div key={doc} style={{ display: "flex", alignItems: "center", gap: 6,
-                                          padding: "5px 10px 5px 12px", background: "#EFF6FF",
-                                          border: "0.5px solid #378ADD", borderRadius: 20, fontSize: 13 }}>
-                    <span style={{ fontFamily: "monospace", color: "#1A4870", fontWeight: 600 }}>
+                                          padding: "5px 10px 5px 12px", background: "#F2F2F2",
+                                          border: "0.5px solid #444444", borderRadius: 20, fontSize: 13 }}>
+                    <span style={{ fontFamily: "monospace", color: "#111111", fontWeight: 600 }}>
                       {formatarDoc(doc)}
                     </span>
                     <span style={{ fontSize: 11, color: "var(--text-3)" }}>{doc.length === 11 ? "CPF" : "CNPJ"}</span>
@@ -351,7 +351,7 @@ function ModalSieg({
                           cursor: jaAdicionado ? "default" : "pointer",
                           border: `0.5px solid ${jaAdicionado ? "#86EFAC" : "var(--border)"}`,
                           background: jaAdicionado ? "#F0FFF4" : "var(--bg-page)",
-                          color: jaAdicionado ? "#16A34A" : "#1A4870",
+                          color: jaAdicionado ? "#16A34A" : "#111111",
                         }}
                         title={jaAdicionado ? "Já monitorado" : `Adicionar ${p.cpf_cnpj}`}
                       >
@@ -375,7 +375,7 @@ function ModalSieg({
               />
               <button onClick={adicionarDoc} disabled={novoDoc.length < 11}
                 style={{ padding: "8px 18px",
-                         background: novoDoc.length >= 11 ? "#1A4870" : "var(--bg-page)",
+                         background: novoDoc.length >= 11 ? "#111111" : "var(--bg-page)",
                          color: novoDoc.length >= 11 ? "#fff" : "var(--text-3)",
                          border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 13,
                          fontWeight: 600, cursor: novoDoc.length >= 11 ? "pointer" : "not-allowed" }}>
@@ -441,7 +441,7 @@ function ModalSieg({
                   Cancelar
                 </button>
                 <button onClick={salvar} disabled={saving}
-                  style={{ padding: "9px 24px", background: "#1A4870", color: "#fff",
+                  style={{ padding: "9px 24px", background: "#111111", color: "#fff",
                            border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   {saving ? "Salvando…" : "Salvar"}
                 </button>
@@ -534,7 +534,7 @@ function ModalSieg({
 
             <button onClick={registrarTodos} disabled={certSaving}
               style={{ width: "100%", padding: "11px 0",
-                       background: certSaving ? "var(--border)" : "#1A4870",
+                       background: certSaving ? "var(--border)" : "#111111",
                        color: "#fff", border: "none", borderRadius: 8, fontSize: 14,
                        fontWeight: 700, cursor: certSaving ? "not-allowed" : "pointer" }}>
               {certSaving
@@ -559,7 +559,7 @@ function ModalSieg({
                 <button onClick={testarDiagnostico} disabled={diagLoading}
                   style={{ padding: "6px 14px", background: diagLoading ? "var(--bg-page)" : "var(--bg-card)",
                            border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12,
-                           cursor: diagLoading ? "not-allowed" : "pointer", color: "#1A4870", fontWeight: 600 }}>
+                           cursor: diagLoading ? "not-allowed" : "pointer", color: "#111111", fontWeight: 600 }}>
                   {diagLoading ? "Testando…" : "Testar chave agora"}
                 </button>
               </div>
@@ -703,7 +703,7 @@ function ModalConfigurar({
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, color: "var(--text-2)" }}>Ativo</span>
             <div onClick={() => setAtivo(v => !v)}
-              style={{ width: 44, height: 24, borderRadius: 12, background: ativo ? "#1A4870" : "var(--border)",
+              style={{ width: 44, height: 24, borderRadius: 12, background: ativo ? "#111111" : "var(--border)",
                        cursor: "pointer", position: "relative", transition: "background .2s" }}>
               <div style={{ width: 18, height: 18, borderRadius: 9, background: "var(--bg-card)", position: "absolute",
                             top: 3, left: ativo ? 23 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }} />
@@ -739,7 +739,7 @@ function ModalConfigurar({
             </div>
             <button onClick={testarBalanca} disabled={testing}
               style={{ marginTop: 16, padding: "9px 20px", background: "var(--bg-page)", border: "0.5px solid var(--border)",
-                       borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#1A4870" }}>
+                       borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#111111" }}>
               {testing ? "Aguardando leitura..." : "Testar Balança (Web Serial)"}
             </button>
             {testResult && (
@@ -772,7 +772,7 @@ function ModalConfigurar({
 
             {/* Reconectar WhatsApp */}
             <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: 16, marginTop: 4 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 10 }}>
                 Conexão WhatsApp
               </div>
               <button onClick={reconectarWhatsApp} disabled={qrLoading}
@@ -801,7 +801,7 @@ function ModalConfigurar({
                   <button onClick={reconectarWhatsApp} disabled={qrLoading}
                     style={{ marginTop: 8, padding: "6px 14px", background: "var(--bg-page)",
                              border: "0.5px solid var(--border)", borderRadius: 6,
-                             fontSize: 12, cursor: "pointer", color: "#1A4870" }}>
+                             fontSize: 12, cursor: "pointer", color: "#111111" }}>
                     Renovar QR Code
                   </button>
                 </div>
@@ -842,7 +842,7 @@ function ModalConfigurar({
           </button>
           <button onClick={async () => { setSaving(true); await onSave(config, ativo); setSaving(false); onClose(); }}
             disabled={saving}
-            style={{ padding: "9px 24px", background: "#1A4870", color: "#fff",
+            style={{ padding: "9px 24px", background: "#111111", color: "#fff",
                      border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {saving ? "Salvando..." : "Salvar"}
           </button>
@@ -931,14 +931,14 @@ export default function IntegracoesPage() {
               <button key={cat.id} onClick={() => setAbaCat(cat.id)}
                 style={{ padding: "10px 20px", border: "none", borderRadius: "8px 8px 0 0",
                          background: abaCat === cat.id ? "#fff" : "transparent",
-                         borderBottom: abaCat === cat.id ? "2px solid #1A4870" : "2px solid transparent",
-                         color: abaCat === cat.id ? "#1A4870" : "#666",
+                         borderBottom: abaCat === cat.id ? "2px solid #111111" : "2px solid transparent",
+                         color: abaCat === cat.id ? "#111111" : "#666",
                          fontWeight: abaCat === cat.id ? 700 : 400,
                          fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                 <span>{cat.icone}</span>
                 {cat.label}
                 {ativosNoCat > 0 && (
-                  <span style={{ background: "#1A4870", color: "#fff", borderRadius: 10,
+                  <span style={{ background: "#111111", color: "#fff", borderRadius: 10,
                                  padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>
                     {ativosNoCat}
                   </span>
@@ -958,7 +958,7 @@ export default function IntegracoesPage() {
 
                 {/* Card Sieg */}
                 <div style={{ background: "var(--bg-card)", borderRadius: 12,
-                              border: `0.5px solid ${siegAtivo ? "#1A4870" : "var(--border)"}`,
+                              border: `0.5px solid ${siegAtivo ? "#111111" : "var(--border)"}`,
                               padding: 20, display: "flex", flexDirection: "column", gap: 12,
                               boxShadow: siegAtivo ? "0 0 0 1px rgba(26,72,112,0.08)" : "none" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -968,8 +968,8 @@ export default function IntegracoesPage() {
                       <div style={{ fontSize: 11, color: "var(--text-3)" }}>sieg.com.br</div>
                     </div>
                     <div style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                                  background: siegAtivo ? "#D5E8F5" : "var(--bg-page)",
-                                  color: siegAtivo ? "#1A4870" : "var(--text-3)" }}>
+                                  background: siegAtivo ? "#E8E8E8" : "var(--bg-page)",
+                                  color: siegAtivo ? "#111111" : "var(--text-3)" }}>
                       {siegAtivo ? "Ativo" : "Inativo"}
                     </div>
                   </div>
@@ -984,8 +984,8 @@ export default function IntegracoesPage() {
                                    border: "0.5px solid #7C8FD9", borderRadius: 20, fontSize: 11 }}>
                       Requer API Key
                     </span>
-                    <span style={{ padding: "2px 8px", background: "#EFF6FF", color: "#1A4870",
-                                   border: "0.5px solid #378ADD", borderRadius: 20, fontSize: 11 }}>
+                    <span style={{ padding: "2px 8px", background: "#F2F2F2", color: "#111111",
+                                   border: "0.5px solid #444444", borderRadius: 20, fontSize: 11 }}>
                       NF-e Modelo 55
                     </span>
                     {fmtData(siegCfg.ultima_sync_data) && (
@@ -998,9 +998,9 @@ export default function IntegracoesPage() {
 
                   <button onClick={() => setModalSieg(true)}
                     style={{ marginTop: "auto", padding: "9px 0",
-                             background: siegAtivo ? "#1A4870" : "var(--bg-page)",
-                             color: siegAtivo ? "#fff" : "#1A4870",
-                             border: `0.5px solid ${siegAtivo ? "#1A4870" : "var(--border)"}`,
+                             background: siegAtivo ? "#111111" : "var(--bg-page)",
+                             color: siegAtivo ? "#fff" : "#111111",
+                             border: `0.5px solid ${siegAtivo ? "#111111" : "var(--border)"}`,
                              borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     {siegAtivo ? "Gerenciar" : "Configurar"}
                   </button>
@@ -1020,7 +1020,7 @@ export default function IntegracoesPage() {
                     Importe extratos OFX de qualquer banco brasileiro. O sistema concilia automaticamente com CP/CR cadastrados.
                   </div>
                   <button onClick={() => router.push("/financeiro/conciliacao")}
-                    style={{ padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                    style={{ padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     Acessar Conciliação
                   </button>
                 </div>
@@ -1039,7 +1039,7 @@ export default function IntegracoesPage() {
                     Emita e controle GNREs para DIFAL (EC 87/2015), substituição tributária e antecipação de ICMS nas operações interestaduais.
                   </div>
                   <button onClick={() => router.push("/fiscal/gnre")}
-                    style={{ padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                    style={{ padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     Acessar GNRE
                   </button>
                 </div>
@@ -1058,7 +1058,7 @@ export default function IntegracoesPage() {
                     Gerencie CLT e avulsos rurais (TSVE), gere eventos eSocial (S-2200, S-2300, S-1200) e calcule a folha com FUNRURAL e SENAR.
                   </div>
                   <button onClick={() => router.push("/fiscal/esocial")}
-                    style={{ padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                    style={{ padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     Acessar eSocial
                   </button>
                 </div>
@@ -1081,7 +1081,7 @@ export default function IntegracoesPage() {
                     const testadoEm = cfg?.testado_em ? new Date(cfg.testado_em).toLocaleDateString("pt-BR") : null;
                     return (
                       <div key={intg.id} style={{ background: "var(--bg-card)", borderRadius: 12,
-                                                   border: `0.5px solid ${ativo ? "#1A4870" : "var(--border)"}`,
+                                                   border: `0.5px solid ${ativo ? "#111111" : "var(--border)"}`,
                                                    padding: 20, display: "flex", flexDirection: "column", gap: 12,
                                                    boxShadow: ativo ? "0 0 0 1px rgba(26,72,112,0.08)" : "none" }}>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -1091,8 +1091,8 @@ export default function IntegracoesPage() {
                             {intg.fabricante && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{intg.fabricante}</div>}
                           </div>
                           <div style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                                        background: ativo ? "#D5E8F5" : "var(--bg-page)",
-                                        color: ativo ? "#1A4870" : "var(--text-3)" }}>
+                                        background: ativo ? "#E8E8E8" : "var(--bg-page)",
+                                        color: ativo ? "#111111" : "var(--text-3)" }}>
                             {ativo ? "Ativo" : "Inativo"}
                           </div>
                         </div>
@@ -1119,9 +1119,9 @@ export default function IntegracoesPage() {
                         </div>
                         <button onClick={() => setModal(intg)}
                           style={{ marginTop: "auto", padding: "9px 0",
-                                   background: ativo ? "#1A4870" : "var(--bg-page)",
-                                   color: ativo ? "#fff" : "#1A4870",
-                                   border: `0.5px solid ${ativo ? "#1A4870" : "var(--border)"}`,
+                                   background: ativo ? "#111111" : "var(--bg-page)",
+                                   color: ativo ? "#fff" : "#111111",
+                                   border: `0.5px solid ${ativo ? "#111111" : "var(--border)"}`,
                                    borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                           {ativo ? "Gerenciar" : "Configurar"}
                         </button>
@@ -1136,7 +1136,7 @@ export default function IntegracoesPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 4 }}>
 
                 {/* Card Toledo PRIX */}
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #1A4870", padding: 20, maxWidth: 560 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #111111", padding: 20, maxWidth: 560 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
                     <div style={{ fontSize: 32, lineHeight: 1 }}>⚖️</div>
                     <div style={{ flex: 1 }}>

@@ -7,7 +7,7 @@ import InputMonetario from "../../../components/InputMonetario";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -46,8 +46,8 @@ const TIPO_LABEL: Record<TipoAplicacao, string> = {
   fundos: "Fundos", tesouro: "Tesouro", poupanca: "Poupança", outro: "Outro",
 };
 const TIPO_COR: Record<TipoAplicacao, string> = {
-  cdb: "#1A4870", lci: "#16A34A", lca: "#0D9488", cri: "#7C3AED", cra: "#C9921B",
-  fundos: "#378ADD", tesouro: "#0B2D50", poupanca: "#16A34A", outro: "#666",
+  cdb: "#111111", lci: "#16A34A", lca: "#0D9488", cri: "#7C3AED", cra: "#C9921B",
+  fundos: "#444444", tesouro: "#0D0D0D", poupanca: "#16A34A", outro: "#666",
 };
 const INDEXADOR_LABEL: Record<TipoIndexador, string> = {
   cdi: "CDI", ipca: "IPCA", prefixado: "Prefixado", cdi_mais: "CDI+", livre: "Livre",
@@ -56,7 +56,7 @@ const MOV_LABEL: Record<TipoMovimento, string> = {
   aporte: "Aporte", rendimento: "Rendimento", resgate_parcial: "Resgate Parcial", resgate_total: "Resgate Total",
 };
 const MOV_COR: Record<TipoMovimento, string> = {
-  aporte: "#1A4870", rendimento: "#16A34A", resgate_parcial: "#C9921B", resgate_total: "#E24B4A",
+  aporte: "#111111", rendimento: "#16A34A", resgate_parcial: "#C9921B", resgate_total: "#E24B4A",
 };
 
 // ─── Componente principal ────────────────────────────────────
@@ -352,8 +352,8 @@ export default function AplicacoesFinanceirasPage() {
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 22 }}>
           {[
-            { label: "Saldo Atual",        value: fmtBRL(totalAtual),       sub: `${ativas.length} aplicações ativas`, color: "#1A4870" },
-            { label: "Total Aportado",     value: fmtBRL(totalAportado),    sub: "capital investido",                  color: "#0B2D50" },
+            { label: "Saldo Atual",        value: fmtBRL(totalAtual),       sub: `${ativas.length} aplicações ativas`, color: "#111111" },
+            { label: "Total Aportado",     value: fmtBRL(totalAportado),    sub: "capital investido",                  color: "#0D0D0D" },
             { label: "Rendimentos Brutos", value: fmtBRL(totalRendBrutos),  sub: `${fmtPct(rentabilidadePct)} de rentabilidade`,    color: "#16A34A" },
             { label: "IR Estimado (15%)",  value: fmtBRL(irEstimado),       sub: "sobre rendimentos",                  color: "#EF9F27" },
             { label: "Saldo Líquido Est.", value: fmtBRL(saldoLiquidoEst),  sub: "após IR estimado",                  color: "#0D9488" },
@@ -470,7 +470,7 @@ export default function AplicacoesFinanceirasPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalNova(false)}>Cancelar</button>
-              <button onClick={salvarNova} disabled={nSaving} style={{ ...btnV, cursor: nSaving ? "default" : "pointer", background: nSaving ? "var(--text-muted)" : "#1A4870" }}>{nSaving ? "Salvando…" : "Salvar"}</button>
+              <button onClick={salvarNova} disabled={nSaving} style={{ ...btnV, cursor: nSaving ? "default" : "pointer", background: nSaving ? "var(--text-muted)" : "#111111" }}>{nSaving ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -513,7 +513,7 @@ export default function AplicacoesFinanceirasPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalAporte(null)}>Cancelar</button>
-              <button onClick={salvarAporte} disabled={aSaving} style={{ ...btnV, cursor: aSaving ? "default" : "pointer", background: aSaving ? "var(--text-muted)" : "#1A4870" }}>{aSaving ? "Salvando…" : "Salvar"}</button>
+              <button onClick={salvarAporte} disabled={aSaving} style={{ ...btnV, cursor: aSaving ? "default" : "pointer", background: aSaving ? "var(--text-muted)" : "#111111" }}>{aSaving ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -700,7 +700,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
             {a.instituicao && <span>{a.instituicao} · </span>}
             {a.taxa_contratada && <span>{a.taxa_contratada}% {a.indexador ? INDEXADOR_LABEL[a.indexador] : ""} · </span>}
-            {a.conta_corrente && <span style={{ color: "#1A4870" }}>CC: {a.conta_corrente} → </span>}
+            {a.conta_corrente && <span style={{ color: "#111111" }}>CC: {a.conta_corrente} → </span>}
             {a.conta_aplicacao && <span style={{ color: "#0D9488" }}>{a.conta_aplicacao}</span>}
           </div>
         </div>
@@ -710,7 +710,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 10, color: "#666" }}>Valor Atual</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{fmtBRL(a.valor_atual)}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#111111" }}>{fmtBRL(a.valor_atual)}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 10, color: "#666" }}>Rendimento</div>
@@ -728,7 +728,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
             {isResgatada ? "Encerrada" : "Ativa"}
           </span>
           {!isResgatada && <>
-            <button onClick={e => { e.stopPropagation(); abrirAporte(a); }} style={{ padding: "4px 9px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>Aporte</button>
+            <button onClick={e => { e.stopPropagation(); abrirAporte(a); }} style={{ padding: "4px 9px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Aporte</button>
             <button onClick={e => { e.stopPropagation(); abrirRendimento(a); }} style={{ padding: "4px 9px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#DCFCE7", cursor: "pointer", fontSize: 11, color: "#166534", fontWeight: 600 }}>Rendimento</button>
             <button onClick={e => { e.stopPropagation(); abrirResgate(a); }} style={{ padding: "4px 9px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Resgatar</button>
           </>}
@@ -759,7 +759,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
                     <td style={{ padding: "6px 10px", textAlign: "right", color: m.iof > 0 ? "#E24B4A" : "var(--text-3)" }}>{m.iof > 0 ? fmtBRL(m.iof) : "—"}</td>
                     <td style={{ padding: "6px 10px", textAlign: "right", color: m.ir > 0 ? "#E24B4A" : "var(--text-3)" }}>{m.ir > 0 ? fmtBRL(m.ir) : "—"}</td>
                     <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: m.tipo === "resgate_parcial" || m.tipo === "resgate_total" ? "#16A34A" : "var(--text-1)" }}>{fmtBRL(m.valor_liquido ?? m.valor_bruto)}</td>
-                    <td style={{ padding: "6px 10px", color: "#1A4870", fontSize: 11 }}>{m.conta_destino ?? m.conta_origem ?? "—"}</td>
+                    <td style={{ padding: "6px 10px", color: "#111111", fontSize: 11 }}>{m.conta_destino ?? m.conta_origem ?? "—"}</td>
                     <td style={{ padding: "6px 10px", color: "#666" }}>{m.observacao ?? "—"}</td>
                   </tr>
                 ))}

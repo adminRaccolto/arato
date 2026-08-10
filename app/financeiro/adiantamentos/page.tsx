@@ -18,7 +18,7 @@ const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
-const btnAzul: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnAzul: React.CSSProperties = { padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnSm: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" };
 const btnSmX: React.CSSProperties = { ...btnSm, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F" };
 const thS: React.CSSProperties = { padding: "8px 12px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" };
@@ -34,7 +34,7 @@ const STATUS_LABEL: Record<AdiantamentoFornecedor["status"], string> = {
   em_aberto: "Em Aberto", parcial: "Parcial", aplicado: "Aplicado", cancelado: "Cancelado",
 };
 const STATUS_COLOR: Record<AdiantamentoFornecedor["status"], { bg: string; color: string }> = {
-  em_aberto: { bg: "#D5E8F5", color: "#0B2D50" },
+  em_aberto: { bg: "#E8E8E8", color: "#0D0D0D" },
   parcial:   { bg: "#FBF3E0", color: "#7A5520" },
   aplicado:  { bg: "#D5F0DD", color: "#1A5C38" },
   cancelado: { bg: "#F1EFE8", color: "var(--text-2)"    },
@@ -210,7 +210,7 @@ export default function AdiantamentosPage() {
         {/* KPI Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
           {[
-            { label: "Total Adiantado (ativos)", valor: fmtBRL(totalAdiantado), cor: "#1A4870", bg: "#D5E8F5" },
+            { label: "Total Adiantado (ativos)", valor: fmtBRL(totalAdiantado), cor: "#111111", bg: "#E8E8E8" },
             { label: "Total Aplicado",           valor: fmtBRL(totalAplicado),  cor: "#1A5C38", bg: "#D5F0DD" },
             { label: "Saldo Disponível",         valor: fmtBRL(saldoDisp),      cor: saldoDisp > 0 ? "#7A5520" : "var(--text-2)", bg: saldoDisp > 0 ? "#FBF3E0" : "var(--bg-page)" },
             { label: "Fornecedores c/ saldo",    valor: String(nFornecedores),  cor: "var(--text-2)", bg: "var(--bg-page)" },
@@ -230,7 +230,7 @@ export default function AdiantamentosPage() {
           <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {TABS.map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#1A4870" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
+                <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#111111" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
                   {t.label}
                   <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.8 }}>
                     ({t.key === "todos" ? adiantamentos.length : adiantamentos.filter(a => a.status === t.key).length})
@@ -481,7 +481,7 @@ export default function AdiantamentosPage() {
           )}
 
           {/* Histórico de Aplicações */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Histórico de Aplicações</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Histórico de Aplicações</div>
           {loadAplic ? (
             <div style={{ color: "var(--text-3)", fontSize: 13, padding: 12 }}>Carregando…</div>
           ) : aplicacoes.length === 0 ? (

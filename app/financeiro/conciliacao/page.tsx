@@ -304,7 +304,7 @@ export default function Conciliacao() {
               <button
                 onClick={() => inputRef.current?.click()}
                 disabled={loading}
-                style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 {loading ? "Processando..." : "Importar OFX"}
               </button>
@@ -382,7 +382,7 @@ export default function Conciliacao() {
 
               {/* Barra de progresso */}
               <div style={{ height: 8, background: "var(--bg-tag)", borderRadius: 4, overflow: "hidden", marginBottom: 14 }}>
-                <div style={{ width: `${pctConciliado}%`, height: "100%", background: pctConciliado === 100 ? "#16A34A" : "#1A4870", borderRadius: 4, transition: "width 0.3s" }} />
+                <div style={{ width: `${pctConciliado}%`, height: "100%", background: pctConciliado === 100 ? "#16A34A" : "#111111", borderRadius: 4, transition: "width 0.3s" }} />
               </div>
 
               {/* Totais */}
@@ -390,7 +390,7 @@ export default function Conciliacao() {
                 {[
                   { label: "Total Créditos",  valor: totalCreditos, cor: "#16A34A" },
                   { label: "Total Débitos",   valor: totalDebitos,  cor: "#E24B4A" },
-                  { label: "Saldo do Período", valor: saldo,        cor: saldo >= 0 ? "#1A4870" : "#E24B4A" },
+                  { label: "Saldo do Período", valor: saldo,        cor: saldo >= 0 ? "#111111" : "#E24B4A" },
                 ].map(k => (
                   <div key={k.label} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{k.label}</div>
@@ -565,7 +565,7 @@ export default function Conciliacao() {
                       padding: "10px 14px", cursor: "pointer",
                       borderBottom: i < arr.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
                       background: lancSel === l.id ? "#EBF4FF" : "transparent",
-                      borderLeft: lancSel === l.id ? "3px solid #1A4870" : "3px solid transparent",
+                      borderLeft: lancSel === l.id ? "3px solid #111111" : "3px solid transparent",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -593,7 +593,7 @@ export default function Conciliacao() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
               <button onClick={() => setModalVincular(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={confirmarVinculo} disabled={!lancSel}
-                style={{ padding: "8px 22px", background: lancSel ? "#1A4870" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: lancSel ? "pointer" : "not-allowed" }}>
+                style={{ padding: "8px 22px", background: lancSel ? "#111111" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: lancSel ? "pointer" : "not-allowed" }}>
                 Confirmar Vínculo
               </button>
             </div>

@@ -405,7 +405,7 @@ export default function AbastecimentoPage() {
           </div>
           <button
             onClick={abrirModal}
-            style={{ padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+            style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
           >
             + Registrar Abastecimento
           </button>
@@ -414,7 +414,7 @@ export default function AbastecimentoPage() {
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
           {[
-            { label: "Litros Hoje",        valor: fmtNum(litrosHoje, 0) + " L",   sub: "consumo no dia",         cor: "#1A4870", bg: "#EAF3FB" },
+            { label: "Litros Hoje",        valor: fmtNum(litrosHoje, 0) + " L",   sub: "consumo no dia",         cor: "#111111", bg: "#EAF3FB" },
             { label: "Litros no Mês",      valor: fmtNum(totalLitrosMes, 0) + " L", sub: filtroMes,              cor: "#166534", bg: "#DCFCE7" },
             { label: "Custo no Mês",       valor: fmtBRL(totalCustoMes),           sub: "a pagar / pago",        cor: "#9D4900", bg: "#FFF4E5" },
             { label: "Abastecimentos",     valor: String(totalAbastMes),           sub: "no período",            cor: "var(--text-2)",   bg: "#F3F4F6" },
@@ -446,13 +446,13 @@ export default function AbastecimentoPage() {
                       {COMB_LABEL[b.combustivel] ?? b.combustivel}
                     </span>
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: baixo ? "#9D4900" : "#1A4870" }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: baixo ? "#9D4900" : "#111111" }}>
                     {fmtNum(b.estoque_atual_l, 0)} L
                   </div>
                   {b.capacidade_l && (
                     <>
                       <div style={{ margin: "8px 0 4px", height: 6, background: "var(--bg-tag)", borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${pct}%`, background: baixo ? "#EF9F27" : "#1A4870", borderRadius: 4, transition: "width 0.3s" }} />
+                        <div style={{ height: "100%", width: `${pct}%`, background: baixo ? "#EF9F27" : "#111111", borderRadius: 4, transition: "width 0.3s" }} />
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-3)" }}>{pct}% de {fmtNum(b.capacidade_l, 0)} L</div>
                     </>
@@ -524,7 +524,7 @@ export default function AbastecimentoPage() {
                       <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                         {h.horimetro != null ? fmtNum(h.horimetro, 1) : "—"}
                       </td>
-                      <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1A4870", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#111111", whiteSpace: "nowrap" }}>
                         {fmtNum(h.quantidade_l, 0)} L
                       </td>
                       <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)", whiteSpace: "nowrap" }}>
@@ -546,7 +546,7 @@ export default function AbastecimentoPage() {
                             onClick={() => abrirEditar(h)}
                             title="Editar abastecimento"
                             style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#EAF3FB"; (e.currentTarget as HTMLButtonElement).style.color = "#1A4870"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#B8D0EE"; }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#EAF3FB"; (e.currentTarget as HTMLButtonElement).style.color = "#111111"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#B8D0EE"; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
                           >
                             ✏
@@ -569,7 +569,7 @@ export default function AbastecimentoPage() {
               <tfoot>
                 <tr style={{ background: "var(--bg-card)", borderTop: "0.5px solid var(--border)" }}>
                   <td colSpan={4} style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do período</td>
-                  <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{fmtNum(totalLitrosMes, 0)} L</td>
+                  <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#111111" }}>{fmtNum(totalLitrosMes, 0)} L</td>
                   <td style={{ padding: "10px 14px" }} />
                   <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(totalCustoMes)}</td>
                   <td /><td />
@@ -618,7 +618,7 @@ export default function AbastecimentoPage() {
                   </select>
                 )}
                 {bombaSelecionada && !editando && (
-                  <div style={{ marginTop: 6, padding: "8px 12px", background: "#F0F8FF", borderRadius: 8, fontSize: 12, color: "#0B2D50" }}>
+                  <div style={{ marginTop: 6, padding: "8px 12px", background: "#F0F8FF", borderRadius: 8, fontSize: 12, color: "#0D0D0D" }}>
                     <strong>Estoque atual:</strong> {fmtNum(bombaSelecionada.estoque_atual_l, 0)} L
                     {bombaSelecionada.capacidade_l && ` de ${fmtNum(bombaSelecionada.capacidade_l, 0)} L`}
                     {bombaSelecionada.estoque_atual_l < 100 && <span style={{ color: "#9D4900", fontWeight: 600 }}> — ⚠ Nível baixo</span>}
@@ -631,7 +631,7 @@ export default function AbastecimentoPage() {
                       ⛽ Posto externo — gera Conta a Pagar
                     </div>
                   ) : (
-                    <div style={{ marginTop: 6, padding: "7px 12px", background: "#EAF3FB", border: "0.5px solid #B8D0EE", borderRadius: 8, fontSize: 12, color: "#0B2D50", fontWeight: 600 }}>
+                    <div style={{ marginTop: 6, padding: "7px 12px", background: "#EAF3FB", border: "0.5px solid #B8D0EE", borderRadius: 8, fontSize: 12, color: "#0D0D0D", fontWeight: 600 }}>
                       🏠 Bomba interna — custo pelo estoque, sem CP novo
                     </div>
                   )
@@ -650,9 +650,9 @@ export default function AbastecimentoPage() {
                       style={{
                         padding: "5px 14px", borderRadius: 8, border: "0.5px solid",
                         fontSize: 12, cursor: "pointer", fontWeight: fDestTipo === t ? 600 : 400,
-                        borderColor: fDestTipo === t ? "#1A4870" : "var(--border-table)",
-                        background: fDestTipo === t ? "#D5E8F5" : "var(--bg-card)",
-                        color: fDestTipo === t ? "#0B2D50" : "var(--text-2)",
+                        borderColor: fDestTipo === t ? "#111111" : "var(--border-table)",
+                        background: fDestTipo === t ? "#E8E8E8" : "var(--bg-card)",
+                        color: fDestTipo === t ? "#0D0D0D" : "var(--text-2)",
                       }}
                     >
                       {t === "maquina" ? "Máquina" : t === "funcionario" ? "Funcionário" : "Outro"}
@@ -734,7 +734,7 @@ export default function AbastecimentoPage() {
               {valorTotal > 0 && (
                 <div style={{ background: "#F0F8FF", border: "0.5px solid #B8D0EE", borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 13, color: "var(--text-2)" }}>Valor Total</span>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: "#0B2D50" }}>{fmtBRL(valorTotal)}</span>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "#0D0D0D" }}>{fmtBRL(valorTotal)}</span>
                 </div>
               )}
 
@@ -782,7 +782,7 @@ export default function AbastecimentoPage() {
                 <button
                   onClick={salvar}
                   disabled={salvando}
-                  style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}
+                  style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}
                 >
                   {salvando ? "Salvando..." : editando ? "✓ Salvar Alterações" : "✓ Confirmar Abastecimento"}
                 </button>

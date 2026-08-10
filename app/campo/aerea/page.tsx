@@ -36,8 +36,8 @@ const inp: React.CSSProperties = {
   boxSizing: "border-box", WebkitAppearance: "none", outline: "none",
 };
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "var(--text-2)", display: "block", marginBottom: 6 };
-const secTitle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" };
-const pill = (ativo: boolean, cor = "#1A4870"): React.CSSProperties => ({
+const secTitle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" };
+const pill = (ativo: boolean, cor = "#111111"): React.CSSProperties => ({
   padding: "10px 14px", borderRadius: 10,
   border: `2px solid ${ativo ? cor : "var(--border-table)"}`,
   background: ativo ? "#EFF4FA" : "var(--bg-card)",
@@ -226,10 +226,10 @@ export default function CampoAereaPage() {
         {fVento && <div style={{ color: ventoAlerta ? "#991B1B" : "#166534", fontWeight: 600 }}>💨 Vento: {fVento} km/h {ventoAlerta ? "⚠️ Acima do limite" : "✓ OK"}</div>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-        <button onClick={novoRegistro} style={{ padding: "14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={novoRegistro} style={{ padding: "14px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           + Nova Aplicação Aérea
         </button>
-        <a href="/lavoura/aerea" style={{ padding: "14px", background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
+        <a href="/lavoura/aerea" style={{ padding: "14px", background: "var(--bg-card)", color: "#111111", border: "0.5px solid #111111", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
           Ver todas as aplicações
         </a>
         <a href="/campo" style={{ padding: "14px", background: "transparent", color: "var(--text-3)", border: "0.5px solid var(--border-table)", borderRadius: 12, fontSize: 14, textAlign: "center", textDecoration: "none" }}>
@@ -338,7 +338,7 @@ export default function CampoAereaPage() {
         <div style={secTitle}>
           Talhões *
           {talhoesSel.length > 0 && (
-            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#1A4870", background: "#D5E8F5", padding: "2px 8px", borderRadius: 10 }}>
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#111111", background: "#E8E8E8", padding: "2px 8px", borderRadius: 10 }}>
               {talhoesSel.length} · {areaTotal.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ha
             </span>
           )}
@@ -352,10 +352,10 @@ export default function CampoAereaPage() {
               return (
                 <button key={t.id} type="button" onClick={() => toggleTalhao(t)} style={{
                   padding: "10px 16px", borderRadius: 20,
-                  border: `2px solid ${sel ? "#1A4870" : "var(--border-table)"}`,
-                  background: sel ? "#D5E8F5" : "var(--bg-card)",
+                  border: `2px solid ${sel ? "#111111" : "var(--border-table)"}`,
+                  background: sel ? "#E8E8E8" : "var(--bg-card)",
                   cursor: "pointer", fontSize: 14, fontWeight: sel ? 700 : 400,
-                  color: sel ? "#0B2D50" : "var(--text-2)",
+                  color: sel ? "#0D0D0D" : "var(--text-2)",
                 }}>
                   {sel ? "✓ " : ""}{t.nome}{t.area_ha ? ` · ${t.area_ha} ha` : ""}
                 </button>
@@ -493,7 +493,7 @@ export default function CampoAereaPage() {
         onClick={salvar}
         disabled={salvando || talhoesSel.length === 0 || !fCiclo}
         style={{
-          padding: "16px", background: salvando ? "#6B9FC8" : "#1A4870",
+          padding: "16px", background: salvando ? "#6B9FC8" : "#111111",
           color: "#fff", border: "none", borderRadius: 12, fontSize: 16,
           fontWeight: 700, cursor: salvando ? "not-allowed" : "pointer",
           opacity: (talhoesSel.length === 0 || !fCiclo) ? 0.5 : 1,

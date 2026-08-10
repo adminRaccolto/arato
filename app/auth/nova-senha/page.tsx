@@ -52,7 +52,7 @@ export default function NovaSenha() {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(160deg, #0B2D50 0%, #1A4870 100%)",
+      background: "linear-gradient(160deg, #0D0D0D 0%, #111111 100%)",
       fontFamily: "system-ui, sans-serif",
     }}>
       <div style={{
@@ -122,7 +122,7 @@ export default function NovaSenha() {
                   required
                   placeholder="Mínimo 6 caracteres"
                   style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = "#1A4870"}
+                  onFocus={e => e.target.style.borderColor = "#111111"}
                   onBlur={e => e.target.style.borderColor = "#E0E6EE"}
                 />
               </div>
@@ -138,7 +138,7 @@ export default function NovaSenha() {
                   required
                   placeholder="Repita a nova senha"
                   style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = "#1A4870"}
+                  onFocus={e => e.target.style.borderColor = "#111111"}
                   onBlur={e => e.target.style.borderColor = "#E0E6EE"}
                 />
               </div>

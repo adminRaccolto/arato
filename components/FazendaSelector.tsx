@@ -24,13 +24,13 @@ export default function FazendaSelector({ contaId, value, onChange, style }: Pro
 
   const wrapper: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 6,
-    background: "#F0F6FB", border: "0.5px solid #1A4870",
+    background: "#F0F6FB", border: "0.5px solid #111111",
     borderRadius: 8, padding: "6px 12px", ...style,
   };
   const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" };
-  const val: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#1A4870" };
+  const val: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#111111" };
   const sel: React.CSSProperties = {
-    fontSize: 13, fontWeight: 700, color: "#1A4870", background: "transparent",
+    fontSize: 13, fontWeight: 700, color: "#111111", background: "transparent",
     border: "none", outline: "none", cursor: "pointer",
   };
 
@@ -49,7 +49,7 @@ export default function FazendaSelector({ contaId, value, onChange, style }: Pro
       <select value={value ?? ""} onChange={e => onChange(e.target.value)} style={sel}>
         {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
       </select>
-      <span style={{ fontSize: 10, color: "#1A4870" }}>▼</span>
+      <span style={{ fontSize: 10, color: "#111111" }}>▼</span>
     </span>
   );
 }

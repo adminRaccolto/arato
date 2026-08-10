@@ -61,7 +61,7 @@ const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: str
     ])),
   },
   gerente: {
-    label: "Gerente Geral", cor: "#1A4870",
+    label: "Gerente Geral", cor: "#111111",
     descricao: "Acesso completo às operações. Gerencia usuários e permissões. Sem acesso a parâmetros fiscais e integrações.",
     permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
       m.id === "conf_raccotlo"      ? [] as Acao[] :
@@ -110,7 +110,7 @@ const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: str
 };
 
 const ACAO_META: Record<Acao, { label: string; cor: string; bg: string }> = {
-  visualizar: { label: "Ver",      cor: "#1A4870", bg: "#D5E8F5" },
+  visualizar: { label: "Ver",      cor: "#111111", bg: "#E8E8E8" },
   criar:      { label: "Criar",    cor: "#16A34A", bg: "#DCFCE7" },
   editar:     { label: "Editar",   cor: "#C9921B", bg: "#FBF3E0" },
   excluir:    { label: "Excluir",  cor: "#E24B4A", bg: "#FCEBEB" },
@@ -148,7 +148,7 @@ const inp: React.CSSProperties = {
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
+const btnV: React.CSSProperties = { padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" };
 
 function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
@@ -212,7 +212,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
             return (
               <>
                 <tr key={`g-${grupo}`} style={{ background: "var(--bg-tag)" }}>
-                  <td style={{ padding: "6px 12px", fontWeight: 700, fontSize: 11, color: "#1A4870", letterSpacing: "0.5px" }}>
+                  <td style={{ padding: "6px 12px", fontWeight: 700, fontSize: 11, color: "#111111", letterSpacing: "0.5px" }}>
                     {grupo.toUpperCase()}
                   </td>
                   {(Object.keys(ACAO_META) as Acao[]).map(acao => {
@@ -494,7 +494,7 @@ export default function UsuariosPermissoes() {
               padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
               color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
-              borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
+              borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent",
             }}>
               {a.label}
             </button>
@@ -508,7 +508,7 @@ export default function UsuariosPermissoes() {
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
             ) : grupos.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                Nenhum grupo criado. <button onClick={() => abrirModalGrupo()} style={{ color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                Nenhum grupo criado. <button onClick={() => abrirModalGrupo()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
@@ -524,7 +524,7 @@ export default function UsuariosPermissoes() {
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => abrirModalGrupo(g)}
-                            style={{ padding: "4px 10px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                            style={{ padding: "4px 10px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                             Editar
                           </button>
                           <button onClick={() => excluirGrupo(g.id)}
@@ -540,7 +540,7 @@ export default function UsuariosPermissoes() {
                           <span style={{ fontWeight: 600 }}>{pct}%</span>
                         </div>
                         <div style={{ height: 5, background: "var(--bg-tag)", borderRadius: 10, overflow: "hidden" }}>
-                          <div style={{ width: pct + "%", height: "100%", background: pct > 80 ? "#1A4870" : pct > 40 ? "#C9921B" : "#378ADD", borderRadius: 10 }} />
+                          <div style={{ width: pct + "%", height: "100%", background: pct > 80 ? "#111111" : pct > 40 ? "#C9921B" : "#444444", borderRadius: 10 }} />
                         </div>
                       </div>
 
@@ -580,19 +580,19 @@ export default function UsuariosPermissoes() {
             <div style={{
               margin: "16px 16px 0",
               borderRadius: 10,
-              border: `1.5px solid ${raccoltoAcesso ? "#1A4870" : "var(--border-table)"}`,
+              border: `1.5px solid ${raccoltoAcesso ? "#111111" : "var(--border-table)"}`,
               background: raccoltoAcesso ? "#EBF3FC" : "var(--bg-card)",
               padding: "14px 18px",
               display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16,
             }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: raccoltoAcesso ? "#0B2D50" : "var(--text-1)" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: raccoltoAcesso ? "#0D0D0D" : "var(--text-1)" }}>
                     Acesso Raccolto
                   </span>
                   <span style={{
                     fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8,
-                    background: raccoltoAcesso ? "#1A4870" : "var(--border-row)",
+                    background: raccoltoAcesso ? "#111111" : "var(--border-row)",
                     color: raccoltoAcesso ? "#fff" : "#666",
                   }}>
                     {raccoltoAcesso ? "ATIVO" : "INATIVO"}
@@ -612,8 +612,8 @@ export default function UsuariosPermissoes() {
                 disabled={salvandoRaccolto}
                 style={{
                   flexShrink: 0, padding: "9px 20px", borderRadius: 8,
-                  border: `1.5px solid ${raccoltoAcesso ? "#E24B4A" : "#1A4870"}`,
-                  background: raccoltoAcesso ? "#FCEBEB" : "#1A4870",
+                  border: `1.5px solid ${raccoltoAcesso ? "#E24B4A" : "#111111"}`,
+                  background: raccoltoAcesso ? "#FCEBEB" : "#111111",
                   color: raccoltoAcesso ? "#791F1F" : "#fff",
                   fontWeight: 700, fontSize: 13, cursor: salvandoRaccolto ? "wait" : "pointer",
                   whiteSpace: "nowrap",
@@ -637,7 +637,7 @@ export default function UsuariosPermissoes() {
                 <tbody>
                   {usuarios.length === 0 && (
                     <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                      Nenhum usuário cadastrado. <button onClick={() => abrirModalUser()} style={{ color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                      Nenhum usuário cadastrado. <button onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
                     </td></tr>
                   )}
                   {usuarios.map((u, i) => {
@@ -655,7 +655,7 @@ export default function UsuariosPermissoes() {
                         <td style={{ padding: "11px 16px", color: "var(--text-2)" }}>{u.email}</td>
                         <td style={{ padding: "11px 16px" }}>
                           {grupo
-                            ? <span style={{ fontSize: 11, background: "var(--bg-tag)", color: "#1A4870", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>{grupo.nome}</span>
+                            ? <span style={{ fontSize: 11, background: "var(--bg-tag)", color: "#111111", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>{grupo.nome}</span>
                             : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Sem grupo</span>}
                         </td>
                         <td style={{ padding: "11px 16px" }}>
@@ -666,7 +666,7 @@ export default function UsuariosPermissoes() {
                         <td style={{ padding: "11px 16px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                             <button onClick={() => abrirModalUser(u)}
-                              style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                              style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                               Editar
                             </button>
                             <button onClick={() => excluirUser(u.id)}

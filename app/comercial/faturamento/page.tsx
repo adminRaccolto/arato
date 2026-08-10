@@ -145,7 +145,7 @@ const aplicarMascara4 = (raw: string) => {
 const desmascarar = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0;
 
 const corStatus = (s: string) => (({
-  autorizada:   { bg: "#D5E8F5", color: "#0B2D50", label: "Autorizada",   icone: "✓" },
+  autorizada:   { bg: "#E8E8E8", color: "#0D0D0D", label: "Autorizada",   icone: "✓" },
   rejeitada:    { bg: "#FCEBEB", color: "#791F1F", label: "Rejeitada",    icone: "✗" },
   em_digitacao: { bg: "#FAEEDA", color: "#633806", label: "Processando…", icone: "⟳" },
   cancelada:    { bg: "#F1EFE8", color: "#666",    label: "Cancelada",    icone: "○" },
@@ -155,7 +155,7 @@ const corStatus = (s: string) => (({
 // ── Estilos base ──────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-card)", boxSizing:"border-box", outline:"none" };
 const lbl: React.CSSProperties = { fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" };
-const btnV: React.CSSProperties = { padding:"8px 18px", background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
+const btnV: React.CSSProperties = { padding:"8px 18px", background:"#2A2A2A", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
 const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(--border-table)", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -714,7 +714,7 @@ function FaturamentoInner() {
           {/* Seletor de fazenda emitente — explícito, obrigatório */}
           <div style={{ gridColumn:"1/-1" }}>
             <label style={lbl}>Fazenda Emitente *</label>
-            <select style={{ ...inp, fontWeight:600, color:"#1A4870" }} value={fazNFe}
+            <select style={{ ...inp, fontWeight:600, color:"#111111" }} value={fazNFe}
               onChange={e => setFazNFe(e.target.value)}>
               <option value="">— selecione a fazenda que emite a nota —</option>
               {fazendas.map(f => (
@@ -768,7 +768,7 @@ function FaturamentoInner() {
           </div>
           {fVenda.contrato_numero && (
             <div style={{ gridColumn:"1/-1" }}>
-              <div style={{ background:"#EBF4FB", border:"0.5px solid #93C5E8", borderRadius:8, padding:"8px 14px", fontSize:11, color:"#0B2D50" }}>
+              <div style={{ background:"#EBF4FB", border:"0.5px solid #93C5E8", borderRadius:8, padding:"8px 14px", fontSize:11, color:"#0D0D0D" }}>
                 <strong>Referência:</strong> Contrato {fVenda.contrato_numero} — dados pré-preenchidos automaticamente
               </div>
             </div>
@@ -905,7 +905,7 @@ function FaturamentoInner() {
           </div>
           <div>
             <label style={lbl}>CFOP</label>
-            <input style={{ ...inp, fontWeight:600, color:"#1A4870", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
+            <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
           </div>
           <div>
             <label style={lbl}>Modelo</label>
@@ -945,7 +945,7 @@ function FaturamentoInner() {
             const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop);
             if (!nat) return null;
             return (
-              <div style={{ gridColumn:"1/-1", background:"#EBF4FB", border:"0.5px solid #93C5E8", borderRadius:8, padding:"10px 14px", fontSize:11, color:"#1A4870" }}>
+              <div style={{ gridColumn:"1/-1", background:"#EBF4FB", border:"0.5px solid #93C5E8", borderRadius:8, padding:"10px 14px", fontSize:11, color:"#111111" }}>
                 <strong>{nat.descricao}</strong>
                 <div style={{ color:"var(--text-2)", marginTop:4 }}>{nat.obs}</div>
               </div>
@@ -1017,7 +1017,7 @@ function FaturamentoInner() {
       case "fiscal": return (
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
           {(fVenda.cfop === "6.923" || fVenda.cfop === "6.117") && (
-            <div style={{ background: fVenda.cfop === "6.923" ? "#EFF6FF" : "#FBF3E0", border:`0.5px solid ${fVenda.cfop === "6.923" ? "#93C5FD" : "#C9921B50"}`, borderRadius:10, padding:"14px 16px" }}>
+            <div style={{ background: fVenda.cfop === "6.923" ? "#F2F2F2" : "#FBF3E0", border:`0.5px solid ${fVenda.cfop === "6.923" ? "#93C5FD" : "#C9921B50"}`, borderRadius:10, padding:"14px 16px" }}>
               <div style={{ fontSize:12, fontWeight:700, color: fVenda.cfop === "6.923" ? "#1E40AF" : "#7A5A12", marginBottom:10 }}>
                 {fVenda.cfop === "6.923"
                   ? "🔄 Venda a Ordem — Referência de NF Obrigatória (NFref / art. 129 RICMS/MT)"
@@ -1154,7 +1154,7 @@ function FaturamentoInner() {
           {(["todas","processando","autorizadas","rejeitadas","canceladas"] as const).map(a => (
             <button key={a} onClick={() => setFiltroAba(a)}
               style={{ padding:"5px 14px", borderRadius:20, border:"0.5px solid", fontSize:12, cursor:"pointer", fontWeight: filtroAba===a ? 600 : 400,
-                background: filtroAba===a ? "#1A4870" : "var(--bg-page)", color: filtroAba===a ? "#fff" : "var(--text-2)", borderColor: filtroAba===a ? "#1A4870" : "var(--border-table)" }}>
+                background: filtroAba===a ? "#111111" : "var(--bg-page)", color: filtroAba===a ? "#fff" : "var(--text-2)", borderColor: filtroAba===a ? "#111111" : "var(--border-table)" }}>
               {a === "todas" ? "Todas" : a === "processando" ? "Processando" : a === "autorizadas" ? "Autorizadas" : a === "rejeitadas" ? "Rejeitadas" : "Canceladas"}
             </button>
           ))}
@@ -1183,12 +1183,12 @@ function FaturamentoInner() {
                 const st = corStatus(nota.status);
                 return (
                   <tr key={nota.id} style={{ borderBottom:"0.5px solid #F0F2F6" }}>
-                    <td style={{ padding:"10px 14px", fontSize:13, fontWeight:600, color:"#1A4870" }}>
+                    <td style={{ padding:"10px 14px", fontSize:13, fontWeight:600, color:"#111111" }}>
                       {nota.numero} <span style={{ fontSize:11, color:"var(--text-3)", fontWeight:400 }}>Série {nota.serie}</span>
                     </td>
                     <td style={{ padding:"10px 14px", fontSize:12 }}>{fmtData(nota.data_emissao)}</td>
                     <td style={{ padding:"10px 14px", fontSize:13 }}>{nota.destinatario ?? "—"}</td>
-                    <td style={{ padding:"10px 14px", fontSize:12, color:"#1A4870", fontWeight:600 }}>{nota.cfop ?? "—"}</td>
+                    <td style={{ padding:"10px 14px", fontSize:12, color:"#111111", fontWeight:600 }}>{nota.cfop ?? "—"}</td>
                     <td style={{ padding:"10px 14px", fontSize:13, textAlign:"center", fontWeight:600 }}>{fmtR$(nota.valor_total)}</td>
                     <td style={{ padding:"10px 14px", textAlign:"center" }}>
                       <span style={{ fontSize:11, background:st.bg, color:st.color, padding:"3px 10px", borderRadius:10, fontWeight:600, whiteSpace:"nowrap" }}>
@@ -1198,13 +1198,13 @@ function FaturamentoInner() {
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:6 }}>
                         <button
-                          style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#1A4870", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer" }}
+                          style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#111111", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer" }}
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           DANFE
                         </button>
                         {nota.status === "em_digitacao" && (
                           <button
-                            style={{ padding:"4px 10px", fontSize:11, background:"#1A5CB8", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
+                            style={{ padding:"4px 10px", fontSize:11, background:"#2A2A2A", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               if (!window.confirm("Transmitir para a SEFAZ?")) return;
                               const dj = nota.dados_nf_json as Record<string, string> ?? {};
@@ -1287,7 +1287,7 @@ function FaturamentoInner() {
           {notasFiltradas.length > 0 && (
             <div style={{ padding:"10px 16px", background:"var(--bg-card)", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:24 }}>
               <span style={{ fontSize:12, color:"var(--text-2)" }}>Total de notas: <strong>{notasFiltradas.length}</strong></span>
-              <span style={{ fontSize:12, color:"var(--text-2)" }}>Valor total: <strong style={{ color:"#1A4870" }}>{fmtR$(notasFiltradas.reduce((s, n) => s + n.valor_total, 0))}</strong></span>
+              <span style={{ fontSize:12, color:"var(--text-2)" }}>Valor total: <strong style={{ color:"#111111" }}>{fmtR$(notasFiltradas.reduce((s, n) => s + n.valor_total, 0))}</strong></span>
             </div>
           )}
         </div>
@@ -1307,11 +1307,11 @@ function FaturamentoInner() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
                 <button
                   onClick={() => setPasso("contrato")}
-                  style={{ padding:"20px 16px", border:"1.5px solid #1A5CB8", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#D5E8F5")}
+                  style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#E8E8E8")}
                   onMouseLeave={e => (e.currentTarget.style.background = "#EBF4FB")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>📋</div>
-                  <div style={{ fontSize:14, fontWeight:700, color:"#0B2D50", marginBottom:4 }}>Por Contrato</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:4 }}>Por Contrato</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Selecione um contrato de venda. Destinatário, CFOP, itens e observações legais são preenchidos automaticamente.</div>
                 </button>
                 <button
@@ -1376,7 +1376,7 @@ function FaturamentoInner() {
                       onMouseEnter={e => (e.currentTarget.style.background = "#F4F8FF")}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                       <div style={{ flex:"0 0 100px" }}>
-                        <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>{c.numero}</div>
+                        <div style={{ fontSize:13, fontWeight:700, color:"#111111" }}>{c.numero}</div>
                         <div style={{ fontSize:11, color:"var(--text-3)" }}>{c.data_contrato ? fmtData(c.data_contrato) : "—"}</div>
                       </div>
                       <div style={{ flex:1 }}>
@@ -1387,7 +1387,7 @@ function FaturamentoInner() {
                         <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)" }}>{(c.quantidade_sc ?? 0).toLocaleString("pt-BR")} sc</div>
                         <div style={{ fontSize:11, color: saldo > 0 ? "#16A34A" : "var(--text-3)" }}>Saldo: {saldo.toLocaleString("pt-BR")} sc</div>
                       </div>
-                      <div style={{ fontSize:13, fontWeight:700, color:"#1A4870", flex:"0 0 120px", textAlign:"right" }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"#111111", flex:"0 0 120px", textAlign:"right" }}>
                         {fmtR$(c.preco ?? 0)}/sc
                       </div>
                       <div style={{ display:"flex", flexDirection:"column", gap:4, alignItems:"flex-end" }}>
@@ -1395,7 +1395,7 @@ function FaturamentoInner() {
                           {c.confirmado ? "Confirmado" : "Em aberto"}
                         </span>
                         {c.venda_a_ordem && (
-                          <span style={{ fontSize:10, background:"#D5E8F5", color:"#0B2D50", padding:"2px 6px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
+                          <span style={{ fontSize:10, background:"#E8E8E8", color:"#0D0D0D", padding:"2px 6px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
                         )}
                       </div>
                     </div>
@@ -1417,7 +1417,7 @@ function FaturamentoInner() {
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)", display:"flex", alignItems:"center", gap:10 }}>
                     Selecionar Carga (Romaneio)
                     {contratoSelecionado.venda_a_ordem && (
-                      <span style={{ fontSize:11, background:"#D5E8F5", color:"#0B2D50", padding:"3px 10px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
+                      <span style={{ fontSize:11, background:"#E8E8E8", color:"#0D0D0D", padding:"3px 10px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
                     )}
                   </div>
                   <div style={{ fontSize:12, color:"#666", marginTop:2 }}>
@@ -1426,7 +1426,7 @@ function FaturamentoInner() {
                     &nbsp;= R$ {((contratoSelecionado.preco ?? 0) / kgSaca(contratoSelecionado.produto)).toLocaleString("pt-BR", { minimumFractionDigits:4 })}/kg
                   </div>
                   {contratoSelecionado.venda_a_ordem && (
-                    <div style={{ marginTop:8, background:"#EFF6FF", border:"0.5px solid #93C5FD", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#1E40AF" }}>
+                    <div style={{ marginTop:8, background:"#F2F2F2", border:"0.5px solid #93C5FD", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#1E40AF" }}>
                       <strong>Atenção — Venda a Ordem (art. 129 RICMS/MT):</strong> Serão emitidas <strong>duas NF-es</strong>: (1) NF 6.101 simbólica para o comprador original (Trading A); (2) NF 6.923 física que acompanha o transporte para o destinatário final (Trading B). A NF 6.923 deverá referenciar a chave da NF 6.101 via &lt;NFref&gt;.
                     </div>
                   )}
@@ -1466,7 +1466,7 @@ function FaturamentoInner() {
                           onMouseLeave={e => { if (!jaFatQry) e.currentTarget.style.background = "transparent"; }}
                         >
                           <div style={{ flex:"0 0 110px" }}>
-                            <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>Rom. {rom.numero}</div>
+                            <div style={{ fontSize:13, fontWeight:700, color:"#111111" }}>Rom. {rom.numero}</div>
                             <div style={{ fontSize:11, color:"var(--text-3)" }}>{rom.data ? fmtData(rom.data) : "—"}</div>
                           </div>
                           <div style={{ flex:"0 0 100px" }}>
@@ -1488,7 +1488,7 @@ function FaturamentoInner() {
                             </div>
                             <div>
                               <div style={{ fontSize:10, color:"var(--text-2)", fontWeight:600 }}>Peso Classificado</div>
-                              <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>{pesoKg.toLocaleString("pt-BR")} kg</div>
+                              <div style={{ fontSize:13, fontWeight:700, color:"#111111" }}>{pesoKg.toLocaleString("pt-BR")} kg</div>
                             </div>
                           </div>
                           <div style={{ flex:"0 0 130px", textAlign:"right" }}>
@@ -1499,7 +1499,7 @@ function FaturamentoInner() {
                           </div>
                           <div style={{ flex:"0 0 100px", textAlign:"right" }}>
                             {jaFatQry ? (
-                              <span style={{ fontSize:11, background:"#D5E8F5", color:"#0B2D50", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>✓ Faturada</span>
+                              <span style={{ fontSize:11, background:"#E8E8E8", color:"#0D0D0D", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>✓ Faturada</span>
                             ) : (
                               <span style={{ fontSize:11, background:"#FBF3E0", color:"#7A5A12", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>Faturar →</span>
                             )}
@@ -1521,7 +1521,7 @@ function FaturamentoInner() {
             <div style={{ background:"var(--bg-card)", borderRadius:14, width:"94vw", maxWidth:1100, height:"92vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
 
               {/* Barra de título */}
-              <div style={{ background:"#1A4870", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+              <div style={{ background:"#111111", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
                 <button style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</button>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:15, fontWeight:700 }}>
@@ -1539,8 +1539,8 @@ function FaturamentoInner() {
               <div style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
                 {ABAS_NOTA.map(a => (
                   <button key={a.id} onClick={() => setTabNFe(a.id)}
-                    style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #1A5CB8" : "2.5px solid transparent", background:"transparent",
-                      color: tabNFe === a.id ? "#1A5CB8" : "var(--text-2)", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
+                    style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #2A2A2A" : "2.5px solid transparent", background:"transparent",
+                      color: tabNFe === a.id ? "#2A2A2A" : "var(--text-2)", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
                     {a.label}
                   </button>
                 ))}
@@ -1555,7 +1555,7 @@ function FaturamentoInner() {
               <div style={{ borderTop:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0 }}>
                 <div style={{ padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota</span>
-                  <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #1A5CB8", borderRadius:5, background:"#E6F1FB", color:"#1A5CB8", cursor:"pointer" }} onClick={addItem}>+ Item</button>
+                  <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }} onClick={addItem}>+ Item</button>
                 </div>
                 <div style={{ overflowX:"auto", maxHeight:160 }}>
                   <table style={{ width:"100%", borderCollapse:"collapse" }}>
@@ -1595,7 +1595,7 @@ function FaturamentoInner() {
                               onChange={e => atualizarItem(idx, "valor_unitario", aplicarMascara4(e.target.value.replace(/\D/g,"")))} placeholder="0,0000" />
                           </td>
                           <td style={{ padding:"5px 8px", width:120 }}>
-                            <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }} value={fmtR$(it.valor_total)} readOnly />
+                            <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#111111" }} value={fmtR$(it.valor_total)} readOnly />
                           </td>
                           <td style={{ padding:"5px 8px", width:30 }}>
                             <button style={{ padding:"2px 7px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
@@ -1608,7 +1608,7 @@ function FaturamentoInner() {
                 </div>
                 <div style={{ padding:"8px 16px", display:"flex", justifyContent:"flex-end", gap:24, borderTop:"0.5px solid var(--border-table)" }}>
                   <span style={{ fontSize:12, color:"var(--text-2)" }}>Financeiro: <strong>{fmtR$(totalFinanceiro)}</strong></span>
-                  <span style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>Total: {fmtR$(totalItens)}</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:"#111111" }}>Total: {fmtR$(totalItens)}</span>
                 </div>
               </div>
 
@@ -1622,7 +1622,7 @@ function FaturamentoInner() {
                 <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
                   <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
                   <button
-                    style={{ ...btnR, borderColor:"#1A5CB8", color:"#1A5CB8" }}
+                    style={{ ...btnR, borderColor:"#2A2A2A", color:"#2A2A2A" }}
                     onClick={() => {
                       const tabs: TabNFe[] = ["produtor","destinatario","operacoes","transportador","retirada","fiscal","obs","pontualidade"];
                       const idx = tabs.indexOf(tabNFe);
@@ -1630,7 +1630,7 @@ function FaturamentoInner() {
                     }}>
                     Próxima aba →
                   </button>
-                  <button style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#1A5CB8" }} onClick={emitirNota} disabled={emitindo}>
+                  <button style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo}>
                     {emitindo ? "Emitindo…" : "Emitir NF-e"}
                   </button>
                 </div>
@@ -1651,7 +1651,7 @@ function FaturamentoInner() {
                 </div>
 
                 {nfEmitida.venda_a_ordem && (
-                  <div style={{ background:"#EFF6FF", border:"0.5px solid #93C5FD", borderRadius:10, padding:"14px 16px", marginTop:12 }}>
+                  <div style={{ background:"#F2F2F2", border:"0.5px solid #93C5FD", borderRadius:10, padding:"14px 16px", marginTop:12 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:"#1E40AF", marginBottom:8 }}>🔄 Próximo passo — Venda a Ordem</div>
                     <p style={{ margin:"0 0 10px", fontSize:12, color:"#1E40AF", lineHeight:1.6 }}>
                       A NF simbólica <strong>6.101</strong> foi emitida para o comprador original. Agora você precisa emitir a <strong>NF de remessa física 6.923</strong> que acompanhará o transporte para o destinatário final.
@@ -1686,7 +1686,7 @@ function FaturamentoInner() {
               <div style={{ padding:"14px 24px", display:"flex", gap:10, justifyContent:"flex-end" }}>
                 {nfEmitida.venda_a_ordem && (
                   <button
-                    style={{ ...btnV, background:"#1A5CB8" }}
+                    style={{ ...btnV, background:"#2A2A2A" }}
                     onClick={() => {
                       setFVenda({ ...FVENDA_INICIAL, cfop:"6.923", nf_ref_chave: nfEmitida.chave ?? "", nf_ref_numero: nfEmitida.numero });
                       setPasso("form");

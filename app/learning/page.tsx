@@ -54,13 +54,13 @@ export default function LearningPage() {
             startOnLoad: false,
             theme: "base",
             themeVariables: {
-              primaryColor: "#D5E8F5",
-              primaryBorderColor: "#1A4870",
+              primaryColor: "#E8E8E8",
+              primaryBorderColor: "#111111",
               primaryTextColor: "var(--text-1)",
               lineColor: "var(--text-2)",
               background: "var(--bg-card)",
-              mainBkg: "#D5E8F5",
-              nodeBorder: "#1A4870",
+              mainBkg: "#E8E8E8",
+              nodeBorder: "#111111",
               fontFamily: "system-ui, -apple-system, sans-serif",
               fontSize: "13px",
             },
@@ -118,7 +118,7 @@ export default function LearningPage() {
   const corTipo = (tipo: Licao["tipo"]) => {
     if (tipo === "video") return "#E24B4A";
     if (tipo === "pratica") return "#C9921B";
-    if (tipo === "quiz") return "#378ADD";
+    if (tipo === "quiz") return "#444444";
     return "var(--text-2)";
   };
 
@@ -131,13 +131,13 @@ export default function LearningPage() {
         <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 24, marginBottom: 20, border: "0.5px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 600, color: "#1A4870", margin: 0 }}>Arato Academy</h1>
+              <h1 style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Arato Academy</h1>
               <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
                 Aprenda a operar o Arato no seu ritmo — do básico ao avançado
               </p>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: pct === 100 ? "#16A34A" : "#1A4870" }}>{pct}%</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: pct === 100 ? "#16A34A" : "#111111" }}>{pct}%</div>
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>{completedIds.size} de {total} lições concluídas</div>
             </div>
           </div>
@@ -146,7 +146,7 @@ export default function LearningPage() {
             <div style={{
               height: "100%",
               width: `${pct}%`,
-              background: pct === 100 ? "#16A34A" : "linear-gradient(90deg, #1A4870, #378ADD)",
+              background: pct === 100 ? "#16A34A" : "linear-gradient(90deg, #111111, #444444)",
               borderRadius: 99,
               transition: "width 0.4s ease",
             }} />
@@ -159,10 +159,10 @@ export default function LearningPage() {
                 key={v}
                 onClick={() => setVista(v)}
                 style={{
-                  background: vista === v ? "#1A4870" : "transparent",
+                  background: vista === v ? "#111111" : "transparent",
                   color: vista === v ? "#fff" : "var(--text-2)",
                   border: "0.5px solid",
-                  borderColor: vista === v ? "#1A4870" : "var(--border)",
+                  borderColor: vista === v ? "#111111" : "var(--border)",
                   borderRadius: 8,
                   padding: "6px 16px",
                   fontSize: 13,
@@ -187,7 +187,7 @@ export default function LearningPage() {
 
             {/* Lista de fluxos */}
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", background: "#1A4870", color: "#fff" }}>
+              <div style={{ padding: "12px 16px", background: "#111111", color: "#fff" }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Processos do Sistema</div>
                 <div style={{ fontSize: 11, opacity: 0.75 }}>{FLUXOS_BPMN.length} fluxos mapeados</div>
               </div>
@@ -196,8 +196,8 @@ export default function LearningPage() {
                   key={f.id}
                   onClick={() => setFluxoAtivo(f)}
                   style={{
-                    width: "100%", textAlign: "left", border: "none", background: fluxoAtivo?.id === f.id ? "#D5E8F5" : "transparent",
-                    borderLeft: fluxoAtivo?.id === f.id ? "3px solid #1A4870" : "3px solid transparent",
+                    width: "100%", textAlign: "left", border: "none", background: fluxoAtivo?.id === f.id ? "#E8E8E8" : "transparent",
+                    borderLeft: fluxoAtivo?.id === f.id ? "3px solid #111111" : "3px solid transparent",
                     borderBottom: "0.5px solid var(--border)", padding: "12px 14px", cursor: "pointer",
                     display: "flex", alignItems: "flex-start", gap: 10,
                   }}
@@ -286,7 +286,7 @@ export default function LearningPage() {
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                       {[
                         { cor: "#C9921B", bg: "#FBF3E0", label: "Ação do Usuário" },
-                        { cor: "#1A4870", bg: "#D5E8F5", label: "Sistema Automático" },
+                        { cor: "#111111", bg: "#E8E8E8", label: "Sistema Automático" },
                         { cor: "#E24B4A", bg: "#FCEBEB", label: "Alerta Preditivo" },
                         { cor: "#16A34A", bg: "#EAF3DE", label: "Estado Final" },
                         { cor: "#999",    bg: "var(--bg-page)", label: "Decisão (Gateway)" },
@@ -302,7 +302,7 @@ export default function LearningPage() {
               ) : (
                 <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 56, textAlign: "center" }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Fluxogramas BPMN</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#111111", marginBottom: 8 }}>Fluxogramas BPMN</div>
                   <div style={{ fontSize: 14, color: "#666", maxWidth: 460, margin: "0 auto", lineHeight: 1.6 }}>
                     Selecione um processo à esquerda para visualizar o fluxograma completo com todas as etapas automáticas e manuais.
                   </div>
@@ -334,7 +334,7 @@ export default function LearningPage() {
 
           {/* Sidebar — índice de fases e módulos */}
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", background: "#1A4870", color: "#fff" }}>
+            <div style={{ padding: "12px 16px", background: "#111111", color: "#fff" }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>Conteúdo do Curso</div>
               <div style={{ fontSize: 11, opacity: 0.75 }}>{FASES.length} fases • {total} lições</div>
             </div>
@@ -353,14 +353,14 @@ export default function LearningPage() {
                     <button
                       onClick={() => { setFaseAberta(aberta ? "" : fase.id); setLicaoAtiva(null); }}
                       style={{
-                        width: "100%", textAlign: "left", background: aberta ? "#D5E8F5" : "transparent",
+                        width: "100%", textAlign: "left", background: aberta ? "#E8E8E8" : "transparent",
                         border: "none", padding: "10px 16px", cursor: "pointer", display: "flex",
                         alignItems: "center", gap: 8,
                       }}
                     >
-                      <span style={{ fontSize: 12, color: aberta ? "#1A4870" : "#999", transition: "transform 0.2s", display: "inline-block", transform: aberta ? "rotate(90deg)" : "rotate(0)" }}>▶</span>
+                      <span style={{ fontSize: 12, color: aberta ? "#111111" : "#999", transition: "transform 0.2s", display: "inline-block", transform: aberta ? "rotate(90deg)" : "rotate(0)" }}>▶</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#111111" }}>
                           Fase {fase.numero} — {fase.titulo}
                         </div>
                         <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
@@ -387,8 +387,8 @@ export default function LearningPage() {
                               onClick={() => setLicaoAtiva({ licao: lic, modulo: mod, fase })}
                               style={{
                                 width: "100%", textAlign: "left", border: "none",
-                                background: ativa ? "#D5E8F5" : "transparent",
-                                borderLeft: ativa ? "3px solid #1A4870" : "3px solid transparent",
+                                background: ativa ? "#E8E8E8" : "transparent",
+                                borderLeft: ativa ? "3px solid #111111" : "3px solid transparent",
                                 padding: "8px 12px 8px 28px", cursor: "pointer",
                                 display: "flex", alignItems: "center", gap: 8,
                               }}
@@ -398,7 +398,7 @@ export default function LearningPage() {
                               </span>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{
-                                  fontSize: 12, color: ativa ? "#1A4870" : "#333",
+                                  fontSize: 12, color: ativa ? "#111111" : "#333",
                                   fontWeight: ativa ? 600 : 400,
                                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                                 }}>
@@ -429,7 +429,7 @@ export default function LearningPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{
                       fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px",
-                      background: "#D5E8F5", color: "#1A4870", padding: "2px 8px", borderRadius: 99,
+                      background: "#E8E8E8", color: "#111111", padding: "2px 8px", borderRadius: 99,
                     }}>
                       {licaoAtiva.fase.titulo}
                     </span>
@@ -493,7 +493,7 @@ export default function LearningPage() {
                     onClick={() => toggleConcluida(licaoAtiva.licao.id)}
                     disabled={salvando}
                     style={{
-                      background: completedIds.has(licaoAtiva.licao.id) ? "#f0fdf4" : "#1A4870",
+                      background: completedIds.has(licaoAtiva.licao.id) ? "#f0fdf4" : "#111111",
                       color: completedIds.has(licaoAtiva.licao.id) ? "#16A34A" : "#fff",
                       border: completedIds.has(licaoAtiva.licao.id) ? "0.5px solid #16A34A" : "none",
                       borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600,
@@ -508,7 +508,7 @@ export default function LearningPage() {
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Bem-vindo ao Arato Academy</div>
+                <div style={{ fontSize: 18, fontWeight: 600, color: "#111111", marginBottom: 8 }}>Bem-vindo ao Arato Academy</div>
                 <div style={{ fontSize: 14, color: "#666", maxWidth: 400, margin: "0 auto" }}>
                   Selecione uma lição no menu à esquerda para começar. Recomendamos iniciar pela Fase 0.
                 </div>
@@ -535,7 +535,7 @@ export default function LearningPage() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{fase.titulo}</div>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>{fase.subtitulo}</div>
                       <div style={{ background: "#f0f0f0", borderRadius: 99, height: 4, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${pctFase}%`, background: pctFase === 100 ? "#16A34A" : "#1A4870", borderRadius: 99 }} />
+                        <div style={{ height: "100%", width: `${pctFase}%`, background: pctFase === 100 ? "#16A34A" : "#111111", borderRadius: 99 }} />
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{concluidasFase}/{licoesDaFase.length} lições</div>
                     </button>
@@ -549,11 +549,11 @@ export default function LearningPage() {
       </div>
 
       <style>{`
-        .learning-content h2 { font-size: 18px; font-weight: 700; color: #1A4870; margin: 24px 0 12px; border-bottom: 0.5px solid var(--border); padding-bottom: 8px; }
+        .learning-content h2 { font-size: 18px; font-weight: 700; color: #111111; margin: 24px 0 12px; border-bottom: 0.5px solid var(--border); padding-bottom: 8px; }
         .learning-content h3 { font-size: 15px; font-weight: 600; color: #333; margin: 20px 0 8px; }
         .learning-content p { margin: 0 0 12px; }
         .learning-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
-        .learning-content th { background: #1A4870; color: #fff; padding: 8px 12px; text-align: left; font-weight: 600; }
+        .learning-content th { background: #111111; color: #fff; padding: 8px 12px; text-align: left; font-weight: 600; }
         .learning-content td { padding: 7px 12px; border-bottom: 0.5px solid var(--border); }
         .learning-content tr:nth-child(even) td { background: #F4F6FA; }
         .learning-content code { background: #F4F6FA; border: 0.5px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: monospace; }
@@ -566,7 +566,7 @@ export default function LearningPage() {
         .learning-content ul, .learning-content ol { margin: 8px 0 12px 20px; }
         .learning-content li { margin: 4px 0; }
         .learning-content blockquote { border-left: 3px solid #C9921B; background: #FBF3E0; margin: 12px 0; padding: 10px 16px; border-radius: 0 8px 8px 0; }
-        .learning-content strong { font-weight: 600; color: #1A4870; }
+        .learning-content strong { font-weight: 600; color: #111111; }
       `}</style>
     </div>
   );

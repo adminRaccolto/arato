@@ -81,7 +81,7 @@ const STATUS_PAG: Record<StatusPagamento, { label: string; cor: string; bg: stri
   pago:      { label: "Pago",      cor: "#16A34A", bg: "#F0FDF4" },
   vencido:   { label: "Vencido",   cor: "#E24B4A", bg: "#FEF2F2" },
   cancelado: { label: "Cancelado", cor: "var(--text-3)",    bg: "#F3F4F6" },
-  estornado: { label: "Estornado", cor: "#378ADD", bg: "#EFF6FF" },
+  estornado: { label: "Estornado", cor: "#444444", bg: "#F2F2F2" },
 };
 
 const METODO_LABEL: Record<MetodoPagamento, string> = {
@@ -323,7 +323,7 @@ function AbaAssinaturas() {
                       {a.asaas_customer_id && <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace" }}>{a.asaas_customer_id}</div>}
                     </td>
                     <td style={{ padding: "11px 14px" }}>
-                      <span style={{ background: "#EFF6FF", color: "#1A4870", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
+                      <span style={{ background: "#F2F2F2", color: "#111111", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
                         {a.plano_id}
                       </span>
                     </td>
@@ -477,7 +477,7 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
                     <td style={{ padding: "11px 14px", textAlign: "center" }}>
                       {p.asaas_invoice_url ? (
                         <a href={p.asaas_invoice_url} target="_blank" rel="noopener noreferrer"
-                          style={{ fontSize: 11, color: "#378ADD", fontWeight: 600, textDecoration: "none" }}>
+                          style={{ fontSize: 11, color: "#444444", fontWeight: 600, textDecoration: "none" }}>
                           Abrir ↗
                         </a>
                       ) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}

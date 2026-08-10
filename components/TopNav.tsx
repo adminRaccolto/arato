@@ -415,7 +415,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     import("qrcode").then(QRCode => {
       QRCode.toDataURL("https://web.arato.agr.br/campo", {
         width: 240, margin: 2,
-        color: { dark: "#1A4870", light: "#ffffff" },
+        color: { dark: "#111111", light: "#ffffff" },
       }).then(setQrDataUrl);
     });
   }, [showQr, qrDataUrl]);
@@ -602,7 +602,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       ref={navRef}
       style={{
         position: "sticky", top: 0, zIndex: 1000, flexShrink: 0,
-        background: "#050D1A",
+        background: "#111111",
         boxShadow: "0 1px 0 var(--border-table), 0 4px 24px rgba(0,0,0,0.5)",
         fontFamily: "system-ui, sans-serif",
         overflow: "visible",
@@ -715,7 +715,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       </div>
 
       {/* ── Faixa 2: navegação ── */}
-      <nav style={{ display: "flex", alignItems: "center", padding: "0 20px", height: 38, gap: 1, background: "#050D1A", overflow: "visible" }}>
+      <nav style={{ display: "flex", alignItems: "center", padding: "0 20px", height: 38, gap: 1, background: "#111111", overflow: "visible" }}>
         {NAV.map(item => {
           const navId  = item.type === "group" ? item.id : (item as NavLink).id;
           const modulos = NAV_MODULE_MAP[navId];
@@ -967,7 +967,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           {qrDataUrl
             ? <img src={qrDataUrl} alt="QR Code App Campo" style={{ width: 200, height: 200, borderRadius: 12, border: "0.5px solid var(--border)" }} />
             : <div style={{ width: 200, height: 200, borderRadius: 12, background: "var(--bg-page)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
-                <div style={{ width: 24, height: 24, border: "3px solid #1A4870", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                <div style={{ width: 24, height: 24, border: "3px solid #111111", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
               </div>
           }
 
@@ -975,7 +975,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "monospace" }}>web.arato.agr.br/campo</span>
             <button
               onClick={() => { navigator.clipboard.writeText("https://web.arato.agr.br/campo"); }}
-              style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", background: "#D5E8F5", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+              style={{ fontSize: 11, fontWeight: 700, color: "#111111", background: "#E8E8E8", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
             >
               Copiar
             </button>
@@ -988,7 +988,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
           <button
             onClick={() => setShowQr(false)}
-            style={{ marginTop: 20, width: "100%", padding: "12px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            style={{ marginTop: 20, width: "100%", padding: "12px", background: "#111111", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer" }}
           >
             Fechar
           </button>

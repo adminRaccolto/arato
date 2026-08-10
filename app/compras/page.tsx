@@ -20,8 +20,8 @@ import AnexoDocumentos from "../../components/AnexoDocumentos";
 // ── Estilos base ─────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
-const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
+const btnV: React.CSSProperties = { padding: "8px 18px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
@@ -79,14 +79,14 @@ function ProdutorSelect({
           {filtered.map(pr => (
             <div
               key={pr.id}
-              style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, padding: "7px 10px", cursor: "pointer", background: pr.id === value ? "#D5E8F5" : "var(--bg-card)", color: pr.id === value ? "#0B2D50" : "var(--text-1)" }}
+              style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, padding: "7px 10px", cursor: "pointer", background: pr.id === value ? "#E8E8E8" : "var(--bg-card)", color: pr.id === value ? "#0D0D0D" : "var(--text-1)" }}
               onMouseDown={() => { onChange(pr.id); setOpen(false); setQuery(""); }}
               onMouseEnter={e => { if (pr.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-page)"; }}
               onMouseLeave={e => { if (pr.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-card)"; }}
             >
               <span style={{ ...colStyle, fontWeight: pr.id === value ? 600 : 400 }}>{pr.nome}</span>
-              <span style={{ ...colStyle, color: pr.id === value ? "#0B2D50" : "var(--text-2)" }}>{ieMap[pr.id] || pr.inscricao_est || "—"}</span>
-              <span style={{ ...colStyle, color: pr.id === value ? "#0B2D50" : "var(--text-2)" }}>{pr.municipio || "—"}</span>
+              <span style={{ ...colStyle, color: pr.id === value ? "#0D0D0D" : "var(--text-2)" }}>{ieMap[pr.id] || pr.inscricao_est || "—"}</span>
+              <span style={{ ...colStyle, color: pr.id === value ? "#0D0D0D" : "var(--text-2)" }}>{pr.municipio || "—"}</span>
             </div>
           ))}
         </div>
@@ -142,7 +142,7 @@ function SearchableSelect({
           {filtered.map(o => (
             <div
               key={o.id}
-              style={{ padding: "7px 10px", fontSize: 13, cursor: "pointer", background: o.id === value ? "#D5E8F5" : "var(--bg-card)", color: o.id === value ? "#0B2D50" : "var(--text-1)", fontWeight: o.id === value ? 600 : 400 }}
+              style={{ padding: "7px 10px", fontSize: 13, cursor: "pointer", background: o.id === value ? "#E8E8E8" : "var(--bg-card)", color: o.id === value ? "#0D0D0D" : "var(--text-1)", fontWeight: o.id === value ? 600 : 400 }}
               onMouseDown={() => { onChange(o.id); setOpen(false); setQuery(""); }}
               onMouseEnter={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-page)"; }}
               onMouseLeave={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-card)"; }}
@@ -163,7 +163,7 @@ const hoje = () => new Date().toISOString().split("T")[0];
 
 const STATUS_MAP: Record<PedidoCompra["status"], { label: string; bg: string; color: string }> = {
   rascunho:               { label: "Rascunho",          bg: "var(--bg-page)", color: "var(--text-2)"    },
-  aprovado:               { label: "Aprovado",           bg: "#D5E8F5", color: "#0B2D50" },
+  aprovado:               { label: "Aprovado",           bg: "#E8E8E8", color: "#0D0D0D" },
   parcialmente_entregue:  { label: "Parc. Entregue",    bg: "#FBF3E0", color: "#7A5200" },
   entregue:               { label: "Entregue",           bg: "#DCFCE7", color: "#166534" },
   cancelado:              { label: "Cancelado",          bg: "#FCEBEB", color: "#791F1F" },
@@ -804,8 +804,8 @@ export default function ComprasPage() {
   const tabAba = (id: typeof abaModal, label: string) => (
     <button onClick={() => setAbaModal(id)} style={{
       padding: "7px 16px", fontSize: 12, fontWeight: abaModal === id ? 600 : 400,
-      color: abaModal === id ? "#1A5CB8" : "var(--text-2)", background: "none", border: "none",
-      borderBottom: abaModal === id ? "2px solid #1A5CB8" : "2px solid transparent",
+      color: abaModal === id ? "#2A2A2A" : "var(--text-2)", background: "none", border: "none",
+      borderBottom: abaModal === id ? "2px solid #2A2A2A" : "2px solid transparent",
       cursor: "pointer", whiteSpace: "nowrap",
     }}>{label}</button>
   );
@@ -813,8 +813,8 @@ export default function ComprasPage() {
   const tabItens = (id: typeof abaItens, label: string) => (
     <button onClick={() => setAbaItens(id)} style={{
       padding: "5px 14px", fontSize: 11, fontWeight: abaItens === id ? 600 : 400,
-      color: abaItens === id ? "#1A5CB8" : "#666", background: abaItens === id ? "#EBF3FD" : "none",
-      border: "0.5px solid " + (abaItens === id ? "#1A5CB880" : "var(--border-table)"),
+      color: abaItens === id ? "#2A2A2A" : "#666", background: abaItens === id ? "#EEEEEE" : "none",
+      border: "0.5px solid " + (abaItens === id ? "#2A2A2A80" : "var(--border-table)"),
       borderRadius: "6px 6px 0 0", cursor: "pointer",
     }}>{label}</button>
   );
@@ -850,7 +850,7 @@ export default function ComprasPage() {
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
-              { label: "Total de pedidos",   valor: String(totalPedidos),       cor: "#1A4870" },
+              { label: "Total de pedidos",   valor: String(totalPedidos),       cor: "#111111" },
               { label: "Pedidos em aberto",  valor: String(totalAberto),        cor: "#C9921B" },
               { label: "Valor em aberto",    valor: fmtBRL(valorAberto),        cor: "#E24B4A" },
               { label: "Pedidos entregues",  valor: String(totalEntregues),     cor: "#16A34A" },
@@ -957,10 +957,10 @@ export default function ComprasPage() {
                         <td style={{ padding: "6px 10px", textAlign: "center" }}>
                           {ped.meio_pagamento === "barter"
                             ? <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5200", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Barter</span>
-                            : <span style={{ fontSize: 11, fontWeight: 600, color: ped.cotacao_moeda === "USD" ? "#0B5394" : "#1A4870" }}>{ped.cotacao_moeda ?? "R$"}</span>
+                            : <span style={{ fontSize: 11, fontWeight: 600, color: ped.cotacao_moeda === "USD" ? "#0B5394" : "#111111" }}>{ped.cotacao_moeda ?? "R$"}</span>
                           }
                         </td>
-                        <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontSize: 11 }}>
+                        <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: "#111111", fontSize: 11 }}>
                           {(() => {
                             const moeda = ped.meio_pagamento === "barter" ? "barter" : (ped.cotacao_moeda ?? "R$");
                             return fmtMoeda(ped.total_financeiro, moeda);
@@ -1031,10 +1031,10 @@ export default function ComprasPage() {
 
               {/* Fazenda — seletor explícito */}
               {fazendas.length > 1 && (
-                <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este pedido pertence a</div>
+                <div style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este pedido pertence a</div>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:"#1A4870", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
+                    <label style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
                     <select style={inp} value={f.fazenda_id || fazendaId || ""} onChange={e => setF(p => ({ ...p, fazenda_id: e.target.value }))}>
                       <option value="">— Selecionar —</option>
                       {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
@@ -1191,7 +1191,7 @@ export default function ComprasPage() {
                       Fornecedor *
                       {pessoas.length === 0 && (
                         <span style={{ marginLeft: 6, fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>
-                          — <a href="/cadastros?tab=pessoas" target="_blank" style={{ color: "#1A4870" }}>Cadastrar em Pessoas</a>
+                          — <a href="/cadastros?tab=pessoas" target="_blank" style={{ color: "#111111" }}>Cadastrar em Pessoas</a>
                         </span>
                       )}
                     </label>
@@ -1242,7 +1242,7 @@ export default function ComprasPage() {
                     <label style={{ ...lbl, display: "flex", alignItems: "center", gap: 6 }}>
                       Inscrição Estadual
                       {ieOpcoes.length > 1 && (
-                        <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>
+                        <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>
                           {ieOpcoes.length} IEs
                         </span>
                       )}
@@ -1291,7 +1291,7 @@ export default function ComprasPage() {
                     <label style={{ ...lbl, display: "flex", alignItems: "center", gap: 6 }}>
                       Operação das Notas Fiscais
                       {f.operacao_nf_auto && f.operacao_nf
-                        ? <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>Auto</span>
+                        ? <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>Auto</span>
                         : f.operacao_nf
                         ? <span style={{ fontSize: 10, background: "#FBF3E0", color: "#8A6200", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>Manual</span>
                         : null}
@@ -1337,9 +1337,9 @@ export default function ComprasPage() {
                           style={{
                             padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
                             border: "0.5px solid",
-                            borderColor: f.meio_pagamento === v ? (v === "barter" ? "#C9921B" : "#1A5CB8") : "var(--border-table)",
-                            background:  f.meio_pagamento === v ? (v === "barter" ? "#FBF3E0" : "#D5E8F5") : "#fff",
-                            color:       f.meio_pagamento === v ? (v === "barter" ? "#7A5200" : "#0B2D50") : "var(--text-2)",
+                            borderColor: f.meio_pagamento === v ? (v === "barter" ? "#C9921B" : "#2A2A2A") : "var(--border-table)",
+                            background:  f.meio_pagamento === v ? (v === "barter" ? "#FBF3E0" : "#E8E8E8") : "#fff",
+                            color:       f.meio_pagamento === v ? (v === "barter" ? "#7A5200" : "#0D0D0D") : "var(--text-2)",
                           }}>
                           {label}
                         </button>
@@ -1431,7 +1431,7 @@ export default function ComprasPage() {
                             {lista.map(it => (
                               <tr key={it._idx} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
                                 <td style={{ padding: "5px 6px", width: 90 }}>
-                                  <span style={{ fontSize: 10, background: it.tipo_item === "produto" ? "#D5E8F5" : "#FBF3E0", color: it.tipo_item === "produto" ? "#0B2D50" : "#7A5200", padding: "2px 6px", borderRadius: 6, fontWeight: 600 }}>{it.tipo_item === "produto" ? "Produto" : "Serviço"}</span>
+                                  <span style={{ fontSize: 10, background: it.tipo_item === "produto" ? "#E8E8E8" : "#FBF3E0", color: it.tipo_item === "produto" ? "#0D0D0D" : "#7A5200", padding: "2px 6px", borderRadius: 6, fontWeight: 600 }}>{it.tipo_item === "produto" ? "Produto" : "Serviço"}</span>
                                 </td>
                                 <td style={{ padding: "5px 6px" }}>
                                   <SearchableSelect
@@ -1463,7 +1463,7 @@ export default function ComprasPage() {
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 110 }}>
                                   <InputMonetario
-                                    style={{ ...inp, fontSize: 12, textAlign: "right", color: "#1A4870", fontWeight: 600 }}
+                                    style={{ ...inp, fontSize: 12, textAlign: "right", color: "#111111", fontWeight: 600 }}
                                     value={calcItem(it)}
                                     onChange={total => {
                                       const qty = parseFloat(it.quantidade) || 0;
@@ -1485,7 +1485,7 @@ export default function ComprasPage() {
                           <tfoot>
                             <tr style={{ background: "var(--bg-page)" }}>
                               <td colSpan={5} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
-                              <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtMoeda(lista.reduce((s, it) => s + calcItem(it), 0), f.cotacao_moeda)}</td>
+                              <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{fmtMoeda(lista.reduce((s, it) => s + calcItem(it), 0), f.cotacao_moeda)}</td>
                               <td colSpan={2} />
                             </tr>
                           </tfoot>
@@ -1573,7 +1573,7 @@ export default function ComprasPage() {
               {/* ── ABA COBRANÇA ── */}
               {abaModal === "cobranca" && (<>
                 <div style={secTit}>Cobrança</div>
-                <div style={{ marginBottom: 14, padding: "10px 14px", background: "#D5E8F5", borderRadius: 8, fontSize: 12, color: "#0B2D50" }}>
+                <div style={{ marginBottom: 14, padding: "10px 14px", background: "#E8E8E8", borderRadius: 8, fontSize: 12, color: "#0D0D0D" }}>
                   Condições de pagamento (À Vista / Parcelado) são definidas na tela <strong>Contas a Pagar</strong> ao registrar o lançamento vinculado a este pedido.
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -1620,9 +1620,9 @@ export default function ComprasPage() {
                     </>;
                   })() : <>
                     Total Financeiro:{" "}
-                    <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
+                    <strong style={{ color: "#111111", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
                     {"  ·  "}Total Prod+Serviços:{" "}
-                    <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
+                    <strong style={{ color: "#111111", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
                   </>}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1668,7 +1668,7 @@ export default function ComprasPage() {
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
                     {ehFiscal ? "NFs Vinculadas" : "Entregas"} — {nomePessoa(modalEntrega.pedido.fornecedor_id)}
-                    {ehFiscal && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>Fiscal</span>}
+                    {ehFiscal && <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>Fiscal</span>}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido #{modalEntrega.pedido.numero} · {fmtData(modalEntrega.pedido.data_registro)}</div>
                 </div>
@@ -1702,7 +1702,7 @@ export default function ComprasPage() {
                           <td style={{ padding: "8px 10px", textAlign: "right" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
                               <div style={{ width: 60, height: 6, background: "var(--border-table)", borderRadius: 3, overflow: "hidden" }}>
-                                <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#1A5CB8", borderRadius: 3 }} />
+                                <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#2A2A2A", borderRadius: 3 }} />
                               </div>
                               <span style={{ fontSize: 10, color: "var(--text-2)" }}>{Math.round(pct)}%</span>
                             </div>
@@ -1720,7 +1720,7 @@ export default function ComprasPage() {
                     {nfsFiscais.length > 0 && (
                       <span style={{ fontSize: 11, color: "var(--text-2)" }}>
                         Total recebido:{" "}
-                        <strong style={{ color: "#1A4870" }}>{fmtBRL(totalNFs)}</strong>
+                        <strong style={{ color: "#111111" }}>{fmtBRL(totalNFs)}</strong>
                         {totalPedido > 0 && (
                           <span style={{ marginLeft: 6, color: totalNFs >= totalPedido ? "#16A34A" : "#C9921B", fontWeight: 600 }}>
                             ({Math.round((totalNFs / totalPedido) * 100)}% do pedido)
@@ -1731,9 +1731,9 @@ export default function ComprasPage() {
                   </div>
 
                   {nfsFiscais.length === 0 ? (
-                    <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "16px 20px", marginBottom: 14 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: "#1A4870", marginBottom: 6 }}>Nenhuma NF vinculada ainda</div>
-                      <div style={{ fontSize: 12, color: "#0B2D50", lineHeight: 1.6 }}>
+                    <div style={{ background: "#F2F2F2", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "16px 20px", marginBottom: 14 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#111111", marginBottom: 6 }}>Nenhuma NF vinculada ainda</div>
+                      <div style={{ fontSize: 12, color: "#0D0D0D", lineHeight: 1.6 }}>
                         Para registrar uma entrega fiscal, dê entrada da Nota Fiscal pelo menu{" "}
                         <strong>Compras &amp; Estoque → NF de Produtos</strong> e selecione{" "}
                         <strong>Pedido de Compra #{ modalEntrega.pedido.numero}</strong> no campo correspondente.
@@ -1752,15 +1752,15 @@ export default function ComprasPage() {
                           const st = NF_STATUS[nf.status] ?? NF_STATUS.pendente;
                           return (
                             <tr key={nf.id} style={{ borderBottom: i < nfsFiscais.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                              <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1A4870" }}>{nf.numero}/{nf.serie}</td>
+                              <td style={{ padding: "8px 10px", fontWeight: 600, color: "#111111" }}>{nf.numero}/{nf.serie}</td>
                               <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{fmtData(nf.data_emissao)}</td>
                               <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{nf.emitente_nome}</td>
-                              <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: nf.status === "cancelada" ? "#bbb" : "#1A4870", textDecoration: nf.status === "cancelada" ? "line-through" : "none" }}>{fmtBRL(nf.valor_total)}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: nf.status === "cancelada" ? "#bbb" : "#111111", textDecoration: nf.status === "cancelada" ? "line-through" : "none" }}>{fmtBRL(nf.valor_total)}</td>
                               <td style={{ padding: "8px 10px", textAlign: "right" }}>
                                 <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
                               </td>
                               <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                <a href={`/compras/nf?busca=${encodeURIComponent(nf.numero ?? "")}`} style={{ fontSize: 11, color: "#1A5CB8", textDecoration: "none", fontWeight: 600 }}>Ver NF →</a>
+                                <a href={`/compras/nf?busca=${encodeURIComponent(nf.numero ?? "")}`} style={{ fontSize: 11, color: "#2A2A2A", textDecoration: "none", fontWeight: 600 }}>Ver NF →</a>
                               </td>
                             </tr>
                           );
@@ -1769,7 +1769,7 @@ export default function ComprasPage() {
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
                           <td colSpan={3} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL RECEBIDO (NFs processadas/pendentes)</td>
-                          <td style={{ padding: "6px 10px", textAlign: "right", color: "#1A4870" }}>{fmtBRL(totalNFs)}</td>
+                          <td style={{ padding: "6px 10px", textAlign: "right", color: "#111111" }}>{fmtBRL(totalNFs)}</td>
                           <td colSpan={2} />
                         </tr>
                       </tfoot>
@@ -1864,7 +1864,7 @@ export default function ComprasPage() {
                       <td style={{ padding: "8px 10px" }}>{it.unidade}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtN(it.quantidade)}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtBRL(it.valor_unitario)}</td>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>{fmtBRL((it.valor_total ?? it.quantidade * it.valor_unitario))}</td>
+                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "#111111" }}>{fmtBRL((it.valor_total ?? it.quantidade * it.valor_unitario))}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{fmtN(it.qtd_entregue ?? 0)}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right", color: "#C9921B", fontWeight: 600 }}>{fmtN(Math.max(0, it.quantidade - (it.qtd_cancelada ?? 0) - (it.qtd_entregue ?? 0)))}</td>
                     </tr>
@@ -1873,7 +1873,7 @@ export default function ComprasPage() {
                 <tfoot>
                   <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
                     <td colSpan={4} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL PEDIDO</td>
-                    <td style={{ padding: "8px 10px", textAlign: "right", color: "#1A4870" }}>{fmtBRL(modalRelatorio.itens.reduce((s, it) => s + (it.valor_total ?? it.quantidade * it.valor_unitario), 0))}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: "#111111" }}>{fmtBRL(modalRelatorio.itens.reduce((s, it) => s + (it.valor_total ?? it.quantidade * it.valor_unitario), 0))}</td>
                     <td colSpan={2} />
                   </tr>
                 </tfoot>

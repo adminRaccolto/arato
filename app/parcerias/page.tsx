@@ -13,7 +13,7 @@ import type {
 
 // ─── Paleta ──────────────────────────────────────────────────
 const C = {
-  azul:     "#1A4870", azulEsc:  "#0B2D50", azulClr: "#D5E8F5",
+  azul:     "#111111", azulEsc:  "#0D0D0D", azulClr: "#E8E8E8",
   mostr:    "#C9921B", mostrClr: "#FBF3E0",
   fundo:    "var(--bg-page)", branco:   "#ffffff",
   borda:    "var(--border)", txt:      "var(--text-1)", sub:     "var(--text-2)",
@@ -21,7 +21,7 @@ const C = {
   verde:    "#16A34A", verdeClr: "#DCFCE7",
   verm:     "#E24B4A", vermClr:  "#FEE2E2",
   larClr:   "#FEF3C7", lar:      "#D97706",
-  inf:      "#378ADD", infClr:   "#DBEAFE",
+  inf:      "#444444", infClr:   "#DBEAFE",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────

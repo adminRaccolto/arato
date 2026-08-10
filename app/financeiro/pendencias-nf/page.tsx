@@ -232,7 +232,7 @@ export default function PendenciasNfPage() {
             <a href="/configuracoes/classificacao" style={{ padding: "8px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}>
               ⚙️ Regras Automáticas
             </a>
-            <a href="/configuracoes/automacoes" style={{ padding: "8px 14px", borderRadius: 7, background: "#1A4870", fontSize: 12, fontWeight: 600, color: "#fff", textDecoration: "none" }}>
+            <a href="/configuracoes/automacoes" style={{ padding: "8px 14px", borderRadius: 7, background: "#111111", fontSize: 12, fontWeight: 600, color: "#fff", textDecoration: "none" }}>
               ▶ Executar Sync SIEG
             </a>
           </div>
@@ -244,7 +244,7 @@ export default function PendenciasNfPage() {
             { label: "Pendentes", valor: totPendentes, sub: fmt(valorPendente), cor: "#C9921B", bg: "#FBF3E0" },
             { label: "Classificadas", valor: totClassific, sub: "automaticamente + manual", cor: "#16A34A", bg: "#F0FDF4" },
             { label: "Ignoradas", valor: totIgnoradas, sub: "sem movimentação", cor: "var(--text-3)", bg: "var(--bg-page)" },
-            { label: "Total importado", valor: nfs.length, sub: "últimos 30 dias", cor: "#1A4870", bg: "#EBF5FF" },
+            { label: "Total importado", valor: nfs.length, sub: "últimos 30 dias", cor: "#111111", bg: "#EEEEEE" },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
               <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
@@ -261,8 +261,8 @@ export default function PendenciasNfPage() {
               key={s}
               onClick={() => setFiltroStatus(s)}
               style={{
-                padding: "6px 14px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#1A4870" : "var(--border)"}`,
-                background: filtroStatus === s ? "#1A4870" : "transparent",
+                padding: "6px 14px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#111111" : "var(--border)"}`,
+                background: filtroStatus === s ? "#111111" : "transparent",
                 color: filtroStatus === s ? "#fff" : "var(--text-2)",
                 fontSize: 12, fontWeight: 600, cursor: "pointer",
               }}
@@ -304,7 +304,7 @@ export default function PendenciasNfPage() {
               <tbody>
                 {nfsFiltradas.map((nf, i) => (
                   <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: i % 2 === 1 ? "#FAFBFD" : "var(--bg-card)" }}>
-                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1A4870" }}>
+                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "#111111" }}>
                       {nf.numero}/{nf.serie}
                     </td>
                     <td style={{ padding: "10px 14px" }}>
@@ -328,7 +328,7 @@ export default function PendenciasNfPage() {
                     <td style={{ padding: "10px 14px" }}>
                       <button
                         onClick={() => abrirModal(nf)}
-                        style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #1A4870", background: "transparent", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #111111", background: "transparent", color: "#111111", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                       >
                         {nf.status === "pendente" ? "Classificar" : "Ver Itens"}
                       </button>
@@ -365,7 +365,7 @@ export default function PendenciasNfPage() {
                     Ignorar NF
                   </button>
                 )}
-                <button onClick={() => setModal(null)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => setModal(null)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Fechar
                 </button>
               </div>
@@ -391,7 +391,7 @@ export default function PendenciasNfPage() {
                           border: `0.5px solid ${classificado ? "#86EFAC" : "var(--border)"}`,
                           borderRadius: 10,
                           padding: 16,
-                          background: classificado ? "#F0FDF4" : item.classificado_automaticamente ? "#EBF5FF" : "var(--bg-card)",
+                          background: classificado ? "#F0FDF4" : item.classificado_automaticamente ? "#EEEEEE" : "var(--bg-card)",
                         }}
                       >
                         {/* Info do item */}
@@ -408,7 +408,7 @@ export default function PendenciasNfPage() {
                           </div>
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                             {item.classificado_automaticamente && (
-                              <span style={{ fontSize: 10, color: "#1A4870", background: "#D5E8F5", padding: "2px 7px", borderRadius: 8, border: "0.5px solid #93C5FD" }}>
+                              <span style={{ fontSize: 10, color: "#111111", background: "#E8E8E8", padding: "2px 7px", borderRadius: 8, border: "0.5px solid #93C5FD" }}>
                                 🤖 Auto
                               </span>
                             )}
@@ -469,7 +469,7 @@ export default function PendenciasNfPage() {
                             disabled={!c.categoria && !c.insumo_id}
                             style={{
                               padding: "7px 14px", borderRadius: 7, border: "none",
-                              background: (!c.categoria && !c.insumo_id) ? "var(--border)" : "#1A4870",
+                              background: (!c.categoria && !c.insumo_id) ? "var(--border)" : "#111111",
                               color: (!c.categoria && !c.insumo_id) ? "var(--text-muted)" : "#fff",
                               fontSize: 12, fontWeight: 600, cursor: (!c.categoria && !c.insumo_id) ? "not-allowed" : "pointer",
                               whiteSpace: "nowrap",
@@ -525,7 +525,7 @@ export default function PendenciasNfPage() {
               <button
                 onClick={criarRegra}
                 disabled={criandoRegra}
-                style={{ padding: "8px 20px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "8px 20px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 {criandoRegra ? "Salvando…" : "✓ Criar Regra"}
               </button>

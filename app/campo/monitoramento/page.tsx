@@ -174,10 +174,10 @@ export default function CampoMonitoramentoPage() {
       <div style={{ fontSize: 20, fontWeight: 700, color: "#166534", textAlign: "center" }}>Registro salvo com sucesso!</div>
       {gpsLat && <div style={{ fontSize: 13, color: "var(--text-2)", textAlign: "center" }}>📍 {gpsLat.toFixed(6)}, {gpsLng?.toFixed(6)}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-        <button onClick={novoRegistro} style={{ padding: "14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={novoRegistro} style={{ padding: "14px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           + Novo Registro
         </button>
-        <a href="/lavoura/pragas" style={{ padding: "14px", background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
+        <a href="/lavoura/pragas" style={{ padding: "14px", background: "var(--bg-card)", color: "#111111", border: "0.5px solid #111111", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
           Ver todos os registros
         </a>
       </div>
@@ -216,7 +216,7 @@ export default function CampoMonitoramentoPage() {
       </div>
 
       {!gpsBusy && (
-        <button onClick={capturarGPS} style={{ padding: "14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={capturarGPS} style={{ padding: "14px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           {gpsLat ? "Recapturar GPS" : "Capturar GPS"}
         </button>
       )}
@@ -260,7 +260,7 @@ export default function CampoMonitoramentoPage() {
       {fotos.length < 3 && (
         <>
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            style={{ padding: "16px", background: "var(--bg-card)", color: "#1A4870", border: "1.5px solid #1A4870", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            style={{ padding: "16px", background: "var(--bg-card)", color: "#111111", border: "1.5px solid #111111", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <span>{uploading ? "Enviando..." : "📷 Tirar / Selecionar Foto"}</span>
           </button>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
@@ -275,7 +275,7 @@ export default function CampoMonitoramentoPage() {
           ← GPS
         </button>
         <button onClick={salvar} disabled={salvando}
-          style={{ flex: 2, padding: "12px", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+          style={{ flex: 2, padding: "12px", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
           {salvando ? "Salvando..." : "✓ Salvar Registro"}
         </button>
       </div>
@@ -330,9 +330,9 @@ export default function CampoMonitoramentoPage() {
             { v: "planta_daninha", label: "Invasora", icon: "🌿" },
           ].map(t => (
             <button key={t.v} type="button" onClick={() => { setFTipo(t.v as typeof fTipo); setFNome(""); setFNomeC(""); }}
-              style={{ padding: "12px 8px", borderRadius: 10, border: `2px solid ${fTipo === t.v ? "#1A4870" : "var(--border)"}`, background: fTipo === t.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", textAlign: "center" }}>
+              style={{ padding: "12px 8px", borderRadius: 10, border: `2px solid ${fTipo === t.v ? "#111111" : "var(--border)"}`, background: fTipo === t.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", textAlign: "center" }}>
               <div style={{ fontSize: 22 }}>{t.icon}</div>
-              <div style={{ fontSize: 11, fontWeight: fTipo === t.v ? 700 : 400, color: fTipo === t.v ? "#1A4870" : "var(--text-2)", marginTop: 4 }}>{t.label}</div>
+              <div style={{ fontSize: 11, fontWeight: fTipo === t.v ? 700 : 400, color: fTipo === t.v ? "#111111" : "var(--text-2)", marginTop: 4 }}>{t.label}</div>
             </button>
           ))}
         </div>
@@ -415,7 +415,7 @@ export default function CampoMonitoramentoPage() {
         const nomeFinal = nomeEhCustom ? fNomeC.trim() : fNome;
         if (!fTalhao || !nomeFinal) { setErro("Preencha talhão e ocorrência."); return; }
         setErro(""); setEtapa("gps");
-      }} style={{ padding: "16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
+      }} style={{ padding: "16px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
         Próximo: GPS e Foto →
       </button>
 

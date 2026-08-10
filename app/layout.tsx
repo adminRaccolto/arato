@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {/* eslint-disable-next-line react/no-danger */}
         <script dangerouslySetInnerHTML={{ __html: SW_SCRIPT }} />
-        <meta name="theme-color" content="#1A4870" />
+        <meta name="theme-color" content="#111111" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body style={{ margin: 0, padding: 0, display: "flex", flexDirection: "column", minHeight: "100vh", paddingBottom: 28 }}>

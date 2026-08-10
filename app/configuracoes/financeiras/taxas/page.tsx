@@ -113,7 +113,7 @@ export default function TaxasVariaveisPage() {
               + Lançar Manual
             </button>
             <button onClick={atualizarAgora} disabled={atualizando}
-              style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: "#1A4870", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: atualizando ? 0.6 : 1 }}>
+              style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: "#111111", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: atualizando ? 0.6 : 1 }}>
               {atualizando ? "Atualizando…" : "↻ Atualizar Agora (BCB)"}
             </button>
           </div>
@@ -147,7 +147,7 @@ export default function TaxasVariaveisPage() {
             const ativo = op === "tudo" ? anoInicio <= anoAtual() - 9 : anoInicio === op;
             return (
               <button key={String(op)} onClick={() => { setAnoInicio(op === "tudo" ? anoAtual() - 10 : op as number); setAnoFim(anoAtual()); }}
-                style={{ padding: "4px 12px", borderRadius: 6, border: `0.5px solid ${ativo ? "#1A4870" : "var(--border)"}`, background: ativo ? "#D5E8F5" : "transparent", color: ativo ? "#0B2D50" : "var(--text-3)", fontSize: 12, fontWeight: ativo ? 600 : 400, cursor: "pointer" }}>
+                style={{ padding: "4px 12px", borderRadius: 6, border: `0.5px solid ${ativo ? "#111111" : "var(--border)"}`, background: ativo ? "#E8E8E8" : "transparent", color: ativo ? "#0D0D0D" : "var(--text-3)", fontSize: 12, fontWeight: ativo ? 600 : 400, cursor: "pointer" }}>
                 {label}
               </button>
             );
@@ -179,9 +179,9 @@ export default function TaxasVariaveisPage() {
                   const eMesAtual = parseInt(anoStr) === anoAtual() && parseInt(mesStr) === mesAtual();
                   return (
                     <tr key={k} style={{ borderBottom: "0.5px solid var(--border-table)", background: eMesAtual ? "#F0F7FF" : i % 2 === 0 ? "var(--bg-card)" : "var(--bg-page)" }}>
-                      <td style={{ padding: "8px 14px", fontWeight: eMesAtual ? 700 : 500, color: eMesAtual ? "#1A4870" : "var(--text-1)", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "8px 14px", fontWeight: eMesAtual ? 700 : 500, color: eMesAtual ? "#111111" : "var(--text-1)", whiteSpace: "nowrap" }}>
                         {MESES[parseInt(mesStr) - 1]}/{anoStr}
-                        {eMesAtual && <span style={{ marginLeft: 6, fontSize: 10, background: "#D5E8F5", color: "#1A4870", padding: "1px 6px", borderRadius: 8, fontWeight: 700 }}>Atual</span>}
+                        {eMesAtual && <span style={{ marginLeft: 6, fontSize: 10, background: "#E8E8E8", color: "#111111", padding: "1px 6px", borderRadius: 8, fontWeight: 700 }}>Atual</span>}
                       </td>
                       {INDEXADORES.map(idx => {
                         const v = linha[idx];
@@ -216,7 +216,7 @@ export default function TaxasVariaveisPage() {
               { label: "TEF (Taxa Efetiva)", desc: "= Indexador + Juros Fixos — usada no cálculo das parcelas" },
             ].map(item => (
               <div key={item.label} style={{ padding: "10px 12px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)" }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: "#1A4870", marginBottom: 4 }}>{item.label}</div>
+                <div style={{ fontWeight: 700, fontSize: 12, color: "#111111", marginBottom: 4 }}>{item.label}</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5 }}>{item.desc}</div>
               </div>
             ))}
@@ -256,7 +256,7 @@ export default function TaxasVariaveisPage() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "transparent", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarManual} disabled={salvando || !fManual.valor_pct}
-                style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "#1A4870", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: salvando || !fManual.valor_pct ? 0.5 : 1 }}>
+                style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "#111111", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: salvando || !fManual.valor_pct ? 0.5 : 1 }}>
                 {salvando ? "Salvando…" : "Salvar"}
               </button>
             </div>

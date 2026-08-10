@@ -53,9 +53,9 @@ type Triangulacao = {
 // ── Constantes ───────────────────────────────────────────────────────────────
 
 const TIPO_META: Record<TipoTriang, { label: string; cor: string; bg: string; icon: string; desc: string }> = {
-  venda_a_ordem:      { label: "Venda a Ordem",         cor: "#1A4870", bg: "#D5E8F5", icon: "🔄", desc: "3 NF-es: 6101 + 6108 + 6923" },
+  venda_a_ordem:      { label: "Venda a Ordem",         cor: "#111111", bg: "#E8E8E8", icon: "🔄", desc: "3 NF-es: 6101 + 6108 + 6923" },
   barter:             { label: "Barter",                 cor: "#7A3F00", bg: "#FDE9BB", icon: "🌾", desc: "Insumos × Grãos — NF entrada + saída" },
-  pagamento_terceiro: { label: "Pagamento a Terceiro",   cor: "#1A4870", bg: "#EDE9FE", icon: "🏦", desc: "NF normal + CP ao beneficiário" },
+  pagamento_terceiro: { label: "Pagamento a Terceiro",   cor: "#111111", bg: "#EDE9FE", icon: "🏦", desc: "NF normal + CP ao beneficiário" },
   entrega_terceiro:   { label: "Entrega em Terceiro",    cor: "#14532D", bg: "#DCF5E8", icon: "📦", desc: "NF para A com infCpl local de entrega B" },
 };
 
@@ -92,11 +92,11 @@ const inp: React.CSSProperties = {
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 4, fontWeight: 600 };
 const btnV: React.CSSProperties = {
-  background: "#1A4870", color: "#fff", border: "none", borderRadius: 7,
+  background: "#111111", color: "#fff", border: "none", borderRadius: 7,
   padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer",
 };
 const btnO: React.CSSProperties = {
-  background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 7,
+  background: "var(--bg-card)", color: "#111111", border: "0.5px solid #111111", borderRadius: 7,
   padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer",
 };
 
@@ -450,13 +450,13 @@ export default function TriangulacaoPage() {
                     </span>
                   )}
                   {valorTotal > 0 && (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#1A4870" }}>{fmtMoeda(valorTotal, item.moeda)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#111111" }}>{fmtMoeda(valorTotal, item.moeda)}</span>
                   )}
                   <div style={{ flex: 1 }} />
                   {/* Pipeline de partes */}
                   <div style={{ fontSize: 12, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 6 }}>
                     {prodNome !== "—" && <><span style={{ fontWeight: 600, color: "var(--text-1)" }}>{prodNome}</span><span>→</span></>}
-                    {pANome !== "—"   && <><span style={{ fontWeight: 600, color: "#1A4870" }}>{pANome}</span></>}
+                    {pANome !== "—"   && <><span style={{ fontWeight: 600, color: "#111111" }}>{pANome}</span></>}
                     {pBNome !== "—"   && <><span>→</span><span style={{ fontWeight: 600, color: "#14532D" }}>{pBNome}</span></>}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
@@ -496,7 +496,7 @@ export default function TriangulacaoPage() {
                               background: nf.status === "autorizada" ? "#F0FDF4" : nf.status === "cancelada" ? "#FEF2F2" : "#FAFBFC",
                             }}>
                               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                                <span style={{ fontWeight: 700, fontSize: 14, color: "#1A4870" }}>CFOP {nf.cfop}</span>
+                                <span style={{ fontWeight: 700, fontSize: 14, color: "#111111" }}>CFOP {nf.cfop}</span>
                                 <span style={{ fontSize: 10, fontWeight: 600, color: nf.status === "autorizada" ? "#16A34A" : nf.status === "cancelada" ? "#E24B4A" : "var(--text-3)",
                                   background: nf.status === "autorizada" ? "#DCF5E8" : nf.status === "cancelada" ? "#FCEBEB" : "var(--bg-page)",
                                   padding: "1px 6px", borderRadius: 4 }}>
@@ -540,7 +540,7 @@ export default function TriangulacaoPage() {
                       {/* Barter: link NF entrada */}
                       {item.tipo === "barter" && item.nf_entrada_ref && (
                         <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-2)" }}>
-                          NF de Entrada de Insumos ref.: <strong style={{ color: "#1A4870" }}>{item.nf_entrada_ref}</strong>
+                          NF de Entrada de Insumos ref.: <strong style={{ color: "#111111" }}>{item.nf_entrada_ref}</strong>
                           {item.valor_insumos && <> — Valor: <strong>{fmtMoeda(item.valor_insumos)}</strong></>}
                         </div>
                       )}
@@ -585,8 +585,8 @@ export default function TriangulacaoPage() {
             {/* Progress */}
             <div style={{ display: "flex", gap: 0, padding: "0 24px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
               {[1, 2, 3].map(s => (
-                <div key={s} style={{ padding: "10px 16px", fontSize: 12, fontWeight: step >= s ? 700 : 400, color: step >= s ? "#1A4870" : "var(--text-3)",
-                  borderBottom: step === s ? "2px solid #1A4870" : "2px solid transparent", cursor: step < s ? "default" : "pointer" }}
+                <div key={s} style={{ padding: "10px 16px", fontSize: 12, fontWeight: step >= s ? 700 : 400, color: step >= s ? "#111111" : "var(--text-3)",
+                  borderBottom: step === s ? "2px solid #111111" : "2px solid transparent", cursor: step < s ? "default" : "pointer" }}
                   onClick={() => { if (s < step) setStep(s as 1|2|3); }}>
                   {s}. {s === 1 ? "Tipo" : s === 2 ? "Dados" : "Gerar Docs"}
                 </div>
@@ -651,7 +651,7 @@ export default function TriangulacaoPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   {/* Seção: Dados Gerais */}
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Dados Gerais
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -674,7 +674,7 @@ export default function TriangulacaoPage() {
 
                   {/* Seção: Produto */}
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Produto
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
@@ -708,7 +708,7 @@ export default function TriangulacaoPage() {
                     {(f.quantidade_kg ?? 0) > 0 && (f.preco_unitario ?? 0) > 0 && (
                       <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-2)" }}>
                         Total estimado:{" "}
-                        <strong style={{ color: "#1A4870" }}>
+                        <strong style={{ color: "#111111" }}>
                           {fmtMoeda(((f.quantidade_kg ?? 0) / 60) * (f.preco_unitario ?? 0), f.moeda)}
                         </strong>
                         {" · "}{fmtKg(f.quantidade_kg)}
@@ -718,7 +718,7 @@ export default function TriangulacaoPage() {
 
                   {/* Seção: Partes — varia por tipo */}
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Partes Envolvidas
                     </div>
 
@@ -752,7 +752,7 @@ export default function TriangulacaoPage() {
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Recebe entrega física + NF 6923</div>
                           </div>
                         </div>
-                        <div style={{ padding: 12, background: "#D5E8F5", borderRadius: 8, fontSize: 11, color: "#0B2D50" }}>
+                        <div style={{ padding: 12, background: "#E8E8E8", borderRadius: 8, fontSize: 11, color: "#0D0D0D" }}>
                           <strong>Fluxo de documentos:</strong><br />
                           1. NF {pessoas.find(p => p.id === f.comprador_a_id)?.estado !== "MT" ? "6101" : "5101"} — Produtor → Trading A (venda simbólica, sem trânsito físico)<br />
                           2. NF {pessoas.find(p => p.id === f.comprador_a_id)?.estado !== "MT" ? "6108" : "5108"} — Trading A → Trading B (venda a ordem)<br />
@@ -954,7 +954,7 @@ export default function TriangulacaoPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {gerarNfs().map((nf, i) => (
                         <div key={i} style={{ border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", background: "#FAFBFC", display: "flex", alignItems: "flex-start", gap: 14 }}>
-                          <div style={{ background: "#D5E8F5", color: "#1A4870", fontWeight: 800, fontSize: 14, padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }}>
+                          <div style={{ background: "#E8E8E8", color: "#111111", fontWeight: 800, fontSize: 14, padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }}>
                             CFOP {nf.cfop}
                           </div>
                           <div style={{ flex: 1 }}>

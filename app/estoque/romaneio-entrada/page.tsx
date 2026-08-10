@@ -69,7 +69,7 @@ const FORM_VAZIO: FormRom = {
 // ── Estilos ──────────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #CDD5E0", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-input)" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, color: "#444", marginBottom: 4 };
-const btnV: React.CSSProperties = { background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
+const btnV: React.CSSProperties = { background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { background: "#F0F4FA", color: "#444", border: "0.5px solid #CDD5E0", borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" };
 const btnG: React.CSSProperties = { background: "#16A34A", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 
@@ -369,7 +369,7 @@ export default function RomaneioEntradaPage() {
       {/* KPI cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
         {[
-          { label: "Romaneios",      value: String(filtrados.length),           color: "#1A5CB8", bg: "#EBF3FF" },
+          { label: "Romaneios",      value: String(filtrados.length),           color: "#2A2A2A", bg: "#EBF3FF" },
           { label: "Sacas (filtro)", value: fmt(sacasTotal, 0) + " sc",          color: "#16A34A", bg: "#ECFDF5" },
           { label: "Peso Classif.", value: fmt(pesoTotal / 1000, 1) + " t",      color: "#7C3AED", bg: "#F5F3FF" },
           { label: "Em Rascunho",   value: String(qRascunho) + " / " + String(qConfirmado) + " conf.", color: "#C9921B", bg: "#FBF3E0" },
@@ -434,7 +434,7 @@ export default function RomaneioEntradaPage() {
                   <td style={{ padding: "9px 12px" }}>
                     <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, fontWeight: 600,
                       background: r.tipo === "proprio" ? "#EBF3FF" : "#F5F3FF",
-                      color:      r.tipo === "proprio" ? "#1A5CB8" : "#7C3AED" }}>
+                      color:      r.tipo === "proprio" ? "#2A2A2A" : "#7C3AED" }}>
                       {r.tipo === "proprio" ? "Própria" : "Terceiro"}
                     </span>
                   </td>
@@ -471,7 +471,7 @@ export default function RomaneioEntradaPage() {
                         <button style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</button>
                       )}
                       <button
-                        style={{ background: "var(--bg-page)", color: "#1A4870", border: "0.5px solid #CDD5E0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
+                        style={{ background: "var(--bg-page)", color: "#111111", border: "0.5px solid #CDD5E0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
                         title="Imprimir ticket de balança"
                         onClick={() => {
                           const pl = (r.peso_bruto_kg ?? 0) - (r.tara_kg ?? 0);
@@ -525,8 +525,8 @@ export default function RomaneioEntradaPage() {
 
           {/* Fazenda — seletor explícito */}
           {fazendas.length > 1 && (
-            <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Este romaneio pertence a</div>
+            <div style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Este romaneio pertence a</div>
               <select style={{ width:"100%", padding:"7px 10px", borderRadius:6, border:"0.5px solid var(--border)", fontSize:13, background:"var(--bg-card)" }}
                 value={form.fazenda_id || fazendaId || ""}
                 onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}>
@@ -538,7 +538,7 @@ export default function RomaneioEntradaPage() {
 
           {/* Toggle tipo */}
           <div style={{ display: "flex", gap: 0, marginBottom: 12, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>
-            {([["proprio", "Pesagem por Balança", "#1A5CB8"], ["terceiro", "Romaneio de Terceiro", "#7C3AED"]] as const).map(([v, l, c]) => (
+            {([["proprio", "Pesagem por Balança", "#2A2A2A"], ["terceiro", "Romaneio de Terceiro", "#7C3AED"]] as const).map(([v, l, c]) => (
               <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
                 flex: 1, padding: "10px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
                 background: form.tipo === v ? c : "var(--bg-card)",
@@ -556,19 +556,19 @@ export default function RomaneioEntradaPage() {
                 <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
                   padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "0.5px solid",
                   background: form.modo_pesagem === v ? "#EBF3FF" : "var(--bg-card)",
-                  color:      form.modo_pesagem === v ? "#1A5CB8" : "#777",
-                  borderColor: form.modo_pesagem === v ? "#1A5CB8" : "#CDD5E0",
+                  color:      form.modo_pesagem === v ? "#2A2A2A" : "#777",
+                  borderColor: form.modo_pesagem === v ? "#2A2A2A" : "#CDD5E0",
                 }}>{l}</button>
               ))}
               {form.modo_pesagem === "balanca" && (
-                <span style={{ fontSize: 11, color: "#378ADD" }}>Informe os pesos lidos na balança (bruto e tara)</span>
+                <span style={{ fontSize: 11, color: "#444444" }}>Informe os pesos lidos na balança (bruto e tara)</span>
               )}
             </div>
           )}
 
           {/* Info contextual */}
           {form.tipo === "proprio" ? (
-            <div style={{ background: "#EBF3FF", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#0B2D50", marginBottom: 18 }}>
+            <div style={{ background: "#EBF3FF", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#0D0D0D", marginBottom: 18 }}>
               <strong>Pesagem por Balança</strong> — pese o caminhão carregado (bruto) e o caminhão vazio (tara). O peso líquido e as sacas são calculados automaticamente.
             </div>
           ) : (
@@ -714,7 +714,7 @@ export default function RomaneioEntradaPage() {
               </div>
               <div>
                 <label style={lbl}>Peso Líquido (calculado)</label>
-                <div style={{ ...inp, background: "#F0F4FA", color: "#1A5CB8", fontWeight: 700, fontSize: 14 }}>
+                <div style={{ ...inp, background: "#F0F4FA", color: "#2A2A2A", fontWeight: 700, fontSize: 14 }}>
                   {fmt(calc.pl, 0)} kg
                 </div>
               </div>
@@ -794,7 +794,7 @@ export default function RomaneioEntradaPage() {
                   { label: "Desc. Umidade",   value: calc.dUmid > 0 ? `−${fmt(calc.dUmid, 0)} kg` : "—", color: calc.dUmid > 0 ? "#E24B4A" : "var(--text-2)" },
                   { label: "Desc. Impureza",  value: calc.dImp  > 0 ? `−${fmt(calc.dImp,  0)} kg` : "—", color: calc.dImp > 0 ? "#E24B4A" : "var(--text-2)" },
                   { label: "Desc. Avariados", value: calc.dAvar > 0 ? `−${fmt(calc.dAvar, 0)} kg` : "—", color: calc.dAvar > 0 ? "#E24B4A" : "var(--text-2)" },
-                  { label: "Peso Classificado", value: `${fmt(calc.class_, 0)} kg`, color: "#1A5CB8" },
+                  { label: "Peso Classificado", value: `${fmt(calc.class_, 0)} kg`, color: "#2A2A2A" },
                 ].map(k => (
                   <div key={k.label} style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>{k.label}</div>

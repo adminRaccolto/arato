@@ -119,7 +119,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
   const cotaPct    = cotaBytes > 0 ? Math.min(100, (usadoBytes / cotaBytes) * 100) : 0;
   const cotaCheia  = cotaBytes > 0 && usadoBytes >= cotaBytes;
 
-  const barColor = cotaPct >= 90 ? "#E24B4A" : cotaPct >= 70 ? "#EF9F27" : "#1A4870";
+  const barColor = cotaPct >= 90 ? "#E24B4A" : cotaPct >= 70 ? "#EF9F27" : "#111111";
 
   return (
     <div style={{ padding: "4px 0" }}>
@@ -181,7 +181,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             style={{
-              background: uploading ? "var(--border)" : "#1A4870", color: "#fff",
+              background: uploading ? "var(--border)" : "#111111", color: "#fff",
               border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12,
               fontWeight: 600, cursor: uploading ? "not-allowed" : "pointer"
             }}
@@ -225,8 +225,8 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      fontSize: 11, fontWeight: 600, color: "#1A4870",
-                      background: "#D5E8F5", border: "none", borderRadius: 5,
+                      fontSize: 11, fontWeight: 600, color: "#111111",
+                      background: "#E8E8E8", border: "none", borderRadius: 5,
                       padding: "4px 10px", textDecoration: "none", cursor: "pointer"
                     }}
                   >

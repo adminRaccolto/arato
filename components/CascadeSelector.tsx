@@ -32,7 +32,7 @@ const inp: React.CSSProperties = {
   boxSizing: "border-box" as const, color: "var(--text-1)",
 };
 const lbl: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, color: "#1A4870",
+  fontSize: 11, fontWeight: 700, color: "#111111",
   textTransform: "uppercase" as const, letterSpacing: "0.05em",
   display: "block", marginBottom: 4,
 };
@@ -127,8 +127,8 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
     : ciclos;
 
   return (
-    <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 16px" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+    <div style={{ background: "#F2F2F2", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 16px" }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
         Este lançamento pertence a
       </div>
 

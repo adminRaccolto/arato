@@ -326,7 +326,7 @@ function FinanceiroRelatoriosInner() {
               // Gera HTML limpo — tabela de categorias × anos sem elementos interativos
               const d = printAnualRef.current;
               const fmtV = (v: number) => v === 0 ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
-              const corV = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "var(--text-muted)" : "#1A4870";
+              const corV = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "var(--text-muted)" : "#111111";
               // Com muitas colunas, reduz fonte e padding para maximizar aproveitamento da página
               const nCols = d.anosPresentes.length + 2; // anos + Categoria + Total
               const compacto = nCols > 8;
@@ -337,7 +337,7 @@ function FinanceiroRelatoriosInner() {
               const padSec = compacto ? "4px 6px" : "6px 10px";
 
               const th = (txt: string, align = "right") =>
-                `<th style="padding:${pad};text-align:${align};font-size:${fs};font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">${txt}</th>`;
+                `<th style="padding:${pad};text-align:${align};font-size:${fs};font-weight:700;color:#555;border-bottom:1.5px solid #111111;white-space:nowrap">${txt}</th>`;
               const td = (txt: string, opts2: { color?: string; bold?: boolean; align?: string; bg?: string } = {}) =>
                 `<td style="padding:${pad};text-align:${opts2.align ?? "right"};color:${opts2.color ?? "var(--text-1)"};font-weight:${opts2.bold ? 700 : 400};background:${opts2.bg ?? "transparent"};white-space:nowrap;font-size:${fs}">${txt}</td>`;
 
@@ -364,7 +364,7 @@ function FinanceiroRelatoriosInner() {
 
               const totalRow = (label: string, vals: number[], cor: string, bg = "var(--bg-page)", bold = true) =>
                 `<tr style="background:${bg};border-top:0.5px solid var(--border)">
-                  ${td(label, { align: "left", bold, color: "#1A4870", bg })}
+                  ${td(label, { align: "left", bold, color: "#111111", bg })}
                   ${vals.map(v => td(v === 0 ? "—" : fmtV(v), { color: v === 0 ? "#bbb" : cor, bold, bg })).join("")}
                   ${td(fmtV(vals.reduce((s, v) => s + v, 0)), { color: corV(vals.reduce((s, v) => s + v, 0)), bold, bg })}
                 </tr>`;
@@ -383,9 +383,9 @@ function FinanceiroRelatoriosInner() {
                     </tr>
                   </thead>
                   <tbody>
-                    ${secHeader("Entradas", "var(--bg-page)", "#1A4870")}
-                    ${d.entradasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.entradasA, "#1A4870") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma entrada.</td></tr>`}
-                    ${totalRow("Total Entradas", d.totEntA, "#1A4870")}
+                    ${secHeader("Entradas", "var(--bg-page)", "#111111")}
+                    ${d.entradasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.entradasA, "#111111") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma entrada.</td></tr>`}
+                    ${totalRow("Total Entradas", d.totEntA, "#111111")}
                     ${secHeader("Saídas", "var(--bg-page)", "var(--text-2)")}
                     ${d.saidasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.saidasA, "var(--text-1)") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma saída.</td></tr>`}
                     ${totalRow("Total Saídas", d.totSaiA, "var(--text-1)")}
@@ -412,13 +412,13 @@ function FinanceiroRelatoriosInner() {
 
         {/* ── Banner Apoio Financeiro (só exibe se addon ativo e aba fluxo) ── */}
         {temApoio && aba === "fluxo" && (
-          <div style={{ background: incluirApoio ? "#EFF6FF" : "#F9FAFB", borderBottom: "0.5px solid #DDE2EE", padding: "8px 22px", display: "flex", alignItems: "center", gap: 10 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 500 }}>
+          <div style={{ background: incluirApoio ? "#F2F2F2" : "#F9FAFB", borderBottom: "0.5px solid #DDE2EE", padding: "8px 22px", display: "flex", alignItems: "center", gap: 10 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 12, color: "#111111", fontWeight: 500 }}>
               <input
                 type="checkbox"
                 checked={incluirApoio}
                 onChange={e => setIncluirApoio(e.target.checked)}
-                style={{ width: 15, height: 15, accentColor: "#1A5CB8", cursor: "pointer" }}
+                style={{ width: 15, height: 15, accentColor: "#2A2A2A", cursor: "pointer" }}
               />
               Incluir baixas do Apoio Financeiro
             </label>
@@ -651,7 +651,7 @@ function FinanceiroRelatoriosInner() {
                               </div>
                               <div style={{ display: "flex", gap: 8, paddingBottom: 1 }}>
                                 <button onClick={salvarSim}
-                                  style={{ padding: "10px 18px", background: simEditId ? "#7C3AED" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                  style={{ padding: "10px 18px", background: simEditId ? "#7C3AED" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                   {simEditId ? "Salvar" : "+ Adicionar"}
                                 </button>
                                 {simEditId && (
@@ -712,7 +712,7 @@ function FinanceiroRelatoriosInner() {
                               <span style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700 }}>Impacto ({simsAtivas.length} ativas):</span>
                               <span style={{ fontSize: 14, color: "#16A34A", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0), 2)}</span>
                               <span style={{ fontSize: 14, color: "#E24B4A", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0), 2)}</span>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#1A4870" : "#E24B4A" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#111111" : "#E24B4A" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
                             </div>
                           )}
                         </div>
@@ -723,7 +723,7 @@ function FinanceiroRelatoriosInner() {
                     <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
                       {(["diario", "mensal", "anual"] as const).map(t => (
                         <button key={t} onClick={() => setSubAbaFluxo(t)}
-                          style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #1A4870" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "var(--bg-card)", color: subAbaFluxo === t ? "#1A4870" : "var(--text-3)", transition: "all 0.15s" }}>
+                          style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #111111" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "var(--bg-card)", color: subAbaFluxo === t ? "#111111" : "var(--text-3)", transition: "all 0.15s" }}>
                           {t === "diario" ? "Diário" : t === "mensal" ? "Mensal" : "Anual"}
                         </button>
                       ))}
@@ -744,14 +744,14 @@ function FinanceiroRelatoriosInner() {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end" }}>
                           <label style={labelStyle}>&nbsp;</label>
-                          <button onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#1A4870" : "var(--border-table)"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#D5E8F5" : "var(--bg-card)", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0B2D50" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          <button onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#111111" : "var(--border-table)"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#E8E8E8" : "var(--bg-card)", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0D0D0D" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                             ⊞ Produtores / Contas {filtro.produtoresSel.length + filtro.contasSel.length > 0 ? `(${filtro.produtoresSel.length + filtro.contasSel.length} selecionados)` : ""}
                           </button>
                         </div>
                         {saldoInicial !== 0 && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 2, justifyContent: "flex-end" }}>
                             <label style={labelStyle}>Saldo Inicial</label>
-                            <div style={{ padding: "7px 12px", background: saldoInicial >= 0 ? "#D5E8F5" : "#FCEBEB", borderRadius: 8, fontSize: 13, fontWeight: 700, color: saldoInicial >= 0 ? "#0B2D50" : "#E24B4A", whiteSpace: "nowrap" }}>
+                            <div style={{ padding: "7px 12px", background: saldoInicial >= 0 ? "#E8E8E8" : "#FCEBEB", borderRadius: 8, fontSize: 13, fontWeight: 700, color: saldoInicial >= 0 ? "#0D0D0D" : "#E24B4A", whiteSpace: "nowrap" }}>
                               {fmtBRL(saldoInicial, 2)}
                             </div>
                           </div>
@@ -762,7 +762,7 @@ function FinanceiroRelatoriosInner() {
                         <span style={{ fontSize: 11, color: "var(--text-3)", marginRight: 2 }}>Tipo:</span>
                         {(["ambos", "previsto", "realizado"] as const).map(t => (
                           <button key={t} onClick={() => setFiltro(f => ({ ...f, tipoVis: t }))}
-                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.tipoVis === t ? "#1A4870" : "var(--border-table)"}`, background: filtro.tipoVis === t ? "#1A4870" : "var(--bg-card)", color: filtro.tipoVis === t ? "#fff" : "var(--text-2)" }}>
+                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.tipoVis === t ? "#111111" : "var(--border-table)"}`, background: filtro.tipoVis === t ? "#111111" : "var(--bg-card)", color: filtro.tipoVis === t ? "#fff" : "var(--text-2)" }}>
                             {t === "ambos" ? "Ambos" : t === "previsto" ? "Previsto" : "Realizado"}
                           </button>
                         ))}
@@ -797,7 +797,7 @@ function FinanceiroRelatoriosInner() {
                           {/* Produtores */}
                           {produtores.length > 0 && (
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Produtores</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8 }}>Produtores</div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                                 {produtores.map(p => (
                                   <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
@@ -811,7 +811,7 @@ function FinanceiroRelatoriosInner() {
                           )}
                           {/* Contas */}
                           <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8 }}>
                               Contas Bancárias
                               {filtro.produtoresSel.length > 0 && <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>(filtradas pelo produtor)</span>}
                             </div>
@@ -857,7 +857,7 @@ function FinanceiroRelatoriosInner() {
                           ...(saldoInicial !== 0 ? [{ label: "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "var(--text-2)" : "#E24B4A" }] : []),
                           { label: "Total Entradas",           valor: fmtBRL(totalEntradas), cor: "#16A34A" },
                           { label: "Total Saídas",             valor: fmtBRL(totalSaidas),   cor: "#E24B4A" },
-                          { label: `Saldo Final${simsAtivas.length > 0 ? " (c/ sim)" : ""}`, valor: fmtBRL(saldoFinal), cor: saldoFinal >= 0 ? "#1A4870" : "#E24B4A" },
+                          { label: `Saldo Final${simsAtivas.length > 0 ? " (c/ sim)" : ""}`, valor: fmtBRL(saldoFinal), cor: saldoFinal >= 0 ? "#111111" : "#E24B4A" },
                         ].map((k, i) => (
                           <div key={i} style={{ padding: "12px 20px", borderRight: i < 2 ? "0.5px solid var(--border-row)" : "none" }}>
                             <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3 }}>{k.label}</div>
@@ -913,7 +913,7 @@ function FinanceiroRelatoriosInner() {
                                       <td style={{ padding: "8px 14px", textAlign: "right", color: "#16A34A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaEnt > 0 ? fmtBRL(diaEnt, 2) : ""}</td>
                                       <td style={{ padding: "8px 14px", textAlign: "right", color: "#E24B4A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSai > 0 ? fmtBRL(diaSai, 2) : ""}</td>
                                       <td style={{ padding: "8px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSimLiq !== 0 ? (diaSimLiq > 0 ? "+" : "−") + fmtBRL(Math.abs(diaSimLiq), 2) : ""}</td>
-                                      <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: diaUltSaldo >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(diaUltSaldo, 2)}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: diaUltSaldo >= 0 ? "#111111" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(diaUltSaldo, 2)}</td>
                                     </tr>
                                     {expandido && diaRows.map((r, idx) => {
                                       const isSim  = r.tipo_row === "simulacao";
@@ -934,8 +934,8 @@ function FinanceiroRelatoriosInner() {
                                               const orig = r.origem_lancamento;
                                               const ORIG_MAP: Record<string, { label: string; bg: string; color: string }> = {
                                                 pedido_compra:       { label: "Pedido de Compra",    bg: "#FBF3E0", color: "#7A5A12" },
-                                                nf_entrada:          { label: "NF de Entrada",       bg: "#EFF6FF", color: "#1E40AF" },
-                                                nf_saida:            { label: "NF de Saída",          bg: "#EFF6FF", color: "#1E40AF" },
+                                                nf_entrada:          { label: "NF de Entrada",       bg: "#F2F2F2", color: "#1E40AF" },
+                                                nf_saida:            { label: "NF de Saída",          bg: "#F2F2F2", color: "#1E40AF" },
                                                 contrato:            { label: "Contrato de Venda",   bg: "#DCFCE7", color: "#166534" },
                                                 arrendamento:        { label: "Arrendamento",         bg: "#FFF7ED", color: "#9A3412" },
                                                 contrato_financeiro: { label: "Contrato Financeiro",  bg: "#F3E8FF", color: "#6B21A8" },
@@ -965,7 +965,7 @@ function FinanceiroRelatoriosInner() {
                                           <td style={{ padding: "6px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 700 }}>
                                             {isSim ? ((r.simEntrada > 0 ? "+" : "−") + " " + fmtBRL(Math.max(r.simEntrada, r.simSaida), 2)) : ""}
                                           </td>
-                                          <td style={{ padding: "6px 14px", textAlign: "right", fontWeight: 700, color: r.saldo >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(r.saldo, 2)}</td>
+                                          <td style={{ padding: "6px 14px", textAlign: "right", fontWeight: 700, color: r.saldo >= 0 ? "#111111" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(r.saldo, 2)}</td>
                                         </tr>
                                       );
                                     })}
@@ -1050,8 +1050,8 @@ function FinanceiroRelatoriosInner() {
                       const totLiqAnual = totEntAnual - totSaiAnual;
                       const isSim = (cat: string) => cat.startsWith("◆ ");
                       const corM = (tipo: "receber"|"pagar", sim: boolean) =>
-                        sim ? "#7C3AED" : tipo === "receber" ? "#1A4870" : "var(--text-1)";
-                      const corSaldo = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870";
+                        sim ? "#7C3AED" : tipo === "receber" ? "#111111" : "var(--text-1)";
+                      const corSaldo = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#111111";
                       const CatRowMEl = ({ row }: { row: CatRowM }) => {
                         const totRow = row.meses.reduce((s, c) => s + c.real + c.prev + c.sim, 0);
                         if (totRow === 0) return null;
@@ -1110,7 +1110,7 @@ function FinanceiroRelatoriosInner() {
                             ].map((k, i) => (
                               <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none", background: "var(--bg-card)" }}>
                                 <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{k.label}</div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color: i === 0 ? "#1A4870" : i === 1 ? "var(--text-1)" : (k.v < 0 ? "#B91C1C" : "#1A4870") }}>{fmtBRL(k.v, 2)}</div>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: i === 0 ? "#111111" : i === 1 ? "var(--text-1)" : (k.v < 0 ? "#B91C1C" : "#111111") }}>{fmtBRL(k.v, 2)}</div>
                               </div>
                             ))}
                           </div>
@@ -1121,16 +1121,16 @@ function FinanceiroRelatoriosInner() {
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
                                   {MESES.map(m => <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>)}
-                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
+                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#111111", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                <tr style={{ background: "var(--bg-page)" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
+                                <tr style={{ background: "var(--bg-page)" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#111111", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
                                 {entradasM.length > 0 ? entradasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
                                 <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
-                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Total Entradas</td>
-                                  {totEntM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
-                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{totEntAnual === 0 ? "—" : fmtBRL(totEntAnual, 2)}</td>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#111111" }}>Total Entradas</td>
+                                  {totEntM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#111111", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#111111", whiteSpace: "nowrap" }}>{totEntAnual === 0 ? "—" : fmtBRL(totEntAnual, 2)}</td>
                                 </tr>
                                 <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border)" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "var(--text-2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
                                 {saidasM.length > 0 ? saidasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma saída.</td></tr>}
@@ -1140,12 +1140,12 @@ function FinanceiroRelatoriosInner() {
                                   <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{totSaiAnual === 0 ? "—" : fmtBRL(totSaiAnual, 2)}</td>
                                 </tr>
                                 <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #C7D7EC" }}>
-                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Mês</td>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#111111" }}>Saldo do Mês</td>
                                   {saldoMesM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: corSaldo(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldo(totLiqAnual), whiteSpace: "nowrap" }}>{totLiqAnual === 0 ? "—" : fmtBRL(totLiqAnual, 2)}</td>
                                 </tr>
                                 <tr style={{ background: "var(--bg-tag)" }}>
-                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo Acumulado</td>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#111111" }}>Saldo Acumulado</td>
                                   {saldoAcM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: corSaldo(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: corSaldo(saldoAcM[11]??totLiqAnual), whiteSpace: "nowrap" }}>{fmtBRL(saldoAcM[11]??totLiqAnual, 2)}</td>
                                 </tr>
@@ -1189,7 +1189,7 @@ function FinanceiroRelatoriosInner() {
                       // ── Barra de filtros do modo Anual ──────────────────────
                       const STATUS_OPTS: { key: string; label: string; cor: string; bg: string; bgA: string; corA: string }[] = [
                         { key: "baixado",   label: "Baixados",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#1A5C38", corA: "#fff" },
-                        { key: "em_aberto", label: "Em Aberto", cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#1A4870", corA: "#fff" },
+                        { key: "em_aberto", label: "Em Aberto", cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#111111", corA: "#fff" },
                         { key: "vencido",   label: "Vencidos",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#B91C1C", corA: "#fff" },
                         { key: "vencendo",  label: "A Vencer",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#C9921B", corA: "#fff" },
                       ];
@@ -1291,12 +1291,12 @@ function FinanceiroRelatoriosInner() {
                       const saldoAnoA = anosPresentes.map((_, i) => totEntA[i] - totSaiA[i]);
                       let _accA = 0;
                       const saldoAcA  = saldoAnoA.map(v => { _accA += v; return _accA; });
-                      const corSaldoA = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870";
+                      const corSaldoA = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#111111";
 
                       const CatRowAEl = ({ row }: { row: CatRowA }) => {
                         const totRow = row.anos.reduce((s, c) => s + c.real + c.prev, 0);
                         if (totRow === 0) return null;
-                        const cor = row.tipo === "receber" ? "#1A4870" : "var(--text-1)";
+                        const cor = row.tipo === "receber" ? "#111111" : "var(--text-1)";
                         const catKey = `${row.tipo}__${row.cat}`;
                         const expandido = expandidosA.has(catKey);
                         const detItems = Array.from(detMapA.get(catKey)?.values() ?? [])
@@ -1315,7 +1315,7 @@ function FinanceiroRelatoriosInner() {
                               <td style={{ padding: "6px 14px 6px 10px", fontSize: 12, color: cor, maxWidth: 240 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
                                   {temDetalhe ? (
-                                    <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, background: expandido ? "#D5E8F5" : "var(--bg-page)", border: "0.5px solid #C0CEDF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#1A4870", lineHeight: 1 }}>
+                                    <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, background: expandido ? "#E8E8E8" : "var(--bg-page)", border: "0.5px solid #C0CEDF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#111111", lineHeight: 1 }}>
                                       {expandido ? "−" : "+"}
                                     </span>
                                   ) : (
@@ -1388,18 +1388,18 @@ function FinanceiroRelatoriosInner() {
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 220, borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
                                   {anosPresentes.map(a => (
-                                    <th key={a} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 110 }}>{a}</th>
+                                    <th key={a} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#111111", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 110 }}>{a}</th>
                                   ))}
                                   <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total Geral</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                <tr style={{ background: "var(--bg-page)" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
+                                <tr style={{ background: "var(--bg-page)" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#111111", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
                                 {entradasA.length > 0 ? entradasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
                                 <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
-                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Total Entradas</td>
-                                  {totEntA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
-                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{fmtBRL(totEntA.reduce((s, v) => s + v, 0), 2)}</td>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#111111" }}>Total Entradas</td>
+                                  {totEntA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "#111111", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#111111", whiteSpace: "nowrap" }}>{fmtBRL(totEntA.reduce((s, v) => s + v, 0), 2)}</td>
                                 </tr>
                                 <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border)" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "var(--text-2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
                                 {saidasA.length > 0 ? saidasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma saída.</td></tr>}
@@ -1409,12 +1409,12 @@ function FinanceiroRelatoriosInner() {
                                   <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtBRL(totSaiA.reduce((s, v) => s + v, 0), 2)}</td>
                                 </tr>
                                 <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #C7D7EC" }}>
-                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Ano</td>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#111111" }}>Saldo do Ano</td>
                                   {saldoAnoA.map((v, i) => <td key={i} style={{ padding: "9px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(saldoAnoA.reduce((s, v) => s + v, 0)), whiteSpace: "nowrap" }}>{fmtBRL(saldoAnoA.reduce((s, v) => s + v, 0), 2)}</td>
                                 </tr>
                                 <tr style={{ background: "var(--bg-tag)" }}>
-                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo Acumulado</td>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#111111" }}>Saldo Acumulado</td>
                                   {saldoAcA.map((v, i) => <td key={i} style={{ padding: "9px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: corSaldoA(saldoAcA[saldoAcA.length - 1] ?? 0), whiteSpace: "nowrap" }}>{fmtBRL(saldoAcA[saldoAcA.length - 1] ?? 0, 2)}</td>
                                 </tr>
@@ -1455,7 +1455,7 @@ function FinanceiroRelatoriosInner() {
                 const totalBaixado = lancsCPCR.filter(l => l.status === "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
 
                 const corStatus: Record<string, { bg: string; color: string; label: string }> = {
-                  em_aberto: { bg: "#D5E8F5", color: "#0B2D50", label: "Em Aberto" },
+                  em_aberto: { bg: "#E8E8E8", color: "#0D0D0D", label: "Em Aberto" },
                   vencido:   { bg: "#FCEBEB", color: "#791F1F", label: "Vencido" },
                   vencendo:  { bg: "#FBF3E0", color: "#7A5A12", label: "Vencendo" },
                   baixado:   { bg: "#DCF5E8", color: "#14532D", label: "Baixado" },
@@ -1644,7 +1644,7 @@ function FinanceiroRelatoriosInner() {
                               return (
                                 <tr key={l.id} style={{ borderBottom: "0.5px solid #EEF1F7", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                                   <td style={{ padding: "9px 12px" }}>
-                                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#D5E8F5" : "#FCEBEB", color: l.tipo === "receber" ? "#0B2D50" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
+                                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
                                   </td>
                                   <td style={{ padding: "9px 12px", color: statusEfetivo(l) === "vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap" }}>
                                     {l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}
@@ -1658,7 +1658,7 @@ function FinanceiroRelatoriosInner() {
                                     {l.moeda === "USD" && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{subMoedaRel(l, cotacaoUSD)}</div>}
                                   </td>
                                   <td style={{ padding: "9px 12px", textAlign: "right" }}>
-                                    {l.auto && <span style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 4 }}>auto</span>}
+                                    {l.auto && <span style={{ fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 4 }}>auto</span>}
                                   </td>
                                 </tr>
                               );
@@ -1670,7 +1670,7 @@ function FinanceiroRelatoriosInner() {
                               <td style={{ padding: "10px 12px", textAlign: "right" }}>
                                 <div style={{ color: "#16A34A" }}>+ {fmtBRL(totalCR)}</div>
                                 <div style={{ color: "#E24B4A" }}>− {fmtBRL(totalCP)}</div>
-                                <div style={{ fontWeight: 800, color: totalCR - totalCP >= 0 ? "#1A4870" : "#E24B4A", borderTop: "0.5px solid #ccc", paddingTop: 2, marginTop: 2 }}>{fmtBRL(totalCR - totalCP)}</div>
+                                <div style={{ fontWeight: 800, color: totalCR - totalCP >= 0 ? "#111111" : "#E24B4A", borderTop: "0.5px solid #ccc", paddingTop: 2, marginTop: 2 }}>{fmtBRL(totalCR - totalCP)}</div>
                               </td>
                               <td />
                             </tr>
@@ -1834,10 +1834,10 @@ function FinanceiroRelatoriosInner() {
                     {/* KPI cards */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                       {[
-                        { label: "Total Entradas",  v: totEnt, cor: "#0B2D50", bg: "#D5E8F5" },
+                        { label: "Total Entradas",  v: totEnt, cor: "#0D0D0D", bg: "#E8E8E8" },
                         { label: "Total Saídas",    v: totSai, cor: "#791F1F", bg: "#FCEBEB" },
-                        { label: "Resultado Líquido", v: totLiq, cor: totLiq >= 0 ? "#0B2D50" : "#791F1F", bg: totLiq >= 0 ? "#D5E8F5" : "#FCEBEB" },
-                        { label: "Saldo Acumulado", v: saldoAcMensal[11] ?? totLiq, cor: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#0B2D50" : "#791F1F", bg: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#D5E8F5" : "#FCEBEB" },
+                        { label: "Resultado Líquido", v: totLiq, cor: totLiq >= 0 ? "#0D0D0D" : "#791F1F", bg: totLiq >= 0 ? "#E8E8E8" : "#FCEBEB" },
+                        { label: "Saldo Acumulado", v: saldoAcMensal[11] ?? totLiq, cor: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#0D0D0D" : "#791F1F", bg: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#E8E8E8" : "#FCEBEB" },
                       ].map((k, i) => (
                         <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none", background: k.bg }}>
                           <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
@@ -1855,7 +1855,7 @@ function FinanceiroRelatoriosInner() {
                             {MESES.map(m => (
                               <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>
                             ))}
-                            <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
+                            <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#111111", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1878,7 +1878,7 @@ function FinanceiroRelatoriosInner() {
 
                           {/* ── SALDO DO MÊS ── */}
                           <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border)" }}>
-                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "var(--bg-page)" }}>Saldo do Mês</td>
+                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#111111", position: "sticky", left: 0, background: "var(--bg-page)" }}>Saldo do Mês</td>
                             {saldoMes.map((v, i) => (
                               <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>
                                 {fmtK(v)}
@@ -1891,13 +1891,13 @@ function FinanceiroRelatoriosInner() {
 
                           {/* ── SALDO ACUMULADO ── */}
                           <tr style={{ background: "var(--bg-tag)" }}>
-                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "var(--bg-tag)" }}>Saldo Acumulado</td>
+                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#111111", position: "sticky", left: 0, background: "var(--bg-tag)" }}>Saldo Acumulado</td>
                             {saldoAcMensal.map((v, i) => (
-                              <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>
+                              <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#111111" : "#E24B4A", whiteSpace: "nowrap" }}>
                                 {fmtK(v)}
                               </td>
                             ))}
-                            <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>
+                            <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#111111" : "#E24B4A", whiteSpace: "nowrap" }}>
                               {fmtC(saldoAcMensal[11] ?? totLiq)}
                             </td>
                           </tr>
@@ -1919,7 +1919,7 @@ function FinanceiroRelatoriosInner() {
               {/* ═══════ ABA: POSIÇÃO POR CONTA ═══════ */}
               {aba === "posicao" && (() => {
                 const tipoCor: Record<string, { bg: string; color: string; label: string }> = {
-                  corrente:    { bg: "#D5E8F5", color: "#0B2D50", label: "Corrente" },
+                  corrente:    { bg: "#E8E8E8", color: "#0D0D0D", label: "Corrente" },
                   investimento:{ bg: "#DCF5E8", color: "#14532D", label: "Investimento" },
                   caixa:       { bg: "#FBF3E0", color: "#7A5A12", label: "Caixa" },
                   transitoria: { bg: "var(--bg-page)", color: "var(--text-2)",    label: "Transitória" },
@@ -1945,9 +1945,9 @@ function FinanceiroRelatoriosInner() {
                     {/* KPIs */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
                       {[
-                        { label: "Saldo Atual (realizados)", valor: fmtBRL(totalAtual), cor: totalAtual >= 0 ? "#1A4870" : "#E24B4A" },
+                        { label: "Saldo Atual (realizados)", valor: fmtBRL(totalAtual), cor: totalAtual >= 0 ? "#111111" : "#E24B4A" },
                         { label: "Entradas Projetadas",      valor: fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0)), cor: "#16A34A" },
-                        { label: "Saldo Projetado",          valor: fmtBRL(totalProj), cor: totalProj >= 0 ? "#1A4870" : "#E24B4A" },
+                        { label: "Saldo Projetado",          valor: fmtBRL(totalProj), cor: totalProj >= 0 ? "#111111" : "#E24B4A" },
                       ].map(k => (
                         <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border-row)" }}>
                           <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
@@ -1977,10 +1977,10 @@ function FinanceiroRelatoriosInner() {
                                 <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{(p.conta.saldo_inicial ?? 0) !== 0 ? fmtBRL(p.conta.saldo_inicial!) : "—"}</td>
                                 <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{p.entradasReal > 0 ? fmtBRL(p.entradasReal) : "—"}</td>
                                 <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A", fontWeight: 600 }}>{p.saidasReal > 0 ? fmtBRL(p.saidasReal) : "—"}</td>
-                                <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: p.saldoAtual >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(p.saldoAtual)}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: p.saldoAtual >= 0 ? "#111111" : "#E24B4A" }}>{fmtBRL(p.saldoAtual)}</td>
                                 <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A" }}>{p.entradasProj > 0 ? fmtBRL(p.entradasProj) : "—"}</td>
                                 <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A" }}>{p.saidasProj > 0 ? fmtBRL(p.saidasProj) : "—"}</td>
-                                <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: p.saldoProj >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(p.saldoProj)}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: p.saldoProj >= 0 ? "#111111" : "#E24B4A" }}>{fmtBRL(p.saldoProj)}</td>
                               </tr>
                             );
                           })}
@@ -1990,10 +1990,10 @@ function FinanceiroRelatoriosInner() {
                             <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtBRL(posicoes.reduce((s, p) => s + (p.conta.saldo_inicial ?? 0), 0))}</td>
                             <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.entradasReal, 0))}</td>
                             <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.saidasReal, 0))}</td>
-                            <td style={{ padding: "10px 12px", textAlign: "right", color: totalAtual >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(totalAtual)}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: totalAtual >= 0 ? "#111111" : "#E24B4A" }}>{fmtBRL(totalAtual)}</td>
                             <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0))}</td>
                             <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.saidasProj, 0))}</td>
-                            <td style={{ padding: "10px 12px", textAlign: "right", color: totalProj >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(totalProj)}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: totalProj >= 0 ? "#111111" : "#E24B4A" }}>{fmtBRL(totalProj)}</td>
                           </tr>
                         </tbody>
                       </table>

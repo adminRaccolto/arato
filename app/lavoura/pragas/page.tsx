@@ -97,7 +97,7 @@ const NIVEL_META: Record<number, { label: string; cor: string; bg: string; borde
 
 const TIPO_META: Record<string, { label: string; cor: string; bg: string; icone: string }> = {
   praga:          { label: "Praga",           cor: "#7C2D12", bg: "#FEF2F2", icone: "🐛" },
-  doenca:         { label: "Doença",          cor: "#1E3A5F", bg: "#EFF6FF", icone: "🍂" },
+  doenca:         { label: "Doença",          cor: "#1E3A5F", bg: "#F2F2F2", icone: "🍂" },
   planta_daninha: { label: "Planta Daninha",  cor: "#14532D", bg: "#F0FDF4", icone: "🌿" },
 };
 
@@ -327,7 +327,7 @@ export default function PragasPage() {
             <a href="/campo/monitoramento" style={{ padding: "8px 14px", background: "#FBF3E0", color: "#C9921B", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
               📱 App Campo
             </a>
-            <button onClick={abrirModal} style={{ padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            <button onClick={abrirModal} style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
               + Novo Registro
             </button>
           </div>
@@ -336,7 +336,7 @@ export default function PragasPage() {
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
-            { label: "Total de Registros", valor: registros.length, sub: "todos os ciclos", cor: "#1A4870", destaque: false },
+            { label: "Total de Registros", valor: registros.length, sub: "todos os ciclos", cor: "#111111", destaque: false },
             { label: "Nível Crítico",      valor: criticos, sub: criticos > 0 ? "⚠ ação imediata" : "nenhum", cor: criticos > 0 ? "#DC2626" : "var(--text-3)", destaque: criticos > 0 },
             { label: "Nível Alto",         valor: altos, sub: altos > 0 ? "monitorar de perto" : "nenhum",  cor: altos > 0 ? "#92400E" : "var(--text-3)", destaque: altos > 0 },
             { label: "Com Coordenadas GPS",valor: comGPS, sub: `de ${registros.length} registros`, cor: "#16A34A", destaque: false },
@@ -368,8 +368,8 @@ export default function PragasPage() {
           {(["lista", "mapa", "relatorio"] as const).map(a => (
             <button key={a} onClick={() => setAba(a)} style={{
               padding: "10px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
-              fontWeight: aba === a ? 700 : 400, color: aba === a ? "#1A4870" : "#666",
-              borderBottom: aba === a ? "2.5px solid #1A4870" : "2.5px solid transparent",
+              fontWeight: aba === a ? 700 : 400, color: aba === a ? "#111111" : "#666",
+              borderBottom: aba === a ? "2.5px solid #111111" : "2.5px solid transparent",
             }}>
               {a === "lista" ? "📋 Lista" : a === "mapa" ? "📍 Mapa / Pontos GPS" : "📊 Relatório de Incidência"}
             </button>
@@ -505,7 +505,7 @@ export default function PragasPage() {
                           <a
                             href={`https://maps.google.com/?q=${r.gps_lat},${r.gps_lng}&z=18`}
                             target="_blank" rel="noreferrer"
-                            style={{ display: "block", marginTop: 8, textAlign: "center", fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}
+                            style={{ display: "block", marginTop: 8, textAlign: "center", fontSize: 12, color: "#111111", fontWeight: 600, textDecoration: "none" }}
                           >
                             🗺 Abrir no Maps
                           </a>
@@ -742,7 +742,7 @@ export default function PragasPage() {
                     {gpsErro && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>{gpsErro}</div>}
                   </div>
                   <button type="button" onClick={capturarGPS} disabled={gpsBusy}
-                    style={{ padding: "9px 14px", background: gpsBusy ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gpsBusy ? "wait" : "pointer", whiteSpace: "nowrap" }}>
+                    style={{ padding: "9px 14px", background: gpsBusy ? "var(--text-muted)" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gpsBusy ? "wait" : "pointer", whiteSpace: "nowrap" }}>
                     {gpsBusy ? "Aguarde..." : "Capturar GPS"}
                   </button>
                 </div>
@@ -805,7 +805,7 @@ export default function PragasPage() {
 
               <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
                 <button onClick={fecharModal} style={{ flex: 1, padding: 10, borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
-                <button onClick={salvar} disabled={salvando} style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+                <button onClick={salvar} disabled={salvando} style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
                   {salvando ? "Salvando..." : "✓ Salvar Registro"}
                 </button>
               </div>

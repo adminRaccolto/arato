@@ -99,7 +99,7 @@ const TIPO_OP_LABEL: Record<string, string> = {
 const STATUS_MODULO_LABEL: Record<string, { label: string; cor: string }> = {
   campo:         { label: "No campo",      cor: "#16A34A" },
   em_transporte: { label: "Em transporte", cor: "#EF9F27" },
-  entregue:      { label: "Entregue",      cor: "#1A4870" },
+  entregue:      { label: "Entregue",      cor: "#111111" },
 };
 
 const STATUS_BENEF_LABEL: Record<string, { label: string; cor: string }> = {
@@ -126,7 +126,7 @@ const lbl: React.CSSProperties = {
 };
 
 const btnPrimary: React.CSSProperties = {
-  padding: "8px 18px", background: "#1A4870", color: "#fff",
+  padding: "8px 18px", background: "#111111", color: "#fff",
   border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
@@ -448,7 +448,7 @@ export default function AlgodaoPage() {
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <div>
             <label style={{ ...lbl, marginBottom: 2 }}>Fazenda *</label>
-            <select value={fazTrabalho} onChange={e => { setFazTrabalho(e.target.value); setCicloSel(""); }} style={{ ...inp, width: 200, fontWeight: 600, color: "#1A4870" }}>
+            <select value={fazTrabalho} onChange={e => { setFazTrabalho(e.target.value); setCicloSel(""); }} style={{ ...inp, width: 200, fontWeight: 600, color: "#111111" }}>
               <option value="">— selecionar —</option>
               {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
             </select>
@@ -514,9 +514,9 @@ export default function AlgodaoPage() {
           <button key={a.key} onClick={() => setAba(a.key)} style={{
             padding: "9px 16px", border: "none", cursor: "pointer",
             fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
-            color: aba === a.key ? "#1A4870" : "#666",
+            color: aba === a.key ? "#111111" : "#666",
             background: "transparent",
-            borderBottom: aba === a.key ? "2.5px solid #1A4870" : "2.5px solid transparent",
+            borderBottom: aba === a.key ? "2.5px solid #111111" : "2.5px solid transparent",
             marginBottom: -1,
           }}>{a.label}</button>
         ))}
@@ -570,7 +570,7 @@ export default function AlgodaoPage() {
                       {operacoes.map((o, i) => (
                         <tr key={o.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                           <td style={{ padding: "8px 10px" }}>
-                            <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: o.tipo === "defoliacao" ? "#FEF3C7" : "#D5E8F5", color: o.tipo === "defoliacao" ? "#92400E" : "#1A4870" }}>
+                            <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: o.tipo === "defoliacao" ? "#FEF3C7" : "#E8E8E8", color: o.tipo === "defoliacao" ? "#92400E" : "#111111" }}>
                               {TIPO_OP_LABEL[o.tipo] ?? o.tipo}
                             </span>
                           </td>
@@ -705,9 +705,9 @@ export default function AlgodaoPage() {
                     </div>
                   );
                 })}
-                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: "4px solid #1A4870" }}>
+                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: "4px solid #111111" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>Peso Estimado Total</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: "#1A4870" }}>{fmtN(pesoEstimadoKg / 1000, 1)} ton</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#111111" }}>{fmtN(pesoEstimadoKg / 1000, 1)} ton</div>
                 </div>
               </div>
 
@@ -901,7 +901,7 @@ export default function AlgodaoPage() {
                 {[
                   { l: "Fardos Produzidos", v: fmtN(totalFardos), cor: "#0B1E35", sub: `${fmtN(totalPlumaKg / 1000, 1)} ton pluma` },
                   { l: "Valor Estimado", v: fmtR(valorEstoqueR), cor: "#16A34A", sub: `@ ${fmtR(preco_arroba)}/@ · ${fmtN(preco_cbot_cents, 1)} ¢/lb` },
-                  { l: "Preço Hoje (@)", v: fmtR(preco_arroba), cor: "#1A4870", sub: `${fmtN(preco_cbot_cents, 2)} ¢/lb (ICE/CBOT)` },
+                  { l: "Preço Hoje (@)", v: fmtR(preco_arroba), cor: "#111111", sub: `${fmtN(preco_cbot_cents, 2)} ¢/lb (ICE/CBOT)` },
                   { l: "Rendimento Médio", v: rendMedPct ? `${fmtN(rendMedPct, 1)}%` : "—", cor: "#C9921B", sub: "pluma / algodão caroço" },
                 ].map(c => (
                   <div key={c.l} style={{ ...card, borderTop: `4px solid ${c.cor}` }}>
@@ -920,7 +920,7 @@ export default function AlgodaoPage() {
                     {[
                       { l: "Módulos no campo", v: `${modulos.filter(m => m.status === "campo").length} módulos`, cor: "#16A34A" },
                       { l: "Módulos em transporte", v: `${modulos.filter(m => m.status === "em_transporte").length} módulos`, cor: "#EF9F27" },
-                      { l: "Entregues na algodoeira", v: `${modulosEntregues} módulos  ≈  ${fmtN(pesoEstimadoKg / 1000, 1)} ton caroço`, cor: "#1A4870" },
+                      { l: "Entregues na algodoeira", v: `${modulosEntregues} módulos  ≈  ${fmtN(pesoEstimadoKg / 1000, 1)} ton caroço`, cor: "#111111" },
                       { l: "Fardos produzidos", v: `${fmtN(totalFardos)} fardos  (${fmtN(totalPlumaKg / 1000, 1)} ton pluma)`, cor: "#0B1E35" },
                       { l: "Caroço retornado", v: `${fmtN(totalCarocoKg / 1000, 1)} ton`, cor: "var(--text-3)" },
                     ].map(r => (
@@ -949,7 +949,7 @@ export default function AlgodaoPage() {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span style={{ color: "var(--text-2)", fontSize: 12 }}>R$ por fardo ({PESO_FARDO_KG}kg pluma)</span>
-                        <span style={{ fontWeight: 700, color: "#1A4870" }}>{fmtR(preco_arroba / 15 * PESO_FARDO_KG)}</span>
+                        <span style={{ fontWeight: 700, color: "#111111" }}>{fmtR(preco_arroba / 15 * PESO_FARDO_KG)}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span style={{ color: "var(--text-2)", fontSize: 12 }}>USD/BRL</span>
@@ -1374,7 +1374,7 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
       )}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button style={{ padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13 }} onClick={onCancel}>Cancelar</button>
-        <button style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }} disabled={salvando} onClick={() => onSalvar(armadilhaId, data, qtd)}>
+        <button style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }} disabled={salvando} onClick={() => onSalvar(armadilhaId, data, qtd)}>
           {salvando ? "Salvando…" : "Salvar Leitura"}
         </button>
       </div>

@@ -41,7 +41,7 @@ const AUTOMACOES: Automacao[] = [
     schedule:      "0 10 * * 1",
     scheduleLabel: "Toda segunda-feira às 7h BRT",
     endpoint:      "/api/cron/relatorio-semanal",
-    cor:           "#1A4870",
+    cor:           "#111111",
     icone:         "📊",
     categoria:     "relatorios",
   },
@@ -204,7 +204,7 @@ export default function AutomacoesPage() {
         </div>
 
         {/* Banner */}
-        <div style={{ background: "#EBF5FF", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <div style={{ background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
           <span style={{ fontSize: 18 }}>⚙️</span>
           <div style={{ fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
             <strong>Cron Jobs na Vercel</strong> — os horários usam UTC convertido para Brasília (UTC-3).
@@ -271,11 +271,11 @@ export default function AutomacoesPage() {
 
                         {/* Config SIEG resumida */}
                         {aut.temConfig && cfg.cnpjs && (
-                          <div style={{ marginTop: 6, fontSize: 11, color: "#1A4870", background: "#EBF5FF", padding: "4px 10px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ marginTop: 6, fontSize: 11, color: "#111111", background: "#EEEEEE", padding: "4px 10px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <span>CNPJ(s) monitorados: <strong>{cfg.cnpjs}</strong></span>
                             <button
                               onClick={() => { setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" }); setModalSieg(true); }}
-                              style={{ background: "none", border: "none", color: "#1A4870", fontSize: 11, cursor: "pointer", fontWeight: 600, padding: 0 }}
+                              style={{ background: "none", border: "none", color: "#111111", fontSize: 11, cursor: "pointer", fontWeight: 600, padding: 0 }}
                             >
                               Editar
                             </button>
@@ -411,7 +411,7 @@ export default function AutomacoesPage() {
               { key: "NEXT_PUBLIC_APP_URL",          desc: "URL pública do app (ex: https://web.arato.agr.br)",        obrig: false },
             ].map(v => (
               <div key={v.key} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: "0.5px solid #F0F2F8" }}>
-                <code style={{ fontSize: 12, background: "#F0F2F8", padding: "2px 8px", borderRadius: 5, color: "#1A4870", minWidth: 240, flexShrink: 0 }}>{v.key}</code>
+                <code style={{ fontSize: 12, background: "#F0F2F8", padding: "2px 8px", borderRadius: 5, color: "#111111", minWidth: 240, flexShrink: 0 }}>{v.key}</code>
                 <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1 }}>{v.desc}</span>
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: v.obrig ? "#FEF2F2" : "var(--bg-page)", color: v.obrig ? "#991B1B" : "var(--text-3)", border: `0.5px solid ${v.obrig ? "#FECACA" : "var(--border)"}`, flexShrink: 0 }}>
                   {v.obrig ? "Obrigatório" : "Opcional"}
@@ -475,7 +475,7 @@ export default function AutomacoesPage() {
               <button
                 onClick={salvarSieg}
                 disabled={salvando["sieg-sync"]}
-                style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 {salvando["sieg-sync"] ? "Salvando…" : "Salvar Configuração"}
               </button>

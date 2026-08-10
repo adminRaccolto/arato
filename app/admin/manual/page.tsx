@@ -6,8 +6,8 @@ import { Suspense } from "react";
 function Secao({ n, titulo, children }: { n: string; titulo: string; children: React.ReactNode }) {
   return (
     <div className="section" style={{ marginBottom: 44 }}>
-      <h2 style={{ fontSize: 17, fontWeight: 800, color: "#1A4870", borderBottom: "2px solid #1A4870", paddingBottom: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ background: "#1A4870", color: "#fff", borderRadius: 6, padding: "2px 10px", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{n}</span>
+      <h2 style={{ fontSize: 17, fontWeight: 800, color: "#111111", borderBottom: "2px solid #111111", paddingBottom: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ background: "#111111", color: "#fff", borderRadius: 6, padding: "2px 10px", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{n}</span>
         {titulo}
       </h2>
       {children}
@@ -18,7 +18,7 @@ function Secao({ n, titulo, children }: { n: string; titulo: string; children: R
 function SubSecao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50", borderBottom: "0.5px solid #D5E8F5", paddingBottom: 6, marginBottom: 14 }}>{titulo}</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D", borderBottom: "0.5px solid #E8E8E8", paddingBottom: 6, marginBottom: 14 }}>{titulo}</h3>
       {children}
     </div>
   );
@@ -26,8 +26,8 @@ function SubSecao({ titulo, children }: { titulo: string; children: React.ReactN
 
 function Passo({ n, titulo, children }: { n: string; titulo: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 18, paddingLeft: 18, borderLeft: "3px solid #1A4870" }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 6 }}>
+    <div style={{ marginBottom: 18, paddingLeft: 18, borderLeft: "3px solid #111111" }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#111111", marginBottom: 6 }}>
         Passo {n} — {titulo}
       </div>
       {children}
@@ -37,7 +37,7 @@ function Passo({ n, titulo, children }: { n: string; titulo: string; children: R
 
 function Code({ children }: { children: string }) {
   return (
-    <pre style={{ background: "#0B2D50", color: "#E2F0FF", padding: "14px 18px", borderRadius: 8, fontSize: 12, overflowX: "auto", margin: "10px 0", lineHeight: 1.7, fontFamily: "'Courier New', monospace" }}>
+    <pre style={{ background: "#0D0D0D", color: "#E2F0FF", padding: "14px 18px", borderRadius: 8, fontSize: 12, overflowX: "auto", margin: "10px 0", lineHeight: 1.7, fontFamily: "'Courier New', monospace" }}>
       {children}
     </pre>
   );
@@ -45,7 +45,7 @@ function Code({ children }: { children: string }) {
 
 function Info({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ background: "#EBF5FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "11px 15px", marginBottom: 12, fontSize: 12.5, color: "#1e40af", lineHeight: 1.6 }}>
+    <div style={{ background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "11px 15px", marginBottom: 12, fontSize: 12.5, color: "#1e40af", lineHeight: 1.6 }}>
       {children}
     </div>
   );
@@ -81,7 +81,7 @@ function Tabela({ colunas, linhas }: { colunas: string[]; linhas: string[][] }) 
       <thead>
         <tr style={{ background: "var(--bg-page)" }}>
           {colunas.map(c => (
-            <th key={c} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "#1A4870", border: "0.5px solid var(--border)" }}>{c}</th>
+            <th key={c} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "#111111", border: "0.5px solid var(--border)" }}>{c}</th>
           ))}
         </tr>
       </thead>
@@ -112,7 +112,7 @@ function ManualContent() {
         </div>
         <button
           onClick={() => window.print()}
-          style={{ padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
         >
           ⬇ Salvar como PDF
         </button>
@@ -133,9 +133,9 @@ function ManualContent() {
       <main className="manual-wrap" style={{ maxWidth: 900, margin: "0 auto", padding: "36px 32px", fontFamily: "system-ui, sans-serif", fontSize: 13, color: "var(--text-1)", lineHeight: 1.7 }}>
 
         {/* ── Capa ── */}
-        <div style={{ textAlign: "center", padding: "32px 0 44px", borderBottom: "2px solid #1A4870", marginBottom: 44 }}>
+        <div style={{ textAlign: "center", padding: "32px 0 44px", borderBottom: "2px solid #111111", marginBottom: 44 }}>
           <div style={{ fontSize: 11, color: "var(--text-3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Raccolto Consultoria · Documento Interno</div>
-          <h1 style={{ fontSize: 30, fontWeight: 900, color: "#1A4870", margin: "0 0 6px" }}>Arato SaaS</h1>
+          <h1 style={{ fontSize: 30, fontWeight: 900, color: "#111111", margin: "0 0 6px" }}>Arato SaaS</h1>
           <div style={{ fontSize: 16, color: "var(--text-2)", marginBottom: 28 }}>Manual Completo do Proprietário do Sistema</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
             {["Versão 2.0", "Abril 2026", "Uso interno"].map(t => (
@@ -146,7 +146,7 @@ function ManualContent() {
 
         {/* ── Índice ── */}
         <div className="section" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#1A4870", marginBottom: 16 }}>Índice</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#111111", marginBottom: 16 }}>Índice</h2>
           {[
             ["1",  "Visão Geral — Como o SaaS Funciona"],
             ["2",  "Adicionando um Novo Cliente (Checklist Completo)"],
@@ -165,7 +165,7 @@ function ManualContent() {
             ["15", "Resumo de Variáveis de Ambiente"],
           ].map(([n, t]) => (
             <div key={n} style={{ display: "flex", gap: 12, padding: "5px 0", borderBottom: "0.5px dotted #EEF1F6" }}>
-              <span style={{ color: "#1A4870", fontWeight: 700, minWidth: 28, flexShrink: 0 }}>{n}.</span>
+              <span style={{ color: "#111111", fontWeight: 700, minWidth: 28, flexShrink: 0 }}>{n}.</span>
               <span>{t}</span>
             </div>
           ))}
@@ -615,7 +615,7 @@ RESEND_FROM=alertas@raccolto.com.br`}</Code>
               "Após 3–5 testes sem erros → mudar para Produção",
             ].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "5px 0", borderBottom: "0.5px dotted #EEF1F6" }}>
-                <span style={{ color: "#1A4870", fontWeight: 700, flexShrink: 0 }}>☐</span>
+                <span style={{ color: "#111111", fontWeight: 700, flexShrink: 0 }}>☐</span>
                 <span style={{ fontSize: 13 }}>{item}</span>
               </div>
             ))}

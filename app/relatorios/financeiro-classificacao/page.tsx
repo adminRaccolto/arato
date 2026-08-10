@@ -20,7 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
   vencido: "Vencido", parcial: "Parcial", baixado: "Pago",
 };
 const STATUS_COR: Record<string, string> = {
-  em_aberto: "#378ADD", vencendo: "#EF9F27",
+  em_aberto: "#444444", vencendo: "#EF9F27",
   vencido: "#E24B4A", parcial: "#9333EA", baixado: "#16A34A",
 };
 
@@ -176,14 +176,14 @@ function RelFinClassInner() {
         </tr>`).join("");
 
       return `
-        <tr style="background:#1A4870">
+        <tr style="background:#111111">
           <td colspan="7" style="padding:6px 10px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.05em">
             ${g.label}
           </td>
         </tr>
         ${rows}
-        <tr style="background:#EFF3FA;border-top:1px solid #D5E8F5">
-          <td colspan="4" style="padding:4px 10px;font-size:9px;font-weight:700;color:#1A4870;text-align:right">
+        <tr style="background:#EFF3FA;border-top:1px solid #E8E8E8">
+          <td colspan="4" style="padding:4px 10px;font-size:9px;font-weight:700;color:#111111;text-align:right">
             Subtotal ${g.label}
           </td>
           <td colspan="3" style="padding:4px 10px;font-size:10px;font-weight:700;color:${subTotal >= 0 ? "#16A34A" : "#DC2626"};text-align:right">
@@ -203,23 +203,23 @@ function RelFinClassInner() {
       <table style="border-collapse:collapse;font-family:system-ui,sans-serif;white-space:nowrap">
         <thead>
           <tr style="background:var(--bg-page)">
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:left;white-space:nowrap">Vcto</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:left;white-space:nowrap">Descrição</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:left;white-space:nowrap">Fornecedor / Cliente</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:center;white-space:nowrap">Parcela</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:right;white-space:nowrap">Valor</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:center;white-space:nowrap">Status</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:center;white-space:nowrap">Baixa</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:left;white-space:nowrap">Vcto</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:left;white-space:nowrap">Descrição</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:left;white-space:nowrap">Fornecedor / Cliente</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:center;white-space:nowrap">Parcela</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:right;white-space:nowrap">Valor</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:center;white-space:nowrap">Status</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:center;white-space:nowrap">Baixa</th>
           </tr>
         </thead>
         <tbody>
           ${gruposHtml}
-          <tr style="background:#1A4870;border-top:2px solid #0B2D50">
+          <tr style="background:#111111;border-top:2px solid #0D0D0D">
             <td colspan="4" style="padding:6px 10px;font-size:10px;font-weight:700;color:#fff;text-align:right">TOTAL GERAL</td>
             <td colspan="3" style="padding:6px 10px;font-size:11px;font-weight:800;color:${saldo >= 0 ? "#86EFAC" : "#FCA5A5"};text-align:right">${fmtBRL(saldo)}</td>
           </tr>
           <tr style="background:var(--bg-page)">
-            <td colspan="4" style="padding:4px 10px;font-size:9px;color:#1A4870;text-align:right">Entradas</td>
+            <td colspan="4" style="padding:4px 10px;font-size:9px;color:#111111;text-align:right">Entradas</td>
             <td colspan="3" style="padding:4px 10px;font-size:9px;color:#16A34A;font-weight:600;text-align:right">+${fmtBRL(totalEntradas)}</td>
           </tr>
           <tr style="background:var(--bg-page)">
@@ -329,9 +329,9 @@ function RelFinClassInner() {
   const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
   const btnCheck = (active: boolean, cor?: string): React.CSSProperties => ({
     padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
-    border: `0.5px solid ${active ? (cor ?? "#1A4870") : "var(--border-table)"}`,
-    background: active ? (cor ?? "#1A4870") + "15" : "var(--bg-card)",
-    color: active ? (cor ?? "#1A4870") : "var(--text-3)",
+    border: `0.5px solid ${active ? (cor ?? "#111111") : "var(--border-table)"}`,
+    background: active ? (cor ?? "#111111") + "15" : "var(--bg-card)",
+    color: active ? (cor ?? "#111111") : "var(--text-3)",
   });
 
   return (
@@ -348,7 +348,7 @@ function RelFinClassInner() {
           </div>
           {gerado && (
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 PDF / Imprimir
               </button>
               <button onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -374,7 +374,7 @@ function RelFinClassInner() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {(["todos", "pagar", "receber"] as const).map(t => (
                   <button key={t} onClick={() => setTipo(t)}
-                    style={{ ...btnCheck(tipo === t, t === "receber" ? "#16A34A" : t === "pagar" ? "#DC2626" : "#1A4870") }}>
+                    style={{ ...btnCheck(tipo === t, t === "receber" ? "#16A34A" : t === "pagar" ? "#DC2626" : "#111111") }}>
                     {t === "todos" ? "Todos" : t === "pagar" ? "Contas a Pagar" : "Contas a Receber"}
                   </button>
                 ))}
@@ -398,7 +398,7 @@ function RelFinClassInner() {
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
               <label style={{ ...lbl, margin: 0 }}>Classificações</label>
               <button onClick={() => setClassifSel(new Set(classifOpts.map(c => c.chave)))}
-                style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                style={{ fontSize: 11, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                 Todas
               </button>
               <button onClick={() => setClassifSel(new Set())}
@@ -433,7 +433,7 @@ function RelFinClassInner() {
                 { label: "Entradas", val: totalEntradas, cor: "#16A34A" },
                 { label: "Saídas",   val: totalSaidas,   cor: "#DC2626" },
                 { label: "Saldo",    val: saldo,          cor: saldo >= 0 ? "#16A34A" : "#DC2626" },
-                { label: "Lançamentos", val: totalLinhas,  cor: "#1A4870", isNum: true },
+                { label: "Lançamentos", val: totalLinhas,  cor: "#111111", isNum: true },
               ].map(k => (
                 <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
                   <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</p>
@@ -466,7 +466,7 @@ function RelFinClassInner() {
                         return (
                           <React.Fragment key={g.chave}>
                             {/* Cabeçalho do grupo */}
-                            <tr style={{ background: "#1A4870" }}>
+                            <tr style={{ background: "#111111" }}>
                               <td colSpan={7} style={{ padding: "8px 12px", fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>
                                 {g.label}
                                 <span style={{ float: "right", fontSize: 11, opacity: 0.8 }}>{g.rows.length} lançamento{g.rows.length !== 1 ? "s" : ""}</span>
@@ -495,8 +495,8 @@ function RelFinClassInner() {
                               </tr>
                             ))}
                             {/* Subtotal */}
-                            <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #D5E8F5" }}>
-                              <td colSpan={4} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#1A4870", textAlign: "right" }}>
+                            <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #E8E8E8" }}>
+                              <td colSpan={4} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#111111", textAlign: "right" }}>
                                 Subtotal
                               </td>
                               <td colSpan={3} style={{ padding: "6px 12px", fontSize: 13, fontWeight: 800, textAlign: "right", color: subTotal >= 0 ? "#16A34A" : "#DC2626" }}>
@@ -507,7 +507,7 @@ function RelFinClassInner() {
                         );
                       })}
                       {/* Total geral */}
-                      <tr style={{ background: "#1A4870" }}>
+                      <tr style={{ background: "#111111" }}>
                         <td colSpan={4} style={{ padding: "10px 12px", fontSize: 13, fontWeight: 700, color: "#fff", textAlign: "right" }}>TOTAL GERAL</td>
                         <td colSpan={3} style={{ padding: "10px 12px", fontSize: 15, fontWeight: 800, textAlign: "right", color: saldo >= 0 ? "#86EFAC" : "#FCA5A5" }}>
                           {fmtBRL(saldo)}

@@ -72,7 +72,7 @@ type Urgencia = "critico" | "alto" | "medio" | "info";
 const COR: Record<Urgencia, { bg: string; border: string; text: string; badge: string }> = {
   critico: { bg: "#FEF2F2", border: "#FECACA", text: "#991B1B", badge: "#E24B4A" },
   alto:    { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E", badge: "#EF9F27" },
-  medio:   { bg: "#EFF6FF", border: "#BFDBFE", text: "#1e40af", badge: "#378ADD" },
+  medio:   { bg: "#F2F2F2", border: "#BFDBFE", text: "#1e40af", badge: "#444444" },
   info:    { bg: "#F0FDF4", border: "#BBF7D0", text: "#166534", badge: "#16A34A" },
 };
 
@@ -171,7 +171,7 @@ export default function Dashboard() {
           res.push({ id: `cic-${r.id}`, categoria: "Ciclo", titulo: r.nome, subtitulo: r.cultura, link: "/lavoura", cor: "#16A34A" });
         }
         for (const r of insumoRes.data ?? []) {
-          res.push({ id: `ins-${r.id}`, categoria: "Insumo", titulo: r.nome, subtitulo: r.categoria, link: "/estoque", cor: "#1A4870" });
+          res.push({ id: `ins-${r.id}`, categoria: "Insumo", titulo: r.nome, subtitulo: r.categoria, link: "/estoque", cor: "#111111" });
         }
         for (const r of pessoaRes.data ?? []) {
           res.push({ id: `pes-${r.id}`, categoria: "Pessoa", titulo: r.nome, subtitulo: r.cpf_cnpj, link: "/cadastros?tab=pessoas", cor: "var(--text-2)" });
@@ -628,12 +628,12 @@ export default function Dashboard() {
   const ATALHOS = [
     { label: "Contas a Pagar",   link: "/financeiro/pagar",    cor: "#E24B4A", sigla: "CP" },
     { label: "Contas a Receber", link: "/financeiro/receber",  cor: "#16A34A", sigla: "CR" },
-    { label: "Pedido de Compra", link: "/compras",             cor: "#1A4870", sigla: "PC" },
-    { label: "NF Entrada",       link: "/compras/nf",          cor: "#1A4870", sigla: "NF" },
+    { label: "Pedido de Compra", link: "/compras",             cor: "#111111", sigla: "PC" },
+    { label: "NF Entrada",       link: "/compras/nf",          cor: "#111111", sigla: "NF" },
     { label: "Contratos Grãos",  link: "/contratos",           cor: "#C9921B", sigla: "CG" },
     { label: "Estoque",          link: "/estoque",             cor: "var(--text-2)", sigla: "ES" },
     { label: "Lavoura",          link: "/lavoura",             cor: "#16A34A", sigla: "LV" },
-    { label: "Relatórios",       link: "/relatorios",          cor: "#378ADD", sigla: "RL" },
+    { label: "Relatórios",       link: "/relatorios",          cor: "#444444", sigla: "RL" },
   ];
 
   const CSS = `
@@ -659,7 +659,7 @@ export default function Dashboard() {
         {/* ═══ HERO COMPACTO ═══ */}
         <div style={{
           padding:"22px 28px 20px",
-          background:"linear-gradient(160deg,#0A1628 0%,#0D1F38 60%,#091422 100%)",
+          background:"linear-gradient(160deg,#0D0D0D 0%,#0D1F38 60%,#091422 100%)",
           borderBottom:"0.5px solid var(--border)",
           animation:"fadeUp .5s ease both",
         }}>
@@ -780,7 +780,7 @@ export default function Dashboard() {
               <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Alertas &amp; Pendências</span>
               {!loadAl && (
                 <span style={{ fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,
-                  background:alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.1)":alertas.some(a=>a.urgencia==="alto")?"rgba(251,191,36,0.1)":"rgba(22,163,74,0.08)",
+                  background:alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.1)":alertas.some(a=>a.urgencia==="alto")?"#F0F0F0":"rgba(22,163,74,0.08)",
                   color:alertas.some(a=>a.urgencia==="critico")?"#E24B4A":alertas.some(a=>a.urgencia==="alto")?"#EF9F27":"#16A34A",
                   border:`0.5px solid ${alertas.some(a=>a.urgencia==="critico")?"rgba(226,75,74,0.3)":alertas.some(a=>a.urgencia==="alto")?"rgba(239,159,39,0.3)":"rgba(22,163,74,0.2)"}` }}>
                   {alertas.length === 0 ? "Tudo em dia" : `${alertas.length} ${alertas.length===1?"item":"itens"}`}
@@ -824,7 +824,7 @@ export default function Dashboard() {
             <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
               <div style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                 <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Inconsistências de Conciliação</span>
-                <span style={{ fontSize:11,fontWeight:700,color:"#FBBF24",background:"rgba(251,191,36,0.1)",padding:"2px 8px",borderRadius:10,border:"0.5px solid rgba(251,191,36,0.3)" }}>
+                <span style={{ fontSize:11,fontWeight:700,color:"#555555",background:"#F0F0F0",padding:"2px 8px",borderRadius:10,border:"0.5px solid #D8D8D8" }}>
                   {conciliPend.length} sem lançamento
                 </span>
               </div>

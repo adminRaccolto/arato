@@ -23,7 +23,7 @@ type NfRow = {
 type FiltroAba = "pendentes" | "todas" | "ciencia" | "confirmada" | "desconhecimento" | "nao_realizada";
 
 const MAN_CFG = [
-  { tipo: 0, label: "Ciência",       cor: "#378ADD", bg: "#EFF6FF", status: "ciencia",        desc: "Ciente da existência da NF",    justObrig: false },
+  { tipo: 0, label: "Ciência",       cor: "#444444", bg: "#F2F2F2", status: "ciencia",        desc: "Ciente da existência da NF",    justObrig: false },
   { tipo: 1, label: "Confirmar",     cor: "#16A34A", bg: "#DCFCE7", status: "confirmada",      desc: "Confirmação da operação",        justObrig: false },
   { tipo: 2, label: "Desconhecer",   cor: "#C9921B", bg: "#FBF3E0", status: "desconhecimento", desc: "Desconheço esta operação",       justObrig: true  },
   { tipo: 3, label: "Não Realizada", cor: "#E24B4A", bg: "#FFF0F0", status: "nao_realizada",   desc: "Operação não foi realizada",    justObrig: true  },
@@ -31,7 +31,7 @@ const MAN_CFG = [
 
 const ST_CFG: Record<string, { label: string; cor: string; bg: string }> = {
   pendente:        { label: "Pendente",        cor: "var(--text-3)",    bg: "#F3F4F6" },
-  ciencia:         { label: "Ciência",         cor: "#378ADD", bg: "#EFF6FF" },
+  ciencia:         { label: "Ciência",         cor: "#444444", bg: "#F2F2F2" },
   confirmada:      { label: "Confirmada",      cor: "#16A34A", bg: "#DCFCE7" },
   desconhecimento: { label: "Desconhecimento", cor: "#C9921B", bg: "#FBF3E0" },
   nao_realizada:   { label: "Não Realizada",   cor: "#E24B4A", bg: "#FFF0F0" },
@@ -193,12 +193,12 @@ export default function SiegManifestacao() {
               </select>
             </div>
           ) : cnpjDest ? (
-            <div style={{ fontSize: 11, color: "var(--text-2)", background: "#D5E8F5", padding: "4px 10px", borderRadius: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--text-2)", background: "#E8E8E8", padding: "4px 10px", borderRadius: 6 }}>
               Destinatário: <strong>{fmtDoc(cnpjDest)}</strong>
             </div>
           ) : null}
           <button onClick={sincronizar} disabled={syncing}
-            style={{ padding: "8px 18px", background: syncing ? "var(--border)" : "#1A4870", color: syncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: syncing ? "default" : "pointer" }}>
+            style={{ padding: "8px 18px", background: syncing ? "var(--border)" : "#111111", color: syncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: syncing ? "default" : "pointer" }}>
             {syncing ? "⏳ Sincronizando…" : "⟳ Sincronizar com SIEG"}
           </button>
         </div>
@@ -213,7 +213,7 @@ export default function SiegManifestacao() {
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
         {[
-          { label: "Total NFs",      v: nfs.length,   cor: "#1A4870", fmtR: false },
+          { label: "Total NFs",      v: nfs.length,   cor: "#111111", fmtR: false },
           { label: "Pendentes",      v: pendentes,    cor: "#C9921B", fmtR: false },
           { label: "Manifestadas",   v: manifestadas, cor: "#16A34A", fmtR: false },
           { label: "Valor Pendente", v: valorPend,    cor: "#E24B4A", fmtR: true  },
@@ -237,9 +237,9 @@ export default function SiegManifestacao() {
             { id: "nao_realizada",   label: "Não Realizada",   cnt: nfs.filter(n=>n.status==="nao_realizada").length },
           ] as { id: FiltroAba; label: string; cnt: number }[]).map(a => (
             <button key={a.id} onClick={() => setFiltroAba(a.id)}
-              style={{ padding: "12px 14px", border: "none", background: "transparent", fontWeight: filtroAba===a.id?700:400, fontSize: 13, color: filtroAba===a.id?"var(--text-1)":"var(--text-3)", borderBottom: `2px solid ${filtroAba===a.id?"#1A4870":"transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              style={{ padding: "12px 14px", border: "none", background: "transparent", fontWeight: filtroAba===a.id?700:400, fontSize: 13, color: filtroAba===a.id?"var(--text-1)":"var(--text-3)", borderBottom: `2px solid ${filtroAba===a.id?"#111111":"transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               {a.label}
-              {a.cnt > 0 && <span style={{ fontSize: 10, background: filtroAba===a.id?"#D5E8F5":"#F0F0F0", color: filtroAba===a.id?"#1A4870":"var(--text-3)", padding: "1px 6px", borderRadius: 8 }}>{a.cnt}</span>}
+              {a.cnt > 0 && <span style={{ fontSize: 10, background: filtroAba===a.id?"#E8E8E8":"#F0F0F0", color: filtroAba===a.id?"#111111":"var(--text-3)", padding: "1px 6px", borderRadius: 8 }}>{a.cnt}</span>}
             </button>
           ))}
         </div>
@@ -255,7 +255,7 @@ export default function SiegManifestacao() {
           <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
             {filtroAba === "pendentes" ? "Nenhuma NF pendente de manifestação." : "Nenhuma NF encontrada."}
             <div style={{ marginTop: 12 }}>
-              <button onClick={sincronizar} style={{ color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}>
+              <button onClick={sincronizar} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}>
                 Sincronizar com SIEG agora
               </button>
             </div>
@@ -289,7 +289,7 @@ export default function SiegManifestacao() {
                         {nf.emitente_cnpj ? fmtDoc(nf.emitente_cnpj) : "—"}
                       </td>
                       <td style={{ padding: "9px 12px", textAlign: "center", whiteSpace: "nowrap" }}>{fmtData(nf.data_emissao)}</td>
-                      <td style={{ padding: "9px 12px", textAlign: "center", fontWeight: 600, color: "#1A4870" }}>{fmtR$(nf.valor_total ?? 0)}</td>
+                      <td style={{ padding: "9px 12px", textAlign: "center", fontWeight: 600, color: "#111111" }}>{fmtR$(nf.valor_total ?? 0)}</td>
                       <td style={{ padding: "9px 12px", textAlign: "center" }}>
                         <span style={{ padding: "3px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: st.bg, color: st.cor }}>
                           {isBusy ? "⏳…" : st.label}

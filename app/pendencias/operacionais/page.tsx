@@ -182,7 +182,7 @@ export default function PendenciasOperacionais() {
               Transferências aguardando aprovação + operações do WhatsApp sem insumo vinculado
             </p>
           </div>
-          <button onClick={carregar} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
+          <button onClick={carregar} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
             Atualizar
           </button>
         </div>
@@ -195,7 +195,7 @@ export default function PendenciasOperacionais() {
                 📦 Transferências de Insumos
                 <span style={{ marginLeft: 8, background: "#FEF3C7", color: "#92400E", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{solTransf.length} pendente{solTransf.length > 1 ? "s" : ""}</span>
               </div>
-              <a href="/estoque/transferencias" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Ver todas →</a>
+              <a href="/estoque/transferencias" style={{ fontSize: 12, color: "#111111", fontWeight: 600, textDecoration: "none" }}>Ver todas →</a>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {solTransf.map(s => (
@@ -216,7 +216,7 @@ export default function PendenciasOperacionais() {
                     )}
                     {s.solicitante_nome && <div style={{ fontSize: 11, color: "#1D4ED8", marginTop: 3 }}>📲 {s.solicitante_nome}</div>}
                   </div>
-                  <a href="/estoque/transferencias" style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
+                  <a href="/estoque/transferencias" style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
                     Aprovar →
                   </a>
                 </div>
@@ -233,7 +233,7 @@ export default function PendenciasOperacionais() {
                 🚜 Transferências de Máquinas
                 <span style={{ marginLeft: 8, background: "#FEF3C7", color: "#92400E", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{solMaq.length} pendente{solMaq.length > 1 ? "s" : ""}</span>
               </div>
-              <a href="/estoque/transferencias" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Ver todas →</a>
+              <a href="/estoque/transferencias" style={{ fontSize: 12, color: "#111111", fontWeight: 600, textDecoration: "none" }}>Ver todas →</a>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {solMaq.map(s => (
@@ -253,7 +253,7 @@ export default function PendenciasOperacionais() {
                     {s.data_necessidade && <div style={{ fontSize: 11, color: "#92400E" }}>Necessário até: {s.data_necessidade.split("-").reverse().join("/")}</div>}
                     {s.solicitante_nome && <div style={{ fontSize: 11, color: "#1D4ED8", marginTop: 3 }}>📲 {s.solicitante_nome}</div>}
                   </div>
-                  <a href="/estoque/transferencias" style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
+                  <a href="/estoque/transferencias" style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
                     Aprovar →
                   </a>
                 </div>
@@ -274,7 +274,7 @@ export default function PendenciasOperacionais() {
           {[
             { label: "Pendentes",  value: cntPendente,  bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
             { label: "Resolvidas", value: cntResolvida, bg: "#D1FAE5", color: "#065F46", border: "#6EE7B7" },
-            { label: "Total",      value: pendencias.length, bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE" },
+            { label: "Total",      value: pendencias.length, bg: "#F2F2F2", color: "#1D4ED8", border: "#BFDBFE" },
           ].map(k => (
             <div key={k.label} style={{ background: k.bg, border: `0.5px solid ${k.border}`, borderRadius: 10, padding: "14px 18px" }}>
               <div style={{ fontSize: 11, color: k.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{k.label}</div>
@@ -396,7 +396,7 @@ export default function PendenciasOperacionais() {
 
                     {/* Quem enviou via WhatsApp */}
                     {(p.usuario_nome || p.usuario_whatsapp) && (
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 20, padding: "3px 10px" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, background: "#F2F2F2", border: "0.5px solid #BFDBFE", borderRadius: 20, padding: "3px 10px" }}>
                         <span style={{ fontSize: 12 }}>📲</span>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8" }}>
                           {p.usuario_nome || p.usuario_whatsapp}
@@ -468,7 +468,7 @@ export default function PendenciasOperacionais() {
 
             {/* Quem enviou */}
             {(modal.usuario_nome || modal.usuario_whatsapp) && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "8px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, background: "#F2F2F2", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "8px 14px" }}>
                 <span style={{ fontSize: 14 }}>📲</span>
                 <div>
                   <span style={{ fontSize: 11, color: "#60A5FA" }}>Enviado por: </span>
@@ -530,8 +530,8 @@ export default function PendenciasOperacionais() {
                       style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         padding: "10px 14px", cursor: "pointer",
-                        background: sel ? "#D5E8F5" : "transparent",
-                        borderLeft: sel ? "3px solid #1A4870" : "3px solid transparent",
+                        background: sel ? "#E8E8E8" : "transparent",
+                        borderLeft: sel ? "3px solid #111111" : "3px solid transparent",
                         borderBottom: "0.5px solid var(--bg-tag)",
                       }}
                     >
@@ -541,7 +541,7 @@ export default function PendenciasOperacionais() {
                           Unidade: {ins.unidade} · Estoque: {Number(ins.estoque ?? 0).toLocaleString("pt-BR")} · Custo médio: R$ {Number(ins.custo_medio ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
                       </div>
-                      {sel && <span style={{ fontSize: 14, color: "#1A4870" }}>✓</span>}
+                      {sel && <span style={{ fontSize: 14, color: "#111111" }}>✓</span>}
                     </div>
                   );
                 })
@@ -550,7 +550,7 @@ export default function PendenciasOperacionais() {
 
             {/* O que vai acontecer */}
             {insumoSel && (
-              <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#1D4ED8" }}>
+              <div style={{ background: "#F2F2F2", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#1D4ED8" }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>Ao confirmar, o sistema vai:</div>
                 <ul style={{ margin: "0 0 0 16px", padding: 0, lineHeight: 1.8 }}>
                   <li>Inserir o item na operação original ({subtipoLabel[modal.subtipo ?? ""] ?? modal.subtipo})</li>

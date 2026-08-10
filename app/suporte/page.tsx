@@ -196,13 +196,13 @@ export default function SuportePage() {
             {/* Header */}
             <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870" }}>Suporte Chat</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#111111" }}>Suporte Chat</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>Olívia · Assistente Virtual</div>
               </div>
               <button
                 onClick={novaConversa}
                 style={{
-                  background: "#1A4870", color: "#fff", border: "none", borderRadius: 7,
+                  background: "#111111", color: "#fff", border: "none", borderRadius: 7,
                   padding: "5px 10px", fontSize: 12, cursor: "pointer", fontWeight: 600,
                 }}
               >
@@ -227,8 +227,8 @@ export default function SuportePage() {
                       onClick={() => abrirConversa(conv)}
                       style={{
                         padding: "10px 14px",
-                        background: ativa ? "#D5E8F5" : "transparent",
-                        borderLeft: ativa ? "3px solid #1A4870" : "3px solid transparent",
+                        background: ativa ? "#E8E8E8" : "transparent",
+                        borderLeft: ativa ? "3px solid #111111" : "3px solid transparent",
                         cursor: "pointer",
                         borderBottom: "0.5px solid #f0f0f0",
                         display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -236,7 +236,7 @@ export default function SuportePage() {
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          fontSize: 12, fontWeight: ativa ? 600 : 400, color: ativa ? "#1A4870" : "#333",
+                          fontSize: 12, fontWeight: ativa ? 600 : 400, color: ativa ? "#111111" : "#333",
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {conv.titulo ?? "Nova conversa"}
@@ -290,7 +290,7 @@ export default function SuportePage() {
                   ) : mensagens.length === 0 ? (
                     <div style={{ textAlign: "center", marginTop: 40 }}>
                       <img src="/suporte-avatar.jpg" alt="Assistente" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", objectPosition: "top center", marginBottom: 12, display: "block", marginLeft: "auto", marginRight: "auto" }} />
-                      <div style={{ fontSize: 16, fontWeight: 600, color: "#1A4870", marginBottom: 6 }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "#111111", marginBottom: 6 }}>
                         Olá! Sou a Olívia, assistente virtual do Arato.
                       </div>
                       <div style={{ fontSize: 13, color: "#666", marginBottom: 24 }}>
@@ -326,7 +326,7 @@ export default function SuportePage() {
                         )}
                         <div style={{
                           maxWidth: "72%",
-                          background: msg.role === "user" ? "#1A4870" : "var(--bg-page)",
+                          background: msg.role === "user" ? "#111111" : "var(--bg-page)",
                           color: msg.role === "user" ? "#fff" : "var(--text-1)",
                           borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                           padding: "10px 14px",
@@ -360,7 +360,7 @@ export default function SuportePage() {
                         <div style={{ display: "flex", gap: 4 }}>
                           {[0, 1, 2].map(i => (
                             <div key={i} style={{
-                              width: 6, height: 6, background: "#1A4870", borderRadius: "50%",
+                              width: 6, height: 6, background: "#111111", borderRadius: "50%",
                               animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
                             }} />
                           ))}
@@ -398,7 +398,7 @@ export default function SuportePage() {
                     onClick={enviarMensagem}
                     disabled={!input.trim() || enviando}
                     style={{
-                      background: (!input.trim() || enviando) ? "#ccc" : "#1A4870",
+                      background: (!input.trim() || enviando) ? "#ccc" : "#111111",
                       color: "#fff", border: "none", borderRadius: 10,
                       width: 40, height: 40, fontSize: 18, cursor: (!input.trim() || enviando) ? "not-allowed" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -412,7 +412,7 @@ export default function SuportePage() {
               /* Estado vazio — sem conversa selecionada */
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
                 <img src="/suporte-avatar.jpg" alt="Assistente" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", objectPosition: "top center", marginBottom: 16 }} />
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", marginBottom: 4 }}>Olívia</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#111111", marginBottom: 4 }}>Olívia</div>
                 <div style={{ fontSize: 12, color: "#16A34A", marginBottom: 12, fontWeight: 500 }}>● Online</div>
                 <div style={{ fontSize: 14, color: "#666", maxWidth: 380, lineHeight: 1.6, marginBottom: 24 }}>
                   Tire dúvidas sobre o Arato, regras fiscais do agronegócio e melhores práticas do campo.
@@ -421,7 +421,7 @@ export default function SuportePage() {
                 <button
                   onClick={novaConversa}
                   style={{
-                    background: "#1A4870", color: "#fff", border: "none", borderRadius: 10,
+                    background: "#111111", color: "#fff", border: "none", borderRadius: 10,
                     padding: "12px 28px", fontSize: 14, fontWeight: 600, cursor: "pointer",
                   }}
                 >

@@ -119,7 +119,7 @@ export default function AlterarSenha() {
                     <div key={n} style={{
                       flex: 1, height: 4, borderRadius: 4,
                       background: n <= forca
-                        ? forca >= 4 ? "#16A34A" : forca >= 3 ? "#C9921B" : "#378ADD"
+                        ? forca >= 4 ? "#16A34A" : forca >= 3 ? "#C9921B" : "#444444"
                         : "#E8ECF4",
                       transition: "background 0.2s",
                     }} />

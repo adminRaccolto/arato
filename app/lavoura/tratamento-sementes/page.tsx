@@ -41,11 +41,11 @@ const inp: React.CSSProperties = {
   outline: "none", color: "#1a1a1a",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
-const btn = (bg = "#1A4870", color = "#fff"): React.CSSProperties => ({
+const btn = (bg = "#111111", color = "#fff"): React.CSSProperties => ({
   padding: "8px 18px", background: bg, color, border: "none", borderRadius: 8,
   fontWeight: 600, cursor: "pointer", fontSize: 13,
 });
-const btnSm = (bg = "#1A4870", color = "#fff"): React.CSSProperties => ({
+const btnSm = (bg = "#111111", color = "#fff"): React.CSSProperties => ({
   padding: "5px 12px", background: bg, color, border: "none", borderRadius: 6,
   fontWeight: 600, cursor: "pointer", fontSize: 12,
 });
@@ -639,7 +639,7 @@ export default function TratamentoSementesPage() {
         {!readOnly && (
           <button
             onClick={() => addItem(lista, setLista)}
-            style={{ ...btnSm("#F4F6FA", "#1A4870"), border: "0.5px dashed #1A4870", marginTop: 4 }}
+            style={{ ...btnSm("#F4F6FA", "#111111"), border: "0.5px dashed #111111", marginTop: 4 }}
           >
             + Produto
           </button>
@@ -684,7 +684,7 @@ export default function TratamentoSementesPage() {
           ].map(a => (
             <button key={a.id} onClick={() => setAba(a.id as typeof aba)} style={{
               padding: "8px 18px", border: "none", borderRadius: 8, cursor: "pointer",
-              background: aba === a.id ? "#1A4870" : "#fff",
+              background: aba === a.id ? "#111111" : "#fff",
               color:      aba === a.id ? "#fff"    : "#555",
               fontWeight: aba === a.id ? 600        : 400,
               fontSize: 13, boxShadow: "0 1px 3px #0001",
@@ -701,7 +701,7 @@ export default function TratamentoSementesPage() {
                 { label: "Planejadas",    valor: kpiPlanejadas,   cor: "#555",    bg: "#EFF0F5" },
                 { label: "Em Tratamento", valor: kpiEmTratamento, cor: "#C9921B", bg: "#FBF3E0" },
                 { label: "Concluídas",    valor: kpiConcluidas,   cor: "#15803D", bg: "#DCFCE7" },
-                { label: "Total (sc)",    valor: fmtN(kpiTotalSc, 0), cor: "#1A4870", bg: "#D5E8F5" },
+                { label: "Total (sc)",    valor: fmtN(kpiTotalSc, 0), cor: "#111111", bg: "#E8E8E8" },
               ].map(k => (
                 <div key={k.label} style={{ ...card, padding: "16px 20px" }}>
                   <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>{k.label}</div>
@@ -724,7 +724,7 @@ export default function TratamentoSementesPage() {
                   ].map(s => (
                     <button key={s.id} onClick={() => setFiltroStatus(s.id)} style={{
                       padding: "5px 12px", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12,
-                      background: filtroStatus === s.id ? "#1A4870" : "#F4F6FA",
+                      background: filtroStatus === s.id ? "#111111" : "#F4F6FA",
                       color:      filtroStatus === s.id ? "#fff"    : "#555",
                     }}>{s.label}</button>
                   ))}
@@ -775,7 +775,7 @@ export default function TratamentoSementesPage() {
                     const nProd = (t.tratamento_sementes_itens ?? []).length;
                     return (
                       <tr key={t.id} style={{ borderBottom: "0.5px solid #DDE2EE", background: idx % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                        <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1A4870" }}>
+                        <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#111111" }}>
                           #{String(t.numero ?? "—").padStart(3, "0")}
                         </td>
                         <td style={{ padding: "10px 14px", fontSize: 12, color: "#555" }}>
@@ -819,7 +819,7 @@ export default function TratamentoSementesPage() {
                             {/* Detalhe */}
                             <button
                               onClick={() => { setDetalhe(t); setModalDetalhe(true); }}
-                              style={btnSm("#F4F6FA", "#1A4870")}
+                              style={btnSm("#F4F6FA", "#111111")}
                               title="Ver detalhe"
                             >Detalhe</button>
 
@@ -835,7 +835,7 @@ export default function TratamentoSementesPage() {
 
                             {/* Editar */}
                             {(t.status === "planejada") && (
-                              <button onClick={() => abrirEditar(t)} style={btnSm("#F4F6FA", "#1A4870")}>Abrir</button>
+                              <button onClick={() => abrirEditar(t)} style={btnSm("#F4F6FA", "#111111")}>Abrir</button>
                             )}
 
                             {/* Cancelar */}
@@ -893,7 +893,7 @@ export default function TratamentoSementesPage() {
                         );
                         setModalReceita(true);
                       }}
-                      style={btnSm("#F4F6FA", "#1A4870")}
+                      style={btnSm("#F4F6FA", "#111111")}
                     >Abrir</button>
                     <button
                       onClick={async () => {
@@ -953,7 +953,7 @@ export default function TratamentoSementesPage() {
 
             {/* Seção 1: Identificação */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
                 IDENTIFICAÇÃO
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
@@ -994,7 +994,7 @@ export default function TratamentoSementesPage() {
 
             {/* Seção 2: Semente */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
                 SEMENTE
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 130px 1fr", gap: 14 }}>
@@ -1038,7 +1038,7 @@ export default function TratamentoSementesPage() {
             {/* Seção 3: Produtos de Tratamento */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870" }}>PRODUTOS DE TRATAMENTO</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#111111" }}>PRODUTOS DE TRATAMENTO</div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {receitas.length > 0 && (
                     <>
@@ -1064,7 +1064,7 @@ export default function TratamentoSementesPage() {
 
             {/* Seção 4: Responsável */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
                 RESPONSÁVEL / EQUIPAMENTO
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
@@ -1117,7 +1117,7 @@ export default function TratamentoSementesPage() {
 
             {/* Dados de execução */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>EXECUÇÃO</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>EXECUÇÃO</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div>
                   <label style={lbl}>Qtd. Tratada (sc) *</label>
@@ -1144,7 +1144,7 @@ export default function TratamentoSementesPage() {
 
             {/* Qualidade */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>RESULTADO DE QUALIDADE</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>RESULTADO DE QUALIDADE</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 <div>
                   <label style={lbl}>Germinação (%)</label>
@@ -1174,7 +1174,7 @@ export default function TratamentoSementesPage() {
             {/* Consumo por produto */}
             {itensConcluir.length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
                   CONSUMO REAL DOS PRODUTOS
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px", gap: 8, marginBottom: 6 }}>
@@ -1273,7 +1273,7 @@ export default function TratamentoSementesPage() {
               {/* Qualidade (se concluída) */}
               {detalhe.status === "concluida" && (
                 <div style={{ background: "#F4F6FA", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>RESULTADO DE QUALIDADE</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 10 }}>RESULTADO DE QUALIDADE</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                     {[
                       { label: "Germinação", valor: detalhe.germinacao_pct, sufixo: "%", alerta: (v: number) => v < 80 },
@@ -1298,7 +1298,7 @@ export default function TratamentoSementesPage() {
 
               {/* Produtos */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>PRODUTOS APLICADOS</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 10 }}>PRODUTOS APLICADOS</div>
                 {(detalhe.tratamento_sementes_itens ?? []).length === 0
                   ? <div style={{ color: "#aaa", fontSize: 13 }}>Nenhum produto registrado.</div>
                   : (detalhe.tratamento_sementes_itens ?? []).map((it, i) => {
@@ -1372,7 +1372,7 @@ export default function TratamentoSementesPage() {
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6 }}>
                 PRODUTOS (doses por 100 kg de semente)
               </div>
               <TabelaProdutos lista={itensReceita} setLista={setItensReceita} qtdSc="100" />

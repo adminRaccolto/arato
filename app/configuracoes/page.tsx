@@ -38,7 +38,7 @@ const corTipoConta = (t: ContaContabil["tipo"]) => ({
   ativo:   { bg: "#EAF3DE", color: "#1A5C38", label: "ATIVO"   },
   passivo: { bg: "#FCEBEB", color: "#791F1F", label: "PASSIVO" },
   pl:      { bg: "#F0EAF8", color: "#4B1A8A", label: "PL"      },
-  receita: { bg: "#D5E8F5", color: "#0B2D50", label: "RECEITA" },
+  receita: { bg: "#E8E8E8", color: "#0D0D0D", label: "RECEITA" },
   custo:   { bg: "#FAEEDA", color: "#633806", label: "CUSTO"   },
   despesa: { bg: "#FBF3E0", color: "#8B5E14", label: "DESPESA" },
 }[t]);
@@ -229,11 +229,11 @@ function ConfiguracoesInner() {
           {aba === "hub" && (
             <>
               {/* Acesso Raccolto */}
-              <div style={{ background: "var(--bg-card)", border: `1px solid ${raccoltoAcesso ? "#1A4870" : "var(--border-table)"}`, borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ background: "var(--bg-card)", border: `1px solid ${raccoltoAcesso ? "#111111" : "var(--border-table)"}`, borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Acesso de Suporte Raccolto</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: raccoltoAcesso ? "#1A4870" : "var(--border-row)", color: raccoltoAcesso ? "#fff" : "#666" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: raccoltoAcesso ? "#111111" : "var(--border-row)", color: raccoltoAcesso ? "#fff" : "#666" }}>
                       {raccoltoAcesso ? "ATIVO" : "INATIVO"}
                     </span>
                   </div>
@@ -247,7 +247,7 @@ function ConfiguracoesInner() {
                 <button
                   onClick={toggleRaccolto}
                   disabled={salvandoRaccolto}
-                  style={{ flexShrink: 0, padding: "8px 18px", borderRadius: 8, border: `1px solid ${raccoltoAcesso ? "#E24B4A" : "#1A4870"}`, background: raccoltoAcesso ? "#FCEBEB" : "#1A4870", color: raccoltoAcesso ? "#791F1F" : "#fff", fontWeight: 700, fontSize: 13, cursor: salvandoRaccolto ? "wait" : "pointer", whiteSpace: "nowrap" }}
+                  style={{ flexShrink: 0, padding: "8px 18px", borderRadius: 8, border: `1px solid ${raccoltoAcesso ? "#E24B4A" : "#111111"}`, background: raccoltoAcesso ? "#FCEBEB" : "#111111", color: raccoltoAcesso ? "#791F1F" : "#fff", fontWeight: 700, fontSize: 13, cursor: salvandoRaccolto ? "wait" : "pointer", whiteSpace: "nowrap" }}
                 >
                   {salvandoRaccolto ? "Salvando…" : raccoltoAcesso ? "Desativar" : "Ativar Acesso Raccolto"}
                 </button>
@@ -280,7 +280,7 @@ function ConfiguracoesInner() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <button onClick={salvarBasis} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                  <button onClick={salvarBasis} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                     Salvar
                   </button>
                   {basisSalvo && <span style={{ fontSize: 12, color: "#1A5C38", fontWeight: 600 }}>Salvo — dashboard atualizado</span>}
@@ -306,12 +306,12 @@ function ConfiguracoesInner() {
                   ] as { key: typeof filtroContas; label: string; count: number }[]).map(f => (
                     <button key={f.key} onClick={() => setFiltroContas(f.key)} style={{
                       padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
-                      borderColor: filtroContas === f.key ? "#1A4870" : "var(--border-table)",
-                      background: filtroContas === f.key ? "#D5E8F5" : "transparent",
-                      color: filtroContas === f.key ? "#0B2D50" : "#666",
+                      borderColor: filtroContas === f.key ? "#111111" : "var(--border-table)",
+                      background: filtroContas === f.key ? "#E8E8E8" : "transparent",
+                      color: filtroContas === f.key ? "#0D0D0D" : "#666",
                       fontWeight: filtroContas === f.key ? 600 : 400, fontSize: 12, cursor: "pointer",
                     }}>
-                      {f.label} <span style={{ fontSize: 10, marginLeft: 3, background: filtroContas === f.key ? "#1A4870" : "var(--border-row)", color: filtroContas === f.key ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 6 }}>{f.count}</span>
+                      {f.label} <span style={{ fontSize: 10, marginLeft: 3, background: filtroContas === f.key ? "#111111" : "var(--border-row)", color: filtroContas === f.key ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 6 }}>{f.count}</span>
                     </button>
                   ))}
                 </div>
@@ -339,9 +339,9 @@ function ConfiguracoesInner() {
                       const w = window.open("", "_blank", "width=900,height=700");
                       if (!w) return;
                       w.document.write(`<!DOCTYPE html><html><head><title>Plano de Contas</title>
-                        <style>body{font-family:Arial,sans-serif;margin:20px}h2{color:#1A4870;margin-bottom:4px}
+                        <style>body{font-family:Arial,sans-serif;margin:20px}h2{color:#111111;margin-bottom:4px}
                         p{color:#888;font-size:11px;margin:0 0 14px}table{width:100%;border-collapse:collapse}
-                        th{background:#1A4870;color:#fff;padding:7px 12px;text-align:left;font-size:11px}
+                        th{background:#111111;color:#fff;padding:7px 12px;text-align:left;font-size:11px}
                         @media print{@page{size:A4;margin:15mm}}</style></head>
                         <body><h2>Plano de Contas Contábil</h2>
                         <p>Emitido em ${new Date().toLocaleDateString("pt-BR")} · ${contasFiltradas.length} contas</p>
@@ -430,7 +430,7 @@ function ConfiguracoesInner() {
               </div>
 
               {certs.length === 0 ? (
-                <div style={{ border: "0.5px dashed #1A4870", borderRadius: 10, padding: "36px", textAlign: "center", background: "#F5F9FF", marginBottom: 16 }}>
+                <div style={{ border: "0.5px dashed #111111", borderRadius: 10, padding: "36px", textAlign: "center", background: "#F5F9FF", marginBottom: 16 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 4 }}>Nenhum certificado configurado</div>
                   <div style={{ fontSize: 12, color: "var(--text-2)" }}>Carregue um arquivo .pfx ou .p12 para assinar NF-e automaticamente</div>
                 </div>
@@ -445,7 +445,7 @@ function ConfiguracoesInner() {
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
                             <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{cert.produtor_nome || "Titular não informado"}</span>
                             {cert.cpf_cnpj && <span style={{ fontSize: 11, color: "var(--text-3)" }}>{cert.cpf_cnpj}</span>}
-                            <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 5 }}>A1 · .pfx</span>
+                            <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 6px", borderRadius: 5 }}>A1 · .pfx</span>
                           </div>
                           <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{cert.arquivo_nome}</div>
                           {cert.data_vencimento ? (
@@ -461,7 +461,7 @@ function ConfiguracoesInner() {
                             <span style={{ fontSize: 11, color: "#EF9F27" }}>Vencimento não informado</span>
                           )}
                         </div>
-                        <button onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }} style={{ padding: "7px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "transparent", color: "#1A4870", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                        <button onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }} style={{ padding: "7px 16px", border: "0.5px solid #111111", borderRadius: 8, background: "transparent", color: "#111111", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                           Atualizar
                         </button>
                       </div>
@@ -470,7 +470,7 @@ function ConfiguracoesInner() {
                 </div>
               )}
 
-              <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487030", borderRadius: 8, padding: "10px 14px", fontSize: 11, color: "#0B2D50" }}>
+              <div style={{ background: "#E8E8E8", border: "0.5px solid #11111130", borderRadius: 8, padding: "10px 14px", fontSize: 11, color: "#0D0D0D" }}>
                 O sistema verifica automaticamente a validade e envia alertas 30, 15, 7 e 1 dia antes do vencimento.
               </div>
             </div>
@@ -616,9 +616,9 @@ function ConfiguracoesInner() {
                       if (f && (f.name.endsWith(".pfx") || f.name.endsWith(".p12"))) setCertFile(f);
                       else if (f) alert("Selecione um arquivo .pfx ou .p12");
                     }}
-                    style={{ border: `0.5px dashed ${certArrastando ? "#1A4870" : "#aab"}`, borderRadius: 8, padding: "28px 20px", textAlign: "center", background: certArrastando ? "#EEF4FF" : "#F7FDFA", cursor: "pointer" }}
+                    style={{ border: `0.5px dashed ${certArrastando ? "#111111" : "#aab"}`, borderRadius: 8, padding: "28px 20px", textAlign: "center", background: certArrastando ? "#EEF4FF" : "#F7FDFA", cursor: "pointer" }}
                   >
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>{certArrastando ? "Solte o arquivo aqui" : "Clique para selecionar"}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#111111", marginBottom: 4 }}>{certArrastando ? "Solte o arquivo aqui" : "Clique para selecionar"}</div>
                     <div style={{ fontSize: 11, color: "var(--text-3)" }}>ou arraste o arquivo .pfx / .p12 aqui</div>
                   </div>
                 )}
@@ -638,7 +638,7 @@ function ConfiguracoesInner() {
               </div>
             )}
             {!certSucesso && (
-              <div style={{ marginTop: 14, background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50" }}>
+              <div style={{ marginTop: 14, background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0D0D0D" }}>
                 O certificado é armazenado de forma segura e usado apenas para assinar NF-e automaticamente.
               </div>
             )}

@@ -31,13 +31,13 @@ export default function OnboardingPanel() {
               : `Etapa ${stepsCompletos + 1} de ${TOTAL_STEPS} — complete as etapas para liberar todos os módulos`}
           </div>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "#1A4870" }}>{pct}%</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: "#111111" }}>{pct}%</div>
       </div>
 
       {/* Barra de progresso */}
-      <div style={{ background: "#D5E8F5", borderRadius: 99, height: 8, marginBottom: 24 }}>
+      <div style={{ background: "#E8E8E8", borderRadius: 99, height: 8, marginBottom: 24 }}>
         <div style={{
-          background: "#1A4870",
+          background: "#111111",
           borderRadius: 99,
           height: 8,
           width: `${pct}%`,
@@ -59,8 +59,8 @@ export default function OnboardingPanel() {
               gap: 14,
               padding: "14px 16px",
               borderRadius: 8,
-              border: `0.5px solid ${atual ? "#1A4870" : "var(--border)"}`,
-              background: atual ? "#D5E8F5" : completo ? "var(--bg-page)" : "var(--bg-card)",
+              border: `0.5px solid ${atual ? "#111111" : "var(--border)"}`,
+              background: atual ? "#E8E8E8" : completo ? "var(--bg-page)" : "var(--bg-card)",
               opacity: futuro ? 0.45 : 1,
             }}>
               {/* Ícone */}
@@ -68,7 +68,7 @@ export default function OnboardingPanel() {
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
-                background: completo ? "#1A4870" : atual ? "#1A5CB8" : "var(--border)",
+                background: completo ? "#111111" : atual ? "#2A2A2A" : "var(--border)",
                 color: completo || atual ? "#fff" : "var(--text-3)",
                 display: "flex",
                 alignItems: "center",
@@ -89,7 +89,7 @@ export default function OnboardingPanel() {
                 {/* Instruções expandidas só no step atual */}
                 {atual && (
                   <div style={{ marginTop: 10 }}>
-                    <div style={{ fontSize: 12, color: "#0B2D50", fontWeight: 600, marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: "#0D0D0D", fontWeight: 600, marginBottom: 6 }}>
                       Como fazer:
                     </div>
                     <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -101,7 +101,7 @@ export default function OnboardingPanel() {
                       <button
                         onClick={() => router.push(step.path)}
                         style={{
-                          background: "#1A4870",
+                          background: "#111111",
                           color: "#fff",
                           border: "none",
                           borderRadius: 6,
@@ -117,8 +117,8 @@ export default function OnboardingPanel() {
                         onClick={refetchOnboarding}
                         style={{
                           background: "transparent",
-                          color: "#1A4870",
-                          border: "0.5px solid #1A4870",
+                          color: "#111111",
+                          border: "0.5px solid #111111",
                           borderRadius: 6,
                           padding: "7px 14px",
                           fontSize: 13,
@@ -136,8 +136,8 @@ export default function OnboardingPanel() {
               {completo && (
                 <div style={{
                   fontSize: 11,
-                  background: "#D5E8F5",
-                  color: "#0B2D50",
+                  background: "#E8E8E8",
+                  color: "#0D0D0D",
                   borderRadius: 99,
                   padding: "2px 10px",
                   fontWeight: 600,
@@ -167,10 +167,10 @@ export default function OnboardingPanel() {
         <div style={{
           marginTop: 20,
           padding: "14px 18px",
-          background: "#D5E8F5",
+          background: "#E8E8E8",
           borderRadius: 8,
           fontSize: 13,
-          color: "#0B2D50",
+          color: "#0D0D0D",
           fontWeight: 600,
           textAlign: "center",
         }}>

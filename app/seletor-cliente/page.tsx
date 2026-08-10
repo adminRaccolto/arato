@@ -101,7 +101,7 @@ export default function SeletorCliente() {
           {raccotloGestor && (
             <button
               onClick={() => router.push("/admin/clientes")}
-              style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600 }}
+              style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#111111", fontWeight: 600 }}
             >
               Gestão Arato →
             </button>
@@ -147,7 +147,7 @@ export default function SeletorCliente() {
           }}>
             {busca
               ? "Nenhum cliente encontrado para essa busca."
-              : <>Nenhum cliente com acesso ativo. <button onClick={() => router.push("/admin/clientes")} style={{ background: "none", border: "none", color: "#1A4870", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Ir para Gestão Arato →</button></>
+              : <>Nenhum cliente com acesso ativo. <button onClick={() => router.push("/admin/clientes")} style={{ background: "none", border: "none", color: "#111111", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Ir para Gestão Arato →</button></>
             }
           </div>
         ) : (
@@ -186,9 +186,9 @@ export default function SeletorCliente() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                     <div style={{
                       width: 36, height: 36, borderRadius: 8,
-                      background: "#D5E8F5", flexShrink: 0,
+                      background: "#E8E8E8", flexShrink: 0,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, fontWeight: 700, color: "#1A4870",
+                      fontSize: 13, fontWeight: 700, color: "#111111",
                     }}>
                       {initiais(nomeExibido)}
                     </div>
@@ -216,7 +216,7 @@ export default function SeletorCliente() {
                         }}>{f.nome}</span>
                       ))}
                       {c.fazendas.length > 3 && (
-                        <span style={{ fontSize: 10, padding: "2px 7px", background: "#EEF3FA", color: "#1A4870", borderRadius: 99 }}>
+                        <span style={{ fontSize: 10, padding: "2px 7px", background: "#EEF3FA", color: "#111111", borderRadius: 99 }}>
                           +{c.fazendas.length - 3}
                         </span>
                       )}

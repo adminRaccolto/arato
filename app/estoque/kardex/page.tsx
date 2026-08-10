@@ -297,7 +297,7 @@ export default function Kardex() {
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)", padding: "18px 32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1400, margin: "0 auto" }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1A4870" }}>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111111" }}>
                 Kardex — Ficha de Estoque
               </h1>
               <p style={{ margin: "2px 0 0", fontSize: 13, color: "#666" }}>
@@ -384,7 +384,7 @@ export default function Kardex() {
                 onClick={gerarKardex}
                 disabled={!insumoId || carregando}
                 style={{
-                  background: insumoId ? "#1A4870" : "#C0CAD6",
+                  background: insumoId ? "#111111" : "#C0CAD6",
                   color: "#fff", border: "none", borderRadius: 8,
                   padding: "10px 24px", fontSize: 13, fontWeight: 600,
                   cursor: insumoId ? "pointer" : "not-allowed",
@@ -401,10 +401,10 @@ export default function Kardex() {
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: "Saldo Inicial",   valor: `${fmtQty(saldoInicial)} ${insumoSel?.unidade ?? ""}`,  cor: "#1A4870" },
+                  { label: "Saldo Inicial",   valor: `${fmtQty(saldoInicial)} ${insumoSel?.unidade ?? ""}`,  cor: "#111111" },
                   { label: "Total Entradas",   valor: `${fmtQty(qtdEntradas)} ${insumoSel?.unidade ?? ""}`,   cor: "#16A34A" },
                   { label: "Total Saídas",     valor: `${fmtQty(qtdSaidas)} ${insumoSel?.unidade ?? ""}`,     cor: "#E24B4A" },
-                  { label: "Saldo Final",      valor: `${fmtQty(saldoFinal)} ${insumoSel?.unidade ?? ""}`,    cor: "#1A4870" },
+                  { label: "Saldo Final",      valor: `${fmtQty(saldoFinal)} ${insumoSel?.unidade ?? ""}`,    cor: "#111111" },
                   { label: "Custo Médio Final",valor: `R$ ${fmt(cmFinal)}/${insumoSel?.unidade ?? "un"}`,     cor: "#C9921B" },
                 ].map(k => (
                   <div key={k.label} style={{
@@ -422,7 +422,7 @@ export default function Kardex() {
                 {[
                   { label: "Valor Total Entradas", valor: `R$ ${fmt(totalEntradas)}`,          cor: "#16A34A" },
                   { label: "Valor Total Saídas",   valor: `R$ ${fmt(totalSaidas)}`,            cor: "#E24B4A" },
-                  { label: "Saldo Total (R$)",      valor: `R$ ${fmt(saldoFinal * cmFinal)}`,   cor: "#1A4870" },
+                  { label: "Saldo Total (R$)",      valor: `R$ ${fmt(saldoFinal * cmFinal)}`,   cor: "#111111" },
                 ].map(k => (
                   <div key={k.label} style={{
                     background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10,
@@ -441,7 +441,7 @@ export default function Kardex() {
               }}>
                 {/* Cabeçalho do produto */}
                 <div style={{
-                  background: "#1A4870", color: "#fff",
+                  background: "#111111", color: "#fff",
                   padding: "12px 20px",
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                 }}>
@@ -511,13 +511,13 @@ export default function Kardex() {
                             {l.saida_total ? fmt(l.saida_total) : <span style={{ color: "#ccc" }}>—</span>}
                           </td>
                           {/* Saldo */}
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#111111" }}>
                             {fmtQty(l.saldo_qty)}
                           </td>
                           <td style={{ ...td, textAlign: "right", color: "#C9921B", fontWeight: 600 }}>
                             {fmt(l.custo_medio)}
                           </td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#111111" }}>
                             {fmt(l.saldo_total)}
                           </td>
                           <td style={{ ...td, paddingLeft: 10, color: "#666", maxWidth: 130 }}>
@@ -530,7 +530,7 @@ export default function Kardex() {
                     {/* Totais */}
                     {linhas.length > 1 && (
                       <tfoot>
-                        <tr style={{ background: "#1A4870", color: "#fff" }}>
+                        <tr style={{ background: "#111111", color: "#fff" }}>
                           <td colSpan={2} style={{ ...td, fontWeight: 700, paddingLeft: 14, color: "#fff" }}>
                             TOTAIS DO PERÍODO
                           </td>

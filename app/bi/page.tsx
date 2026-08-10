@@ -205,8 +205,8 @@ function getBenchmark(prodNome: string) {
 
 const GRUPOS_CUSTO = ["Sementes", "Fertilizantes", "Defensivos", "Operações", "Arrendamento", "Mão de Obra", "Encargos Financeiros", "Outros"] as const;
 const CORES_GRUPO: Record<string, string> = {
-  Sementes: "#C9921B", Fertilizantes: "#1A4870", Defensivos: "#E24B4A",
-  Operações: "#378ADD", Arrendamento: "#9B59B6", "Mão de Obra": "#16A34A",
+  Sementes: "#C9921B", Fertilizantes: "#111111", Defensivos: "#E24B4A",
+  Operações: "#444444", Arrendamento: "#9B59B6", "Mão de Obra": "#16A34A",
   "Encargos Financeiros": "#EF9F27", Outros: "var(--text-3)",
 };
 
@@ -223,7 +223,7 @@ function BarraGraos({ producao, arrSacas, barterSacas, fixadoSacas, dividaSacas 
       <div style={{ display: "flex", height: 14, borderRadius: 7, overflow: "hidden", gap: 1, background: "var(--bg-tag)" }}>
         {arrSacas    > 0 && <div style={{ width: `${p(arrSacas)}%`,    background: "#E24B4A" }} title={`Arrendamento: ${fmtN(arrSacas, 0)} sc`} />}
         {barterSacas > 0 && <div style={{ width: `${p(barterSacas)}%`, background: "#EF9F27" }} title={`Barter: ${fmtN(barterSacas, 0)} sc`} />}
-        {fixadoSacas > 0 && <div style={{ width: `${p(fixadoSacas)}%`, background: "#378ADD" }} title={`Fixado: ${fmtN(fixadoSacas, 0)} sc`} />}
+        {fixadoSacas > 0 && <div style={{ width: `${p(fixadoSacas)}%`, background: "#444444" }} title={`Fixado: ${fmtN(fixadoSacas, 0)} sc`} />}
         {livre       > 0 && <div style={{ width: `${p(livre)}%`,       background: "#16A34A" }} title={`Livre: ${fmtN(livre, 0)} sc`} />}
       </div>
       {/* Barra de dívida sobreposta (indicador separado) */}
@@ -236,7 +236,7 @@ function BarraGraos({ producao, arrSacas, barterSacas, fixadoSacas, dividaSacas 
         {[
           { label: "Arrendamento (físico)", v: arrSacas,    bg: "#E24B4A" },
           { label: "Barter (físico)",       v: barterSacas, bg: "#EF9F27" },
-          { label: "Fixado (contratos)",    v: fixadoSacas, bg: "#378ADD" },
+          { label: "Fixado (contratos)",    v: fixadoSacas, bg: "#444444" },
           { label: "Livre",                 v: livre,        bg: "#16A34A" },
         ].filter(x => x.v > 0).map(x => (
           <span key={x.label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-2)" }}>
@@ -286,8 +286,8 @@ type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" |
 // ── Controller: constantes ────────────────────────────────────
 type Severidade = ControllerAlerta["severidade"];
 type Categoria  = ControllerAlerta["categoria"];
-const SEV_COR: Record<Severidade, string>   = { critico: "#E24B4A", alto: "#EF9F27", medio: "#378ADD", baixo: "var(--text-3)" };
-const SEV_BG:  Record<Severidade, string>   = { critico: "#FEF2F2", alto: "#FFF7ED", medio: "#EFF6FF", baixo: "#F9FAFB" };
+const SEV_COR: Record<Severidade, string>   = { critico: "#E24B4A", alto: "#EF9F27", medio: "#444444", baixo: "var(--text-3)" };
+const SEV_BG:  Record<Severidade, string>   = { critico: "#FEF2F2", alto: "#FFF7ED", medio: "#F2F2F2", baixo: "#F9FAFB" };
 const SEV_LABEL: Record<Severidade, string> = { critico: "Crítico", alto: "Alto", medio: "Médio", baixo: "Baixo" };
 const CAT_ICONE: Record<Categoria,  string> = { Fiscal: "📄", Financeiro: "💰", Contratos: "📋", Lavoura: "🌱", Cadastros: "🗂️", Estoque: "📦", Arrendamentos: "🏡" };
 
@@ -1089,7 +1089,7 @@ export default function BI() {
       <TopNav />
 
       {/* ── Cabeçalho ────────────────────────────────────────── */}
-      <div style={{ background: "linear-gradient(135deg, #0B1E35 0%, #1A4870 100%)", padding: "20px 32px 0", borderBottom: "0.5px solid var(--border)" }}>
+      <div style={{ background: "linear-gradient(135deg, #0B1E35 0%, #111111 100%)", padding: "20px 32px 0", borderBottom: "0.5px solid var(--border)" }}>
 
         {/* Linha 1: título + preços + refresh */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
@@ -1133,9 +1133,9 @@ export default function BI() {
             onChange={e => handleAnoSafraChange(e.target.value)}
             style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border)", color: "#fff", fontSize: 12, cursor: "pointer", outline: "none" }}
           >
-            <option value="" style={{ background: "#1A4870" }}>Todas as safras</option>
+            <option value="" style={{ background: "#111111" }}>Todas as safras</option>
             {safrasUnicas.map(s => (
-              <option key={s.id} value={s.id} style={{ background: "#1A4870" }}>{s.descricao}</option>
+              <option key={s.id} value={s.id} style={{ background: "#111111" }}>{s.descricao}</option>
             ))}
           </select>
 
@@ -1173,7 +1173,7 @@ export default function BI() {
               padding: "9px 16px", border: "none", cursor: "pointer", fontSize: 12,
               fontWeight: aba === a.key ? 700 : 400, borderRadius: "7px 7px 0 0",
               background: aba === a.key ? "var(--bg-page)" : "transparent",
-              color: aba === a.key ? "#1A4870" : "rgba(255,255,255,0.6)",
+              color: aba === a.key ? "#111111" : "rgba(255,255,255,0.6)",
               display: "flex", alignItems: "center", gap: 5,
             }}>
               {a.label}
@@ -1214,7 +1214,7 @@ export default function BI() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               {/* Diagnóstico Raccolto */}
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                <div style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--border)", background: "#1A4870" }}>
+                <div style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--border)", background: "#111111" }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Diagnóstico Raccolto</span>
                   <span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", marginLeft: 8 }}>Análise automática dos indicadores</span>
                 </div>
@@ -1443,7 +1443,7 @@ export default function BI() {
           // Cabeçalho de coluna ordenável
           const sortTh = (col: string, label: string) => (
             <th onClick={() => setPcSort(prev => ({ col, dir: prev.col === col && prev.dir === "desc" ? "asc" : "desc" }))}
-              style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: pcSort.col === col ? "#1A4870" : "var(--text-3)", textAlign: "right", cursor: "pointer", userSelect: "none", background: pcSort.col === col ? "#D5E8F5" : "transparent", whiteSpace: "nowrap" }}>
+              style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: pcSort.col === col ? "#111111" : "var(--text-3)", textAlign: "right", cursor: "pointer", userSelect: "none", background: pcSort.col === col ? "#E8E8E8" : "transparent", whiteSpace: "nowrap" }}>
               {label} {pcSort.col === col ? (pcSort.dir === "desc" ? "▼" : "▲") : "↕"}
             </th>
           );
@@ -1495,7 +1495,7 @@ export default function BI() {
             ].filter(Boolean).join(" · ") || "Todos os produtos e fazendas";
 
             const kpis = [
-              { label: "Volume Previsto",      val: fmtVol(kpiVolPrev),  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC" },
+              { label: "Volume Previsto",      val: fmtVol(kpiVolPrev),  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#111111", bg: "#EBF3FC" },
               { label: "Faturamento Previsto", val: fmtR(kpiFatPrev),    sub: kpiVolPrev > 0 ? `${fmtR2(scHaPrec)}/${unitLabel}` : "", cor: "#14532D", bg: "#ECFDF5" },
               { label: "Comprometido / ha",    val: `${fmtN(scHaCompr,1)} ${unitHa}`, sub: `${fmtVol(kpiCompr)} · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0" },
               { label: "Disponível p/ venda",  val: fmtVol(kpiDisp),     sub: `${fmtN(kpiDisp/totalArea,1)} ${unitHa}`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
@@ -1518,16 +1518,16 @@ export default function BI() {
                     ${cs.comm}
                   </span>
                 </td>
-                <td style="padding:6px 8px;text-align:right;font-weight:600;color:#1A4870;">${fmtN(cs.volPrev,0)}</td>
+                <td style="padding:6px 8px;text-align:right;font-weight:600;color:#111111;">${fmtN(cs.volPrev,0)}</td>
                 <td style="padding:6px 8px;text-align:right;color:#14532D;">${fmtR(cs.fatPrev)}</td>
                 <td style="padding:6px 8px;text-align:right;color:#C9921B;">${cs.arr>0?`${fmtN(cs.arr,0)} sc (${fmtN((cs.arr/tot)*100,0)}%)`:"—"}</td>
-                <td style="padding:6px 8px;text-align:right;color:#1A4870;">${cs.venda>0?`${fmtN(cs.venda,0)} sc (${fmtN((cs.venda/tot)*100,0)}%)`:"—"}</td>
+                <td style="padding:6px 8px;text-align:right;color:#111111;">${cs.venda>0?`${fmtN(cs.venda,0)} sc (${fmtN((cs.venda/tot)*100,0)}%)`:"—"}</td>
                 <td style="padding:6px 8px;text-align:right;color:#7C3AED;">${cs.barter>0?`${fmtN(cs.barter,0)} sc (${fmtN((cs.barter/tot)*100,0)}%)`:"—"}</td>
                 <td style="padding:6px 8px;text-align:right;color:${cs.disponivel>0?"#16A34A":"#E24B4A"};font-weight:600;">${fmtN(cs.disponivel,0)} sc (${fmtN((cs.disponivel/tot)*100,0)}%)</td>
                 <td style="padding:6px 8px;width:120px;">
                   <div style="display:flex;height:9px;border-radius:3px;overflow:hidden;background:#F0F4F8;">
                     ${cs.arr>0?`<div style="width:${(cs.arr/tot)*100}%;background:#C9921B;"></div>`:""}
-                    ${cs.venda>0?`<div style="width:${(cs.venda/tot)*100}%;background:#1A4870;"></div>`:""}
+                    ${cs.venda>0?`<div style="width:${(cs.venda/tot)*100}%;background:#111111;"></div>`:""}
                     ${cs.barter>0?`<div style="width:${(cs.barter/tot)*100}%;background:#7C3AED;"></div>`:""}
                     ${cs.disponivel>0?`<div style="width:${(cs.disponivel/tot)*100}%;background:#86EFAC;"></div>`:""}
                   </div>
@@ -1553,7 +1553,7 @@ export default function BI() {
                 const disp = Math.max(0, vol - vnd);
                 return vol === 0
                   ? `<td colspan="3" style="text-align:center;color:#aaa;padding:5px 7px;border-left:1.5px solid #dde2ee;font-size:9px;">—</td>`
-                  : `<td style="padding:5px 6px;text-align:right;color:#1A4870;font-weight:600;border-left:1.5px solid #dde2ee;">${fmtN(vol,0)}</td>
+                  : `<td style="padding:5px 6px;text-align:right;color:#111111;font-weight:600;border-left:1.5px solid #dde2ee;">${fmtN(vol,0)}</td>
                      <td style="padding:5px 6px;text-align:right;color:#7C3AED;">${vnd>0?fmtN(vnd,0):"—"}</td>
                      <td style="padding:5px 6px;text-align:right;color:${disp>0?"#16A34A":"#888"};font-weight:600;">${fmtN(disp,0)}</td>`;
               }).join("");
@@ -1581,10 +1581,10 @@ export default function BI() {
                   <span style="background:${COMM_BG(r.comm)};color:${COMM_COR(r.comm)};border-radius:3px;padding:1px 5px;font-size:8px;font-weight:700;">${r.comm}</span>
                 </td>
                 <td style="padding:5px 7px;text-align:right;color:#555;">${fmtN(r.area,0)} ha</td>
-                <td style="padding:5px 7px;text-align:right;font-weight:600;color:#1A4870;">${r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
+                <td style="padding:5px 7px;text-align:right;font-weight:600;color:#111111;">${r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
                 <td style="padding:5px 7px;text-align:right;color:#14532D;">${r.fatPrev>0?fmtR(r.fatPrev):"—"}</td>
                 <td style="padding:5px 7px;text-align:right;color:#C9921B;">${rowArr>0?`${fmtN(rowArr,0)} (${fmtN(r.volPrev>0?(rowArr/r.volPrev)*100:0,0)}%)`:"—"}</td>
-                <td style="padding:5px 7px;text-align:right;color:#1A4870;font-weight:600;">${r.venda>0?`${fmtN(r.venda,0)} (${fmtN(r.volPrev>0?(r.venda/r.volPrev)*100:0,0)}%)`:"—"}</td>
+                <td style="padding:5px 7px;text-align:right;color:#111111;font-weight:600;">${r.venda>0?`${fmtN(r.venda,0)} (${fmtN(r.volPrev>0?(r.venda/r.volPrev)*100:0,0)}%)`:"—"}</td>
                 <td style="padding:5px 7px;text-align:right;color:#7C3AED;">${rowBart>0?fmtN(rowBart,0):"—"}</td>
                 <td style="padding:5px 7px;text-align:right;color:${dispPct>30?"#16A34A":dispPct>10?"#C9921B":"#E24B4A"};font-weight:600;">${fmtN(disp,0)} (${fmtN(dispPct,0)}%)</td>
                 <td style="padding:5px 7px;text-align:right;color:${r.colhido>0?"#16A34A":"#888"};">${r.colhido>0?`${fmtN(r.colhido,0)} sc`:"Aguard."}</td>
@@ -1608,10 +1608,10 @@ export default function BI() {
               </style>
             </head><body>
               <!-- CABEÇALHO -->
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #1A4870;padding-bottom:10px;margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #111111;padding-bottom:10px;margin-bottom:14px;">
                 <div>
                   <div style="font-size:9px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">${fazNomeAtual}${anoDesc ? " · Safra " + anoDesc : ""}</div>
-                  <div style="font-size:19px;font-weight:800;color:#1A4870;">Posição do Produto</div>
+                  <div style="font-size:19px;font-weight:800;color:#111111;">Posição do Produto</div>
                   <div style="font-size:8px;color:#888;margin-top:3px;">Filtros: ${filtrosInfo} · ${pcRows.length} ciclo${pcRows.length!==1?"s":""} · ${fmtN(totalArea,0)} ha · Gerado em ${dataHora}</div>
                 </div>
                 <img src="${logoUrl}" alt="Arato" style="height:30px;object-fit:contain;" />
@@ -1627,7 +1627,7 @@ export default function BI() {
                 <h2>Posição por Produto
                   <span style="float:right;font-size:7px;font-weight:400;color:#888;">
                     <span style="display:inline-block;width:7px;height:7px;background:#C9921B;border-radius:2px;"></span> Arrendamento &nbsp;
-                    <span style="display:inline-block;width:7px;height:7px;background:#1A4870;border-radius:2px;"></span> Venda &nbsp;
+                    <span style="display:inline-block;width:7px;height:7px;background:#111111;border-radius:2px;"></span> Venda &nbsp;
                     <span style="display:inline-block;width:7px;height:7px;background:#7C3AED;border-radius:2px;"></span> Barter &nbsp;
                     <span style="display:inline-block;width:7px;height:7px;background:#86EFAC;border-radius:2px;"></span> Disponível
                   </span>
@@ -1638,7 +1638,7 @@ export default function BI() {
                     <th>Previsto (sc)</th>
                     <th>Fat. Previsto</th>
                     <th style="color:#C9921B;">Arrendamento</th>
-                    <th style="color:#1A4870;">Venda</th>
+                    <th style="color:#111111;">Venda</th>
                     <th style="color:#7C3AED;">Barter</th>
                     <th style="color:#16A34A;">Disponível</th>
                     <th>Distribuição</th>
@@ -1677,19 +1677,19 @@ export default function BI() {
                     <th>Previsto (sc)</th>
                     <th>Fat. Prev.</th>
                     <th style="color:#C9921B;">Arrendamento</th>
-                    <th style="color:#1A4870;">Venda</th>
+                    <th style="color:#111111;">Venda</th>
                     <th style="color:#7C3AED;">Barter</th>
                     <th style="color:#16A34A;">Disponível</th>
                     <th>Colhido</th>
                   </tr></thead>
                   <tbody>${cicloRowsHtml}</tbody>
-                  <tr style="border-top:1.5px solid #1A4870;background:#D5E8F5;">
-                    <td colspan="2" style="padding:5px 10px;font-weight:700;color:#1A4870;font-size:10px;">TOTAL</td>
+                  <tr style="border-top:1.5px solid #111111;background:#E8E8E8;">
+                    <td colspan="2" style="padding:5px 10px;font-weight:700;color:#111111;font-size:10px;">TOTAL</td>
                     <td style="padding:5px 7px;text-align:right;font-weight:600;">${fmtN(totalArea,0)} ha</td>
-                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#1A4870;">${fmtN(kpiVolPrev,0)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#111111;">${fmtN(kpiVolPrev,0)}</td>
                     <td style="padding:5px 7px;text-align:right;font-weight:700;color:#14532D;">${fmtR(kpiFatPrev)}</td>
                     <td style="padding:5px 7px;text-align:right;font-weight:700;color:#C9921B;">${fmtN(kpiArr,0)}</td>
-                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#1A4870;">${fmtN(kpiVenda,0)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#111111;">${fmtN(kpiVenda,0)}</td>
                     <td style="padding:5px 7px;text-align:right;font-weight:700;color:#7C3AED;">${fmtN(kpiBarter,0)}</td>
                     <td style="padding:5px 7px;text-align:right;font-weight:700;color:#16A34A;">${fmtN(kpiDisp,0)}</td>
                     <td style="padding:5px 7px;text-align:right;font-weight:700;color:${kpiColhido>0?"#16A34A":"#888"};">${kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
@@ -1717,7 +1717,7 @@ export default function BI() {
               <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1.5px solid var(--border-table)" }}>
                 {([["posicao", "Posição do Produto"], ["ciclos", "Análise por Ciclo"], ["colheita", "Colheita vs Planejado"]] as const).map(([k, l]) => (
                   <button key={k} onClick={() => setAbaProducao(k)}
-                    style={{ padding: "9px 18px", border: "none", borderBottom: abaProducao === k ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontWeight: abaProducao === k ? 700 : 400, color: abaProducao === k ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontSize: 13, marginBottom: -2 }}>
+                    style={{ padding: "9px 18px", border: "none", borderBottom: abaProducao === k ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontWeight: abaProducao === k ? 700 : 400, color: abaProducao === k ? "#111111" : "var(--text-2)", cursor: "pointer", fontSize: 13, marginBottom: -2 }}>
                     {l}
                     {k === "colheita" && totalColhido > 0 && <span style={{ marginLeft: 6, background: "#16A34A", color: "#fff", borderRadius: 8, padding: "1px 6px", fontSize: 10 }}>✓</span>}
                   </button>
@@ -1731,7 +1731,7 @@ export default function BI() {
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "9px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginRight: 2 }}>Produto:</span>
                     <button onClick={() => setPcCultFiltro("")}
-                      style={{ padding: "3px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: !pcCultFiltro ? "#1A4870" : "#EEF2F7", color: !pcCultFiltro ? "#fff" : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
+                      style={{ padding: "3px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: !pcCultFiltro ? "#111111" : "#EEF2F7", color: !pcCultFiltro ? "#fff" : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
                       Todos
                     </button>
                     {cultOpts.map(c => (
@@ -1748,7 +1748,7 @@ export default function BI() {
                         <div style={{ width: 1, height: 18, background: "var(--border-table)", margin: "0 4px" }} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)" }}>Fazenda:</span>
                         <select value={pcFazFiltro} onChange={e => setPcFazFiltro(e.target.value)}
-                          style={{ padding: "3px 8px", border: `0.5px solid ${pcFazFiltro ? "#1A4870" : "var(--border-table)"}`, borderRadius: 7, fontSize: 11, background: pcFazFiltro ? "#D5E8F5" : "var(--bg-card)", color: pcFazFiltro ? "#0B2D50" : "var(--text-1)" }}>
+                          style={{ padding: "3px 8px", border: `0.5px solid ${pcFazFiltro ? "#111111" : "var(--border-table)"}`, borderRadius: 7, fontSize: 11, background: pcFazFiltro ? "#E8E8E8" : "var(--bg-card)", color: pcFazFiltro ? "#0D0D0D" : "var(--text-1)" }}>
                           <option value="">Todas</option>
                           {fazOpts.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                         </select>
@@ -1765,7 +1765,7 @@ export default function BI() {
                         {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} · {fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha
                       </span>
                       <button onClick={imprimirPosicaoProduto}
-                        style={{ padding: "4px 12px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                        style={{ padding: "4px 12px", background: "#111111", color: "#fff", border: "none", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
                         🖨 PDF
                       </button>
                     </div>
@@ -1781,7 +1781,7 @@ export default function BI() {
                     const CIRC = 2 * Math.PI * R;
                     const donutSegs = [
                       { sc: kpiArr,    cor: "#C9921B", label: "Arrendamento" },
-                      { sc: kpiVenda,  cor: "#1A4870", label: "Venda" },
+                      { sc: kpiVenda,  cor: "#111111", label: "Venda" },
                       { sc: kpiBarter, cor: "#7C3AED", label: "Barter" },
                       { sc: kpiDisp,   cor: "#86EFAC", label: "Disponível" },
                     ].filter(s => s.sc > 0);
@@ -1842,7 +1842,7 @@ export default function BI() {
                           return (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "1fr 1fr", gap: 8 }}>
                               {[
-                                { label: "Volume Previsto",     val: fmtVol(kpiVolPrev),  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC", click: undefined as (() => void) | undefined },
+                                { label: "Volume Previsto",     val: fmtVol(kpiVolPrev),  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#111111", bg: "#EBF3FC", click: undefined as (() => void) | undefined },
                                 { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),    sub: kpiVolPrev>0?`${fmtR2(scHaPrec)}/${unitLabel}`:"", cor: "#14532D", bg: "#ECFDF5", click: undefined },
                                 { label: "Comprometido / ha",   val: `${fmtN(scHaCompr,1)} ${unitHa}`, sub: `${fmtVol(kpiCompr)} · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0", click: () => setModalComprHa(true) },
                                 { label: "Disponível p/ venda", val: fmtVol(kpiDisp),     sub: `${totalArea>0?fmtN(kpiDisp/totalArea,1):0} ${unitHa} · ${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,0)}%`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB", click: undefined },
@@ -1867,7 +1867,7 @@ export default function BI() {
                         <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Posição por Produto</span>
                           <div style={{ display: "flex", gap: 10, fontSize: 9 }}>
-                            {[{ cor: "#C9921B", lbl: "Arrendamento" }, { cor: "#1A4870", lbl: "Venda" }, { cor: "#7C3AED", lbl: "Barter" }, { cor: "#86EFAC", lbl: "Disponível" }].map(x => (
+                            {[{ cor: "#C9921B", lbl: "Arrendamento" }, { cor: "#111111", lbl: "Venda" }, { cor: "#7C3AED", lbl: "Barter" }, { cor: "#86EFAC", lbl: "Disponível" }].map(x => (
                               <span key={x.lbl} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                 <div style={{ width: 8, height: 8, borderRadius: 2, background: x.cor }} />
                                 <span style={{ color: "var(--text-3)" }}>{x.lbl}</span>
@@ -1891,13 +1891,13 @@ export default function BI() {
                                 </div>
                                 <div style={{ display: "flex", height: 16, borderRadius: 4, overflow: "hidden", background: "#F0F4F8" }}>
                                   {cs.arr      > 0 && <div style={{ width: `${(cs.arr/tot)*100}%`,       background: "#C9921B" }} title={`Arrendamento: ${fmtVol(cs.arr)}`} />}
-                                  {cs.venda    > 0 && <div style={{ width: `${(cs.venda/tot)*100}%`,     background: "#1A4870" }} title={`Venda: ${fmtVol(cs.venda)}`} />}
+                                  {cs.venda    > 0 && <div style={{ width: `${(cs.venda/tot)*100}%`,     background: "#111111" }} title={`Venda: ${fmtVol(cs.venda)}`} />}
                                   {cs.barter   > 0 && <div style={{ width: `${(cs.barter/tot)*100}%`,   background: "#7C3AED" }} title={`Barter: ${fmtVol(cs.barter)}`} />}
                                   {cs.disponivel>0 && <div style={{ width: `${(cs.disponivel/tot)*100}%`,background: "#86EFAC" }} title={`Disponível: ${fmtVol(cs.disponivel)}`} />}
                                 </div>
                                 <div style={{ display: "flex", gap: 14, marginTop: 3, fontSize: 9, color: "var(--text-3)" }}>
                                   {cs.arr     > 0 && <span style={{ color: "#C9921B" }}>Arr: {fmtVol(cs.arr)} ({fmtN((cs.arr/tot)*100,0)}%)</span>}
-                                  {cs.venda   > 0 && <span style={{ color: "#1A4870" }}>Venda: {fmtVol(cs.venda)} ({fmtN((cs.venda/tot)*100,0)}%)</span>}
+                                  {cs.venda   > 0 && <span style={{ color: "#111111" }}>Venda: {fmtVol(cs.venda)} ({fmtN((cs.venda/tot)*100,0)}%)</span>}
                                   {cs.barter  > 0 && <span style={{ color: "#7C3AED" }}>Barter: {fmtVol(cs.barter)} ({fmtN((cs.barter/tot)*100,0)}%)</span>}
                                   {cs.disponivel>0 && <span style={{ color: "#16A34A" }}>Disp: {fmtVol(cs.disponivel)} ({fmtN((cs.disponivel/tot)*100,0)}%)</span>}
                                 </div>
@@ -1947,7 +1947,7 @@ export default function BI() {
                                           <td key={c} colSpan={3} style={{ padding: "7px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 10, borderLeft: "1px solid var(--border)" }}>—</td>
                                         ) : (
                                           <>
-                                            <td key={`${c}-v`} style={{ padding: "7px 8px", textAlign: "right", fontWeight: 600, color: "#1A4870", borderLeft: "1px solid var(--border)", fontVariantNumeric: "tabular-nums" }}>{fmtN(vol,0)}</td>
+                                            <td key={`${c}-v`} style={{ padding: "7px 8px", textAlign: "right", fontWeight: 600, color: "#111111", borderLeft: "1px solid var(--border)", fontVariantNumeric: "tabular-nums" }}>{fmtN(vol,0)}</td>
                                             <td key={`${c}-s`} style={{ padding: "7px 8px", textAlign: "right", color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{vnd > 0 ? fmtN(vnd,0) : "—"}</td>
                                             <td key={`${c}-d`} style={{ padding: "7px 8px", textAlign: "right", color: disp>0?"#16A34A":"var(--text-3)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtN(disp,0)}</td>
                                           </>
@@ -2050,14 +2050,14 @@ export default function BI() {
                                       <span style={{ background: COMM_BG(r.comm), color: COMM_COR(r.comm), borderRadius: 4, padding: "2px 6px", fontSize: 9, fontWeight: 700 }}>{r.comm}</span>
                                     </td>
                                     <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtN(r.area,0)} ha</td>
-                                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#111111", fontVariantNumeric: "tabular-nums" }}>{r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
                                     <td style={{ padding: "7px 10px", textAlign: "right", color: "#14532D", fontVariantNumeric: "tabular-nums" }}>{r.fatPrev>0?fmtR(r.fatPrev):"—"}</td>
                                     <td style={{ padding: "7px 10px", textAlign: "right", color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>
                                       {rowArr > 0 ? <span>{fmtN(rowArr,0)} <span style={{ fontSize: 9, color: "var(--text-3)" }}>({fmtN(r.volPrev>0?(rowArr/r.volPrev)*100:0,0)}%)</span></span> : <span style={{ color: "var(--text-3)" }}>—</span>}
                                     </td>
                                     <td style={{ padding: "7px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                                       {r.venda > 0
-                                        ? <span style={{ color: "#1A4870", fontWeight: 600 }}>{fmtN(r.venda,0)} <span style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 400 }}>({r.volPrev>0?fmtN((r.venda/r.volPrev)*100,0):0}%)</span></span>
+                                        ? <span style={{ color: "#111111", fontWeight: 600 }}>{fmtN(r.venda,0)} <span style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 400 }}>({r.volPrev>0?fmtN((r.venda/r.volPrev)*100,0):0}%)</span></span>
                                         : <span style={{ color: "var(--text-3)" }}>—</span>}
                                     </td>
                                     <td style={{ padding: "7px 10px", textAlign: "right", color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>
@@ -2076,13 +2076,13 @@ export default function BI() {
                                   </tr>
                                 );
                               })}
-                              <tr style={{ borderTop: "1.5px solid var(--border-table)", background: "#D5E8F5" }}>
-                                <td colSpan={2} style={{ padding: "7px 12px", fontWeight: 700, fontSize: 11, color: "#1A4870" }}>TOTAL</td>
+                              <tr style={{ borderTop: "1.5px solid var(--border-table)", background: "#E8E8E8" }}>
+                                <td colSpan={2} style={{ padding: "7px 12px", fontWeight: 700, fontSize: 11, color: "#111111" }}>TOTAL</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "var(--text-1)" }}>{fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiVolPrev,0)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#111111", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiVolPrev,0)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#14532D", fontVariantNumeric: "tabular-nums" }}>{fmtR(kpiFatPrev)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiArr,0)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiVenda,0)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#111111", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiVenda,0)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiBarter,0)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiDisp,0)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: kpiColhido>0?"#16A34A":"var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
@@ -2097,11 +2097,11 @@ export default function BI() {
                         const totalArea = pcRows.reduce((s, r) => s + r.area, 0) || 1;
                         const cats = [
                           { label: "Arrendamento", sc: kpiArr,    cor: "#C9921B", bg: "#FBF3E0" },
-                          { label: "Venda fixada",  sc: kpiVenda,  cor: "#1A4870", bg: "#D5E8F5" },
+                          { label: "Venda fixada",  sc: kpiVenda,  cor: "#111111", bg: "#E8E8E8" },
                           { label: "Barter",        sc: kpiBarter, cor: "#7C3AED", bg: "#F5F3FF" },
                           { label: "Total comprometido", sc: kpiCompr, cor: "#7A5200", bg: "#FBF3E0" },
                           { label: "Disponível",    sc: kpiDisp,   cor: "#16A34A", bg: "#ECFDF5" },
-                          { label: "Previsto total",sc: kpiVolPrev,cor: "#1A4870", bg: "#EBF3FC" },
+                          { label: "Previsto total",sc: kpiVolPrev,cor: "#111111", bg: "#EBF3FC" },
                         ];
 
                         const fazNomeAtual = fazenda?.nome ?? "—";
@@ -2115,9 +2115,9 @@ export default function BI() {
                                 <span style="background:${COMM_BG(cs.comm)};color:${COMM_COR(cs.comm)};border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;">${cs.comm}</span>
                               </td>
                               <td style="padding:6px 10px;text-align:right;border-bottom:0.5px solid #eee;">${fmtN(areaComm,0)}</td>
-                              <td style="padding:6px 10px;text-align:right;font-weight:600;color:#1A4870;border-bottom:0.5px solid #eee;">${fmtN(cs.volPrev/areaComm,1)}</td>
+                              <td style="padding:6px 10px;text-align:right;font-weight:600;color:#111111;border-bottom:0.5px solid #eee;">${fmtN(cs.volPrev/areaComm,1)}</td>
                               <td style="padding:6px 10px;text-align:right;color:#C9921B;border-bottom:0.5px solid #eee;">${cs.arr>0?fmtN(cs.arr/areaComm,1):'—'}</td>
-                              <td style="padding:6px 10px;text-align:right;color:#1A4870;border-bottom:0.5px solid #eee;">${cs.venda>0?fmtN(cs.venda/areaComm,1):'—'}</td>
+                              <td style="padding:6px 10px;text-align:right;color:#111111;border-bottom:0.5px solid #eee;">${cs.venda>0?fmtN(cs.venda/areaComm,1):'—'}</td>
                               <td style="padding:6px 10px;text-align:right;color:#7C3AED;border-bottom:0.5px solid #eee;">${cs.barter>0?fmtN(cs.barter/areaComm,1):'—'}</td>
                               <td style="padding:6px 10px;text-align:right;font-weight:700;color:#7A5200;border-bottom:0.5px solid #eee;">${fmtN(cs.comprTotal/areaComm,1)}</td>
                               <td style="padding:6px 10px;text-align:right;font-weight:700;color:${cs.disponivel>0?'#16A34A':'#E24B4A'};border-bottom:0.5px solid #eee;">${fmtN(cs.disponivel/areaComm,1)}</td>
@@ -2161,10 +2161,10 @@ export default function BI() {
                             </style>
                           </head><body>
                             <!-- CABEÇALHO -->
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1A4870;padding-bottom:12px;margin-bottom:20px;">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111111;padding-bottom:12px;margin-bottom:20px;">
                               <div>
                                 <div style="font-size:11px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${fazNomeAtual}${anoDesc ? " · Safra " + anoDesc : ""}</div>
-                                <div style="font-size:22px;font-weight:800;color:#1A4870;">Comprometido por Hectare</div>
+                                <div style="font-size:22px;font-weight:800;color:#111111;">Comprometido por Hectare</div>
                                 <div style="font-size:10px;color:#888;margin-top:4px;">${fmtN(totalArea,0)} ha · ${pcRows.length} ciclo${pcRows.length!==1?"s":""} · Gerado em ${dataHora}</div>
                               </div>
                               <img src="${logoUrl}" alt="Arato" style="height:36px;object-fit:contain;" />
@@ -2180,12 +2180,12 @@ export default function BI() {
                               <div style="flex:1;">
                                 <div style="display:flex;height:16px;border-radius:5px;overflow:hidden;background:#e8ecf1;">
                                   ${kpiArr>0?`<div style="width:${(kpiArr/kpiVolPrev)*100}%;background:#C9921B;"></div>`:''}
-                                  ${kpiVenda>0?`<div style="width:${(kpiVenda/kpiVolPrev)*100}%;background:#1A4870;"></div>`:''}
+                                  ${kpiVenda>0?`<div style="width:${(kpiVenda/kpiVolPrev)*100}%;background:#111111;"></div>`:''}
                                   ${kpiBarter>0?`<div style="width:${(kpiBarter/kpiVolPrev)*100}%;background:#7C3AED;"></div>`:''}
                                   ${kpiDisp>0?`<div style="width:${(kpiDisp/kpiVolPrev)*100}%;background:#86EFAC;"></div>`:''}
                                 </div>
                                 <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
-                                  ${[{cor:"#C9921B",lbl:"Arrendamento",v:kpiArr},{cor:"#1A4870",lbl:"Venda",v:kpiVenda},{cor:"#7C3AED",lbl:"Barter",v:kpiBarter},{cor:"#86EFAC",lbl:"Disponível",v:kpiDisp}]
+                                  ${[{cor:"#C9921B",lbl:"Arrendamento",v:kpiArr},{cor:"#111111",lbl:"Venda",v:kpiVenda},{cor:"#7C3AED",lbl:"Barter",v:kpiBarter},{cor:"#86EFAC",lbl:"Disponível",v:kpiDisp}]
                                     .filter(x=>x.v>0).map(x=>`<span style="display:flex;align-items:center;gap:5px;font-size:10px;"><span style="width:10px;height:10px;border-radius:2px;background:${x.cor};display:inline-block;"></span><span style="color:#333;">${x.lbl}: <strong>${fmtN(x.v,0)} sc</strong></span></span>`).join("")}
                                 </div>
                                 <div style="display:flex;justify-content:space-between;font-size:9px;color:#888;margin-top:4px;"><span>0 sc/ha</span><span>Previsto: ${fmtN(kpiVolPrev/totalArea,1)} sc/ha</span></div>
@@ -2258,7 +2258,7 @@ export default function BI() {
                                 </div>
                                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                                   <button onClick={imprimirComprHa}
-                                    style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                                    style={{ padding: "7px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                                     🖨 Imprimir PDF
                                   </button>
                                   <button onClick={() => setModalComprHa(false)}
@@ -2281,7 +2281,7 @@ export default function BI() {
                                 <div style={{ flex: 1 }}>
                                   <div style={{ display: "flex", height: 14, borderRadius: 4, overflow: "hidden", background: "#F0F4F8" }}>
                                     {kpiArr    > 0 && <div style={{ width: `${(kpiArr/kpiVolPrev)*100}%`,    background: "#C9921B" }} />}
-                                    {kpiVenda  > 0 && <div style={{ width: `${(kpiVenda/kpiVolPrev)*100}%`,  background: "#1A4870" }} />}
+                                    {kpiVenda  > 0 && <div style={{ width: `${(kpiVenda/kpiVolPrev)*100}%`,  background: "#111111" }} />}
                                     {kpiBarter > 0 && <div style={{ width: `${(kpiBarter/kpiVolPrev)*100}%`, background: "#7C3AED" }} />}
                                     {kpiDisp   > 0 && <div style={{ width: `${(kpiDisp/kpiVolPrev)*100}%`,   background: "#86EFAC" }} />}
                                   </div>
@@ -2349,9 +2349,9 @@ export default function BI() {
                                               <span style={{ background: COMM_BG(cs.comm), color: COMM_COR(cs.comm), borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{cs.comm}</span>
                                             </td>
                                             <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{fmtN(areaComm, 0)}</td>
-                                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{fmtN(cs.volPrev / areaComm, 1)}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#111111", fontVariantNumeric: "tabular-nums" }}>{fmtN(cs.volPrev / areaComm, 1)}</td>
                                             <td style={{ padding: "7px 10px", textAlign: "right", color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>{cs.arr > 0 ? fmtN(cs.arr / areaComm, 1) : "—"}</td>
-                                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{cs.venda > 0 ? fmtN(cs.venda / areaComm, 1) : "—"}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#111111", fontVariantNumeric: "tabular-nums" }}>{cs.venda > 0 ? fmtN(cs.venda / areaComm, 1) : "—"}</td>
                                             <td style={{ padding: "7px 10px", textAlign: "right", color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{cs.barter > 0 ? fmtN(cs.barter / areaComm, 1) : "—"}</td>
                                             <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#7A5200", fontVariantNumeric: "tabular-nums" }}>{fmtN(cs.comprTotal / areaComm, 1)}</td>
                                             <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: cs.disponivel > 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtN(cs.disponivel / areaComm, 1)}</td>
@@ -2401,7 +2401,7 @@ export default function BI() {
                               </span>
                             </div>
                             <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                              <div><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>Área plantada</div><div style={{ fontSize: 17, fontWeight: 700, color: "#1A4870" }}>{fmtN(m.area,0)} ha</div></div>
+                              <div><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>Área plantada</div><div style={{ fontSize: 17, fontWeight: 700, color: "#111111" }}>{fmtN(m.area,0)} ha</div></div>
                               <div><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>Produção esperada</div><div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>{fmtN(m.prodEsperada,0)} sc</div></div>
                               <div>
                                 <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>sc/ha esperado</div>
@@ -2420,7 +2420,7 @@ export default function BI() {
                                   <span>0</span><span>benchmark: {bm.sc_ha} {bm.unidade}</span><span>{Math.round(bm.sc_ha * 1.2)}</span>
                                 </div>
                                 <div style={{ height: 6, borderRadius: 3, background: "var(--bg-tag)", position: "relative", overflow: "hidden" }}>
-                                  <div style={{ width: `${pct(m.scHaEsperado, bm.sc_ha * 1.2)}%`, height: "100%", background: "#378ADD", borderRadius: 3 }} />
+                                  <div style={{ width: `${pct(m.scHaEsperado, bm.sc_ha * 1.2)}%`, height: "100%", background: "#444444", borderRadius: 3 }} />
                                   <div style={{ position: "absolute", top: 0, left: `${pct(bm.sc_ha, bm.sc_ha * 1.2)}%`, width: 2, height: "100%", background: "#C9921B" }} />
                                 </div>
                                 {colhido && m.scHaReal > 0 && realPct !== null && <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-2)" }}>Realizado: {fmtN(m.scHaReal,1)} sc/ha — {fmtN(realPct,0)}% da meta</div>}
@@ -2439,7 +2439,7 @@ export default function BI() {
                           { label: "Área Total",          v: `${fmtN(areaFiltrada,0)} ha`,         color: "#0C447C" },
                           { label: "Produção Projetada",  v: `${fmtN(prodTotalEsperada,0)} sc`,     color: "var(--text-1)" },
                           { label: "Produção Realizada",  v: sacasTotaisReais>0?`${fmtN(sacasTotaisReais,0)} sc`:"Aguardando colheita", color: sacasTotaisReais>0?"#16A34A":"var(--text-3)" },
-                          { label: "% Realizado",         v: prodTotalEsperada>0&&sacasTotaisReais>0?`${fmtN((sacasTotaisReais/prodTotalEsperada)*100,1)}%`:"—", color: "#1A4870" },
+                          { label: "% Realizado",         v: prodTotalEsperada>0&&sacasTotaisReais>0?`${fmtN((sacasTotaisReais/prodTotalEsperada)*100,1)}%`:"—", color: "#111111" },
                         ].map(k => <div key={k.label}><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{k.label}</div><div style={{ fontSize: 16, fontWeight: 700, color: k.color }}>{k.v}</div></div>)}
                       </div>
                     </div>
@@ -2463,7 +2463,7 @@ export default function BI() {
                     {/* KPI resumo */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
                       {[
-                        { label: "Previsto total",  val: `${fmtN(totalPrev,0)} sc`,  color: "#1A4870", bg: "#EBF3FC" },
+                        { label: "Previsto total",  val: `${fmtN(totalPrev,0)} sc`,  color: "#111111", bg: "#EBF3FC" },
                         { label: "Colhido total",   val: totalColh>0?`${fmtN(totalColh,0)} sc`:"Ainda não iniciado", color: totalColh>0?"#16A34A":"var(--text-3)", bg: totalColh>0?"#ECFDF5":"var(--bg-card)" },
                         { label: "% Realizado",     val: totalColh>0?`${fmtN(pctColh,1)}%`:"—", color: pctColh>=100?"#16A34A":pctColh>=70?"#C9921B":"var(--text-3)", bg: "var(--bg-card)" },
                         { label: "Ciclos c/ colheita", val: `${ciclosComColh} / ${todasRows.length}`, color: "var(--text-1)", bg: "var(--bg-card)" },
@@ -2518,7 +2518,7 @@ export default function BI() {
                                 return (
                                   <tr key={f.id} style={{ borderTop: i>0?"0.5px solid var(--border-row)":"none" }}>
                                     <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)" }}>{f.nome}</td>
-                                    <td style={{ padding: "9px 12px", textAlign: "right", color: "#1A4870", fontWeight: 600 }}>{fmtN(f.volPrev,0)}</td>
+                                    <td style={{ padding: "9px 12px", textAlign: "right", color: "#111111", fontWeight: 600 }}>{fmtN(f.volPrev,0)}</td>
                                     <td style={{ padding: "9px 12px", textAlign: "right", color: f.colhido>0?"#16A34A":"var(--text-3)", fontWeight: 600 }}>{f.colhido>0?fmtN(f.colhido,0):"—"}</td>
                                     <td style={{ padding: "9px 12px", textAlign: "right", color: p>=100?"#16A34A":p>=80?"#C9921B":"var(--text-3)", fontWeight: 600 }}>{f.colhido>0?`${fmtN(p,1)}%`:"—"}</td>
                                     <td style={{ padding: "9px 12px", textAlign: "right", color: delta>=0?"#16A34A":"#E24B4A", fontWeight: 600 }}>{f.colhido>0?(delta>=0?"+":"")+fmtN(delta,0):"—"}</td>
@@ -2536,7 +2536,7 @@ export default function BI() {
                       <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--bg-tag)", fontWeight: 700, fontSize: 13, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 10 }}>
                         Por Ciclo
                         <span style={{ display: "flex", gap: 12, fontSize: 10, fontWeight: 400, color: "var(--text-3)" }}>
-                          <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#D5E8F5", marginRight: 4 }} />Planejado</span>
+                          <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#E8E8E8", marginRight: 4 }} />Planejado</span>
                           <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#16A34A", marginRight: 4 }} />Colhido</span>
                         </span>
                       </div>
@@ -2558,7 +2558,7 @@ export default function BI() {
                               </div>
                               <div style={{ position: "relative", height: 14, borderRadius: 4, background: "#EBF3FC", overflow: "hidden" }}>
                                 {/* Barra planejado (largura proporcional ao maior valor) */}
-                                <div style={{ width: `${(r.volPrev / maxBar) * 100}%`, height: "100%", background: "#D5E8F5", position: "absolute", top: 0, left: 0, borderRadius: 4 }} />
+                                <div style={{ width: `${(r.volPrev / maxBar) * 100}%`, height: "100%", background: "#E8E8E8", position: "absolute", top: 0, left: 0, borderRadius: 4 }} />
                                 {/* Barra colhido */}
                                 {r.colhido > 0 && <div style={{ width: `${(r.colhido / maxBar) * 100}%`, height: "100%", background: "#16A34A", position: "absolute", top: 0, left: 0, borderRadius: 4, opacity: 0.85 }} />}
                               </div>
@@ -2771,7 +2771,7 @@ export default function BI() {
             ? (anosSafra.find(a => a.id === filtroAnoSafraId)?.descricao ?? "")
             : "Todas";
 
-          const cor = custoGrupoAtivo ? (CORES_GRUPO[custoGrupoAtivo] ?? "#1A4870") : "#1A4870";
+          const cor = custoGrupoAtivo ? (CORES_GRUPO[custoGrupoAtivo] ?? "#111111") : "#111111";
 
           return (
             <div>
@@ -2791,7 +2791,7 @@ export default function BI() {
               <div className="bi-no-print" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
                 {[
                   { label: "Custo Total (consumo + CP)", v: fmtR(totalCusto), color: "#E24B4A", bg: "#FCEBEB" },
-                  { label: "Custo por Hectare",          v: custoHaLocal > 0 ? fmtR(custoHaLocal) + "/ha" : "—", color: "#1A4870", bg: "#EBF3FC" },
+                  { label: "Custo por Hectare",          v: custoHaLocal > 0 ? fmtR(custoHaLocal) + "/ha" : "—", color: "#111111", bg: "#EBF3FC" },
                   { label: "Benchmark MT (soja)",        v: "R$ 5.800/ha",    color: "var(--text-2)",    bg: "var(--bg-page)" },
                   { label: "Desvio vs Benchmark",
                     v: custoHaLocal > 0 ? (custoHaLocal > 5800 ? "+" : "") + fmtR(custoHaLocal - 5800) : "—",
@@ -2869,7 +2869,7 @@ export default function BI() {
                               </div>
                               <div style={{ height: 10, borderRadius: 5, background: "var(--bg-tag)", position: "relative", overflow: "hidden" }}>
                                 <div style={{ width: `${pct(cultCustoHa, maxBar)}%`, height: "100%", background: cultCustoHa > bm.custo_ha * 1.1 ? "#E24B4A" : cultCustoHa > bm.custo_ha ? "#EF9F27" : "#16A34A", borderRadius: 5 }} />
-                                <div style={{ position: "absolute", top: 0, left: `${pct(bm.custo_ha, maxBar)}%`, width: 2, height: "100%", background: "#1A4870" }} />
+                                <div style={{ position: "absolute", top: 0, left: `${pct(bm.custo_ha, maxBar)}%`, width: 2, height: "100%", background: "#111111" }} />
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
                                 <span style={{ fontSize: 10, color: "var(--text-3)" }}>Estimado: {cultCustoHa > 0 ? fmtR(cultCustoHa) + "/ha" : "—"} ({fmtN(cultArea, 0)} ha)</span>
@@ -3013,8 +3013,8 @@ export default function BI() {
 
               {/* ── Seção para PDF / impressão ───────────────────────── */}
               <div className="bi-print-section">
-                <div style={{ marginBottom: 16, borderBottom: "2px solid #1A4870", paddingBottom: 8 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>
+                <div style={{ marginBottom: 16, borderBottom: "2px solid #111111", paddingBottom: 8 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#111111" }}>
                     {fazenda?.nome ?? ""} — Relatório de Custos &amp; Insumos
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
@@ -3183,8 +3183,8 @@ export default function BI() {
           }, 0);
 
           const CORT: Record<number, string> = {
-            0: "#1A4870", 1: "#2E6FB5", 2: "#EF9F27", 3: "#E24B4A",
-            4: "#16A34A", 5: "#378ADD", 6: "#C9921B",
+            0: "#111111", 1: "#2E6FB5", 2: "#EF9F27", 3: "#E24B4A",
+            4: "#16A34A", 5: "#444444", 6: "#C9921B",
           };
           const cor = (i: number) => CORT[i % 7];
 
@@ -3217,7 +3217,7 @@ export default function BI() {
             {/* ── KPI cards ── */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
               {[
-                { label:"Total Comercializado", val:fmtN(totalSc, 0)+" sc",      sub:contratosVisiveis.length+" contrato(s)",             cor:"#1A4870", bg:"#EBF3FC" },
+                { label:"Total Comercializado", val:fmtN(totalSc, 0)+" sc",      sub:contratosVisiveis.length+" contrato(s)",             cor:"#111111", bg:"#EBF3FC" },
                 { label:"Valor Total (BRL)",    val:fmtR2(totalValBRL),           sub:"conversão USD→BRL à PTAX",                          cor:"#16A34A", bg:"#ECFDF5" },
                 { label:"Preço Médio Pond.",    val:precoMedPond>0?fmtR(precoMedPond)+"/sc":"—", sub:"ponderado por volume",                cor:"#C9921B", bg:"#FBF3E0" },
                 { label:"Saldo a Entregar",     val:fmtN(totalSaldSc, 0)+" sc",   sub:totalSc>0?fmtN(totalEntSc/totalSc*100,0)+"% já entregue":"0% entregue", cor:totalSaldSc>0?"#E24B4A":"#16A34A", bg:totalSaldSc>0?"#FFF0F0":"#ECFDF5" },
@@ -3258,7 +3258,7 @@ export default function BI() {
                       <div style={{ display:"flex", gap:12, fontSize:10, color:"var(--text-3)" }}>
                         <span style={{ color:"#16A34A" }}>Entregue: {fmtN(c.entSc,0)} sc ({fmtN(pctEnt,0)}%)</span>
                         <span>Saldo: {fmtN(c.saldoSc,0)} sc</span>
-                        {c.valBRL > 0 && <span style={{ color:"#1A4870", fontWeight:600 }}>{fmtR2(c.valBRL)}</span>}
+                        {c.valBRL > 0 && <span style={{ color:"#111111", fontWeight:600 }}>{fmtR2(c.valBRL)}</span>}
                       </div>
                     </div>
                   );
@@ -3276,8 +3276,8 @@ export default function BI() {
                       <svg width={130} height={130} viewBox="0 0 100 100">
                         {(() => {
                           const items = [
-                            { sc: scBRL,    color:"#1A4870", label:"BRL" },
-                            { sc: scUSD,    color:"#378ADD", label:"USD" },
+                            { sc: scBRL,    color:"#111111", label:"BRL" },
+                            { sc: scUSD,    color:"#444444", label:"USD" },
                             { sc: scBarter, color:"#EF9F27", label:"Barter" },
                           ].filter(x => x.sc > 0);
                           let offset = 0;
@@ -3300,8 +3300,8 @@ export default function BI() {
                       </svg>
                     </div>
                     {[
-                      { sc: scBRL,    color:"#1A4870", label:"R$ (BRL)" },
-                      { sc: scUSD,    color:"#378ADD", label:"US$ (USD)" },
+                      { sc: scBRL,    color:"#111111", label:"R$ (BRL)" },
+                      { sc: scUSD,    color:"#444444", label:"US$ (USD)" },
                       { sc: scBarter, color:"#EF9F27", label:"Barter" },
                     ].filter(x => x.sc > 0).map(item => (
                       <div key={item.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8, padding:"6px 10px", background:"var(--bg-card)", borderRadius:8, border:"0.5px solid var(--bg-tag)" }}>
@@ -3358,13 +3358,13 @@ export default function BI() {
                         {c.mediaBRL > 0 && (
                           <div>
                             <div style={{ fontSize:9, color:"var(--text-2)", marginBottom:2, fontWeight:600 }}>Média BRL</div>
-                            <div style={{ fontSize:16, fontWeight:800, color:"#1A4870" }}>R$ {fmtN(c.mediaBRL,2)}/sc</div>
+                            <div style={{ fontSize:16, fontWeight:800, color:"#111111" }}>R$ {fmtN(c.mediaBRL,2)}/sc</div>
                           </div>
                         )}
                         {c.mediaUSD > 0 && (
                           <div>
                             <div style={{ fontSize:9, color:"var(--text-2)", marginBottom:2, fontWeight:600 }}>Média USD</div>
-                            <div style={{ fontSize:16, fontWeight:800, color:"#378ADD" }}>US$ {fmtN(c.mediaUSD,2)}/sc</div>
+                            <div style={{ fontSize:16, fontWeight:800, color:"#444444" }}>US$ {fmtN(c.mediaUSD,2)}/sc</div>
                             <div style={{ fontSize:9, color:"var(--text-3)" }}>≈ R$ {fmtN(c.mediaUSD*ptax,2)}/sc</div>
                           </div>
                         )}
@@ -3473,8 +3473,8 @@ export default function BI() {
                   <div style={{ fontSize:13, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>7. Receita Projetada a Realizar</div>
                   <div style={{ fontSize:11, color:"var(--text-3)", marginBottom:16 }}>Saldo pendente × preço médio por cultura</div>
                   <div style={{ background:"#EBF3FC", borderRadius:8, padding:"10px 14px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <span style={{ fontSize:11, color:"#0B2D50", fontWeight:600 }}>Total projetado</span>
-                    <span style={{ fontSize:16, fontWeight:800, color:"#1A4870" }}>{fmtR2(saldoFinProjBRL)}</span>
+                    <span style={{ fontSize:11, color:"#0D0D0D", fontWeight:600 }}>Total projetado</span>
+                    <span style={{ fontSize:16, fontWeight:800, color:"#111111" }}>{fmtR2(saldoFinProjBRL)}</span>
                   </div>
                   {culturas.filter(c => c.saldoSc > 0).map((c) => {
                     const precoRef = c.mediaBRL > 0 ? c.mediaBRL : (c.mediaUSD > 0 ? c.mediaUSD * ptax : precoMedPond);
@@ -3520,7 +3520,7 @@ export default function BI() {
                           </div>
                           <span style={{ fontSize:12, fontWeight:700, color:cor(i), width:80, textAlign:"right", flexShrink:0 }}>{fmtN(c.sc,0)} sc</span>
                           <span style={{ fontSize:10, color:"var(--text-3)", width:36, textAlign:"right", flexShrink:0 }}>{fmtN(pctTot,1)}%</span>
-                          <span style={{ fontSize:10, color:exp?"#1A4870":"var(--text-muted)", width:14 }}>{exp?"▲":"▼"}</span>
+                          <span style={{ fontSize:10, color:exp?"#111111":"var(--text-muted)", width:14 }}>{exp?"▲":"▼"}</span>
                         </div>
                         {exp && (
                           <div style={{ background:"var(--bg-card)", borderRadius:8, border:"0.5px solid var(--bg-tag)", margin:"4px 0 8px 34px", overflow:"hidden" }}>
@@ -3552,10 +3552,10 @@ export default function BI() {
                                         </div>
                                       </td>
                                       <td style={{ padding:"5px 10px", textAlign:"right" }}>
-                                        {(ct.preco??0)>0?<span style={{ color:ct.moeda==="USD"?"#378ADD":"#1A4870", fontWeight:600 }}>{ct.moeda==="USD"?"US$":"R$"} {fmtN(ct.preco!,2)}</span>:<span style={{ color:"var(--text-muted)" }}>—</span>}
+                                        {(ct.preco??0)>0?<span style={{ color:ct.moeda==="USD"?"#444444":"#111111", fontWeight:600 }}>{ct.moeda==="USD"?"US$":"R$"} {fmtN(ct.preco!,2)}</span>:<span style={{ color:"var(--text-muted)" }}>—</span>}
                                       </td>
                                       <td style={{ padding:"5px 10px", textAlign:"right" }}>
-                                        <span style={{ background:ct.moeda==="USD"?"#EBF3FC":"#F0F5FF", color:ct.moeda==="USD"?"#378ADD":"#1A4870", borderRadius:6, padding:"1px 5px", fontSize:9, fontWeight:700 }}>{ct.moeda??"BRL"}</span>
+                                        <span style={{ background:ct.moeda==="USD"?"#EBF3FC":"#F0F5FF", color:ct.moeda==="USD"?"#444444":"#111111", borderRadius:6, padding:"1px 5px", fontSize:9, fontWeight:700 }}>{ct.moeda??"BRL"}</span>
                                       </td>
                                       <td style={{ padding:"5px 10px", textAlign:"right" }}>
                                         <span style={{ color:stCol, fontWeight:600, fontSize:9, textTransform:"capitalize" }}>{ct.status}</span>
@@ -3806,8 +3806,8 @@ export default function BI() {
                         style={{
                           fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "0.5px solid",
                           cursor: "pointer",
-                          borderColor:  filtroCambioAno === ano ? "#1A4870" : "var(--border)",
-                          background:   filtroCambioAno === ano ? "#1A4870" : "var(--bg-card)",
+                          borderColor:  filtroCambioAno === ano ? "#111111" : "var(--border)",
+                          background:   filtroCambioAno === ano ? "#111111" : "var(--bg-card)",
                           color:        filtroCambioAno === ano ? "#fff"    : "var(--text-2)",
                         }}>
                         {ano === "todos" ? "Todos" : ano}
@@ -3825,7 +3825,7 @@ export default function BI() {
                 </div>
               ) : (
                 <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                  <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", background: "#111111", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Fluxo USD por Data</span>
                     <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
                       {descasadas.length > 0
@@ -3941,7 +3941,7 @@ export default function BI() {
                               <div style={{ fontSize: 11, color: "#16A34A" }}>CR: USD {fmtN(e.crUsd, 2)}</div>
                               <div style={{ fontSize: 11, fontWeight: 700, color: "#E24B4A", marginTop: 4 }}>Exposto: USD {fmtN(expUsd, 2)}</div>
                               <div style={{ fontSize: 10, color: "var(--text-3)" }}>{fmtR(expUsd * cotacao)}</div>
-                              <div style={{ fontSize: 9, color: "#1A4870", marginTop: 4 }}>↗ Ver CP</div>
+                              <div style={{ fontSize: 9, color: "#111111", marginTop: 4 }}>↗ Ver CP</div>
                             </div>
                           );
                         })}
@@ -3953,7 +3953,7 @@ export default function BI() {
 
               {/* ── Cessão de Crédito ──────────────────────────────── */}
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", background: "#111111", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Contratos Dados em Cessão de Crédito</span>
                     <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginLeft: 8 }}>Recebíveis cedidos a fornecedores para quitação de CP</span>
@@ -4083,11 +4083,11 @@ export default function BI() {
             {/* KPIs resultado */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
               {[
-                { label: "Receita/ha",      valor: fmtR2(recHa),                         cor: "#1A4870"                               },
+                { label: "Receita/ha",      valor: fmtR2(recHa),                         cor: "#111111"                               },
                 { label: "Custo/ha",        valor: fmtR2(custoHa),                        cor: "#E24B4A"                               },
-                { label: "Margem/ha",       valor: fmtR2(marHa),                          cor: marHa  >= 0 ? "#1A4870" : "#E24B4A"     },
-                { label: "Margem %",        valor: `${fmtN(marPct, 1)}%`,                 cor: marPct >= 0 ? "#1A4870" : "#E24B4A"     },
-                { label: "Resultado total", valor: fmtR(resTot),                          cor: resTot >= 0 ? "#1A4870" : "#E24B4A"     },
+                { label: "Margem/ha",       valor: fmtR2(marHa),                          cor: marHa  >= 0 ? "#111111" : "#E24B4A"     },
+                { label: "Margem %",        valor: `${fmtN(marPct, 1)}%`,                 cor: marPct >= 0 ? "#111111" : "#E24B4A"     },
+                { label: "Resultado total", valor: fmtR(resTot),                          cor: resTot >= 0 ? "#111111" : "#E24B4A"     },
               ].map((s, i) => (
                 <div key={i} style={{ padding: "14px 16px", borderRight: i < 4 ? "0.5px solid var(--border-row)" : "none" }}>
                   <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4 }}>{s.label}</div>
@@ -4100,14 +4100,14 @@ export default function BI() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "0.5px solid var(--border-row)" }}>
               <div style={{ padding: "12px 20px", borderRight: "0.5px solid var(--border-row)" }}>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 2 }}>Preço de equilíbrio</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: precoSc >= pBreak ? "#1A4870" : "#E24B4A" }}>{fmtR2(pBreak)}/sc</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: precoSc >= pBreak ? "#111111" : "#E24B4A" }}>{fmtR2(pBreak)}/sc</div>
                 <div style={{ fontSize: 10, color: "var(--text-2)", marginTop: 2 }}>
                   Preço atual {fmtR2(precoSc)} — {precoSc >= pBreak ? `${fmtN((precoSc / pBreak - 1) * 100, 1)}% acima` : "abaixo do break-even"}
                 </div>
               </div>
               <div style={{ padding: "12px 20px" }}>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 2 }}>Produtividade mínima</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: prodHa >= qBreak ? "#1A4870" : "#E24B4A" }}>{fmtN(qBreak, 1)} sc/ha</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: prodHa >= qBreak ? "#111111" : "#E24B4A" }}>{fmtN(qBreak, 1)} sc/ha</div>
                 <div style={{ fontSize: 10, color: "var(--text-2)", marginTop: 2 }}>
                   Atual {fmtN(prodHa, 1)} sc/ha — {prodHa >= qBreak ? `${fmtN((prodHa / qBreak - 1) * 100, 1)}% acima` : "abaixo do mínimo"}
                 </div>
@@ -4142,11 +4142,11 @@ export default function BI() {
                           const intens  = Math.min(Math.abs(res) / (custoHa * 0.5 || 1), 1);
                           return (
                             <td key={ci} style={{
-                              padding: "8px 14px", border: `0.5px solid ${isBase ? "#1A4870" : "var(--border-table)"}`,
+                              padding: "8px 14px", border: `0.5px solid ${isBase ? "#111111" : "var(--border-table)"}`,
                               textAlign: "center", fontWeight: isBase ? 700 : 600,
-                              background: isBase ? (res >= 0 ? "#D5E8F5" : "#FCEBEB")
+                              background: isBase ? (res >= 0 ? "#E8E8E8" : "#FCEBEB")
                                 : res >= 0 ? `rgba(29,158,117,${0.08 + intens * 0.25})` : `rgba(226,75,74,${0.08 + intens * 0.25})`,
-                              color: res >= 0 ? "#0B2D50" : "#791F1F", whiteSpace: "nowrap",
+                              color: res >= 0 ? "#0D0D0D" : "#791F1F", whiteSpace: "nowrap",
                             }}>
                               {res >= 0 ? "" : "("}{fmtR(Math.abs(res))}{res >= 0 ? "" : ")"}
                             </td>
@@ -4165,7 +4165,7 @@ export default function BI() {
         {/* ═══════════ RECURSOS DE TERCEIROS ═══════════ */}
         {!loading && aba === "terceiros" && (() => {
           const maxCaptado = Math.max(...rtPorAno.map(b => b.captado), 1);
-          const corTipo: Record<string, string> = { CPR: "#1A4870", Custeio: "#16A34A", EGF: "#9B59B6", Empréstimo: "#E24B4A", Financiamento: "#378ADD", PRONAF: "#EF9F27", Outros: "var(--text-3)" };
+          const corTipo: Record<string, string> = { CPR: "#111111", Custeio: "#16A34A", EGF: "#9B59B6", Empréstimo: "#E24B4A", Financiamento: "#444444", PRONAF: "#EF9F27", Outros: "var(--text-3)" };
           const temDados = rtTotalCaptado > 0 || rtTotalPago > 0 || rtTotalJuros > 0 || cfContratos.filter(c => c.status !== "cancelado").length > 0;
 
           // Filtro local por ano/safra
@@ -4313,7 +4313,7 @@ export default function BI() {
                     ⎙ PDF
                   </button>
                   <button onClick={exportarXLSX} disabled={exportandoRT}
-                    style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: exportandoRT ? "not-allowed" : "pointer", opacity: exportandoRT ? 0.7 : 1 }}>
+                    style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: exportandoRT ? "not-allowed" : "pointer", opacity: exportandoRT ? 0.7 : 1 }}>
                     {exportandoRT ? "Exportando…" : "↓ XLSX"}
                   </button>
                 </div>
@@ -4434,7 +4434,7 @@ export default function BI() {
                                 onClick={() => setRtDrillLabel(isOpen ? null : b.label)}
                                 style={{ borderBottom: isOpen ? "none" : "0.5px solid var(--bg-tag)", cursor: "pointer", background: isOpen ? "#EEF6FF" : "transparent" }}>
                                 <td style={{ padding: "9px 12px", fontWeight: 600, fontSize: 13 }}>
-                                  <span style={{ marginRight: 6, fontSize: 9, color: "#1A4870", opacity: 0.5 }}>{isOpen ? "▼" : "▶"}</span>
+                                  <span style={{ marginRight: 6, fontSize: 9, color: "#111111", opacity: 0.5 }}>{isOpen ? "▼" : "▶"}</span>
                                   {b.label}
                                 </td>
                                 <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: b.captado > 0 ? "#16A34A" : "var(--text-muted)", fontWeight: 600 }}>
@@ -4454,7 +4454,7 @@ export default function BI() {
                                   {b.captado > 0 && (
                                     <div>
                                       <div style={{ height: 6, borderRadius: 3, background: "var(--bg-tag)", overflow: "hidden", display: "flex" }}>
-                                        <div style={{ width: `${pct_pago}%`,  background: "#1A4870", borderRadius: 3 }} title={`Principal: ${fmtN(pct_pago,0)}%`} />
+                                        <div style={{ width: `${pct_pago}%`,  background: "#111111", borderRadius: 3 }} title={`Principal: ${fmtN(pct_pago,0)}%`} />
                                         <div style={{ width: `${pct_juros}%`, background: "#EF9F27" }}                 title={`Juros: ${fmtN(pct_juros,0)}%`} />
                                       </div>
                                       <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 2, textAlign: "right" }}>{fmtN(pct_pago+pct_juros,0)}% devolvido</div>
@@ -4681,9 +4681,9 @@ export default function BI() {
 
           const thAnoCel = (ano: string) => ({
             ...thSt,
-            background: isAtual(ano) ? "#EFF6FF" : isFuturo(ano) ? "var(--bg-page)" : "var(--bg-page)",
-            color: isAtual(ano) ? "#1A4870" : isFuturo(ano) ? "#999" : "var(--text-2)",
-            borderBottom: `2px solid ${isAtual(ano) ? "#1A4870" : "var(--border-table)"}`,
+            background: isAtual(ano) ? "#F2F2F2" : isFuturo(ano) ? "var(--bg-page)" : "var(--bg-page)",
+            color: isAtual(ano) ? "#111111" : isFuturo(ano) ? "#999" : "var(--text-2)",
+            borderBottom: `2px solid ${isAtual(ano) ? "#111111" : "var(--border-table)"}`,
           });
 
           const varCell = (v: number | null, isR: boolean, inverterCores = false) => {
@@ -4841,7 +4841,7 @@ export default function BI() {
                             {anos.map(a => (
                               <th key={a} style={thAnoCel(a)}>
                                 {a}
-                                {isAtual(a) && <div style={{ fontSize: 9, color: "#1A4870", fontWeight: 700 }}>ATUAL</div>}
+                                {isAtual(a) && <div style={{ fontSize: 9, color: "#111111", fontWeight: 700 }}>ATUAL</div>}
                                 {isFuturo(a) && <div style={{ fontSize: 9, color: "#bbb" }}>proj.</div>}
                               </th>
                             ))}
@@ -4876,7 +4876,7 @@ export default function BI() {
                             amortPorAno,
                             true,    // crescer = bom (verde)
                             "#0C447C",
-                            "#EFF6FF",
+                            "#F2F2F2",
                             "#F5F9FF",
                             () => "#0C447C",
                           )}
@@ -4898,7 +4898,7 @@ export default function BI() {
 
                   {/* ══ PAINEL DE ANÁLISE ══ */}
                   <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                    {sectionHeader("Análise da Evolução", "diagnóstico automático com base nos contratos e parcelas cadastrados", "#1A4870")}
+                    {sectionHeader("Análise da Evolução", "diagnóstico automático com base nos contratos e parcelas cadastrados", "#111111")}
                     <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
 
                       {/* Tendência do endividamento */}
@@ -4930,7 +4930,7 @@ export default function BI() {
 
                       {/* Pico de caixa */}
                       {picoVal > 0 && (
-                        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#EFF6FF", border: "0.5px solid #93C5FD" }}>
+                        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#F2F2F2", border: "0.5px solid #93C5FD" }}>
                           <div style={{ fontSize: 22 }}>📅</div>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>
@@ -5049,7 +5049,7 @@ export default function BI() {
                                       </td>
                                       <td style={{ padding: "9px 12px", color: "var(--text-2)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(c as any).credor ?? "—"}</td>
                                       <td style={{ padding: "9px 12px" }}>
-                                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, fontWeight: 600, background: (c as any).status === "ativo" ? "#D5E8F5" : "#F1EFE8", color: (c as any).status === "ativo" ? "#0B2D50" : "var(--text-2)" }}>{(c as any).status ?? "—"}</span>
+                                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, fontWeight: 600, background: (c as any).status === "ativo" ? "#E8E8E8" : "#F1EFE8", color: (c as any).status === "ativo" ? "#0D0D0D" : "var(--text-2)" }}>{(c as any).status ?? "—"}</span>
                                       </td>
                                       <td style={{ padding: "9px 12px", textAlign: "right" }}>
                                         {semParc ? <span style={{ color: "#E24B4A", fontWeight: 700 }}>⚠ 0</span> : <span style={{ color: "#16A34A", fontWeight: 600 }}>{audit.count}</span>}
@@ -5319,7 +5319,7 @@ export default function BI() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
             onClick={e => { if (e.target === e.currentTarget) setRtLancModal(null); }}>
             <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
-              <div style={{ padding: "14px 20px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ padding: "14px 20px", background: "#111111", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento RT — contrato não localizado</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{l.descricao}</div>
@@ -5342,7 +5342,7 @@ export default function BI() {
               </div>
               <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10, background: "var(--bg-card)" }}>
                 <button onClick={() => setRtLancModal(null)} style={{ padding: "7px 16px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
-                <a href="/financeiro/contratos" style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Contratos Financeiros →</a>
+                <a href="/financeiro/contratos" style={{ padding: "7px 16px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Contratos Financeiros →</a>
               </div>
             </div>
           </div>
@@ -5378,7 +5378,7 @@ export default function BI() {
 
         const thSt: React.CSSProperties = { padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)", textTransform: "uppercase", whiteSpace: "nowrap" };
         const tdSt: React.CSSProperties = { padding: "7px 10px", fontSize: 12, color: "var(--text-1)", borderBottom: "0.5px solid var(--bg-tag)" };
-        const secH: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" };
+        const secH: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" };
 
         // ── Abre preview em nova aba ─────────────────────────────
         const abrirPreview = () => {
@@ -5417,9 +5417,9 @@ export default function BI() {
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:system-ui,sans-serif;background:#D1D5DB;color:#1a1a1a}
-  .toolbar{position:sticky;top:0;background:#1A4870;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .toolbar{position:sticky;top:0;background:#111111;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
   .toolbar-title{color:#fff;font-size:13px;font-weight:600}
-  .btn-print{display:flex;align-items:center;gap:8px;background:#fff;color:#1A4870;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn-print{display:flex;align-items:center;gap:8px;background:#fff;color:#111111;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
   .btn-print:hover{background:#f0f5fa}
   .page-wrapper{display:flex;justify-content:center;padding:28px}
   .page{background:#fff;width:297mm;padding:14mm 16mm;box-shadow:0 4px 24px rgba(0,0,0,.18)}
@@ -5436,7 +5436,7 @@ export default function BI() {
   <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
 </div>
 <div class="page-wrapper"><div class="page">
-  <div style="background:#1A4870;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-radius:4px">
+  <div style="background:#111111;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-radius:4px">
     <div style="display:flex;align-items:center;gap:12px">
       <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" style="height:30px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />
     </div>
@@ -5445,9 +5445,9 @@ export default function BI() {
       <div style="font-size:9px;color:rgba(255,255,255,.6)">Emitido em ${emissao}</div>
     </div>
   </div>
-  <div style="border-bottom:2px solid #1A4870;padding-bottom:7px;margin-bottom:12px">
+  <div style="border-bottom:2px solid #111111;padding-bottom:7px;margin-bottom:12px">
     <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Contrato Financeiro — Recurso de Terceiros</div>
-    <div style="font-size:16px;font-weight:800;color:#1A4870;line-height:1.2">${c.descricao}</div>
+    <div style="font-size:16px;font-weight:800;color:#111111;line-height:1.2">${c.descricao}</div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 24px;margin-bottom:12px">
     ${[
@@ -5465,9 +5465,9 @@ export default function BI() {
     ].map(([k,v]) => `<div style="display:flex;gap:6px"><span style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;min-width:130px;flex-shrink:0">${k}:</span><span style="font-size:10px;font-weight:500">${v}</span></div>`).join("")}
   </div>
   ${garantiasHtml}
-  <div style="font-size:9px;font-weight:700;color:#1A4870;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid #1A4870">Parcelas (${c.parcelas.length})</div>
+  <div style="font-size:9px;font-weight:700;color:#111111;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid #111111">Parcelas (${c.parcelas.length})</div>
   <table style="width:100%;border-collapse:collapse;font-size:10px">
-    <thead><tr style="background:#1A4870">
+    <thead><tr style="background:#111111">
       <th style="${thPrint}text-align:center">#</th>
       <th style="${thPrint}text-align:left">Vencimento</th>
       <th style="${thPrint}text-align:right">Amortização</th>
@@ -5479,12 +5479,12 @@ export default function BI() {
     </tr></thead>
     <tbody>${linhasParcelas}</tbody>
   </table>
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;padding-top:8px;border-top:1.5px solid #1A4870">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;padding-top:8px;border-top:1.5px solid #111111">
     <div style="display:flex;gap:32px">
       <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Total Pago</div>
         <div style="font-size:13px;font-weight:800;color:#16A34A">${isUSD ? `USD ${fmtN(totalPago,2)}` : fmtR(totalPago)}${isUSD && ptax > 0 ? ` ≈ ${fmtR(totalPago*ptax)}` : ""}</div></div>
       <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Total a Vencer</div>
-        <div style="font-size:13px;font-weight:800;color:#1A4870">${isUSD ? `USD ${fmtN(totalAberto,2)}` : fmtR(totalAberto)}${isUSD && ptax > 0 ? ` ≈ ${fmtR(totalAberto*ptax)}` : ""}</div></div>
+        <div style="font-size:13px;font-weight:800;color:#111111">${isUSD ? `USD ${fmtN(totalAberto,2)}` : fmtR(totalAberto)}${isUSD && ptax > 0 ? ` ≈ ${fmtR(totalAberto*ptax)}` : ""}</div></div>
       <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Parcelas Pagas</div>
         <div style="font-size:13px;font-weight:800;color:#555">${c.parcelas.filter(p=>p.status==="pago").length}/${c.parcelas.length}</div></div>
     </div>
@@ -5501,7 +5501,7 @@ export default function BI() {
             <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 920, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
 
               {/* Cabeçalho */}
-              <div style={{ padding: "16px 24px", background: "#1A4870", flexShrink: 0 }}>
+              <div style={{ padding: "16px 24px", background: "#111111", flexShrink: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 3 }}>Contrato Financeiro — Recurso de Terceiros</div>
@@ -5624,7 +5624,7 @@ export default function BI() {
                     </div>
                     <div>
                       <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total a Vencer</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: totalAberto > 0 ? "#1A4870" : "var(--text-3)" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: totalAberto > 0 ? "#111111" : "var(--text-3)" }}>
                         {isUSD ? `USD ${fmtN(totalAberto, 2)}` : fmtR(totalAberto)}
                         {isUSD && ptax > 0 && <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>≈ {fmtR(totalAberto * ptax)}</span>}
                       </div>
@@ -5638,8 +5638,8 @@ export default function BI() {
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button onClick={() => setRtContratoModal(null)} style={{ padding: "8px 18px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
-                    <button onClick={abrirPreview} style={{ padding: "8px 18px", background: "var(--bg-page)", border: "0.5px solid #1A4870", borderRadius: 8, fontSize: 12, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>Visualizar / PDF</button>
-                    <a href="/financeiro/contratos" style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Abrir em Contratos →</a>
+                    <button onClick={abrirPreview} style={{ padding: "8px 18px", background: "var(--bg-page)", border: "0.5px solid #111111", borderRadius: 8, fontSize: 12, color: "#111111", cursor: "pointer", fontWeight: 600 }}>Visualizar / PDF</button>
+                    <a href="/financeiro/contratos" style={{ padding: "8px 18px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Abrir em Contratos →</a>
                   </div>
                 </div>
               </div>

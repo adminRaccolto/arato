@@ -134,7 +134,7 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
 
           {/* Banner */}
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "28px 32px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24 }}>
-            <div style={{ width: 64, height: 64, background: "#D5E8F5", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
+            <div style={{ width: 64, height: 64, background: "#E8E8E8", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
               {info.icone}
             </div>
             <div style={{ flex: 1 }}>
@@ -143,11 +143,11 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
               </div>
               <div style={{ fontSize: 13, color: "#666", lineHeight: 1.6, marginBottom: 10 }}>
                 Este módulo está sendo desenvolvido. Quando estiver pronto, ele terá
-                <strong style={{ color: "#1A4870" }}> {autoCount} de {totalCount} funcionalidades totalmente automáticas</strong> —
+                <strong style={{ color: "#111111" }}> {autoCount} de {totalCount} funcionalidades totalmente automáticas</strong> —
                 sem precisar de ação sua.
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ fontSize: 11, background: "#D5E8F5", color: "#0B2D50", padding: "3px 10px", borderRadius: 8 }}>
+                <span style={{ fontSize: 11, background: "#E8E8E8", color: "#0D0D0D", padding: "3px 10px", borderRadius: 8 }}>
                   ⟳ {autoCount} automáticas
                 </span>
                 <span style={{ fontSize: 11, background: "#FBF0D8", color: "#7A5A12", padding: "3px 10px", borderRadius: 8 }}>
@@ -173,10 +173,10 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
               >
                 <div style={{
                   width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                  background: f.auto ? "#D5E8F5" : "#FBF0D8",
-                  border: `1px solid ${f.auto ? "#1A487040" : "#C9921B40"}`,
+                  background: f.auto ? "#E8E8E8" : "#FBF0D8",
+                  border: `1px solid ${f.auto ? "#11111140" : "#C9921B40"}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 14, color: f.auto ? "#1A4870" : "#C9921B",
+                  fontSize: 14, color: f.auto ? "#111111" : "#C9921B",
                 }}>
                   {f.auto ? "⟳" : "◈"}
                 </div>
@@ -186,8 +186,8 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
                 </div>
                 <span style={{
                   fontSize: 10, padding: "2px 8px", borderRadius: 8, flexShrink: 0,
-                  background: f.auto ? "#D5E8F5" : "#FBF0D8",
-                  color: f.auto ? "#0B2D50" : "#7A5A12",
+                  background: f.auto ? "#E8E8E8" : "#FBF0D8",
+                  color: f.auto ? "#0D0D0D" : "#7A5A12",
                 }}>
                   {f.auto ? "automático" : "manual"}
                 </span>

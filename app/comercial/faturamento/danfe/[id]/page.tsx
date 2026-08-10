@@ -172,14 +172,14 @@ export default function DanfePage() {
       {/* Barra de ferramentas — não imprime */}
       <div className="no-print" style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 999,
-        background: isHom ? "#FFF3CD" : "#1A4870",
+        background: isHom ? "#FFF3CD" : "#111111",
         color: isHom ? "#856404" : "#fff",
         padding: "8px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
         fontFamily: "Arial", fontSize: 13, fontWeight: 600,
         boxShadow: "0 2px 8px rgba(0,0,0,.15)",
       }}>
         <span>{isHom ? "⚠️ PREVIEW — Sem valor fiscal. Confira antes de transmitir." : `✓ NF-e Autorizada — Protocolo: ${protocolo}`}</span>
-        <button onClick={() => window.print()} style={{ padding: "6px 18px", background: isHom ? "#856404" : "#fff", color: isHom ? "#fff" : "#1A4870", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+        <button onClick={() => window.print()} style={{ padding: "6px 18px", background: isHom ? "#856404" : "#fff", color: isHom ? "#fff" : "#111111", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
           Imprimir / Salvar PDF
         </button>
       </div>

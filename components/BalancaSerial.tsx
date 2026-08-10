@@ -155,7 +155,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
                 style={{
                   fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "none", cursor: m === "serial" && !temSerial ? "not-allowed" : "pointer",
                   background: modo === m ? "#fff" : "transparent",
-                  color: modo === m ? "#1A4870" : "var(--text-3)",
+                  color: modo === m ? "#111111" : "var(--text-3)",
                   boxShadow: modo === m ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
                   opacity: m === "serial" && !temSerial ? 0.4 : 1,
                 }}>
@@ -168,7 +168,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
         {/* Conectar / Desconectar */}
         {!conectada ? (
           <button type="button" onClick={conectar}
-            style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 7, background: "#1A4870", color: "#fff", border: "none", cursor: "pointer" }}>
+            style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 7, background: "#111111", color: "#fff", border: "none", cursor: "pointer" }}>
             Conectar
           </button>
         ) : (
@@ -184,9 +184,9 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
         <div style={{
           flex: 1, textAlign: "center", padding: "10px 0",
           background: conectada ? "#fff" : "#EBEDF2",
-          border: "0.5px solid", borderColor: conectada ? "#1A487040" : "var(--border-table)", borderRadius: 8,
+          border: "0.5px solid", borderColor: conectada ? "#11111140" : "var(--border-table)", borderRadius: 8,
         }}>
-          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: conectada && pesoAtual ? "#1A4870" : "#bbb", letterSpacing: 2 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: conectada && pesoAtual ? "#111111" : "#bbb", letterSpacing: 2 }}>
             {pesoAtual != null ? pesoAtual.toLocaleString("pt-BR") : "— — —"}
           </div>
           <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>kg</div>
@@ -198,7 +198,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
             style={{
               fontSize: 11, fontWeight: 600, padding: "7px 14px", borderRadius: 7, border: "none", whiteSpace: "nowrap",
               cursor: conectada && pesoAtual != null ? "pointer" : "not-allowed",
-              background: conectada && pesoAtual != null ? "#1A4870" : "var(--bg-tag)",
+              background: conectada && pesoAtual != null ? "#111111" : "var(--bg-tag)",
               color:      conectada && pesoAtual != null ? "#fff"    : "var(--text-muted)",
             }}>
             ↓ Capturar Peso Bruto

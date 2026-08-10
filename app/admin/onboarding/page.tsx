@@ -28,12 +28,12 @@ const ETAPA_LABEL: Record<string, string> = {
 
 const ETAPA_COR: Record<string, string> = {
   inicio: "#888",
-  fazenda: "#378ADD",
+  fazenda: "#444444",
   talhoes: "#5B6CF8",
   produtores: "#C9921B",
   ciclo: "#16A34A",
   fiscal: "#E24B4A",
-  usuario: "#1A4870",
+  usuario: "#111111",
   concluido: "#16A34A",
 };
 
@@ -136,7 +136,7 @@ export default function OnboardingAdminPage() {
       {/* Header */}
       <div style={{ background: "var(--bg-card, #fff)", borderBottom: "0.5px solid var(--border, #DDE2EE)", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Agente Implantador</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#111111" }}>Agente Implantador</div>
           <div style={{ fontSize: 11, color: "var(--text-3, #888)" }}>Onboarding autônomo de novos clientes via WhatsApp</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -161,7 +161,7 @@ export default function OnboardingAdminPage() {
                 onClick={() => setFiltro(f)}
                 style={{
                   flex: 1, padding: "4px 0", fontSize: 11, borderRadius: 6, border: "none", cursor: "pointer",
-                  background: filtro === f ? "#1A4870" : "var(--bg-page, #F4F6FA)",
+                  background: filtro === f ? "#111111" : "var(--bg-page, #F4F6FA)",
                   color: filtro === f ? "#fff" : "var(--text-2, #555)",
                   fontWeight: filtro === f ? 600 : 400,
                 }}
@@ -188,13 +188,13 @@ export default function OnboardingAdminPage() {
                     style={{
                       padding: "10px 12px",
                       borderBottom: "0.5px solid var(--border, #DDE2EE)",
-                      background: ativa ? "#D5E8F5" : "transparent",
-                      borderLeft: ativa ? "3px solid #1A4870" : "3px solid transparent",
+                      background: ativa ? "#E8E8E8" : "transparent",
+                      borderLeft: ativa ? "3px solid #111111" : "3px solid transparent",
                       cursor: "pointer",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                      <div style={{ fontWeight: 600, fontSize: 12, color: ativa ? "#1A4870" : "var(--text-1, #1a1a1a)" }}>
+                      <div style={{ fontWeight: 600, fontSize: 12, color: ativa ? "#111111" : "var(--text-1, #1a1a1a)" }}>
                         {(s.dados_coletados.fazenda as Record<string, string> | undefined)?.nome ?? s.telefone}
                       </div>
                       <button
@@ -217,7 +217,7 @@ export default function OnboardingAdminPage() {
                       </span>
                     </div>
                     <div style={{ height: 3, background: "var(--border, #DDE2EE)", borderRadius: 2 }}>
-                      <div style={{ height: "100%", width: `${prog}%`, background: s.concluido ? "#16A34A" : "#1A4870", borderRadius: 2, transition: "width 0.3s" }} />
+                      <div style={{ height: "100%", width: `${prog}%`, background: s.concluido ? "#16A34A" : "#111111", borderRadius: 2, transition: "width 0.3s" }} />
                     </div>
                     <div style={{ fontSize: 10, color: "var(--text-3, #888)", marginTop: 3 }}>
                       {s.telefone.startsWith("test") ? "🧪 Modo teste" : `📱 ${s.telefone}`}
@@ -235,7 +235,7 @@ export default function OnboardingAdminPage() {
             <>
               {/* Header da sessão */}
               <div style={{ background: "var(--bg-card, #fff)", padding: "12px 20px", borderBottom: "0.5px solid var(--border, #DDE2EE)" }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#1A4870" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#111111" }}>
                   {(selected.dados_coletados.fazenda as Record<string, string> | undefined)?.nome ?? selected.telefone}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-3, #888)", marginTop: 2 }}>
@@ -245,12 +245,12 @@ export default function OnboardingAdminPage() {
                 {Object.keys(selected.dados_coletados).length > 0 && (
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {!!selected.dados_coletados.fazenda && (
-                      <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 8 }}>
+                      <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 8 }}>
                         🏡 {(selected.dados_coletados.fazenda as Record<string, string>).nome} · {String((selected.dados_coletados.fazenda as Record<string, unknown>).area_total_ha)}ha
                       </span>
                     )}
                     {!!((selected.dados_coletados.talhoes as unknown[] | undefined)?.length) && (
-                      <span style={{ fontSize: 10, background: "#EFF3FA", color: "#1A4870", padding: "2px 8px", borderRadius: 8 }}>
+                      <span style={{ fontSize: 10, background: "#EFF3FA", color: "#111111", padding: "2px 8px", borderRadius: 8 }}>
                         🌾 {(selected.dados_coletados.talhoes as unknown[]).length} talhão(s)
                       </span>
                     )}
@@ -281,11 +281,11 @@ export default function OnboardingAdminPage() {
                   return (
                     <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: 8 }}>
                       {msg.role === "assistant" && (
-                        <div style={{ width: 26, height: 26, background: "#1A4870", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, flexShrink: 0 }}>🤖</div>
+                        <div style={{ width: 26, height: 26, background: "#111111", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, flexShrink: 0 }}>🤖</div>
                       )}
                       <div style={{
                         maxWidth: "75%",
-                        background: msg.role === "user" ? "#1A4870" : "var(--bg-card, #fff)",
+                        background: msg.role === "user" ? "#111111" : "var(--bg-card, #fff)",
                         color: msg.role === "user" ? "#fff" : "var(--text-1, #1a1a1a)",
                         borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                         padding: "8px 12px", fontSize: 12, lineHeight: 1.6,
@@ -314,7 +314,7 @@ export default function OnboardingAdminPage() {
         <div style={{ borderLeft: "0.5px solid var(--border, #DDE2EE)", background: "var(--bg-card, #fff)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border, #DDE2EE)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 13, color: "#1A4870" }}>🧪 Modo Teste</div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: "#111111" }}>🧪 Modo Teste</div>
               <div style={{ fontSize: 10, color: "var(--text-3, #888)" }}>Simula uma conversa WhatsApp</div>
             </div>
             <button
@@ -349,11 +349,11 @@ export default function OnboardingAdminPage() {
               testMessages.map((msg, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: 6 }}>
                   {msg.role === "assistant" && (
-                    <div style={{ width: 24, height: 24, background: "#1A4870", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, flexShrink: 0 }}>🤖</div>
+                    <div style={{ width: 24, height: 24, background: "#111111", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, flexShrink: 0 }}>🤖</div>
                   )}
                   <div style={{
                     maxWidth: "80%",
-                    background: msg.role === "user" ? "#1A4870" : "var(--bg-page, #F4F6FA)",
+                    background: msg.role === "user" ? "#111111" : "var(--bg-page, #F4F6FA)",
                     color: msg.role === "user" ? "#fff" : "var(--text-1, #1a1a1a)",
                     borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                     padding: "7px 11px", fontSize: 12, lineHeight: 1.5,
@@ -367,11 +367,11 @@ export default function OnboardingAdminPage() {
             )}
             {testSending && (
               <div style={{ display: "flex", gap: 6 }}>
-                <div style={{ width: 24, height: 24, background: "#1A4870", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, flexShrink: 0 }}>🤖</div>
+                <div style={{ width: 24, height: 24, background: "#111111", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, flexShrink: 0 }}>🤖</div>
                 <div style={{ background: "var(--bg-page, #F4F6FA)", border: "0.5px solid var(--border, #DDE2EE)", borderRadius: "14px 14px 14px 4px", padding: "10px 14px" }}>
                   <div style={{ display: "flex", gap: 3 }}>
                     {[0, 1, 2].map(i => (
-                      <div key={i} style={{ width: 5, height: 5, background: "#1A4870", borderRadius: "50%", animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                      <div key={i} style={{ width: 5, height: 5, background: "#111111", borderRadius: "50%", animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
                     ))}
                   </div>
                 </div>
@@ -397,7 +397,7 @@ export default function OnboardingAdminPage() {
               onClick={enviarTeste}
               disabled={!testInput.trim() || testSending}
               style={{
-                background: !testInput.trim() || testSending ? "#ccc" : "#1A4870",
+                background: !testInput.trim() || testSending ? "#ccc" : "#111111",
                 color: "#fff", border: "none", borderRadius: 8,
                 width: 36, height: 36, fontSize: 16, cursor: !testInput.trim() || testSending ? "not-allowed" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,

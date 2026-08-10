@@ -1062,12 +1062,12 @@ function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
         onDrop={handleDrop}
         onClick={() => !busy && ref.current?.click()}
         style={{
-          border: `2px dashed ${drag ? "#1A4870" : erro ? "#E24B4A" : "var(--border)"}`,
+          border: `2px dashed ${drag ? "#111111" : erro ? "#E24B4A" : "var(--border)"}`,
           borderRadius: 10,
           padding: "40px 24px",
           textAlign: "center",
           cursor: busy ? "wait" : "pointer",
-          background: drag ? "#D5E8F5" : erro ? "#FFF5F5" : "var(--bg-page)",
+          background: drag ? "#E8E8E8" : erro ? "#FFF5F5" : "var(--bg-page)",
           transition: "all 0.15s",
         }}
       >
@@ -1079,7 +1079,7 @@ function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
           onChange={(e) => { if (e.target.files?.[0]) handle(e.target.files[0]); }}
         />
         <div style={{ fontSize: 32, marginBottom: 8 }}>{busy ? "⏳" : "📂"}</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: busy ? "var(--text-3)" : "#1A4870", marginBottom: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: busy ? "var(--text-3)" : "#111111", marginBottom: 4 }}>
           {busy ? "Lendo arquivo..." : "Arraste o arquivo XLSX aqui"}
         </div>
         <div style={{ fontSize: 12, color: "var(--text-3)" }}>{busy ? "aguarde" : "ou clique para selecionar"}</div>
@@ -1138,7 +1138,7 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
 // ─── Resultado resumo ─────────────────────────────────────────
 function Resultado({ ok, erros, duplicados, atualizados, total, labelDuplicados = "Duplicadas" }: { ok: number; erros: number; duplicados: number; atualizados?: number; total: number; labelDuplicados?: string }) {
   const itens = [
-    { label: "Total lidas",   valor: total,       cor: "#1A4870", bg: "#D5E8F5" },
+    { label: "Total lidas",   valor: total,       cor: "#111111", bg: "#E8E8E8" },
     { label: "Importadas",    valor: ok,           cor: "#16A34A", bg: "#DCFCE7" },
     ...(atualizados ? [{ label: "Atualizadas",  valor: atualizados, cor: "#7C3AED", bg: "#EDE9FE" }] : []),
     { label: labelDuplicados, valor: duplicados,   cor: "#C9921B", bg: "#FBF3E0" },
@@ -1160,7 +1160,7 @@ function Resultado({ ok, erros, duplicados, atualizados, total, labelDuplicados 
 function RefCategorias() {
   return (
     <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px" }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10 }}>
         Categorias de Produtos
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
@@ -1174,7 +1174,7 @@ function RefCategorias() {
           <div key={cat} style={{ padding: "8px 12px", background: "white", borderRadius: 8, border: "0.5px solid var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{label}</div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{desc}</div>
-            <code style={{ fontSize: 11, color: "#1A4870", background: "#D5E8F5", padding: "1px 5px", borderRadius: 4, marginTop: 4, display: "inline-block" }}>{cat}</code>
+            <code style={{ fontSize: 11, color: "#111111", background: "#E8E8E8", padding: "1px 5px", borderRadius: 4, marginTop: 4, display: "inline-block" }}>{cat}</code>
           </div>
         ))}
       </div>
@@ -2889,8 +2889,8 @@ function ImportacaoInner() {
                     display: "flex", alignItems: "center", gap: 10,
                     width: "100%", padding: "12px 16px",
                     border: "none", borderBottom: "0.5px solid var(--border)",
-                    background: aba === a ? "#D5E8F5" : "transparent",
-                    color: aba === a ? "#1A4870" : "var(--text-2)",
+                    background: aba === a ? "#E8E8E8" : "transparent",
+                    color: aba === a ? "#111111" : "var(--text-2)",
                     fontWeight: aba === a ? 700 : 400,
                     fontSize: 13, cursor: "pointer", textAlign: "left",
                   }}
@@ -2929,8 +2929,8 @@ function ImportacaoInner() {
               <button
                 onClick={() => downloadTemplate(aba)}
                 style={{
-                  padding: "8px 16px", background: "white", border: "0.5px solid #1A4870",
-                  borderRadius: 8, color: "#1A4870", fontWeight: 600, fontSize: 13,
+                  padding: "8px 16px", background: "white", border: "0.5px solid #111111",
+                  borderRadius: 8, color: "#111111", fontWeight: 600, fontSize: 13,
                   cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
                 }}
               >
@@ -2940,8 +2940,8 @@ function ImportacaoInner() {
 
             {/* Seletores de Fazenda / Depósito — apenas na aba Insumos */}
             {aba === "insumos" && (
-              <div style={{ marginBottom: 16, padding: "14px 16px", background: "#F0F7FF", border: "0.5px solid #1A487040", borderRadius: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+              <div style={{ marginBottom: 16, padding: "14px 16px", background: "#F0F7FF", border: "0.5px solid #11111140", borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
                   Destino da Importação
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2979,7 +2979,7 @@ function ImportacaoInner() {
                   </div>
                 </div>
                 {insumoFazSel && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: "#1A4870" }}>
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#111111" }}>
                     ✓ Toda a planilha será importada para <strong>{fazendas.find(f => f.id === insumoFazSel)?.nome}</strong>
                     {insumoDepSel && <> → <strong>{insumoDepositos.find(d => d.id === insumoDepSel)?.nome}</strong></>}
                     {" — "}coluna <code>fazenda_nome</code> {insumoFazSel ? "ignorada" : "obrigatória"}
@@ -3140,7 +3140,7 @@ function ImportacaoInner() {
                       disabled={cfg.loading || okRows === 0}
                       style={{
                         padding: "7px 20px",
-                        background: okRows === 0 ? "var(--border)" : "#1A4870",
+                        background: okRows === 0 ? "var(--border)" : "#111111",
                         border: "none", borderRadius: 8, color: "white",
                         fontSize: 13, fontWeight: 600, cursor: okRows === 0 ? "default" : "pointer",
                         display: "flex", alignItems: "center", gap: 6,
@@ -3258,13 +3258,13 @@ function ImportacaoInner() {
 
           {/* Dicas contextuais */}
           {(aba === "cp" || aba === "cr") && (
-            <div style={{ marginTop: 16, padding: "12px 16px", background: "#D5E8F5", borderRadius: 10, border: "0.5px solid #1A4870", fontSize: 12, color: "#0B2D50" }}>
+            <div style={{ marginTop: 16, padding: "12px 16px", background: "#E8E8E8", borderRadius: 10, border: "0.5px solid #111111", fontSize: 12, color: "#0D0D0D" }}>
               <strong>💡 Dica:</strong> A coluna <code>pessoa_cpf_cnpj</code> faz o vínculo automático com o cadastro de Pessoas pelo CPF ou CNPJ.
               Importe Pessoas primeiro para garantir o vínculo correto.
             </div>
           )}
           {aba === "apoio" && (
-            <div style={{ marginTop: 16, padding: "12px 16px", background: "#D5E8F5", borderRadius: 10, border: "0.5px solid #1A4870", fontSize: 12, color: "#0B2D50" }}>
+            <div style={{ marginTop: 16, padding: "12px 16px", background: "#E8E8E8", borderRadius: 10, border: "0.5px solid #111111", fontSize: 12, color: "#0D0D0D" }}>
               <strong>💡 Dica Apoio Financeiro:</strong> O vínculo com fornecedor é feito primeiro por <code>pessoa_cpf_cnpj</code> (CPF/CNPJ), depois por <code>pessoa_nome</code> (nome exato).
               Após importar, o diagnóstico mostra quais fazendas não foram encontradas — use os nomes exatamente como cadastrados no sistema.
             </div>

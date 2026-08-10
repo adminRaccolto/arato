@@ -145,12 +145,12 @@ export default function MapaPage() {
   };
 
   function corCultura(cultura?: string): string {
-    if (!cultura) return "#378ADD";
+    if (!cultura) return "#444444";
     const key = cultura.toLowerCase().replace(/\s+/g, "").replace("1ª", "").replace("2ª", "");
     for (const [k, v] of Object.entries(CULTURA_COR)) {
       if (key.includes(k)) return v;
     }
-    return "#378ADD";
+    return "#444444";
   }
 
   const semKml  = talhoes.filter(t => !t.kml_url);
@@ -244,7 +244,7 @@ export default function MapaPage() {
                     borderBottom: "0.5px solid #F0F2F6",
                     cursor: "pointer",
                     background: ativo ? "#EBF3FC" : "transparent",
-                    borderLeft: ativo ? "3px solid #1A4870" : "3px solid transparent",
+                    borderLeft: ativo ? "3px solid #111111" : "3px solid transparent",
                     transition: "background 0.1s",
                   }}
                 >

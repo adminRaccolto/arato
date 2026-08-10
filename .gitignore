@@ -50,3 +50,4 @@ backup/
 
 # PWA workbox (se usar next-pwa no futuro)
 /public/workbox-*.js
+.claude/worktrees/

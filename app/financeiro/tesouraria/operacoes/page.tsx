@@ -6,7 +6,7 @@ import { supabase } from "../../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 interface OpTesoura {
@@ -30,7 +30,7 @@ const TIPOS_OP_PADRAO = [
 const TIPO_META: Record<string, { label: string; bg: string; cl: string }> = {
   entrada:       { label: "Entrada",        bg: "#DCFCE7", cl: "#166534" },
   saida:         { label: "Saída",          bg: "#FCEBEB", cl: "#791F1F" },
-  ambos:         { label: "Entrada/Saída",  bg: "#D5E8F5", cl: "#0B2D50" },
+  ambos:         { label: "Entrada/Saída",  bg: "#E8E8E8", cl: "#0D0D0D" },
   transferencia: { label: "Transferência",  bg: "#EEE6F8", cl: "#4A1A7A" },
   ajuste:        { label: "Ajuste",         bg: "#FBF3E0", cl: "#7A4300" },
 };
@@ -214,7 +214,7 @@ export default function OperacoesTesourariaPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalOp(false)}>Cancelar</button>
-              <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#1A4870", cursor: saving ? "default" : "pointer" }}>
+              <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
                 {saving ? "Salvando…" : "Salvar"}
               </button>
             </div>

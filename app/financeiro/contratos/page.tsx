@@ -35,7 +35,7 @@ const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", 
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 18, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 18, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 
 const fmtBRL = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtNum = (v: number | null | undefined, dec = 2) => (v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
@@ -44,7 +44,7 @@ const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 function aaParaAm(aa: number) { return (Math.pow(1 + aa / 100, 1 / 12) - 1) * 100; }
 function amParaAa(am: number) { return (Math.pow(1 + am / 100, 12) - 1) * 100; }
 
-function badge(t: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(t: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{t}</span>;
 }
 
@@ -125,7 +125,7 @@ function aplicarDatas(parcelas: ParcelaBase[], dataPrimeiro: string, periodicida
 const LINHAS_CREDITO = ["PRONAF","PRONAMP","FCO Rural","FNO Rural","FNE Rural","BNDES/ABC","BNDES Finame","PCA — Programa para Construção e Ampliação de Armazéns","Custeio Livre (Recursos Próprios)","Custeio SNCR","CPR Física","CPR Financeira","EGF — Empréstimo do Governo Federal","Crédito Rural Outros","Financiamento Livre","Outros"];
 
 const TIPO_META: Record<ContratoFinanceiro["tipo"], { label: string; bg: string; cl: string }> = {
-  custeio:       { label: "Custeio",        bg: "#D5E8F5", cl: "#0B2D50" },
+  custeio:       { label: "Custeio",        bg: "#E8E8E8", cl: "#0D0D0D" },
   investimento:  { label: "Investimento",   bg: "#E6F1FB", cl: "#0C447C" },
   securitizacao: { label: "Securitização",  bg: "#FBF0D8", cl: "#7A5A12" },
   cpr:           { label: "CPR",            bg: "#FAEEDA", cl: "#633806" },
@@ -134,7 +134,7 @@ const TIPO_META: Record<ContratoFinanceiro["tipo"], { label: string; bg: string;
 };
 
 const TIPO_GAR_META: Record<NonNullable<GarantiaContrato["tipo_garantia"]>, { label: string; bg: string; cl: string }> = {
-  alienacao_fiduciaria: { label: "Alienação Fiduciária", bg: "#D5E8F5", cl: "#0B2D50" },
+  alienacao_fiduciaria: { label: "Alienação Fiduciária", bg: "#E8E8E8", cl: "#0D0D0D" },
   hipoteca:             { label: "Hipoteca",              bg: "#FAEEDA", cl: "#633806" },
   penhor_rural:         { label: "Penhor Rural",          bg: "#FBF3E0", cl: "#8B5E14" },
   aval:                 { label: "Aval",                  bg: "#E8F5EB", cl: "#1A5C35" },
@@ -151,7 +151,7 @@ const TIPO_BEM_META: Record<NonNullable<GarantiaContrato["tipo_bem"]>, string> =
 };
 
 const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: string; cl: string }> = {
-  ativo:        { label: "Ativo",        bg: "#D5E8F5", cl: "#0B2D50" },
+  ativo:        { label: "Ativo",        bg: "#E8E8E8", cl: "#0D0D0D" },
   quitado:      { label: "Quitado",      bg: "#F1EFE8", cl: "var(--text-2)" },
   cancelado:    { label: "Cancelado",    bg: "#FCEBEB", cl: "#791F1F" },
   refinanciado: { label: "Refinanciado", bg: "#EDE9FB", cl: "#4B3B9B" },
@@ -854,7 +854,7 @@ export default function ContratosFinanceiros() {
                   {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
                 </select>
               )}
-              <button style={{ ...btnV, background: "#1A4870", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
+              <button style={{ ...btnV, background: "#111111", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
             </div>
           </div>
 
@@ -862,7 +862,7 @@ export default function ContratosFinanceiros() {
           {contratosFiltrados.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
               {[
-                { label: "Contratos Ativos",  valor: contratosFiltrados.filter(c => c.status === "ativo").length, fmt: (v: number) => String(v),        cor: "#1A4870", suf: "" },
+                { label: "Contratos Ativos",  valor: contratosFiltrados.filter(c => c.status === "ativo").length, fmt: (v: number) => String(v),        cor: "#111111", suf: "" },
                 { label: "Total Captado",     valor: totalFinanciado,                                      fmt: fmtBRL,                           cor: "#1A5C38", suf: ptax ? " (conv. PTAX)" : "" },
                 { label: "Quitados/Cancelados", valor: contratosFiltrados.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "var(--text-2)",    suf: "" },
               ].map((k, i) => (
@@ -879,7 +879,7 @@ export default function ContratosFinanceiros() {
             <div style={{ background: "#FCEBEB", borderRadius: 14, border: "0.5px solid #E24B4A50", padding: "32px 24px", textAlign: "center" }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#791F1F", marginBottom: 6 }}>Erro ao carregar contratos</div>
               <div style={{ fontSize: 12, color: "#791F1F", marginBottom: 16 }}>{erroCarregamento}</div>
-              <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setErroCarregamento(null); if (fazendaId) listarContratosFinanceirosDaConta(contaId, fazendaId).then(setContratos).catch(err => setErroCarregamento(String(err?.message ?? err))); }}>
+              <button style={{ ...btnV, background: "#111111" }} onClick={() => { setErroCarregamento(null); if (fazendaId) listarContratosFinanceirosDaConta(contaId, fazendaId).then(setContratos).catch(err => setErroCarregamento(String(err?.message ?? err))); }}>
                 Tentar novamente
               </button>
             </div>
@@ -910,14 +910,14 @@ export default function ContratosFinanceiros() {
                         <td style={{ padding: "10px 14px" }}>
                           <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao}</div>
                           <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
-                          {c.produtor_id && (() => { const p = produtores.find(x => x.id === c.produtor_id); return p ? <div style={{ fontSize: 11, color: "#1A4870", fontWeight: 500, marginTop: 2 }}>{p.nome}</div> : null; })()}
+                          {c.produtor_id && (() => { const p = produtores.find(x => x.id === c.produtor_id); return p ? <div style={{ fontSize: 11, color: "#111111", fontWeight: 500, marginTop: 2 }}>{p.nome}</div> : null; })()}
                         </td>
-                        <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#111111", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           {c.moeda === "USD"
                             ? <span style={{ background: "#E8F4E8", color: "#166534", fontWeight: 700, fontSize: 11, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.3px" }}>USD</span>
-                            : <span style={{ background: "#E8EEFA", color: "#1A4870", fontWeight: 700, fontSize: 11, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.3px" }}>BRL</span>}
+                            : <span style={{ background: "#E8EEFA", color: "#111111", fontWeight: 700, fontSize: 11, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.3px" }}>BRL</span>}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge({ sac: "SAC", sac_crescente: "SACRE", price: "PRICE", outros: "Outros" }[c.tipo_calculo ?? "sac"] ?? (c.tipo_calculo ?? "SAC").toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>
@@ -959,7 +959,7 @@ export default function ContratosFinanceiros() {
                                 PDF
                               </button>
                             )}
-                            <button style={{ ...btnE, background: "#EBF2FA", color: "#1A4870", fontWeight: 600 }} onClick={() => abrirModal(c)}>Abrir</button>
+                            <button style={{ ...btnE, background: "#EBF2FA", color: "#111111", fontWeight: 600 }} onClick={() => abrirModal(c)}>Abrir</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir contrato e todas as parcelas?")) excluirContratoFinanceiro(c.id).then(() => setContratos(p => p.filter(x => x.id !== c.id))); }}>✕</button>
                           </div>
                         </td>
@@ -1015,7 +1015,7 @@ export default function ContratosFinanceiros() {
                   const bloqueada = k !== "principal" && !contratoModal;
                   return (
                     <button key={k} onClick={() => !bloqueada && setAbaModal(k)}
-                      style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: bloqueada ? "not-allowed" : "pointer", fontSize: 13, fontWeight: abaModal === k ? 700 : 400, color: bloqueada ? "#ccc" : abaModal === k ? "#1A4870" : "var(--text-2)", borderBottom: abaModal === k ? "2.5px solid #1A4870" : "2.5px solid transparent", whiteSpace: "nowrap", transition: "color 0.1s" }}
+                      style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: bloqueada ? "not-allowed" : "pointer", fontSize: 13, fontWeight: abaModal === k ? 700 : 400, color: bloqueada ? "#ccc" : abaModal === k ? "#111111" : "var(--text-2)", borderBottom: abaModal === k ? "2.5px solid #111111" : "2.5px solid transparent", whiteSpace: "nowrap", transition: "color 0.1s" }}
                     >{l}{bloqueada ? " 🔒" : ""}</button>
                   );
                 })}
@@ -1036,10 +1036,10 @@ export default function ContratosFinanceiros() {
 
               {/* Fazenda — seletor explícito */}
               {fazendas.length > 1 && (
-                <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
+                <div style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:"#1A4870", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
+                    <label style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
                     <select style={inp} value={fC.fazenda_id || fazendaId || ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
                       <option value="">— Selecionar —</option>
                       {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
@@ -1091,11 +1091,11 @@ export default function ContratosFinanceiros() {
                   )}
                   {/* PDF da cédula — upload e visualização (sempre visível ao editar) */}
                   {contratoModal && (
-                    <div style={{ marginBottom: 14, background: "#E8F3FB", border: "0.5px solid #1A487040", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <div style={{ marginBottom: 14, background: "#E8F3FB", border: "0.5px solid #11111140", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: 14 }}>📎</span>
                         {(pdfFile ? pdfNome : contratoModal.pdf_nome) ? (
-                          <span style={{ fontSize: 12, color: "#0B2D50" }}>
+                          <span style={{ fontSize: 12, color: "#0D0D0D" }}>
                             Cédula: <strong style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block", verticalAlign: "bottom" }}>{pdfFile ? pdfNome : (contratoModal.pdf_nome ?? "arquivo.pdf")}</strong>
                             {pdfFile && <span style={{ fontSize: 11, color: "#C9921B", marginLeft: 6 }}>(novo — salve para confirmar)</span>}
                           </span>
@@ -1105,9 +1105,9 @@ export default function ContratosFinanceiros() {
                       </div>
                       <div style={{ display: "flex", gap: 10, flexShrink: 0, alignItems: "center" }}>
                         {!pdfFile && contratoModal.pdf_url && (
-                          <a href={contratoModal.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Abrir PDF ↗</a>
+                          <a href={contratoModal.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#111111", fontWeight: 600, textDecoration: "none" }}>Abrir PDF ↗</a>
                         )}
-                        <label style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", textDecoration: "underline" }}>
+                        <label style={{ fontSize: 12, color: "#111111", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", textDecoration: "underline" }}>
                           {(pdfFile || contratoModal.pdf_nome) ? "Substituir PDF" : "Anexar PDF"}
                           <input type="file" accept="application/pdf" style={{ display: "none" }}
                             onChange={e => { const f = e.target.files?.[0]; if (f) { setPdfFile(f); setPdfNome(f.name); } e.target.value = ""; }}
@@ -1205,7 +1205,7 @@ export default function ContratosFinanceiros() {
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); buscarCredorPorCnpj(); } }}
                       />
                     </div>
-                    <button style={{ ...btnV, background: "#1A4870", whiteSpace: "nowrap" }} onClick={buscarCredorPorCnpj} type="button">
+                    <button style={{ ...btnV, background: "#111111", whiteSpace: "nowrap" }} onClick={buscarCredorPorCnpj} type="button">
                       Buscar
                     </button>
                     {cnpjBuscaStatus === "encontrado" && (
@@ -1302,7 +1302,7 @@ export default function ContratosFinanceiros() {
                   <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
                     {(["fixa", "variavel"] as const).map(t => (
                       <button key={t} type="button" onClick={() => setFC(p => ({ ...p, taxa_tipo: t }))}
-                        style={{ padding: "4px 14px", borderRadius: 6, border: `0.5px solid ${fC.taxa_tipo === t ? "#1A4870" : "var(--border)"}`, background: fC.taxa_tipo === t ? "#D5E8F5" : "transparent", color: fC.taxa_tipo === t ? "#0B2D50" : "var(--text-3)", fontSize: 12, fontWeight: fC.taxa_tipo === t ? 600 : 400, cursor: "pointer" }}>
+                        style={{ padding: "4px 14px", borderRadius: 6, border: `0.5px solid ${fC.taxa_tipo === t ? "#111111" : "var(--border)"}`, background: fC.taxa_tipo === t ? "#E8E8E8" : "transparent", color: fC.taxa_tipo === t ? "#0D0D0D" : "var(--text-3)", fontSize: 12, fontWeight: fC.taxa_tipo === t ? 600 : 400, cursor: "pointer" }}>
                         {t === "fixa" ? "Taxa Fixa" : "Taxa Fixa + Variável"}
                       </button>
                     ))}
@@ -1451,7 +1451,7 @@ export default function ContratosFinanceiros() {
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
                     <button style={btnR} onClick={fecharModal}>Fechar</button>
                     <button
-                      style={{ ...btnV, background: "#1A4870", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am)) ? 0.5 : 1 }}
+                      style={{ ...btnV, background: "#111111", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am)) ? 0.5 : 1 }}
                       disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am))}
                       onClick={salvarContrato}
                     >{salvando ? "Salvando…" : contratoModal ? "Salvar alterações" : "Salvar e continuar"}</button>
@@ -1462,7 +1462,7 @@ export default function ContratosFinanceiros() {
               {/* ── Liberação ── */}
               {abaModal === "liberacao" && (!contratoModal ? <AbaDisabled nome="Liberação" /> : (
                 <div>
-                  <div style={{ background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
+                  <div style={{ background: "#E4F0F9", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
                     ✦ Ao registrar uma liberação, um lançamento CR é criado automaticamente no financeiro{contratoModal.conta_liberacao_id ? ` · Conta: ${nomeConta(contratoModal.conta_liberacao_id)}` : ""}.
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
@@ -1483,7 +1483,7 @@ export default function ContratosFinanceiros() {
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
                             <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
                             {contratoModal.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
-                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#D5E8F5", "#0B2D50") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
                             <td style={{ padding: "8px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</button></td>
                           </tr>
                         ))}
@@ -1501,7 +1501,7 @@ export default function ContratosFinanceiros() {
               {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
                 <div>
                   {/* Banner: principal utilizado no cálculo */}
-                  <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ background: "#F2F2F2", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ color: "#1D4ED8", fontWeight: 600 }}>Principal da captação:</span>
                     <span style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 13 }}>
                       {contratoModal.moeda === "USD"
@@ -1528,7 +1528,7 @@ export default function ContratosFinanceiros() {
                       <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
                       <div>
                         <label style={lbl}>
-                          Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#1A4870" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}
+                          Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#111111" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}
                           {(() => { const im = (parseFloat(fCalc.taxaMensal) || 0) / 100; const per = Number(fCalc.periodicidade) || 1; if (per > 1 && im > 0) { const ef = (Math.pow(1 + im, per) - 1) * 100; return <span style={{ color: "#C9921B", marginLeft: 4 }}>→ {fmtNum(ef, 2)}% a.{per===12?"a":per===6?"s":"t"}</span>; } return null; })()}
                         </label>
                         <InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} />
@@ -1559,7 +1559,7 @@ export default function ContratosFinanceiros() {
                         <thead><tr style={{ background: "var(--bg-page)" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {parcelasPagamento.map((p, i) => {
-                            const corSt = p.status === "pago" ? "#1A4870" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
+                            const corSt = p.status === "pago" ? "#111111" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
                             const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v);
                             return (
                               <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
@@ -1594,7 +1594,7 @@ export default function ContratosFinanceiros() {
                         {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); const totalJuros = parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0); const totalAmort = parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0); return (<>
                           <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtV(totalJuros)}</strong></span>
                           <span>CET estimado: <strong>{fmtNum(totalAmort > 0 ? (totalJuros / totalAmort) * 100 : 0, 2)}% a.p.</strong></span>
-                          <span>Pagas: <strong style={{ color: "#1A4870" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
+                          <span>Pagas: <strong style={{ color: "#111111" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
                         </>); })()}
                       </div>
                     </>
@@ -1606,7 +1606,7 @@ export default function ContratosFinanceiros() {
               {abaModal === "garantias" && (!contratoModal ? <AbaDisabled nome="Garantias" /> : (
                 <div>
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Nova Garantia</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Nova Garantia</div>
                     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr", gap: 10, marginBottom: 10 }}>
                       <div>
                         <label style={lbl}>Tipo de Garantia *</label>
@@ -1757,7 +1757,7 @@ export default function ContratosFinanceiros() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <button style={{ ...btnR, fontSize: 12 }} onClick={() => setCentrosForm(p => [...p, { ciclo_id: "", centro_custo_id: "", percentual: "", valor: "" }])}>+ Adicionar linha</button>
                       <div style={{ fontSize: 12 }}>
-                        Total: <strong style={{ color: ok100 ? "#1A4870" : "#E24B4A" }}>{fmtNum(totalPct, 2)}%</strong>
+                        Total: <strong style={{ color: ok100 ? "#111111" : "#E24B4A" }}>{fmtNum(totalPct, 2)}%</strong>
                         {!ok100 && <span style={{ color: "#E24B4A", marginLeft: 4 }}>⚠ deve ser 100%</span>}
                       </div>
                     </div>
@@ -1776,7 +1776,7 @@ export default function ContratosFinanceiros() {
               {/* ── Aditivos ── */}
               {abaModal === "aditivos" && (!contratoModal ? <AbaDisabled nome="Aditivos" /> : (() => {
                 const TIPO_ADIT: Record<AditivoContrato["tipo"], { label: string; bg: string; cl: string }> = {
-                  prorrogacao:     { label: "Prorrogação",        bg: "#D5E8F5", cl: "#0B2D50" },
+                  prorrogacao:     { label: "Prorrogação",        bg: "#E8E8E8", cl: "#0D0D0D" },
                   renegociacao:    { label: "Renegociação",       bg: "#FBF3E0", cl: "#7A5400" },
                   capitalizacao:   { label: "Capitalização",      bg: "#FCF0F0", cl: "#7A1A1A" },
                   reducao_taxa:    { label: "Redução de Taxa",    bg: "#E8F5EB", cl: "#1A5C35" },
@@ -1947,20 +1947,20 @@ export default function ContratosFinanceiros() {
                               pendente: { label: "Pendente", bg: "#FBF3E0", cl: "#7A5400" },
                               pago:     { label: "Pago",     bg: "#E8F5EB", cl: "#1A5C35" },
                               vencido:  { label: "Vencido",  bg: "#FCF0F0", cl: "#7A1A1A" },
-                              carencia: { label: "Carência", bg: "#D5E8F5", cl: "#0B2D50" },
+                              carencia: { label: "Carência", bg: "#E8E8E8", cl: "#0D0D0D" },
                             };
                             const sm = m.status ? (statusMeta[m.status] ?? statusMeta.pendente) : null;
                             return (
                               <tr key={i} style={{ borderBottom: i < movs.length - 1 ? "0.5px solid var(--border-row)" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                                 <td style={{ padding: "7px 8px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(m.data)}</td>
                                 <td style={{ padding: "7px 8px", fontSize: 12 }}>
-                                  <span style={{ fontSize: 10, background: isLib ? "#D5E8F5" : "#F3F4F6", color: isLib ? "#0B2D50" : "#333", padding: "2px 7px", borderRadius: 8, fontWeight: 600, marginRight: 6 }}>{isLib ? "Lib" : "Pag"}</span>
+                                  <span style={{ fontSize: 10, background: isLib ? "#E8E8E8" : "#F3F4F6", color: isLib ? "#0D0D0D" : "#333", padding: "2px 7px", borderRadius: 8, fontWeight: 600, marginRight: 6 }}>{isLib ? "Lib" : "Pag"}</span>
                                   {m.label}
                                 </td>
                                 <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.amortizacao > 0 ? fmtBRL(m.amortizacao) : "—"}</td>
                                 <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: m.juros > 0 ? "#C9921B" : "#bbb" }}>{m.juros > 0 ? fmtBRL(m.juros) : "—"}</td>
                                 <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.acessorios > 0 ? fmtBRL(m.acessorios) : "—"}</td>
-                                <td style={{ padding: "7px 8px", fontSize: 13, textAlign: "right", fontWeight: 600, color: isLib ? "#1A4870" : "#1A1A1A" }}>{fmtBRL(m.valor)}</td>
+                                <td style={{ padding: "7px 8px", fontSize: 13, textAlign: "right", fontWeight: 600, color: isLib ? "#111111" : "#1A1A1A" }}>{fmtBRL(m.valor)}</td>
                                 <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: "var(--text-2)" }}>{fmtBRL(Math.max(0, m.saldo))}</td>
                                 <td style={{ padding: "7px 8px" }}>{sm ? <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}</td>
                               </tr>

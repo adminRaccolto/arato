@@ -134,7 +134,7 @@ const inp: React.CSSProperties = {
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 500 };
 const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "20px 24px", marginBottom: 16 };
-const sH: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 14, paddingBottom: 8, borderBottom: "0.5px solid var(--bg-tag)" };
+const sH: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#111111", marginBottom: 14, paddingBottom: 8, borderBottom: "0.5px solid var(--bg-tag)" };
 const hint: React.CSSProperties = { fontSize: 11, color: "var(--text-3)", marginTop: 5 };
 const alerta: React.CSSProperties = { background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 14 };
 
@@ -287,8 +287,8 @@ export default function ConfigNfePage() {
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {/* Badge PF/PJ sempre visível */}
             <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 20,
-              background: cfg.tipo_emitente === "pf" ? "#D5E8F5" : "#FAEEDA",
-              color: cfg.tipo_emitente === "pf" ? "#0B2D50" : "#633806" }}>
+              background: cfg.tipo_emitente === "pf" ? "#E8E8E8" : "#FAEEDA",
+              color: cfg.tipo_emitente === "pf" ? "#0D0D0D" : "#633806" }}>
               {cfg.tipo_emitente === "pf" ? "Produtor Rural PF" : "Produtor Rural PJ"}
             </span>
             <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 20,
@@ -312,7 +312,7 @@ export default function ConfigNfePage() {
           {ABAS.map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
               style={{ flex: 1, padding: "8px 10px", border: "none", borderRadius: 8, cursor: "pointer",
-                background: aba === a.id ? "#1A4870" : "transparent",
+                background: aba === a.id ? "#111111" : "transparent",
                 color: aba === a.id ? "#fff" : "var(--text-2)",
                 fontWeight: aba === a.id ? 600 : 400, fontSize: 13, transition: "all 0.15s" }}>
               {a.label}
@@ -344,9 +344,9 @@ export default function ConfigNfePage() {
                   },
                 ] as { v: "pf"|"pj"; titulo: string; itens: string[] }[]).map(({ v, titulo, itens }) => (
                   <button key={v} type="button" onClick={() => mudarTipoEmitente(v)}
-                    style={{ padding: "18px 20px", border: `2px solid ${cfg.tipo_emitente === v ? "#1A4870" : "var(--border-table)"}`,
-                      borderRadius: 12, background: cfg.tipo_emitente === v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>
+                    style={{ padding: "18px 20px", border: `2px solid ${cfg.tipo_emitente === v ? "#111111" : "var(--border-table)"}`,
+                      borderRadius: 12, background: cfg.tipo_emitente === v ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111111", marginBottom: 10 }}>
                       {cfg.tipo_emitente === v ? "● " : "○ "}{titulo}
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 16 }}>
@@ -457,9 +457,9 @@ export default function ConfigNfePage() {
                     { v: "3", crt: "CRT 3", label: "Regime Normal",               desc: "Lucro Presumido, Lucro Real ou Produtor Rural PJ." },
                   ] as {v:"1"|"2"|"3";crt:string;label:string;desc:string}[]).map(({ v, crt, label, desc }) => (
                     <button key={v} type="button" onClick={() => set("regime_tributario", v)}
-                      style={{ padding: "14px 16px", border: `2px solid ${cfg.regime_tributario === v ? "#1A4870" : "var(--border-table)"}`,
-                        borderRadius: 10, background: cfg.regime_tributario === v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", marginBottom: 2, textTransform: "uppercase" }}>{crt}</div>
+                      style={{ padding: "14px 16px", border: `2px solid ${cfg.regime_tributario === v ? "#111111" : "var(--border-table)"}`,
+                        borderRadius: 10, background: cfg.regime_tributario === v ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", marginBottom: 2, textTransform: "uppercase" }}>{crt}</div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{label}</div>
                       <div style={{ fontSize: 11, color: "var(--text-2)" }}>{desc}</div>
                     </button>
@@ -469,7 +469,7 @@ export default function ConfigNfePage() {
             )}
 
             {cfg.tipo_emitente === "pf" && (
-              <div style={{ ...alerta, background: "#D5E8F5", border: "0.5px solid #93C5FD", color: "#0B2D50" }}>
+              <div style={{ ...alerta, background: "#E8E8E8", border: "0.5px solid #93C5FD", color: "#0D0D0D" }}>
                 <strong>Produtor Rural PF:</strong> Regime Tributário é sempre <strong>CRT 3 — Regime Normal</strong>, independente do faturamento.
                 Produtores rurais PF são obrigados a usar CRT 3 conforme NT 2016/002 da NF-e.
               </div>
@@ -497,8 +497,8 @@ export default function ConfigNfePage() {
                         { v: "emitente",   label: "Emitente recolhe diretamente", desc: "Produtor recolhe via GPS/DARF." },
                       ] as {v:"emitente"|"adquirente";label:string;desc:string}[]).map(({ v, label, desc }) => (
                         <button key={v} type="button" onClick={() => set("funrural_responsavel", v)}
-                          style={{ flex: 1, padding: "12px 14px", border: `2px solid ${cfg.funrural_responsavel === v ? "#1A4870" : "var(--border-table)"}`,
-                            borderRadius: 10, background: cfg.funrural_responsavel === v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
+                          style={{ flex: 1, padding: "12px 14px", border: `2px solid ${cfg.funrural_responsavel === v ? "#111111" : "var(--border-table)"}`,
+                            borderRadius: 10, background: cfg.funrural_responsavel === v ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{label}</div>
                           <div style={{ fontSize: 11, color: "var(--text-2)" }}>{desc}</div>
                         </button>
@@ -517,7 +517,7 @@ export default function ConfigNfePage() {
                     <div>
                       <label style={lbl}>Total Funrural</label>
                       <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--bg-page)", border: "0.5px solid var(--border-table)",
-                        fontSize: 16, fontWeight: 700, color: "#1A4870" }}>
+                        fontSize: 16, fontWeight: 700, color: "#111111" }}>
                         {totalFunrural.toFixed(2)}%
                       </div>
                     </div>
@@ -564,7 +564,7 @@ export default function ConfigNfePage() {
             <div style={card}>
               <div style={sH}>PIS / COFINS</div>
               {cfg.tipo_emitente === "pf" ? (
-                <div style={{ ...alerta, background: "#D5E8F5", border: "0.5px solid #93C5FD", color: "#0B2D50" }}>
+                <div style={{ ...alerta, background: "#E8E8E8", border: "0.5px solid #93C5FD", color: "#0D0D0D" }}>
                   <strong>Produtor Rural Pessoa Física não apura PIS/COFINS.</strong> A atividade rural de PF é imune/não incidente.
                   CST padrão = 70 (Saída isenta de contribuição). Não é necessário configurar alíquotas.
                 </div>
@@ -657,7 +657,7 @@ export default function ConfigNfePage() {
               <div style={{ ...sH, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>Textos por CFOP</span>
                 <button type="button" onClick={() => set("textos_por_cfop", [...cfg.textos_por_cfop, { cfop: "", texto: "" }])}
-                  style={{ padding: "4px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600 }}>
+                  style={{ padding: "4px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#111111", fontWeight: 600 }}>
                   + Adicionar
                 </button>
               </div>

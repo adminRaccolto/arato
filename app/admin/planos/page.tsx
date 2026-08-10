@@ -37,7 +37,7 @@ const PLANO_IDS: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR: Record<PlanoId, { label: string; borda: string }> = {
   essencial:   { label: "var(--text-2)",    borda: "var(--border-table)" },
-  gestao:      { label: "#1A4870", borda: "#1A4870" },
+  gestao:      { label: "#111111", borda: "#111111" },
   performance: { label: "#7A5A12", borda: "#C9921B" },
 };
 
@@ -45,7 +45,7 @@ export default function PlanosPage() {
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 4px" }}>Planos & Módulos</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 4px" }}>Planos & Módulos</h1>
         <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
           Para alterar preços, edite <code style={{ background: "var(--bg-page)", padding: "1px 6px", borderRadius: 4 }}>lib/planos.ts</code> e faça deploy.
           Cobrança e links de pagamento são gerenciados pelo <strong>Mentorasys</strong>.
@@ -74,10 +74,10 @@ export default function PlanosPage() {
                   ★ Destaque
                 </div>
               )}
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0B2D50", margin: "0 0 4px" }}>{p.nome}</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0D0D0D", margin: "0 0 4px" }}>{p.nome}</h2>
               <p style={{ fontSize: 12, color: "#666", margin: "0 0 16px", lineHeight: 1.5 }}>{p.descricao}</p>
               <div style={{ marginBottom: 4 }}>
-                <span style={{ fontSize: 26, fontWeight: 900, color: "#0B2D50" }}>{fmtPreco(p.preco_mensal)}</span>
+                <span style={{ fontSize: 26, fontWeight: 900, color: "#0D0D0D" }}>{fmtPreco(p.preco_mensal)}</span>
                 <span style={{ fontSize: 13, color: "var(--text-3)" }}>/mês</span>
               </div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 16 }}>
@@ -102,7 +102,7 @@ export default function PlanosPage() {
       {/* Tabela comparativa */}
       <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Tabela Comparativa de Módulos</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>Tabela Comparativa de Módulos</h2>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>

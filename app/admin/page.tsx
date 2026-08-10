@@ -19,13 +19,13 @@ const STATUS_CFG: Record<StatusCliente, { label: string; cor: string; bg: string
   ativo:        { label: "Ativo",        cor: "#16A34A", bg: "#F0FDF4" },
   inativo:      { label: "Inativo",      cor: "var(--text-3)",    bg: "#F3F4F6" },
   inadimplente: { label: "Inadimplente", cor: "#E24B4A", bg: "#FEF2F2" },
-  pro_bono:     { label: "Pro Bono",     cor: "#378ADD", bg: "#EFF6FF" },
+  pro_bono:     { label: "Pro Bono",     cor: "#444444", bg: "#F2F2F2" },
   cancelado:    { label: "Cancelado",    cor: "#6B7280", bg: "#F3F4F6" },
 };
 
 const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string; valor: number }> = {
   essencial:   { label: "Essencial",   cor: "var(--text-2)",    bg: "#F3F4F6", valor: PLANOS_DEFAULT.essencial.preco_mensal   },
-  gestao:      { label: "Gestão",      cor: "#1A4870", bg: "#D5E8F5", valor: PLANOS_DEFAULT.gestao.preco_mensal      },
+  gestao:      { label: "Gestão",      cor: "#111111", bg: "#E8E8E8", valor: PLANOS_DEFAULT.gestao.preco_mensal      },
   performance: { label: "Performance", cor: "#7A5A12", bg: "#FBF3E0", valor: PLANOS_DEFAULT.performance.preco_mensal },
 };
 
@@ -325,7 +325,7 @@ export default function AdminOverview() {
     { label: "Total de contas",  valor: clientes.length,                                             cor: "#0B1E35", bg: "var(--bg-card)"    },
     { label: "Ativos",           valor: clientes.filter(c => c.status === "ativo").length,           cor: "#16A34A", bg: "#F0FDF4" },
     { label: "Em trial",         valor: clientes.filter(c => c.status === "trial").length,           cor: "#C9921B", bg: "#FBF3E0" },
-    { label: "Pro bono",         valor: clientes.filter(c => c.status === "pro_bono").length,        cor: "#378ADD", bg: "#EFF6FF" },
+    { label: "Pro bono",         valor: clientes.filter(c => c.status === "pro_bono").length,        cor: "#444444", bg: "#F2F2F2" },
     { label: "MRR",              valor: mrr  > 0 ? fmtBRL(mrr)  : "R$ 0",                          cor: "#0B1E35", bg: "var(--bg-card)"    },
     { label: "ARR (projetado)",  valor: arr  > 0 ? fmtBRL(arr)  : "R$ 0",                          cor: "#0B1E35", bg: "var(--bg-card)"    },
   ];
@@ -467,7 +467,7 @@ export default function AdminOverview() {
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
             <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35" }}>Todas as Contas</div>
-              <button onClick={() => setAba("clientes")} style={{ fontSize: 12, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+              <button onClick={() => setAba("clientes")} style={{ fontSize: 12, color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                 Ver lista completa →
               </button>
             </div>
@@ -518,9 +518,9 @@ export default function AdminOverview() {
           </div>
 
           {/* Migration notice */}
-          <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
+          <div style={{ marginTop: 16, padding: "10px 14px", background: "#F2F2F2", borderRadius: 8, border: "0.5px solid #44444440", fontSize: 11, color: "#111111", lineHeight: 1.7 }}>
             <strong>Migration necessária:</strong> Se os campos de status/pacote/mensalidade não aparecerem, execute no Supabase SQL Editor:
-            <code style={{ display: "block", marginTop: 6, background: "#D5E8F5", borderRadius: 4, padding: "4px 8px", fontFamily: "monospace", fontSize: 10, color: "#0B2D50", overflowX: "auto" }}>
+            <code style={{ display: "block", marginTop: 6, background: "#E8E8E8", borderRadius: 4, padding: "4px 8px", fontFamily: "monospace", fontSize: 10, color: "#0D0D0D", overflowX: "auto" }}>
               {`ALTER TABLE contas ADD COLUMN IF NOT EXISTS status text DEFAULT 'trial', ADD COLUMN IF NOT EXISTS pacote text, ADD COLUMN IF NOT EXISTS data_inicio date, ADD COLUMN IF NOT EXISTS data_vencimento date, ADD COLUMN IF NOT EXISTS valor_mensalidade numeric(10,2), ADD COLUMN IF NOT EXISTS pro_bono_motivo text, ADD COLUMN IF NOT EXISTS obs_admin text, ADD COLUMN IF NOT EXISTS email_contato text, ADD COLUMN IF NOT EXISTS telefone text;`}
             </code>
           </div>
@@ -675,7 +675,7 @@ export default function AdminOverview() {
                   <div style={{ fontSize: 11, color: "#666", marginBottom: 14 }}>Trial: {p.trial_dias}d · Usuários: {p.limite_usuarios ?? "∞"}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {p.modulos.map(m => (
-                      <span key={m} style={{ fontSize: 10, background: "#F0F7FF", color: "#1A4870", borderRadius: 4, padding: "2px 6px", border: "0.5px solid #C5DFF5" }}>
+                      <span key={m} style={{ fontSize: 10, background: "#F0F7FF", color: "#111111", borderRadius: 4, padding: "2px 6px", border: "0.5px solid #C5DFF5" }}>
                         {MODULOS_LABEL[m] ?? m}
                       </span>
                     ))}
@@ -716,9 +716,9 @@ export default function AdminOverview() {
             </table>
           </div>
 
-          <div style={{ marginTop: 20, padding: "12px 16px", background: "#F0F7FF", borderRadius: 10, border: "0.5px solid #1A487040", fontSize: 12, color: "#0B2D50", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ marginTop: 20, padding: "12px 16px", background: "#F0F7FF", borderRadius: 10, border: "0.5px solid #11111140", fontSize: 12, color: "#0D0D0D", display: "flex", alignItems: "center", gap: 10 }}>
             <span>Para editar preços, clique em <strong>"Editar planos →"</strong> acima ou acesse</span>
-            <a href="/admin/planos" style={{ color: "#1A4870", fontWeight: 600 }}>/admin/planos</a>
+            <a href="/admin/planos" style={{ color: "#111111", fontWeight: 600 }}>/admin/planos</a>
             <span>. Alterações são refletidas imediatamente no site público.</span>
           </div>
         </div>

@@ -12,14 +12,14 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
 
-function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{texto}</span>;
 }
 
@@ -73,7 +73,7 @@ const STATUS_META: Record<StatusConsorcio, { label: string; bg: string; cl: stri
 };
 
 const TIPO_BEM_META: Record<TipoBem, { label: string; bg: string; cl: string }> = {
-  veiculo:  { label: "Veículo",     bg: "#D5E8F5", cl: "#0B2D50" },
+  veiculo:  { label: "Veículo",     bg: "#E8E8E8", cl: "#0D0D0D" },
   imovel:   { label: "Imóvel",      bg: "#E8F5E9", cl: "#1A6B3C" },
   maquina:  { label: "Máquina",     bg: "#FBF3E0", cl: "#7B4A00" },
   caminhao: { label: "Caminhão",    bg: "#F3E8FF", cl: "#6B21A8" },
@@ -328,7 +328,7 @@ export default function ConsorciosPage() {
           {[
             { label: "A Contemplar",      value: aContemplar.length.toString(),    sub: "cotas ativas",       color: "#C9921B" },
             { label: "Contemplados",       value: contemplados.length.toString(),   sub: "em uso",             color: "#1A6B3C" },
-            { label: "Crédito Disponível", value: fmtBRL(totalCredito),            sub: "a contemplar",       color: "#1A4870" },
+            { label: "Crédito Disponível", value: fmtBRL(totalCredito),            sub: "a contemplar",       color: "#111111" },
             { label: "Parcelas Atrasadas", value: parcelasAtrasadas.length.toString(), sub: "requer atenção",  color: parcelasAtrasadas.length > 0 ? "#E24B4A" : "var(--text-2)" },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
@@ -355,8 +355,8 @@ export default function ConsorciosPage() {
             <button key={a.id} onClick={() => setAba(a.id)} style={{
               padding: "9px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.id ? 700 : 400,
-              color: aba === a.id ? "#1A4870" : "#666",
-              borderBottom: aba === a.id ? "2.5px solid #1A4870" : "2.5px solid transparent",
+              color: aba === a.id ? "#111111" : "#666",
+              borderBottom: aba === a.id ? "2.5px solid #111111" : "2.5px solid transparent",
               marginBottom: -1,
             }}>{a.label}</button>
           ))}
@@ -418,7 +418,7 @@ export default function ConsorciosPage() {
                         <div>
                           <div style={{ fontSize: 11, color: "#666", marginBottom: 3 }}>Progresso</div>
                           <div style={{ height: 6, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${Math.min(100, progresso)}%`, background: c.status === "contemplado" ? "#16A34A" : "#1A4870", borderRadius: 3 }} />
+                            <div style={{ height: "100%", width: `${Math.min(100, progresso)}%`, background: c.status === "contemplado" ? "#16A34A" : "#111111", borderRadius: 3 }} />
                           </div>
                           <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{c.parcelas_pagas}/{c.total_parcelas} parcelas</div>
                         </div>
@@ -430,7 +430,7 @@ export default function ConsorciosPage() {
                             </button>
                           )}
                           {parcelasC.length === 0 && (
-                            <button onClick={e => { e.stopPropagation(); gerarParcelas(c); }} style={{ padding: "4px 10px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>
+                            <button onClick={e => { e.stopPropagation(); gerarParcelas(c); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
                               Gerar Parcelas
                             </button>
                           )}
@@ -478,7 +478,7 @@ export default function ConsorciosPage() {
                                         </td>
                                         <td style={{ padding: "5px 10px", textAlign: "right" }}>
                                           {!p.pago && (
-                                            <button onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "3px 8px", border: "0.5px solid #1A487050", borderRadius: 5, background: "#D5E8F5", cursor: "pointer", fontSize: 10, color: "#0B2D50", fontWeight: 600 }}>
+                                            <button onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "3px 8px", border: "0.5px solid #11111150", borderRadius: 5, background: "#E8E8E8", cursor: "pointer", fontSize: 10, color: "#0D0D0D", fontWeight: 600 }}>
                                               Pagar
                                             </button>
                                           )}
@@ -510,7 +510,7 @@ export default function ConsorciosPage() {
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 24, alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 11, color: "#666" }}>Compromisso mensal total</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#1A4870" }}>{fmtBRL(totalMensal)}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#111111" }}>{fmtBRL(totalMensal)}</div>
               </div>
               <div style={{ width: 1, height: 40, background: "var(--bg-tag)" }} />
               <div style={{ fontSize: 12, color: "var(--text-2)" }}>
@@ -548,7 +548,7 @@ export default function ConsorciosPage() {
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             {!p.pago && (
-                              <button onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>
+                              <button onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
                                 Pagar
                               </button>
                             )}
@@ -633,7 +633,7 @@ export default function ConsorciosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
-              <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#1A4870", cursor: cSaving ? "default" : "pointer" }}>
+              <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
                 {cSaving ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -681,7 +681,7 @@ export default function ConsorciosPage() {
                 <span>Migrar saldo para módulo de Financiamentos</span>
               </label>
               {contemplForm.migrar_financiamento && (
-                <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
+                <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
                   Será criado um financiamento com saldo de {fmtBRL(modalContempl.valor_credito - (contemplForm.valor_lance || 0))}. As parcelas remanescentes continuarão sendo controladas aqui.
                 </div>
               )}
@@ -715,7 +715,7 @@ export default function ConsorciosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalParcela(null)}>Cancelar</button>
-              <button onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "var(--text-muted)" : "#1A4870", cursor: parcelaSaving ? "default" : "pointer" }}>
+              <button onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "var(--text-muted)" : "#111111", cursor: parcelaSaving ? "default" : "pointer" }}>
                 {parcelaSaving ? "Salvando…" : "Confirmar Pagamento"}
               </button>
             </div>

@@ -238,7 +238,7 @@ function LoginInner() {
             disabled={carregando || (modo === "recuperar" && !!sucesso)}
             style={{
               width: "100%", marginTop: 22,
-              background: carregando ? "rgba(26,72,112,0.60)" : "linear-gradient(135deg, #1A4870 0%, #0B2D50 100%)",
+              background: carregando ? "rgba(26,72,112,0.60)" : "linear-gradient(135deg, #111111 0%, #0D0D0D 100%)",
               color: "#fff", border: "1px solid rgba(255,255,255,0.20)",
               borderRadius: 12, padding: "15px",
               fontSize: 15, fontWeight: 700,

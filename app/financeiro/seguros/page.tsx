@@ -11,14 +11,14 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
 
-function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{texto}</span>;
 }
 
@@ -81,7 +81,7 @@ interface Sinistro {
 
 const RAMO_META: Record<RamoSeguro, { label: string; bg: string; cl: string }> = {
   rural:                  { label: "Rural",                bg: "#E8F5E9", cl: "#1A6B3C" },
-  vida:                   { label: "Vida",                 bg: "#D5E8F5", cl: "#0B2D50" },
+  vida:                   { label: "Vida",                 bg: "#E8E8E8", cl: "#0D0D0D" },
   patrimonial:            { label: "Patrimonial",          bg: "#FBF3E0", cl: "#7B4A00" },
   automovel:              { label: "Automóvel",            bg: "#F3E8FF", cl: "#6B21A8" },
   responsabilidade_civil: { label: "Resp. Civil",          bg: "#FFF3E0", cl: "#7B4A00" },
@@ -98,7 +98,7 @@ const STATUS_APOLICE_META: Record<StatusApolice, { label: string; bg: string; cl
 
 const STATUS_SINISTRO_META: Record<StatusSinistro, { label: string; bg: string; cl: string }> = {
   aberto:      { label: "Aberto",      bg: "#FBF3E0", cl: "#7B4A00" },
-  em_analise:  { label: "Em Análise",  bg: "#D5E8F5", cl: "#0B2D50" },
+  em_analise:  { label: "Em Análise",  bg: "#E8E8E8", cl: "#0D0D0D" },
   pago:        { label: "Pago",        bg: "#E8F5E9", cl: "#1A6B3C" },
   negado:      { label: "Negado",      bg: "#FCEBEB", cl: "#791F1F" },
 };
@@ -326,7 +326,7 @@ export default function SegurosPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Apólices Vigentes",    value: vigentes.length.toString(),  sub: "ativas",           color: "#1A6B3C" },
-            { label: "Importância Segurada", value: fmtBRL(totalIS),             sub: "total segurado",   color: "#1A4870" },
+            { label: "Importância Segurada", value: fmtBRL(totalIS),             sub: "total segurado",   color: "#111111" },
             { label: "Prêmio Anual Total",   value: fmtBRL(totalAnual),          sub: "custo do seguro",  color: "#C9921B" },
             { label: "Vencendo em 30 dias",  value: vencendoEm30.length.toString(), sub: `+ ${premiosVencidos.length} prêmios atrasados`, color: vencendoEm30.length > 0 ? "#E24B4A" : "var(--text-2)" },
           ].map(k => (
@@ -365,8 +365,8 @@ export default function SegurosPage() {
             <button key={a.id} onClick={() => setAba(a.id)} style={{
               padding: "9px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.id ? 700 : 400,
-              color: aba === a.id ? "#1A4870" : "#666",
-              borderBottom: aba === a.id ? "2.5px solid #1A4870" : "2.5px solid transparent",
+              color: aba === a.id ? "#111111" : "#666",
+              borderBottom: aba === a.id ? "2.5px solid #111111" : "2.5px solid transparent",
               marginBottom: -1,
             }}>{a.label}</button>
           ))}
@@ -510,7 +510,7 @@ export default function SegurosPage() {
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             {!p.pago && (
-                              <button onClick={() => { setModalPremio(p); setPremioData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>
+                              <button onClick={() => { setModalPremio(p); setPremioData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
                                 Pagar
                               </button>
                             )}
@@ -646,7 +646,7 @@ export default function SegurosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalApolice(false)}>Cancelar</button>
-              <button onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, background: aSaving ? "var(--text-muted)" : "#1A4870", cursor: aSaving ? "default" : "pointer" }}>
+              <button onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, background: aSaving ? "var(--text-muted)" : "#111111", cursor: aSaving ? "default" : "pointer" }}>
                 {aSaving ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -735,7 +735,7 @@ export default function SegurosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalPremio(null)}>Cancelar</button>
-              <button onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, background: premioSaving ? "var(--text-muted)" : "#1A4870", cursor: premioSaving ? "default" : "pointer" }}>
+              <button onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, background: premioSaving ? "var(--text-muted)" : "#111111", cursor: premioSaving ? "default" : "pointer" }}>
                 {premioSaving ? "Salvando…" : "Confirmar Pagamento"}
               </button>
             </div>

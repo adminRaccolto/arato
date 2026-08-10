@@ -571,7 +571,7 @@ export default function DrePage() {
               <select
                 value={filtroFazenda || fazendaId || ""}
                 onChange={e => { setFiltroFazenda(e.target.value); setAnoLabel(""); setCiclosSel([]); }}
-                style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid #1A4870", fontSize: 13, background: "#F0F6FB", minWidth: 160 }}
+                style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid #111111", fontSize: 13, background: "#F0F6FB", minWidth: 160 }}
               >
                 {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                 <option value="todas">Todas (Consolidado)</option>
@@ -602,7 +602,7 @@ export default function DrePage() {
                     onClick={() => setCiclosSel(sel ? ciclosSel.filter(x => x !== c.id) : [...ciclosSel, c.id])}
                     style={{
                       padding: "5px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer",
-                      background: sel ? "#1A4870" : "var(--bg-page)",
+                      background: sel ? "#111111" : "var(--bg-page)",
                       color: sel ? "#fff" : "#333",
                       border: sel ? "none" : "0.5px solid var(--border)",
                       fontWeight: sel ? 600 : 400,
@@ -624,7 +624,7 @@ export default function DrePage() {
                 onClick={() => setViewMode(m)}
                 style={{
                   padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer",
-                  background: viewMode === m ? "#1A4870" : "var(--bg-page)",
+                  background: viewMode === m ? "#111111" : "var(--bg-page)",
                   color: viewMode === m ? "#fff" : "#333",
                   border: viewMode === m ? "none" : "0.5px solid var(--border)",
                 }}
@@ -650,7 +650,7 @@ export default function DrePage() {
             disabled={loading || ciclosSel.length === 0 || fids.length === 0}
             style={{
               padding: "8px 20px", borderRadius: 7, border: "none", cursor: loading ? "not-allowed" : "pointer",
-              background: loading ? "#ccc" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600,
+              background: loading ? "#ccc" : "#111111", color: "#fff", fontSize: 13, fontWeight: 600,
             }}
           >
             {loading ? "Calculando..." : "Gerar DRE"}
@@ -675,17 +675,17 @@ export default function DrePage() {
 
               {/* ── KPIs ── */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#111111", marginBottom: 10 }}>
                   {viewMode === "individual" ? `${cultLabel} — Safra ${anoLabel}` : `Safra ${anoLabel} — Consolidado`}
                   {" "}<span style={{ fontWeight: 400, color: "var(--text-3)", fontSize: 12 }}>{fmt(d.area_ha)} ha</span>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <KpiCard label="Receita Total" valor={fmtReal(d.receita_total)} sub={`${fmtReal(d.receita_ha)}/ha`} cor="#1A4870" />
+                  <KpiCard label="Receita Total" valor={fmtReal(d.receita_total)} sub={`${fmtReal(d.receita_ha)}/ha`} cor="#111111" />
                   <KpiCard label="Custo Total" valor={fmtReal(custoTotal)} sub={`${fmtReal(d.custo_total_ha)}/ha`} cor="#E24B4A" />
                   <KpiCard label="Resultado Líquido" valor={fmtReal(d.resultado_liquido)} sub={`${fmtReal(d.resultado_ha)}/ha`} cor={d.resultado_liquido >= 0 ? "#16A34A" : "#E24B4A"} />
                   <KpiCard label="Margem Líquida" valor={d.receita_total > 0 ? `${fmt(pct(d.resultado_liquido, d.receita_total), 1)}%` : "—"} sub={d.resultado_liquido >= 0 ? "Resultado positivo" : "Prejuízo"} cor={d.resultado_liquido >= 0 ? "#16A34A" : "#E24B4A"} />
                   <KpiCard label="Produtividade" valor={`${fmt(d.produtividade_scha)} sc/ha`} sub={`Preço médio ${fmtReal(d.preco_medio_sc)}/sc`} />
-                  <KpiCard label="EBITDA" valor={fmtReal(d.ebitda)} sub={`${fmt(pct(d.ebitda, d.receita_total), 1)}% da receita`} cor={d.ebitda >= 0 ? "#1A4870" : "#E24B4A"} />
+                  <KpiCard label="EBITDA" valor={fmtReal(d.ebitda)} sub={`${fmt(pct(d.ebitda, d.receita_total), 1)}% da receita`} cor={d.ebitda >= 0 ? "#111111" : "#E24B4A"} />
                 </div>
               </div>
 
@@ -715,7 +715,7 @@ export default function DrePage() {
 
                       const textColor = isSubtotal && l.tipo === "resultado"
                         ? l.valor >= 0 ? "#16A34A" : "#E24B4A"
-                        : isSubtotal ? "#1A4870"
+                        : isSubtotal ? "#111111"
                         : isHeader ? "#333"
                         : isZero ? "#ccc"
                         : "var(--text-1)";
@@ -765,9 +765,9 @@ export default function DrePage() {
                   {/* Composição de custos */}
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 12 }}>Composição de Custos</div>
-                    <BarraCusto label="Fertilizantes"          valor={d.fertilizantes}          total={custoTotal} cor="#1A4870" />
+                    <BarraCusto label="Fertilizantes"          valor={d.fertilizantes}          total={custoTotal} cor="#111111" />
                     <BarraCusto label="Defensivos"             valor={d.defensivos}             total={custoTotal} cor="#2176AE" />
-                    <BarraCusto label="Sementes"               valor={d.sementes}               total={custoTotal} cor="#378ADD" />
+                    <BarraCusto label="Sementes"               valor={d.sementes}               total={custoTotal} cor="#444444" />
                     <BarraCusto label="Arrendamento"           valor={d.arrendamento}           total={custoTotal} cor="#C9921B" />
                     <BarraCusto label="Operações Mecanizadas"  valor={d.operacoes_mecanizadas}  total={custoTotal} cor="#EF9F27" />
                     <BarraCusto label="Correção de Solo"       valor={d.correcao_solo}          total={custoTotal} cor="#6C8EBF" />
@@ -868,7 +868,7 @@ export default function DrePage() {
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>Indicador</th>
                     {dres.map(d => (
-                      <th key={d.ciclo.id} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>
+                      <th key={d.ciclo.id} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#111111", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>
                         {d.ciclo.cultura}
                       </th>
                     ))}
@@ -898,7 +898,7 @@ export default function DrePage() {
                         const val = row.fn(d);
                         const isNeg = val.startsWith("-") || val.startsWith("(");
                         return (
-                          <td key={d.ciclo.id} style={{ padding: "7px 12px", fontSize: 12, fontWeight: row.bold ? 700 : 400, textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.bold ? (isNeg ? "#E24B4A" : "#1A4870") : "var(--text-1)", border: "0.5px solid var(--bg-tag)" }}>
+                          <td key={d.ciclo.id} style={{ padding: "7px 12px", fontSize: 12, fontWeight: row.bold ? 700 : 400, textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.bold ? (isNeg ? "#E24B4A" : "#111111") : "var(--text-1)", border: "0.5px solid var(--bg-tag)" }}>
                             {val}
                           </td>
                         );

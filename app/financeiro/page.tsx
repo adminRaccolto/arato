@@ -69,7 +69,7 @@ const numParaMascara = (n: number): string =>
 
 // ── cores ────────────────────────────────────────────────────
 const categoriasCor: Record<string, { bg: string; color: string }> = {
-  "Venda de grãos": { bg: "#D5E8F5", color: "#0B2D50" },
+  "Venda de grãos": { bg: "#E8E8E8", color: "#0D0D0D" },
   "Insumos":        { bg: "#FAEEDA", color: "#633806" },
   "Arrendamento":   { bg: "#FAECE7", color: "#712B13" },
   "Impostos":       { bg: "#E6F1FB", color: "#0C447C" },
@@ -83,7 +83,7 @@ const corStatus = (s: string) => ({
   em_aberto: { bg: "#E6F1FB", color: "#0C447C", label: "Em aberto" },
   vencido:   { bg: "#FCEBEB", color: "#791F1F", label: "Vencido"   },
   vencendo:  { bg: "#FAEEDA", color: "#633806", label: "Vencendo"  },
-  baixado:   { bg: "#D5E8F5", color: "#0B2D50", label: "Baixado"   },
+  baixado:   { bg: "#E8E8E8", color: "#0D0D0D", label: "Baixado"   },
   cancelado: { bg: "#F2F2F2", color: "#888888", label: "Cancelado" },
 }[s] ?? { bg: "#F1EFE8", color: "#666", label: s });
 
@@ -559,15 +559,15 @@ export default function Financeiro() {
               onChange={e => setPeriodoTemp(p => ({ ...p, fim: e.target.value }))}
               style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, outline: "none", background: "var(--bg-input)" }} />
             <button onClick={aplicarPeriodo}
-              style={{ fontSize: 12, padding: "4px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600 }}>
+              style={{ fontSize: 12, padding: "4px 14px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600 }}>
               Carregar
             </button>
             <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-2)", cursor: "pointer", userSelect: "none" }}>
-              <input type="checkbox" checked={saldoZero} onChange={e => setSaldoZero(e.target.checked)} style={{ cursor: "pointer", accentColor: "#1A4870" }} />
+              <input type="checkbox" checked={saldoZero} onChange={e => setSaldoZero(e.target.checked)} style={{ cursor: "pointer", accentColor: "#111111" }} />
               Iniciar com saldo 0
             </label>
             {!saldoZero && saldoAnterior !== 0 && (
-              <span style={{ fontSize: 11, color: saldoAnterior >= 0 ? "#1A4870" : "#E24B4A", fontWeight: 600 }}>
+              <span style={{ fontSize: 11, color: saldoAnterior >= 0 ? "#111111" : "#E24B4A", fontWeight: 600 }}>
                 Saldo anterior: {fmtBRL(saldoAnterior)}
               </span>
             )}
@@ -594,9 +594,9 @@ export default function Financeiro() {
               {/* Stats */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
-                  { label: "A receber",          valor: fmtBRL(aReceber), cor: "#1A4870", sub: `${lancOper.filter(l => l.tipo === "receber" && l.status !== "baixado").length} lançamentos em aberto` },
+                  { label: "A receber",          valor: fmtBRL(aReceber), cor: "#111111", sub: `${lancOper.filter(l => l.tipo === "receber" && l.status !== "baixado").length} lançamentos em aberto` },
                   { label: "A pagar",            valor: fmtBRL(aPagar),   cor: "#E24B4A", sub: `${lancOper.filter(l => l.tipo === "pagar" && l.status !== "baixado").length} lançamentos em aberto` },
-                  { label: "Recebido (mar/abr)", valor: fmtBRL(saldoMes), cor: "#1A4870", sub: "Saldo de baixas realizadas" },
+                  { label: "Recebido (mar/abr)", valor: fmtBRL(saldoMes), cor: "#111111", sub: "Saldo de baixas realizadas" },
                   { label: "Atenção imediata",   valor: String(vencidos + vencendo), cor: vencidos > 0 ? "#E24B4A" : "#EF9F27", sub: `${vencidos} vencido(s) · ${vencendo} vencendo` },
                 ].map((s, i) => (
                   <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
@@ -647,7 +647,7 @@ export default function Financeiro() {
                         padding: "11px 20px", border: "none", background: "transparent", cursor: "pointer",
                         fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                         color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
-                        borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
+                        borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent",
                       }}>
                         {a.label}
                         {a.key === "conciliacao" && (
@@ -656,7 +656,7 @@ export default function Financeiro() {
                           </span>
                         )}
                         {a.key === "fluxo" && previsoes.length > 0 && (
-                          <span style={{ marginLeft: 6, fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 8 }}>
+                          <span style={{ marginLeft: 6, fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 6px", borderRadius: 8 }}>
                             {previsoes.length} prev
                           </span>
                         )}
@@ -678,13 +678,13 @@ export default function Financeiro() {
                         ] as { key: FiltroCP; label: string; count: number }[]).map(f => (
                           <button key={f.key} onClick={() => setFiltro(f.key)} style={{
                             padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
-                            borderColor: filtro === f.key ? (f.key === "barter" ? "#8B5E14" : "#1A4870") : "var(--border-table)",
-                            background:  filtro === f.key ? (f.key === "barter" ? "#FBF3E0" : "#D5E8F5") : "transparent",
-                            color:       filtro === f.key ? (f.key === "barter" ? "#8B5E14" : "#0B2D50") : "#666",
+                            borderColor: filtro === f.key ? (f.key === "barter" ? "#8B5E14" : "#111111") : "var(--border-table)",
+                            background:  filtro === f.key ? (f.key === "barter" ? "#FBF3E0" : "#E8E8E8") : "transparent",
+                            color:       filtro === f.key ? (f.key === "barter" ? "#8B5E14" : "#0D0D0D") : "#666",
                             fontWeight: filtro === f.key ? 600 : 400, fontSize: 12, cursor: "pointer",
                           }}>
                             {f.label}
-                            <span style={{ marginLeft: 5, fontSize: 10, background: filtro === f.key ? "#1A4870" : "var(--border-row)", color: filtro === f.key ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 8 }}>
+                            <span style={{ marginLeft: 5, fontSize: 10, background: filtro === f.key ? "#111111" : "var(--border-row)", color: filtro === f.key ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 8 }}>
                               {f.count}
                             </span>
                           </button>
@@ -708,7 +708,7 @@ export default function Financeiro() {
                             return (
                               <tr key={l.id} style={{ borderBottom: li < lancFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none", background: l.moeda === "barter" ? "#FEF8ED" : "transparent" }}>
                                 <td style={{ padding: "10px 14px" }}>
-                                  <span style={{ display: "inline-block", fontSize: 10, padding: "3px 8px", borderRadius: 8, fontWeight: 600, background: l.tipo === "receber" ? "#D5E8F5" : "#FCEBEB", color: l.tipo === "receber" ? "#0B2D50" : "#791F1F" }}>
+                                  <span style={{ display: "inline-block", fontSize: 10, padding: "3px 8px", borderRadius: 8, fontWeight: 600, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F" }}>
                                     {l.tipo === "receber" ? "↓ CR" : "↑ CP"}
                                   </span>
                                   <span style={{ display: "inline-block", marginLeft: 4, fontSize: 10, padding: "2px 6px", borderRadius: 6, background: bm.bg, color: bm.color }}>
@@ -727,7 +727,7 @@ export default function Financeiro() {
                                   {l.nfe_numero    && <div style={{ fontSize: 10, color: "#444" }}>NF-e {l.nfe_numero}</div>}
                                   {l.tipo_documento_lcdpr && <div style={{ fontSize: 10, color: "var(--text-2)" }}>LCDPR: {l.tipo_documento_lcdpr}</div>}
                                   {l.centro_custo  && <div style={{ fontSize: 10, color: "var(--text-2)" }}>{l.centro_custo}</div>}
-                                  {l.data_baixa   && <div style={{ fontSize: 10, color: "#1A4870" }}>Baixado em {fmtData(l.data_baixa)} · {l.conta_bancaria}</div>}
+                                  {l.data_baixa   && <div style={{ fontSize: 10, color: "#111111" }}>Baixado em {fmtData(l.data_baixa)} · {l.conta_bancaria}</div>}
                                 </td>
                                 <td style={{ padding: "10px 14px" }}>
                                   <span style={{ fontSize: 10, background: cc.bg, color: cc.color, padding: "2px 8px", borderRadius: 8 }}>{l.categoria}</span>
@@ -736,14 +736,14 @@ export default function Financeiro() {
                                   {fmtData(l.data_vencimento)}
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "right", whiteSpace: "nowrap" }}>
-                                  <div style={{ fontWeight: 600, color: l.moeda === "barter" ? "#8B5E14" : l.natureza === "previsao" ? "#378ADD" : l.origem_lancamento === "pedido_compra" ? "#16A34A" : l.tipo === "pagar" ? "#E24B4A" : "var(--text-1)", fontSize: 12 }}>{exibirValor(l)}</div>
+                                  <div style={{ fontWeight: 600, color: l.moeda === "barter" ? "#8B5E14" : l.natureza === "previsao" ? "#444444" : l.origem_lancamento === "pedido_compra" ? "#16A34A" : l.tipo === "pagar" ? "#E24B4A" : "var(--text-1)", fontSize: 12 }}>{exibirValor(l)}</div>
                                   {conv && <div style={{ fontSize: 10, color: "#444", marginTop: 1 }}>{conv}</div>}
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                   <span style={{ fontSize: 10, background: cs.bg, color: cs.color, padding: "2px 8px", borderRadius: 8 }}>{cs.label}</span>
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                                  <span style={{ fontSize: 10, background: l.auto ? "#D5E8F5" : "#FBF0D8", color: l.auto ? "#0B2D50" : "#7A5A12", padding: "2px 7px", borderRadius: 8 }}>
+                                  <span style={{ fontSize: 10, background: l.auto ? "#E8E8E8" : "#FBF0D8", color: l.auto ? "#0D0D0D" : "#7A5A12", padding: "2px 7px", borderRadius: 8 }}>
                                     {l.auto ? "⟳ auto" : "◈ manual"}
                                   </span>
                                 </td>
@@ -766,7 +766,7 @@ export default function Financeiro() {
                       </table>
 
                       <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", fontSize: 11, color: "#444" }}>
-                        <span>CR lançadas automaticamente por NF-e: <strong style={{ color: "#1A4870" }}>{lancamentos.filter(l => l.auto && l.tipo === "receber").length}</strong></span>
+                        <span>CR lançadas automaticamente por NF-e: <strong style={{ color: "#111111" }}>{lancamentos.filter(l => l.auto && l.tipo === "receber").length}</strong></span>
                         <span>Funrural calculado automaticamente sobre as vendas</span>
                       </div>
                     </div>
@@ -786,9 +786,9 @@ export default function Financeiro() {
                           ] as { key: SubAbaFluxo; label: string }[]).map(s => (
                             <button key={s.key} onClick={() => setSubAbaFluxo(s.key)} style={{
                               padding: "6px 14px", borderRadius: 8, border: "0.5px solid",
-                              borderColor: subAbaFluxo === s.key ? "#1A4870" : "var(--border-table)",
-                              background: subAbaFluxo === s.key ? "#D5E8F5" : "transparent",
-                              color: subAbaFluxo === s.key ? "#0B2D50" : "var(--text-2)",
+                              borderColor: subAbaFluxo === s.key ? "#111111" : "var(--border-table)",
+                              background: subAbaFluxo === s.key ? "#E8E8E8" : "transparent",
+                              color: subAbaFluxo === s.key ? "#0D0D0D" : "var(--text-2)",
                               fontWeight: subAbaFluxo === s.key ? 600 : 400, fontSize: 12, cursor: "pointer",
                             }}>{s.label}</button>
                           ))}
@@ -797,7 +797,7 @@ export default function Financeiro() {
                           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                             <div style={{ fontSize: 11, display: "flex", gap: 10, color: "var(--text-2)" }}>
                               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                <span style={{ width: 10, height: 10, background: "#D5E8F5", border: "1px solid #1A4870", borderRadius: 2, display: "inline-block" }} />
+                                <span style={{ width: 10, height: 10, background: "#E8E8E8", border: "1px solid #111111", borderRadius: 2, display: "inline-block" }} />
                                 Previsão
                               </span>
                               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -805,7 +805,7 @@ export default function Financeiro() {
                                 Simulação
                               </span>
                             </div>
-                            <button onClick={() => { setAbaPrevisao("lista"); setModalPrevisao(true); }} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600 }}>
+                            <button onClick={() => { setAbaPrevisao("lista"); setModalPrevisao(true); }} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600 }}>
                               + Previsão
                             </button>
                             <button onClick={() => setModalGerenciarSim(true)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600 }}>
@@ -895,11 +895,11 @@ export default function Financeiro() {
                         const fmtVal = (v: number, sinal: 1|-1) => {
                           if (v === 0) return <span style={{ color: "#ccc" }}>—</span>;
                           const display = sinal === 1 ? v : -v;
-                          return <span style={{ color: display >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(display)}</span>;
+                          return <span style={{ color: display >= 0 ? "#111111" : "#E24B4A" }}>{fmtBRL(display)}</span>;
                         };
 
                         const NIVEL_STYLE: Record<number, React.CSSProperties> = {
-                          1: { background: "#1A4870", color: "#fff", fontWeight: 700, fontSize: 12 },
+                          1: { background: "#111111", color: "#fff", fontWeight: 700, fontSize: 12 },
                           2: { background: "#EEF3FA", color: "var(--text-1)", fontWeight: 600, fontSize: 11 },
                           3: { background: "var(--bg-card)",    color: "#333",    fontWeight: 400, fontSize: 11 },
                         };
@@ -913,16 +913,16 @@ export default function Financeiro() {
                               {(["realizado","previsto"] as const).map(m => (
                                 <button key={m} onClick={() => setModoDFC(m)} style={{
                                   fontSize: 11, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontWeight: modoDFC === m ? 600 : 400,
-                                  border: `0.5px solid ${modoDFC === m ? "#1A4870" : "var(--border-table)"}`,
-                                  background: modoDFC === m ? "#D5E8F5" : "transparent",
-                                  color: modoDFC === m ? "#0B2D50" : "var(--text-2)",
+                                  border: `0.5px solid ${modoDFC === m ? "#111111" : "var(--border-table)"}`,
+                                  background: modoDFC === m ? "#E8E8E8" : "transparent",
+                                  color: modoDFC === m ? "#0D0D0D" : "var(--text-2)",
                                 }}>
                                   {m === "realizado" ? "Realizado" : "Previsto"}
                                 </button>
                               ))}
                               <span style={{ width: 1, height: 16, background: "var(--border-table)" }} />
                               <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
-                                <input type="checkbox" checked={dfcApenasMov} onChange={e => setDfcApenasMov(e.target.checked)} style={{ cursor: "pointer", accentColor: "#1A4870" }} />
+                                <input type="checkbox" checked={dfcApenasMov} onChange={e => setDfcApenasMov(e.target.checked)} style={{ cursor: "pointer", accentColor: "#111111" }} />
                                 Apenas com movimento
                               </label>
                               <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-3)" }}>
@@ -987,18 +987,18 @@ export default function Financeiro() {
                                   {/* ── Rodapé ── */}
                                   <tr style={{ background: "var(--bg-page)", borderTop: "2px solid var(--border-table)" }}>
                                     <td style={{ padding: "8px 14px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", position: "sticky", left: 0, background: "var(--bg-page)", zIndex: 1 }}>Saldo Anterior</td>
-                                    <td colSpan={mesesDFC.length + 1} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: saldoAnterior >= 0 ? "#1A4870" : "#E24B4A" }}>
+                                    <td colSpan={mesesDFC.length + 1} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: saldoAnterior >= 0 ? "#111111" : "#E24B4A" }}>
                                       {saldoZero ? "Iniciando em R$ 0,00" : fmtBRL(saldoAnterior)}
                                     </td>
                                   </tr>
                                   <tr style={{ background: "#E4F0F9" }}>
-                                    <td style={{ padding: "7px 14px", fontSize: 11, fontWeight: 600, color: "#0B2D50", position: "sticky", left: 0, background: "#E4F0F9", zIndex: 1 }}>▲ Total Entradas</td>
+                                    <td style={{ padding: "7px 14px", fontSize: 11, fontWeight: 600, color: "#0D0D0D", position: "sticky", left: 0, background: "#E4F0F9", zIndex: 1 }}>▲ Total Entradas</td>
                                     {mesesDFC.map(m => (
-                                      <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: totEntradas(m.keyMes) > 0 ? "#1A4870" : "var(--text-3)" }}>
+                                      <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: totEntradas(m.keyMes) > 0 ? "#111111" : "var(--text-3)" }}>
                                         {totEntradas(m.keyMes) > 0 ? fmtBRL(totEntradas(m.keyMes)) : "—"}
                                       </td>
                                     ))}
-                                    <td style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#1A4870" }}>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#111111" }}>
                                       {fmtBRL(mesesDFC.reduce((a, m) => a + totEntradas(m.keyMes), 0))}
                                     </td>
                                   </tr>
@@ -1027,8 +1027,8 @@ export default function Financeiro() {
                                       {fmtBRL(mesesDFC.reduce((a, m) => a + diferenca(m.keyMes), 0))}
                                     </td>
                                   </tr>
-                                  <tr style={{ background: "#1A4870" }}>
-                                    <td style={{ padding: "8px 14px", fontSize: 11, fontWeight: 700, color: "#fff", position: "sticky", left: 0, background: "#1A4870", zIndex: 1 }}>Saldo Acumulado</td>
+                                  <tr style={{ background: "#111111" }}>
+                                    <td style={{ padding: "8px 14px", fontSize: 11, fontWeight: 700, color: "#fff", position: "sticky", left: 0, background: "#111111", zIndex: 1 }}>Saldo Acumulado</td>
                                     {mesesDFC.map(m => {
                                       const s = saldosAcum[m.keyMes] ?? 0;
                                       return (
@@ -1081,9 +1081,9 @@ export default function Financeiro() {
 
                               {/* Entradas */}
                               <tr style={{ background: "#E4F0F9" }}>
-                                <td style={{ padding: "7px 16px", fontSize: 11, fontWeight: 600, color: "#0B2D50", borderBottom: "0.5px solid var(--border-table)" }}>▲ Entradas</td>
+                                <td style={{ padding: "7px 16px", fontSize: 11, fontWeight: 600, color: "#0D0D0D", borderBottom: "0.5px solid var(--border-table)" }}>▲ Entradas</td>
                                 {saldosMes.map(m => (
-                                  <td key={m.keyMes} style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#1A4870", borderBottom: "0.5px solid var(--border-table)" }}>
+                                  <td key={m.keyMes} style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#111111", borderBottom: "0.5px solid var(--border-table)" }}>
                                     {m.entradas > 0 ? fmtBRL(m.entradas) : "—"}
                                   </td>
                                 ))}
@@ -1095,7 +1095,7 @@ export default function Financeiro() {
                                   <tr key={cat}>
                                     <td style={{ padding: "6px 16px 6px 28px", fontSize: 11, color: "var(--text-1)", borderBottom: "0.5px solid #f5f5f5" }}>{cat}</td>
                                     {vals.map((v, i) => (
-                                      <td key={i} style={{ padding: "6px 12px", textAlign: "right", fontSize: 11, color: v > 0 ? "#1A4870" : "#666", borderBottom: "0.5px solid #f5f5f5" }}>
+                                      <td key={i} style={{ padding: "6px 12px", textAlign: "right", fontSize: 11, color: v > 0 ? "#111111" : "#666", borderBottom: "0.5px solid #f5f5f5" }}>
                                         {v > 0 ? fmtBRL(v) : "—"}
                                       </td>
                                     ))}
@@ -1112,7 +1112,7 @@ export default function Financeiro() {
                                     <tr key={cat}>
                                       <td style={{ padding: "6px 16px 6px 28px", fontSize: 11, color: "var(--text-1)", borderBottom: "0.5px solid #f5f5f5" }}>{cat}</td>
                                       {vals.map((v, i) => (
-                                        <td key={i} style={{ padding: "6px 12px", textAlign: "right", fontSize: 11, color: v > 0 ? "#1A4870" : "#666", borderBottom: "0.5px solid #f5f5f5" }}>
+                                        <td key={i} style={{ padding: "6px 12px", textAlign: "right", fontSize: 11, color: v > 0 ? "#111111" : "#666", borderBottom: "0.5px solid #f5f5f5" }}>
                                           {v > 0 ? fmtBRL(v) : "—"}
                                         </td>
                                       ))}
@@ -1167,7 +1167,7 @@ export default function Financeiro() {
                               <tr style={{ background: "var(--bg-page)" }}>
                                 <td style={{ padding: "10px 16px", fontSize: 12, fontWeight: 600, color: "var(--text-1)", borderTop: "0.5px solid var(--border-table)" }}>Saldo final projetado</td>
                                 {saldosMes.map(m => (
-                                  <td key={m.keyMes} style={{ padding: "10px 12px", textAlign: "right", fontSize: 13, fontWeight: 600, color: m.saldoFinal >= 0 ? "#1A4870" : "#E24B4A", borderTop: "0.5px solid var(--border-table)" }}>
+                                  <td key={m.keyMes} style={{ padding: "10px 12px", textAlign: "right", fontSize: 13, fontWeight: 600, color: m.saldoFinal >= 0 ? "#111111" : "#E24B4A", borderTop: "0.5px solid var(--border-table)" }}>
                                     {fmtBRL(m.saldoFinal)}
                                   </td>
                                 ))}
@@ -1243,7 +1243,7 @@ export default function Financeiro() {
                               <tbody>
                                 {/* Entradas */}
                                 <tr style={{ background: "#EAF3FB" }}>
-                                  <td colSpan={prevReal.length + 1} style={{ padding: "5px 16px", fontSize: 10, fontWeight: 700, color: "#1A4870", letterSpacing: "0.05em", borderBottom: "0.5px solid var(--border-table)" }}>
+                                  <td colSpan={prevReal.length + 1} style={{ padding: "5px 16px", fontSize: 10, fontWeight: 700, color: "#111111", letterSpacing: "0.05em", borderBottom: "0.5px solid var(--border-table)" }}>
                                     ▲ ENTRADAS (CR)
                                   </td>
                                 </tr>
@@ -1255,7 +1255,7 @@ export default function Financeiro() {
                                     {prevReal.map(m => {
                                       const val = m[k] as number;
                                       return (
-                                        <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: val > 0 ? "#1A4870" : "var(--text-3)", fontWeight: k === "entReal" ? 600 : 400 }}>
+                                        <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: val > 0 ? "#111111" : "var(--text-3)", fontWeight: k === "entReal" ? 600 : 400 }}>
                                           {val > 0 ? fmtBRL(val) : "—"}
                                           {k === "entReal" && !m.isFuturo && <div style={{ marginTop: 1 }}>{fmtPct(pct(m.entReal, m.entPrev))}</div>}
                                         </td>
@@ -1301,7 +1301,7 @@ export default function Financeiro() {
                                     {prevReal.map(m => {
                                       const val = m[k] as number;
                                       return (
-                                        <td key={m.keyMes} style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 600, color: val >= 0 ? "#1A4870" : "#E24B4A" }}>
+                                        <td key={m.keyMes} style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 600, color: val >= 0 ? "#111111" : "#E24B4A" }}>
                                           {fmtBRL(val)}
                                           {k === "saldoReal" && !m.isFuturo && <div style={{ marginTop: 1 }}>{fmtPct(pct(m.saldoReal, m.saldoPrev))}</div>}
                                         </td>
@@ -1330,7 +1330,7 @@ export default function Financeiro() {
                             <div style={{ display: "flex", alignItems: "stretch", background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)" }}>
                               <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
                                 {[
-                                  { label: "Entradas previstas (30 dias)", valor: lancamentos.filter(l => l.tipo === "receber" && l.moeda !== "barter" && l.status !== "baixado" && (l.data_vencimento ?? "") <= d30Key).reduce((a, l) => a + paraBRL(l), 0) + previsoes.filter(p => p.tipo === "receber" && p.data <= d30Key).reduce((a, p) => a + p.valor, 0), cor: "#1A4870" },
+                                  { label: "Entradas previstas (30 dias)", valor: lancamentos.filter(l => l.tipo === "receber" && l.moeda !== "barter" && l.status !== "baixado" && (l.data_vencimento ?? "") <= d30Key).reduce((a, l) => a + paraBRL(l), 0) + previsoes.filter(p => p.tipo === "receber" && p.data <= d30Key).reduce((a, p) => a + p.valor, 0), cor: "#111111" },
                                   { label: "Saídas previstas (30 dias)", valor: lancamentos.filter(l => l.tipo === "pagar" && l.moeda !== "barter" && l.status !== "baixado" && (l.data_vencimento ?? "") <= d30Key).reduce((a, l) => a + paraBRL(l), 0) + previsoes.filter(p => p.tipo === "pagar" && p.data <= d30Key).reduce((a, p) => a + p.valor, 0), cor: "#E24B4A" },
                                   { label: "Saldo simulado (30 dias)", valor: simulacoes.filter(s => s.ativa && s.data <= d30Key).reduce((a, s) => a + (s.tipo === "receber" ? s.valor : -s.valor), 0), cor: "#C9921B" },
                                 ].map((s, i) => (
@@ -1353,11 +1353,11 @@ export default function Financeiro() {
                             <div style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "7px 14px", background: "#EFEFEC", borderBottom: "0.5px solid #e0e0dc", position: "sticky", top: 0, zIndex: 2 }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Data / Descrição</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Status</div>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textAlign: "right", paddingRight: 6 }}>CR — Entradas</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textAlign: "right", paddingRight: 6 }}>CR — Entradas</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "#E24B4A", textAlign: "right", paddingRight: 6 }}>CP — Saídas</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "#C9921B", textAlign: "right", paddingRight: 6 }}>Simulação</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textAlign: "right" }}>Saldo do dia</div>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textAlign: "right" }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textAlign: "right" }}>
                                 Saldo acum.
                                 {saldoZero && <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 400 }}>partindo de 0</div>}
                                 {!saldoZero && saldoAnterior !== 0 && <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 400 }}>{fmtBRL(saldoAnterior)}</div>}
@@ -1395,10 +1395,10 @@ export default function Financeiro() {
                                 };
 
                                 const linhas: ItemLinha[] = [
-                                  ...lDia.filter(l => l.tipo === "receber").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, crVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CR", bgBadge: "#D5E8F5", colorBadge: "#0B2D50", extra: <span style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
+                                  ...lDia.filter(l => l.tipo === "receber").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, crVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CR", bgBadge: "#E8E8E8", colorBadge: "#0D0D0D", extra: <span style={{ fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
                                   ...lDia.filter(l => l.tipo === "pagar").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, cpVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CP", bgBadge: "#FCEBEB", colorBadge: "#791F1F", extra: <span style={{ fontSize: 9, background: "#FAEEDA", color: "#633806", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
-                                  ...pDia.filter(p => p.tipo === "receber").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, crVal: p.valor, badge: "prev", bgBadge: "#1A4870", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
-                                  ...pDia.filter(p => p.tipo === "pagar").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, cpVal: p.valor, badge: "prev", bgBadge: "#1A4870", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
+                                  ...pDia.filter(p => p.tipo === "receber").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, crVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
+                                  ...pDia.filter(p => p.tipo === "pagar").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, cpVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
                                   ...sDia.map(s => ({ key: s.id, label: s.descricao, sub: "", simVal: s.tipo === "receber" ? s.valor : -s.valor, badge: "sim", bgBadge: "#C9921B", colorBadge: "#fff", extra: <><button onClick={() => handleToggleSim(s.id, false)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 5, cursor: "pointer" }}>pausar</button><button onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
                                 ];
 
@@ -1410,9 +1410,9 @@ export default function Financeiro() {
                                       style={{
                                         display: "grid", gridTemplateColumns: GRID,
                                         alignItems: "center", padding: "8px 14px",
-                                        background: isHoje ? "#D5E8F5" : expanded ? "#EEECEA" : "transparent",
+                                        background: isHoje ? "#E8E8E8" : expanded ? "#EEECEA" : "transparent",
                                         cursor: temEventos ? "pointer" : "default",
-                                        borderLeft: isHoje ? "3px solid #1A4870" : "3px solid transparent",
+                                        borderLeft: isHoje ? "3px solid #111111" : "3px solid transparent",
                                       }}
                                     >
                                       {/* Toggle + data */}
@@ -1420,21 +1420,21 @@ export default function Financeiro() {
                                         <span style={{ width: 17, height: 17, borderRadius: 4, border: "0.5px solid #ccc", background: temEventos ? "var(--bg-card)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-2)", fontWeight: 600, flexShrink: 0 }}>
                                           {temEventos ? (expanded ? "−" : "+") : ""}
                                         </span>
-                                        <span style={{ fontSize: 12, fontWeight: isHoje ? 600 : 400, color: isHoje ? "#1A4870" : isPast ? "#444" : "var(--text-1)" }}>
+                                        <span style={{ fontSize: 12, fontWeight: isHoje ? 600 : 400, color: isHoje ? "#111111" : isPast ? "#444" : "var(--text-1)" }}>
                                           {fmtData(dia)}
                                           {isHoje && <span style={{ marginLeft: 5, fontSize: 9, background: "#1A5C38", color: "#fff", padding: "1px 5px", borderRadius: 8 }}>hoje</span>}
                                         </span>
                                         {/* badges inline */}
                                         <span style={{ display: "flex", gap: 3, marginLeft: 4 }}>
                                           {lDia.length > 0 && <span style={{ fontSize: 9, background: "#EBEBEB", color: "var(--text-2)", padding: "1px 5px", borderRadius: 8 }}>{lDia.length}</span>}
-                                          {pDia.length > 0 && <span style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 8 }}>{pDia.length}p</span>}
+                                          {pDia.length > 0 && <span style={{ fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 8 }}>{pDia.length}p</span>}
                                           {sDia.length > 0 && <span style={{ fontSize: 9, background: "#FBF0D8", color: "#7A5A12", padding: "1px 5px", borderRadius: 8 }}>{sDia.length}s</span>}
                                         </span>
                                       </div>
                                       {/* Status — vazio no resumo */}
                                       <div />
                                       {/* CR total */}
-                                      <div style={{ textAlign: "right", paddingRight: 6, fontSize: 12, fontWeight: 600, color: totalCR > 0 ? "#1A4870" : "#666" }}>
+                                      <div style={{ textAlign: "right", paddingRight: 6, fontSize: 12, fontWeight: 600, color: totalCR > 0 ? "#111111" : "#666" }}>
                                         {totalCR > 0 ? `+ ${fmtBRL(totalCR)}` : "—"}
                                       </div>
                                       {/* CP total */}
@@ -1450,7 +1450,7 @@ export default function Financeiro() {
                                         {temEventos ? fmtBRL(saldoDia) : "—"}
                                       </div>
                                       {/* Saldo acumulado */}
-                                      <div style={{ textAlign: "right", fontSize: 12, fontWeight: 700, color: saldoAcumulado >= 0 ? "#1A4870" : "#E24B4A" }}>
+                                      <div style={{ textAlign: "right", fontSize: 12, fontWeight: 700, color: saldoAcumulado >= 0 ? "#111111" : "#E24B4A" }}>
                                         {fmtBRL(saldoAcumulado)}
                                       </div>
                                     </div>
@@ -1472,7 +1472,7 @@ export default function Financeiro() {
                                             </div>
                                             {/* CR */}
                                             <div style={{ textAlign: "right", paddingRight: 6 }}>
-                                              {item.crVal !== undefined && <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870" }}>{`+ ${fmtBRL(item.crVal)}`}</div>}
+                                              {item.crVal !== undefined && <div style={{ fontSize: 11, fontWeight: 600, color: "#111111" }}>{`+ ${fmtBRL(item.crVal)}`}</div>}
                                               {item.crVal !== undefined && item.subMoeda && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{item.subMoeda}</div>}
                                             </div>
                                             {/* CP */}
@@ -1493,7 +1493,7 @@ export default function Financeiro() {
                                             {/* Saldo acumulado — só na última linha */}
                                             <div style={{ textAlign: "right" }}>
                                               {idx === linhas.length - 1 && (
-                                                <span style={{ fontSize: 12, fontWeight: 700, color: saldoAcumulado >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(saldoAcumulado)}</span>
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: saldoAcumulado >= 0 ? "#111111" : "#E24B4A" }}>{fmtBRL(saldoAcumulado)}</span>
                                               )}
                                             </div>
                                           </div>
@@ -1518,13 +1518,13 @@ export default function Financeiro() {
                           <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 2 }}>Último extrato importado</div>
                           <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                             Banco do Brasil · Conta Corrente · importado hoje às 08:04
-                            <span style={{ marginLeft: 8, background: "#D5E8F5", color: "#0B2D50", fontSize: 10, padding: "1px 6px", borderRadius: 6 }}>⟳ automático</span>
+                            <span style={{ marginLeft: 8, background: "#E8E8E8", color: "#0D0D0D", fontSize: 10, padding: "1px 6px", borderRadius: 6 }}>⟳ automático</span>
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
-                          <div style={{ textAlign: "center", padding: "6px 14px", background: "#D5E8F5", borderRadius: 8 }}>
-                            <div style={{ fontWeight: 600, color: "#1A4870" }}>{conciliados.filter(c => c.conciliado).length}</div>
-                            <div style={{ fontSize: 10, color: "#0B2D50" }}>conciliados</div>
+                          <div style={{ textAlign: "center", padding: "6px 14px", background: "#E8E8E8", borderRadius: 8 }}>
+                            <div style={{ fontWeight: 600, color: "#111111" }}>{conciliados.filter(c => c.conciliado).length}</div>
+                            <div style={{ fontSize: 10, color: "#0D0D0D" }}>conciliados</div>
                           </div>
                           <div style={{ textAlign: "center", padding: "6px 14px", background: "#FAEEDA", borderRadius: 8 }}>
                             <div style={{ fontWeight: 600, color: "#EF9F27" }}>{conciliados.filter(c => !c.conciliado).length}</div>
@@ -1545,12 +1545,12 @@ export default function Financeiro() {
                             <tr key={ci} style={{ borderBottom: ci < conciliados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                               <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtData(c.data)}</td>
                               <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--text-1)", fontSize: 12 }}>{c.descricao}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap", color: c.tipo === "credito" ? "#1A4870" : "#E24B4A" }}>
+                              <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap", color: c.tipo === "credito" ? "#111111" : "#E24B4A" }}>
                                 {c.tipo === "credito" ? "+ " : "- "}{fmtBRL(c.valor)}
                               </td>
                               <td style={{ padding: "10px 14px" }}>
                                 {c.conciliado
-                                  ? <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 8 }}>✓ Conciliado</span>
+                                  ? <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 8 }}>✓ Conciliado</span>
                                   : <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 8 }}>○ Pendente</span>}
                               </td>
                               <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--text-1)" }}>{c.lancRef || <span style={{ color: "#666" }}>—</span>}</td>
@@ -1849,7 +1849,7 @@ export default function Financeiro() {
               </div>
               <div style={{ display: "flex", gap: 4 }}>
                 {(["lista", "nova"] as const).map(t => (
-                  <button key={t} onClick={() => setAbaPrevisao(t)} style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid", borderColor: abaPrevisao === t ? "#1A4870" : "var(--border-table)", background: abaPrevisao === t ? "#D5E8F5" : "transparent", color: abaPrevisao === t ? "#0B2D50" : "var(--text-2)", fontSize: 12, cursor: "pointer", fontWeight: abaPrevisao === t ? 600 : 400 }}>
+                  <button key={t} onClick={() => setAbaPrevisao(t)} style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid", borderColor: abaPrevisao === t ? "#111111" : "var(--border-table)", background: abaPrevisao === t ? "#E8E8E8" : "transparent", color: abaPrevisao === t ? "#0D0D0D" : "var(--text-2)", fontSize: 12, cursor: "pointer", fontWeight: abaPrevisao === t ? 600 : 400 }}>
                     {t === "lista" ? `Lista (${previsoes.length})` : "+ Nova"}
                   </button>
                 ))}
@@ -1861,20 +1861,20 @@ export default function Financeiro() {
                 {previsoes.length === 0 ? (
                   <div style={{ padding: "24px 0", textAlign: "center", color: "#444", fontSize: 12 }}>
                     Nenhuma previsão cadastrada.<br />
-                    <button onClick={() => setAbaPrevisao("nova")} style={{ marginTop: 10, padding: "6px 16px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 12 }}>+ Criar previsão</button>
+                    <button onClick={() => setAbaPrevisao("nova")} style={{ marginTop: 10, padding: "6px 16px", borderRadius: 8, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontSize: 12 }}>+ Criar previsão</button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {previsoes.map(p => (
-                      <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: "#E4F0F9", border: "0.5px solid #1A487030" }}>
+                      <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: "#E4F0F9", border: "0.5px solid #11111130" }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 12, color: "#0B2D50" }}>{p.descricao}</div>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#0D0D0D" }}>{p.descricao}</div>
                           <div style={{ fontSize: 10, color: "var(--text-2)", marginTop: 2 }}>{p.categoria} · {fmtData(p.data)} · {p.tipo === "receber" ? "entrada" : "saída"}</div>
                         </div>
-                        <span style={{ fontWeight: 600, color: p.tipo === "receber" ? "#1A4870" : "#E24B4A", fontSize: 13 }}>
+                        <span style={{ fontWeight: 600, color: p.tipo === "receber" ? "#111111" : "#E24B4A", fontSize: 13 }}>
                           {p.tipo === "receber" ? "+" : "−"} {fmtBRL(p.valor)}
                         </span>
-                        <button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 11, padding: "4px 10px", border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>→ CP</button>
+                        <button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 11, padding: "4px 10px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>→ CP</button>
                         <button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 6, cursor: "pointer" }}>✕</button>
                       </div>
                     ))}
@@ -1914,13 +1914,13 @@ export default function Financeiro() {
                   <label style={labelStyle}>Descrição *</label>
                   <input style={inputStyle} placeholder="Ex: Compra de defensivo — 2ª aplicação soja" value={novaPrevisao.descricao} onChange={e => setNovaPrevisao(p => ({ ...p, descricao: e.target.value }))} />
                 </div>
-                <div style={{ gridColumn: "1 / -1", background: "#E4F0F9", border: "0.5px solid #1A487030", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50" }}>
+                <div style={{ gridColumn: "1 / -1", background: "#E4F0F9", border: "0.5px solid #11111130", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0D0D0D" }}>
                   ○ Previsões aparecem em verde no fluxo de caixa e não são lançamentos reais. Você pode convertê-las em CP quando confirmar o gasto.
                 </div>
                 <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, justifyContent: "flex-end" }}>
                   <button onClick={() => setAbaPrevisao("lista")} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                   <button onClick={salvarPrevisao} disabled={!novaPrevisao.descricao || !novaPrevisao.data || !novaPrevisao.valorMask}
-                    style={{ padding: "8px 18px", background: novaPrevisao.descricao && novaPrevisao.data && novaPrevisao.valorMask ? "#1A4870" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                    style={{ padding: "8px 18px", background: novaPrevisao.descricao && novaPrevisao.data && novaPrevisao.valorMask ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                     ○ Salvar previsão
                   </button>
                 </div>
@@ -1941,8 +1941,8 @@ export default function Financeiro() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 420, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: 4 }}>Converter previsão em CP</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>Esta ação cria um lançamento real a partir da previsão e a remove da lista.</div>
-            <div style={{ background: "#E4F0F9", border: "0.5px solid #1A487030", borderRadius: 8, padding: "12px 14px", marginBottom: 18 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, color: "#0B2D50" }}>{modalConverterPrev.descricao}</div>
+            <div style={{ background: "#E4F0F9", border: "0.5px solid #11111130", borderRadius: 8, padding: "12px 14px", marginBottom: 18 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, color: "#0D0D0D" }}>{modalConverterPrev.descricao}</div>
               <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>
                 {modalConverterPrev.categoria} · {fmtData(modalConverterPrev.data)} · {fmtBRL(modalConverterPrev.valor)}
               </div>
@@ -1950,7 +1950,7 @@ export default function Financeiro() {
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setModalConverterPrev(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={() => converterPrevisaoEmCP(modalConverterPrev)} disabled={salvando}
-                style={{ padding: "8px 18px", background: salvando ? "#666" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                style={{ padding: "8px 18px", background: salvando ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Convertendo…" : "◈ Converter em CP"}
               </button>
             </div>
@@ -1969,7 +1969,7 @@ export default function Financeiro() {
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Aparecem em roxo no fluxo · ativas afetam os totais do dia</div>
               </div>
               <div style={{ display: "flex", gap: 6, fontSize: 11 }}>
-                <span style={{ background: "#D5E8F5", color: "#0B2D50", padding: "3px 10px", borderRadius: 8 }}>{simulacoes.filter(s => s.ativa).length} ativas</span>
+                <span style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "3px 10px", borderRadius: 8 }}>{simulacoes.filter(s => s.ativa).length} ativas</span>
                 <span style={{ background: "#F1EFE8", color: "var(--text-2)", padding: "3px 10px", borderRadius: 8 }}>{simulacoes.filter(s => !s.ativa).length} pausadas</span>
               </div>
             </div>

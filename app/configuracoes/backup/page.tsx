@@ -183,7 +183,7 @@ export default function BackupPage() {
             disabled={criando}
             style={{
               padding: "11px 28px", borderRadius: 8, border: "none", cursor: criando ? "not-allowed" : "pointer",
-              background: criando ? "#9AB5D0" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700,
+              background: criando ? "#9AB5D0" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700,
               whiteSpace: "nowrap", minWidth: 180,
             }}
           >
@@ -230,7 +230,7 @@ export default function BackupPage() {
                         <a
                           href={b.download_url}
                           download={b.nome}
-                          style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 11, color: "#1A4870", textDecoration: "none", fontWeight: 600 }}
+                          style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 11, color: "#111111", textDecoration: "none", fontWeight: 600 }}
                         >
                           ⬇ Baixar
                         </a>

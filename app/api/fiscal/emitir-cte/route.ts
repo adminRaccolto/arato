@@ -8,6 +8,8 @@ import { emitirCTe } from "../../../../lib/cte/index";
 import type { CTeInput } from "../../../../lib/cte/builder";
 
 export const runtime = "nodejs";
+// SEFAZ bloqueia IPs fora do Brasil — usar região São Paulo (Vercel Pro)
+export const preferredRegion = ["gru1"];
 
 export async function POST(req: NextRequest) {
   try {

@@ -7,7 +7,7 @@ import type { OperacaoGerencial } from "../../../lib/supabase";
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
 const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" };
-const btnP: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnP: React.CSSProperties = { padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnS: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 
 // ─── Tipo local ───────────────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ export default function PadroesPage() {
       {/* Abas de módulo (por enquanto só Operações Gerenciais) */}
       <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
         {[{ key: "op_ger", label: "Operações Gerenciais (Plano de Contas)" }].map(m => (
-          <div key={m.key} style={{ padding: "8px 18px", borderRadius: 8, background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "default" }}>
+          <div key={m.key} style={{ padding: "8px 18px", borderRadius: 8, background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "default" }}>
             {m.label}
           </div>
         ))}
@@ -257,9 +257,9 @@ export default function PadroesPage() {
             {(["todos","receita","despesa"] as const).map(t => (
               <button key={t} onClick={() => setFiltroTipo(t)} style={{
                 padding: "6px 14px", borderRadius: 20, border: "0.5px solid",
-                borderColor: filtroTipo === t ? "#1A4870" : "var(--border-table)",
-                background: filtroTipo === t ? "#D5E8F5" : "transparent",
-                color: filtroTipo === t ? "#0B2D50" : "#666",
+                borderColor: filtroTipo === t ? "#111111" : "var(--border-table)",
+                background: filtroTipo === t ? "#E8E8E8" : "transparent",
+                color: filtroTipo === t ? "#0D0D0D" : "#666",
                 fontWeight: filtroTipo === t ? 600 : 400, fontSize: 12, cursor: "pointer",
               }}>
                 {t === "todos" ? `Todos (${templates.length})` : t === "receita" ? `Receitas (${templates.filter(x=>x.tipo==="receita").length})` : `Despesas (${templates.filter(x=>x.tipo==="despesa").length})`}
@@ -340,7 +340,7 @@ export default function PadroesPage() {
           {/* Nota sobre templates */}
           {templates.length > 0 && (
             <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, fontSize: 11, color: "#666" }}>
-              <strong style={{ color: "#1A4870" }}>{templates.length}</strong> operações no template.
+              <strong style={{ color: "#111111" }}>{templates.length}</strong> operações no template.
               Clientes com operações próprias de mesmo código terão <strong>todos os campos atualizados</strong> na próxima sincronização (modo Merge).
               Operações que o cliente criou com códigos diferentes não são afetadas.
             </div>
@@ -349,9 +349,9 @@ export default function PadroesPage() {
 
         {/* ── COLUNA DIREITA: Sincronização ── */}
         <div style={{ position: "sticky", top: 80 }}>
-          <div style={{ ...card, border: "0.5px solid #1A4870" }}>
+          <div style={{ ...card, border: "0.5px solid #111111" }}>
             <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border-table)", background: "#F0F5FA" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#1A4870" }}>Sincronizar com Clientes</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111111" }}>Sincronizar com Clientes</div>
               <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>
                 Modo: <strong>Merge</strong> — adiciona novos e atualiza existentes. Nunca remove.
               </div>
@@ -392,7 +392,7 @@ export default function PadroesPage() {
                           if (e.target.checked) s.add(f.id); else s.delete(f.id);
                           setSyncSelect(s);
                         }}
-                        style={{ accentColor: "#1A4870" }}
+                        style={{ accentColor: "#111111" }}
                       />
                       <div>
                         <div style={{ fontSize: 12, fontWeight: syncSelect.has(f.id) ? 600 : 400, color: "var(--text-1)" }}>{f.nome}</div>
@@ -441,7 +441,7 @@ export default function PadroesPage() {
                         <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{r.fazenda_nome}</div>
                         <div style={{ display: "flex", gap: 10 }}>
                           <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>+{r.inseridos} novos</span>
-                          <span style={{ background: "#D5E8F5", color: "#0B2D50", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>{r.atualizados} atualizados</span>
+                          <span style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>{r.atualizados} atualizados</span>
                           {r.erros > 0 && <span style={{ background: "#FCEBEB", color: "#791F1F", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>{r.erros} erros</span>}
                         </div>
                       </div>
@@ -522,7 +522,7 @@ export default function PadroesPage() {
 
               {/* Permissões */}
               <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Permite usar em</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", marginBottom: 10, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Permite usar em</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 16px" }}>
                   {([
                     ["permite_notas_fiscais",     "Notas Fiscais"],
@@ -543,7 +543,7 @@ export default function PadroesPage() {
                         type="checkbox"
                         checked={Boolean(form[field])}
                         onChange={e => setForm(p => ({ ...p, [field]: e.target.checked }))}
-                        style={{ accentColor: "#1A4870" }}
+                        style={{ accentColor: "#111111" }}
                       />
                       {label}
                     </label>

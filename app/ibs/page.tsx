@@ -105,7 +105,7 @@ export default function IBSCBS() {
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>O que muda com a Reforma</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {[
-                        { de: "PIS + COFINS (federal)", para: "CBS — Contribuição sobre Bens e Serviços", cor: "#1A4870" },
+                        { de: "PIS + COFINS (federal)", para: "CBS — Contribuição sobre Bens e Serviços", cor: "#111111" },
                         { de: "ICMS (estadual)",        para: "IBS — estadual",                          cor: "#1A5C38" },
                         { de: "ISS (municipal)",        para: "IBS — municipal",                         cor: "#1A5C38" },
                         { de: "IPI (federal)",          para: "IS — Imposto Seletivo (bens nocivos)",    cor: "#C9921B" },
@@ -146,7 +146,7 @@ export default function IBSCBS() {
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Alíquotas de referência (2027)</div>
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "16px 18px", marginBottom: 14 }}>
                       {[
-                        { label: "CBS — federal",         val: `${aliqCBS.toFixed(1)}%`,      cor: "#1A4870", sub: "Substitui PIS + COFINS" },
+                        { label: "CBS — federal",         val: `${aliqCBS.toFixed(1)}%`,      cor: "#111111", sub: "Substitui PIS + COFINS" },
                         { label: "IBS — estadual (MT)",   val: `~${aliqIBSest.toFixed(2)}%`,  cor: "#1A5C38", sub: "Estimativa — a definir pelos estados" },
                         { label: "IBS — municipal",       val: `~${aliqIBSmun.toFixed(2)}%`,  cor: "#1A5C38", sub: "Estimativa — a definir pelos municípios" },
                         { label: "TOTAL estimado",        val: `~${aliqTotal.toFixed(2)}%`,   cor: "var(--text-1)", sub: "Sobre receita bruta, com crédito pleno", bold: true },
@@ -307,7 +307,7 @@ export default function IBSCBS() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{c.desc}</div>
                           <div style={{ display: "flex", gap: 12 }}>
-                            <span style={{ fontSize: 11, color: "#1A4870" }}>CBS: <strong>{c.cbs}%</strong></span>
+                            <span style={{ fontSize: 11, color: "#111111" }}>CBS: <strong>{c.cbs}%</strong></span>
                             <span style={{ fontSize: 11, color: "#1A5C38" }}>IBS: <strong>{c.ibs}% do total</strong></span>
                           </div>
                         </div>

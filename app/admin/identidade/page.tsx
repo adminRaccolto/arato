@@ -5,9 +5,9 @@ import { supabase } from "../../../lib/supabase";
 // ── Defaults ─────────────────────────────────────────────────────────────────
 
 const PALETA_DEFAULT = [
-  { key: "azul_petroleo",  nome: "Azul petróleo",  hex: "#1A4870", desc: "Principal — NavBar, botões, bordas" },
-  { key: "azul_escuro",    nome: "Azul escuro",    hex: "#0B2D50", desc: "Texto sobre fundo azul claro" },
-  { key: "azul_claro",     nome: "Azul claro",     hex: "#D5E8F5", desc: "Fundo de itens ativos" },
+  { key: "azul_petroleo",  nome: "Azul petróleo",  hex: "#111111", desc: "Principal — NavBar, botões, bordas" },
+  { key: "azul_escuro",    nome: "Azul escuro",    hex: "#0D0D0D", desc: "Texto sobre fundo azul claro" },
+  { key: "azul_claro",     nome: "Azul claro",     hex: "#E8E8E8", desc: "Fundo de itens ativos" },
   { key: "mostarda",       nome: "Mostarda",       hex: "#C9921B", desc: "Ação do usuário, accent" },
   { key: "mostarda_claro", nome: "Mostarda claro", hex: "#FBF3E0", desc: "Fundo de badges mostarda" },
   { key: "fundo_geral",    nome: "Fundo geral",    hex: "var(--bg-page)", desc: "Background da página" },
@@ -189,7 +189,7 @@ export default function IdentidadePage() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: 0 }}>Identidade Arato</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: 0 }}>Identidade Arato</h1>
         <p style={{ fontSize: 13, color: "#666", margin: "6px 0 0" }}>
           Configurações visuais e de infraestrutura do produto. Alterações são salvas no Supabase.
         </p>
@@ -201,7 +201,7 @@ export default function IdentidadePage() {
         border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: "0 0 16px" }}>Logo do Produto</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: "0 0 16px" }}>Logo do Produto</h2>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
           <div style={{
             width: 200, height: 80, border: "0.5px dashed var(--border)",
@@ -224,8 +224,8 @@ export default function IdentidadePage() {
               disabled={uploading}
               style={{
                 padding: "8px 20px", borderRadius: 8,
-                border: "0.5px solid #1A4870", background: "var(--bg-card)",
-                fontSize: 13, cursor: "pointer", color: "#1A4870", fontWeight: 600,
+                border: "0.5px solid #111111", background: "var(--bg-card)",
+                fontSize: 13, cursor: "pointer", color: "#111111", fontWeight: 600,
               }}
             >
               {uploading ? "Enviando…" : "Fazer upload"}
@@ -251,7 +251,7 @@ export default function IdentidadePage() {
         padding: "24px 28px", marginBottom: 20,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Paleta de Cores</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>Paleta de Cores</h2>
           <div style={{ display: "flex", gap: 8 }}>
             {paletaAlterada && (
               <button
@@ -271,7 +271,7 @@ export default function IdentidadePage() {
               style={{
                 padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
                 border: "none", cursor: paletaAlterada ? "pointer" : "default",
-                background: paletaAlterada ? "#1A4870" : "#F0F2F7",
+                background: paletaAlterada ? "#111111" : "#F0F2F7",
                 color: paletaAlterada ? "#fff" : "#999",
                 transition: "all 0.15s",
               }}
@@ -292,11 +292,11 @@ export default function IdentidadePage() {
                 key={cor.key}
                 onClick={() => !editando && editarCor(idx)}
                 style={{
-                  border: editando ? "1.5px solid #1A4870" : "0.5px solid var(--border)",
+                  border: editando ? "1.5px solid #111111" : "0.5px solid var(--border)",
                   borderRadius: 10, overflow: "hidden",
                   cursor: editando ? "default" : "pointer",
                   transition: "border 0.15s",
-                  boxShadow: editando ? "0 0 0 3px #1A487020" : "none",
+                  boxShadow: editando ? "0 0 0 3px #11111120" : "none",
                 }}
               >
                 {/* Swatch — clicável para abrir color picker nativo */}
@@ -339,8 +339,8 @@ export default function IdentidadePage() {
                       style={{
                         width: "100%", marginTop: 4,
                         fontSize: 12, fontFamily: "monospace",
-                        border: "0.5px solid #1A4870", borderRadius: 5,
-                        padding: "3px 7px", color: "#1A4870", fontWeight: 700,
+                        border: "0.5px solid #111111", borderRadius: 5,
+                        padding: "3px 7px", color: "#111111", fontWeight: 700,
                         background: "#F4F8FF",
                       }}
                     />
@@ -365,7 +365,7 @@ export default function IdentidadePage() {
         padding: "24px 28px", marginBottom: 20,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: 0 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>
             Identificação do Produto
             {identidadeSaved && (
               <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, marginLeft: 10 }}>✓ Salvo</span>
@@ -390,7 +390,7 @@ export default function IdentidadePage() {
                   style={{
                     padding: "7px 18px", borderRadius: 8, fontSize: 12, fontWeight: 700,
                     border: "none", cursor: "pointer",
-                    background: "#1A4870", color: "#fff",
+                    background: "#111111", color: "#fff",
                   }}
                 >
                   {identidadeSaving ? "Salvando…" : "Salvar"}
@@ -401,8 +401,8 @@ export default function IdentidadePage() {
                 onClick={() => setIdentidadeEdit(true)}
                 style={{
                   padding: "7px 16px", borderRadius: 8,
-                  border: "0.5px solid #1A4870", background: "var(--bg-card)",
-                  fontSize: 12, cursor: "pointer", color: "#1A4870", fontWeight: 600,
+                  border: "0.5px solid #111111", background: "var(--bg-card)",
+                  fontSize: 12, cursor: "pointer", color: "#111111", fontWeight: 600,
                 }}
               >
                 ✎ Editar
@@ -416,12 +416,12 @@ export default function IdentidadePage() {
             <div key={key} style={{
               background: identidadeEdit ? "#fff" : "var(--bg-card)",
               borderRadius: 8,
-              border: identidadeEdit ? "1px solid #1A487040" : "0.5px solid var(--border)",
+              border: identidadeEdit ? "1px solid #11111140" : "0.5px solid var(--border)",
               padding: "12px 16px",
               transition: "all 0.15s",
             }}>
               <div style={{
-                fontSize: 11, fontWeight: 700, color: identidadeEdit ? "#1A4870" : "var(--text-3)",
+                fontSize: 11, fontWeight: 700, color: identidadeEdit ? "#111111" : "var(--text-3)",
                 textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6,
               }}>
                 {label}
@@ -453,7 +453,7 @@ export default function IdentidadePage() {
         border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: "0 0 4px" }}>Variáveis de Ambiente</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: "0 0 4px" }}>Variáveis de Ambiente</h2>
         <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 16px" }}>
           Configure em <strong>Vercel → Settings → Environment Variables</strong>. Obrigatórias bloqueiam o funcionamento se ausentes.
         </p>
@@ -468,7 +468,7 @@ export default function IdentidadePage() {
           <tbody>
             {ENV_VARS.map((v, i) => (
               <tr key={v.key} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", borderBottom: "0.5px solid #F0F2F7" }}>
+                <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#111111", borderBottom: "0.5px solid #F0F2F7" }}>
                   {v.key}
                 </td>
                 <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)", borderBottom: "0.5px solid #F0F2F7" }}>

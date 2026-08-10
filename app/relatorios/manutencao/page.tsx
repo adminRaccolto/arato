@@ -21,7 +21,7 @@ const TIPO_MANUT_LABEL: Record<string, string> = {
 };
 const TIPO_MANUT_COR: Record<string, string> = {
   preventiva: "#16A34A", corretiva: "#E24B4A",
-  revisao: "#378ADD",    outro: "var(--text-3)",
+  revisao: "#444444",    outro: "var(--text-3)",
 };
 const TIPO_MAQUINA_LABEL: Record<string, string> = {
   trator: "Trator", colheitadeira: "Colheitadeira", pulverizador: "Pulverizador",
@@ -183,15 +183,15 @@ function RelManutInner() {
         </tr>`).join("");
 
       return `
-        <tr style="background:#1A4870">
+        <tr style="background:#111111">
           <td colspan="4" style="padding:6px 10px;font-size:10px;font-weight:700;color:#fff">
             ${g.maquina_nome}
             <span style="opacity:.7;margin-left:8px;font-size:9px">${TIPO_MAQUINA_LABEL[g.maquina_tipo] ?? g.maquina_tipo}</span>
           </td>
         </tr>
         ${rows}
-        <tr style="background:#EFF3FA;border-top:1px solid #D5E8F5">
-          <td colspan="3" style="padding:4px 10px;font-size:9px;font-weight:700;color:#1A4870;text-align:right">
+        <tr style="background:#EFF3FA;border-top:1px solid #E8E8E8">
+          <td colspan="3" style="padding:4px 10px;font-size:9px;font-weight:700;color:#111111;text-align:right">
             Subtotal ${g.maquina_nome} — ${g.rows.length} manutenção${g.rows.length !== 1 ? "ões" : ""}
           </td>
           <td style="padding:4px 10px;font-size:10px;font-weight:700;color:#DC2626;text-align:right">${fmtBRL(g.total_custo)}</td>
@@ -206,15 +206,15 @@ function RelManutInner() {
       <table style="border-collapse:collapse;font-family:system-ui,sans-serif;white-space:nowrap">
         <thead>
           <tr style="background:var(--bg-page)">
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">Data</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:center;white-space:nowrap">Tipo</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">Serviço / Descrição</th>
-            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:right;white-space:nowrap">Custo (R$)</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;white-space:nowrap">Data</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:center;white-space:nowrap">Tipo</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;white-space:nowrap">Serviço / Descrição</th>
+            <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111111;text-align:right;white-space:nowrap">Custo (R$)</th>
           </tr>
         </thead>
         <tbody>
           ${gruposHtml}
-          <tr style="background:#1A4870">
+          <tr style="background:#111111">
             <td colspan="3" style="padding:6px 10px;font-size:10px;font-weight:700;color:#fff;text-align:right">CUSTO TOTAL</td>
             <td style="padding:6px 10px;font-size:12px;font-weight:800;color:#FCA5A5;text-align:right">${fmtBRL(totalCusto)}</td>
           </tr>
@@ -302,7 +302,7 @@ function RelManutInner() {
     fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", outline: "none",
   };
   const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-  const btn = (active: boolean, cor = "#1A4870"): React.CSSProperties => ({
+  const btn = (active: boolean, cor = "#111111"): React.CSSProperties => ({
     padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
     border: `0.5px solid ${active ? cor : "var(--border-table)"}`,
     background: active ? cor + "15" : "var(--bg-card)",
@@ -322,7 +322,7 @@ function RelManutInner() {
           </div>
           {gerado && (
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 PDF / Imprimir
               </button>
               <button onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -404,7 +404,7 @@ function RelManutInner() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                 <label style={{ ...lbl, margin: 0 }}>Equipamentos</label>
                 <button onClick={() => setMaquinasSel(new Set(maquinas.map(m => m.id)))}
-                  style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Todos</button>
+                  style={{ fontSize: 11, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Todos</button>
                 <button onClick={() => setMaquinasSel(new Set())}
                   style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Nenhum</button>
               </div>
@@ -433,7 +433,7 @@ function RelManutInner() {
             {/* KPI */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
               {[
-                { label: "Equipamentos", val: totalMaquinas, cor: "#1A4870", fmt: false },
+                { label: "Equipamentos", val: totalMaquinas, cor: "#111111", fmt: false },
                 { label: "Manutenções",  val: totalManut,    cor: "var(--text-2)",    fmt: false },
                 { label: "Custo Total",  val: totalCusto,    cor: "#DC2626", fmt: true },
               ].map(k => (
@@ -469,7 +469,7 @@ function RelManutInner() {
                     <tbody>
                       {grupos.map(g => (
                         <React.Fragment key={g.maquina_id}>
-                          <tr style={{ background: "#1A4870" }}>
+                          <tr style={{ background: "#111111" }}>
                             <td colSpan={4} style={{ padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#fff" }}>
                               {g.maquina_nome}
                               <span style={{ marginLeft: 10, fontSize: 11, opacity: 0.7 }}>
@@ -498,8 +498,8 @@ function RelManutInner() {
                               </td>
                             </tr>
                           ))}
-                          <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #D5E8F5" }}>
-                            <td colSpan={3} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#1A4870", textAlign: "right" }}>
+                          <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #E8E8E8" }}>
+                            <td colSpan={3} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#111111", textAlign: "right" }}>
                               Subtotal — {g.maquina_nome}
                             </td>
                             <td style={{ padding: "6px 12px", fontSize: 13, fontWeight: 800, textAlign: "right", color: "#DC2626" }}>
@@ -508,7 +508,7 @@ function RelManutInner() {
                           </tr>
                         </React.Fragment>
                       ))}
-                      <tr style={{ background: "#1A4870" }}>
+                      <tr style={{ background: "#111111" }}>
                         <td colSpan={3} style={{ padding: "10px 12px", fontSize: 13, fontWeight: 700, color: "#fff", textAlign: "right" }}>CUSTO TOTAL</td>
                         <td style={{ padding: "10px 12px", fontSize: 15, fontWeight: 800, textAlign: "right", color: "#FCA5A5" }}>
                           {fmtBRL(totalCusto)}

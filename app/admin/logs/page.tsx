@@ -40,10 +40,10 @@ const ACAO_META: Record<AcaoLog, { label: string; cor: string; bg: string }> = {
   insert:  { label: "Inserção",    cor: "#16A34A", bg: "#DCFCE7" },
   update:  { label: "Edição",      cor: "#C9921B", bg: "#FBF3E0" },
   delete:  { label: "Exclusão",    cor: "#E24B4A", bg: "#FCEBEB" },
-  login:   { label: "Login",       cor: "#1A4870", bg: "#D5E8F5" },
+  login:   { label: "Login",       cor: "#111111", bg: "#E8E8E8" },
   logout:  { label: "Logout",      cor: "var(--text-2)", bg: "#F1F5F9" },
   export:  { label: "Exportação",  cor: "#7C3AED", bg: "#EDE9FE" },
-  view:    { label: "Visualização",cor: "#378ADD", bg: "#EFF7FF" },
+  view:    { label: "Visualização",cor: "#444444", bg: "#EFF7FF" },
 };
 
 const MODULOS_LISTA = [
@@ -146,7 +146,7 @@ export default function LogSistema() {
               a.download = `logs_${new Date().toISOString().slice(0,10)}.csv`;
               a.click();
             }}
-            style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
             ↓ Exportar CSV
           </button>
         </header>
@@ -156,7 +156,7 @@ export default function LogSistema() {
           {/* KPIs */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
-              { label: "Total de eventos",  valor: kpis.total,  cor: "#1A4870", bg: "#D5E8F5" },
+              { label: "Total de eventos",  valor: kpis.total,  cor: "#111111", bg: "#E8E8E8" },
               { label: "Inserções",         valor: kpis.insert, cor: "#16A34A", bg: "#DCFCE7" },
               { label: "Edições",           valor: kpis.update, cor: "#C9921B", bg: "#FBF3E0" },
               { label: "Exclusões",         valor: kpis.delete, cor: "#E24B4A", bg: "#FCEBEB" },
@@ -267,7 +267,7 @@ export default function LogSistema() {
                             {l.usuario_email && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{l.usuario_email}</div>}
                           </td>
                           <td style={{ padding: "8px 14px" }}>
-                            <span style={{ fontSize: 10, background: "var(--bg-tag)", color: "#1A4870", padding: "2px 7px", borderRadius: 8, fontWeight: 600, textTransform: "capitalize" }}>{l.modulo}</span>
+                            <span style={{ fontSize: 10, background: "var(--bg-tag)", color: "#111111", padding: "2px 7px", borderRadius: 8, fontWeight: 600, textTransform: "capitalize" }}>{l.modulo}</span>
                           </td>
                           <td style={{ padding: "8px 14px" }}>
                             <span style={{ fontSize: 10, background: meta.bg, color: meta.cor, padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>{meta.label}</span>

@@ -584,7 +584,7 @@ export default function ApoioFinanceiroPage() {
               <label style={{ ...lbl, margin: 0 }}>Até</label>
               <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} style={{ ...inp, width: 140 }} />
             </div>
-            <button onClick={carregar} style={btn("#1A4870")} disabled={carregando}>
+            <button onClick={carregar} style={btn("#111111")} disabled={carregando}>
               {carregando ? "…" : "Atualizar"}
             </button>
             <button onClick={exportarExcel} style={btn("#16A34A")}>
@@ -605,7 +605,7 @@ export default function ApoioFinanceiroPage() {
             { label: "CP Oficial (total)", valor: fmtBRL(totalCP), sub: `${fmtBRL(abertoCP)} em aberto`, cor: "#E24B4A" },
             { label: "CR Oficial (total)", valor: fmtBRL(totalCR), sub: `${fmtBRL(abertoCR)} em aberto`, cor: "#16A34A" },
             { label: "Apoio Exclusivo — Pagar", valor: fmtBRL(exclCP), sub: `${apoioLancs.filter(a => a.tipo === "pagar" && !a.baixado).length} em aberto`, cor: "#C9921B" },
-            { label: "Apoio Exclusivo — Receber", valor: fmtBRL(exclCR), sub: `${apoioLancs.filter(a => a.tipo === "receber" && !a.baixado).length} em aberto`, cor: "#378ADD" },
+            { label: "Apoio Exclusivo — Receber", valor: fmtBRL(exclCR), sub: `${apoioLancs.filter(a => a.tipo === "receber" && !a.baixado).length} em aberto`, cor: "#444444" },
           ].map((k) => (
             <div key={k.label} style={{ ...card, borderLeft: `3px solid ${k.cor}` }}>
               <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
@@ -627,8 +627,8 @@ export default function ApoioFinanceiroPage() {
               style={{
                 padding: "10px 20px", border: "none", background: "transparent", cursor: "pointer",
                 fontSize: 13, fontWeight: aba === t.id ? 700 : 400,
-                color: aba === t.id ? "#1A4870" : "#666",
-                borderBottom: aba === t.id ? "2.5px solid #1A4870" : "2.5px solid transparent",
+                color: aba === t.id ? "#111111" : "#666",
+                borderBottom: aba === t.id ? "2.5px solid #111111" : "2.5px solid transparent",
               }}
             >
               {t.label}
@@ -801,7 +801,7 @@ export default function ApoioFinanceiroPage() {
                 <button onClick={excluirTudo} style={{ ...btn("#E24B4A"), background: "white", color: "#E24B4A", border: "0.5px solid #E24B4A" }}>
                   🗑 Excluir Tudo
                 </button>
-                <button onClick={() => { setFormApoio(FORM_VAZIO); setModalAberto(true); }} style={btn("#1A4870")}>
+                <button onClick={() => { setFormApoio(FORM_VAZIO); setModalAberto(true); }} style={btn("#111111")}>
                   + Novo Lançamento
                 </button>
               </div>
@@ -1250,7 +1250,7 @@ export default function ApoioFinanceiroPage() {
                 <button
                   onClick={salvarApoioLanc}
                   disabled={salvando || !formApoio.descricao || !formApoio.data_vencimento}
-                  style={btn("#1A4870")}
+                  style={btn("#111111")}
                 >
                   {salvando ? "Salvando…" : "Salvar"}
                 </button>

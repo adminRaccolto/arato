@@ -62,8 +62,8 @@ export default function ProdutorCombo({
       {sel && (
         <div style={{
           marginTop: 4, padding: "5px 10px", borderRadius: 6,
-          background: "#D5E8F5", display: "flex", gap: 16, flexWrap: "wrap",
-          fontSize: 11, color: "#0B2D50",
+          background: "#E8E8E8", display: "flex", gap: 16, flexWrap: "wrap",
+          fontSize: 11, color: "#0D0D0D",
         }}>
           <span style={{ fontWeight: 600 }}>{sel.nome}</span>
           {sel.inscricao_est && <span>IE: <strong>{sel.inscricao_est}</strong></span>}
@@ -119,11 +119,11 @@ export default function ProdutorCombo({
                 style={{
                   display: "grid", gridTemplateColumns: "1fr 160px",
                   padding: "7px 10px", cursor: "pointer",
-                  background: selected ? "#D5E8F5" : "transparent",
+                  background: selected ? "#E8E8E8" : "transparent",
                   borderBottom: "0.5px solid #F0F0F0",
                 }}
                 onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "var(--bg-page)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = selected ? "#D5E8F5" : "transparent"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = selected ? "#E8E8E8" : "transparent"; }}
               >
                 <span style={{
                   fontSize: 13, fontWeight: selected ? 600 : 400, color: "var(--text-1)",
@@ -131,7 +131,7 @@ export default function ProdutorCombo({
                 }}>
                   {p.nome}
                 </span>
-                <span style={{ fontSize: 12, color: selected ? "#0B2D50" : "var(--text-2)", fontWeight: selected ? 600 : 400 }}>
+                <span style={{ fontSize: 12, color: selected ? "#0D0D0D" : "var(--text-2)", fontWeight: selected ? 600 : 400 }}>
                   {p.inscricao_est || "—"}
                 </span>
               </div>

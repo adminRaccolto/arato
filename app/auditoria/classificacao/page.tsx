@@ -205,7 +205,7 @@ export default function AuditoriaClassificacaoPage() {
             </p>
           </div>
           <button onClick={rodarAuditoria} disabled={loading}
-            style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {loading ? "Verificando…" : "Rodar Auditoria"}
           </button>
         </div>
@@ -233,7 +233,7 @@ export default function AuditoriaClassificacaoPage() {
             {["todos", "og_diferente", "categoria_errada", "sem_og_direto"].map(t => (
               <button key={t} onClick={() => setFiltroTipo(t)}
                 style={{ padding: "5px 14px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                  background: filtroTipo === t ? "#1A4870" : "var(--bg-card)", color: filtroTipo === t ? "#fff" : "var(--text-2)" }}>
+                  background: filtroTipo === t ? "#111111" : "var(--bg-card)", color: filtroTipo === t ? "#fff" : "var(--text-2)" }}>
                 {t === "todos" ? "Todos" : TIPO_META[t]?.label}
               </button>
             ))}
@@ -276,7 +276,7 @@ export default function AuditoriaClassificacaoPage() {
                       </td>
                       <td style={{ padding: "10px 12px" }}>
                         <div style={{ fontWeight: 500 }}>{inc.descricao_produto}</div>
-                        <div style={{ fontSize: 11, color: "#1A4870", fontFamily: "monospace" }}>NCM {inc.ncm}</div>
+                        <div style={{ fontSize: 11, color: "#111111", fontFamily: "monospace" }}>NCM {inc.ncm}</div>
                       </td>
                       <td style={{ padding: "10px 12px" }}>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: tm.bg, color: tm.cor, whiteSpace: "nowrap" }}>
@@ -311,7 +311,7 @@ export default function AuditoriaClassificacaoPage() {
                             <div style={{ fontSize: 10, color: "var(--text-3)" }}>{inc.og_esperada_classif}</div>
                           </div>
                         ) : inc.categoria_esperada ? (
-                          <span style={{ fontSize: 11, background: "#EBF5FF", color: "#1A4870", padding: "1px 7px", borderRadius: 8 }}>
+                          <span style={{ fontSize: 11, background: "#EEEEEE", color: "#111111", padding: "1px 7px", borderRadius: 8 }}>
                             {CAT_LABEL[inc.categoria_esperada] || inc.categoria_esperada}
                           </span>
                         ) : "—"}

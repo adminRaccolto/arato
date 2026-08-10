@@ -36,13 +36,13 @@ const STATUS_CFG: Record<StatusCliente, { label: string; cor: string; bg: string
   ativo:        { label: "Ativo",        cor: "#16A34A", bg: "#F0FDF4" },
   inativo:      { label: "Inativo",      cor: "var(--text-3)",    bg: "#F3F4F6" },
   inadimplente: { label: "Inadimplente", cor: "#E24B4A", bg: "#FEF2F2" },
-  pro_bono:     { label: "Pro Bono",     cor: "#378ADD", bg: "#EFF6FF" },
+  pro_bono:     { label: "Pro Bono",     cor: "#444444", bg: "#F2F2F2" },
   cancelado:    { label: "Cancelado",    cor: "#6B7280", bg: "#F3F4F6" },
 };
 
 const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string; valor: number }> = {
   essencial:   { label: "Essencial",   cor: "var(--text-2)",    bg: "#F3F4F6", valor: 290  },
-  gestao:      { label: "Gestão",      cor: "#1A4870", bg: "#D5E8F5", valor: 590  },
+  gestao:      { label: "Gestão",      cor: "#111111", bg: "#E8E8E8", valor: 590  },
   performance: { label: "Performance", cor: "#7A5A12", bg: "#FBF3E0", valor: 990  },
 };
 
@@ -50,14 +50,14 @@ const ABAS_CONTRATO: Array<{ key: AbaContrato; label: string; cor?: string; bg?:
   { key: "",             label: "Todos"         },
   { key: "trial",        label: "Trial",        cor: "#C9921B", bg: "#FBF3E0" },
   { key: "ativo",        label: "Pagantes",     cor: "#16A34A", bg: "#F0FDF4" },
-  { key: "pro_bono",     label: "Pro Bono",     cor: "#378ADD", bg: "#EFF6FF" },
+  { key: "pro_bono",     label: "Pro Bono",     cor: "#444444", bg: "#F2F2F2" },
   { key: "inadimplente", label: "Inadimplentes",cor: "#E24B4A", bg: "#FEF2F2" },
   { key: "cancelado",    label: "Cancelados",   cor: "#6B7280", bg: "#F3F4F6" },
 ];
 
 const CRM_STAGE_CFG: Record<string, { label: string; cor: string }> = {
   lead:         { label: "Lead",          cor: "var(--text-3)"    },
-  contato:      { label: "Contato feito", cor: "#378ADD" },
+  contato:      { label: "Contato feito", cor: "#444444" },
   demo:         { label: "Demo",          cor: "#EF9F27" },
   proposta:     { label: "Proposta",      cor: "#C9921B" },
   cliente:      { label: "Cliente",       cor: "#16A34A" },
@@ -384,7 +384,7 @@ export default function ClientesPage() {
     { label: "Ativos",        valor: clientes.filter(c => c.status === "ativo").length,                                     cor: "#16A34A", bg: "#F0FDF4" },
     { label: "Trial",         valor: clientes.filter(c => c.status === "trial").length,                                     cor: "#C9921B", bg: "#FBF3E0" },
     { label: "Inadimplentes", valor: clientes.filter(c => c.status === "inadimplente" || c.status === "inativo").length,    cor: "#E24B4A", bg: "#FEF2F2" },
-    { label: "Pro Bono",      valor: clientes.filter(c => c.status === "pro_bono").length,                                  cor: "#378ADD", bg: "#EFF6FF" },
+    { label: "Pro Bono",      valor: clientes.filter(c => c.status === "pro_bono").length,                                  cor: "#444444", bg: "#F2F2F2" },
     { label: "MRR",           valor: fmtBRL(mrr),                                                                           cor: "#0B1E35", bg: "#F0FDF4" },
   ];
 
@@ -684,12 +684,12 @@ export default function ClientesPage() {
       {/* Seção Pro Bono — só na aba Todos ou Pro Bono */}
       {proBonoList.length > 0 && (abaContrato === "" || abaContrato === "pro_bono") && (
         <div style={{
-          background: "#EFF6FF", border: "1px solid #378ADD40",
+          background: "#F2F2F2", border: "1px solid #44444440",
           borderRadius: 12, padding: "16px 20px", marginBottom: 16,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#1A4870" }}>⭐ Clientes Pro Bono</span>
-            <span style={{ fontSize: 11, color: "#378ADD", background: "#DBEAFE", borderRadius: 20, padding: "2px 10px", fontWeight: 700 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#111111" }}>⭐ Clientes Pro Bono</span>
+            <span style={{ fontSize: 11, color: "#444444", background: "#DBEAFE", borderRadius: 20, padding: "2px 10px", fontWeight: 700 }}>
               {proBonoList.length} {proBonoList.length === 1 ? "cliente" : "clientes"}
             </span>
             <span style={{ fontSize: 11, color: "var(--text-2)", marginLeft: 4 }}>
@@ -699,7 +699,7 @@ export default function ClientesPage() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {proBonoList.map(c => (
               <div key={c.id} style={{
-                background: "var(--bg-card)", border: "0.5px solid #378ADD60",
+                background: "var(--bg-card)", border: "0.5px solid #44444460",
                 borderRadius: 10, padding: "10px 14px",
                 display: "flex", alignItems: "center", gap: 12, minWidth: 260,
               }}>
@@ -712,7 +712,7 @@ export default function ClientesPage() {
                   {c.email_contato && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{c.email_contato}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button style={{ ...btnSmall, color: "#378ADD" }} onClick={() => setModalEdit(c)}>✎</button>
+                  <button style={{ ...btnSmall, color: "#444444" }} onClick={() => setModalEdit(c)}>✎</button>
                   <button
                     style={{ ...btnSmall, color: "#E24B4A", fontSize: 10 }}
                     onClick={() => removerProBono(c)}
@@ -789,7 +789,7 @@ export default function ClientesPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 13 }}>{c.nome}</span>
                         {c.status === "pro_bono" && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "#378ADD", background: "#DBEAFE", borderRadius: 10, padding: "1px 6px", letterSpacing: 0.5 }}>PB</span>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#444444", background: "#DBEAFE", borderRadius: 10, padding: "1px 6px", letterSpacing: 0.5 }}>PB</span>
                         )}
                         {c._sem_conta && (
                           <span style={{ fontSize: 9, fontWeight: 700, color: "#C9921B", background: "#FBF3E0", borderRadius: 10, padding: "1px 6px" }}>SEM CONTA</span>
@@ -797,7 +797,7 @@ export default function ClientesPage() {
                       </div>
                       {c.email_contato && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{c.email_contato}</div>}
                       {c.pro_bono_motivo && c.status === "pro_bono" && (
-                        <div style={{ fontSize: 10, color: "#378ADD", marginTop: 1, fontStyle: "italic" }}>{c.pro_bono_motivo}</div>
+                        <div style={{ fontSize: 10, color: "#444444", marginTop: 1, fontStyle: "italic" }}>{c.pro_bono_motivo}</div>
                       )}
                       {c.telefone && !c.pro_bono_motivo && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{c.telefone}</div>}
                       {c._sem_conta && (
@@ -890,7 +890,7 @@ export default function ClientesPage() {
                           </button>
                           {/* Alterar plano */}
                           <button
-                            style={{ ...btnSmall, color: "#1A4870", borderColor: "#1A487060" }}
+                            style={{ ...btnSmall, color: "#111111", borderColor: "#11111160" }}
                             onClick={() => setModalPlano(c)}
                             title="Upgrade / Downgrade de plano"
                             disabled={acaoLoading === c.id}
@@ -900,7 +900,7 @@ export default function ClientesPage() {
                           {/* Pro Bono */}
                           {c.status !== "pro_bono" ? (
                             <button
-                              style={{ ...btnSmall, color: "#378ADD", borderColor: "#378ADD60" }}
+                              style={{ ...btnSmall, color: "#444444", borderColor: "#44444460" }}
                               onClick={() => marcarProBono(c)}
                               title="Marcar como Pro Bono"
                             >
@@ -973,7 +973,7 @@ export default function ClientesPage() {
       </div>
 
       {/* Nota */}
-      <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
+      <div style={{ marginTop: 16, padding: "10px 14px", background: "#F2F2F2", borderRadius: 8, border: "0.5px solid #44444440", fontSize: 11, color: "#111111", lineHeight: 1.7 }}>
         <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>🔧 Implantar</strong> ativa checklist de implantação · <strong>🔓 Liberar</strong> desativa onboarding e desbloqueia acesso · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso (revoga login imediatamente) · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
       </div>
     </div>

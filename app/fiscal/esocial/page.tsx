@@ -253,13 +253,13 @@ export default function EsocialPage() {
           <div style={{ display: "flex", gap: 10 }}>
             {aba === "trabalhadores" && (
               <a href="/cadastros?tab=funcionarios"
-                style={{ padding: "9px 20px", background: "var(--bg-page)", color: "#1A4870", border: "0.5px solid #B3D0E8", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-block" }}>
+                style={{ padding: "9px 20px", background: "var(--bg-page)", color: "#111111", border: "0.5px solid #B3D0E8", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-block" }}>
                 Gerenciar em Cadastros →
               </a>
             )}
             {aba === "eventos" && (
               <button onClick={() => setModalEvt(true)}
-                style={{ padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Evento Manual
               </button>
             )}
@@ -269,7 +269,7 @@ export default function EsocialPage() {
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 }}>
           {[
-            { label: "Trabalhadores Ativos", value: String(ativos.length), sub: `${clt.length} CLT · ${avulsos.length} avulsos`, cor: "#1A4870", bg: "#EAF3FB" },
+            { label: "Trabalhadores Ativos", value: String(ativos.length), sub: `${clt.length} CLT · ${avulsos.length} avulsos`, cor: "#111111", bg: "#EAF3FB" },
             { label: "Eventos Pendentes",    value: String(qtdPend),        sub: "Aguardando transmissão", cor: qtdPend > 0 ? "#7A5A12" : "var(--text-2)", bg: qtdPend > 0 ? "#FBF3E0" : "var(--bg-page)" },
             { label: "Folha Mensal",         value: fmt(totalRemuneracao),  sub: "Remuneração total",      cor: "var(--text-1)", bg: "var(--bg-card)" },
             { label: "FUNRURAL + SENAR",     value: fmt(funruralEmpregador + senarEmpregador), sub: "Encargos empregador", cor: "var(--text-2)", bg: "var(--bg-page)" },
@@ -283,7 +283,7 @@ export default function EsocialPage() {
         </div>
 
         {/* Aviso integração */}
-        <div style={{ background: "#EAF3FB", border: "0.5px solid #B3D0E8", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#1A4870", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ background: "#EAF3FB", border: "0.5px solid #B3D0E8", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#111111", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontWeight: 700 }}>ℹ</span>
           <span>Os trabalhadores listados aqui são os mesmos cadastrados em <strong>Cadastros → Funcionários</strong>. Qualquer alteração feita aqui ou lá é sincronizada automaticamente.</span>
         </div>
@@ -296,7 +296,7 @@ export default function EsocialPage() {
             { id: "apuracao",      label: "Apuração Mensal" },
           ].map(a => (
             <button key={a.id} onClick={() => setAba(a.id as typeof aba)}
-              style={{ padding: "7px 18px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, background: aba === a.id ? "#1A4870" : "transparent", color: aba === a.id ? "#fff" : "var(--text-2)" }}>
+              style={{ padding: "7px 18px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, background: aba === a.id ? "#111111" : "transparent", color: aba === a.id ? "#fff" : "var(--text-2)" }}>
               {a.label}
             </button>
           ))}
@@ -320,7 +320,7 @@ export default function EsocialPage() {
                   <div style={{ fontSize: 36, marginBottom: 12 }}>👷</div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>Nenhum trabalhador cadastrado</div>
                   <div style={{ fontSize: 12, marginBottom: 14 }}>Acesse <strong>Cadastros → Funcionários</strong> para adicionar trabalhadores.</div>
-                  <a href="/cadastros?tab=funcionarios" style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Ir para Cadastros → Funcionários</a>
+                  <a href="/cadastros?tab=funcionarios" style={{ padding: "8px 18px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Ir para Cadastros → Funcionários</a>
                 </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -351,7 +351,7 @@ export default function EsocialPage() {
                           <td style={{ padding: "9px 10px" }}>
                             <div style={{ display: "flex", gap: 6 }}>
                               <a href="/cadastros?tab=funcionarios"
-                                style={{ padding: "3px 10px", background: "none", border: "0.5px solid #B3D0E8", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", textDecoration: "none", display: "inline-block" }}>
+                                style={{ padding: "3px 10px", background: "none", border: "0.5px solid #B3D0E8", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", textDecoration: "none", display: "inline-block" }}>
                                 Editar em Cadastros
                               </a>
                               {t.status === "ativo" && (
@@ -397,7 +397,7 @@ export default function EsocialPage() {
                     return (
                       <tr key={e.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #F0F2F7" }}>
                         <td style={{ padding: "9px 10px" }}>
-                          <span style={{ background: "#EAF3FB", color: "#1A4870", fontWeight: 700, padding: "2px 8px", borderRadius: 5, fontSize: 12 }}>{e.codigo_evento}</span>
+                          <span style={{ background: "#EAF3FB", color: "#111111", fontWeight: 700, padding: "2px 8px", borderRadius: 5, fontSize: 12 }}>{e.codigo_evento}</span>
                         </td>
                         <td style={{ padding: "9px 10px", color: "var(--text-2)", maxWidth: 240, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.descricao_evento}</td>
                         <td style={{ padding: "9px 10px", fontWeight: 500 }}>{trab?.nome ?? "—"}</td>
@@ -409,7 +409,7 @@ export default function EsocialPage() {
                         <td style={{ padding: "9px 10px" }}>
                           {e.status === "pendente" && (
                             <button onClick={() => transmitir(e)}
-                              style={{ padding: "3px 10px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                              style={{ padding: "3px 10px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Transmitir
                             </button>
                           )}
@@ -492,7 +492,7 @@ export default function EsocialPage() {
                   {[
                     { label: "FUNRURAL",  sub: "1,5% s/ folha",      value: funruralEmpregador, cor: "#92400E" },
                     { label: "SENAR",     sub: "0,2% s/ folha",      value: senarEmpregador,    cor: "var(--text-2)"    },
-                    { label: "FGTS CLT", sub: "8% s/ salários CLT", value: fgts,                cor: "#1A4870" },
+                    { label: "FGTS CLT", sub: "8% s/ salários CLT", value: fgts,                cor: "#111111" },
                   ].map((e, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < 2 ? "0.5px solid #F0F2F7" : "none" }}>
                       <div>
@@ -504,13 +504,13 @@ export default function EsocialPage() {
                   ))}
                   <div style={{ marginTop: 12, padding: "10px 0 0", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>Total Encargos</span>
-                    <span style={{ fontWeight: 700, fontSize: 15, color: "#1A4870" }}>{fmt(funruralEmpregador + senarEmpregador + fgts)}</span>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: "#111111" }}>{fmt(funruralEmpregador + senarEmpregador + fgts)}</span>
                   </div>
                 </div>
 
                 <div style={{ ...card, background: "#F8FAFF" }}>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--text-2)" }}>Custo Total da Mão-de-obra</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "#1A4870" }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: "#111111" }}>
                     {fmt(totalRemuneracao + funruralEmpregador + senarEmpregador + fgts)}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Folha + todos os encargos</div>
@@ -552,7 +552,7 @@ export default function EsocialPage() {
                       carregar();
                     }}
                     disabled={trabsAtivosApuracao.length === 0}
-                    style={{ width: "100%", padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: trabsAtivosApuracao.length === 0 ? "not-allowed" : "pointer", opacity: trabsAtivosApuracao.length === 0 ? 0.6 : 1 }}>
+                    style={{ width: "100%", padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: trabsAtivosApuracao.length === 0 ? "not-allowed" : "pointer", opacity: trabsAtivosApuracao.length === 0 ? 0.6 : 1 }}>
                     Gerar S-1200 / S-1210
                   </button>
                 </div>
@@ -594,7 +594,7 @@ export default function EsocialPage() {
             <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
               <button onClick={salvarEvt} disabled={salvandoE || !formEvt.codigo_evento}
-                style={{ padding: "9px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvandoE ? 0.7 : 1 }}>
+                style={{ padding: "9px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvandoE ? 0.7 : 1 }}>
                 {salvandoE ? "Salvando..." : "Criar Evento"}
               </button>
             </div>

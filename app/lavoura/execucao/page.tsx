@@ -122,7 +122,7 @@ function CardRecomendacao({
             {TIPOS_LABEL[rec.tipo]}
           </span>
           {rec.status === "em_execucao" && (
-            <span style={{ background: "#1A4870", color: "#fff", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
+            <span style={{ background: "#111111", color: "#fff", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
               Em andamento
             </span>
           )}
@@ -388,7 +388,7 @@ function TelaExecucao({
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bg-card)", padding: "14px 16px", boxShadow: "0 -2px 12px rgba(0,0,0,0.1)", display: "flex", gap: 10 }}>
         {!todosFeitos && algumFeito && (
           <button onClick={() => salvar(false)} disabled={saving}
-            style={{ flex: 1, padding: "14px 0", background: "var(--bg-page)", color: "#1A4870", border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            style={{ flex: 1, padding: "14px 0", background: "var(--bg-page)", color: "#111111", border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Salvar Parcial
           </button>
         )}
@@ -509,7 +509,7 @@ export default function ExecucaoPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       {/* Header mobile */}
-      <div style={{ background: "#1A4870", color: "#fff", padding: "18px 18px 14px" }}>
+      <div style={{ background: "#111111", color: "#fff", padding: "18px 18px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800 }}>Modo Campo</div>
@@ -562,7 +562,7 @@ export default function ExecucaoPage() {
 
         <div style={{ textAlign: "center", marginTop: 24 }}>
           <a href="/lavoura/recomendacoes"
-            style={{ fontSize: 13, color: "#1A4870", textDecoration: "none", fontWeight: 600 }}>
+            style={{ fontSize: 13, color: "#111111", textDecoration: "none", fontWeight: 600 }}>
             ← Voltar para Recomendações (desktop)
           </a>
         </div>

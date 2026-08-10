@@ -54,7 +54,7 @@ function DreRow({ label, valor, ha, sc, base, bold, bg, indent, cor, negativo, n
   label:string; valor:number; ha:number; sc:number; base:number;
   bold?:boolean; bg?:string; indent?:boolean; cor?:string; negativo?:boolean; noBorder?:boolean;
 }) {
-  const c = cor ?? (bold ? "#0B2D50" : "var(--text-1)");
+  const c = cor ?? (bold ? "#0D0D0D" : "var(--text-1)");
   const vAbs = Math.abs(valor);
   const fmt = (v: number) => negativo ? `(${fmtBRL(v)})` : fmtBRL(v);
   const td = (extra?: React.CSSProperties): React.CSSProperties => ({
@@ -122,9 +122,9 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                   onClick={() => setCicloIds(prev => sel ? prev.filter(id => id !== c.id) : [...prev, c.id])}
                   style={{
                     padding: "5px 12px", borderRadius: 20,
-                    border: `0.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`,
-                    background: sel ? "#D5E8F5" : "var(--bg-card)",
-                    color: sel ? "#0B2D50" : "var(--text-2)",
+                    border: `0.5px solid ${sel ? "#111111" : "var(--border-table)"}`,
+                    background: sel ? "#E8E8E8" : "var(--bg-card)",
+                    color: sel ? "#0D0D0D" : "var(--text-2)",
                     cursor: "pointer", fontSize: 12, fontWeight: sel ? 600 : 400,
                   }}>
                   {c.descricao}{c.area_plantada_ha ? ` · ${fmtNum(c.area_plantada_ha)} ha` : ""}
@@ -137,7 +137,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
       </div>
       <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 16, alignItems: "center" }}>
         <span>{ciclosSel.length} ciclo{ciclosSel.length !== 1 ? "s" : ""} selecionado{ciclosSel.length !== 1 ? "s" : ""}{areaTotal > 0 ? ` · ${fmtNum(areaTotal, 0)} ha` : ""}</span>
-        {dreLoading && <span style={{ color: "#1A4870", fontWeight: 600 }}>⟳ Carregando…</span>}
+        {dreLoading && <span style={{ color: "#111111", fontWeight: 600 }}>⟳ Carregando…</span>}
       </div>
     </div>
   );
@@ -322,7 +322,7 @@ function CustosInner() {
   const safrasOrd    = [...safras].sort((a, b) => a.ano_agricola.localeCompare(b.ano_agricola));
   const precoBase    = precoMedioSc > 0 ? precoMedioSc : 128;
   const maxReceita   = Math.max(...safrasOrd.map(s => (s.produtividade_sc_ha ?? 0) * (s.area_ha ?? 0) * precoBase), 1);
-  const corCultura   = (c: string) => c === "Soja" ? "#1A4870" : c === "Milho 2ª" ? "#EF9F27" : "#378ADD";
+  const corCultura   = (c: string) => c === "Soja" ? "#111111" : c === "Milho 2ª" ? "#EF9F27" : "#444444";
 
   // ── Dados para Custos Totais (por grupo) ─────────────────
   const CUSTO_GRUPOS = [
@@ -356,7 +356,7 @@ function CustosInner() {
               {aba === "dre" ? "DRE Agrícola" : aba === "custoha" ? "Custo / ha" : aba === "produtividade" ? "Produtividade" : "Custos Totais"}
             </h1>
           </div>
-          <button onClick={() => window.print()} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={() => window.print()} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Exportar PDF
           </button>
         </header>
@@ -381,10 +381,10 @@ function CustosInner() {
               {aba !== "produtividade" && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 14 }}>
                   {[
-                    { label: "Receita bruta",           valor: fmtBRL(receitaBRL),  cor: "#1A4870" },
+                    { label: "Receita bruta",           valor: fmtBRL(receitaBRL),  cor: "#111111" },
                     { label: "Custo de insumos (CPV)",  valor: fmtBRL(cpvTotal),    cor: "#E24B4A" },
-                    { label: "Lucro bruto",             valor: fmtBRL(lucroBruto),  cor: lucroBruto >= 0 ? "#1A4870" : "#E24B4A" },
-                    { label: "Resultado operacional",   valor: fmtBRL(lucroOp),     cor: lucroOp >= 0 ? "#1A4870" : "#E24B4A" },
+                    { label: "Lucro bruto",             valor: fmtBRL(lucroBruto),  cor: lucroBruto >= 0 ? "#111111" : "#E24B4A" },
+                    { label: "Resultado operacional",   valor: fmtBRL(lucroOp),     cor: lucroOp >= 0 ? "#111111" : "#E24B4A" },
                     { label: "Margem líquida",          valor: receitaBRL > 0 ? `${fmtNum(lucroLiquido / receitaBRL * 100, 1)}%` : "—", cor: lucroLiquido >= 0 ? "#16A34A" : "#E24B4A" },
                   ].map((k, i) => (
                     <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 14px" }}>
@@ -429,7 +429,7 @@ function CustosInner() {
                     <tbody>
 
                       {/* RECEITA BRUTA */}
-                      <DreRow label="RECEITA BRUTA" valor={receitaBRL} ha={areaHa} sc={totalSacas} base={receitaBRL} bold bg="#D5E8F5" noBorder />
+                      <DreRow label="RECEITA BRUTA" valor={receitaBRL} ha={areaHa} sc={totalSacas} base={receitaBRL} bold bg="#E8E8E8" noBorder />
                       {Object.entries(contratosPorProduto).sort((a, b) => b[1] - a[1]).map(([prod, v]) => (
                         <DreRow key={prod} label={prod} valor={v} ha={areaHa} sc={totalSacas} base={receitaBRL} indent />
                       ))}
@@ -463,7 +463,7 @@ function CustosInner() {
                       {/* LUCRO BRUTO */}
                       <DreRow label="= MARGEM BRUTA" valor={lucroBruto} ha={areaHa} sc={totalSacas} base={receitaBRL} bold
                         bg={lucroBruto >= 0 ? "#E4F0F9" : "#FCEBEB"}
-                        cor={lucroBruto >= 0 ? "#0B2D50" : "#791F1F"} />
+                        cor={lucroBruto >= 0 ? "#0D0D0D" : "#791F1F"} />
 
                       {/* DESPESAS DIRETAS */}
                       <DreRow label="(-) DESPESAS OPERACIONAIS DIRETAS" valor={despDirTotal} ha={areaHa} sc={totalSacas} base={receitaBRL} bold bg="#FBF3E0" negativo noBorder />
@@ -503,21 +503,21 @@ function CustosInner() {
                       {/* RESULTADO OPERACIONAL */}
                       <DreRow label="= RESULTADO OPERACIONAL" valor={lucroOp} ha={areaHa} sc={totalSacas} base={receitaBRL} bold
                         bg={lucroOp >= 0 ? "#E4F0F9" : "#FCEBEB"}
-                        cor={lucroOp >= 0 ? "#0B2D50" : "#791F1F"} />
+                        cor={lucroOp >= 0 ? "#0D0D0D" : "#791F1F"} />
 
                       {/* RESULTADO LÍQUIDO */}
-                      <tr style={{ background: lucroLiquido >= 0 ? "#D5E8F5" : "#FCEBEB", borderTop: `2px solid ${lucroLiquido >= 0 ? "#1A4870" : "#E24B4A"}` }}>
-                        <td style={{ padding: "12px 20px", fontWeight: 700, fontSize: 13, color: lucroLiquido >= 0 ? "#0B2D50" : "#791F1F" }}>= RESULTADO LÍQUIDO DO CICLO</td>
-                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, fontSize: 15, color: lucroLiquido >= 0 ? "#0B2D50" : "#791F1F" }}>
+                      <tr style={{ background: lucroLiquido >= 0 ? "#E8E8E8" : "#FCEBEB", borderTop: `2px solid ${lucroLiquido >= 0 ? "#111111" : "#E24B4A"}` }}>
+                        <td style={{ padding: "12px 20px", fontWeight: 700, fontSize: 13, color: lucroLiquido >= 0 ? "#0D0D0D" : "#791F1F" }}>= RESULTADO LÍQUIDO DO CICLO</td>
+                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, fontSize: 15, color: lucroLiquido >= 0 ? "#0D0D0D" : "#791F1F" }}>
                           {lucroLiquido < 0 ? "(" : ""}{fmtBRL(Math.abs(lucroLiquido))}{lucroLiquido < 0 ? ")" : ""}
                         </td>
-                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: lucroLiquido >= 0 ? "#0B2D50" : "#791F1F" }}>
+                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: lucroLiquido >= 0 ? "#0D0D0D" : "#791F1F" }}>
                           {areaHa > 0 ? fmtBRL(lucroLiquido / areaHa) : "—"}
                         </td>
-                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: lucroLiquido >= 0 ? "#0B2D50" : "#791F1F" }}>
+                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: lucroLiquido >= 0 ? "#0D0D0D" : "#791F1F" }}>
                           {totalSacas > 0 ? fmtBRL(lucroLiquido / totalSacas, 2) : "—"}
                         </td>
-                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: lucroLiquido >= 0 ? "#0B2D50" : "#791F1F" }}>
+                        <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: lucroLiquido >= 0 ? "#0D0D0D" : "#791F1F" }}>
                           {receitaBRL > 0 ? `${fmtNum(lucroLiquido / receitaBRL * 100, 1)}%` : "—"}
                         </td>
                       </tr>
@@ -530,7 +530,7 @@ function CustosInner() {
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Análise do Ponto de Equilíbrio</div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 12 }}>
                         {[
-                          { label: "Preço médio contratado", v: `${fmtBRL(precoMedioSc, 2)}/sc`, cor: "#1A4870" },
+                          { label: "Preço médio contratado", v: `${fmtBRL(precoMedioSc, 2)}/sc`, cor: "#111111" },
                           { label: "PE (sc necessárias)", v: `${fmtNum(peSacas, 0)} sc`, cor: "#E24B4A" },
                           { label: "Sacas contratadas", v: `${fmtNum(totalSacas, 0)} sc`, cor: "var(--text-1)" },
                           { label: "Folga acima do PE", v: folga >= 0 ? `+${fmtNum(folga, 0)} sc` : `${fmtNum(folga, 0)} sc`, cor: folga >= 0 ? "#16A34A" : "#E24B4A" },
@@ -569,7 +569,7 @@ function CustosInner() {
                       { label: "Custo insumos/ha",   v: areaHa > 0 ? fmtBRL(cpvTotal / areaHa) : "—",       cor: "#E24B4A" },
                       { label: "Desp. diretas/ha",   v: areaHa > 0 ? fmtBRL(despDirTotal / areaHa) : "—",   cor: "#C9921B" },
                       { label: "Custo total/ha",     v: areaHa > 0 ? fmtBRL(custoTotal / areaHa) : "—",     cor: "var(--text-1)" },
-                      { label: "Receita/ha",         v: areaHa > 0 ? fmtBRL(receitaBRL / areaHa) : "—",     cor: "#1A4870" },
+                      { label: "Receita/ha",         v: areaHa > 0 ? fmtBRL(receitaBRL / areaHa) : "—",     cor: "#111111" },
                     ].map((k, i) => (
                       <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 5 }}>{k.label}</div>
@@ -660,7 +660,7 @@ function CustosInner() {
                         const pct      = maxReceita > 0 ? recEstim / maxReceita : 0;
                         const cor      = corCultura(s.cultura);
                         const statusCors: Record<string, { bg: string; color: string }> = {
-                          colhida:      { bg: "#D5E8F5", color: "#0B2D50" },
+                          colhida:      { bg: "#E8E8E8", color: "#0D0D0D" },
                           em_andamento: { bg: "#FAEEDA", color: "#633806" },
                           planejada:    { bg: "#E6F1FB", color: "#0C447C" },
                           cancelada:    { bg: "#F1EFE8", color: "#666"    },
@@ -697,9 +697,9 @@ function CustosInner() {
                     const media    = colhidas.reduce((s, c) => s + (c.produtividade_sc_ha ?? 0), 0) / colhidas.length;
                     return (
                       <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487030", borderRadius: 10, padding: "12px 14px" }}>
-                          <div style={{ fontSize: 11, color: "#0B2D50", marginBottom: 4, fontWeight: 600 }}>Melhor safra</div>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: "#0B2D50" }}>{melhor.cultura} {melhor.ano_agricola} — {fmtNum(melhor.produtividade_sc_ha ?? 0, 1)} sc/ha</div>
+                        <div style={{ background: "#E8E8E8", border: "0.5px solid #11111130", borderRadius: 10, padding: "12px 14px" }}>
+                          <div style={{ fontSize: 11, color: "#0D0D0D", marginBottom: 4, fontWeight: 600 }}>Melhor safra</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#0D0D0D" }}>{melhor.cultura} {melhor.ano_agricola} — {fmtNum(melhor.produtividade_sc_ha ?? 0, 1)} sc/ha</div>
                         </div>
                         <div style={{ background: "#FAEEDA", border: "0.5px solid #EF9F2730", borderRadius: 10, padding: "12px 14px" }}>
                           <div style={{ fontSize: 11, color: "#633806", marginBottom: 4, fontWeight: 600 }}>Produtividade média colhida</div>

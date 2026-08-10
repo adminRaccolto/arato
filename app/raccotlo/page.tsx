@@ -25,7 +25,7 @@ export default function RaccotloHub() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(145deg, #071628 0%, #0B2D50 55%, #0F3B68 100%)",
+      background: "linear-gradient(145deg, #071628 0%, #0D0D0D 55%, #0F3B68 100%)",
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", fontFamily: "system-ui, sans-serif",
       padding: "40px 24px",

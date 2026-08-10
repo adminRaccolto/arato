@@ -12,7 +12,7 @@ import InputNumerico from "../../../components/InputNumerico";
 
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 18px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "7px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 12, color: "var(--text-2)" };
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
@@ -20,7 +20,7 @@ const CULT: Record<string, string> = {
   soja: "Soja", milho1: "Milho 1ª", milho2: "Milho 2ª",
   algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo",
 };
-const CORES = ["#1A5CB8", "#C9921B", "#16A34A", "#E24B4A", "#7C3AED", "#0891B2", "#B45309", "#6B7280"];
+const CORES = ["#2A2A2A", "#C9921B", "#16A34A", "#E24B4A", "#7C3AED", "#0891B2", "#B45309", "#6B7280"];
 
 // Tipos internos dos formulários
 type LinhaForm = { ciclo_id: string; percentual: string; descricao: string };
@@ -291,10 +291,10 @@ export default function RateioPage() {
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 0 }}>
           {(["n2", "n1"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              style={{ padding: "10px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t ? 700 : 400, color: tab === t ? "#1A5CB8" : "var(--text-2)", borderBottom: tab === t ? "2px solid #1A5CB8" : "2px solid transparent" }}
+              style={{ padding: "10px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t ? 700 : 400, color: tab === t ? "#2A2A2A" : "var(--text-2)", borderBottom: tab === t ? "2px solid #2A2A2A" : "2px solid transparent" }}
             >
               {t === "n2" ? "Nível 2 — Fazenda → Ciclos" : "Nível 1 — Global → Fazendas"}
-              <span style={{ marginLeft: 6, fontSize: 11, background: tab === t ? "#D5E8F5" : "var(--bg-page)", color: tab === t ? "#0B2D50" : "var(--text-3)", padding: "1px 6px", borderRadius: 10 }}>
+              <span style={{ marginLeft: 6, fontSize: 11, background: tab === t ? "#E8E8E8" : "var(--bg-page)", color: tab === t ? "#0D0D0D" : "var(--text-3)", padding: "1px 6px", borderRadius: 10 }}>
                 {t === "n2" ? regrasN2.length : regrasN1.length}
               </span>
             </button>
@@ -306,7 +306,7 @@ export default function RateioPage() {
           {/* ════════════════════ NÍVEL 2 ════════════════════ */}
           {tab === "n2" && (
             <>
-              <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0B2D50" }}>
+              <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0D0D0D" }}>
                 <strong>Nível 2 — Fazenda → Ciclos:</strong> Distribui um Centro de Custo entre os ciclos (culturas) de <em>uma única fazenda</em>.
                 Modo <strong>Atribuído</strong>: define % manualmente. Modo <strong>Por Área Plantada</strong>: o sistema calcula proporcionalmente à área de cada ciclo.
               </div>
@@ -348,7 +348,7 @@ export default function RateioPage() {
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                              <span style={{ fontSize: 11, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>{nomeAno(r.ano_safra_id)}</span>
+                              <span style={{ fontSize: 11, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>{nomeAno(r.ano_safra_id)}</span>
                               <span style={{ fontSize: 11, background: "var(--bg-page)", color: "var(--text-2)", padding: "2px 8px", borderRadius: 6, border: "0.5px solid var(--border-table)" }}>{nomeFaz(r.fazenda_id)}</span>
                               {isAuto
                                 ? <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>Por Área Plantada</span>
@@ -360,7 +360,7 @@ export default function RateioPage() {
                             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 8, display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
                               <span style={{ color: "var(--text-3)" }}>CC:</span>
                               {(r.centros_custo_ids?.length ? r.centros_custo_ids : (r.centro_custo_id ? [r.centro_custo_id] : [])).map(id => (
-                                <span key={id} style={{ fontSize: 11, background: "#EFF6FF", color: "#1A4870", padding: "2px 7px", borderRadius: 5, fontWeight: 600, border: "0.5px solid #B8D4F0" }}>{nomeCC(id)}</span>
+                                <span key={id} style={{ fontSize: 11, background: "#F2F2F2", color: "#111111", padding: "2px 7px", borderRadius: 5, fontWeight: 600, border: "0.5px solid #B8D4F0" }}>{nomeCC(id)}</span>
                               ))}
                             </div>
                             {isAuto ? (
@@ -497,8 +497,8 @@ export default function RateioPage() {
               <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
                 {(["atribuido", "area_plantada"] as const).map(t => (
                   <button key={t} onClick={() => setFN2(p => ({ ...p, tipo: t }))}
-                    style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1.5px solid ${fN2.tipo === t ? "#1A5CB8" : "var(--border-table)"}`, background: fN2.tipo === t ? "#D5E8F5" : "var(--bg-page)", cursor: "pointer", textAlign: "left" }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: fN2.tipo === t ? "#0B2D50" : "var(--text-1)" }}>
+                    style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1.5px solid ${fN2.tipo === t ? "#2A2A2A" : "var(--border-table)"}`, background: fN2.tipo === t ? "#E8E8E8" : "var(--bg-page)", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: fN2.tipo === t ? "#0D0D0D" : "var(--text-1)" }}>
                       {t === "atribuido" ? "Atribuído" : "Por Área Plantada"}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 3 }}>
@@ -535,7 +535,7 @@ export default function RateioPage() {
                   <label style={lbl}>
                     Centros de Custo *
                     {fN2.centros_custo_ids.length > 0 && (
-                      <span style={{ marginLeft: 6, fontSize: 10, background: "#1A5CB8", color: "#fff", borderRadius: 10, padding: "1px 7px" }}>{fN2.centros_custo_ids.length}</span>
+                      <span style={{ marginLeft: 6, fontSize: 10, background: "#2A2A2A", color: "#fff", borderRadius: 10, padding: "1px 7px" }}>{fN2.centros_custo_ids.length}</span>
                     )}
                   </label>
                   <div style={{ border: fN2.centros_custo_ids.length === 0 ? "0.5px solid #E24B4A80" : "0.5px solid var(--border-table)", borderRadius: 7, maxHeight: 130, overflowY: "auto", background: "var(--bg-page)", padding: "6px 10px" }}>
@@ -546,7 +546,7 @@ export default function RateioPage() {
                             const ids = e.target.checked ? [...fN2.centros_custo_ids, cc.id] : fN2.centros_custo_ids.filter(id => id !== cc.id);
                             setFN2(p => ({ ...p, centros_custo_ids: ids }));
                           }}
-                          style={{ accentColor: "#1A5CB8", width: 14, height: 14, flexShrink: 0 }} />
+                          style={{ accentColor: "#2A2A2A", width: 14, height: 14, flexShrink: 0 }} />
                         <span style={{ fontSize: 12, color: "var(--text-1)" }}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</span>
                       </label>
                     ))}

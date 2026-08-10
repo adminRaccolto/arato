@@ -52,7 +52,7 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
     >
       {/* Cabeçalho */}
       <div style={{ padding: "10px 14px 8px", borderBottom: "0.5px solid #EEF0F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Colunas visíveis
         </span>
         <span style={{ fontSize: 10, color: "var(--text-3)" }}>{ativas}/{opcionais.length}</span>
@@ -63,7 +63,7 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
         <div style={{ padding: "6px 14px 2px" }}>
           {fixas.map(c => (
             <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", opacity: 0.45 }}>
-              <div style={{ width: 14, height: 14, borderRadius: 3, background: "#1A4870", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 14, height: 14, borderRadius: 3, background: "#111111", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="9" height="9" viewBox="0 0 9 9"><polyline points="1,4.5 3.5,7 8,2" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
               <span style={{ fontSize: 12, color: "var(--text-2)" }}>{c.label}</span>
@@ -90,7 +90,7 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
             >
               <div style={{
                 width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                background: ativa ? "#1A4870" : "var(--bg-card)",
+                background: ativa ? "#111111" : "var(--bg-card)",
                 border: ativa ? "none" : "1.5px solid #BCC8D8",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "background 0.12s",
@@ -107,7 +107,7 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
       <div style={{ borderTop: "0.5px solid #EEF0F6", padding: "6px 14px", display: "flex", gap: 8 }}>
         <button
           onClick={() => { opcionais.forEach(c => { if (visiveis[c.key] === false) onToggle(c.key); }); }}
-          style={{ flex: 1, padding: "4px 0", fontSize: 11, color: "#1A4870", background: "#EEF4FB", border: "none", borderRadius: 5, cursor: "pointer", fontWeight: 600 }}
+          style={{ flex: 1, padding: "4px 0", fontSize: 11, color: "#111111", background: "#EEF4FB", border: "none", borderRadius: 5, cursor: "pointer", fontWeight: 600 }}
         >
           Mostrar todas
         </button>

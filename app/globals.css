@@ -12,50 +12,50 @@
 :root,
 :root[data-theme="light"] {
   /* Estrutura */
-  --bg-page:        #F4F6FA;
+  --bg-page:        #F1F2F0;
   --bg-card:        #ffffff;
   --bg-header:      #ffffff;
-  --bg-nav:         #F4F6FA;
+  --bg-nav:         #EBEBEA;
   --bg-input:       #ffffff;
-  --bg-input-f:     #FAFBFC;   /* filtros de coluna */
-  --bg-hover:       #F9FAFC;
-  --bg-stripe:      #F4F6FA;   /* thead, tfoot */
-  --bg-tag:         #EEF1F6;   /* badges neutros */
+  --bg-input-f:     #F7F7F5;
+  --bg-hover:       #F4F5F2;
+  --bg-stripe:      #EBEBEA;
+  --bg-tag:         #E4E5E2;
 
   /* Bordas */
-  --border:         #DDE2EE;
-  --border-table:   #D4DCE8;
-  --border-row:     #DEE5EE;
+  --border:         #D2D4CE;
+  --border-table:   #C8CBC4;
+  --border-row:     #D6D8D2;
 
   /* Texto */
-  --text-1:         #1a1a1a;
-  --text-2:         #555555;
-  --text-3:         #888888;
+  --text-1:         #111111;
+  --text-2:         #444444;
+  --text-3:         #777777;
   --text-muted:     #aaaaaa;
 
   /* TopNav */
-  --nav-bg:         #050D1A;
-  --nav-faixa1:     #0A1628;
-  --nav-faixa2:     #1A5CB8;
+  --nav-bg:         #111111;
+  --nav-faixa1:     #111111;
+  --nav-faixa2:     #1A1A1A;
   --nav-text:       #ffffff;
   --nav-border:     rgba(255,255,255,0.07);
 
   /* Sombras */
-  --shadow-card:    0 1px 4px rgba(11,45,80,0.05);
-  --shadow-modal:   0 4px 20px rgba(11,45,80,0.10);
-  --overlay:        rgba(11,45,80,0.35);
+  --shadow-card:    0 1px 4px rgba(0,0,0,0.06);
+  --shadow-modal:   0 4px 20px rgba(0,0,0,0.12);
+  --overlay:        rgba(0,0,0,0.38);
 
   /* Legados (compatibilidade) */
-  --c-primary:       #1A4870;
-  --c-primary-light: #D5E8F5;
+  --c-primary:       #111111;
+  --c-primary-light: #E8E8E8;
   --c-accent:        #C9921B;
-  --c-bg:            #F4F6FA;
+  --c-bg:            #F1F2F0;
   --c-surface:       #ffffff;
-  --c-border:        #DDE2EE;
-  --c-border-light:  #EEF1F6;
-  --c-text:          #1a1a1a;
-  --c-text-sub:      #555555;
-  --c-text-weak:     #888888;
+  --c-border:        #D2D4CE;
+  --c-border-light:  #E4E5E2;
+  --c-text:          #111111;
+  --c-text-sub:      #444444;
+  --c-text-weak:     #777777;
   --r-card:          10px;
   --r-modal:         12px;
 }

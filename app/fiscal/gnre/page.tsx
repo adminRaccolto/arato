@@ -47,7 +47,7 @@ const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","P
 
 const STATUS_COR: Record<StatusGNRE, { bg: string; color: string; label: string }> = {
   rascunho: { bg: "var(--bg-page)", color: "var(--text-2)",    label: "Rascunho"  },
-  emitida:  { bg: "#EAF3FB", color: "#1A4870", label: "Emitida"   },
+  emitida:  { bg: "#EAF3FB", color: "#111111", label: "Emitida"   },
   paga:     { bg: "#DCFCE7", color: "#166534", label: "Paga"      },
   vencida:  { bg: "#FEE2E2", color: "#991B1B", label: "Vencida"   },
   cancelada:{ bg: "#F3F4F6", color: "#9CA3AF", label: "Cancelada" },
@@ -213,7 +213,7 @@ export default function GnrePage() {
           </div>
           <button
             onClick={() => abrirModal()}
-            style={{ padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             + Nova GNRE
           </button>
@@ -222,7 +222,7 @@ export default function GnrePage() {
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
           {[
-            { label: "Pendente",     value: fmt(pendente),        sub: `${qtdEmitidas} guia${qtdEmitidas !== 1 ? "s" : ""}`, cor: "#1A4870", bg: "#EAF3FB" },
+            { label: "Pendente",     value: fmt(pendente),        sub: `${qtdEmitidas} guia${qtdEmitidas !== 1 ? "s" : ""}`, cor: "#111111", bg: "#EAF3FB" },
             { label: "Vencida",      value: fmt(vencida),         sub: "Recolhimento atrasado",    cor: "#991B1B", bg: "#FEE2E2" },
             { label: "Pago no Mês",  value: fmt(pagaMes),         sub: "Competência atual",        cor: "#166534", bg: "#DCFCE7" },
             { label: "Total Guias",  value: String(ativas.length),sub: "emitidas + pendentes",     cor: "var(--text-2)",    bg: "var(--bg-page)" },
@@ -281,7 +281,7 @@ export default function GnrePage() {
                         <div style={{ color: "#666", fontSize: 11, maxWidth: 260, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.descricao_receita}</div>
                       </td>
                       <td style={{ padding: "9px 10px" }}>
-                        <span style={{ background: "#EAF3FB", color: "#1A4870", fontWeight: 700, padding: "2px 8px", borderRadius: 5, fontSize: 11 }}>{g.uf_favorecida}</span>
+                        <span style={{ background: "#EAF3FB", color: "#111111", fontWeight: 700, padding: "2px 8px", borderRadius: 5, fontSize: 11 }}>{g.uf_favorecida}</span>
                       </td>
                       <td style={{ padding: "9px 10px", color: "var(--text-2)" }}>{g.documento_origem || "—"}</td>
                       <td style={{ padding: "9px 10px", color: "var(--text-2)" }}>{g.competencia ? fmtDt(g.competencia + "-01") : "—"}</td>
@@ -298,7 +298,7 @@ export default function GnrePage() {
                         <div style={{ display: "flex", gap: 6 }}>
                           {g.status === "rascunho" && (
                             <button onClick={() => emitir(g)}
-                              style={{ padding: "4px 10px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                              style={{ padding: "4px 10px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Emitir
                             </button>
                           )}
@@ -405,7 +405,7 @@ export default function GnrePage() {
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#111111" }}>
                   Total: {fmt(form.valor_principal + form.valor_juros + form.valor_multa)}
                 </span>
               </div>
@@ -435,7 +435,7 @@ export default function GnrePage() {
             <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button onClick={fecharModal} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
               <button onClick={salvar} disabled={salvando || !form.tipo_receita || !form.uf_favorecida}
-                style={{ padding: "9px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
+                style={{ padding: "9px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando..." : editando ? "Salvar" : "Criar GNRE"}
               </button>
             </div>
@@ -451,7 +451,7 @@ export default function GnrePage() {
             <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>
               {pagarModal.tipo_receita} — UF {pagarModal.uf_favorecida}
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", marginBottom: 20 }}>{fmt(pagarModal.valor_total)}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#111111", marginBottom: 20 }}>{fmt(pagarModal.valor_total)}</div>
             <label style={lbl}>Data do Pagamento</label>
             <input type="date" value={dataPgto} onChange={e => setDataPgto(e.target.value)} style={{ ...inp, marginBottom: 20 }} />
             <div style={{ display: "flex", gap: 10 }}>

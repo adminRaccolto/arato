@@ -205,7 +205,7 @@ function diasAteDate(d: string): number {
   return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
 }
 
-function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{texto}</span>;
 }
 
@@ -477,7 +477,7 @@ function CadastrosInner() {
   // modais aux
   const [modalGrupoIns, setModalGrupoIns]     = useState(false);
   const [editGrupoIns, setEditGrupoIns]       = useState<GrupoInsumo | null>(null);
-  const [fGrupoIns, setFGrupoIns]             = useState({ nome: "", cor: "#1A4870" });
+  const [fGrupoIns, setFGrupoIns]             = useState({ nome: "", cor: "#111111" });
   const [modalSubgIns, setModalSubgIns]       = useState(false);
   const [editSubgIns, setEditSubgIns]         = useState<SubgrupoInsumo | null>(null);
   const [fSubgIns, setFSubgIns]               = useState({ nome: "", grupo_id: "" });
@@ -2112,7 +2112,7 @@ function CadastrosInner() {
               <select
                 value={aba === "depositos" ? filtroDepFazenda : fazTrabalho}
                 onChange={e => aba === "depositos" ? setFiltroDepFazenda(e.target.value) : setFazTrabalho(e.target.value)}
-                style={{ padding: "6px 10px", border: "1.5px solid #1A5CB8", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", outline: "none" }}
+                style={{ padding: "6px 10px", border: "1.5px solid #2A2A2A", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#111111", background: "#F2F2F2", cursor: "pointer", outline: "none" }}
               >
                 {(aba === "safras" || aba === "depositos") && <option value="">Todos</option>}
                 {aba !== "safras" && aba !== "depositos" && <option value="">— selecionar —</option>}
@@ -2207,7 +2207,7 @@ function CadastrosInner() {
           {aba === "fazendas" && (
             <div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
-                <button style={{ padding: "7px 14px", background: "white", border: "0.5px solid #1A4870", borderRadius: 8, color: "#1A4870", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => router.push("/configuracoes/importacao?aba=fazendas_imp")}>⬆ Importar em lote</button>
+                <button style={{ padding: "7px 14px", background: "white", border: "0.5px solid #111111", borderRadius: 8, color: "#111111", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => router.push("/configuracoes/importacao?aba=fazendas_imp")}>⬆ Importar em lote</button>
                 <button style={btnV} onClick={() => abrirModalFaz()}>+ Nova Fazenda</button>
               </div>
               {fazendas.length === 0 && <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 32, textAlign: "center", color: "#444" }}>Nenhuma fazenda cadastrada</div>}
@@ -2220,7 +2220,7 @@ function CadastrosInner() {
                     <div key={f.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       {/* Cabeçalho da fazenda */}
                       <div style={{ padding: "13px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 38, height: 38, background: "#D5E8F5", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>⬡</div>
+                        <div style={{ width: 38, height: 38, background: "#E8E8E8", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>⬡</div>
                         <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => toggleFaz(f.id)} role="button">
                           <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>{f.nome}</div>
                           <div style={{ fontSize: 11, color: "var(--text-2)" }}>{f.municipio} · {f.estado} · {(f.area_total_ha ?? 0).toLocaleString("pt-BR")} ha
@@ -2239,7 +2239,7 @@ function CadastrosInner() {
                           {f.car  && badge("CAR")}
                           {f.itr  && badge("ITR")}
                           {f.nirf && badge("NIRF")}
-                          <button style={{ ...btnE, fontSize: 12, border: "0.5px solid #1A4870", color: "#0B2D50", background: "#D5E8F5" }} onClick={() => { if (!exp) toggleFaz(f.id); abrirModalTalhao(f.id); }}>+ Talhão</button>
+                          <button style={{ ...btnE, fontSize: 12, border: "0.5px solid #111111", color: "#0D0D0D", background: "#E8E8E8" }} onClick={() => { if (!exp) toggleFaz(f.id); abrirModalTalhao(f.id); }}>+ Talhão</button>
                           <button style={btnE} onClick={() => abrirModalFaz(f)}>Editar</button>
                           <button style={btnX} onClick={() => { if (confirm(`Excluir "${f.nome}" e todos os seus talhões?`)) excluirFazenda(f.id).then(() => setFazendas(p => p.filter(x => x.id !== f.id))).catch(e => alert(e.message)); }}>✕</button>
                           <button onClick={() => toggleFaz(f.id)} style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: exp ? "var(--bg-page)" : "var(--bg-card)", cursor: "pointer", fontSize: 12, color: "#444", display: "flex", alignItems: "center", gap: 5 }}>
@@ -2267,7 +2267,7 @@ function CadastrosInner() {
                               {f.arrendamento_valor_brl_ha && <span>Valor: <strong>R$ {f.arrendamento_valor_brl_ha.toLocaleString("pt-BR")}/ano</strong></span>}
                               {f.arrendamento_inicio && <span>Início: <strong>{f.arrendamento_inicio}</strong></span>}
                               {f.arrendamento_vencimento && <span>Vencimento: <strong>{f.arrendamento_vencimento}</strong></span>}
-                              {f.arrendamento_renovacao_auto && <span style={{ background: "#D5E8F5", color: "#0B2D50", padding: "1px 7px", borderRadius: 6, fontWeight: 600 }}>Renovação automática</span>}
+                              {f.arrendamento_renovacao_auto && <span style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "1px 7px", borderRadius: 6, fontWeight: 600 }}>Renovação automática</span>}
                             </div>
                           )}
 
@@ -2290,7 +2290,7 @@ function CadastrosInner() {
                                         <td style={{ padding: "8px 14px", textAlign: "center" }}>{m.area_ha?.toLocaleString("pt-BR") ?? "—"}</td>
                                         <td style={{ padding: "8px 14px", color: "var(--text-1)" }}>{prod?.nome ?? "—"}</td>
                                         <td style={{ padding: "8px 14px", textAlign: "center" }}>
-                                          {m.em_garantia ? badge("⚠ Em garantia", "#FCEBEB", "#791F1F") : badge("Livre", "#D5E8F5", "#0B2D50")}
+                                          {m.em_garantia ? badge("⚠ Em garantia", "#FCEBEB", "#791F1F") : badge("Livre", "#E8E8E8", "#0D0D0D")}
                                           {m.em_garantia && m.garantia_banco && <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>{m.garantia_banco}</div>}
                                         </td>
                                         <td style={{ padding: "8px 14px", textAlign: "right" }}>
@@ -2311,7 +2311,7 @@ function CadastrosInner() {
                           <div style={{ padding: "10px 16px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Talhões ({tals.length})</div>
-                              <button style={{ ...btnE, fontSize: 12, border: "0.5px solid #1A4870", color: "#0B2D50", background: "#D5E8F5" }} onClick={() => abrirModalTalhao(f.id)}>+ Novo Talhão</button>
+                              <button style={{ ...btnE, fontSize: 12, border: "0.5px solid #111111", color: "#0D0D0D", background: "#E8E8E8" }} onClick={() => abrirModalTalhao(f.id)}>+ Novo Talhão</button>
                             </div>
                             {(() => {
                               const totalTal = tals.reduce((s, t) => s + (t.area_ha ?? 0), 0);
@@ -2450,7 +2450,7 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.cpf_cnpj || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                            {p.cliente    && badge("Cliente", "#D5E8F5", "#0B2D50")}
+                            {p.cliente    && badge("Cliente", "#E8E8E8", "#0D0D0D")}
                             {p.fornecedor && badge("Fornecedor", "#E6F1FB", "#0C447C")}
                           </div>
                         </td>
@@ -2489,9 +2489,9 @@ function CadastrosInner() {
                   const encerrada = a.status === "encerrada";
                   return (
                     <div key={a.id} onClick={() => selecionarAno(a.id)}
-                      style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--border-row)", cursor: "pointer", background: anoSel === a.id ? "#D5E8F5" : "transparent", borderLeft: anoSel === a.id ? "3px solid #1A4870" : encerrada ? "3px solid #ccc" : "3px solid transparent", opacity: encerrada ? 0.75 : 1 }}>
+                      style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--border-row)", cursor: "pointer", background: anoSel === a.id ? "#E8E8E8" : "transparent", borderLeft: anoSel === a.id ? "3px solid #111111" : encerrada ? "3px solid #ccc" : "3px solid transparent", opacity: encerrada ? 0.75 : 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: anoSel === a.id ? "#0B2D50" : "var(--text-1)" }}>{a.descricao}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: anoSel === a.id ? "#0D0D0D" : "var(--text-1)" }}>{a.descricao}</span>
                         {encerrada
                           ? <span style={{ fontSize: 10, background: "#EEE", color: "var(--text-2)", borderRadius: 5, padding: "2px 7px", fontWeight: 700 }}>ENCERRADA</span>
                           : <span style={{ fontSize: 10, background: "#D5F5E3", color: "#14532D", borderRadius: 5, padding: "2px 7px", fontWeight: 700 }}>ATIVA</span>
@@ -2501,7 +2501,7 @@ function CadastrosInner() {
                       <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
                         <button style={btnE} onClick={e => { e.stopPropagation(); abrirModalAno(a); }}>Editar</button>
                         {encerrada ? (
-                          <button style={{ ...btnE, background: "var(--bg-card)", color: "#1A4870", borderColor: "#1A4870" }} onClick={e => {
+                          <button style={{ ...btnE, background: "var(--bg-card)", color: "#111111", borderColor: "#111111" }} onClick={e => {
                             e.stopPropagation();
                             if (!confirm(`Reabrir a safra "${a.descricao}"?\n\nA safra voltará a aceitar novos lançamentos.`)) return;
                             reabrirAnoSafra(a.id).then(() => setAnosSafra(p => p.map(x => x.id === a.id ? { ...x, status: "ativa" as const } : x)));
@@ -2539,10 +2539,10 @@ function CadastrosInner() {
                           {fazendas.filter(f => contagem[f.id]).map(f => (
                             <button key={f.id} onClick={() => setFazTrabalho(fazTrabalho === f.id ? "" : f.id)}
                               style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 600, transition: "all .15s",
-                                background: fazTrabalho === f.id ? "#1A4870" : "#D5E8F5",
-                                color: fazTrabalho === f.id ? "#fff" : "#0B2D50" }}>
+                                background: fazTrabalho === f.id ? "#111111" : "#E8E8E8",
+                                color: fazTrabalho === f.id ? "#fff" : "#0D0D0D" }}>
                               {f.nome}
-                              <span style={{ background: fazTrabalho === f.id ? "#ffffff30" : "#1A487020", borderRadius: 4, padding: "0px 4px", fontSize: 10 }}>
+                              <span style={{ background: fazTrabalho === f.id ? "#ffffff30" : "#11111120", borderRadius: 4, padding: "0px 4px", fontSize: 10 }}>
                                 {contagem[f.id]}
                               </span>
                             </button>
@@ -2550,7 +2550,7 @@ function CadastrosInner() {
                           {fazendas.filter(f => contagem[f.id]).length > 1 && (
                             <button onClick={() => setFazTrabalho("")}
                               style={{ padding: "2px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 600,
-                                background: !fazTrabalho ? "#1A4870" : "#EEF2F7", color: !fazTrabalho ? "#fff" : "#555" }}>
+                                background: !fazTrabalho ? "#111111" : "#EEF2F7", color: !fazTrabalho ? "#fff" : "#555" }}>
                               Todos ({ciclosTodos.length})
                             </button>
                           )}
@@ -2593,7 +2593,7 @@ function CadastrosInner() {
                           )}
                           <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{c.data_inicio} → {c.data_fim}</div>
                           <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {badge(c.cultura, isAux ? "#FDE9BB" : "#D5E8F5", isAux ? "#7A5200" : "#0B2D50")}
+                            {badge(c.cultura, isAux ? "#FDE9BB" : "#E8E8E8", isAux ? "#7A5200" : "#0D0D0D")}
                             {area != null && <span style={{ fontSize: 10, background: "#F0FDF7", color: "#14532D", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>{area.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha plantados</span>}
                             {!isAux && prod != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Prod. esp.: {prod.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unidC}/ha</span>}
                             {!isAux && preco != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Preço esp.: R${preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/{unidC}</span>}
@@ -2667,7 +2667,7 @@ function CadastrosInner() {
                     const corSeguro = vencSeguro === null ? "var(--text-3)" : vencSeguro < 0 ? "#E24B4A" : vencSeguro <= 15 ? "#EF9F27" : "#16A34A";
                     const sel = selMaquinas.has(m.id);
                     return (
-                      <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: sel ? "#EBF5FF" : "transparent" }}>
+                      <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: sel ? "#EEEEEE" : "transparent" }}>
                         <td style={{ padding: "10px 12px", textAlign: "center" }}>
                           <input type="checkbox" checked={sel}
                             onChange={e => setSelMaquinas(prev => { const s = new Set(prev); e.target.checked ? s.add(m.id) : s.delete(m.id); return s; })}
@@ -2680,7 +2680,7 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#444", fontSize: 12 }}>
                           {m.proprietario_id ? (pessoas.find(p => p.id === m.proprietario_id)?.nome ?? "—") : <span style={{ color: "var(--text-muted)" }}>—</span>}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontFamily: "monospace", fontSize: 12 }}>{m.patrimonio || "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#111111", fontFamily: "monospace", fontSize: 12 }}>{m.patrimonio || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.tipo === "carro" ? "Carro" : m.tipo, "#F1EFE8", "var(--text-2)")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{[m.marca, m.modelo].filter(Boolean).join(" ") || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{m.ano ?? "—"}</td>
@@ -2731,10 +2731,10 @@ function CadastrosInner() {
             };
             const COR_TIPO: Record<string, [string,string]> = {
               casa:         ["#FBF3E0","#C9921B"],
-              barracao:     ["#D5E8F5","#0B2D50"],
+              barracao:     ["#E8E8E8","#0D0D0D"],
               cerca:        ["#F1EFE8","#555"],
               silo_secador: ["#E6F1FB","#0C447C"],
-              escritorio:   ["#EBF5FF","#1A4870"],
+              escritorio:   ["#EEEEEE","#111111"],
               alojamento:   ["#F5F3FF","#7C3AED"],
               outro:        ["#F5F5F5","#666"],
             };
@@ -2824,7 +2824,7 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{b.ano_construcao ?? "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13 }}>{fmtBRL(b.valor_atual)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{b.vida_util_anos != null ? `${b.vida_util_anos} anos` : "—"}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#D5E8F5" : "#F1EFE8", b.ativa ? "#0B2D50" : "var(--text-2)")}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#E8E8E8" : "#F1EFE8", b.ativa ? "#0D0D0D" : "var(--text-2)")}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <button style={btnE} onClick={() => abrirBenf(b)}>Editar</button>
@@ -3001,7 +3001,7 @@ function CadastrosInner() {
                 <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {SUB_ABAS_COMB.map(a => (
                     <button key={a.key} onClick={() => setSubAbaComb(a.key)}
-                      style={{ flex: 1, padding: "11px 16px", border: "none", borderBottom: subAbaComb === a.key ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: subAbaComb === a.key ? 600 : 400, color: subAbaComb === a.key ? "#1A4870" : "var(--text-2)", cursor: "pointer" }}>
+                      style={{ flex: 1, padding: "11px 16px", border: "none", borderBottom: subAbaComb === a.key ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: subAbaComb === a.key ? 600 : 400, color: subAbaComb === a.key ? "#111111" : "var(--text-2)", cursor: "pointer" }}>
                       {a.label}
                     </button>
                   ))}
@@ -3020,7 +3020,7 @@ function CadastrosInner() {
                         {bombas.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
                         {bombas.map((b, i) => {
                           const pct = b.capacidade_l ? Math.round(b.estoque_atual_l / b.capacidade_l * 100) : null;
-                          const corComb: Record<string, [string,string]> = { diesel_s10: ["#E6F1FB","#0C447C"], diesel_s500: ["#E6F1FB","#0B2D50"], gasolina: ["#FAEEDA","#633806"], etanol: ["#D5E8F5","#0B2D50"], arla: ["#FBF0D8","#7A5A12"] };
+                          const corComb: Record<string, [string,string]> = { diesel_s10: ["#E6F1FB","#0C447C"], diesel_s500: ["#E6F1FB","#0D0D0D"], gasolina: ["#FAEEDA","#633806"], etanol: ["#E8E8E8","#0D0D0D"], arla: ["#FBF0D8","#7A5A12"] };
                           const [bg, cl] = corComb[b.combustivel] ?? ["#F1EFE8","var(--text-2)"];
                           return (
                             <tr key={b.id} style={{ borderBottom: i < bombas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
@@ -3032,14 +3032,14 @@ function CadastrosInner() {
                                 {pct !== null ? (
                                   <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
                                     <div style={{ width: 60, height: 6, background: "var(--border-row)", borderRadius: 3, overflow: "hidden" }}>
-                                      <div style={{ height: "100%", width: `${pct}%`, background: pct < 20 ? "#E24B4A" : pct < 40 ? "#EF9F27" : "#1A4870", borderRadius: 3 }} />
+                                      <div style={{ height: "100%", width: `${pct}%`, background: pct < 20 ? "#E24B4A" : pct < 40 ? "#EF9F27" : "#111111", borderRadius: 3 }} />
                                     </div>
                                     <span style={{ fontSize: 11, color: "var(--text-2)" }}>{pct}%</span>
                                   </div>
                                 ) : "—"}
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.consume_estoque !== false ? "Estoque" : "Posto externo", b.consume_estoque !== false ? "#D5E8F5" : "#FBF3E0", b.consume_estoque !== false ? "#0B2D50" : "#7A5A12")}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#D5E8F5" : "#F1EFE8", b.ativa ? "#0B2D50" : "var(--text-2)")}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.consume_estoque !== false ? "Estoque" : "Posto externo", b.consume_estoque !== false ? "#E8E8E8" : "#FBF3E0", b.consume_estoque !== false ? "#0D0D0D" : "#7A5A12")}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#E8E8E8" : "#F1EFE8", b.ativa ? "#0D0D0D" : "var(--text-2)")}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <button style={btnE} onClick={() => abrirModalBomba(b)}>Editar</button>
@@ -3255,13 +3255,13 @@ function CadastrosInner() {
                       } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); }
                       finally { setSeedingGrupos(false); }
                     }}>{seedingGrupos ? "Carregando…" : "↺ Restaurar padrões"}</button>
-                    <button style={btnV} onClick={() => { setEditGrupoIns(null); setFGrupoIns({ nome: "", cor: "#1A4870" }); setModalGrupoIns(true); }}>+ Novo Grupo</button>
+                    <button style={btnV} onClick={() => { setEditGrupoIns(null); setFGrupoIns({ nome: "", cor: "#111111" }); setModalGrupoIns(true); }}>+ Novo Grupo</button>
                   </div>
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Cor", "Nome", ""]} />
                   <tbody>
-                    {seedingGrupos && <tr><td colSpan={3} style={{ padding: 24, textAlign: "center", color: "#1A4870", fontSize: 12 }}>Carregando grupos padrão…</td></tr>}
+                    {seedingGrupos && <tr><td colSpan={3} style={{ padding: 24, textAlign: "center", color: "#111111", fontSize: 12 }}>Carregando grupos padrão…</td></tr>}
                     {!seedingGrupos && gruposInsumo.length === 0 && <tr><td colSpan={3} style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Nenhum grupo cadastrado</td></tr>}
                     {gruposInsumo.map((g, i) => (
                       <tr key={g.id} style={{ borderBottom: i < gruposInsumo.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
@@ -3269,7 +3269,7 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{g.nome}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={() => { setEditGrupoIns(g); setFGrupoIns({ nome: g.nome, cor: g.cor ?? "#1A4870" }); setModalGrupoIns(true); }}>Editar</button>
+                            <button style={btnE} onClick={() => { setEditGrupoIns(g); setFGrupoIns({ nome: g.nome, cor: g.cor ?? "#111111" }); setModalGrupoIns(true); }}>Editar</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir grupo?")) excluirGrupoInsumo(g.id).then(() => setGruposInsumo(x => x.filter(r => r.id !== g.id))); }}>✕</button>
                           </div>
                         </td>
@@ -3332,7 +3332,7 @@ function CadastrosInner() {
                 ] as { key: SubAbaAux; label: string }[]).map(s => (
                   <button key={s.key} onClick={() => setSubAbaAux(s.key)} style={{
                     padding: "8px 18px", border: "none",
-                    background: subAbaAux === s.key ? "#1A4870" : "transparent",
+                    background: subAbaAux === s.key ? "#111111" : "transparent",
                     color: subAbaAux === s.key ? "#fff" : "#666",
                     fontWeight: subAbaAux === s.key ? 600 : 400,
                     cursor: "pointer", fontSize: 13, whiteSpace: "nowrap",
@@ -3352,7 +3352,7 @@ function CadastrosInner() {
                         <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Grupos</div>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Ex: Sementes, Fertilizantes, Defensivos, Produtos Agrícolas</div>
                       </div>
-                      <button style={btnV} onClick={() => { setEditGrupoIns(null); setFGrupoIns({ nome: "", cor: "#1A4870" }); setModalGrupoIns(true); }}>+ Novo</button>
+                      <button style={btnV} onClick={() => { setEditGrupoIns(null); setFGrupoIns({ nome: "", cor: "#111111" }); setModalGrupoIns(true); }}>+ Novo</button>
                     </div>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Cor", "Nome", ""]} />
@@ -3366,7 +3366,7 @@ function CadastrosInner() {
                             <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{g.nome}</td>
                             <td style={{ padding: "10px 14px", textAlign: "right" }}>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                                <button style={btnE} onClick={() => { setEditGrupoIns(g); setFGrupoIns({ nome: g.nome, cor: g.cor ?? "#1A4870" }); setModalGrupoIns(true); }}>Editar</button>
+                                <button style={btnE} onClick={() => { setEditGrupoIns(g); setFGrupoIns({ nome: g.nome, cor: g.cor ?? "#111111" }); setModalGrupoIns(true); }}>Editar</button>
                                 <button style={btnX} onClick={() => { if (confirm("Excluir grupo?")) excluirGrupoInsumo(g.id).then(() => setGruposInsumo(x => x.filter(r => r.id !== g.id))); }}>✕</button>
                               </div>
                             </td>
@@ -3395,7 +3395,7 @@ function CadastrosInner() {
                             <tr key={s.id} style={{ borderBottom: i < subgruposInsumo.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                               <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{s.nome}</td>
                               <td style={{ padding: "10px 14px" }}>
-                                {g && <span style={{ fontSize: 11, background: g.cor ?? "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 8 }}>{g.nome}</span>}
+                                {g && <span style={{ fontSize: 11, background: g.cor ?? "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 8 }}>{g.nome}</span>}
                               </td>
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
@@ -3460,7 +3460,7 @@ function CadastrosInner() {
                       {centrosCusto.map((c, i) => {
                         const pai = centrosCusto.find(x => x.id === c.parent_id);
                         const corTipo: Record<string, [string,string]> = {
-                          receita: ["#D5E8F5","#0B2D50"],
+                          receita: ["#E8E8E8","#0D0D0D"],
                           despesa: ["#FCEBEB","#791F1F"],
                           neutro:  ["#F1EFE8","#666"],
                         };
@@ -3502,7 +3502,7 @@ function CadastrosInner() {
                       {categoriasLanc.map((c, i) => {
                         const corTipo: Record<string,[string,string]> = {
                           pagar:   ["#FCEBEB","#791F1F"],
-                          receber: ["#D5E8F5","#0B2D50"],
+                          receber: ["#E8E8E8","#0D0D0D"],
                           ambos:   ["#E6F1FB","#0C447C"],
                         };
                         const [bg, cl] = corTipo[c.tipo] ?? ["#F1EFE8","#666"];
@@ -3541,7 +3541,7 @@ function CadastrosInner() {
                     <select
                       value={fazTrabalho}
                       onChange={e => setFazTrabalho(e.target.value)}
-                      style={{ padding: "5px 10px", border: "1.5px solid #1A5CB8", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", outline: "none" }}
+                      style={{ padding: "5px 10px", border: "1.5px solid #2A2A2A", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#111111", background: "#F2F2F2", cursor: "pointer", outline: "none" }}
                     >
                       <option value="">Todas</option>
                       {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
@@ -3560,7 +3560,7 @@ function CadastrosInner() {
                       const pai = centrosCusto.find(x => x.id === c.parent_id);
                       const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? "—";
                       const corTipo: Record<string, [string,string]> = {
-                        receita: ["#D5E8F5","#0B2D50"],
+                        receita: ["#E8E8E8","#0D0D0D"],
                         despesa: ["#FCEBEB","#791F1F"],
                         neutro:  ["#F1EFE8","#666"],
                       };
@@ -3620,7 +3620,7 @@ function CadastrosInner() {
                     }}
                   >{seedingOpGer ? "Importando…" : "↓ Importar Plano Padrão"}</button>
                   <button
-                    style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", color: "#0B2D50", fontWeight: 600, cursor: seedingCfop ? "not-allowed" : "pointer", fontSize: 13, opacity: seedingCfop ? 0.6 : 1 }}
+                    style={{ padding: "8px 16px", border: "0.5px solid #111111", borderRadius: 8, background: "#E8E8E8", color: "#0D0D0D", fontWeight: 600, cursor: seedingCfop ? "not-allowed" : "pointer", fontSize: 13, opacity: seedingCfop ? 0.6 : 1 }}
                     disabled={seedingCfop}
                     onClick={async () => {
                       if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão do sistema (352 registros). Continuar?")) return;
@@ -3662,8 +3662,8 @@ function CadastrosInner() {
                       if (!w) return;
                       w.document.write(`<!DOCTYPE html><html><head><title>Plano de Contas Gerencial</title>
                         <style>body{font-family:Arial,sans-serif;margin:20px;font-size:12px}
-                        h2{color:#1A4870;margin-bottom:4px}p{color:#888;font-size:11px;margin:0 0 14px}
-                        table{width:100%;border-collapse:collapse}th{background:#1A4870;color:#fff;padding:7px 10px;text-align:left;font-size:11px}
+                        h2{color:#111111;margin-bottom:4px}p{color:#888;font-size:11px;margin:0 0 14px}
+                        table{width:100%;border-collapse:collapse}th{background:#111111;color:#fff;padding:7px 10px;text-align:left;font-size:11px}
                         @media print{@page{size:A4 landscape;margin:15mm}}</style></head>
                         <body><h2>Plano de Contas Gerencial</h2>
                         <p>Emitido em ${new Date().toLocaleDateString("pt-BR")} — ${sorted.length} operações</p>
@@ -3744,7 +3744,7 @@ function CadastrosInner() {
                         </td>
                         <td style={{ padding: "9px 14px", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                           {o.historico_tesouraria_nome
-                            ? <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 4 }}>{o.historico_tesouraria_nome}</span>
+                            ? <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 6px", borderRadius: 4 }}>{o.historico_tesouraria_nome}</span>
                             : <span style={{ color: "#ccc" }}>—</span>}
                         </td>
                         <td style={{ padding: "7px 14px" }}>
@@ -3755,7 +3755,7 @@ function CadastrosInner() {
                               await atualizarOperacaoGerencial(o.id, { escopo_cc: val || null });
                               setOpGers(x => x.map(r => r.id === o.id ? { ...r, escopo_cc: val || null } : r));
                             }}
-                            style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, background: o.escopo_cc === "global" ? "#FBF3E0" : o.escopo_cc === "fazenda" ? "#EFF6FF" : o.escopo_cc === "ciclo" ? "#DCFCE7" : "var(--bg-page)", color: o.escopo_cc ? "var(--text-1)" : "var(--text-3)", cursor: "pointer", outline: "none" }}
+                            style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, background: o.escopo_cc === "global" ? "#FBF3E0" : o.escopo_cc === "fazenda" ? "#F2F2F2" : o.escopo_cc === "ciclo" ? "#DCFCE7" : "var(--bg-page)", color: o.escopo_cc ? "var(--text-1)" : "var(--text-3)", cursor: "pointer", outline: "none" }}
                           >
                             <option value="">— não classif. —</option>
                             <option value="global">Global (conta)</option>
@@ -3966,14 +3966,14 @@ function CadastrosInner() {
                         <tbody>
                           {g.rows.sort((a, b) => a.cfop.localeCompare(b.cfop)).map((r, i) => (
                             <tr key={r.id} style={{ borderTop: i > 0 ? "0.5px solid #DDE5EF" : "none", background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-card)" }}>
-                              <td style={{ padding: "6px 10px", fontFamily: "monospace", fontWeight: 700, color: "#1A4870" }}>{r.cfop}</td>
+                              <td style={{ padding: "6px 10px", fontFamily: "monospace", fontWeight: 700, color: "#111111" }}>{r.cfop}</td>
                               <td style={{ padding: "6px 10px", color: "#333", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descricao_cfop ?? "—"}</td>
                               <td style={{ padding: "6px 10px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{r.operacao_nf ?? "—"}</td>
                               <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                                {r.cst_pis ? <span style={{ fontFamily: "monospace", background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 4 }}>{r.cst_pis}</span> : <span style={{ color: "#ccc" }}>—</span>}
+                                {r.cst_pis ? <span style={{ fontFamily: "monospace", background: "#E8E8E8", color: "#0D0D0D", padding: "2px 6px", borderRadius: 4 }}>{r.cst_pis}</span> : <span style={{ color: "#ccc" }}>—</span>}
                               </td>
                               <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                                {r.cst_cofins ? <span style={{ fontFamily: "monospace", background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 4 }}>{r.cst_cofins}</span> : <span style={{ color: "#ccc" }}>—</span>}
+                                {r.cst_cofins ? <span style={{ fontFamily: "monospace", background: "#E8E8E8", color: "#0D0D0D", padding: "2px 6px", borderRadius: 4 }}>{r.cst_cofins}</span> : <span style={{ color: "#ccc" }}>—</span>}
                               </td>
                               <td style={{ padding: "6px 10px", fontFamily: "monospace", color: "#666" }}>{r.ncm ?? "—"}</td>
                               <td style={{ padding: "6px 10px", textAlign: "center" }}>
@@ -4015,7 +4015,7 @@ function CadastrosInner() {
                     <tr key={fp.id} style={{ borderBottom: i < formasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                       <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{fp.nome}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                        {fp.parcelas ? badge(String(fp.parcelas) + "x", "#D5E8F5", "#0B2D50") : <span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span>}
+                        {fp.parcelas ? badge(String(fp.parcelas) + "x", "#E8E8E8", "#0D0D0D") : <span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span>}
                       </td>
                       <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>{fp.dias || "—"}</td>
                       <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{fp.descricao || "—"}</td>
@@ -4036,7 +4036,7 @@ function CadastrosInner() {
           {aba === "insumos" && (() => {
             // Os 4 grupos canônicos de insumos
             const CATS: { key: Insumo["categoria"]; label: string; bg: string; cl: string }[] = [
-              { key: "semente",      label: "Sementes",      bg: "#D5E8F5", cl: "#0B2D50" },
+              { key: "semente",      label: "Sementes",      bg: "#E8E8E8", cl: "#0D0D0D" },
               { key: "fertilizante", label: "Fertilizantes", bg: "#E6F1FB", cl: "#0C447C" },
               { key: "defensivo",    label: "Defensivos",    bg: "#FAEEDA", cl: "#633806" },
               { key: "corretivo",    label: "Corretivos",    bg: "#E8F5EB", cl: "#1A5C35" },
@@ -4051,7 +4051,7 @@ function CadastrosInner() {
               ...Object.fromEntries(CATS.map(c => [c.key, c])),
               micronutriente: { label: "Fertilizante ↩",  bg: "#E6F1FB", cl: "#0C447C" },
               biologico:      { label: "Defensivo ↩",     bg: "#FAEEDA", cl: "#633806" },
-              inoculante:     { label: "Semente ↩",       bg: "#D5E8F5", cl: "#0B2D50" },
+              inoculante:     { label: "Semente ↩",       bg: "#E8E8E8", cl: "#0D0D0D" },
             };
 
             const CATS_INSUMO_KEYS = [...CATS.map(c => c.key), "micronutriente", "biologico", "inoculante"];
@@ -4133,8 +4133,8 @@ function CadastrosInner() {
                   {[
                     { label: "Total de insumos",    valor: insBase.length.toString(),        cor: "var(--text-1)" },
                     { label: "Abaixo do mínimo",    valor: abaixoMin.toString(),             cor: abaixoMin > 0 ? "#E24B4A" : "#444" },
-                    { label: "Valor em estoque",    valor: totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#1A4870" },
-                    { label: "Itens no filtro",     valor: insFiltr.length.toString(),       cor: "#378ADD" },
+                    { label: "Valor em estoque",    valor: totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#111111" },
+                    { label: "Itens no filtro",     valor: insFiltr.length.toString(),       cor: "#444444" },
                   ].map((s, i) => (
                     <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
                       <div style={{ fontSize: 11, color: "#444", marginBottom: 4 }}>{s.label}</div>
@@ -4152,7 +4152,7 @@ function CadastrosInner() {
                     onChange={e => setBuscaIns(e.target.value)}
                   />
                   <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
-                    <button onClick={() => setFiltroIns("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIns === "todos" ? "#1A4870" : "var(--border-table)", background: filtroIns === "todos" ? "#D5E8F5" : "transparent", color: filtroIns === "todos" ? "#0B2D50" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIns === "todos" ? 600 : 400 }}>
+                    <button onClick={() => setFiltroIns("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIns === "todos" ? "#111111" : "var(--border-table)", background: filtroIns === "todos" ? "#E8E8E8" : "transparent", color: filtroIns === "todos" ? "#0D0D0D" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIns === "todos" ? 600 : 400 }}>
                       Todos ({insBase.length})
                     </button>
                     {CATS.map(c => {
@@ -4229,7 +4229,7 @@ function CadastrosInner() {
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)" }}>
                           <td colSpan={7} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{insFiltr.length} itens</td>
-                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#111111" }}>
                             {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
                           <td colSpan={2} />
@@ -4357,7 +4357,7 @@ function CadastrosInner() {
                               value={isComb ? "L (litros)" : "kg (quilogramas)"}
                               readOnly />
                             {fIns.categoria === "semente" && (
-                              <div style={{ fontSize: 10, color: "#1A4870", marginTop: 3 }}>
+                              <div style={{ fontSize: 10, color: "#111111", marginTop: 3 }}>
                                 Sementes são controladas em <strong>kg</strong>. Entradas em "bag" são convertidas automaticamente.
                               </div>
                             )}
@@ -4431,7 +4431,7 @@ function CadastrosInner() {
 
                     {/* Preview valor total */}
                     {parseFloat(fIns.estoque) > 0 && parseFloat(fIns.valor_unitario) > 0 && (
-                      <div style={{ marginTop: 14, background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0B2D50" }}>
+                      <div style={{ marginTop: 14, background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0D0D0D" }}>
                         Valor em estoque: <strong>{(parseFloat(fIns.estoque) * parseFloat(fIns.valor_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
                       </div>
                     )}
@@ -4452,7 +4452,7 @@ function CadastrosInner() {
           {/* ══ PRODUTOS AGRÍCOLAS ══ */}
           {aba === "produtos" && (() => {
             const CULTURAS = [
-              { key: "soja",          label: "Soja",          bg: "#D5E8F5", cl: "#0B2D50" },
+              { key: "soja",          label: "Soja",          bg: "#E8E8E8", cl: "#0D0D0D" },
               { key: "milho",         label: "Milho",         bg: "#FEF3C7", cl: "#78350F" },
               { key: "algodao",       label: "Algodão",       bg: "#F1F0FB", cl: "#4B3B9B" },
               { key: "milho_pipoca",  label: "Milho Pipoca",  bg: "#FEF9C3", cl: "#713F12" },
@@ -4542,9 +4542,9 @@ function CadastrosInner() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                   {[
                     { label: "Culturas cadastradas", valor: prodBase.length.toString(),       cor: "var(--text-1)" },
-                    { label: "Valor em estoque",     valor: totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#1A4870" },
+                    { label: "Valor em estoque",     valor: totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#111111" },
                     { label: "Culturas distintas",   valor: [...new Set(prodBase.map(i => i.cultura_id ?? i.subgrupo ?? "outros"))].length.toString(), cor: "#16A34A" },
-                    { label: "No filtro",            valor: prodFiltr.length.toString(),       cor: "#378ADD" },
+                    { label: "No filtro",            valor: prodFiltr.length.toString(),       cor: "#444444" },
                   ].map((s, i) => (
                     <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
                       <div style={{ fontSize: 11, color: "#444", marginBottom: 4 }}>{s.label}</div>
@@ -4556,7 +4556,7 @@ function CadastrosInner() {
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <input style={{ ...inp, width: 220 }} placeholder="Buscar produto…" value={buscaProd} onChange={e => setBuscaProd(e.target.value)} />
                   <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
-                    <button onClick={() => setFiltroCult("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroCult === "todos" ? "#1A4870" : "var(--border-table)", background: filtroCult === "todos" ? "#D5E8F5" : "transparent", color: filtroCult === "todos" ? "#0B2D50" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroCult === "todos" ? 600 : 400 }}>
+                    <button onClick={() => setFiltroCult("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroCult === "todos" ? "#111111" : "var(--border-table)", background: filtroCult === "todos" ? "#E8E8E8" : "transparent", color: filtroCult === "todos" ? "#0D0D0D" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroCult === "todos" ? 600 : 400 }}>
                       Todos ({prodBase.length})
                     </button>
                     {/* Filtros pelas culturas reais da fazenda */}
@@ -4569,9 +4569,9 @@ function CadastrosInner() {
                       return (
                         <button key={c.id} onClick={() => setFiltroCult(c.id)}
                           style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
-                            borderColor: filtroCult === c.id ? "#1A4870" : "var(--border-table)",
-                            background: filtroCult === c.id ? "#D5E8F5" : "transparent",
-                            color: filtroCult === c.id ? "#0B2D50" : "#666",
+                            borderColor: filtroCult === c.id ? "#111111" : "var(--border-table)",
+                            background: filtroCult === c.id ? "#E8E8E8" : "transparent",
+                            color: filtroCult === c.id ? "#0D0D0D" : "#666",
                             fontSize: 12, cursor: "pointer", fontWeight: filtroCult === c.id ? 600 : 400 }}>
                           {c.nome} ({qtd})
                         </button>
@@ -4616,8 +4616,8 @@ function CadastrosInner() {
                           const cultVinc = culturasList.find(c => c.id === ins.cultura_id);
                           const cultLeg  = cultMap[ins.subgrupo ?? "outros"] ?? cultMap["outros"];
                           const cultLabel = cultVinc?.nome ?? cultLeg?.label ?? ins.subgrupo ?? "—";
-                          const cultBg    = cultVinc ? "#D5E8F5" : (cultLeg?.bg ?? "#F1EFE8");
-                          const cultCl    = cultVinc ? "#0B2D50" : (cultLeg?.cl ?? "var(--text-2)");
+                          const cultBg    = cultVinc ? "#E8E8E8" : (cultLeg?.bg ?? "#F1EFE8");
+                          const cultCl    = cultVinc ? "#0D0D0D" : (cultLeg?.cl ?? "var(--text-2)");
                           const ncmFinal  = ins.ncm ?? cultVinc?.ncm ?? "—";
                           const total = ins.estoque * ins.valor_unitario;
                           return (
@@ -4632,7 +4632,7 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.unidade}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{ins.estoque.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <button style={btnE} onClick={() => abrirModalProd(ins)}>Editar</button>
@@ -4646,7 +4646,7 @@ function CadastrosInner() {
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)" }}>
                           <td colSpan={6} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{prodFiltr.length} produtos</td>
-                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#111111" }}>
                             {totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
                           <td />
@@ -4721,7 +4721,7 @@ function CadastrosInner() {
                         <InputMonetario style={inp} value={fIns.valor_unitario} onChange={v => setFIns(p => ({ ...p, valor_unitario: String(v) }))} />
                       </div>
                       {parseFloat(fIns.estoque) > 0 && parseFloat(fIns.valor_unitario) > 0 && (
-                        <div style={{ gridColumn: "1/-1", background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0B2D50" }}>
+                        <div style={{ gridColumn: "1/-1", background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0D0D0D" }}>
                           Valor em estoque: <strong>{(parseFloat(fIns.estoque) * parseFloat(fIns.valor_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
                         </div>
                       )}
@@ -4815,8 +4815,8 @@ function CadastrosInner() {
                   {[
                     { label: "Total de itens",   valor: itBase.length.toString(),       cor: "var(--text-1)" },
                     { label: "Abaixo do mínimo", valor: abaixoMinIt.toString(),          cor: abaixoMinIt > 0 ? "#E24B4A" : "#444" },
-                    { label: "Valor em estoque", valor: totalValorIt.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#1A4870" },
-                    { label: "No filtro",        valor: itFiltr.length.toString(),       cor: "#378ADD" },
+                    { label: "Valor em estoque", valor: totalValorIt.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#111111" },
+                    { label: "No filtro",        valor: itFiltr.length.toString(),       cor: "#444444" },
                   ].map((s, i) => (
                     <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
                       <div style={{ fontSize: 11, color: "#444", marginBottom: 4 }}>{s.label}</div>
@@ -4828,7 +4828,7 @@ function CadastrosInner() {
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <input style={{ ...inp, width: 220 }} placeholder="Buscar item…" value={buscaIt} onChange={e => setBuscaIt(e.target.value)} />
                   <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
-                    <button onClick={() => setFiltroIt("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIt === "todos" ? "#1A4870" : "var(--border-table)", background: filtroIt === "todos" ? "#D5E8F5" : "transparent", color: filtroIt === "todos" ? "#0B2D50" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIt === "todos" ? 600 : 400 }}>
+                    <button onClick={() => setFiltroIt("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIt === "todos" ? "#111111" : "var(--border-table)", background: filtroIt === "todos" ? "#E8E8E8" : "transparent", color: filtroIt === "todos" ? "#0D0D0D" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIt === "todos" ? 600 : 400 }}>
                       Todos ({itBase.length})
                     </button>
                     {CATS_IT.map(c => {
@@ -4889,7 +4889,7 @@ function CadastrosInner() {
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)" }}>
                           <td colSpan={6} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{itFiltr.length} itens</td>
-                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#111111" }}>
                             {totalValorIt.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
                           <td />
@@ -4949,7 +4949,7 @@ function CadastrosInner() {
                         </select>
                       </div>
                       {parseFloat(fIns.estoque) > 0 && parseFloat(fIns.valor_unitario) > 0 && (
-                        <div style={{ gridColumn: "1/-1", background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0B2D50" }}>
+                        <div style={{ gridColumn: "1/-1", background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0D0D0D" }}>
                           Valor em estoque: <strong>{(parseFloat(fIns.estoque) * parseFloat(fIns.valor_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
                         </div>
                       )}
@@ -4982,7 +4982,7 @@ function CadastrosInner() {
                   {depositos.filter(d => !filtroDepFazenda || d.fazenda_id === filtroDepFazenda).length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado{fazTrabalho ? " para esta fazenda" : ""}</td></tr>}
                   {depositos.filter(d => !filtroDepFazenda || d.fazenda_id === filtroDepFazenda).map((d, i, arr) => {
                     const corTipo: Record<string, [string,string]> = {
-                      insumo_fazenda:   ["#D5E8F5","#0B2D50"],
+                      insumo_fazenda:   ["#E8E8E8","#0D0D0D"],
                       armazem_fazenda:  ["#E6F1FB","#0C447C"],
                       almoxarifado:     ["#FAEEDA","#633806"],
                       oficina:          ["#F1EFE8","var(--text-2)"],
@@ -5007,7 +5007,7 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(labelTipoDep[d.tipo] ?? d.tipo, bg, cl)}</td>
                         <td style={{ padding: "10px 14px", fontSize: 12, color: pessoaVinc ? "#7C3AED" : "var(--text-3)" }}>{pessoaVinc ?? "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{d.capacidade_sc ? d.capacidade_sc.toLocaleString("pt-BR") + " sc" : "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(d.ativo ? "Ativo" : "Inativo", d.ativo ? "#D5E8F5" : "#F1EFE8", d.ativo ? "#0B2D50" : "var(--text-2)")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(d.ativo ? "Ativo" : "Inativo", d.ativo ? "#E8E8E8" : "#F1EFE8", d.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <button style={btnE} onClick={() => abrirModalDep(d)}>Editar</button>
@@ -5067,7 +5067,7 @@ function CadastrosInner() {
                   <tbody>
                     {funcs.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum funcionário cadastrado</td></tr>}
                     {funcs.map((f, i) => {
-                      const corVinc: Record<string, [string,string]> = { clt: ["#D5E8F5","#0B2D50"], diarista: ["#FAEEDA","#633806"], empreiteiro: ["#E6F1FB","#0C447C"], outro: ["#F1EFE8","var(--text-2)"] };
+                      const corVinc: Record<string, [string,string]> = { clt: ["#E8E8E8","#0D0D0D"], diarista: ["#FAEEDA","#633806"], empreiteiro: ["#E6F1FB","#0C447C"], outro: ["#F1EFE8","var(--text-2)"] };
                       const [bg, cl] = corVinc[f.tipo] ?? ["#F1EFE8","var(--text-2)"];
                       const sal = f.salario_base ?? 0;
                       const encargos = sal > 0 ? sal * (
@@ -5084,7 +5084,7 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{f.data_admissao || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-1)" }}>{sal > 0 ? `R$ ${sal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: custoTotal > 0 ? "#C9921B" : "var(--text-3)", fontWeight: custoTotal > 0 ? 600 : 400 }}>{custoTotal > 0 ? `R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.ativo ? "Ativo" : "Inativo", f.ativo ? "#D5E8F5" : "#F1EFE8", f.ativo ? "#0B2D50" : "var(--text-2)")}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.ativo ? "Ativo" : "Inativo", f.ativo ? "#E8E8E8" : "#F1EFE8", f.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <button style={btnE} onClick={() => abrirModalFunc(f)}>Editar</button>
@@ -5210,7 +5210,7 @@ function CadastrosInner() {
                 {Object.entries(porComm).map(([comm, lista]) => (
                   <div key={comm} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
                     <div style={{ padding: "10px 16px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870" }}>{comm}</span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "#111111" }}>{comm}</span>
                       <span style={{ fontSize: 11, color: "#666" }}>{lista.length} padrão{lista.length !== 1 ? "s" : ""}</span>
                     </div>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -5255,7 +5255,7 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 10px", textAlign: "center", color: "var(--text-1)" }}>{fmtN(p.ph_minimo)}</td>
                             </>}
                             <td style={{ padding: "10px 10px", textAlign: "center", color: "var(--text-1)" }}>{p.kg_saca}</td>
-                            <td style={{ padding: "10px 10px", textAlign: "center" }}>{badge(p.ativo ? "Ativo" : "Inativo", p.ativo ? "#D5E8F5" : "#F1EFE8", p.ativo ? "#0B2D50" : "var(--text-2)")}</td>
+                            <td style={{ padding: "10px 10px", textAlign: "center" }}>{badge(p.ativo ? "Ativo" : "Inativo", p.ativo ? "#E8E8E8" : "#F1EFE8", p.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
                             <td style={{ padding: "10px 10px", textAlign: "right" }}>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                 <button style={btnE} onClick={() => abrirModalPCls(p)}>Editar</button>
@@ -5273,7 +5273,7 @@ function CadastrosInner() {
                 {modalPCls && (
                   <Modal titulo={editPCls ? "Editar Padrão de Classificação" : "Novo Padrão de Classificação"} subtitulo="Parâmetros de referência para cálculo de descontos no romaneio" onClose={() => setModalPCls(false)} width={860}>
                     {/* Identificação */}
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Identificação</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Identificação</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                       <div>
                         <label style={lbl}>Commodity *</label>
@@ -5304,7 +5304,7 @@ function CadastrosInner() {
                     </div>
 
                     {/* Padrões base */}
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Parâmetros Base (acima do limite = desconto)</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Parâmetros Base (acima do limite = desconto)</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                       <div>
                         <label style={lbl}>Umidade máx. (%)</label>
@@ -5322,7 +5322,7 @@ function CadastrosInner() {
 
                     {/* Sub-parâmetros — Soja */}
                     {isSoja(fPCls.commodity) && <>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Sub-parâmetros Soja (ABIOVE / IN MAPA 11/2007)</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Sub-parâmetros Soja (ABIOVE / IN MAPA 11/2007)</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                         <div>
                           <label style={lbl}>Ardidos máx. (%)</label>
@@ -5349,7 +5349,7 @@ function CadastrosInner() {
 
                     {/* Sub-parâmetros — Milho */}
                     {isMilho(fPCls.commodity) && <>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Sub-parâmetros Milho (IN MAPA 60/2011)</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Sub-parâmetros Milho (IN MAPA 60/2011)</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                         <div>
                           <label style={lbl}>Ardidos+Brotados máx. (%)</label>
@@ -5390,7 +5390,7 @@ function CadastrosInner() {
             <div>
               <div style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
                 {(["grupos","usuarios"] as const).map(s => (
-                  <button key={s} onClick={() => setSubAbaUser(s)} style={{ padding: "8px 20px", border: "none", background: subAbaUser === s ? "#1A4870" : "transparent", color: subAbaUser === s ? "#fff" : "#666", fontWeight: subAbaUser === s ? 600 : 400, cursor: "pointer", fontSize: 13 }}>
+                  <button key={s} onClick={() => setSubAbaUser(s)} style={{ padding: "8px 20px", border: "none", background: subAbaUser === s ? "#111111" : "transparent", color: subAbaUser === s ? "#fff" : "#666", fontWeight: subAbaUser === s ? 600 : 400, cursor: "pointer", fontSize: 13 }}>
                     {s === "grupos" ? "Grupos" : "Usuários"}
                   </button>
                 ))}
@@ -5412,8 +5412,8 @@ function CadastrosInner() {
                           {MODULOS_GRUPOS.map(gr => {
                             const total  = gr.modulos.length;
                             const ativos = gr.modulos.filter(m => (g.permissoes[m.id] ?? "leitura") !== "nenhum").length;
-                            const bg = ativos === 0 ? "#F1EFE8" : ativos === total ? "#D5E8F5" : "#FBF3E0";
-                            const cor = ativos === 0 ? "var(--text-2)" : ativos === total ? "#0B2D50" : "#7A5A12";
+                            const bg = ativos === 0 ? "#F1EFE8" : ativos === total ? "#E8E8E8" : "#FBF3E0";
+                            const cor = ativos === 0 ? "var(--text-2)" : ativos === total ? "#0D0D0D" : "#7A5A12";
                             return <span key={gr.grupo} style={{ fontSize: 9, background: bg, color: cor, padding: "1px 6px", borderRadius: 5 }}>{gr.grupo} {ativos}/{total}</span>;
                           })}
                         </div>
@@ -5446,11 +5446,11 @@ function CadastrosInner() {
                             <td style={{ padding: "10px 14px", color: "var(--text-1)" }}>{u.email}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>
                               {isCampo
-                                ? badge("App Campo", "#D5E8F5", "#0B2D50")
+                                ? badge("App Campo", "#E8E8E8", "#0D0D0D")
                                 : badge("ERP", "#F1EFE8", "var(--text-2)")}
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{gr ? badge(gr.nome, "#FBF0D8", "#7A5A12") : <span style={{ color: "#444" }}>—</span>}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(u.ativo ? "Ativo" : "Inativo", u.ativo ? "#D5E8F5" : "#F1EFE8", u.ativo ? "#0B2D50" : "var(--text-2)")}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(u.ativo ? "Ativo" : "Inativo", u.ativo ? "#E8E8E8" : "#F1EFE8", u.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
                             <td style={{ padding: "10px 14px", textAlign: "right" }}>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                 <button style={btnE} onClick={() => abrirModalUser(u)}>Editar</button>
@@ -5491,7 +5491,7 @@ function CadastrosInner() {
                     <tbody>
                       {contas.map((c, i) => {
                         const tipoCor: Record<string, { bg: string; color: string; label: string }> = {
-                          corrente:    { bg: "#D5E8F5", color: "#0B2D50", label: "Corrente" },
+                          corrente:    { bg: "#E8E8E8", color: "#0D0D0D", label: "Corrente" },
                           investimento:{ bg: "#DCF5E8", color: "#14532D", label: "Investimento" },
                           caixa:       { bg: "#FBF3E0", color: "#7A5A12", label: "Caixa" },
                           transitoria: { bg: "var(--bg-page)", color: "var(--text-2)",    label: "Transitória" },
@@ -5508,7 +5508,7 @@ function CadastrosInner() {
                               const docFmt = doc.length === 11 ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
                               return (
                                 <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
-                                  {tit.nome}{doc ? <span style={{ marginLeft: 6, fontFamily: "monospace", color: "#378ADD" }}>{docFmt}</span> : null}
+                                  {tit.nome}{doc ? <span style={{ marginLeft: 6, fontFamily: "monospace", color: "#444444" }}>{docFmt}</span> : null}
                                   {c.conjunta && <span style={{ marginLeft: 6, background: "#FBF3E0", color: "#C9921B", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Conjunta</span>}
                                 </div>
                               );
@@ -5528,11 +5528,11 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>
                             {c.conta ? [c.conta, c.conta_dv].filter(Boolean).join("-") : "—"}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "right", color: (c.saldo_inicial ?? 0) >= 0 ? "#1A4870" : "#E24B4A", fontWeight: 600, fontSize: 12 }}>
+                          <td style={{ padding: "10px 14px", textAlign: "right", color: (c.saldo_inicial ?? 0) >= 0 ? "#111111" : "#E24B4A", fontWeight: 600, fontSize: 12 }}>
                             {(c.saldo_inicial ?? 0) !== 0 ? (c.saldo_inicial! < 0 ? "− " : "") + Math.abs(c.saldo_inicial!).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
                           </td>
                           <td style={{ padding: "10px 14px" }}>
-                            <span style={{ background: c.moeda === "USD" ? "#FBF3E0" : "#D5E8F5", color: c.moeda === "USD" ? "#7A5A12" : "#0B2D50", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.moeda}</span>
+                            <span style={{ background: c.moeda === "USD" ? "#FBF3E0" : "#E8E8E8", color: c.moeda === "USD" ? "#7A5A12" : "#0D0D0D", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.moeda}</span>
                           </td>
                           <td style={{ padding: "10px 14px" }}>
                             <span style={{ background: c.ativa ? "#DCF5E8" : "var(--bg-page)", color: c.ativa ? "#14532D" : "var(--text-3)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.ativa ? "Ativa" : "Inativa"}</span>
@@ -5561,7 +5561,7 @@ function CadastrosInner() {
                   <div style={{ fontWeight: 600, fontSize: 15 }}>Imóveis Urbanos</div>
                   <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>Apartamentos, casas, salas comerciais e terrenos usados como garantia em operações financeiras.</div>
                 </div>
-                <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setEditIU(null); setFIU({ matricula: "", tipo: "outro", descricao: "", logradouro: "", numero_end: "", complemento: "", bairro: "", cep: "", municipio: "", estado: "MT", area_m2: "", valor_avaliacao: "", observacao: "" }); setModalIU(true); }}>+ Cadastrar Imóvel</button>
+                <button style={{ ...btnV, background: "#111111" }} onClick={() => { setEditIU(null); setFIU({ matricula: "", tipo: "outro", descricao: "", logradouro: "", numero_end: "", complemento: "", bairro: "", cep: "", municipio: "", estado: "MT", area_m2: "", valor_avaliacao: "", observacao: "" }); setModalIU(true); }}>+ Cadastrar Imóvel</button>
               </div>
 
               {imoveisUrbanos.length === 0 ? (
@@ -5576,7 +5576,7 @@ function CadastrosInner() {
                         return (
                           <tr key={u.id} style={{ borderBottom: i < imoveisUrbanos.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                             <td style={{ padding: "10px 14px", fontWeight: 600 }}>{u.descricao}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "center" }}><span style={{ fontSize: 11, background: "#EFF4FA", color: "#1A4870", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{TIPO_IU[u.tipo]}</span></td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}><span style={{ fontSize: 11, background: "#EFF4FA", color: "#111111", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{TIPO_IU[u.tipo]}</span></td>
                             <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{u.matricula || "—"}</td>
                             <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{u.municipio ? `${u.municipio} — ${u.estado}` : u.estado}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{u.area_m2 ? `${Number(u.area_m2).toLocaleString("pt-BR")} m²` : "—"}</td>
@@ -5686,7 +5686,7 @@ function CadastrosInner() {
             const CATEGORIAS_PA: PrincipioAtivo["categoria"][] = ["herbicida","fungicida","inseticida","acaricida","fertilizante","inoculante","outro"];
             const COR_CAT: Record<string, { bg: string; color: string }> = {
               herbicida:    { bg: "#DCF5E8", color: "#14532D" },
-              fungicida:    { bg: "#D5E8F5", color: "#0B2D50" },
+              fungicida:    { bg: "#E8E8E8", color: "#0D0D0D" },
               inseticida:   { bg: "#FBF3E0", color: "#7A5A12" },
               acaricida:    { bg: "#F5E8F5", color: "#5B1B8A" },
               fertilizante: { bg: "#E8F5DC", color: "#2D5314" },
@@ -5901,7 +5901,7 @@ function CadastrosInner() {
               outro:       "Outro",
             };
             const TIPO_COR: Record<UnidadeMedida["tipo"], { bg: string; color: string }> = {
-              massa:       { bg: "#D5E8F5", color: "#0B2D50" },
+              massa:       { bg: "#E8E8E8", color: "#0D0D0D" },
               volume:      { bg: "#DCF5F0", color: "#0B4D3A" },
               area:        { bg: "#DCF5E8", color: "#14532D" },
               comprimento: { bg: "#FBF3E0", color: "#7A5A12" },
@@ -6003,7 +6003,7 @@ function CadastrosInner() {
                             {grupo.items.map(u => (
                               <tr key={u.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: u.inativo ? "#FAFAFA" : "white" }}>
                                 <td style={{ padding: "8px 14px" }}>
-                                  <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: u.inativo ? "var(--text-muted)" : "#1A4870", background: "#EEF5FD", padding: "2px 8px", borderRadius: 5 }}>
+                                  <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: u.inativo ? "var(--text-muted)" : "#111111", background: "#EEF5FD", padding: "2px 8px", borderRadius: 5 }}>
                                     {u.sigla}
                                   </span>
                                 </td>
@@ -6051,7 +6051,7 @@ function CadastrosInner() {
               outro:     "Outro",
             };
             const CAT_COR: Record<string, { bg: string; color: string }> = {
-              graos:     { bg: "#D5E8F5", color: "#0B2D50"  },
+              graos:     { bg: "#E8E8E8", color: "#0D0D0D"  },
               fibra:     { bg: "#FBF3E0", color: "#7A5A12"  },
               hortifruti:{ bg: "#DCF5E8", color: "#14532D"  },
               pastagem:  { bg: "#EAFFE6", color: "#166534"  },
@@ -6126,7 +6126,7 @@ function CadastrosInner() {
                     <input style={{ ...inp, width: 260 }} placeholder="Buscar cultura…" value={culturaBusca} onChange={e => setCulturaBusca(e.target.value)} />
                     <span style={{ fontSize: 12, color: "var(--text-3)" }}>{filtradas.length} cultura{filtradas.length !== 1 ? "s" : ""}</span>
                   </div>
-                  <button style={{ ...btnV, background: "#1A4870" }} onClick={() => abrirModal()}>+ Nova Cultura</button>
+                  <button style={{ ...btnV, background: "#111111" }} onClick={() => abrirModal()}>+ Nova Cultura</button>
                 </div>
 
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -6233,7 +6233,7 @@ function CadastrosInner() {
 
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
                         <button style={btnR} onClick={() => setModalCultura(false)}>Cancelar</button>
-                        <button style={{ ...btnV, background: "#1A4870", opacity: salvandoCultura ? 0.6 : 1 }} onClick={salvar} disabled={salvandoCultura}>
+                        <button style={{ ...btnV, background: "#111111", opacity: salvandoCultura ? 0.6 : 1 }} onClick={salvar} disabled={salvandoCultura}>
                           {salvandoCultura ? "Salvando…" : editCultura ? "Salvar alterações" : "Criar cultura"}
                         </button>
                       </div>
@@ -6295,7 +6295,7 @@ function CadastrosInner() {
                         const prod = produtores.find(p => p.id === fConta.titular_produtor_id);
                         const doc = (prod?.cpf_cnpj ?? "").replace(/\D/g, "");
                         return doc ? (
-                          <div style={{ marginTop: 6, fontSize: 11, color: "#378ADD" }}>
+                          <div style={{ marginTop: 6, fontSize: 11, color: "#444444" }}>
                             CPF/CNPJ: <strong style={{ fontFamily: "monospace" }}>{doc.length === 11 ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}</strong>
                           </div>
                         ) : null;
@@ -6344,11 +6344,11 @@ function CadastrosInner() {
                             {fConta.cotitulares.map((ct, idx) => {
                               const cpfFmt = ct.cpf.length === 11 ? ct.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : ct.cpf.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
                               return (
-                                <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, background: "#EFF6FF", border: "0.5px solid #378ADD", borderRadius: 6, padding: "6px 10px" }}>
+                                <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, background: "#F2F2F2", border: "0.5px solid #444444", borderRadius: 6, padding: "6px 10px" }}>
                                   <div style={{ flex: 1 }}>
-                                    <span style={{ fontWeight: 600, fontSize: 13, color: "#0B2D50" }}>{ct.nome}</span>
+                                    <span style={{ fontWeight: 600, fontSize: 13, color: "#0D0D0D" }}>{ct.nome}</span>
                                     {ct.cpf && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-2)", fontFamily: "monospace" }}>{cpfFmt}</span>}
-                                    {ct.produtor_id && <span style={{ marginLeft: 6, fontSize: 10, background: "#D5E8F5", color: "#1A4870", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Cadastrado</span>}
+                                    {ct.produtor_id && <span style={{ marginLeft: 6, fontSize: 10, background: "#E8E8E8", color: "#111111", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Cadastrado</span>}
                                   </div>
                                   <button onClick={() => setFConta(p => ({ ...p, cotitulares: p.cotitulares.filter((_, i) => i !== idx) }))}
                                     style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
@@ -6536,13 +6536,13 @@ function CadastrosInner() {
           {/* Abas */}
           <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border)", marginBottom: 20 }}>
             {([["dados","Dados Cadastrais"],["ies",`Inscrições Estaduais${prodIEs.length > 0 ? ` (${prodIEs.length})` : ""}`]] as [string,string][]).map(([k,l]) => (
-              <button key={k} onClick={() => setTabProd(k as "dados"|"ies")} style={{ padding: "8px 18px", fontSize: 13, fontWeight: tabProd === k ? 600 : 400, color: tabProd === k ? "#1A4870" : "#666", background: "none", border: "none", borderBottom: tabProd === k ? "2px solid #1A4870" : "2px solid transparent", cursor: "pointer", marginBottom: -1 }}>{l}</button>
+              <button key={k} onClick={() => setTabProd(k as "dados"|"ies")} style={{ padding: "8px 18px", fontSize: 13, fontWeight: tabProd === k ? 600 : 400, color: tabProd === k ? "#111111" : "#666", background: "none", border: "none", borderBottom: tabProd === k ? "2px solid #111111" : "2px solid transparent", cursor: "pointer", marginBottom: -1 }}>{l}</button>
             ))}
           </div>
 
           {tabProd === "dados" && (<>
             {/* Identificação */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Identificação</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Identificação</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
               <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome completo / Razão Social *</label><input style={inp} value={fProd.nome} onChange={e => setFProd(p => ({ ...p, nome: e.target.value }))} /></div>
               <div>
@@ -6560,7 +6560,7 @@ function CadastrosInner() {
 
             {/* Dados PJ — exibidos somente quando tipo = pj */}
             {fProd.tipo === "pj" && (<>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Dados da Empresa (PJ)</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Dados da Empresa (PJ)</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                 <div style={{ gridColumn: "1/3" }}>
                   <label style={lbl}>Razão Social</label>
@@ -6597,7 +6597,7 @@ function CadastrosInner() {
             </>)}
 
             {/* Endereço */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Endereço</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Endereço</div>
             <div style={{ display: "grid", gridTemplateColumns: "140px 1fr 1fr", gap: 14, marginBottom: 12 }}>
               <div>
                 <label style={lbl}>CEP</label>
@@ -6610,7 +6610,7 @@ function CadastrosInner() {
                       if (v.length === 8) buscarCepProd(v);
                     }}
                   />
-                  {buscandoCep && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#1A4870" }}>⟳</span>}
+                  {buscandoCep && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#111111" }}>⟳</span>}
                 </div>
               </div>
               <div style={{ gridColumn: "2/-1" }}>
@@ -6646,7 +6646,7 @@ function CadastrosInner() {
                 <tbody>
                   {prodIEs.map((ie, i) => (
                     <tr key={ie.id ?? i} style={{ borderBottom: "0.5px solid #EEF1F7" }}>
-                      <td style={{ padding: "7px 10px", fontWeight: 600, color: "#1A4870" }}>{ie.inscricao_estadual}</td>
+                      <td style={{ padding: "7px 10px", fontWeight: 600, color: "#111111" }}>{ie.inscricao_estadual}</td>
                       <td style={{ padding: "7px 10px" }}>{ie.municipio ?? "—"}</td>
                       <td style={{ padding: "7px 10px" }}>{ie.estado}</td>
                       <td style={{ padding: "7px 10px", color: "var(--text-3)" }}>
@@ -6669,7 +6669,7 @@ function CadastrosInner() {
 
             {/* Linha para adicionar nova IE */}
             <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "14px 16px" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>Adicionar Inscrição Estadual</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10 }}>Adicionar Inscrição Estadual</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 1fr auto", gap: 10, alignItems: "flex-end" }}>
                 <div>
                   <label style={lbl}>IE *</label>
@@ -6743,14 +6743,14 @@ function CadastrosInner() {
             {/* ── Tab navigation ── */}
             <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", marginBottom: 22, gap: 0 }}>
               {([["geral","Dados Gerais"],["matriculas",`Matrículas${fazMatsLocal.length > 0 ? ` (${fazMatsLocal.length})` : ""}`],["cars",`CAR${fazCars.length > 0 ? ` (${fazCars.length})` : ""}`],["nirfs",`NIRF${fazNirfs.length > 0 ? ` (${fazNirfs.length})` : ""}`],["itrs",`ITR${fazItrs.length > 0 ? ` (${fazItrs.length})` : ""}`],["ccirs",`CCIR${fazCcirs.length > 0 ? ` (${fazCcirs.length})` : ""}`],["arrendamentos",`Arrendamentos${fazArrendamentos.length > 0 ? ` (${fazArrendamentos.length})` : ""}`]] as [string,string][]).map(([k, l]) => (
-                <button key={k} onClick={() => setTabFaz(k as typeof tabFaz)} style={{ padding: "10px 18px", border: "none", borderBottom: tabFaz === k ? "2px solid #1A4870" : "2px solid transparent", background: "none", cursor: "pointer", fontSize: 13, color: tabFaz === k ? "#1A4870" : "var(--text-2)", fontWeight: tabFaz === k ? 600 : 400 }}>{l}</button>
+                <button key={k} onClick={() => setTabFaz(k as typeof tabFaz)} style={{ padding: "10px 18px", border: "none", borderBottom: tabFaz === k ? "2px solid #111111" : "2px solid transparent", background: "none", cursor: "pointer", fontSize: 13, color: tabFaz === k ? "#111111" : "var(--text-2)", fontWeight: tabFaz === k ? 600 : 400 }}>{l}</button>
               ))}
             </div>
 
             {/* ════ TAB: DADOS GERAIS ════ */}
             {tabFaz === "geral" && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Identificação</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Identificação</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
                   <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome da fazenda *</label><input style={inp} value={fFaz.nome} onChange={e => setFFaz(p => ({ ...p, nome: e.target.value }))} /></div>
                   <div style={{ gridColumn: "1/-1" }}>
@@ -6779,7 +6779,7 @@ function CadastrosInner() {
                   <div />
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Escrituração Fiscal (LCDPR / SPED)</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Escrituração Fiscal (LCDPR / SPED)</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
                   <div>
                     <label style={lbl}>Entidade contábil *</label>
@@ -6792,12 +6792,12 @@ function CadastrosInner() {
                     <label style={lbl}>{fFaz.entidade_contabil === "pf" ? "CPF do titular fiscal" : "CNPJ da entidade fiscal"}</label>
                     <input style={inp} value={fFaz.cpf_cnpj_fiscal} onChange={e => setFFaz(p => ({ ...p, cpf_cnpj_fiscal: e.target.value }))} placeholder={fFaz.entidade_contabil === "pf" ? "000.000.000-00" : "00.000.000/0000-00"} />
                   </div>
-                  <div style={{ gridColumn: "1/-1", background: "#EBF3FE", border: "0.5px solid #1A487040", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50" }}>
+                  <div style={{ gridColumn: "1/-1", background: "#EBF3FE", border: "0.5px solid #11111140", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0D0D0D" }}>
                     ℹ️ Este campo é propagado automaticamente para todos os lançamentos desta fazenda. O LCDPR consolida entradas com entidade <strong>PF</strong>; o SPED ECD consolida as entradas com entidade <strong>PJ</strong>.
                   </div>
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Endereço</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Endereço</div>
                 <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 14, marginBottom: 14 }}>
                   <div>
                     <label style={lbl}>CEP{buscandoCepFaz && <span style={{ marginLeft: 6, color: "var(--text-3)", fontSize: 11 }}>⟳ buscando…</span>}{cepAutoOk && <span style={{ marginLeft: 6, color: "#16A34A", fontSize: 11, fontWeight: 600 }}>✓ endereço preenchido</span>}</label>
@@ -6870,7 +6870,7 @@ function CadastrosInner() {
               <div>
                 <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>Uma fazenda pode ter múltiplos CARs — por exemplo, quando há gleba destacada, desmembramento ou diferentes módulos fiscais. Cada CAR pode ser vinculado a uma ou mais Matrículas.</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  <button style={{ padding: "7px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     onClick={() => setFazCars(p => [...p, { _key: `new_${Date.now()}`, numero: "", status: "ativo", area_ha: "", vencimento: "", observacao: "", mats_vinculadas: [] }])}>
                     + Adicionar CAR
                   </button>
@@ -6884,7 +6884,7 @@ function CadastrosInner() {
                     {fazCars.map((c, ci) => (
                       <div key={c._key} style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#111111", flex: 1 }}>
                             {c.numero || "CAR sem número"}
                           </span>
                           <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: c.status === "ativo" ? "#DCFCE7" : "#FEE2E2", color: c.status === "ativo" ? "#166534" : "#991B1B" }}>
@@ -6925,7 +6925,7 @@ function CadastrosInner() {
                                   return (
                                     <button key={m._key} type="button"
                                       onClick={() => setFazCars(p => p.map((x,j) => j!==ci ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
-                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#111111" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#111111" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
                                       {m.numero || "Matr. sem número"}
                                     </button>
                                   );
@@ -6950,7 +6950,7 @@ function CadastrosInner() {
               <div>
                 <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>NIRF — Número do Imóvel na Receita Federal. Uma fazenda pode ter múltiplos NIRFs quando há glebas registradas separadamente. Cada NIRF pode ser vinculado a uma ou mais Matrículas.</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  <button style={{ padding: "7px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     onClick={() => setFazNirfs(p => [...p, { _key: `new_${Date.now()}`, numero: "", situacao: "ativo", area_ha: "", observacao: "", mats_vinculadas: [] }])}>
                     + Adicionar NIRF
                   </button>
@@ -6964,7 +6964,7 @@ function CadastrosInner() {
                     {fazNirfs.map((n, ni) => (
                       <div key={n._key} style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#111111", flex: 1 }}>
                             {n.numero || "NIRF sem número"}
                           </span>
                           <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: n.situacao === "ativo" ? "#DCFCE7" : n.situacao === "suspenso" ? "#FEF3CD" : "#FEE2E2", color: n.situacao === "ativo" ? "#166534" : n.situacao === "suspenso" ? "#7A5A12" : "#991B1B" }}>
@@ -7001,7 +7001,7 @@ function CadastrosInner() {
                                   return (
                                     <button key={m._key} type="button"
                                       onClick={() => setFazNirfs(p => p.map((x,j) => j!==ni ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
-                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#111111" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#111111" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
                                       {m.numero || "Matr. sem número"}
                                     </button>
                                   );
@@ -7026,7 +7026,7 @@ function CadastrosInner() {
               <div>
                 <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>ITR — Imposto Territorial Rural (DITR). Registro por exercício. Cada DITR pode ser vinculado a um NIRF e a uma ou mais Matrículas.</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  <button style={{ padding: "7px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     onClick={() => setFazItrs(p => [...p, { _key: `new_${Date.now()}`, exercicio: String(new Date().getFullYear()), numero_declaracao: "", nirf_numero: "", vencimento: "", area_tributavel_ha: "", valor_apurado: "", status_pagamento: "pendente", observacao: "", mats_vinculadas: [] }])}>
                     + Adicionar ITR
                   </button>
@@ -7040,10 +7040,10 @@ function CadastrosInner() {
                     {fazItrs.map((t, ti) => (
                       <div key={t._key} style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#111111", flex: 1 }}>
                             ITR {t.exercicio || "—"}{t.numero_declaracao ? ` · DITR ${t.numero_declaracao}` : ""}
                           </span>
-                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: t.status_pagamento === "pago" ? "#DCFCE7" : t.status_pagamento === "parcelado" ? "#EFF4FA" : "#FEE2E2", color: t.status_pagamento === "pago" ? "#166534" : t.status_pagamento === "parcelado" ? "#0B2D50" : "#991B1B" }}>
+                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: t.status_pagamento === "pago" ? "#DCFCE7" : t.status_pagamento === "parcelado" ? "#EFF4FA" : "#FEE2E2", color: t.status_pagamento === "pago" ? "#166534" : t.status_pagamento === "parcelado" ? "#0D0D0D" : "#991B1B" }}>
                             {t.status_pagamento === "pago" ? "Pago" : t.status_pagamento === "parcelado" ? "Parcelado" : "Pendente"}
                           </span>
                           {t.vencimento && certBadge(t.vencimento)}
@@ -7094,7 +7094,7 @@ function CadastrosInner() {
                                   return (
                                     <button key={m._key} type="button"
                                       onClick={() => setFazItrs(p => p.map((x,j) => j!==ti ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
-                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#111111" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#111111" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
                                       {m.numero || "Matr. sem número"}
                                     </button>
                                   );
@@ -7119,7 +7119,7 @@ function CadastrosInner() {
               <div>
                 <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>CCIR — Certidão de Cadastro de Imóvel Rural (INCRA). Renovada anualmente. Cada CCIR pode ser vinculado a uma ou mais Matrículas.</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  <button style={{ padding: "7px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     onClick={() => setFazCcirs(p => [...p, { _key: `new_${Date.now()}`, numero: "", exercicio: String(new Date().getFullYear()), vencimento: "", area_ha: "", modulo_fiscal: "", situacao: "regular", observacao: "", mats_vinculadas: [] }])}>
                     + Adicionar CCIR
                   </button>
@@ -7133,7 +7133,7 @@ function CadastrosInner() {
                     {fazCcirs.map((c, ci) => (
                       <div key={c._key} style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#111111", flex: 1 }}>
                             {c.numero || "CCIR sem número"}{c.exercicio ? ` · ${c.exercicio}` : ""}
                           </span>
                           <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: c.situacao === "regular" ? "#DCFCE7" : c.situacao === "pendente" ? "#FEF3CD" : "#FEE2E2", color: c.situacao === "regular" ? "#166534" : c.situacao === "pendente" ? "#7A5A12" : "#991B1B" }}>
@@ -7183,7 +7183,7 @@ function CadastrosInner() {
                                   return (
                                     <button key={m._key} type="button"
                                       onClick={() => setFazCcirs(p => p.map((x,j) => j!==ci ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
-                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#111111" : "var(--border-table)"}`, background: sel ? "#EFF4FA" : "var(--bg-card)", fontSize: 11, color: sel ? "#111111" : "var(--text-2)", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
                                       {m.numero || "Matr. sem número"}
                                     </button>
                                   );
@@ -7230,7 +7230,7 @@ function CadastrosInner() {
                               const p1 = produtores.find(p => p.id === a.produtor_id);
                               const p2 = a.produtor_id_2 ? produtores.find(p => p.id === a.produtor_id_2) : null;
                               if (!p1) return null;
-                              return <span style={{ fontWeight: 400, fontSize: 11, color: "#1A4870", marginLeft: 8 }}>({p1.nome}{p2 ? ` + ${p2.nome}` : ""})</span>;
+                              return <span style={{ fontWeight: 400, fontSize: 11, color: "#111111", marginLeft: 8 }}>({p1.nome}{p2 ? ` + ${p2.nome}` : ""})</span>;
                             })()}
                           </span>
                           {a.area_ha && <span style={{ fontSize: 12, color: "var(--text-2)" }}>{Number(a.area_ha).toFixed(2)} ha</span>}
@@ -7238,7 +7238,7 @@ function CadastrosInner() {
                           {!ehMisto && ehSacas && <span style={{ fontSize: 10, background: "#DCF5E8", color: "#14532D", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Gera contrato grãos</span>}
                           {!ehSacas && Number(a.valor_brl) > 0 && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>R$ {Number(a.valor_brl).toLocaleString("pt-BR",{minimumFractionDigits:2})}/ano</span>}
                           {!ehSacas && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Impacta fluxo de caixa</span>}
-                          <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{label}</span>
+                          <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{label}</span>
                           <button style={{ ...btnX, marginLeft: 4 }} onClick={() => setFazArrendamentos(p => p.filter((_,j) => j!==ai))}>Remover</button>
                         </div>
                         {/* Card body */}
@@ -7390,7 +7390,7 @@ function CadastrosInner() {
                   <button key={v} type="button"
                     onClick={() => setFTalhao(p => ({ ...p, tipo_posse: v, arrendamento_ids: v === "proprio" ? [] : p.arrendamento_ids }))}
                     style={{ flex: 1, padding: "8px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: fTalhao.tipo_posse === v ? 700 : 400,
-                      background: fTalhao.tipo_posse === v ? (v === "arrendado" ? "#C9921B" : "#1A4870") : "#fff",
+                      background: fTalhao.tipo_posse === v ? (v === "arrendado" ? "#C9921B" : "#111111") : "#fff",
                       color: fTalhao.tipo_posse === v ? "#fff" : "var(--text-2)" }}>
                     {v === "proprio" ? "🏡 Próprio" : "🤝 Arrendado"}
                   </button>
@@ -7469,19 +7469,19 @@ function CadastrosInner() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
 
             {/* Matrículas */}
-            <div style={{ padding: "12px 14px", background: "#EEF5FF", border: "0.5px solid #1A487040", borderRadius: 10 }}>
+            <div style={{ padding: "12px 14px", background: "#EEF5FF", border: "0.5px solid #11111140", borderRadius: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <label style={{ ...lbl, color: "#0B2D50", marginBottom: 0 }}>
+                <label style={{ ...lbl, color: "#0D0D0D", marginBottom: 0 }}>
                   Matrículas de Imóvel
                   {fTalhao.matricula_ids.length > 0 && (
-                    <span style={{ marginLeft: 6, background: "#1A4870", color: "#fff", borderRadius: 10, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>
+                    <span style={{ marginLeft: 6, background: "#111111", color: "#fff", borderRadius: 10, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>
                       {fTalhao.matricula_ids.length}
                     </span>
                   )}
                 </label>
                 {fTalhao.matricula_ids.length > 0 && (
                   <button type="button" onClick={() => setFTalhao(p => ({ ...p, matricula_ids: [] }))}
-                    style={{ fontSize: 11, color: "#0B2D50", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                    style={{ fontSize: 11, color: "#0D0D0D", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                     Limpar
                   </button>
                 )}
@@ -7500,15 +7500,15 @@ function CadastrosInner() {
                     }));
                     return (
                       <label key={m.id} onClick={toggle} style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer",
-                        padding: "6px 8px", borderRadius: 7, border: `0.5px solid ${checked ? "#1A4870" : "#C5D8EE"}`,
-                        background: checked ? "#D5E8F5" : "var(--bg-card)", transition: "all .15s" }}>
+                        padding: "6px 8px", borderRadius: 7, border: `0.5px solid ${checked ? "#111111" : "#C5D8EE"}`,
+                        background: checked ? "#E8E8E8" : "var(--bg-card)", transition: "all .15s" }}>
                         <div style={{ marginTop: 1, width: 15, height: 15, flexShrink: 0, borderRadius: 3,
-                          border: `2px solid ${checked ? "#1A4870" : "#9AB5CC"}`,
-                          background: checked ? "#1A4870" : "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          border: `2px solid ${checked ? "#111111" : "#9AB5CC"}`,
+                          background: checked ? "#111111" : "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           {checked && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>}
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 12, color: "#0B2D50" }}>Matrícula {m.numero}</div>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#0D0D0D" }}>Matrícula {m.numero}</div>
                           {(m.cartorio || m.area_ha) && (
                             <div style={{ fontSize: 11, color: "#5A7090", marginTop: 1 }}>
                               {m.cartorio && <span>{m.cartorio}</span>}
@@ -7639,7 +7639,7 @@ function CadastrosInner() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, columnGap: 16, rowGap: 0 }}>
 
             {/* ── Seção 1: Identificação ── */}
-            <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Identificação</div>
+            <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Identificação</div>
             <div style={{ gridColumn: "1/-1", marginBottom: 14 }}><label style={lbl}>Nome / Razão Social *</label><input style={inp} value={fPes.nome} onChange={e => setFPes(p => ({ ...p, nome: e.target.value }))} /></div>
             <div style={{ marginBottom: 14 }}>
               <label style={lbl}>Tipo</label>
@@ -7695,7 +7695,7 @@ function CadastrosInner() {
             <div style={{ marginBottom: 20 }}><label style={lbl}>Telefone WhatsApp (contato)</label><input style={inp} value={fPes.telefone_contato} onChange={e => setFPes(p => ({ ...p, telefone_contato: maskPhone(e.target.value) }))} placeholder="(00) 00000-0000" /></div>
 
             {/* ── Seção 2: Endereço ── */}
-            <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Endereço</div>
+            <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Endereço</div>
             <div style={{ marginBottom: 14 }}>
               <label style={lbl}>CEP</label>
               <input style={inp} value={fPes.cep} placeholder="00000-000" onChange={e => { const v = maskCep(e.target.value); setFPes(p => ({ ...p, cep: v })); buscarCepPes(v); }} />
@@ -7708,7 +7708,7 @@ function CadastrosInner() {
             <div style={{ marginBottom: 20 }}><label style={lbl}>Estado</label><select style={inp} value={fPes.estado} onChange={e => setFPes(p => ({ ...p, estado: e.target.value }))}>{ESTADOS.map(s => <option key={s}>{s}</option>)}</select></div>
 
             {/* ── Seção 3: Tributação ── */}
-            <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Tributação</div>
+            <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Tributação</div>
             <div style={{ marginBottom: fPes.situacao_cadastral ? 14 : 20 }}>
               <label style={lbl}>Regime Tributário</label>
               <select style={inp} value={fPes.regime_tributario} onChange={e => setFPes(p => ({ ...p, regime_tributario: e.target.value }))}>
@@ -7753,16 +7753,16 @@ function CadastrosInner() {
               };
               return (
                 <div style={{ gridColumn: "1/-1", marginBottom: 20, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>Subcategorias</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>Subcategorias</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                     {SUBCATS_PADRAO.map(s => {
                       const ativo = fPes.subcategorias.includes(s);
                       return (
                         <button key={s} onClick={() => toggle(s)} style={{
-                          padding: "5px 12px", border: `0.5px solid ${ativo ? "#1A4870" : "var(--border-table)"}`,
+                          padding: "5px 12px", border: `0.5px solid ${ativo ? "#111111" : "var(--border-table)"}`,
                           borderRadius: 20, fontSize: 12, cursor: "pointer", userSelect: "none",
-                          background: ativo ? "#D5E8F5" : "var(--bg-card)",
-                          color: ativo ? "#0B2D50" : "var(--text-2)",
+                          background: ativo ? "#E8E8E8" : "var(--bg-card)",
+                          color: ativo ? "#0D0D0D" : "var(--text-2)",
                           fontWeight: ativo ? 600 : 400,
                         }}>{ativo ? "✓ " : ""}{s}</button>
                       );
@@ -7791,7 +7791,7 @@ function CadastrosInner() {
             {/* ── Seção 5: Pagamento (somente fornecedor) ── */}
             {fPes.fornecedor && (
               <>
-                <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Dados de Pagamento</div>
+                <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Dados de Pagamento</div>
                 <div style={{ marginBottom: 14 }}><label style={lbl}>Banco</label><input style={inp} value={fPes.banco_nome} onChange={e => setFPes(p => ({ ...p, banco_nome: e.target.value }))} placeholder="Ex: Banco do Brasil" /></div>
                 <div style={{ marginBottom: 14 }}>
                   <label style={lbl}>Tipo de Conta</label>
@@ -7940,7 +7940,7 @@ function CadastrosInner() {
                   </div>
                 )}
                 {fCiclo.produto_agricola_id && (
-                  <div style={{ fontSize:11, color:"#1A4870", marginTop:4 }}>
+                  <div style={{ fontSize:11, color:"#111111", marginTop:4 }}>
                     ⚡ A colheita deste ciclo dará entrada de <strong>{insumosPA.find(i => i.id === fCiclo.produto_agricola_id)?.nome}</strong> no estoque automaticamente.
                   </div>
                 )}
@@ -7992,12 +7992,12 @@ function CadastrosInner() {
           </div>
 
           {/* Fazenda do ciclo — seletor SEMPRE visível */}
-          <div style={{ background: "#EFF6FF", border: "1.5px solid #1A5CB8", borderRadius: 10, padding: "10px 16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+          <div style={{ background: "#F2F2F2", border: "1.5px solid #2A2A2A", borderRadius: 10, padding: "10px 16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
               Fazenda *
             </div>
             <select
-              style={{ width: "100%", padding: "9px 12px", borderRadius: 7, border: "1px solid #93C5FD", fontSize: 14, fontWeight: 600, color: "#0B2D50", background: "var(--bg-card)", cursor: editCiclo ? "not-allowed" : "pointer" }}
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 7, border: "1px solid #93C5FD", fontSize: 14, fontWeight: 600, color: "#0D0D0D", background: "var(--bg-card)", cursor: editCiclo ? "not-allowed" : "pointer" }}
               value={cicloFazendaId}
               disabled={!!editCiclo}
               onChange={async e => {
@@ -8025,7 +8025,7 @@ function CadastrosInner() {
                 (informe a área efetivamente plantada — usada para rateio de custos por ha)
               </span>
               {cicloFazendaId && (
-                <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
+                <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
                   {fazendas.find(f => f.id === cicloFazendaId)?.nome ?? "—"}
                 </span>
               )}
@@ -8137,7 +8137,7 @@ function CadastrosInner() {
           {/* Abas internas */}
           <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginBottom: 18 }}>
             {(["geral", "aquisicao", "seguro"] as const).map(t => (
-              <button key={t} onClick={() => setTabMaq(t)} style={{ padding: "8px 20px", border: "none", borderBottom: tabMaq === t ? "2px solid #1A5CB8" : "2px solid transparent", background: "transparent", fontWeight: tabMaq === t ? 600 : 400, color: tabMaq === t ? "#1A5CB8" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
+              <button key={t} onClick={() => setTabMaq(t)} style={{ padding: "8px 20px", border: "none", borderBottom: tabMaq === t ? "2px solid #2A2A2A" : "2px solid transparent", background: "transparent", fontWeight: tabMaq === t ? 600 : 400, color: tabMaq === t ? "#2A2A2A" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
                 {t === "geral" ? "Dados Gerais" : t === "aquisicao" ? "Aquisição / Financiamento" : "Seguro"}
               </button>
             ))}
@@ -8185,7 +8185,7 @@ function CadastrosInner() {
           {/* Aba Aquisição / Financiamento */}
           {tabMaq === "aquisicao" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-              <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Proprietário e Aquisição</div>
+              <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Proprietário e Aquisição</div>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Proprietário (para o IR)</label>
                 <select style={inp} value={fMaq.proprietario_id} onChange={e => setFMaq(p => ({ ...p, proprietario_id: e.target.value }))}>
@@ -8201,7 +8201,7 @@ function CadastrosInner() {
               </div>
 
               <div style={{ gridColumn: "1/-1", borderTop: "0.5px solid var(--border)", paddingTop: 14, marginTop: 4 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)", marginBottom: 6 }}>Financiamento</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)", marginBottom: 6 }}>Financiamento</div>
               </div>
               <div>
                 <label style={lbl}>Status</label>
@@ -8608,8 +8608,8 @@ function CadastrosInner() {
                 }
               }} style={{
                 padding: "7px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
-                borderBottom: abaOpGer === a.key ? "2px solid #1A5CB8" : "2px solid transparent",
-                color: abaOpGer === a.key ? "#1A5CB8" : "var(--text-2)",
+                borderBottom: abaOpGer === a.key ? "2px solid #2A2A2A" : "2px solid transparent",
+                color: abaOpGer === a.key ? "#2A2A2A" : "var(--text-2)",
                 fontWeight: abaOpGer === a.key ? 600 : 400,
               }}>{a.label}</button>
             ))}
@@ -8619,7 +8619,7 @@ function CadastrosInner() {
           {abaOpGer === "principal" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" }}>Lançamentos nas Telas</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, textTransform: "uppercase" }}>Lançamentos nas Telas</div>
                 {([
                   { key: "permite_notas_fiscais",      label: "Notas Fiscais"          },
                   { key: "permite_cp_cr",              label: "Contas a Pagar/Receber" },
@@ -8636,7 +8636,7 @@ function CadastrosInner() {
                 ))}
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" }}>Lançamentos Específicos</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, textTransform: "uppercase" }}>Lançamentos Específicos</div>
                 {([
                   { key: "permite_estoque",          label: "Estoque"                               },
                   { key: "permite_pedidos_venda",    label: "Pedidos de Venda"                      },
@@ -8657,7 +8657,7 @@ function CadastrosInner() {
           {abaOpGer === "estoque" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" }}>Operação de Estoque</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, textTransform: "uppercase" }}>Operação de Estoque</div>
                 <div style={{ display: "flex", gap: 24 }}>
                   {(["entrada","saida","neutra"] as const).map(v => (
                     <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
@@ -8672,7 +8672,7 @@ function CadastrosInner() {
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" }}>Tipo de Custo no Estoque</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, textTransform: "uppercase" }}>Tipo de Custo no Estoque</div>
                 <div style={{ display: "flex", gap: 24 }}>
                   {(["gasto","ajuste","contrato","nenhum"] as const).map(v => (
                     <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
@@ -8701,7 +8701,7 @@ function CadastrosInner() {
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Impostos / Retenções</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Impostos / Retenções</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {[
                     { key: "icms",         label: "ICMS"         },
@@ -8716,7 +8716,7 @@ function CadastrosInner() {
                     <label key={key} style={{
                       display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13,
                       padding: "6px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6,
-                      background: fOG.impostos.includes(key) ? "#D5E8F5" : "var(--bg-card)",
+                      background: fOG.impostos.includes(key) ? "#E8E8E8" : "var(--bg-card)",
                     }}>
                       <input type="checkbox" checked={fOG.impostos.includes(key)}
                         onChange={e => setFOG(p => ({
@@ -8734,7 +8734,7 @@ function CadastrosInner() {
           {abaOpGer === "financeiro" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" }}>Financeiro</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, textTransform: "uppercase" }}>Financeiro</div>
                 {([
                   { key: "gerar_financeiro",           label: "Gerar Financeiro"                  },
                   { key: "gerar_financeiro_gerencial",  label: "Gerar Financeiro Gerencial"        },
@@ -8745,7 +8745,7 @@ function CadastrosInner() {
                     {label}
                   </label>
                 ))}
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Custos</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, marginTop: 16, textTransform: "uppercase" }}>Custos</div>
                 {([
                   { key: "custo_absorcao",          label: "Custo por Absorção"            },
                   { key: "custo_abc",               label: "Custo ABC"                     },
@@ -8758,7 +8758,7 @@ function CadastrosInner() {
                 ))}
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" }}>Patrimonial</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, textTransform: "uppercase" }}>Patrimonial</div>
                 {([
                   { key: "manutencao_reparos", label: "Manutenção e Reparos" },
                   { key: "gerar_depreciacao",  label: "Gerar Depreciação"    },
@@ -8831,7 +8831,7 @@ function CadastrosInner() {
                 </div>
               </div>
               <div style={{ padding: "12px 16px", background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid var(--border-table)" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 6 }}>COMO FUNCIONA</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 6 }}>COMO FUNCIONA</div>
                 <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
                   Ao lançar uma despesa ou receita nesta operação, o sistema gera automaticamente a partida contábil:<br />
                   <strong>Débito</strong> na conta informada acima → <strong>Crédito</strong> na contra-partida.<br />
@@ -8889,7 +8889,7 @@ function CadastrosInner() {
               )}
               {/* Campo Tesouraria na mesma aba */}
               <div style={{ marginTop: 16, borderTop: "0.5px solid var(--border-table)", paddingTop: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>HISTÓRICO TESOURARIA</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10 }}>HISTÓRICO TESOURARIA</div>
                 <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12 }}>
                   <div>
                     <label style={lbl}>ID Tesouraria</label>
@@ -9160,7 +9160,7 @@ function CadastrosInner() {
                 type="checkbox"
                 checked={fDep.ativo}
                 onChange={e => setFDep(p => ({ ...p, ativo: e.target.checked }))}
-                style={{ width: 16, height: 16, accentColor: "#1A4870" }}
+                style={{ width: 16, height: 16, accentColor: "#111111" }}
               />
               <span style={{ fontSize: 13, fontWeight: 600, color: fDep.ativo ? "#16A34A" : "#888" }}>
                 {fDep.ativo ? "Depósito ativo — aparece nos seletores" : "Depósito inativo — oculto nos seletores"}
@@ -9199,7 +9199,7 @@ function CadastrosInner() {
               {(["dados","remuneracao","premiacoes","ferias"] as const).map(t => {
                 const labels: Record<string, string> = { dados: "Dados Pessoais", remuneracao: "Remuneração", premiacoes: `Premiações (${premiacoes.length})`, ferias: `Férias${ferDisp > 0 ? ` ⚠ ${ferDisp}` : ""}` };
                 return (
-                  <button key={t} onClick={() => setAbaFunc(t)} style={{ padding: "8px 18px", fontSize: 12, fontWeight: abaFunc === t ? 700 : 400, color: abaFunc === t ? "#1A4870" : "#666", background: "none", border: "none", borderBottom: abaFunc === t ? "2px solid #1A4870" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  <button key={t} onClick={() => setAbaFunc(t)} style={{ padding: "8px 18px", fontSize: 12, fontWeight: abaFunc === t ? 700 : 400, color: abaFunc === t ? "#111111" : "#666", background: "none", border: "none", borderBottom: abaFunc === t ? "2px solid #111111" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>
                     {labels[t]}
                   </button>
                 );
@@ -9295,7 +9295,7 @@ function CadastrosInner() {
                 </div>
 
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12 }}>Encargos trabalhistas — valores editáveis</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12 }}>Encargos trabalhistas — valores editáveis</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                     {[
                       { key: "fgts_pct", label: "FGTS (%)", valor: encFgts },
@@ -9318,7 +9318,7 @@ function CadastrosInner() {
 
                 {sal > 0 && (
                   <div style={{ background: "#EDF4FB", border: "0.5px solid #B0CEEA", borderRadius: 10, padding: "14px 18px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>Custo mensal estimado</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 10 }}>Custo mensal estimado</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 12 }}>
                       <div><span style={{ color: "var(--text-2)" }}>Salário base:</span> <strong>R$ {R(sal)}</strong></div>
                       <div><span style={{ color: "var(--text-2)" }}>Total encargos:</span> <strong>R$ {R(totalEncargos)}</strong></div>
@@ -9356,7 +9356,7 @@ function CadastrosInner() {
                           <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{p.mes_referencia}</td>
                           <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{p.descricao}</td>
                           <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{p.data_pagamento || "—"}</td>
-                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>R$ {R(p.valor)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#111111" }}>R$ {R(p.valor)}</td>
                           <td style={{ padding: "8px 12px", textAlign: "right" }}>
                             <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPremiacao(p.id).then(() => setPremiacoes(x => x.filter(r => r.id !== p.id))); }}>✕</button>
                           </td>
@@ -9503,7 +9503,7 @@ function CadastrosInner() {
                 <div key={gr.grupo}>
                   {/* Cabeçalho do grupo */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "#F0F4FA", borderTop: gi > 0 ? "0.5px solid var(--border-table)" : "none" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.05em" }}>{gr.grupo}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.05em" }}>{gr.grupo}</span>
                     <div style={{ display: "flex", gap: 6 }}>
                       {(["nenhum","leitura","escrita"] as const).map(v => (
                         <button key={v} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, border: "0.5px solid #c0cfe0", background: "#fff", cursor: "pointer", color: "#555" }}
@@ -9539,7 +9539,7 @@ function CadastrosInner() {
                                 background: val === op.v ? cor : "#fff",
                                 fontWeight: val === op.v ? 700 : 400,
                                 color: val === op.v
-                                  ? (op.v === "nenhum" ? "#888" : op.v === "leitura" ? "#1A4870" : op.v === "escrita" ? "#16A34A" : "#C9921B")
+                                  ? (op.v === "nenhum" ? "#888" : op.v === "leitura" ? "#111111" : op.v === "escrita" ? "#16A34A" : "#C9921B")
                                   : "var(--text-3)",
                               }}>
                               {op.label}
@@ -9574,7 +9574,7 @@ function CadastrosInner() {
                   <option value="campo">App de Campo (mobile)</option>
                 </select>
                 {fUser.tipo_acesso === "campo" && (
-                  <span style={{ fontSize: 11, color: "#1A4870", marginTop: 4, display: "block" }}>
+                  <span style={{ fontSize: 11, color: "#111111", marginTop: 4, display: "block" }}>
                     Acesso restrito ao app mobile — não pode entrar no ERP web.
                   </span>
                 )}
@@ -9623,13 +9623,13 @@ function CadastrosInner() {
       {campoResult && (
         <Modal titulo="Usuário de Campo Criado" onClose={() => setCampoResult(null)}>
           <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#0B2D50" }}>
+            <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#0D0D0D" }}>
               ✅ Conta criada com sucesso. Compartilhe as credenciais abaixo com o operador.
             </div>
             <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "14px 16px", display: "grid", gap: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-3)", fontSize: 12 }}>Nome</span><span style={{ fontWeight: 600 }}>{campoResult.nome}</span></div>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-3)", fontSize: 12 }}>E-mail</span><span style={{ fontWeight: 600 }}>{campoResult.email}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-3)", fontSize: 12 }}>Senha provisória</span><span style={{ fontWeight: 700, fontFamily: "monospace", color: "#1A4870", fontSize: 15 }}>{campoResult.senha}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-3)", fontSize: 12 }}>Senha provisória</span><span style={{ fontWeight: 700, fontFamily: "monospace", color: "#111111", fontSize: 15 }}>{campoResult.senha}</span></div>
             </div>
             <div style={{ background: "#FBF3E0", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", border: "0.5px solid #C9921B" }}>
               O operador acessa pelo app em <strong>web.arato.agr.br</strong> e será solicitado a trocar a senha no primeiro login.
@@ -9699,7 +9699,7 @@ function CadastrosInner() {
             const pa = principios.find(p => p.id === modalNC);
             return (
               <div>
-                <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0B2D50" }}>
+                <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0D0D0D" }}>
                   Princípio ativo: <strong>{pa?.nome}</strong> ({pa?.categoria} · {pa?.unidade})
                 </div>
                 <label style={lbl}>Nome Comercial *</label>
@@ -9770,7 +9770,7 @@ function CadastrosInner() {
             </div>
           </div>
           {fUM.fator_base && fUM.base_sigla && fUM.sigla && (
-            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
+            <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
               1 {fUM.sigla || "?"} = {fUM.fator_base} {fUM.base_sigla}
             </div>
           )}
@@ -9844,7 +9844,7 @@ function CadastrosInner() {
             <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20, marginTop: -4 }}>
               {ABAS_EMP.map(a => (
                 <button key={a.key} onClick={() => setAbaEmp(a.key as typeof abaEmp)}
-                  style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: abaEmp === a.key ? 700 : 400, color: abaEmp === a.key ? "#1A4870" : "var(--text-2)", borderBottom: abaEmp === a.key ? "2.5px solid #1A4870" : "2.5px solid transparent", whiteSpace: "nowrap" }}>
+                  style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: abaEmp === a.key ? 700 : 400, color: abaEmp === a.key ? "#111111" : "var(--text-2)", borderBottom: abaEmp === a.key ? "2.5px solid #111111" : "2.5px solid transparent", whiteSpace: "nowrap" }}>
                   {a.label}
                 </button>
               ))}
@@ -9867,12 +9867,12 @@ function CadastrosInner() {
                     {FINALIDADES_OPT.map(f => {
                       const ativo = fEmp.finalidades.includes(f.key);
                       return (
-                        <label key={f.key} onClick={() => toggleFinalidade(f.key)} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", border: `0.5px solid ${ativo ? "#1A4870" : "var(--border-table)"}`, borderRadius: 8, cursor: "pointer", background: ativo ? "#EBF3FB" : "var(--bg-card)", transition: "all 0.1s" }}>
-                          <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${ativo ? "#1A4870" : "#CBD5E1"}`, background: ativo ? "#1A4870" : "transparent", flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <label key={f.key} onClick={() => toggleFinalidade(f.key)} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", border: `0.5px solid ${ativo ? "#111111" : "var(--border-table)"}`, borderRadius: 8, cursor: "pointer", background: ativo ? "#EBF3FB" : "var(--bg-card)", transition: "all 0.1s" }}>
+                          <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${ativo ? "#111111" : "#CBD5E1"}`, background: ativo ? "#111111" : "transparent", flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
                             {ativo && <span style={{ color: "#fff", fontSize: 10, lineHeight: 1 }}>✓</span>}
                           </div>
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: ativo ? "#0B2D50" : "var(--text-1)" }}>{f.label}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: ativo ? "#0D0D0D" : "var(--text-1)" }}>{f.label}</div>
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{f.desc}</div>
                           </div>
                         </label>
@@ -9987,7 +9987,7 @@ function CadastrosInner() {
                     <label style={lbl}>Ambiente SEFAZ</label>
                     <div style={{ display: "flex", gap: 12 }}>
                       {["homologacao", "producao"].map(v => (
-                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", padding: "8px 16px", border: `0.5px solid ${fEmp.ambiente_fiscal === v ? "#1A4870" : "var(--border-table)"}`, borderRadius: 8, background: fEmp.ambiente_fiscal === v ? "#D5E8F5" : "transparent" }}>
+                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", padding: "8px 16px", border: `0.5px solid ${fEmp.ambiente_fiscal === v ? "#111111" : "var(--border-table)"}`, borderRadius: 8, background: fEmp.ambiente_fiscal === v ? "#E8E8E8" : "transparent" }}>
                           <input type="radio" name="amb" value={v} checked={fEmp.ambiente_fiscal === v} onChange={() => setFEmp(p => ({ ...p, ambiente_fiscal: v as Empresa["ambiente_fiscal"] }))} />
                           {v === "homologacao" ? "Homologação (Teste)" : "Produção (Real)"}
                         </label>
@@ -10018,8 +10018,8 @@ function CadastrosInner() {
                 {/* Certificado A1 — status (gerenciado em Parâmetros Fiscais) */}
                 <div style={{ marginTop: 20, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870" }}>Certificado Digital A1</div>
-                    <a href="/configuracoes/modulos" style={{ fontSize: 11, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Gerenciar em Parâmetros Fiscais ↗</a>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#111111" }}>Certificado Digital A1</div>
+                    <a href="/configuracoes/modulos" style={{ fontSize: 11, color: "#111111", fontWeight: 600, textDecoration: "none" }}>Gerenciar em Parâmetros Fiscais ↗</a>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--text-2)" }}>
                     O certificado A1 (.pfx) é configurado uma única vez em <strong>Configurações → Parâmetros do Sistema → Aba Fiscal</strong>.<br/>

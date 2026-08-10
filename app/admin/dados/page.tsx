@@ -74,7 +74,7 @@ const GRUPOS: Grupo[] = [
     ],
   },
   {
-    id: "estoque", label: "Estoque & Compras", icon: "📦", cor: "#378ADD", bg: "#EFF6FF",
+    id: "estoque", label: "Estoque & Compras", icon: "📦", cor: "#444444", bg: "#F2F2F2",
     subitens: [
       { id: "nf_entradas",    label: "NFs de Entrada",                    icon: "🧾", countTables: ["nf_entradas"],          deleteTables: ["nf_entrada_itens","nf_entradas"] },
       { id: "movimentacoes",  label: "Movimentações de Estoque",          icon: "📈", countTables: ["movimentacoes_estoque"], deleteTables: ["movimentacoes_estoque"] },
@@ -107,7 +107,7 @@ const GRUPOS: Grupo[] = [
     ],
   },
   {
-    id: "estrutura", label: "Estrutura", icon: "🗺️", cor: "#0B2D50", bg: "#D5E8F5",
+    id: "estrutura", label: "Estrutura", icon: "🗺️", cor: "#0D0D0D", bg: "#E8E8E8",
     subitens: [
       { id: "talhoes",    label: "Talhões",             icon: "📐", countTables: ["talhoes"],          deleteTables: ["talhoes"],          aviso: "Exclua Lavoura antes — operações de lavoura dependem de talhões." },
       { id: "ciclos",     label: "Ciclos de Produção",  icon: "🔄", countTables: ["ciclos"],            deleteTables: ["ciclos"],           aviso: "Exclua Lavoura antes — operações dependem de ciclos." },
@@ -419,7 +419,7 @@ export default function DadosAdminPage() {
                 </div>
                 <div style={{ ...card, padding: "18px 22px" }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>Para confirmar, digite exatamente o nome da conta:</div>
-                  <code style={{ display: "block", background: "var(--bg-page)", padding: "6px 12px", borderRadius: 6, fontSize: 14, color: "#1A4870", fontWeight: 700, marginBottom: 10 }}>{contaExcluirObj.nome}</code>
+                  <code style={{ display: "block", background: "var(--bg-page)", padding: "6px 12px", borderRadius: 6, fontSize: 14, color: "#111111", fontWeight: 700, marginBottom: 10 }}>{contaExcluirObj.nome}</code>
                   <input value={confirmaTexto} onChange={e => setConfirmaTexto(e.target.value)} placeholder="Digite o nome da conta aqui..."
                     style={{ width: "100%", padding: "9px 12px", fontSize: 13, boxSizing: "border-box", border: `1.5px solid ${confirmaTexto === contaExcluirObj.nome ? "#E24B4A" : "var(--border)"}`, borderRadius: 8, outline: "none" }} />
                   <button onClick={excluirClienteCompleto} disabled={confirmaTexto !== contaExcluirObj.nome || deletandoCliente}
@@ -469,7 +469,7 @@ export default function DadosAdminPage() {
                 </select>
                 {fazendaLimpar && (
                   <button onClick={carregarContagens} disabled={carregandoContagens}
-                    style={{ marginTop: 10, width: "100%", padding: "7px 0", border: "0.5px solid #1A4870", borderRadius: 8, background: "white", color: "#1A4870", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                    style={{ marginTop: 10, width: "100%", padding: "7px 0", border: "0.5px solid #111111", borderRadius: 8, background: "white", color: "#111111", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                     {carregandoContagens ? "⏳ Contando..." : "↺ Carregar contagens"}
                   </button>
                 )}
@@ -718,7 +718,7 @@ export default function DadosAdminPage() {
                   } finally { setCorrigindoIbge(false); }
                 }}
                 disabled={corrigindoIbge}
-                style={{ whiteSpace: "nowrap", padding: "10px 20px", borderRadius: 8, border: "none", background: corrigindoIbge ? "#ccc" : "#1A4870", color: "white", fontWeight: 700, fontSize: 13, cursor: corrigindoIbge ? "not-allowed" : "pointer" }}>
+                style={{ whiteSpace: "nowrap", padding: "10px 20px", borderRadius: 8, border: "none", background: corrigindoIbge ? "#ccc" : "#111111", color: "white", fontWeight: 700, fontSize: 13, cursor: corrigindoIbge ? "not-allowed" : "pointer" }}>
                 {corrigindoIbge ? "⏳ Corrigindo…" : "▶ Executar agora"}
               </button>
             </div>

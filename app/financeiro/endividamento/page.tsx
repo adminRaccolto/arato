@@ -220,7 +220,7 @@ export default function RelatorioEndividamento() {
     if (!win) { alert("Permita popups para visualizar o documento."); return; }
     const emissao = new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const prodFiltrado = filtroProd ? produtores.find(p => p.id === filtroProd) : null;
-    const thS = "padding:5px 7px;background:#1A4870;color:#fff;font-size:9px;font-weight:700;white-space:nowrap;text-align:right;";
+    const thS = "padding:5px 7px;background:#111111;color:#fff;font-size:9px;font-weight:700;white-space:nowrap;text-align:right;";
     const thL = thS + "text-align:left;";
 
     const colsHead = anos.map(a =>
@@ -234,11 +234,11 @@ export default function RelatorioEndividamento() {
       const n1Total = anos.reduce((s, a) => s + (n1.porAno[a]?.total ?? 0), 0);
       if (n1Total === 0) continue;
       tbody += `<tr style="background:#EBF3FC">
-        <td colspan="2" style="padding:5px 7px;font-weight:700;font-size:10px;color:#0B2D50">${n1.credor}</td>
+        <td colspan="2" style="padding:5px 7px;font-weight:700;font-size:10px;color:#0D0D0D">${n1.credor}</td>
         ${anos.map(a => `
           <td style="padding:4px 7px;text-align:right;font-size:9px">${(n1.porAno[a]?.amort ?? 0) > 0 ? fmtBRL(n1.porAno[a].amort) : "—"}</td>
           <td style="padding:4px 7px;text-align:right;font-size:9px;color:#C9921B">${(n1.porAno[a]?.juros ?? 0) > 0 ? fmtBRL(n1.porAno[a].juros) : "—"}</td>
-          <td style="padding:4px 7px;text-align:right;font-size:9px;font-weight:600;border-right:2px solid #D5E8F5">${(n1.porAno[a]?.total ?? 0) > 0 ? fmtBRL(n1.porAno[a].total) : "—"}</td>
+          <td style="padding:4px 7px;text-align:right;font-size:9px;font-weight:600;border-right:2px solid #E8E8E8">${(n1.porAno[a]?.total ?? 0) > 0 ? fmtBRL(n1.porAno[a].total) : "—"}</td>
         `).join("")}
         <td style="padding:4px 7px;text-align:right;font-size:9px;font-weight:700">${fmtBRL(n1Total)}</td>
       </tr>`;
@@ -257,7 +257,7 @@ export default function RelatorioEndividamento() {
         </tr>`;
       }
     }
-    tbody += `<tr style="background:#1A4870">
+    tbody += `<tr style="background:#111111">
       <td colspan="2" style="padding:6px 7px;color:#fff;font-weight:700;font-size:10px">TOTAL</td>
       ${anos.map(a => `
         <td style="padding:6px 7px;text-align:right;font-size:9px;color:#fff;font-weight:700">${fmtBRL(totalPorAno[a]?.amort ?? 0)}</td>
@@ -272,8 +272,8 @@ export default function RelatorioEndividamento() {
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:system-ui,sans-serif;background:#D1D5DB;color:#1a1a1a}
-  .toolbar{position:sticky;top:0;background:#1A4870;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-  .btn-print{background:#fff;color:#1A4870;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .toolbar{position:sticky;top:0;background:#111111;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .btn-print{background:#fff;color:#111111;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
   .page-wrapper{display:flex;justify-content:center;padding:28px}
   .page{background:#fff;width:297mm;padding:12mm 14mm;box-shadow:0 4px 24px rgba(0,0,0,.18)}
   table{width:100%;border-collapse:collapse}
@@ -295,16 +295,16 @@ export default function RelatorioEndividamento() {
   <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
 </div>
 <div class="page-wrapper"><div class="page">
-  <div style="background:#1A4870;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-radius:4px">
+  <div style="background:#111111;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-radius:4px">
     <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" style="height:28px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />
     <div style="text-align:right">
       ${logoCliente ? `<img src="${logoCliente}" style="height:24px;object-fit:contain;filter:brightness(0) invert(1);margin-bottom:3px" onerror="this.style.display='none'" /><br>` : ""}
       <span style="font-size:9px;color:rgba(255,255,255,.6)">Emitido em ${emissao}</span>
     </div>
   </div>
-  <div style="border-bottom:2px solid #1A4870;padding-bottom:7px;margin-bottom:10px">
+  <div style="border-bottom:2px solid #111111;padding-bottom:7px;margin-bottom:10px">
     <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Financeiro — Capital de Terceiros</div>
-    <div style="font-size:15px;font-weight:800;color:#1A4870">Cronograma de Endividamento${anoInicio || anoFim ? ` — ${anoInicio || "início"} a ${anoFim || "fim"}` : ""}</div>
+    <div style="font-size:15px;font-weight:800;color:#111111">Cronograma de Endividamento${anoInicio || anoFim ? ` — ${anoInicio || "início"} a ${anoFim || "fim"}` : ""}</div>
     <div style="font-size:10px;color:#555;margin-top:3px">
       ${prodFiltrado ? `Produtor: ${prodFiltrado.nome_razao_social}${prodFiltrado.cpf_cnpj ? ` · ${prodFiltrado.cpf_cnpj}` : ""} · ` : ""}
       ${apenasEmAberto ? "Apenas parcelas em aberto · " : ""}
@@ -324,12 +324,12 @@ export default function RelatorioEndividamento() {
     </thead>
     <tbody>${tbody}</tbody>
   </table>
-  <div style="display:flex;gap:24px;margin-top:12px;padding-top:8px;border-top:1.5px solid #1A4870;flex-wrap:wrap">
+  <div style="display:flex;gap:24px;margin-top:12px;padding-top:8px;border-top:1.5px solid #111111;flex-wrap:wrap">
     ${[
       ["SALDO DEVEDOR TOTAL",  fmtBRL(totalSaldo),            "#C0392B"],
-      ["TOTAL CAPTADO",        fmtBRL(totalCaptado),           "#1A4870"],
+      ["TOTAL CAPTADO",        fmtBRL(totalCaptado),           "#111111"],
       ["AMORTIZADO",           fmtBRL(totalPago),              "#16A34A"],
-      ["A PAGAR NO PERÍODO",   fmtBRL(totalJanelaTotal),       "#1A4870"],
+      ["A PAGAR NO PERÍODO",   fmtBRL(totalJanelaTotal),       "#111111"],
       ["  — Amortização",      fmtBRL(totalJanelaAmort),       "var(--text-2)"],
       ["  — Juros / Encargos", fmtBRL(totalJanelaJuros),       "#C9921B"],
     ].map(([k, v, cor]) => `<div><div style="font-size:8px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">${k}</div><div style="font-size:11px;font-weight:800;color:${cor}">${v}</div></div>`).join("")}
@@ -380,7 +380,7 @@ export default function RelatorioEndividamento() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={abrirPreview}
-              style={{ padding: "8px 18px", background: "#F0F5FA", border: "0.5px solid #1A487040", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#1A4870" }}>
+              style={{ padding: "8px 18px", background: "#F0F5FA", border: "0.5px solid #11111140", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#111111" }}>
               ⎙ Visualizar / Imprimir
             </button>
             <button onClick={exportarXLSX}
@@ -406,7 +406,7 @@ export default function RelatorioEndividamento() {
           {[{ label: "Todos", val: "" }, { label: "Ativos", val: "ativo" }, { label: "Quitados", val: "quitado" }].map(f => (
             <button key={f.val} onClick={() => setFiltroStatus(f.val)}
               style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid var(--border)", fontSize: 12,
-                background: filtroStatus === f.val ? "#1A4870" : "var(--bg-card)", color: filtroStatus === f.val ? "#fff" : "var(--text-2)", cursor: "pointer" }}>
+                background: filtroStatus === f.val ? "#111111" : "var(--bg-card)", color: filtroStatus === f.val ? "#fff" : "var(--text-2)", cursor: "pointer" }}>
               {f.label}
             </button>
           ))}
@@ -471,9 +471,9 @@ export default function RelatorioEndividamento() {
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           {[
             { l: "Saldo Devedor Total",    v: fmtBRL(totalSaldo),          cor: "#E24B4A", sub: totalCaptado > 0 ? `${fmtPct((totalSaldo / totalCaptado) * 100)} do captado` : undefined },
-            { l: "Total Captado",          v: fmtBRL(totalCaptado),         cor: "#1A4870", sub: `${filtrados.length} contrato${filtrados.length !== 1 ? "s" : ""}` },
+            { l: "Total Captado",          v: fmtBRL(totalCaptado),         cor: "#111111", sub: `${filtrados.length} contrato${filtrados.length !== 1 ? "s" : ""}` },
             { l: "Total Amortizado",       v: fmtBRL(totalPago),            cor: "#16A34A", sub: totalCaptado > 0 ? `${fmtPct((totalPago / totalCaptado) * 100)} quitado` : undefined },
-            { l: `A pagar ${anoInicio || "…"}–${anoFim || "…"}`, v: fmtBRL(totalJanelaTotal), cor: "#1A4870",
+            { l: `A pagar ${anoInicio || "…"}–${anoFim || "…"}`, v: fmtBRL(totalJanelaTotal), cor: "#111111",
               sub: `amort. ${fmtBRL(totalJanelaAmort)} · juros ${fmtBRL(totalJanelaJuros)}` },
             { l: "Juros Acumulados",       v: fmtBRL(totalJuros),           cor: "#C9921B" },
           ].map(k => (
@@ -492,7 +492,7 @@ export default function RelatorioEndividamento() {
           <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #FCA5A5" }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: "#B91C1C", marginBottom: 8 }}>Erro ao carregar dados</div>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>{erro}</div>
-            <button onClick={carregar} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>
+            <button onClick={carregar} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>
               Tentar novamente
             </button>
           </div>
@@ -511,8 +511,8 @@ export default function RelatorioEndividamento() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 210 + 380 }}>
                 <thead>
-                  <tr style={{ background: "#1A4870" }}>
-                    <th style={{ ...thStyle, textAlign: "left", minWidth: 200, paddingLeft: 16, position: "sticky", left: 0, background: "#1A4870", zIndex: 2 }}>
+                  <tr style={{ background: "#111111" }}>
+                    <th style={{ ...thStyle, textAlign: "left", minWidth: 200, paddingLeft: 16, position: "sticky", left: 0, background: "#111111", zIndex: 2 }}>
                       Instituição / Tipo
                     </th>
                     {anos.map(a => (
@@ -546,9 +546,9 @@ export default function RelatorioEndividamento() {
                       <React.Fragment key={rowKey}>
                         {/* N1: Instituição */}
                         <tr onClick={() => toggle(rowKey)}
-                          style={{ background: "#EBF3FC", cursor: "pointer", borderBottom: "0.5px solid #D5E8F5" }}>
-                          <td style={{ padding: "10px 16px", fontWeight: 700, fontSize: 13, color: "#0B2D50", position: "sticky", left: 0, background: "#EBF3FC", zIndex: 1 }}>
-                            <span style={{ fontSize: 10, color: "#1A4870", marginRight: 6, opacity: 0.5 }}>{isExp ? "▼" : "▶"}</span>
+                          style={{ background: "#EBF3FC", cursor: "pointer", borderBottom: "0.5px solid #E8E8E8" }}>
+                          <td style={{ padding: "10px 16px", fontWeight: 700, fontSize: 13, color: "#0D0D0D", position: "sticky", left: 0, background: "#EBF3FC", zIndex: 1 }}>
+                            <span style={{ fontSize: 10, color: "#111111", marginRight: 6, opacity: 0.5 }}>{isExp ? "▼" : "▶"}</span>
                             {n1.credor}
                             <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginTop: 2 }}>
                               {n1.niveis2.length} tipo{n1.niveis2.length !== 1 ? "s" : ""} ·{" "}
@@ -557,7 +557,7 @@ export default function RelatorioEndividamento() {
                           </td>
                           {anos.map(a => (
                             <React.Fragment key={a}>
-                              <td style={{ ...colV, fontWeight: 600, borderLeft: "1.5px solid #D5E8F5" }}>
+                              <td style={{ ...colV, fontWeight: 600, borderLeft: "1.5px solid #E8E8E8" }}>
                                 {(n1.porAno[a]?.amort ?? 0) > 0 ? fmtBRL(n1.porAno[a].amort) : <span style={{ color: "#ddd" }}>—</span>}
                               </td>
                               <td style={{ ...colS }}>
@@ -568,7 +568,7 @@ export default function RelatorioEndividamento() {
                               </td>
                             </React.Fragment>
                           ))}
-                          <td style={{ ...colV, fontWeight: 700, color: "#1A4870", borderLeft: "2px solid #C5D9EE" }}>{fmtBRL(n1TotalPer)}</td>
+                          <td style={{ ...colV, fontWeight: 700, color: "#111111", borderLeft: "2px solid #C5D9EE" }}>{fmtBRL(n1TotalPer)}</td>
                           <td />
                         </tr>
 
@@ -581,7 +581,7 @@ export default function RelatorioEndividamento() {
                             <React.Fragment key={rowKey2}>
                               <tr onClick={e => { e.stopPropagation(); toggle(rowKey2); }}
                                 style={{ background: "#F4F8FC", borderBottom: "0.5px solid #E5EDF5", cursor: "pointer" }}>
-                                <td style={{ padding: "8px 16px 8px 32px", fontSize: 12, fontWeight: 600, color: "#1A4870", position: "sticky", left: 0, background: "#F4F8FC", zIndex: 1 }}>
+                                <td style={{ padding: "8px 16px 8px 32px", fontSize: 12, fontWeight: 600, color: "#111111", position: "sticky", left: 0, background: "#F4F8FC", zIndex: 1 }}>
                                   <span style={{ fontSize: 9, color: "var(--text-3)", marginRight: 5 }}>{isExp2 ? "▼" : "▶"}</span>
                                   {TIPO_LABEL[n2.tipo] ?? n2.tipo}
                                   <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginLeft: 8 }}>{n2.contratos.length} contrato{n2.contratos.length !== 1 ? "s" : ""}</span>
@@ -617,7 +617,7 @@ export default function RelatorioEndividamento() {
                                         contrato: {fmtData(c.data_contrato)}
                                         {c.linha_credito ? ` · ${c.linha_credito}` : ""}
                                         {c.taxa_juros_aa != null ? ` · ${c.taxa_juros_aa}% a.a.` : ""}
-                                        {" · "}<span style={{ color: c.status === "ativo" ? "#1A4870" : "#16A34A" }}>{c.status === "ativo" ? "Ativo" : "Quitado"}</span>
+                                        {" · "}<span style={{ color: c.status === "ativo" ? "#111111" : "#16A34A" }}>{c.status === "ativo" ? "Ativo" : "Quitado"}</span>
                                       </div>
                                       {c.parcelasVencidas > 0 && (
                                         <div style={{ fontSize: 10, color: "#E24B4A", fontWeight: 600 }}>⚠ {c.parcelasVencidas} parcela{c.parcelasVencidas > 1 ? "s" : ""} vencida{c.parcelasVencidas > 1 ? "s" : ""}</div>
@@ -655,8 +655,8 @@ export default function RelatorioEndividamento() {
                   })}
 
                   {/* Totais por ano */}
-                  <tr style={{ background: "#1A4870", fontWeight: 700 }}>
-                    <td style={{ padding: "10px 16px", color: "#fff", fontSize: 12, position: "sticky", left: 0, background: "#1A4870", zIndex: 1 }}>
+                  <tr style={{ background: "#111111", fontWeight: 700 }}>
+                    <td style={{ padding: "10px 16px", color: "#fff", fontSize: 12, position: "sticky", left: 0, background: "#111111", zIndex: 1 }}>
                       TOTAL GERAL
                     </td>
                     {anos.map(a => (

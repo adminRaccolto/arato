@@ -45,7 +45,7 @@ interface Motorista {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #CDD5E0", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-card)" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, color: "#444", marginBottom: 4 };
-const btnV: React.CSSProperties = { background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
+const btnV: React.CSSProperties = { background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { background: "#F0F4FA", color: "#444", border: "0.5px solid #CDD5E0", borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" };
 
 type Aba = "transportadoras" | "veiculos" | "motoristas";
@@ -233,8 +233,8 @@ export default function TransporteCadastrosPage() {
             ["motoristas",      `Motoristas (${motorFilt.length})`],
           ] as [Aba, string][]).map(([a, l]) => (
             <button key={a} onClick={() => { setAba(a); setBusca(""); }}
-              style={{ padding: "10px 20px", border: "none", borderBottom: aba === a ? "2px solid #1A5CB8" : "2px solid transparent",
-                background: "transparent", fontSize: 13, fontWeight: aba === a ? 700 : 400, color: aba === a ? "#1A5CB8" : "var(--text-2)", cursor: "pointer" }}>
+              style={{ padding: "10px 20px", border: "none", borderBottom: aba === a ? "2px solid #2A2A2A" : "2px solid transparent",
+                background: "transparent", fontSize: 13, fontWeight: aba === a ? 700 : 400, color: aba === a ? "#2A2A2A" : "var(--text-2)", cursor: "pointer" }}>
               {l}
             </button>
           ))}
@@ -369,7 +369,7 @@ export default function TransporteCadastrosPage() {
                         <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "monospace" }}>{m.cpf ?? "—"}</td>
                         <td style={{ padding: "10px 12px", fontSize: 12 }}>
                           <span style={{ fontFamily: "monospace" }}>{m.cnh_numero ?? "—"}</span>
-                          {m.cnh_categoria && <span style={{ marginLeft: 6, background: "#EBF3FF", color: "#1A5CB8", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 }}>{m.cnh_categoria}</span>}
+                          {m.cnh_categoria && <span style={{ marginLeft: 6, background: "#EBF3FF", color: "#2A2A2A", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 }}>{m.cnh_categoria}</span>}
                           {m.cnh_uf && <span style={{ marginLeft: 4, fontSize: 10, color: "#666" }}>{m.cnh_uf}</span>}
                         </td>
                         <td style={{ padding: "10px 12px" }}>
@@ -435,7 +435,7 @@ export default function TransporteCadastrosPage() {
             </div>
 
             <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Endereço</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Endereço</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <Campo label="CEP">
                   <input style={inp} value={modalT.cep ?? ""} onChange={e => setModalT(p => ({ ...p!, cep: e.target.value }))}

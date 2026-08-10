@@ -13,7 +13,7 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "18px 20px", marginBottom: 16 };
 const toggle: React.CSSProperties = { width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s" };
@@ -27,7 +27,7 @@ const fmtComp = (s?: string) => {
   return `${meses[parseInt(m)-1]}/${y}`;
 };
 
-function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{texto}</span>;
 }
 
@@ -431,17 +431,17 @@ export default function NfServicoPage() {
                         {fmtBRL(nf.valor_iss)}
                         {nf.iss_retido && badge(" Retido", "#FCEBEB", "#791F1F")}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", color: "#1A4870" }}>{fmtBRL(nf.valor_liquido)}</td>
+                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", color: "#111111" }}>{fmtBRL(nf.valor_liquido)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           {nf.status !== "processada" && nf.status !== "cancelada" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                               Editar
                             </button>
                           )}
                           {nf.status === "pendente" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A4870", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Processar
                             </button>
                           )}
@@ -486,7 +486,7 @@ export default function NfServicoPage() {
                   const passado = ordem.indexOf(etapa) > i;
                   return (
                     <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#1A4870" : passado ? "#D5E8F5" : "var(--bg-page)", color: ativo ? "#fff" : passado ? "#1A4870" : "var(--text-muted)" }}>
+                      <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#111111" : passado ? "#E8E8E8" : "var(--bg-page)", color: ativo ? "#fff" : passado ? "#111111" : "var(--text-muted)" }}>
                         {i + 1}
                       </div>
                       {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}
@@ -697,7 +697,7 @@ export default function NfServicoPage() {
                     ].map(({ label, value, vermelho, destaque }) => (
                       <div key={label}>
                         <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3 }}>{label}</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: destaque ? "#1A4870" : vermelho ? "#E24B4A" : "var(--text-1)" }}>{value}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: destaque ? "#111111" : vermelho ? "#E24B4A" : "var(--text-1)" }}>{value}</div>
                       </div>
                     ))}
                   </div>
@@ -764,7 +764,7 @@ export default function NfServicoPage() {
                       <button style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
                         {saving ? "Salvando…" : "Salvar como Pendente"}
                       </button>
-                      <button style={{ ...btnV, background: saving ? "#ccc" : "#1A4870" }} onClick={() => salvar("processada")} disabled={saving}>
+                      <button style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
                         {saving ? "Processando…" : "✓ Processar NF"}
                       </button>
                     </div>

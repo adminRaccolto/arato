@@ -11,7 +11,7 @@ interface FazendaVM extends FazendaDB { talhoes: TalhaoVM[] }
 
 const corSafra = (s: string | null | undefined) => {
   if (!s) return { bg: "#F1EFE8", color: "var(--text-2)" };
-  if (s.startsWith("Soja"))    return { bg: "#D5E8F5", color: "#0B2D50" };
+  if (s.startsWith("Soja"))    return { bg: "#E8E8E8", color: "#0D0D0D" };
   if (s.startsWith("Milho"))   return { bg: "#FAEEDA", color: "#633806" };
   if (s.startsWith("Algodão")) return { bg: "#E6F1FB", color: "#0C447C" };
   return { bg: "#F1EFE8", color: "var(--text-2)" };
@@ -79,10 +79,10 @@ export default function Propriedades() {
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
                 {[
-                  { label: "Fazendas",         valor: String(fazendas.length),           cor: "#1A4870" },
-                  { label: "Área total (ha)",   valor: totalArea.toLocaleString("pt-BR"), cor: "#1A4870" },
+                  { label: "Fazendas",         valor: String(fazendas.length),           cor: "#111111" },
+                  { label: "Área total (ha)",   valor: totalArea.toLocaleString("pt-BR"), cor: "#111111" },
                   { label: "Talhões",           valor: String(totalTalhoes),              cor: "#C9921B" },
-                  { label: "Georreferenciados", valor: `${comGps}/${totalTalhoes}`,       cor: comGps === totalTalhoes && totalTalhoes > 0 ? "#1A4870" : "#EF9F27" },
+                  { label: "Georreferenciados", valor: `${comGps}/${totalTalhoes}`,       cor: comGps === totalTalhoes && totalTalhoes > 0 ? "#111111" : "#EF9F27" },
                 ].map((s, i) => (
                   <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
@@ -102,7 +102,7 @@ export default function Propriedades() {
                 <div style={{ textAlign: "center", padding: 48, color: "#444" }}>
                   <div style={{ fontSize: 36, marginBottom: 12 }}>⬡</div>
                   <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: "#666" }}>Nenhuma fazenda cadastrada</div>
-                  <Link href="/cadastros?tab=fazendas" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600 }}>Ir para Cadastros → Fazendas</Link>
+                  <Link href="/cadastros?tab=fazendas" style={{ fontSize: 12, color: "#111111", fontWeight: 600 }}>Ir para Cadastros → Fazendas</Link>
                 </div>
               )}
 
@@ -115,23 +115,23 @@ export default function Propriedades() {
                   return (
                     <div key={fazenda.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => toggle(fazenda.id)}>
-                        <div style={{ width: 40, height: 40, background: "#D5E8F5", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⬡</div>
+                        <div style={{ width: 40, height: 40, background: "#E8E8E8", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⬡</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 2 }}>{fazenda.nome}</div>
                           <div style={{ fontSize: 11, color: "var(--text-2)" }}>{fazenda.municipio} · {fazenda.estado} · {(fazenda.area_total_ha ?? 0).toLocaleString("pt-BR")} ha</div>
                         </div>
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                          {fazenda.car  && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 7px", borderRadius: 8 }}>CAR ✓</span>}
-                          {fazenda.itr  && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 7px", borderRadius: 8 }}>ITR ✓</span>}
-                          {fazenda.nirf && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 7px", borderRadius: 8 }}>NIRF ✓</span>}
+                          {fazenda.car  && <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 7px", borderRadius: 8 }}>CAR ✓</span>}
+                          {fazenda.itr  && <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 7px", borderRadius: 8 }}>ITR ✓</span>}
+                          {fazenda.nirf && <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 7px", borderRadius: 8 }}>NIRF ✓</span>}
                         </div>
                         <div style={{ display: "flex", gap: 20, flexShrink: 0 }}>
                           <div style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 16, fontWeight: 600, color: "#1A4870" }}>{fazenda.talhoes.length}</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: "#111111" }}>{fazenda.talhoes.length}</div>
                             <div style={{ fontSize: 10, color: "#444" }}>talhões</div>
                           </div>
                           <div style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 16, fontWeight: 600, color: pct === 100 ? "#1A4870" : "#EF9F27" }}>{pct}%</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: pct === 100 ? "#111111" : "#EF9F27" }}>{pct}%</div>
                             <div style={{ fontSize: 10, color: "#444" }}>mapeado</div>
                           </div>
                         </div>
@@ -175,7 +175,7 @@ export default function Propriedades() {
                                       </td>
                                       <td style={{ padding: "10px 16px", textAlign: "center" }}>
                                         {t.lat && t.lng
-                                          ? <span style={{ color: "#1A4870", fontSize: 11 }}>● {Number(t.lat).toFixed(4)}, {Number(t.lng).toFixed(4)}</span>
+                                          ? <span style={{ color: "#111111", fontSize: 11 }}>● {Number(t.lat).toFixed(4)}, {Number(t.lng).toFixed(4)}</span>
                                           : <span style={{ color: "#EF9F27", fontSize: 11 }}>○ Sem GPS</span>}
                                       </td>
                                     </tr>

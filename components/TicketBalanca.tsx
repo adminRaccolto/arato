@@ -75,7 +75,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
   const temClassif = (dados.umidadePct ?? 0) > 0 || (dados.impurezaPct ?? 0) > 0 || (dados.avar ?? 0) > 0;
   const horaStr = dados.hora ?? new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const tipoLabel = dados.tipo === "entrada" ? "ENTRADA" : "SAÍDA";
-  const tipoColor = dados.tipo === "entrada" ? "#1A4870" : "#7C3AED";
+  const tipoColor = dados.tipo === "entrada" ? "#111111" : "#7C3AED";
 
   const line = () => <div style={{ borderTop: "1px dashed #bbb", margin: "8px 0" }} />;
 
@@ -88,7 +88,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
         {/* Botões */}
         <div className="ticket-btn-row" style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 10 }}>
           <button onClick={() => window.print()}
-            style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             🖨 Imprimir Ticket
           </button>
           <button onClick={onFechar}
@@ -252,7 +252,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
               {line()}
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>TOTAL EM SACAS ({dados.kgSaca ?? 60} kg/sc)</div>
-                <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 2, color: "#1A4870" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 2, color: "#111111" }}>
                   {fmt(dados.sacas!, 3)} sc
                 </div>
               </div>

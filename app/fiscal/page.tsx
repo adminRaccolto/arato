@@ -52,7 +52,7 @@ const aplicarMascara = (raw: string): string => {
 const desmascarar = (masked: string): number => Number(masked.replace(/\./g, "").replace(",", ".")) || 0;
 
 const corStatus = (s: string) => ({
-  autorizada:    { bg: "#D5E8F5", color: "#0B2D50", label: "Autorizada",        icone: "✓" },
+  autorizada:    { bg: "#E8E8E8", color: "#0D0D0D", label: "Autorizada",        icone: "✓" },
   rejeitada:     { bg: "#FCEBEB", color: "#791F1F", label: "Rejeitada",          icone: "✗" },
   em_digitacao:  { bg: "#FAEEDA", color: "#633806", label: "Processando…",      icone: "⟳" },
   cancelada:     { bg: "#F1EFE8", color: "#666",    label: "Cancelada",          icone: "○" },
@@ -563,7 +563,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                   <span style={{ fontSize: 10, background: cs.bg, color: cs.color, padding: "3px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{cs.icone} {cs.label}</span>
                 </td>
                 <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                  <span style={{ fontSize: 10, background: nota.auto ? "#D5E8F5" : "#FBF0D8", color: nota.auto ? "#0B2D50" : "#7A5A12", padding: "2px 7px", borderRadius: 8 }}>
+                  <span style={{ fontSize: 10, background: nota.auto ? "#E8E8E8" : "#FBF0D8", color: nota.auto ? "#0D0D0D" : "#7A5A12", padding: "2px 7px", borderRadius: 8 }}>
                     {nota.auto ? "⟳ auto" : "◈ manual"}
                   </span>
                 </td>
@@ -586,7 +586,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                       {nota.xml_url && (
                         <div>
                           <span style={{ color: "#444" }}>XML arquivado</span>
-                          <div style={{ fontSize: 11, color: "#1A4870", marginTop: 2 }}>✓ Disponível</div>
+                          <div style={{ fontSize: 11, color: "#111111", marginTop: 2 }}>✓ Disponível</div>
                         </div>
                       )}
                     </div>
@@ -595,11 +595,11 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                         <>
                           <button
                             onClick={(e) => { e.stopPropagation(); onImprimirDanfe?.(nota); }}
-                            style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                            style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                             🖨 Imprimir DANFE
                           </button>
                           {nota.xml_url && (
-                            <button style={{ padding: "5px 12px", border: "0.5px solid #378ADD", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</button>
+                            <button style={{ padding: "5px 12px", border: "0.5px solid #444444", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</button>
                           )}
                           {onCancelar && (
                             <button
@@ -624,7 +624,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                             return ehCif ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); onManifestarNF(nota); }}
-                                style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#1A4870", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                                style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#111111", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                               >
                                 🚛 CT-e / MDF-e
                               </button>
@@ -1438,8 +1438,8 @@ function FiscalInner() {
               {/* KPI cards */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
-                  { label: "NF-e autorizadas",   valor: String(totalAutorizadas),  cor: "#1A4870", sub: `${notas.filter(n => n.auto).length} emitidas automaticamente` },
-                  { label: "Faturamento (mês)",   valor: fmtMoeda(faturamentoMes), cor: "#1A4870", sub: "notas autorizadas" },
+                  { label: "NF-e autorizadas",   valor: String(totalAutorizadas),  cor: "#111111", sub: `${notas.filter(n => n.auto).length} emitidas automaticamente` },
+                  { label: "Faturamento (mês)",   valor: fmtMoeda(faturamentoMes), cor: "#111111", sub: "notas autorizadas" },
                   { label: "Certificado A1",       valor: certDiasMin !== null ? `${certDiasMin}d` : "—",  cor: certDiasMin !== null && certDiasMin <= 15 ? "#E24B4A" : "#EF9F27", sub: certs.length === 0 ? "Nenhum certificado" : `${certs.length} certificado(s)` },
                   { label: "Pendências",           valor: String(totalRejeitadas + totalProcessando), cor: totalRejeitadas > 0 ? "#E24B4A" : "#EF9F27", sub: `${totalRejeitadas} rejeitada(s) · ${totalProcessando} processando` },
                 ].map((s, i) => (
@@ -1491,13 +1491,13 @@ function FiscalInner() {
                     padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                     color: a.alert ? "#92400E" : (aba === a.key ? "var(--text-1)" : "var(--text-2)"),
-                    borderBottom: aba === a.key ? `2px solid ${a.alert ? "#D97706" : "#1A4870"}` : "2px solid transparent",
+                    borderBottom: aba === a.key ? `2px solid ${a.alert ? "#D97706" : "#111111"}` : "2px solid transparent",
                     display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
                   }}>
                     {a.alert && <span>⚡</span>}
                     {a.label}
                     {a.count !== undefined && (
-                      <span style={{ fontSize: 10, background: a.alert ? "#FEF3C7" : (aba === a.key ? "#D5E8F5" : "var(--border-row)"), color: a.alert ? "#92400E" : (aba === a.key ? "#0B2D50" : "var(--text-2)"), padding: "1px 6px", borderRadius: 8 }}>{a.count}</span>
+                      <span style={{ fontSize: 10, background: a.alert ? "#FEF3C7" : (aba === a.key ? "#E8E8E8" : "var(--border-row)"), color: a.alert ? "#92400E" : (aba === a.key ? "#0D0D0D" : "var(--text-2)"), padding: "1px 6px", borderRadius: 8 }}>{a.count}</span>
                     )}
                   </button>
                 ))}
@@ -1516,7 +1516,7 @@ function FiscalInner() {
                       const ativo = filtroStatusVenda === f.filter;
                       return (
                         <button key={f.label} onClick={() => setFiltroStatusVenda(ativo ? null : f.filter)}
-                          style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${ativo ? "#1A4870" : "var(--border-table)"}`, fontSize: 12, color: ativo ? "#fff" : "#666", background: ativo ? "#1A4870" : "transparent", cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
+                          style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${ativo ? "#111111" : "var(--border-table)"}`, fontSize: 12, color: ativo ? "#fff" : "#666", background: ativo ? "#111111" : "transparent", cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
                           {f.label} {(f.count ?? 0) > 0 && <span style={{ fontSize: 10, background: ativo ? "rgba(255,255,255,0.25)" : "var(--border-row)", color: ativo ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 8 }}>{f.count}</span>}
                         </button>
                       );
@@ -1554,7 +1554,7 @@ function FiscalInner() {
                   {notasDevolucao.length === 0 ? (
                     <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
                       <div style={{ fontSize: 32, marginBottom: 12 }}>↩</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870", marginBottom: 6 }}>Nenhuma devolução registrada</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma devolução registrada</div>
                       <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>Clique em "Nova NF-e de Devolução" para registrar uma devolução de mercadoria.</div>
                       <button onClick={() => setModalDevolucao(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                         ◈ Nova NF-e de Devolução
@@ -1625,7 +1625,7 @@ function FiscalInner() {
                   {notasAutorizadas.length === 0 && notasCanceladas.length === 0 && (
                     <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
                       <div style={{ fontSize: 32, marginBottom: 12 }}>○</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870", marginBottom: 6 }}>Nenhuma nota para cancelar</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma nota para cancelar</div>
                       <div style={{ fontSize: 12, color: "var(--text-3)" }}>Só aparecem aqui as NF-e autorizadas que ainda podem ser canceladas.</div>
                     </div>
                   )}
@@ -1676,7 +1676,7 @@ function FiscalInner() {
                     ) : (
                       /* Formulário de complemento */
                       <div>
-                        <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0B2D50" }}>
+                        <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0D0D0D" }}>
                           <strong>Complementando:</strong> NF-e {modalComplemento.numero} — {modalComplemento.destinatario} · {fmtMoeda(modalComplemento.valor_total)} · CFOP {modalComplemento.cfop}
                           <button onClick={() => setModalComplemento(null)} style={{ marginLeft: 12, fontSize: 11, color: "var(--text-2)", background: "none", border: "0.5px solid #ccc", borderRadius: 4, padding: "1px 7px", cursor: "pointer" }}>Trocar</button>
                         </div>
@@ -1708,7 +1708,7 @@ function FiscalInner() {
                             placeholder="Ex: Peso origem 69.320 kg / Peso destino 68.950 kg / Diferença -370 kg" />
                         </div>
 
-                        <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50", marginBottom: 14 }}>
+                        <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0D0D0D", marginBottom: 14 }}>
                           ⟳ A NF-e complementar usará o mesmo CFOP ({modalComplemento.cfop}) e destinatário da nota original. Será transmitida à SEFAZ automaticamente.
                         </div>
 
@@ -1741,7 +1741,7 @@ function FiscalInner() {
                           : "");
                         setModalCert(true);
                       }}
-                        style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                        style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                         + Adicionar certificado
                       </button>
                     </div>
@@ -1756,8 +1756,8 @@ function FiscalInner() {
                         {certs.map(cert => {
                           const dias = calcDias(cert.data_vencimento);
                           const borderColor = dias !== null && dias <= 15 ? "#E24B4A50" : dias !== null && dias <= 30 ? "#EF9F2750" : "var(--border-table)";
-                          const badgeBg = dias !== null && dias <= 15 ? "#FCEBEB" : dias !== null && dias <= 30 ? "#FEF3E2" : "#D5E8F5";
-                          const badgeColor = dias !== null && dias <= 15 ? "#791F1F" : dias !== null && dias <= 30 ? "#7A4800" : "#0B2D50";
+                          const badgeBg = dias !== null && dias <= 15 ? "#FCEBEB" : dias !== null && dias <= 30 ? "#FEF3E2" : "#E8E8E8";
+                          const badgeColor = dias !== null && dias <= 15 ? "#791F1F" : dias !== null && dias <= 30 ? "#7A4800" : "#0D0D0D";
                           return (
                             <div key={cert.modulo} style={{ background: "var(--bg-card)", border: `0.5px solid ${borderColor}`, borderRadius: 12, padding: 16 }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -1786,7 +1786,7 @@ function FiscalInner() {
                               {dias !== null && (
                                 <div style={{ marginTop: 10 }}>
                                   <div style={{ height: 5, background: "var(--border-row)", borderRadius: 4, overflow: "hidden" }}>
-                                    <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, dias / 365 * 100))}%`, background: dias <= 15 ? "#E24B4A" : dias <= 30 ? "#EF9F27" : "#1A4870", borderRadius: 4 }} />
+                                    <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, dias / 365 * 100))}%`, background: dias <= 15 ? "#E24B4A" : dias <= 30 ? "#EF9F27" : "#111111", borderRadius: 4 }} />
                                   </div>
                                 </div>
                               )}
@@ -1816,7 +1816,7 @@ function FiscalInner() {
                         { n: "4", titulo: "Atualize no Arato", desc: 'Clique em "Atualizar certificado" no card do produtor correspondente.' },
                       ].map(s => (
                         <div key={s.n} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                          <div style={{ width: 24, height: 24, background: "#D5E8F5", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, color: "#0B2D50", flexShrink: 0 }}>{s.n}</div>
+                          <div style={{ width: 24, height: 24, background: "#E8E8E8", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, color: "#0D0D0D", flexShrink: 0 }}>{s.n}</div>
                           <div>
                             <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-1)", marginBottom: 2 }}>{s.titulo}</div>
                             <div style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.5 }}>{s.desc}</div>
@@ -1871,7 +1871,7 @@ function FiscalInner() {
                       <button
                         onClick={transmitirLoteContingencia}
                         disabled={transmitindoLote}
-                        style={{ padding: "7px 16px", background: transmitindoLote ? "#666" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: transmitindoLote ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+                        style={{ padding: "7px 16px", background: transmitindoLote ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: transmitindoLote ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
                         {transmitindoLote ? "Transmitindo…" : `📤 Transmitir Lote (${notasContingencia.length})`}
                       </button>
                     )}
@@ -1914,12 +1914,12 @@ function FiscalInner() {
                                 {horasDecorridas.toFixed(1)}h
                               </td>
                               <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                                <span style={{ background: critico ? "#FCEBEB" : urgente ? "#FEF3C7" : "#D5E8F5", color: critico ? "#791F1F" : urgente ? "#92400E" : "#0B2D50", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                                <span style={{ background: critico ? "#FCEBEB" : urgente ? "#FEF3C7" : "#E8E8E8", color: critico ? "#791F1F" : urgente ? "#92400E" : "#0D0D0D", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
                                   {horasRestantes.toFixed(0)}h restantes
                                 </span>
                               </td>
                               <td style={{ padding: "10px 12px" }}>
-                                <button onClick={() => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#1A4870", cursor: "pointer", fontSize: 11 }}>
+                                <button onClick={() => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#111111", cursor: "pointer", fontSize: 11 }}>
                                   DANFE
                                 </button>
                               </td>
@@ -2061,9 +2061,9 @@ function FiscalInner() {
                 ) : (
                   <div onClick={() => certFileRef.current?.click()} onDragOver={e => { e.preventDefault(); setCertDrag(true); }} onDragLeave={() => setCertDrag(false)}
                     onDrop={e => { e.preventDefault(); setCertDrag(false); const f = e.dataTransfer.files?.[0]; if (f && (f.name.endsWith(".pfx") || f.name.endsWith(".p12"))) setCertFile(f); else if (f) alert("Selecione .pfx ou .p12"); }}
-                    style={{ border: `0.5px dashed ${certDrag ? "#1A4870" : "#aab"}`, borderRadius: 8, padding: "28px 20px", textAlign: "center", background: certDrag ? "#EEF4FF" : "#F7FDFA", cursor: "pointer" }}>
+                    style={{ border: `0.5px dashed ${certDrag ? "#111111" : "#aab"}`, borderRadius: 8, padding: "28px 20px", textAlign: "center", background: certDrag ? "#EEF4FF" : "#F7FDFA", cursor: "pointer" }}>
                     <div style={{ fontSize: 26, marginBottom: 6 }}>📂</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>{certDrag ? "Solte aqui" : "Clique ou arraste"}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#111111", marginBottom: 4 }}>{certDrag ? "Solte aqui" : "Clique ou arraste"}</div>
                     <div style={{ fontSize: 11, color: "var(--text-3)" }}>arquivo .pfx ou .p12</div>
                   </div>
                 )}
@@ -2123,7 +2123,7 @@ function FiscalInner() {
             <div style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
               {/* Barra de título */}
-              <div style={{ background: modoContingencia ? "#92400E" : "#1A4870", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div style={{ background: modoContingencia ? "#92400E" : "#111111", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>
                   Notas Fiscais de Saída — Itens / Serviços
                   {modoContingencia && <span style={{ marginLeft: 10, fontSize: 11, background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 4, fontWeight: 700 }}>⚡ MODO CONTINGÊNCIA ATIVO — SVC-AN</span>}
@@ -2131,7 +2131,7 @@ function FiscalInner() {
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {emissores.length > 1 && (
                     <select value={moduloKeyAtivo} onChange={e => setModuloKeyAtivo(e.target.value)}
-                      style={{ padding: "3px 8px", borderRadius: 5, border: "none", fontSize: 11, background: "#0B2D50", color: "#fff" }}>
+                      style={{ padding: "3px 8px", borderRadius: 5, border: "none", fontSize: 11, background: "#0D0D0D", color: "#fff" }}>
                       {emissores.map(op => <option key={op.key} value={op.key}>{op.label}</option>)}
                     </select>
                   )}
@@ -2159,7 +2159,7 @@ function FiscalInner() {
               <div style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
                 {tabCfg.map(t => (
                   <button key={t.key} onClick={() => setTabNFe(t.key)}
-                    style={{ padding: "7px 14px", border: "none", background: tabNFe === t.key ? "#fff" : "transparent", color: tabNFe === t.key ? "#1A4870" : "#444", fontWeight: tabNFe === t.key ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", borderTop: tabNFe === t.key ? "2px solid #1A4870" : "2px solid transparent", borderRight: "0.5px solid #c8cdd8" }}>
+                    style={{ padding: "7px 14px", border: "none", background: tabNFe === t.key ? "#fff" : "transparent", color: tabNFe === t.key ? "#111111" : "#444", fontWeight: tabNFe === t.key ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", borderTop: tabNFe === t.key ? "2px solid #111111" : "2px solid transparent", borderRight: "0.5px solid #c8cdd8" }}>
                     {t.label}
                   </button>
                 ))}
@@ -2381,7 +2381,7 @@ function FiscalInner() {
                       {chk(fVenda.fiscal,          () => fv({fiscal:!fVenda.fiscal}),                 "Fiscal")}
                       {chk(fVenda.enviar_dt_saida, () => fv({enviar_dt_saida:!fVenda.enviar_dt_saida}),"Enviar Dt. Saída NFe")}
                     </div>
-                    {(() => { const nat = [...NATUREZAS_VENDA,...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop); if (!nat) return null; return <div style={{ marginTop: 8, background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#0B2D50" }}><strong>Obs. Legal:</strong> {nat.obs}</div>; })()}
+                    {(() => { const nat = [...NATUREZAS_VENDA,...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop); if (!nat) return null; return <div style={{ marginTop: 8, background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#0D0D0D" }}><strong>Obs. Legal:</strong> {nat.obs}</div>; })()}
                   </div>
                 )}
 
@@ -2500,7 +2500,7 @@ function FiscalInner() {
                 <div style={{ background: "#f0f2f5", display: "flex", borderBottom: "1px solid #c8cdd8", paddingLeft: 8, flexShrink: 0 }}>
                   {(["itens","servicos","comissoes","impostos"] as const).map(t => (
                     <button key={t} onClick={() => setSubTabItem(t)}
-                      style={{ padding: "5px 14px", border: "none", background: subTabItem===t?"#fff":"transparent", color: subTabItem===t?"#1A4870":"var(--text-2)", fontWeight: subTabItem===t?600:400, fontSize: 12, cursor: "pointer", borderBottom: subTabItem===t?"1px solid #fff":"none" }}>
+                      style={{ padding: "5px 14px", border: "none", background: subTabItem===t?"#fff":"transparent", color: subTabItem===t?"#111111":"var(--text-2)", fontWeight: subTabItem===t?600:400, fontSize: 12, cursor: "pointer", borderBottom: subTabItem===t?"1px solid #fff":"none" }}>
                       {t.charAt(0).toUpperCase()+t.slice(1)}
                     </button>
                   ))}
@@ -2554,7 +2554,7 @@ function FiscalInner() {
                           </td>
                           <td style={{ padding: "4px 6px", textAlign:"center" }}>
                             <button onClick={addItem} title="Adicionar item"
-                              style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 4, width: 24, height: 24, cursor: "pointer", fontWeight: 700, fontSize: 14, lineHeight: "1" }}>+</button>
+                              style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 4, width: 24, height: 24, cursor: "pointer", fontWeight: 700, fontSize: 14, lineHeight: "1" }}>+</button>
                           </td>
                         </tr>
                         {nfeItens.length === 0 && (
@@ -2573,7 +2573,7 @@ function FiscalInner() {
                             <td style={{ padding: "5px 10px", color: "var(--text-2)", fontSize: 11 }}>{it.cclass_trib}</td>
                             <td style={{ padding: "4px 6px", textAlign:"center" }}>
                               <button onClick={() => setEditItemModal({...it})} title="Editar"
-                                style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 4, color: "#0B2D50", width: 22, height: 22, cursor: "pointer", fontSize: 11 }}>✏</button>
+                                style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 4, color: "#0D0D0D", width: 22, height: 22, cursor: "pointer", fontSize: 11 }}>✏</button>
                               <button onClick={() => removeItem(it.id)} title="Remover"
                                 style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 4, color: "#791F1F", width: 22, height: 22, cursor: "pointer", fontSize: 11, marginLeft: 3 }}>−</button>
                             </td>
@@ -2600,7 +2600,7 @@ function FiscalInner() {
                   Cancelar
                 </button>
                 <button onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
-                  style={{ padding: "7px 20px", background: fVenda.destinatario && moduloKeyAtivo && !salvando ? "#1A4870" : "var(--text-muted)", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                  style={{ padding: "7px 20px", background: fVenda.destinatario && moduloKeyAtivo && !salvando ? "#111111" : "var(--text-muted)", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                   {salvando ? "⟳ Transmitindo para SEFAZ…" : "⟳ Emitir NF-e"}
                 </button>
               </div>
@@ -2632,7 +2632,7 @@ function FiscalInner() {
             <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
               <button onClick={() => setEditItemModal(null)} style={{ padding:"7px 16px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:13 }}>Cancelar</button>
               <button onClick={() => { if (editItemModal) saveEditItem(editItemModal); }}
-                style={{ padding:"7px 16px", background:"#1A4870", color:"#fff", border:"none", borderRadius:6, fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                style={{ padding:"7px 16px", background:"#111111", color:"#fff", border:"none", borderRadius:6, fontWeight:600, fontSize:13, cursor:"pointer" }}>
                 Salvar
               </button>
             </div>
@@ -2671,7 +2671,7 @@ function FiscalInner() {
             {(() => { const v = fDev.quantidade && fDev.valorUnitario ? Math.round(Number(fDev.quantidade) * desmascarar(fDev.valorUnitario) * 100) / 100 : 0; if (!v) return null; return <div style={{ background: "#FAEEDA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#633806", marginBottom: 12 }}>Valor total da devolução: <strong style={{ fontSize: 15 }}>{fmtMoeda(v)}</strong></div>; })()}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setModalDevolucao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#1A4870" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+              <button onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Emitindo…" : "⟳ Emitir NF-e de Devolução"}
               </button>
             </div>

@@ -268,7 +268,7 @@ export default function Pluviometria() {
           <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>Dados de precipitação por propriedade</div>
         </div>
         {aba === "manual" && (
-          <button onClick={() => setModalLeit(true)} style={{ padding: "9px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+          <button onClick={() => setModalLeit(true)} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
             + Lançar Leitura
           </button>
         )}
@@ -298,8 +298,8 @@ export default function Pluviometria() {
         ].map(a => (
           <button key={a.v} onClick={() => setAba(a.v)} style={{
             padding: "10px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
-            fontWeight: aba === a.v ? 700 : 400, color: aba === a.v ? "#1A4870" : "#666",
-            borderBottom: aba === a.v ? "2.5px solid #1A4870" : "2.5px solid transparent",
+            fontWeight: aba === a.v ? 700 : 400, color: aba === a.v ? "#111111" : "#666",
+            borderBottom: aba === a.v ? "2.5px solid #111111" : "2.5px solid transparent",
           }}>{a.label}</button>
         ))}
       </div>
@@ -326,9 +326,9 @@ export default function Pluviometria() {
           {/* KPI Cards */}
           <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
             {[
-              { label: "Últ. 7 dias (histórico)",   val: `${fmtN(totUlt7)} mm`,  cor: "#1A4870", sub: `${ult7.filter(d => d.precip_mm > 1).length} dias com chuva` },
-              { label: "Últ. 30 dias",              val: `${fmtN(totUlt30)} mm`, cor: "#1A4870", sub: `${ult30.filter(d => d.precip_mm > 1).length} dias com chuva` },
-              { label: "Acumulado 90 dias",         val: `${fmtN(totUlt90)} mm`, cor: "#1A4870", sub: `Média: ${fmtN(totUlt90 / 90)} mm/dia` },
+              { label: "Últ. 7 dias (histórico)",   val: `${fmtN(totUlt7)} mm`,  cor: "#111111", sub: `${ult7.filter(d => d.precip_mm > 1).length} dias com chuva` },
+              { label: "Últ. 30 dias",              val: `${fmtN(totUlt30)} mm`, cor: "#111111", sub: `${ult30.filter(d => d.precip_mm > 1).length} dias com chuva` },
+              { label: "Acumulado 90 dias",         val: `${fmtN(totUlt90)} mm`, cor: "#111111", sub: `Média: ${fmtN(totUlt90 / 90)} mm/dia` },
               { label: "Previsão próx. 7 dias",     val: `${fmtN(totPrev7)} mm`, cor: totPrev7 > 50 ? "#E24B4A" : "#16A34A", sub: `${futuros.filter(d => d.precip_mm > 1).length} dias com chuva prevista` },
             ].map((k, i) => (
               <div key={i} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 20px", flex: 1, minWidth: 140 }}>
@@ -361,7 +361,7 @@ export default function Pluviometria() {
                 {([30, 60, 90] as const).map(p => (
                   <button key={p} onClick={() => setPeriodoExib(p)}
                     style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 11, fontWeight: 600, cursor: "pointer",
-                      background: periodoExib === p ? "#1A4870" : "var(--bg-card)", color: periodoExib === p ? "#fff" : "var(--text-2)" }}>
+                      background: periodoExib === p ? "#111111" : "var(--bg-card)", color: periodoExib === p ? "#fff" : "var(--text-2)" }}>
                     {p}d
                   </button>
                 ))}
@@ -370,7 +370,7 @@ export default function Pluviometria() {
 
             {/* Legendas */}
             <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "var(--text-3)" }}>
-              <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#378ADD", borderRadius: 2, marginRight: 4 }} />Histórico</span>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#444444", borderRadius: 2, marginRight: 4 }} />Histórico</span>
               <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#C9921B", borderRadius: 2, marginRight: 4 }} />Previsão</span>
               <span style={{ marginLeft: "auto" }}>Máx: {fmtN(maxPrecip)} mm</span>
             </div>
@@ -386,7 +386,7 @@ export default function Pluviometria() {
                       title={`${fmtData(d.data)}: ${fmtN(d.precip_mm)} mm${isTodayOrFuture ? " (previsão)" : ""}`}>
                       <div style={{
                         width: "100%", height: Math.max(h, d.precip_mm > 0.1 ? 2 : 0),
-                        background: isTodayOrFuture ? "#C9921B" : "#378ADD",
+                        background: isTodayOrFuture ? "#C9921B" : "#444444",
                         borderRadius: "2px 2px 0 0",
                         opacity: d.precip_mm < 0.1 ? 0.15 : 1,
                         transition: "height 0.2s",
@@ -432,7 +432,7 @@ export default function Pluviometria() {
                       </td>
                       <td style={{ padding: "8px 12px", textAlign: "right" }}>
                         {d.precip_mm > 0.1 ? (
-                          <span style={{ fontWeight: 700, color: d.precip_mm > 20 ? "#E24B4A" : d.precip_mm > 5 ? "#C9921B" : "#378ADD" }}>
+                          <span style={{ fontWeight: 700, color: d.precip_mm > 20 ? "#E24B4A" : d.precip_mm > 5 ? "#C9921B" : "#444444" }}>
                             {fmtN(d.precip_mm)} mm
                           </span>
                         ) : <span style={{ color: "#16A34A" }}>Sem chuva</span>}
@@ -462,12 +462,12 @@ export default function Pluviometria() {
                     <div key={ym}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                         <span style={{ fontSize: 13, fontWeight: 600 }}>{MESES_PT[parseInt(m) - 1]}/{y}</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: total > 200 ? "#E24B4A" : total > 100 ? "#1A4870" : "var(--text-3)" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: total > 200 ? "#E24B4A" : total > 100 ? "#111111" : "var(--text-3)" }}>
                           {fmtN(total)} mm
                         </span>
                       </div>
                       <div style={{ height: 6, background: "#EEE", borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: total > 200 ? "#E24B4A" : total > 100 ? "#378ADD" : "#C9921B", borderRadius: 4 }} />
+                        <div style={{ width: `${pct}%`, height: "100%", background: total > 200 ? "#E24B4A" : total > 100 ? "#444444" : "#C9921B", borderRadius: 4 }} />
                       </div>
                     </div>
                   );
@@ -496,14 +496,14 @@ export default function Pluviometria() {
                       <td style={{ padding: "7px 14px", fontWeight: 600 }}>{fmtData(d.data)}</td>
                       <td style={{ padding: "7px 14px", textAlign: "right" }}>
                         {d.precip_mm > 0.1 ? (
-                          <span style={{ fontWeight: 700, color: d.precip_mm > 30 ? "#E24B4A" : "#378ADD" }}>{fmtN(d.precip_mm)} mm</span>
+                          <span style={{ fontWeight: 700, color: d.precip_mm > 30 ? "#E24B4A" : "#444444" }}>{fmtN(d.precip_mm)} mm</span>
                         ) : <span style={{ color: "#CCC" }}>—</span>}
                       </td>
                       <td style={{ padding: "7px 14px", textAlign: "right", color: "var(--text-2)" }}>
                         {d.chuva_mm > 0.1 ? `${fmtN(d.chuva_mm)} mm` : <span style={{ color: "#CCC" }}>—</span>}
                       </td>
                       <td style={{ padding: "7px 14px", textAlign: "right", color: "#E24B4A" }}>{fmtN(d.tmax_c)}°C</td>
-                      <td style={{ padding: "7px 14px", textAlign: "right", color: "#378ADD" }}>{fmtN(d.tmin_c)}°C</td>
+                      <td style={{ padding: "7px 14px", textAlign: "right", color: "#444444" }}>{fmtN(d.tmin_c)}°C</td>
                       <td style={{ padding: "7px 14px", textAlign: "right", color: "var(--text-3)" }}>{fmtN(d.et0_mm)} mm</td>
                     </tr>
                   ))}
@@ -523,8 +523,8 @@ export default function Pluviometria() {
           {/* KPIs */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
-              { label: "Total de Leituras", valor: leituras.length, sub: "todas as leituras", cor: "#1A4870" },
-              { label: "Acumulado 7 dias", valor: `${fmtN(totLeit7)} mm`, sub: `${leit7.length} leituras`, cor: "#378ADD" },
+              { label: "Total de Leituras", valor: leituras.length, sub: "todas as leituras", cor: "#111111" },
+              { label: "Acumulado 7 dias", valor: `${fmtN(totLeit7)} mm`, sub: `${leit7.length} leituras`, cor: "#444444" },
               { label: "Acumulado 30 dias", valor: `${fmtN(totLeit30)} mm`, sub: `${leit30.length} leituras`, cor: "#16A34A" },
             ].map(k => (
               <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
@@ -565,7 +565,7 @@ export default function Pluviometria() {
                         <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600 }}>{fmtData(l.data)}</td>
                         <td style={{ padding: "9px 12px", fontSize: 13, color: "var(--text-2)" }}>{l.hora?.slice(0,5) ?? "—"}</td>
                         <td style={{ padding: "9px 12px", fontSize: 13, color: "var(--text-2)" }}>{l.talhao_nome ?? <span style={{ color: "#CCC" }}>Fazenda</span>}</td>
-                        <td style={{ padding: "9px 12px", fontSize: 15, fontWeight: 700, color: l.chuva_mm > 30 ? "#E24B4A" : "#1A4870" }}>{fmtN(l.chuva_mm)} mm</td>
+                        <td style={{ padding: "9px 12px", fontSize: 15, fontWeight: 700, color: l.chuva_mm > 30 ? "#E24B4A" : "#111111" }}>{fmtN(l.chuva_mm)} mm</td>
                         <td style={{ padding: "9px 12px", fontSize: 13, color: "var(--text-2)" }}>{l.duracao_min ? `${l.duracao_min} min` : "—"}</td>
                         <td style={{ padding: "9px 12px" }}>
                           {im ? <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: im.bg, color: im.cor, fontWeight: 700 }}>{im.label}</span> : "—"}
@@ -621,7 +621,7 @@ export default function Pluviometria() {
                 </div>
               </div>
               {lMm && lDur && (
-                <div style={{ background: "#EFF6FF", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#1E3A5F" }}>
+                <div style={{ background: "#F2F2F2", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#1E3A5F" }}>
                   Intensidade estimada: {(parseFloat(lMm) / (parseInt(lDur) / 60)).toFixed(1)} mm/h
                 </div>
               )}
@@ -635,7 +635,7 @@ export default function Pluviometria() {
               </div>
               <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
                 <button onClick={() => setModalLeit(false)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
-                <button onClick={salvarLeitura} disabled={salvando || !lMm} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: salvando || !lMm ? "var(--text-muted)" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                <button onClick={salvarLeitura} disabled={salvando || !lMm} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: salvando || !lMm ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                   {salvando ? "Salvando..." : "✓ Registrar Leitura"}
                 </button>
               </div>

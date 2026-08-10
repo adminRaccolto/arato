@@ -145,7 +145,7 @@ export default function MigrarNF() {
   const inp: React.CSSProperties = { padding: "8px 12px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", width: "100%", boxSizing: "border-box" };
   const btn = (active: boolean): React.CSSProperties => ({
     padding: "10px 24px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer",
-    background: active ? "#1A4870" : "#EEE", color: active ? "#fff" : "#999",
+    background: active ? "#111111" : "#EEE", color: active ? "#fff" : "#999",
   });
 
   return (
@@ -170,12 +170,12 @@ export default function MigrarNF() {
                 <div style={{
                   width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                   fontWeight: 700, fontSize: 13, flexShrink: 0,
-                  background: passo > s.n ? "#16A34A" : passo === s.n ? "#1A4870" : "#EEE",
+                  background: passo > s.n ? "#16A34A" : passo === s.n ? "#111111" : "#EEE",
                   color: passo >= s.n ? "#fff" : "var(--text-3)",
                 }}>
                   {passo > s.n ? "✓" : s.n}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: passo === s.n ? 700 : 400, color: passo === s.n ? "#1A4870" : "var(--text-3)", marginLeft: 8, whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 12, fontWeight: passo === s.n ? 700 : 400, color: passo === s.n ? "#111111" : "var(--text-3)", marginLeft: 8, whiteSpace: "nowrap" }}>
                   {s.label}
                 </span>
                 {i < 3 && <div style={{ flex: 1, height: 1, background: passo > s.n ? "#16A34A" : "var(--border)", margin: "0 10px" }} />}
@@ -239,7 +239,7 @@ export default function MigrarNF() {
                       {romaneiosOrigem.map(r => (
                         <label key={r.id} style={{
                           display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
-                          border: `0.5px solid ${romaneioId === r.id ? "#1A4870" : "var(--border)"}`,
+                          border: `0.5px solid ${romaneioId === r.id ? "#111111" : "var(--border)"}`,
                           background: romaneioId === r.id ? "#F0F5FA" : "var(--bg-card)",
                           borderRadius: 10, cursor: "pointer",
                         }}>
@@ -248,7 +248,7 @@ export default function MigrarNF() {
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 700 }}>
                               Romaneio {r.numero}
-                              {r.nfe_numero && <span style={{ marginLeft: 8, fontSize: 11, padding: "1px 8px", background: "#D5E8F5", color: "#1A4870", borderRadius: 8, fontWeight: 700 }}>NF-e {r.nfe_numero}</span>}
+                              {r.nfe_numero && <span style={{ marginLeft: 8, fontSize: 11, padding: "1px 8px", background: "#E8E8E8", color: "#111111", borderRadius: 8, fontWeight: 700 }}>NF-e {r.nfe_numero}</span>}
                             </div>
                             <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                               {fmtData(r.data)} · {fmtN(r.sacas ?? 0, 3)} sc · PL: {fmtN((r.peso_liquido_kg ?? (r.peso_bruto_kg - r.tara_kg)) / 1000, 3)} t
@@ -323,8 +323,8 @@ export default function MigrarNF() {
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "var(--text-1)" }}>Revisar e confirmar migração</div>
 
                   {/* Resumo da migração */}
-                  <div style={{ padding: "14px 18px", background: "#F8FAFF", border: "0.5px solid #D5E8F5", borderRadius: 10, marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>ROMANEIO A MIGRAR</div>
+                  <div style={{ padding: "14px 18px", background: "#F8FAFF", border: "0.5px solid #E8E8E8", borderRadius: 10, marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 8 }}>ROMANEIO A MIGRAR</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
                       <div><span style={{ color: "var(--text-3)" }}>Romaneio: </span><strong>{romaneioSel.numero}</strong></div>
                       <div><span style={{ color: "var(--text-3)" }}>NF-e: </span><strong>{romaneioSel.nfe_numero ?? "—"}</strong></div>
@@ -406,7 +406,7 @@ export default function MigrarNF() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>
                       Romaneio {l.romaneio_numero}
-                      {l.nfe_numero && <span style={{ marginLeft: 6, fontSize: 10, padding: "1px 6px", background: "#D5E8F5", color: "#1A4870", borderRadius: 6 }}>NF-e {l.nfe_numero}</span>}
+                      {l.nfe_numero && <span style={{ marginLeft: 6, fontSize: 10, padding: "1px 6px", background: "#E8E8E8", color: "#111111", borderRadius: 6 }}>NF-e {l.nfe_numero}</span>}
                     </span>
                     <span style={{ fontSize: 10, color: "var(--text-3)" }}>{fmtData(l.created_at)}</span>
                   </div>

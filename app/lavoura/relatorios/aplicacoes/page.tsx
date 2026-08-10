@@ -11,7 +11,7 @@ import type { Talhao, Insumo, AnoSafra, Ciclo, GrupoInsumo, Fazenda } from "../.
 // ─── Estilos base ────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
-const btnV: React.CSSProperties = { padding: "9px 22px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "9px 22px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "7px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 12, color: "var(--text-2)" };
 
 // ─── Mapas de labels ─────────────────────────────────────────
@@ -354,17 +354,17 @@ export default function RelAplicacoesPage() {
 <title>Relatório de Aplicações — ${fazNome}</title>
 <style>
   body{margin:0;font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#D1D5DB}
-  .rt-toolbar{position:sticky;top:0;background:#1A4870;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .rt-toolbar{position:sticky;top:0;background:#111111;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
   .rt-toolbar span{color:#fff;font-size:13px;font-weight:700}
-  .rt-btn{background:#fff;color:#1A4870;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .rt-btn{background:#fff;color:#111111;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
   .rt-btn:hover{background:#f0f5fa}
   .rt-page-wrapper{display:flex;justify-content:center;padding:24px}
   .rt-page{background:#fff;width:297mm;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.18)}
   @page{size:A4 landscape;margin:14mm}
   @media print{body{background:#fff}.rt-toolbar{display:none!important}.rt-page-wrapper{padding:0}.rt-page{box-shadow:none;width:100%;padding:0}}
   table{width:100%;border-collapse:collapse;font-size:8pt}
-  th{background:#1A4870;color:#fff;padding:4px 6px;text-align:left;border:1px solid #1A4870;white-space:nowrap}
-  th.r{text-align:right} tfoot td{background:#1A4870;color:#fff;font-weight:700;padding:4px 6px;border:1px solid #1A4870}
+  th{background:#111111;color:#fff;padding:4px 6px;text-align:left;border:1px solid #111111;white-space:nowrap}
+  th.r{text-align:right} tfoot td{background:#111111;color:#fff;font-weight:700;padding:4px 6px;border:1px solid #111111}
   .r{text-align:right}
 </style></head><body>
 <div class="rt-toolbar">
@@ -372,16 +372,16 @@ export default function RelAplicacoesPage() {
   <button class="rt-btn" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
 </div>
 <div class="rt-page-wrapper"><div class="rt-page">
-<div style="border-bottom:2px solid #1A4870;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
+<div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
   <div style="display:flex;align-items:center;gap:12px">
     ${logoFaz ? `<img src="${logoFaz}" style="height:40px;object-fit:contain">` : ""}
     <div>
-      <div style="font-size:14pt;font-weight:700;color:#1A4870">${fazNome}</div>
+      <div style="font-size:14pt;font-weight:700;color:#111111">${fazNome}</div>
       ${fazSub ? `<div style="font-size:8pt;color:#555">${fazSub}</div>` : ""}
     </div>
   </div>
   <div style="text-align:right">
-    <div style="font-size:13pt;font-weight:700;color:#1A4870">RELATÓRIO DE APLICAÇÕES</div>
+    <div style="font-size:13pt;font-weight:700;color:#111111">RELATÓRIO DE APLICAÇÕES</div>
     <div style="font-size:8pt;color:#555">por Safra / Ciclo</div>
   </div>
 </div>
@@ -390,8 +390,8 @@ export default function RelAplicacoesPage() {
   <div><span style="color:#888">Data / Hora: </span><strong>${dataGeracao}</strong></div>
   <div><span style="color:#888">Agrupamento: </span><strong>${agrupLabel}</strong></div>
 </div>
-<div style="background:#EBF3FD;border:1px solid rgba(26,72,112,0.2);border-radius:4px;padding:5px 10px;margin-bottom:8px;font-size:8pt">
-  <strong style="color:#1A4870">FILTROS: </strong><span style="color:#333">${filtroDescricao || "Nenhum filtro"}</span>
+<div style="background:#EEEEEE;border:1px solid rgba(26,72,112,0.2);border-radius:4px;padding:5px 10px;margin-bottom:8px;font-size:8pt">
+  <strong style="color:#111111">FILTROS: </strong><span style="color:#333">${filtroDescricao || "Nenhum filtro"}</span>
 </div>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
   ${[
@@ -399,7 +399,7 @@ export default function RelAplicacoesPage() {
     { l:"Área coberta",   v: `${fmtN(stats.area,1)} ha`,  hl: false },
     { l:"Custo Total",    v: fmtBRL(stats.custo),          hl: true  },
     { l:"Custo Médio/ha", v: fmtBRL(stats.custo_ha),       hl: false },
-  ].map(s => `<div style="border:1px solid var(--border-table);border-radius:4px;padding:5px 8px;background:${s.hl?"#1A4870":"#fff"};color:${s.hl?"#fff":"var(--text-1)"}">
+  ].map(s => `<div style="border:1px solid var(--border-table);border-radius:4px;padding:5px 8px;background:${s.hl?"#111111":"#fff"};color:${s.hl?"#fff":"var(--text-1)"}">
     <div style="font-size:7pt;color:${s.hl?"rgba(255,255,255,0.8)":"var(--text-2)"};margin-bottom:2px">${s.l}</div>
     <div style="font-size:11pt;font-weight:700">${s.v}</div>
   </div>`).join("")}
@@ -689,7 +689,7 @@ export default function RelAplicacoesPage() {
             <div style={{ display: "flex", gap: 8 }}>
               <button style={btnR} onClick={() => { setGerado(false); setLinhas([]); }}>← Filtros</button>
               <button style={{ ...btnV, background: "#166534", fontSize: 12 }} onClick={exportarXLSX}>⬇ XLSX</button>
-              <button style={{ ...btnV, background: "#1A4870", fontSize: 12 }} onClick={exportarPDF}>⬇ PDF</button>
+              <button style={{ ...btnV, background: "#111111", fontSize: 12 }} onClick={exportarPDF}>⬇ PDF</button>
               <button style={{ ...btnR, fontSize: 12 }} onClick={imprimir}>🖨 Imprimir</button>
               <button style={{ ...btnV, background: "#25D366", fontSize: 12 }} onClick={prepararWA}>WhatsApp</button>
             </div>
@@ -707,7 +707,7 @@ export default function RelAplicacoesPage() {
                 <div style={{ marginBottom: 14 }}>
                   <label style={lbl}>Fazenda</label>
                   <select
-                    style={{ ...inp, borderColor: "#1A4870", background: "#F0F6FB" }}
+                    style={{ ...inp, borderColor: "#111111", background: "#F0F6FB" }}
                     value={filtroFazenda || fid0}
                     onChange={e => { setFiltroFazenda(e.target.value); setFAno(""); setFCiclos([]); setFTalhoes([]); }}
                   >
@@ -742,8 +742,8 @@ export default function RelAplicacoesPage() {
                     : ciclosFiltradosAno.map(c => {
                       const sel = fCiclos.includes(c.id);
                       return (
-                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6, border: sel ? "0.5px solid #1A5CB8" : "0.5px solid var(--border-table)", background: sel ? "#EBF3FD" : "var(--bg-card)", cursor: "pointer", fontSize: 12, color: sel ? "#1A4870" : "#333", fontWeight: sel ? 600 : 400 }}>
-                          <input type="checkbox" checked={sel} onChange={() => toggleFCiclo(c.id)} style={{ accentColor: "#1A5CB8" }} />
+                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6, border: sel ? "0.5px solid #2A2A2A" : "0.5px solid var(--border-table)", background: sel ? "#EEEEEE" : "var(--bg-card)", cursor: "pointer", fontSize: 12, color: sel ? "#111111" : "#333", fontWeight: sel ? 600 : 400 }}>
+                          <input type="checkbox" checked={sel} onChange={() => toggleFCiclo(c.id)} style={{ accentColor: "#2A2A2A" }} />
                           {nomeCicloFn(c.id)}
                         </label>
                       );
@@ -757,8 +757,8 @@ export default function RelAplicacoesPage() {
                   {talhoes.map(t => {
                     const sel = fTalhoes.includes(t.id);
                     return (
-                      <label key={t.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6, border: sel ? "0.5px solid #1A5CB8" : "0.5px solid var(--border-table)", background: sel ? "#EBF3FD" : "var(--bg-card)", cursor: "pointer", fontSize: 12, color: sel ? "#1A4870" : "#333", fontWeight: sel ? 600 : 400 }}>
-                        <input type="checkbox" checked={sel} onChange={() => toggleFTalhao(t.id)} style={{ accentColor: "#1A5CB8" }} />
+                      <label key={t.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6, border: sel ? "0.5px solid #2A2A2A" : "0.5px solid var(--border-table)", background: sel ? "#EEEEEE" : "var(--bg-card)", cursor: "pointer", fontSize: 12, color: sel ? "#111111" : "#333", fontWeight: sel ? 600 : 400 }}>
+                        <input type="checkbox" checked={sel} onChange={() => toggleFTalhao(t.id)} style={{ accentColor: "#2A2A2A" }} />
                         {t.nome}{t.area_ha ? ` (${fmtN(t.area_ha, 1)} ha)` : ""}
                       </label>
                     );
@@ -826,7 +826,7 @@ export default function RelAplicacoesPage() {
             {/* Switcher de agrupamento */}
             <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
               {AGRUP_LABELS.map(a => (
-                <button key={a.key} onClick={() => setAgrupamento(a.key)} style={{ padding: "6px 14px", borderRadius: 7, border: agrupamento === a.key ? "0.5px solid #1A5CB8" : "0.5px solid var(--border-table)", background: agrupamento === a.key ? "#1A5CB8" : "var(--bg-card)", color: agrupamento === a.key ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: agrupamento === a.key ? 600 : 400, cursor: "pointer" }}>
+                <button key={a.key} onClick={() => setAgrupamento(a.key)} style={{ padding: "6px 14px", borderRadius: 7, border: agrupamento === a.key ? "0.5px solid #2A2A2A" : "0.5px solid var(--border-table)", background: agrupamento === a.key ? "#2A2A2A" : "var(--bg-card)", color: agrupamento === a.key ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: agrupamento === a.key ? 600 : 400, cursor: "pointer" }}>
                   {a.label}
                 </button>
               ))}
@@ -890,8 +890,8 @@ export default function RelAplicacoesPage() {
                 <div style={{ marginTop: 18, background: "var(--bg-page)", borderRadius: 8, padding: 12, fontSize: 11, color: "var(--text-2)" }}>
                   <div style={{ fontWeight: 600, marginBottom: 6, color: "var(--text-1)" }}>Para envio automático sem abrir o WhatsApp:</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div><strong>Z-API</strong> — serviço brasileiro, ~R$99/mês, sem servidor. Integração via API REST. <a href="https://z-api.io" target="_blank" rel="noreferrer" style={{ color: "#1A5CB8" }}>z-api.io</a></div>
-                    <div><strong>Evolution API</strong> — open source, gratuito, precisa de VPS (~R$50/mês). <a href="https://evolution-api.com" target="_blank" rel="noreferrer" style={{ color: "#1A5CB8" }}>evolution-api.com</a></div>
+                    <div><strong>Z-API</strong> — serviço brasileiro, ~R$99/mês, sem servidor. Integração via API REST. <a href="https://z-api.io" target="_blank" rel="noreferrer" style={{ color: "#2A2A2A" }}>z-api.io</a></div>
+                    <div><strong>Evolution API</strong> — open source, gratuito, precisa de VPS (~R$50/mês). <a href="https://evolution-api.com" target="_blank" rel="noreferrer" style={{ color: "#2A2A2A" }}>evolution-api.com</a></div>
                     <div><strong>Meta Business API</strong> — oficial, requer aprovação Meta, cobrado por conversa.</div>
                   </div>
                   <div style={{ marginTop: 8, color: "var(--text-3)", fontSize: 10 }}>Configure uma destas opções em Configurações → Automações para envio automático.</div>
@@ -914,7 +914,7 @@ function TabelaResultado({ linhas, agrupamento, nomeCiclo }: { linhas: Linha[]; 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {gps.map(([prod, rows]) => (
-          <SecaoAgrupada key={prod} titulo={prod} linhas={rows} cor="#1A5CB8">
+          <SecaoAgrupada key={prod} titulo={prod} linhas={rows} cor="#2A2A2A">
             <TabelaDetalhada linhas={rows} nomeCiclo={nomeCiclo} compact />
           </SecaoAgrupada>
         ))}
@@ -1069,7 +1069,7 @@ function TabelaDetalhada({ linhas, nomeCiclo, compact = false }: { linhas: Linha
                 <td style={{ ...td, textAlign: "right" }}>{fmtN(l.total_consumido, 3)}</td>
                 <td style={{ ...td, textAlign: "right" }}>{l.valor_unitario != null ? fmtBRL(l.valor_unitario) : "—"}</td>
                 <td style={{ ...td, textAlign: "right" }}>{fmtBRL(l.custo_ha)}</td>
-                <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(l.custo_total)}</td>
+                <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#111111" }}>{fmtBRL(l.custo_total)}</td>
                 <td style={{ ...td, textAlign: "right" }}>{fmtN(l.area_ha, 1)}</td>
               </tr>
             );
@@ -1084,7 +1084,7 @@ function Rodape({ linhas }: { linhas: Linha[] }) {
   const custo = linhas.reduce((s,l) => s + l.custo_total, 0);
   const area  = linhas.reduce((s,l) => s + l.area_ha, 0);
   return (
-    <div style={{ background: "#1A4870", color: "#fff", borderRadius: 8, padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+    <div style={{ background: "#111111", color: "#fff", borderRadius: 8, padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
       <span style={{ fontSize: 12, fontWeight: 600 }}>TOTAL GERAL — {linhas.length} aplicação{linhas.length !== 1 ? "ões" : ""}</span>
       <div style={{ display: "flex", gap: 28 }}>
         <div style={{ textAlign: "right" }}>

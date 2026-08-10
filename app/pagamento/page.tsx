@@ -217,7 +217,7 @@ function PagamentoInner() {
                     <span style={{ fontSize: 14, fontWeight: 700, color: "#E24B4A" }}>{fmtPreco(p.valor)}</span>
                     {p.asaas_invoice_url && (
                       <a href={p.asaas_invoice_url} target="_blank" rel="noreferrer"
-                        style={{ padding: "5px 12px", background: "#1A4870", color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
+                        style={{ padding: "5px 12px", background: "#111111", color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
                         Pagar →
                       </a>
                     )}
@@ -248,8 +248,8 @@ function PagamentoInner() {
                     onClick={() => setMetodoPag(key)}
                     style={{
                       flex: 1, padding: "12px 14px", borderRadius: 10, cursor: "pointer",
-                      border: `1.5px solid ${metodoPag === key ? "#1A4870" : "var(--border)"}`,
-                      background: metodoPag === key ? "#D5E8F5" : "var(--bg-card)",
+                      border: `1.5px solid ${metodoPag === key ? "#111111" : "var(--border)"}`,
+                      background: metodoPag === key ? "#E8E8E8" : "var(--bg-card)",
                     }}
                   >
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#0B1E35" }}>{label}</div>
@@ -269,7 +269,7 @@ function PagamentoInner() {
                       </div>
                       <button onClick={copiarPix} style={{
                         width: "100%", padding: "12px 0",
-                        background: pixCopiado ? "#16A34A" : "#1A4870",
+                        background: pixCopiado ? "#16A34A" : "#111111",
                         color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer",
                       }}>
                         {pixCopiado ? "✓ Copiado!" : "Copiar código PIX"}
@@ -278,7 +278,7 @@ function PagamentoInner() {
                   ) : novoPag.url ? (
                     <a href={novoPag.url} target="_blank" rel="noreferrer" style={{
                       display: "block", textAlign: "center", padding: "12px 0",
-                      background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none",
+                      background: "#111111", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none",
                     }}>
                       Acessar link de pagamento →
                     </a>
@@ -290,7 +290,7 @@ function PagamentoInner() {
               ) : (
                 <button onClick={gerarPagamento} disabled={gerandoPag} style={{
                   width: "100%", padding: "12px 0",
-                  background: gerandoPag ? "#9BB5CC" : "#1A4870",
+                  background: gerandoPag ? "#9BB5CC" : "#111111",
                   color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700,
                   cursor: gerandoPag ? "not-allowed" : "pointer",
                 }}>

@@ -240,7 +240,7 @@ export default function ModulosPage() {
           <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center" }}>
             <div style={{ fontSize: 12, color: "var(--text-2)" }}>Plano atual:</div>
             {contaSel.pacote ? (
-              <span style={{ padding: "3px 10px", background: "#D5E8F5", color: "#1A4870", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
+              <span style={{ padding: "3px 10px", background: "#E8E8E8", color: "#111111", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
                 {PLANOS_DEFAULT[contaSel.pacote as PlanoId]?.nome ?? contaSel.pacote}
               </span>
             ) : (
@@ -307,7 +307,7 @@ export default function ModulosPage() {
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                           {dePlano && (
-                            <span style={{ fontSize: 10, background: "#D5E8F5", color: "#1A4870", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>
+                            <span style={{ fontSize: 10, background: "#E8E8E8", color: "#111111", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>
                               Incluso no plano
                             </span>
                           )}
@@ -347,9 +347,9 @@ export default function ModulosPage() {
             </div>
 
             {/* Nota de migration */}
-            <div style={{ marginTop: 20, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
+            <div style={{ marginTop: 20, padding: "10px 14px", background: "#F2F2F2", borderRadius: 8, border: "0.5px solid #44444440", fontSize: 11, color: "#111111", lineHeight: 1.7 }}>
               <strong>Migration necessária:</strong> Execute no Supabase SQL Editor se a tabela não existir:
-              <code style={{ display: "block", marginTop: 6, background: "#D5E8F5", borderRadius: 4, padding: "6px 10px", fontFamily: "monospace", fontSize: 10, color: "#0B2D50", overflowX: "auto", whiteSpace: "pre" }}>
+              <code style={{ display: "block", marginTop: 6, background: "#E8E8E8", borderRadius: 4, padding: "6px 10px", fontFamily: "monospace", fontSize: 10, color: "#0D0D0D", overflowX: "auto", whiteSpace: "pre" }}>
                 {`CREATE TABLE IF NOT EXISTS conta_modulos (\n  conta_id uuid REFERENCES contas(id) ON DELETE CASCADE,\n  modulo text NOT NULL,\n  habilitado boolean NOT NULL DEFAULT true,\n  PRIMARY KEY (conta_id, modulo)\n);\nCREATE INDEX IF NOT EXISTS idx_conta_modulos_conta ON conta_modulos(conta_id);`}
               </code>
             </div>

@@ -226,7 +226,7 @@ export default function NovoClientePage() {
                 <div style={{ gridColumn: "1 / -1" }}>
                   <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Link de acesso</div>
                   <a href={resultado.link} target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 12, color: "#378ADD", wordBreak: "break-all", textDecoration: "none" }}>
+                    style={{ fontSize: 12, color: "#444444", wordBreak: "break-all", textDecoration: "none" }}>
                     {resultado.link} ↗
                   </a>
                 </div>
@@ -399,7 +399,7 @@ export default function NovoClientePage() {
       </div>
 
       {/* Info extra */}
-      <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
+      <div style={{ marginTop: 16, padding: "10px 14px", background: "#F2F2F2", borderRadius: 8, border: "0.5px solid #44444440", fontSize: 11, color: "#111111", lineHeight: 1.7 }}>
         <strong>O que será criado:</strong> Uma conta SaaS ({"{"}conta{"}"}), uma fazenda vinculada, um usuário com e-mail/senha informados e um perfil com role de produtor.
         O cliente receberá acesso imediato ao Arato com os módulos do plano selecionado.
       </div>

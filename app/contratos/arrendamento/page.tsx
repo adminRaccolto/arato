@@ -91,7 +91,7 @@ function isoData(ano: number, mes: number, dia: number): string {
 const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const inpSm: React.CSSProperties = { ...inp, padding: "5px 8px", fontSize: 12 };
 const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
+const btnV: React.CSSProperties = { padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
@@ -853,7 +853,7 @@ export default function Arrendamentos() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Área Arrendada",       valor: `${fmtN(totalArea)} ha`, bg: "#EBF3FC", color: "#0C447C" },
-            { label: "Contratos Ativos",     valor: arrendamentos.length,    bg: "#D5E8F5", color: "#0B2D50" },
+            { label: "Contratos Ativos",     valor: arrendamentos.length,    bg: "#E8E8E8", color: "#0D0D0D" },
             { label: "Parcelas Pendentes",   valor: pagPend,                 bg: "#FBF3E0", color: "#7A5A12" },
             { label: "Vencidas (atrasadas)", valor: pagAtras, bg: pagAtras > 0 ? "#FCEBEB" : "var(--bg-page)", color: pagAtras > 0 ? "#791F1F" : "var(--text-3)" },
           ].map(k => (
@@ -870,8 +870,8 @@ export default function Arrendamentos() {
             <button key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
-              color: aba === a.key ? "#1A4870" : "#666",
-              borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
+              color: aba === a.key ? "#111111" : "#666",
+              borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent",
             }}>{a.label}</button>
           ))}
         </div>
@@ -913,9 +913,9 @@ export default function Arrendamentos() {
                     <div key={prodId}>
                       {/* Cabeçalho do grupo — Produtor */}
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: "0.5px solid var(--border-table)" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.05em" }}>🌾 Produtor Responsável</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.05em" }}>🌾 Produtor Responsável</span>
                         {produtor ? (
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#0B2D50" }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#0D0D0D" }}>
                             {produtor.nome}{produtor.inscricao_est ? ` · IE ${produtor.inscricao_est}` : ""}{produtor.municipio ? ` · ${produtor.municipio}/${produtor.estado ?? ""}` : ""}
                           </span>
                         ) : (
@@ -939,7 +939,7 @@ export default function Arrendamentos() {
                       {/* cabeçalho do contrato */}
                       <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
                         onClick={() => toggleArr(arr.id)}>
-                        <div style={{ fontSize: 18, color: expanded ? "#1A4870" : "var(--text-3)" }}>{expanded ? "▼" : "▶"}</div>
+                        <div style={{ fontSize: 18, color: expanded ? "#111111" : "var(--text-3)" }}>{expanded ? "▼" : "▶"}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
                             <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{arr.proprietario_nome ?? "Proprietário não informado"}</span>
@@ -1068,7 +1068,7 @@ export default function Arrendamentos() {
                                         <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, color: sojaAtras ? "#791F1F" : "var(--text-1)", fontWeight: sojaAtras ? 600 : 400 }}>{fmtDt(sojaP?.data_vencimento)}{sojaAtras && " ⚠"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right" }}>{sojaP ? <Badge label={STATUS_PAG[sojaP.status].label} bg={STATUS_PAG[sojaP.status].bg} color={STATUS_PAG[sojaP.status].color} /> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}</td>
                                         {/* milho */}
-                                        <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, borderLeft: "0.5px solid #D5E8F5" }}>{milhoP?.sacas_previstas != null ? `${fmtN(milhoP.sacas_previstas)} sc` : "—"}</td>
+                                        <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, borderLeft: "0.5px solid #E8E8E8" }}>{milhoP?.sacas_previstas != null ? `${fmtN(milhoP.sacas_previstas)} sc` : "—"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12 }}>{milhoP?.sacas_pagas != null ? `${fmtN(milhoP.sacas_pagas)} sc` : "—"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, color: milhoAtras ? "#791F1F" : "var(--text-1)", fontWeight: milhoAtras ? 600 : 400 }}>{fmtDt(milhoP?.data_vencimento)}{milhoAtras && " ⚠"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right" }}>{milhoP ? <Badge label={STATUS_PAG[milhoP.status].label} bg={STATUS_PAG[milhoP.status].bg} color={STATUS_PAG[milhoP.status].color} /> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}</td>
@@ -1080,7 +1080,7 @@ export default function Arrendamentos() {
                                                 onClick={() => baixarPagamento(sojaP)}>✓ Soja</button>
                                             )}
                                             {milhoP?.status === "pendente" && (
-                                              <button style={{ ...btnE, background: "#EBF3FC", color: "#0C447C", border: "0.5px solid #1A487040", fontSize: 10 }}
+                                              <button style={{ ...btnE, background: "#EBF3FC", color: "#0C447C", border: "0.5px solid #11111140", fontSize: 10 }}
                                                 onClick={() => baixarPagamento(milhoP)}>✓ Milho</button>
                                             )}
                                             {sojaP && <button style={{ ...btnE, fontSize: 10 }} onClick={() => {
@@ -1276,7 +1276,7 @@ export default function Arrendamentos() {
                   return (
                     <div key={p.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${urgente ? "#E24B4A50" : "var(--border)"}`, display: "flex", alignItems: "center", gap: 16 }}>
                       <div style={{ width: 52, textAlign: "center", flexShrink: 0 }}>
-                        <div style={{ fontSize: 22, fontWeight: 700, color: urgente ? "#E24B4A" : "#1A4870" }}>{dt.getDate()}</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: urgente ? "#E24B4A" : "#111111" }}>{dt.getDate()}</div>
                         <div style={{ fontSize: 11, color: "var(--text-3)" }}>{dt.toLocaleString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()} {dt.getFullYear()}</div>
                       </div>
                       <div style={{ flex: 1 }}>
@@ -1552,7 +1552,7 @@ export default function Arrendamentos() {
               ) : fC.locatario_nome && fC.produtor_id ? (() => {
                 const p = produtores.find(x => x.id === fC.produtor_id);
                 return (
-                  <div style={{ fontSize: 11, color: "#1A4870", background: "#D5E8F5", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
+                  <div style={{ fontSize: 11, color: "#111111", background: "#E8E8E8", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
                     Contrato em nome de <strong>{fC.locatario_nome}</strong> — LCDPR declarado por{" "}
                     <strong>{p?.nome ?? "—"}</strong>{p?.inscricao_est ? ` (IE ${p.inscricao_est})` : ""}
                   </div>
@@ -1679,7 +1679,7 @@ export default function Arrendamentos() {
           onClose={() => setModalGerador(false)} width={selArrGerador.forma_pagamento === "sc_soja_milho" || selArrGerador.forma_pagamento === "brl" ? 1100 : 860}>
 
           {/* aviso */}
-          <div style={{ background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#0B2D50" }}>
+          <div style={{ background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#0D0D0D" }}>
             {selArrGerador.forma_pagamento === "brl"
               ? <>Pagamento em R$ conforme cotação do dia. Informe as referências em sc/ha e a cotação esperada para calcular o valor previsto.<br />
                   <strong>Não compromete estoque de grãos</strong> — gera apenas lançamento em Contas a Pagar com a referência de sacas na observação.</>

@@ -11,7 +11,7 @@ import type { ConfigContabilidade } from "../../../lib/supabase";
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
 const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "24px 28px", marginBottom: 20 };
-const secTitle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" };
+const secTitle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" };
 
 const ESCRITURACAO_LABELS: Record<string, string> = {
   G: "G — Diário Geral",
@@ -145,7 +145,7 @@ export default function ContabilidadePage() {
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Configuração Contábil</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>Configuração Contábil</h1>
           <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
             Parâmetros para geração do SPED ECD (Escrituração Contábil Digital).
             Cada entidade — Produtor Rural (PF) e Empresa (PJ) — tem seu próprio livro contábil.
@@ -153,7 +153,7 @@ export default function ContabilidadePage() {
         </div>
 
         {/* Info box */}
-        <div style={{ background: "#D5E8F5", border: "0.5px solid #A8CDE8", borderRadius: 10, padding: "12px 16px", marginBottom: 24, fontSize: 13, color: "#0B2D50", display: "flex", gap: 10 }}>
+        <div style={{ background: "#E8E8E8", border: "0.5px solid #A8CDE8", borderRadius: 10, padding: "12px 16px", marginBottom: 24, fontSize: 13, color: "#0D0D0D", display: "flex", gap: 10 }}>
           <span style={{ fontSize: 16 }}>ℹ️</span>
           <div>
             <strong>Responsabilidade técnica:</strong> a definição do método de escrituração (G, R ou B)
@@ -170,13 +170,13 @@ export default function ContabilidadePage() {
               onClick={() => mudarAba(e)}
               style={{
                 padding: "10px 24px", border: "none", borderRadius: "8px 8px 0 0",
-                background: aba === e ? "#1A5CB8" : "#E8EEF5",
+                background: aba === e ? "#2A2A2A" : "#E8EEF5",
                 color: aba === e ? "#fff" : "var(--text-2)",
                 fontWeight: aba === e ? 700 : 400, cursor: "pointer", fontSize: 13,
               }}
             >
               {ABA_LABELS[e]}
-              {configs[e] && <span style={{ marginLeft: 6, fontSize: 10, background: aba === e ? "rgba(255,255,255,0.25)" : "#1A5CB820", padding: "1px 6px", borderRadius: 8 }}>Configurado</span>}
+              {configs[e] && <span style={{ marginLeft: 6, fontSize: 10, background: aba === e ? "rgba(255,255,255,0.25)" : "#2A2A2A20", padding: "1px 6px", borderRadius: 8 }}>Configurado</span>}
             </button>
           ))}
         </div>
@@ -325,7 +325,7 @@ export default function ContabilidadePage() {
           <button
             onClick={salvar}
             disabled={saving}
-            style={{ padding: "10px 28px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}
+            style={{ padding: "10px 28px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}
           >
             {saving ? "Salvando..." : `Salvar Configuração ${aba.toUpperCase()}`}
           </button>
@@ -334,7 +334,7 @@ export default function ContabilidadePage() {
           <div style={{ flex: 1 }} />
           <a
             href="/fiscal/sped-contabil"
-            style={{ padding: "10px 20px", background: "var(--bg-page)", border: "0.5px solid #1A5CB8", color: "#1A5CB8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, textDecoration: "none" }}
+            style={{ padding: "10px 20px", background: "var(--bg-page)", border: "0.5px solid #2A2A2A", color: "#2A2A2A", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, textDecoration: "none" }}
           >
             Gerar SPED ECD →
           </a>

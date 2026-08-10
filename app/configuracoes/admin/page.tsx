@@ -70,8 +70,8 @@ const GRUPOS = [
     label: "Estoque & Compras",
     icon: "📦",
     desc: "NFs de entrada · Pedidos de compra · Movimentações de estoque",
-    cor: "#378ADD",
-    bg: "#EFF6FF",
+    cor: "#444444",
+    bg: "#F2F2F2",
     countTables: ["nf_entradas", "pedidos_compra", "movimentacoes_estoque"],
     deleteTables: ["movimentacoes_estoque", "nf_entrada_itens", "nf_entradas", "pedidos_compra_itens", "pedidos_compra"],
     aviso: null as string | null,
@@ -92,8 +92,8 @@ const GRUPOS = [
     label: "Estrutura (Talhões & Ciclos)",
     icon: "🗺️",
     desc: "Talhões · Ciclos de produção · Anos safra · Matrículas de imóvel",
-    cor: "#0B2D50",
-    bg: "#D5E8F5",
+    cor: "#0D0D0D",
+    bg: "#E8E8E8",
     countTables: ["talhoes", "ciclos", "anos_safra"],
     deleteTables: ["matriculas_imoveis", "talhoes", "ciclos", "anos_safra"],
     aviso: "Exclua Lavoura antes — operações de lavoura dependem de ciclos e talhões.",
@@ -422,7 +422,7 @@ export default function AdminPage() {
                       Para confirmar, digite exatamente o nome da conta:
                     </div>
                     <div style={{ marginBottom: 6 }}>
-                      <code style={{ background: "var(--bg-page)", padding: "4px 10px", borderRadius: 6, fontSize: 14, color: "#1A4870", fontWeight: 700 }}>
+                      <code style={{ background: "var(--bg-page)", padding: "4px 10px", borderRadius: 6, fontSize: 14, color: "#111111", fontWeight: 700 }}>
                         {contaExcluirObj.nome}
                       </code>
                     </div>
@@ -504,7 +504,7 @@ export default function AdminPage() {
                     <button
                       onClick={carregarContagens}
                       disabled={carregandoContagens}
-                      style={{ marginTop: 10, width: "100%", padding: "8px 0", border: "0.5px solid #1A4870", borderRadius: 8, background: "white", color: "#1A4870", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                      style={{ marginTop: 10, width: "100%", padding: "8px 0", border: "0.5px solid #111111", borderRadius: 8, background: "white", color: "#111111", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
                     >
                       {carregandoContagens ? "⏳ Contando..." : "↺ Carregar contagens"}
                     </button>

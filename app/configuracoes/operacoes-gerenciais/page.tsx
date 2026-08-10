@@ -72,7 +72,7 @@ function BadgeConta({ codigo, contas }: { codigo: string; contas: ContaContabil[
   if (!codigo) return <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>;
   const c = contas.find(x => x.codigo === codigo);
   return (
-    <span style={{ fontFamily: "monospace", fontSize: 11, background: "#EEF5FE", color: "#1A4870", padding: "2px 6px", borderRadius: 4, fontWeight: 600 }} title={c?.nome ?? codigo}>
+    <span style={{ fontFamily: "monospace", fontSize: 11, background: "#EEF5FE", color: "#111111", padding: "2px 6px", borderRadius: 4, fontWeight: 600 }} title={c?.nome ?? codigo}>
       {codigo}
     </span>
   );
@@ -310,7 +310,7 @@ function OperacoesGerenciaisContent() {
           })}
         </select>
         {value && nome && (
-          <div style={{ fontSize: 11, color: "#0B2D50", marginTop: 3, background: "#EEF5FE", padding: "3px 8px", borderRadius: 5 }}>
+          <div style={{ fontSize: 11, color: "#0D0D0D", marginTop: 3, background: "#EEF5FE", padding: "3px 8px", borderRadius: 5 }}>
             {nome}
           </div>
         )}
@@ -321,7 +321,7 @@ function OperacoesGerenciaisContent() {
   // helpers de badge inline
   const ESCOPO_META: Record<string, { label: string; bg: string; cl: string }> = {
     global:  { label: "Global",   bg: "#EDE9FB", cl: "#4B3B9B" },
-    fazenda: { label: "Fazenda",  bg: "#D5E8F5", cl: "#0B2D50" },
+    fazenda: { label: "Fazenda",  bg: "#E8E8E8", cl: "#0D0D0D" },
     ciclo:   { label: "Ciclo",    bg: "#EAF3DE", cl: "#1A5C38" },
   };
 
@@ -349,11 +349,11 @@ function OperacoesGerenciaisContent() {
               {seeding ? "Importando…" : "↓ Importar Padrão"}
             </button>
             <a href="/configuracoes/plano-contas"
-              style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #1A4870", borderRadius: 7, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+              style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #111111", borderRadius: 7, background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
               → Plano de Contas
             </a>
             <button onClick={abrirNovo}
-              style={{ fontSize: 11, padding: "6px 14px", border: "none", borderRadius: 7, background: "#1A4870", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+              style={{ fontSize: 11, padding: "6px 14px", border: "none", borderRadius: 7, background: "#111111", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
               + Nova Operação
             </button>
           </div>
@@ -362,7 +362,7 @@ function OperacoesGerenciaisContent() {
         {/* ── KPI strip ── */}
         <div style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
           {[
-            { label: "Total Ativas",       value: totalAtivos,   color: "#1A4870", bg: "#D5E8F5", onClick: () => setFiltroTipo("todos")    },
+            { label: "Total Ativas",       value: totalAtivos,   color: "#111111", bg: "#E8E8E8", onClick: () => setFiltroTipo("todos")    },
             { label: "Receitas",           value: totalReceita,  color: "#1A5C38", bg: "#EAF3DE", onClick: () => setFiltroTipo("receita")  },
             { label: "Despesas",           value: totalDespesa,  color: "#633806", bg: "#FAEEDA", onClick: () => setFiltroTipo("despesa")  },
             { label: "Com Conta Contábil", value: totalComConta, color: "#4B1A8A", bg: "#F0EAF8", onClick: () => {} },
@@ -384,8 +384,8 @@ function OperacoesGerenciaisContent() {
             {(["todos", "receita", "despesa"] as const).map(f => (
               <button key={f} onClick={() => setFiltroTipo(f)} style={{
                 padding: "5px 14px", border: "none", borderRight: f !== "despesa" ? "0.5px solid var(--border-table)" : "none",
-                background: filtroTipo === f ? "#D5E8F5" : "var(--bg-card)",
-                color: filtroTipo === f ? "#0B2D50" : "var(--text-3)",
+                background: filtroTipo === f ? "#E8E8E8" : "var(--bg-card)",
+                color: filtroTipo === f ? "#0D0D0D" : "var(--text-3)",
                 fontWeight: filtroTipo === f ? 600 : 400, fontSize: 12, cursor: "pointer",
               }}>
                 {f === "todos" ? "Todos" : f === "receita" ? "Receitas" : "Despesas"}
@@ -448,11 +448,11 @@ function OperacoesGerenciaisContent() {
                     const isGrupo = nivel <= 1;
                     const telas: { label: string; bg: string; cl: string }[] = [];
                     if (o.permite_notas_fiscais)       telas.push({ label: "NF",         bg: "#EDE9FB", cl: "#4B3B9B" });
-                    if (o.permite_cp_cr)               telas.push({ label: "CP/CR",      bg: "#D5E8F5", cl: "#0B2D50" });
+                    if (o.permite_cp_cr)               telas.push({ label: "CP/CR",      bg: "#E8E8E8", cl: "#0D0D0D" });
                     if (o.permite_tesouraria)          telas.push({ label: "Tesouraria", bg: "#FBF3E0", cl: "#7A5A10" });
                     if (o.permite_estoque)             telas.push({ label: "Estoque",    bg: "#EAF3DE", cl: "#1A5C38" });
                     if (o.permite_pedidos_venda)       telas.push({ label: "Ped.Venda",  bg: "#FBF0D8", cl: "#633806" });
-                    if (o.permite_contrato_financeiro) telas.push({ label: "Contrato",   bg: "#F0F4FF", cl: "#1A4870" });
+                    if (o.permite_contrato_financeiro) telas.push({ label: "Contrato",   bg: "#F0F4FF", cl: "#111111" });
                     const temConta = !!(o.conta_debito || o.conta_credito);
                     const escopoMeta = o.escopo_cc ? ESCOPO_META[o.escopo_cc] : null;
                     return (
@@ -462,7 +462,7 @@ function OperacoesGerenciaisContent() {
                         opacity: o.inativo ? 0.5 : 1,
                       }}>
                         {/* Código */}
-                        <td style={{ padding: "5px 10px", fontFamily: "monospace", fontSize: 12, color: isGrupo ? "#1A4870" : "var(--text-2)", fontWeight: isGrupo ? 700 : 400, whiteSpace: "nowrap" }}>
+                        <td style={{ padding: "5px 10px", fontFamily: "monospace", fontSize: 12, color: isGrupo ? "#111111" : "var(--text-2)", fontWeight: isGrupo ? 700 : 400, whiteSpace: "nowrap" }}>
                           {o.classificacao}
                         </td>
                         {/* Descrição */}
@@ -608,12 +608,12 @@ function OperacoesGerenciaisContent() {
               ] as { key: AbaModal; label: string }[]).map(a => (
                 <button key={a.key} onClick={() => setAbaModal(a.key)} style={{
                   padding: "9px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
-                  borderBottom: abaModal === a.key ? "2px solid #1A5CB8" : "2px solid transparent",
-                  color: abaModal === a.key ? "#1A5CB8" : "var(--text-2)",
+                  borderBottom: abaModal === a.key ? "2px solid #2A2A2A" : "2px solid transparent",
+                  color: abaModal === a.key ? "#2A2A2A" : "var(--text-2)",
                   fontWeight: abaModal === a.key ? 600 : 400,
                 }}>
                   {a.key === "contabilidade" && (form.conta_debito || form.conta_credito) ? (
-                    <span>{a.label} <span style={{ marginLeft: 4, fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>✓</span></span>
+                    <span>{a.label} <span style={{ marginLeft: 4, fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>✓</span></span>
                   ) : a.label}
                 </button>
               ))}
@@ -626,7 +626,7 @@ function OperacoesGerenciaisContent() {
               {abaModal === "telas" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Lançamentos Gerais</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Lançamentos Gerais</div>
                     {([
                       { key: "permite_notas_fiscais",       label: "Notas Fiscais de Entrada"    },
                       { key: "permite_cp_cr",               label: "Contas a Pagar / Receber"    },
@@ -643,7 +643,7 @@ function OperacoesGerenciaisContent() {
                     ))}
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Lançamentos Específicos</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Lançamentos Específicos</div>
                     {([
                       { key: "permite_estoque",         label: "Estoque"                          },
                       { key: "permite_pedidos_venda",   label: "Pedidos de Venda"                 },
@@ -664,7 +664,7 @@ function OperacoesGerenciaisContent() {
               {abaModal === "estoque" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Operação de Estoque</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Operação de Estoque</div>
                     <div style={{ display: "flex", gap: 20 }}>
                       {(["entrada", "saida", "neutra"] as const).map(v => (
                         <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
@@ -679,7 +679,7 @@ function OperacoesGerenciaisContent() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Tipo de Custo no Estoque</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Tipo de Custo no Estoque</div>
                     <div style={{ display: "flex", gap: 20 }}>
                       {(["gasto", "ajuste", "contrato", "nenhum"] as const).map(v => (
                         <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
@@ -706,7 +706,7 @@ function OperacoesGerenciaisContent() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Impostos / Retenções</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Impostos / Retenções</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {[
                         { key: "icms",         label: "ICMS"         },
@@ -721,7 +721,7 @@ function OperacoesGerenciaisContent() {
                         <label key={key} style={{
                           display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13,
                           padding: "6px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6,
-                          background: form.impostos.includes(key) ? "#D5E8F5" : "var(--bg-card)",
+                          background: form.impostos.includes(key) ? "#E8E8E8" : "var(--bg-card)",
                         }}>
                           <input type="checkbox" checked={form.impostos.includes(key)}
                             onChange={e => setForm(p => ({ ...p, impostos: e.target.checked ? [...p.impostos, key] : p.impostos.filter(x => x !== key) }))} />
@@ -737,7 +737,7 @@ function OperacoesGerenciaisContent() {
               {abaModal === "financeiro" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Financeiro</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Financeiro</div>
                     {([
                       { key: "gerar_financeiro",            label: "Gerar Financeiro"                 },
                       { key: "gerar_financeiro_gerencial",  label: "Gerar Financeiro Gerencial"       },
@@ -748,7 +748,7 @@ function OperacoesGerenciaisContent() {
                         {label}
                       </label>
                     ))}
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, marginTop: 16, textTransform: "uppercase" }}>Custos</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, marginTop: 16, textTransform: "uppercase" }}>Custos</div>
                     {([
                       { key: "custo_absorcao",          label: "Custo por Absorção"         },
                       { key: "custo_abc",               label: "Custo ABC"                  },
@@ -761,7 +761,7 @@ function OperacoesGerenciaisContent() {
                     ))}
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Patrimonial</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Patrimonial</div>
                     {([
                       { key: "manutencao_reparos", label: "Manutenção e Reparos" },
                       { key: "gerar_depreciacao",  label: "Gerar Depreciação"    },
@@ -782,7 +782,7 @@ function OperacoesGerenciaisContent() {
                   {/* Alerta se plano vazio */}
                   {plano.length === 0 && (
                     <div style={{ padding: "10px 14px", background: "#FBF3E0", borderRadius: 8, border: "0.5px solid #C9921B", fontSize: 12, color: "#7A5A10" }}>
-                      ⚠️ Plano de Contas não cadastrado. <a href="/configuracoes/plano-contas" style={{ color: "#1A4870", fontWeight: 600 }}>Cadastre o Plano de Contas</a> para vincular contas contábeis às operações gerenciais.
+                      ⚠️ Plano de Contas não cadastrado. <a href="/configuracoes/plano-contas" style={{ color: "#111111", fontWeight: 600 }}>Cadastre o Plano de Contas</a> para vincular contas contábeis às operações gerenciais.
                     </div>
                   )}
 
@@ -825,13 +825,13 @@ function OperacoesGerenciaisContent() {
 
                   {/* Partida dupla visual */}
                   {(form.conta_debito || form.conta_credito) && (
-                    <div style={{ padding: "14px 18px", background: "#F0F4FF", borderRadius: 8, border: "0.5px solid #1A4870" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" }}>Partida Dobrada — Prévia</div>
+                    <div style={{ padding: "14px 18px", background: "#F0F4FF", borderRadius: 8, border: "0.5px solid #111111" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Partida Dobrada — Prévia</div>
                       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 10, color: "#1A4870", fontWeight: 600, marginBottom: 4 }}>DÉBITO</div>
+                          <div style={{ fontSize: 10, color: "#111111", fontWeight: 600, marginBottom: 4 }}>DÉBITO</div>
                           {form.conta_debito ? (
-                            <div style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>
+                            <div style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "#111111" }}>
                               {form.conta_debito}
                               <div style={{ fontFamily: "system-ui", fontSize: 11, fontWeight: 400, color: "var(--text-2)", marginTop: 2 }}>
                                 {plano.find(c => c.codigo === form.conta_debito)?.nome ?? "—"}
@@ -868,7 +868,7 @@ function OperacoesGerenciaisContent() {
             )}
             <div style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
               <button onClick={() => setModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={salvar} disabled={salvando} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
+              <button onClick={salvar} disabled={salvando} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando…" : editOp ? "Salvar Alterações" : "Criar Operação"}
               </button>
             </div>
