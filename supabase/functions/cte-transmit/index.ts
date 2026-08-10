@@ -1,30 +1,17 @@
 /**
  * Supabase Edge Function: cte-transmit
- * Relay para transmissão de CT-e à SEFAZ via mTLS.
+ * Relay para transmissão de CT-e à SEFAZ via mTLS de IP brasileiro.
  *
- * Por que existe: a Vercel roda em data centers nos EUA; o SVRS (autorizador
- * de CT-e de MT) bloqueia IPs fora do Brasil na camada HTTP após o TLS.
- * Esta function roda na região do projeto Supabase (sa-east-1, São Paulo)
- * e faz o POST SOAP com mTLS de um IP brasileiro.
- *
- * Chamada pelo lib/cte/transmitter.ts via fetch interno.
- * Autenticação: Bearer <SUPABASE_SERVICE_ROLE_KEY> no header Authorization.
+ * Autenticação: JWT do Supabase (Bearer service_role_key no header Authorization).
+ * O Supabase valida automaticamente o JWT antes de executar a função.
+ * SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL e SUPABASE_ANON_KEY são auto-injetados.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
 serve(async (req: Request) => {
-  // Só aceita POST
   if (req.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
-  }
-
-  // Autenticação interna — apenas o backend Vercel pode chamar
-  const auth = req.headers.get("Authorization") ?? "";
-  if (!SERVICE_ROLE_KEY || !auth.startsWith("Bearer ") || auth.slice(7) !== SERVICE_ROLE_KEY) {
-    return new Response("Unauthorized", { status: 401 });
   }
 
   let endpoint: string, soapBody: string, certPem: string, keyPem: string;
@@ -32,8 +19,8 @@ serve(async (req: Request) => {
     const body = await req.json() as {
       endpoint: string;
       soapBody: string;
-      certPem: string;
-      keyPem: string;
+      certPem:  string;
+      keyPem:   string;
     };
     endpoint = body.endpoint;
     soapBody = body.soapBody;
@@ -44,12 +31,11 @@ serve(async (req: Request) => {
   }
 
   if (!endpoint || !soapBody || !certPem || !keyPem) {
-    return new Response("Bad Request — campos obrigatórios: endpoint, soapBody, certPem, keyPem", { status: 400 });
+    return new Response("Bad Request — campos obrigatórios ausentes", { status: 400 });
   }
 
   try {
-    // Deno.createHttpClient suporta mTLS via cert + key (disponível Deno 1.18+)
-    // O SVRS usa cert do servidor com CA padrão — sem necessidade de caCerts customizado
+    // Deno.createHttpClient com cert + key habilita mTLS (client certificate)
     const client = Deno.createHttpClient({
       cert: certPem,
       key:  keyPem,
@@ -64,7 +50,7 @@ serve(async (req: Request) => {
         "Content-Length": String(bodyBytes.length),
       },
       body: soapBody,
-      // @ts-ignore — propriedade Deno-específica, não existe no tipo padrão fetch
+      // @ts-ignore — propriedade Deno-específica não reconhecida pelo tipo fetch padrão
       client,
     });
 
@@ -73,14 +59,14 @@ serve(async (req: Request) => {
 
     console.log(`[cte-transmit] ${endpoint} → HTTP ${httpStatus}`);
     if (httpStatus !== 200) {
-      console.log("[cte-transmit] body:", responseBody.slice(0, 300));
+      console.log("[cte-transmit] body:", responseBody.slice(0, 400));
     }
 
     return new Response(JSON.stringify({ httpStatus, body: responseBody }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("[cte-transmit] erro:", err);
+    console.error("[cte-transmit] erro:", String(err));
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

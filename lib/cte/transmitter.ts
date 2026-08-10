@@ -32,21 +32,23 @@ function endpoint(uf: string, _ambiente: "producao" | "homologacao"): string {
 
 // ─── Relay via Supabase Edge Function (IP brasileiro) ────────────────────────
 async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise<string> {
-  const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey   = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const edgeFnUrl    = `${supabaseUrl}/functions/v1/cte-transmit`;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  // Supabase valida o JWT do service_role_key automaticamente
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const edgeFnUrl   = `${supabaseUrl}/functions/v1/cte-transmit`;
 
   const resp = await fetch(edgeFnUrl, {
     method:  "POST",
     headers: {
       "Content-Type":  "application/json",
+      // O Supabase verifica este JWT antes de executar a Edge Function
       "Authorization": `Bearer ${serviceKey}`,
     },
     body: JSON.stringify({
-      endpoint:  url,
-      soapBody:  body,
-      certPem:   pem.cert,
-      keyPem:    pem.key,
+      endpoint: url,
+      soapBody: body,
+      certPem:  pem.cert,
+      keyPem:   pem.key,
     }),
   });
 
