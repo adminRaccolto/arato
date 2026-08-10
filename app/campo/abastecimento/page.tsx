@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { BombaCombustivel, Maquina, Funcionario } from "../../../lib/supabase";
+import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "13px 14px", border: "0.5px solid var(--border-table)",
@@ -50,12 +51,26 @@ export default function CampoAbastecimentoPage() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
+
+    if (!navigator.onLine) {
+      const bombCache = lerCache<BombaCombustivel[]>(`bombas_${fazendaId}`);
+      const maqCache  = lerCache<Maquina[]>(`maquinas_${fazendaId}`);
+      const funcCache = lerCache<Funcionario[]>(`funcionarios_${fazendaId}`);
+      const insCache  = lerCache<Record<string, string>>(`insumos_bomba_${fazendaId}`);
+      if (bombCache) setBombas(bombCache);
+      if (maqCache)  setTodasMaq(maqCache);
+      if (funcCache) setFuncionarios(funcCache);
+      if (insCache)  setInsumosBomba(insCache);
+      return;
+    }
+
     const [{ data: bomb }, { data: maq }, { data: func }] = await Promise.all([
       supabase.from("bombas_combustivel").select("*, insumos(id,nome)").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("maquinas").select("id, nome, tipo, horimetro_atual, patrimonio, consome_combustivel").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("funcionarios").select("id, nome").eq("fazenda_id", fazendaId).order("nome"),
     ]);
-    setBombas((bomb ?? []) as BombaCombustivel[]);
+    const bombRes = (bomb ?? []) as BombaCombustivel[];
+    setBombas(bombRes);
 
     // Monta mapa bomba_id → nome do insumo vinculado
     const insMap: Record<string, string> = {};
@@ -66,8 +81,14 @@ export default function CampoAbastecimentoPage() {
 
     // Filtra apenas máquinas que consomem combustível (flag true ou null = legado)
     const maqFiltradas = ((maq ?? []) as Maquina[]).filter(m => m.consome_combustivel !== false);
+    const funcRes = (func ?? []) as Funcionario[];
     setTodasMaq(maqFiltradas);
-    setFuncionarios((func ?? []) as Funcionario[]);
+    setFuncionarios(funcRes);
+
+    salvarCache(`bombas_${fazendaId}`, bombRes);
+    salvarCache(`maquinas_${fazendaId}`, maqFiltradas);
+    salvarCache(`funcionarios_${fazendaId}`, funcRes);
+    salvarCache(`insumos_bomba_${fazendaId}`, insMap);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -109,28 +130,38 @@ export default function CampoAbastecimentoPage() {
 
     setErro(""); setSalvando(true);
     try {
-      const destMaquinaId = fDestTipo === "maquina"      ? (fMaquina || null)    : null;
-      const destFuncId    = fDestTipo === "funcionario"   ? (fFuncionario || null): null;
-      const destLivre     = fDestTipo === "livre"         ? (fDestLivre.trim() || null) : null;
-      const horimetro     = fHorimetro ? parseFloat(fHorimetro) : null;
+      const destMaquinaId  = fDestTipo === "maquina"      ? (fMaquina || null)    : null;
+      const destFuncId     = fDestTipo === "funcionario"   ? (fFuncionario || null): null;
+      const destLivre      = fDestTipo === "livre"         ? (fDestLivre.trim() || null) : null;
+      const horimetro      = fHorimetro ? parseFloat(fHorimetro) : null;
       const patrimonioSnap = maquinaSel?.patrimonio ?? null;
 
-      const { error: e1 } = await supabase.from("abastecimentos").insert({
-        fazenda_id:           fazendaId,
-        bomba_id:             fBomba,
-        maquina_id:           destMaquinaId,
-        funcionario_id:       destFuncId,
-        destino_livre:        destLivre,
-        quantidade_l:         qtd,
-        valor_unitario:       valorL,
-        valor_total:          valorTotal,
+      const payload = {
+        fazenda_id:            fazendaId,
+        bomba_id:              fBomba,
+        maquina_id:            destMaquinaId,
+        funcionario_id:        destFuncId,
+        destino_livre:         destLivre,
+        quantidade_l:          qtd,
+        valor_unitario:        valorL,
+        valor_total:           valorTotal,
         horimetro,
-        patrimonio:           patrimonioSnap,
-        data:                 fData,
-        observacao:           fObs.trim() || null,
+        patrimonio:            patrimonioSnap,
+        data:                  fData,
+        observacao:            fObs.trim() || null,
         insumo_movimentado_id: bombasel?.insumo_id ?? null,
-      });
-      if (e1) throw new Error(e1.message);
+      };
+
+      if (!navigator.onLine) {
+        adicionarNaFila({ tipo: "abastecimento", fazenda_id: fazendaId, payload });
+        setEtapa("ok"); setSalvando(false); return;
+      }
+
+      const { error: e1 } = await supabase.from("abastecimentos").insert(payload);
+      if (e1) {
+        adicionarNaFila({ tipo: "abastecimento", fazenda_id: fazendaId, payload });
+        setEtapa("ok"); setSalvando(false); return;
+      }
 
       // Atualiza horímetro da máquina
       if (destMaquinaId && horimetro) {
@@ -153,7 +184,6 @@ export default function CampoAbastecimentoPage() {
           const novoEst = Math.max(0, (ins.estoque ?? 0) - qtd);
           await supabase.from("insumos").update({ estoque: novoEst }).eq("id", bombasel.insumo_id);
 
-          // Registra movimentação
           await supabase.from("movimentacoes_estoque").insert({
             fazenda_id:    fazendaId,
             insumo_id:     bombasel.insumo_id,
@@ -178,11 +208,20 @@ export default function CampoAbastecimentoPage() {
     setErro(""); setSalvando(false); setEtapa("form");
   }
 
+  const foiOffline = typeof window !== "undefined" && !navigator.onLine;
+
   // ── Tela de sucesso ──
   if (etapa === "ok") return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, paddingTop: 60 }}>
-      <div style={{ fontSize: 64 }}>✅</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: "#166534", textAlign: "center" }}>Abastecimento registrado!</div>
+      <div style={{ fontSize: 64 }}>{foiOffline ? "📥" : "✅"}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: foiOffline ? "#92400E" : "#166534", textAlign: "center" }}>
+        {foiOffline ? "Salvo localmente!" : "Abastecimento registrado!"}
+      </div>
+      {foiOffline && (
+        <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 10, padding: "10px 14px", width: "100%", fontSize: 12, color: "#92400E" }}>
+          📡 Sem internet — use o botão <strong>↑ Sincronizar</strong> quando voltar a ter sinal.
+        </div>
+      )}
       <div style={{ background: "#FEFCE8", border: "0.5px solid #FDE047", borderRadius: 12, padding: "16px 18px", width: "100%", fontSize: 13, color: "#4B3B0F", lineHeight: 1.8 }}>
         <strong>⛽ {bombasel?.nome ?? "Bomba"}</strong>
         {insumosBomba[fBomba] && <> — {insumosBomba[fBomba]}</>}
@@ -193,10 +232,10 @@ export default function CampoAbastecimentoPage() {
         {valorTotal > 0 && <><strong>R$ {valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong></>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-        <button onClick={novoRegistro} style={{ padding: "14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={novoRegistro} style={{ padding: "14px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           + Novo Abastecimento
         </button>
-        <a href="/estoque/abastecimento" style={{ padding: "14px", background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
+        <a href="/estoque/abastecimento" style={{ padding: "14px", background: "var(--bg-card)", color: "#111111", border: "0.5px solid #111111", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
           Ver histórico
         </a>
       </div>
@@ -250,9 +289,9 @@ export default function CampoAbastecimentoPage() {
             { v: "livre",       label: "Outro",       icon: "📝" },
           ] as const).map(d => (
             <button key={d.v} type="button" onClick={() => setFDestTipo(d.v)}
-              style={{ padding: "10px 6px", borderRadius: 10, border: `2px solid ${fDestTipo === d.v ? "#1A4870" : "var(--border)"}`, background: fDestTipo === d.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", textAlign: "center" }}>
+              style={{ padding: "10px 6px", borderRadius: 10, border: `2px solid ${fDestTipo === d.v ? "#111111" : "var(--border)"}`, background: fDestTipo === d.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", textAlign: "center" }}>
               <div style={{ fontSize: 22 }}>{d.icon}</div>
-              <div style={{ fontSize: 10, fontWeight: fDestTipo === d.v ? 700 : 400, color: fDestTipo === d.v ? "#1A4870" : "var(--text-2)", marginTop: 4 }}>{d.label}</div>
+              <div style={{ fontSize: 10, fontWeight: fDestTipo === d.v ? 700 : 400, color: fDestTipo === d.v ? "#111111" : "var(--text-2)", marginTop: 4 }}>{d.label}</div>
             </button>
           ))}
         </div>
@@ -268,7 +307,7 @@ export default function CampoAbastecimentoPage() {
                   if (count === 0) return null;
                   return (
                     <button key={t.v} type="button" onClick={() => handleTipoMaq(t.v)}
-                      style={{ padding: "8px 4px", borderRadius: 8, border: `2px solid ${fTipoMaq === t.v ? "#1A4870" : "var(--border)"}`, background: fTipoMaq === t.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", textAlign: "center", fontSize: 10, fontWeight: fTipoMaq === t.v ? 700 : 400, color: fTipoMaq === t.v ? "#1A4870" : "var(--text-2)" }}>
+                      style={{ padding: "8px 4px", borderRadius: 8, border: `2px solid ${fTipoMaq === t.v ? "#111111" : "var(--border)"}`, background: fTipoMaq === t.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", textAlign: "center", fontSize: 10, fontWeight: fTipoMaq === t.v ? 700 : 400, color: fTipoMaq === t.v ? "#111111" : "var(--text-2)" }}>
                       {t.label}<br /><span style={{ fontWeight: 400, color: "var(--text-3)" }}>({count})</span>
                     </button>
                   );
@@ -301,7 +340,7 @@ export default function CampoAbastecimentoPage() {
               <div style={{ padding: "10px 14px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 16, alignItems: "center" }}>
                 <div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase" }}>Patrimônio</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: temPatrimonio ? "#1A4870" : "#DC2626" }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: temPatrimonio ? "#111111" : "#DC2626" }}>
                     {maquinaSel?.patrimonio ?? "— Não cadastrado —"}
                   </div>
                 </div>
@@ -391,7 +430,7 @@ export default function CampoAbastecimentoPage() {
       {erro && <div style={{ padding: "12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 10, fontSize: 13 }}>{erro}</div>}
 
       <button onClick={salvar} disabled={salvando || bombas.length === 0}
-        style={{ padding: "16px", background: salvando || bombas.length === 0 ? "#9CA3AF" : "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+        style={{ padding: "16px", background: salvando || bombas.length === 0 ? "#9CA3AF" : "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
         {salvando ? "Salvando..." : "✓ Registrar Abastecimento"}
       </button>
     </div>

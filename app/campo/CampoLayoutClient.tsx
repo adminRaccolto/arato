@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase"; // usado em carregarFazendas
+import SyncButton from "../../components/campo/SyncButton";
 
 type FazendaOp = { id: string; nome: string };
 
@@ -41,7 +42,7 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
     <div style={{ fontFamily: "system-ui, sans-serif", background: "var(--bg-page)", minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
 
       {/* Faixa de topo */}
-      <div style={{ background: "#1A4870", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0B2D50" }}>
+      <div style={{ background: "#111111", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0D0D0D" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img
             src="/Arato_BRANCO.png"
@@ -89,8 +90,8 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 0", border: "none", background: "none", cursor: "pointer", borderBottom: "0.5px solid var(--border)", textAlign: "left" }}
               >
                 <span style={{ fontSize: 20 }}>🏡</span>
-                <span style={{ fontSize: 14, color: f.id === fazendaId ? "#1A4870" : "var(--text-1)", fontWeight: f.id === fazendaId ? 700 : 400 }}>{f.nome}</span>
-                {f.id === fazendaId && <span style={{ marginLeft: "auto", color: "#1A4870", fontSize: 16 }}>✓</span>}
+                <span style={{ fontSize: 14, color: f.id === fazendaId ? "#111111" : "var(--text-1)", fontWeight: f.id === fazendaId ? 700 : 400 }}>{f.nome}</span>
+                {f.id === fazendaId && <span style={{ marginLeft: "auto", color: "#111111", fontSize: 16 }}>✓</span>}
               </button>
             ))}
           </div>
@@ -102,6 +103,9 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
         {children}
       </div>
 
+      {/* Botão de sincronização offline */}
+      <SyncButton />
+
       {/* Barra inferior de navegação */}
       <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "var(--bg-card)", borderTop: "0.5px solid var(--border)", display: "flex", zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0)" }}>
         {NAV_ITEMS.map(item => {
@@ -109,8 +113,8 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
           return (
             <Link key={item.href} href={item.href} style={{
               flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 2px 8px",
-              textDecoration: "none", color: active ? "#1A4870" : "var(--text-3)",
-              borderTop: active ? "2.5px solid #1A4870" : "2.5px solid transparent",
+              textDecoration: "none", color: active ? "#111111" : "var(--text-3)",
+              borderTop: active ? "2.5px solid #111111" : "2.5px solid transparent",
               background: active ? "#EFF4FA" : "none",
               minWidth: 0,
             }}>

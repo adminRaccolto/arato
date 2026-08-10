@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
 type Ciclo  = { id: string; cultura: string; ano_safra?: { ano: string } };
@@ -31,12 +32,26 @@ export default function CampoPlantioPage() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
+
+    // Offline: usa cache salvo na última sessão com internet
+    if (!navigator.onLine) {
+      const talCache = lerCache<Talhao[]>(`talhoes_${fazendaId}`);
+      const cicCache = lerCache<Ciclo[]>(`ciclos_${fazendaId}`);
+      if (talCache) setTalhoes(talCache);
+      if (cicCache) setCiclos(cicCache);
+      return;
+    }
+
     const [{ data: tal }, { data: cic }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(ano)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
     ]);
-    setTalhoes((tal ?? []) as Talhao[]);
-    setCiclos((cic ?? []) as Ciclo[]);
+    const talRes = (tal ?? []) as Talhao[];
+    const cicRes = (cic ?? []) as Ciclo[];
+    setTalhoes(talRes);
+    setCiclos(cicRes);
+    salvarCache(`talhoes_${fazendaId}`, talRes);
+    salvarCache(`ciclos_${fazendaId}`, cicRes);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -56,18 +71,33 @@ export default function CampoPlantioPage() {
     try {
       const area = parseFloat(fArea) || 0;
       const dose = parseFloat(fDose) || 0;
-      const { error } = await supabase.from("plantios").insert({
-        fazenda_id:   fazendaId,
-        ciclo_id:     fCiclo,
-        talhao_id:    fTalhao,
-        data_plantio: fData,
-        variedade:    fVaridade.trim() || null,
-        area_ha:      area,
-        dose_kg_ha:   dose || null,
+      const payload = {
+        fazenda_id:    fazendaId,
+        ciclo_id:      fCiclo,
+        talhao_id:     fTalhao,
+        data_plantio:  fData,
+        variedade:     fVaridade.trim() || null,
+        area_ha:       area,
+        dose_kg_ha:    dose || null,
         quantidade_kg: (dose && area) ? dose * area : null,
-        observacao:   fObs.trim() || null,
-      });
-      if (error) throw new Error(error.message);
+        observacao:    fObs.trim() || null,
+      };
+
+      if (!navigator.onLine) {
+        adicionarNaFila({ tipo: "plantio", fazenda_id: fazendaId, payload });
+        setEtapa("ok");
+        setSalvando(false);
+        return;
+      }
+
+      const { error } = await supabase.from("plantios").insert(payload);
+      if (error) {
+        // Fallback offline se a rede falhar mesmo online
+        adicionarNaFila({ tipo: "plantio", fazenda_id: fazendaId, payload });
+        setEtapa("ok");
+        setSalvando(false);
+        return;
+      }
       setEtapa("ok");
     } catch (e) { setErro((e as Error).message); }
     setSalvando(false);
@@ -81,20 +111,28 @@ export default function CampoPlantioPage() {
 
   const talhaoSel = talhoes.find(t => t.id === fTalhao);
   const cicloSel  = ciclos.find(c => c.id === fCiclo);
+  const foiOffline = typeof window !== "undefined" && !navigator.onLine;
 
   if (etapa === "ok") return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, paddingTop: 60 }}>
-      <div style={{ fontSize: 64 }}>✅</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: "#166534", textAlign: "center" }}>Plantio registrado!</div>
+      <div style={{ fontSize: 64 }}>{foiOffline ? "📥" : "✅"}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: foiOffline ? "#92400E" : "#166534", textAlign: "center" }}>
+        {foiOffline ? "Salvo localmente!" : "Plantio registrado!"}
+      </div>
+      {foiOffline && (
+        <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 10, padding: "10px 14px", width: "100%", fontSize: 12, color: "#92400E" }}>
+          📡 Sem internet — use o botão <strong>↑ Sincronizar</strong> quando voltar a ter sinal.
+        </div>
+      )}
       <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 12, padding: "14px 18px", width: "100%", fontSize: 13, color: "#166534", lineHeight: 1.6 }}>
         <strong>{talhaoSel?.nome}</strong> · {cicloSel?.cultura ?? "—"}<br />
         {fData.split("-").reverse().join("/")} · {fArea ? `${fArea} ha` : "—"}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-        <button onClick={novoRegistro} style={{ padding: "14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={novoRegistro} style={{ padding: "14px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           + Novo Plantio
         </button>
-        <a href="/lavoura/plantio" style={{ padding: "14px", background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
+        <a href="/lavoura/plantio" style={{ padding: "14px", background: "var(--bg-card)", color: "#111111", border: "0.5px solid #111111", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
           Ver todos os plantios
         </a>
       </div>
@@ -170,7 +208,7 @@ export default function CampoPlantioPage() {
       {erro && <div style={{ padding: "12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 10, fontSize: 13 }}>{erro}</div>}
 
       <button onClick={salvar} disabled={salvando}
-        style={{ padding: "16px", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+        style={{ padding: "16px", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
         {salvando ? "Salvando..." : "✓ Registrar Plantio"}
       </button>
     </div>

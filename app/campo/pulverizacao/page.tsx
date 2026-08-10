@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
 type Ciclo   = { id: string; cultura: string; ano_safra?: { ano: string } };
@@ -49,6 +50,17 @@ export default function CampoPulverizacaoPage() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
+
+    if (!navigator.onLine) {
+      const talCache = lerCache<Talhao[]>(`talhoes_${fazendaId}`);
+      const cicCache = lerCache<Ciclo[]>(`ciclos_${fazendaId}`);
+      const insCache = lerCache<Insumo[]>(`insumos_pulv_${fazendaId}`);
+      if (talCache) setTalhoes(talCache);
+      if (cicCache) setCiclos(cicCache);
+      if (insCache) setInsumos(insCache);
+      return;
+    }
+
     const [{ data: tal }, { data: cic }, { data: ins }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(ano)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
@@ -57,9 +69,13 @@ export default function CampoPulverizacaoPage() {
         .in("categoria", ["defensivo", "fertilizante", "adjuvante"])
         .order("nome"),
     ]);
-    setTalhoes((tal ?? []) as Talhao[]);
-    setCiclos((cic ?? []) as Ciclo[]);
-    setInsumos((ins ?? []) as Insumo[]);
+    const talRes = (tal ?? []) as Talhao[];
+    const cicRes = (cic ?? []) as Ciclo[];
+    const insRes = (ins ?? []) as Insumo[];
+    setTalhoes(talRes); setCiclos(cicRes); setInsumos(insRes);
+    salvarCache(`talhoes_${fazendaId}`, talRes);
+    salvarCache(`ciclos_${fazendaId}`, cicRes);
+    salvarCache(`insumos_pulv_${fazendaId}`, insRes);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -101,10 +117,10 @@ export default function CampoPulverizacaoPage() {
     }
     setErro(""); setSalvando(true);
     try {
-      const area = parseFloat(fArea) || 0;
+      const area  = parseFloat(fArea) || 0;
       const calda = parseFloat(fCalda) || null;
 
-      const { data: pulv, error: e1 } = await supabase.from("pulverizacoes").insert({
+      const payload = {
         fazenda_id:         fazendaId,
         ciclo_id:           fCiclo,
         talhao_id:          fTalhao || null,
@@ -115,18 +131,15 @@ export default function CampoPulverizacaoPage() {
         estadio_fenologico: fEstagio.trim() || null,
         observacao:         fObs.trim() || null,
         fiscal:             false,
-      }).select("id").single();
-      if (e1) throw new Error(e1.message);
+      };
 
-      const pulvId = pulv.id;
-      const itens = produtosValidos.map(p => {
-        const dose = parseFloat(p.dose) || 0;
+      const itensPayload = produtosValidos.map(p => {
+        const dose   = parseFloat(p.dose) || 0;
         const insumo = insumos.find(i => i.id === p.insumo_id);
-        const vu = insumo?.custo_medio ?? insumo?.valor_unitario ?? 0;
+        const vu     = insumo?.custo_medio ?? insumo?.valor_unitario ?? 0;
         return {
-          pulverizacao_id: pulvId,
           fazenda_id:      fazendaId,
-          insumo_id:       p.insumo_id || pulvId,
+          insumo_id:       p.insumo_id || null,
           nome_produto:    p.nome.trim(),
           dose_ha:         dose,
           unidade:         p.unidade,
@@ -136,6 +149,20 @@ export default function CampoPulverizacaoPage() {
           custo_total:     vu * dose * area,
         };
       });
+
+      // Offline ou falha de rede → fila local
+      if (!navigator.onLine) {
+        adicionarNaFila({ tipo: "pulverizacao", fazenda_id: fazendaId, payload, itens: itensPayload });
+        setEtapa("ok"); setSalvando(false); return;
+      }
+
+      const { data: pulv, error: e1 } = await supabase.from("pulverizacoes").insert(payload).select("id").single();
+      if (e1) {
+        adicionarNaFila({ tipo: "pulverizacao", fazenda_id: fazendaId, payload, itens: itensPayload });
+        setEtapa("ok"); setSalvando(false); return;
+      }
+
+      const itens = itensPayload.map(i => ({ ...i, pulverizacao_id: pulv.id }));
       const { error: e2 } = await supabase.from("pulverizacao_itens").insert(itens);
       if (e2) throw new Error(e2.message);
 
@@ -164,10 +191,10 @@ export default function CampoPulverizacaoPage() {
         {fData.split("-").reverse().join("/")} · {TIPO_OPTS.find(t => t.v === fTipo)?.label ?? fTipo}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-        <button onClick={novoRegistro} style={{ padding: "14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={novoRegistro} style={{ padding: "14px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           + Nova Pulverização
         </button>
-        <a href="/lavoura/pulverizacao" style={{ padding: "14px", background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
+        <a href="/lavoura/pulverizacao" style={{ padding: "14px", background: "var(--bg-card)", color: "#111111", border: "0.5px solid #111111", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
           Ver todas as pulverizações
         </a>
       </div>
@@ -210,7 +237,7 @@ export default function CampoPulverizacaoPage() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {TIPO_OPTS.map(t => (
             <button key={t.v} type="button" onClick={() => setFTipo(t.v)}
-              style={{ padding: "10px 14px", borderRadius: 10, border: `2px solid ${fTipo === t.v ? "#1A4870" : "var(--border)"}`, background: fTipo === t.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", fontSize: 13, fontWeight: fTipo === t.v ? 700 : 400, color: fTipo === t.v ? "#1A4870" : "var(--text-2)" }}>
+              style={{ padding: "10px 14px", borderRadius: 10, border: `2px solid ${fTipo === t.v ? "#111111" : "var(--border)"}`, background: fTipo === t.v ? "#EFF4FA" : "var(--bg-card)", cursor: "pointer", fontSize: 13, fontWeight: fTipo === t.v ? 700 : 400, color: fTipo === t.v ? "#111111" : "var(--text-2)" }}>
               {t.icon} {t.label}
             </button>
           ))}
@@ -286,7 +313,7 @@ export default function CampoPulverizacaoPage() {
         </div>
 
         <button type="button" onClick={addProduto}
-          style={{ marginTop: 10, width: "100%", padding: "11px", background: "var(--bg-card)", color: "#1A4870", border: "1px dashed #1A4870", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          style={{ marginTop: 10, width: "100%", padding: "11px", background: "var(--bg-card)", color: "#111111", border: "1px dashed #111111", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           + Adicionar Produto
         </button>
       </div>
@@ -301,7 +328,7 @@ export default function CampoPulverizacaoPage() {
       {erro && <div style={{ padding: "12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 10, fontSize: 13 }}>{erro}</div>}
 
       <button onClick={salvar} disabled={salvando}
-        style={{ padding: "16px", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+        style={{ padding: "16px", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
         {salvando ? "Salvando..." : "✓ Registrar Pulverização"}
       </button>
     </div>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
 type Ciclo   = { id: string; cultura: string; ano_safra?: { ano: string } };
@@ -39,14 +40,29 @@ export default function CampoColheitaPage() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
+
+    if (!navigator.onLine) {
+      const talCache = lerCache<Talhao[]>(`talhoes_${fazendaId}`);
+      const cicCache = lerCache<Ciclo[]>(`ciclos_${fazendaId}`);
+      const depCache = lerCache<Deposito[]>(`depositos_${fazendaId}`);
+      if (talCache) setTalhoes(talCache);
+      if (cicCache) setCiclos(cicCache);
+      if (depCache) setDepositos(depCache);
+      return;
+    }
+
     const [{ data: tal }, { data: cic }, { data: dep }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(ano)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("depositos").select("id, nome").eq("fazenda_id", fazendaId).order("nome"),
     ]);
-    setTalhoes((tal ?? []) as Talhao[]);
-    setCiclos((cic ?? []) as Ciclo[]);
-    setDepositos((dep ?? []) as Deposito[]);
+    const talRes = (tal ?? []) as Talhao[];
+    const cicRes = (cic ?? []) as Ciclo[];
+    const depRes = (dep ?? []) as Deposito[];
+    setTalhoes(talRes); setCiclos(cicRes); setDepositos(depRes);
+    salvarCache(`talhoes_${fazendaId}`, talRes);
+    salvarCache(`ciclos_${fazendaId}`, cicRes);
+    salvarCache(`depositos_${fazendaId}`, depRes);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -75,7 +91,7 @@ export default function CampoColheitaPage() {
       const cicloSel = ciclos.find(c => c.id === fCiclo);
       const produto  = cicloSel ? (CULTURA_PRODUTO[cicloSel.cultura.toLowerCase().replace(/\s+/g,"").replace("1ª","1").replace("2ª","2")] ?? cicloSel.cultura.toLowerCase()) : "soja";
 
-      const { error } = await supabase.from("colheitas").insert({
+      const payload = {
         fazenda_id:            fazendaId,
         ciclo_id:              fCiclo,
         talhao_id:             fTalhao || null,
@@ -90,8 +106,18 @@ export default function CampoColheitaPage() {
         impureza_media:        fImpureza ? parseFloat(fImpureza) : null,
         deposito_id:           fDeposito || null,
         observacao:            fObs.trim() || null,
-      });
-      if (error) throw new Error(error.message);
+      };
+
+      if (!navigator.onLine) {
+        adicionarNaFila({ tipo: "colheita", fazenda_id: fazendaId, payload });
+        setEtapa("ok"); setSalvando(false); return;
+      }
+
+      const { error } = await supabase.from("colheitas").insert(payload);
+      if (error) {
+        adicionarNaFila({ tipo: "colheita", fazenda_id: fazendaId, payload });
+        setEtapa("ok"); setSalvando(false); return;
+      }
       setEtapa("ok");
     } catch (e) { setErro((e as Error).message); }
     setSalvando(false);
@@ -116,10 +142,10 @@ export default function CampoColheitaPage() {
         <strong>{totalSacas.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} sc</strong> · {fProdutiv} sc/ha
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-        <button onClick={novoRegistro} style={{ padding: "14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={novoRegistro} style={{ padding: "14px", background: "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           + Nova Colheita
         </button>
-        <a href="/lavoura/colheita" style={{ padding: "14px", background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
+        <a href="/lavoura/colheita" style={{ padding: "14px", background: "var(--bg-card)", color: "#111111", border: "0.5px solid #111111", borderRadius: 12, fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none" }}>
           Ver todas as colheitas
         </a>
       </div>
@@ -178,11 +204,11 @@ export default function CampoColheitaPage() {
       {totalSacas > 0 && (
         <div style={{ background: "#EFF4FA", border: "0.5px solid #97C3E0", borderRadius: 12, padding: "14px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#1A4870" }}>{totalSacas.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#111111" }}>{totalSacas.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</div>
             <div style={{ fontSize: 11, color: "var(--text-3)" }}>sacas totais</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#1A4870" }}>{(totalKg / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} t</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#111111" }}>{(totalKg / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} t</div>
             <div style={{ fontSize: 11, color: "var(--text-3)" }}>toneladas</div>
           </div>
         </div>
@@ -221,7 +247,7 @@ export default function CampoColheitaPage() {
       {erro && <div style={{ padding: "12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 10, fontSize: 13 }}>{erro}</div>}
 
       <button onClick={salvar} disabled={salvando}
-        style={{ padding: "16px", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+        style={{ padding: "16px", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
         {salvando ? "Salvando..." : "✓ Registrar Colheita"}
       </button>
     </div>
