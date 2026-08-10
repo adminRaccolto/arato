@@ -44,7 +44,7 @@ const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
-function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
+function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{texto}</span>;
 }
 
@@ -56,7 +56,7 @@ const STATUS_META: Record<string, { bg: string; cl: string; label: string }> = {
 };
 const TIPO_META: Record<string, { bg: string; cl: string; label: string }> = {
   consumo:          { bg: "#F3E8FF", cl: "#6B21A8", label: "Consumo"      },
-  insumos:          { bg: "#D5E8F5", cl: "#0B2D50", label: "Insumos"      },
+  insumos:          { bg: "#E8E8E8", cl: "#0D0D0D", label: "Insumos"      },
   custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Aprop. Direta" },
   vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"           },
   remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"       },
@@ -69,7 +69,7 @@ const ORIGEM_META: Record<string, { label: string }> = {
 };
 
 const MAN_CFG = [
-  { tipo: 0, label: "Ciência",       cor: "#378ADD", bg: "#EFF6FF", status: "ciencia",        justObrig: false },
+  { tipo: 0, label: "Ciência",       cor: "#444444", bg: "#F2F2F2", status: "ciencia",        justObrig: false },
   { tipo: 1, label: "Confirmar",     cor: "#16A34A", bg: "#DCFCE7", status: "confirmada",      justObrig: false },
   { tipo: 2, label: "Desconhecer",   cor: "#C9921B", bg: "#FBF3E0", status: "desconhecimento", justObrig: true  },
   { tipo: 3, label: "Não Realizada", cor: "#E24B4A", bg: "#FFF0F0", status: "nao_realizada",   justObrig: true  },
@@ -77,7 +77,7 @@ const MAN_CFG = [
 type ManStatus = "pendente"|"ciencia"|"confirmada"|"desconhecimento"|"nao_realizada";
 const MAN_ST: Record<ManStatus, { label: string; cor: string; bg: string }> = {
   pendente:        { label: "Pendente",        cor: "var(--text-3)",    bg: "#F3F4F6" },
-  ciencia:         { label: "Ciência",         cor: "#378ADD", bg: "#EFF6FF" },
+  ciencia:         { label: "Ciência",         cor: "#444444", bg: "#F2F2F2" },
   confirmada:      { label: "Confirmada",      cor: "#16A34A", bg: "#DCFCE7" },
   desconhecimento: { label: "Desconhecimento", cor: "#C9921B", bg: "#FBF3E0" },
   nao_realizada:   { label: "Não Realizada",   cor: "#E24B4A", bg: "#FFF0F0" },
@@ -174,7 +174,7 @@ type OrigEscolha = "manual" | "xml" | "sieg";
 type TipoEntrada = "insumos" | "vef" | "remessa" | "custo_direto";
 
 const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: string }> = {
-  insumos:      { label: "Insumos / Estoque",    desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo.",                                      cor: "#D5E8F5" },
+  insumos:      { label: "Insumos / Estoque",    desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo.",                                      cor: "#E8E8E8" },
   custo_direto: { label: "Apropriação Direta",   desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).", cor: "#E8F5E9" },
   vef:          { label: "Entrega Futura (VEF)", desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                      cor: "#FAEEDA" },
   remessa:      { label: "Remessa / Entrega",    desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                   cor: "#E6F1FB" },
@@ -539,7 +539,7 @@ export default function NfCompraPage() {
   // ── Helpers ─────────────────────────────────────────────────
   const nomeDeposito   = (id: string) => depositos.find(d => d.id === id)?.nome ?? "—";
   const nomeInsumo     = (id: string) => insumos.find(i => i.id === id)?.nome ?? "—";
-  const ccManutencao   = (id: string) => !!centros.find(c => c.id === id)?.manutencao_maquinas;
+  const ccManutencao   = (id: string) => !!(wCentros.length ? wCentros : centros).find(c => c.id === id)?.manutencao_maquinas;
 
   // ── Abrir wizard novo ──────────────────────────────────────
   async function abrirNovo() {
@@ -1360,7 +1360,7 @@ export default function NfCompraPage() {
         {/* ── Painel SIEG ── */}
         <div style={{ background: "white", border: "0.5px solid var(--border)", borderRadius: 12, padding: "14px 18px", marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginRight: 4 }}>⟳ Sincronizar SIEG</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#111111", marginRight: 4 }}>⟳ Sincronizar SIEG</span>
 
             {/* Destinatário */}
             {siegProdutores.length > 0 && (
@@ -1393,7 +1393,7 @@ export default function NfCompraPage() {
             </label>
 
             <button onClick={sincronizarSieg} disabled={siegSyncing}
-              style={{ padding: "6px 18px", background: siegSyncing ? "var(--border)" : "#1A4870", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
+              style={{ padding: "6px 18px", background: siegSyncing ? "var(--border)" : "#111111", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
               {siegSyncing ? "Sincronizando…" : "Sincronizar"}
             </button>
 
@@ -1456,7 +1456,7 @@ export default function NfCompraPage() {
 
         {/* ── Barra de ações em lote ── */}
         {selectedNfs.size > 0 && (
-          <div style={{ background: "#1A4870", borderRadius: 10, padding: "10px 18px", marginBottom: 12, display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ background: "#111111", borderRadius: 10, padding: "10px 18px", marginBottom: 12, display: "flex", alignItems: "center", gap: 14 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
               {selectedNfs.size} NF{selectedNfs.size > 1 ? "s" : ""} selecionada{selectedNfs.size > 1 ? "s" : ""}
             </span>
@@ -1476,7 +1476,7 @@ export default function NfCompraPage() {
                 setBatchSettings({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "" });
                 setBatchModal(true);
               }}
-              style={{ padding: "6px 16px", background: "#fff", color: "#1A4870", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+              style={{ padding: "6px 16px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
             >
               ⚡ Processar em lote
             </button>
@@ -1525,7 +1525,7 @@ export default function NfCompraPage() {
                   const tm = nf.tipo_entrada ? TIPO_META[nf.tipo_entrada] : null;
                   const om = nf.origem ? ORIGEM_META[nf.origem] : null;
                   return (
-                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: selectedNfs.has(nf.id) ? "#EFF6FF" : undefined }}>
+                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: selectedNfs.has(nf.id) ? "#F2F2F2" : undefined }}>
                       <td style={{ padding: "10px 12px" }}>
                         <input
                           type="checkbox"
@@ -1602,7 +1602,7 @@ export default function NfCompraPage() {
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center" }}>
                           {/* Ver */}
                           <button onClick={() => abrirVisualizador(nf)} disabled={nfViewerLoading}
-                            style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            style={{ padding: "4px 10px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
                             Ver
                           </button>
 
@@ -1632,7 +1632,7 @@ export default function NfCompraPage() {
                           {/* Re-import. (sieg pendente) */}
                           {nf.origem === "sieg" && nf.status === "pendente" && (
                             <button onClick={() => reimportarNf(nf)} disabled={siegReimporting[nf.id]}
-                              style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600, opacity: siegReimporting[nf.id] ? 0.5 : 1, whiteSpace: "nowrap" }}>
+                              style={{ padding: "4px 10px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 11, color: "#111111", fontWeight: 600, opacity: siegReimporting[nf.id] ? 0.5 : 1, whiteSpace: "nowrap" }}>
                               {siegReimporting[nf.id] ? "…" : "↻ Re-import."}
                             </button>
                           )}
@@ -1800,7 +1800,7 @@ export default function NfCompraPage() {
                         <tfoot>
                           <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
                             <td colSpan={7} style={{ padding: "8px 10px", fontWeight: 700, fontSize: 12, textAlign: "right", color: "var(--text-2)" }}>Total</td>
-                            <td style={{ padding: "8px 10px", fontWeight: 700, fontSize: 13, textAlign: "right", color: "#1A4870" }}>
+                            <td style={{ padding: "8px 10px", fontWeight: 700, fontSize: 13, textAlign: "right", color: "#111111" }}>
                               {fmtBRL(itens.reduce((s, it) => s + (it.valor_total ?? 0), 0))}
                             </td>
                           </tr>
@@ -1851,7 +1851,7 @@ export default function NfCompraPage() {
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {(["origem", "cabecalho", "itens"] as Etapa[]).map((e, i) => (
                   <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: etapa === e ? "#1A5C38" : etapa > e ? "#D5E8F5" : "var(--bg-page)", color: etapa === e ? "#fff" : etapa > e ? "#1A4870" : "var(--text-muted)" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: etapa === e ? "#1A5C38" : etapa > e ? "#E8E8E8" : "var(--bg-page)", color: etapa === e ? "#fff" : etapa > e ? "#111111" : "var(--text-muted)" }}>
                       {i + 1}
                     </div>
                     {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}
@@ -1932,7 +1932,7 @@ export default function NfCompraPage() {
                         <button
                           key={v}
                           onClick={() => setTipo(v)}
-                          style={{ padding: "14px 16px", border: `2px solid ${tipo === v ? "#1A4870" : "var(--border-table)"}`, borderRadius: 10, background: tipo === v ? meta.cor : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}
+                          style={{ padding: "14px 16px", border: `2px solid ${tipo === v ? "#111111" : "var(--border-table)"}`, borderRadius: 10, background: tipo === v ? meta.cor : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}
                         >
                           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{meta.label}</div>
                           <div style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.5 }}>{meta.desc}</div>
@@ -2039,7 +2039,7 @@ export default function NfCompraPage() {
                                 setSavingForn(false);
                               }
                             }}
-                            style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" as const }}
+                            style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" as const }}
                           >
                             {savingForn ? "…" : "+ Cadastrar"}
                           </button>
@@ -2304,7 +2304,7 @@ export default function NfCompraPage() {
 
                   {/* ── Classificação Contábil / LCDPR ── */}
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 7, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", marginBottom: 7, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                       Classificação Contábil / LCDPR
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
@@ -2380,7 +2380,7 @@ export default function NfCompraPage() {
                   {/* Painel "Aplicar Centro de Custo a todos" — custo_direto e insumos */}
                   {(tipo === "custo_direto" || tipo === "insumos") && (
                     <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                         Aplicar Centro de Custo a todos os itens
                       </div>
                       <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
@@ -2396,7 +2396,7 @@ export default function NfCompraPage() {
                             if (!bulkCC) return;
                             setItens(prev => prev.map(it => ({ ...it, centro_custo_id: bulkCC })));
                           }}
-                          style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                          style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
                         >
                           Aplicar →
                         </button>
@@ -2459,8 +2459,8 @@ export default function NfCompraPage() {
                                 style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
                               />
                               {it.pa_auto && it.pa_nome && (
-                                <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 4, color: "#1A4870" }}>
-                                  <span style={{ background: "#D5E8F5", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>PA</span>
+                                <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 4, color: "#111111" }}>
+                                  <span style={{ background: "#E8E8E8", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>PA</span>
                                   <strong>{it.pa_nome}</strong>
                                   <span style={{ color: "#666" }}>← {it.nome_comercial_ref}</span>
                                 </div>
@@ -2472,7 +2472,7 @@ export default function NfCompraPage() {
                               <div style={{ display: "flex", gap: 2 }}>
                                 <button
                                   onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
-                                  style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "var(--border-table)" : "#1A4870"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#D5E8F5", color: it.tipo_apropiacao === "direto" ? "var(--text-3)" : "#1A4870", cursor: "pointer", fontWeight: 600 }}
+                                  style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "var(--border-table)" : "#111111"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#E8E8E8", color: it.tipo_apropiacao === "direto" ? "var(--text-3)" : "#111111", cursor: "pointer", fontWeight: 600 }}
                                 >📦 Estoque</button>
                                 <button
                                   onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "" })}
@@ -2612,7 +2612,7 @@ export default function NfCompraPage() {
                             <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
                               <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">— selecionar CC —</option>
-                                {centros.map(c => (
+                                {wCentros.map(c => (
                                   <option key={c.id} value={c.id}>
                                     {c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}
                                   </option>
@@ -2749,7 +2749,7 @@ export default function NfCompraPage() {
                           {(["proprio", "terceiro"] as const).map(t => (
                             <button key={t} onClick={() => setDepFiltro(t)}
                               style={{ fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
-                                background: depFiltro === t ? "#1A4870" : "transparent",
+                                background: depFiltro === t ? "#111111" : "transparent",
                                 color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
                               {t === "proprio" ? "Próprio" : "Terceiro"}
                             </button>
@@ -3207,7 +3207,7 @@ export default function NfCompraPage() {
                     {(["proprio", "terceiro"] as const).map(t => (
                       <button key={t} onClick={() => setDepFiltro(t)}
                         style={{ fontSize: 9, fontWeight: 600, padding: "1px 8px", borderRadius: 4, border: "none", cursor: "pointer",
-                          background: depFiltro === t ? "#1A4870" : "transparent",
+                          background: depFiltro === t ? "#111111" : "transparent",
                           color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
                         {t === "proprio" ? "Próprio" : "Terceiro"}
                       </button>
