@@ -693,7 +693,7 @@ export default function Dashboard() {
                 color:"#4ADE80",padding:"3px 10px",borderRadius:20,
                 background:"rgba(22,163,74,0.12)",border:"0.5px solid rgba(22,163,74,0.3)",
                 whiteSpace:"nowrap" }}>
-                Safra {anoSafraVigenteDesc}
+                {anoSafraVigenteDesc}
               </span>
             )}
             {/* Busca global */}
