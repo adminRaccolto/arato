@@ -315,10 +315,10 @@ function CtePageInner() {
     if (!fazendaId) return;
     const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [{ data: cd }, { data: vd }, { data: md }, { data: pd }, { data: ed }] = await Promise.all([
-      supabase.from("ctes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("veiculos").select("id, placa, tipo, cap_kg").in("fazenda_id", fazendaIds).eq("ativo", true),
-      supabase.from("motoristas").select("id, nome, cpf, cnh").in("fazenda_id", fazendaIds).eq("ativo", true),
-      supabase.from("pessoas").select("id, nome, cpf_cnpj, municipio, estado").in("fazenda_id", fazendaIds),
+      supabase.from("ctes").select("*").in("fazenda_id", ids).order("data_emissao", { ascending: false }),
+      supabase.from("veiculos").select("id, placa, tipo, cap_kg").in("fazenda_id", ids).eq("ativo", true),
+      supabase.from("motoristas").select("id, nome, cpf, cnh").in("fazenda_id", ids).eq("ativo", true),
+      supabase.from("pessoas").select("id, nome, cpf_cnpj, municipio, estado").in("fazenda_id", ids),
       supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, rntrc").in("fazenda_id", ids).contains("finalidades", ["transportadora"]),
     ]);
     setCtes(cd ?? []);
@@ -331,7 +331,7 @@ function CtePageInner() {
       const maxNr = Math.max(...(cd as Cte[]).map(c => parseInt(c.numero_cte) || 0));
       setProximoNr(String(maxNr + 1));
     }
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

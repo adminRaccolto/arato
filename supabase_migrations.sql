@@ -9319,3 +9319,41 @@ ALTER TABLE nf_entrada_itens
   ADD COLUMN IF NOT EXISTS operacao_gerencial_id UUID REFERENCES operacoes_gerenciais(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── RLS policies para ctes e mdfes ──────────────────────────────────────────
+-- ctes não tinha policy — RLS bloqueava toda leitura pelo cliente anon.
+-- mdfes (tabela nova, não a mdfe legacy) idem.
+
+CREATE POLICY "ctes_by_conta" ON ctes FOR ALL
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+-- mdfes (tabela criada na migration 56 — distinta de mdfe legacy)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'mdfes') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE tablename = 'mdfes' AND policyname = 'mdfes_by_conta'
+    ) THEN
+      EXECUTE '
+        CREATE POLICY "mdfes_by_conta" ON mdfes FOR ALL
+          USING (
+            fazenda_id IN (
+              SELECT f.id FROM fazendas f
+              JOIN perfis p ON p.conta_id = f.conta_id
+              WHERE p.user_id = auth.uid()
+            )
+            OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = ''raccotlo'')
+          )
+      ';
+    END IF;
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
