@@ -9371,12 +9371,16 @@ NOTIFY pgrst, 'reload schema';
 -- sem numero_documento, tipo_documento_lcdpr, centro_custo_id e maquina_id.
 -- Seguro: COALESCE preserva valores já preenchidos.
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Backfill corrigido: sem filtro por origem_lancamento (não existia nos CPs antigos)
+-- Inclui produtor_id e origem_lancamento no update.
 UPDATE lancamentos l
 SET
   numero_documento     = COALESCE(NULLIF(l.numero_documento, ''), nf.numero),
   nfe_numero           = COALESCE(NULLIF(l.nfe_numero, ''), nf.numero),
   tipo_documento_lcdpr = 'NF',
   centro_custo_id      = COALESCE(l.centro_custo_id, nf.centro_custo_id),
+  produtor_id          = COALESCE(l.produtor_id, nf.produtor_id),
+  origem_lancamento    = 'nf_entrada',
   maquina_id           = COALESCE(
     l.maquina_id,
     (SELECT i.maquina_id
@@ -9387,8 +9391,7 @@ SET
      LIMIT 1)
   )
 FROM nf_entradas nf
-WHERE l.nf_entrada_id = nf.id
-  AND l.origem_lancamento = 'nf_entrada';
+WHERE l.nf_entrada_id = nf.id;
 -- (bomba_id não existe em lancamentos — campo só existe em nf_entrada_itens)
 
 -- Confirme quantas linhas foram alteradas antes de fechar o editor:
