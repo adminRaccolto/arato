@@ -147,7 +147,10 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   const cdv   = calcCDV(key43);
   const chave = key43 + cdv;
 
-  const dhEmi = new Date().toISOString().replace("Z", "-04:00");
+  // MT = UTC-4 (sem horário de verão): subtrai 4h do UTC e representa com offset -04:00
+  const nowMs = Date.now();
+  const utcMinus4 = new Date(nowMs - 4 * 60 * 60 * 1000);
+  const dhEmi = utcMinus4.toISOString().replace("Z", "-04:00");
   const baseCalc = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 

@@ -9,18 +9,22 @@
  */
 
 import https from "https";
+import { gzipSync } from "node:zlib";
 import type { PemPair } from "../nfe/signer";
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
-// Serviço CT-e 3.00: CTeRecepcaoSincV4 (recepção síncrona)
-// MT e demais estados SVRS usam o autorizador do RS.
+// MT tem autorizador próprio — NÃO usa SVRS.
 const ENDPOINT_PROD: Record<string, string> = {
-  SP:    "https://nfe.fazenda.sp.gov.br/cteWEB/services/CTeRecepcaoSincV4",
+  MT:    "https://cte.sefaz.mt.gov.br/ctews2/services/CTeRecepcaoSincV4",
+  SP:    "https://nfe.fazenda.sp.gov.br/CTeWS/WS/CTeRecepcaoSincV4.asmx",
   MG:    "https://cte.fazenda.mg.gov.br/cte/services/CTeRecepcaoSincV4",
   _svrs: "https://cte.svrs.rs.gov.br/ws/CTeRecepcaoSincV4/CTeRecepcaoSincV4.asmx",
 };
 
 const ENDPOINT_HOM: Record<string, string> = {
+  MT:    "https://homologacao.sefaz.mt.gov.br/ctews2/services/CTeRecepcaoSincV4",
+  SP:    "https://homologacao.nfe.fazenda.sp.gov.br/CTeWS/WS/CTeRecepcaoSincV4.asmx",
+  MG:    "https://hcte.fazenda.mg.gov.br/cte/services/CTeRecepcaoSincV4",
   _svrs: "https://cte-homologacao.svrs.rs.gov.br/ws/CTeRecepcaoSincV4/CTeRecepcaoSincV4.asmx",
 };
 
@@ -113,15 +117,11 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         path: u.pathname + u.search,
         method: "POST",
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          "SOAPAction":   SOAP_ACTION,
+          "Content-Type": `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
           "Content-Length": Buffer.byteLength(body, "utf8"),
         },
         cert: pem.cert,
         key:  pem.key,
-        // Domínios *.gov.br usam ICP-Brasil não incluída no bundle Node.js.
-        // A autenticação é feita pelo assinatura digital no XML.
-        rejectUnauthorized: !u.hostname.endsWith(".gov.br"),
       },
       (res) => {
         const status = res.statusCode ?? 0;
@@ -159,24 +159,16 @@ const CUF_MAP: Record<string, string> = {
 };
 
 // ─── Envelope SOAP 1.2 — CTeRecepcaoSincV4 ──────────────────────────────────
-// CTeRecepcaoSincV4 = serviço síncrono: cteDadosMsg contém o CTe diretamente.
-// (enviCTe é só para o serviço assíncrono de lote — não usar aqui)
-function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
-  const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
+// CT-e 4.00: cteDadosMsg contém o XML assinado comprimido em GZip e codificado em Base64.
+// Sem cteCabecMsg — o cabeçalho foi removido no protocolo 4.00.
+function envelopeCTe(cteXml: string): string {
+  const payload = gzipSync(Buffer.from(cteXml, "utf8")).toString("base64");
   return `<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-  xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Header>
-    <cteCabecMsg xmlns="${SOAP_NS}">
-      <cUF>${cuf}</cUF>
-      <versaoDados>3.00</versaoDados>
-    </cteCabecMsg>
-  </soap12:Header>
+<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap12:Body>
-    <cteDadosMsg xmlns="${SOAP_NS}">
-      ${cteXmlBody}
-    </cteDadosMsg>
+    <cteDadosMsg xmlns="${SOAP_NS}">${payload}</cteDadosMsg>
   </soap12:Body>
 </soap12:Envelope>`;
 }
@@ -231,7 +223,9 @@ function parseResposta(soapResp: string): RespostaCTe {
   const protocolo = tagVal(soapResp, "nProt");
   const dhRecbto  = tagVal(soapResp, "dhRecbto");
   const chave     = tagVal(soapResp, "chCTe");
-  const xmlProtMatch = soapResp.match(/<cteProc[\s\S]*?<\/cteProc>/);
+  // CT-e 3.00 síncrono retorna protCTe; cteProc é o montado localmente (CT-e + protocolo).
+  const xmlProtMatch = soapResp.match(/<cteProc[\s\S]*?<\/cteProc>/)
+    ?? soapResp.match(/<protCTe[\s\S]*?<\/protCTe>/);
   const xmlProt = xmlProtMatch ? xmlProtMatch[0] : undefined;
 
   // Se não achou cStat, devolve trecho da resposta para diagnóstico
@@ -249,15 +243,12 @@ export async function transmitirCTe(
   uf:             string,
   ambiente:       "producao" | "homologacao"
 ): Promise<RespostaCTe> {
-  const ep    = endpoint(uf, ambiente);
-  const cuf   = CUF_MAP[uf] ?? "51";
-  const tpAmb = ambiente === "producao" ? "1" : "2";
+  const ep = endpoint(uf, ambiente);
+  const soapBody = envelopeCTe(cteXmlAssinado);
 
-  const soapBody = envelopeCTe(cteXmlAssinado, cuf, tpAmb as "1" | "2");
-
-  // Usa Edge Function quando rodando em produção (Vercel EUA → SEFAZ rejeita por IP).
-  // Em desenvolvimento local (Mac no Brasil) chama direto.
-  const useEdge = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const edgeUrl    = process.env.SUPABASE_SEFAZ_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const edgeSecret = process.env.EDGE_BEARER_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const useEdge = !!(edgeUrl && edgeSecret);
   const resp = useEdge
     ? await soapPostViaEdge(ep, soapBody, pem)
     : await soapPost(ep, soapBody, pem);
