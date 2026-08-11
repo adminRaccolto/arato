@@ -419,7 +419,22 @@ function ParametrosSistemaContent() {
   const [logoUrl,        setLogoUrl]        = useState<string | null>(null);
   const [logoUploading,  setLogoUploading]  = useState(false);
   const [logoOk,         setLogoOk]         = useState(false);
-  const [resolvedContaId, setResolvedContaId] = useState<string | null>(null);;
+  const [resolvedContaId, setResolvedContaId] = useState<string | null>(null);
+
+  // ── Paleta de cores
+  const [paletaAtual, setPaletaAtual] = useState<string>("default");
+  useEffect(() => {
+    try { setPaletaAtual(localStorage.getItem("arato-palette") ?? "default"); } catch { /* */ }
+  }, []);
+  function aplicarPaleta(id: string) {
+    setPaletaAtual(id);
+    try { localStorage.setItem("arato-palette", id); } catch { /* */ }
+    if (id === "default") {
+      document.documentElement.removeAttribute("data-palette");
+    } else {
+      document.documentElement.setAttribute("data-palette", id);
+    }
+  }
 
   // ── Teste de conexão CT-e
   const [cteTestando, setCteTestando] = useState(false);
@@ -1572,11 +1587,68 @@ function ParametrosSistemaContent() {
         <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, border: "0.5px solid var(--border)" }}>
 
           {aba === "aparencia" && (
-            <div>
-              <div style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Identidade Visual</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>A logo aparece no cabeçalho do sistema, no DANFE e no DACTE.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
+
+              {/* ── Tema / Paleta ────────────────────────────────────── */}
+              <div>
+                <div style={{ marginBottom: 18 }}>
+                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Tema de Cores</h2>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Escolha a aparência do sistema. A seleção é salva no navegador.</p>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                  {[
+                    { id: "default", label: "Arato",  descricao: "Original — azul petróleo",   f1: "#0A1628", f2: "#1A5CB8", bg: "#F4F6FA" },
+                    { id: "pitch",   label: "Pitch",   descricao: "Monocromático zinc",          f1: "#18181B", f2: "#27272A", bg: "#FAFAFA" },
+                    { id: "terra",   label: "Terra",   descricao: "Tons quentes terrosos",       f1: "#1C1512", f2: "#2B1D16", bg: "#FAF9F6" },
+                    { id: "alto",    label: "Alto",    descricao: "Azul meia-noite",             f1: "#1B2235", f2: "#243252", bg: "#F5F7F9" },
+                    { id: "campo",   label: "Campo",   descricao: "Verde oliva",                 f1: "#14201A", f2: "#1D3325", bg: "#F5F8F2" },
+                  ].map(p => {
+                    const ativo = paletaAtual === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => aplicarPaleta(p.id)}
+                        style={{
+                          display: "flex", flexDirection: "column", gap: 0,
+                          width: 150, border: ativo ? "2px solid #C9921B" : "1.5px solid var(--border)",
+                          borderRadius: 10, overflow: "hidden", cursor: "pointer",
+                          background: "var(--bg-card)",
+                          boxShadow: ativo ? "0 0 0 3px rgba(201,146,27,0.15)" : "0 1px 3px rgba(0,0,0,0.05)",
+                          transition: "box-shadow 0.15s",
+                          padding: 0,
+                        }}
+                      >
+                        {/* Mini mock nav */}
+                        <div style={{ height: 32, display: "flex", flexDirection: "column" }}>
+                          <div style={{ background: p.f1, flex: "55%" }} />
+                          <div style={{ background: p.f2, flex: "45%" }} />
+                        </div>
+                        {/* Conteúdo mock */}
+                        <div style={{ background: p.bg, flex: 1, padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ height: 4, background: "rgba(0,0,0,0.08)", borderRadius: 2, width: "80%" }} />
+                          <div style={{ height: 4, background: "rgba(0,0,0,0.05)", borderRadius: 2, width: "60%" }} />
+                          <div style={{ height: 4, background: "rgba(0,0,0,0.05)", borderRadius: 2, width: "70%" }} />
+                        </div>
+                        {/* Label */}
+                        <div style={{ padding: "8px 10px 10px", background: "var(--bg-card)", borderTop: "0.5px solid var(--border)" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 600, color: ativo ? "#C9921B" : "var(--text-1)" }}>{p.label}</span>
+                            {ativo && <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 700 }}>✓ Ativo</span>}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{p.descricao}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              {/* ── Identidade Visual ────────────────────────────────── */}
+              <div>
+                <div style={{ marginBottom: 24 }}>
+                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Identidade Visual</h2>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>A logo aparece no cabeçalho do sistema, no DANFE e no DACTE.</p>
+                </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 32, alignItems: "start" }}>
                 {/* Preview */}
@@ -1628,6 +1700,7 @@ function ParametrosSistemaContent() {
                     <strong>Bucket Supabase:</strong> <code>logos</code> (público) · Caminho: <code>clientes/{"{conta_id}"}/logo.{"{ext}"}</code>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           )}

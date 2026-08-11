@@ -105,15 +105,15 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 function xmlEndereco(tag: string, p: ParticipanteCTe): string {
-  if (!p.logradouro) return "";
+  if (!p.logradouro || !p.uf || !p.municipio_ibge) return "";
   return `<${tag}>
     <xLgr>${esc(p.logradouro)}</xLgr>
-    <nro>${esc(p.numero ?? "S/N")}</nro>
-    <xBairro>${esc(p.bairro ?? "")}</xBairro>
-    <cMun>${p.municipio_ibge ?? "0000000"}</cMun>
-    <xMun>${esc(p.municipio_nome ?? "")}</xMun>
-    ${p.cep ? `<CEP>${p.cep.replace(/\D/g, "")}</CEP>` : ""}
-    <UF>${p.uf ?? ""}</UF>
+    <nro>${esc(p.numero || "S/N")}</nro>
+    <xBairro>${esc(p.bairro || "Centro")}</xBairro>
+    <cMun>${p.municipio_ibge}</cMun>
+    <xMun>${esc(p.municipio_nome || p.municipio_ibge)}</xMun>
+    ${p.cep ? `<CEP>${p.cep.replace(/\D/g, "").padEnd(8, "0").slice(0, 8)}</CEP>` : ""}
+    <UF>${p.uf}</UF>
     ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
   </${tag}>`;
 }
@@ -191,16 +191,16 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     ${input.observacao ? `<compl><xObs>${esc(input.observacao)}</xObs></compl>` : ""}
     <emit>
       <${docTagE}>${cpfcnpjE}</${docTagE}>
-      <IE>${esc(e.ie)}</IE>
+      ${e.ie ? `<IE>${esc(e.ie)}</IE>` : "<IE>ISENTO</IE>"}
       <xNome>${esc(e.razao_social)}</xNome>
       <enderEmit>
-        <xLgr>${esc(e.logradouro)}</xLgr>
-        <nro>${esc(e.numero)}</nro>
-        <xBairro>${esc(e.bairro)}</xBairro>
-        <cMun>${e.municipio_ibge}</cMun>
-        <xMun>${esc(e.municipio_nome)}</xMun>
-        <CEP>${e.cep.replace(/\D/g, "")}</CEP>
-        <UF>${e.uf}</UF>
+        <xLgr>${esc(e.logradouro || "Não informado")}</xLgr>
+        <nro>${esc(e.numero || "S/N")}</nro>
+        <xBairro>${esc(e.bairro || "Centro")}</xBairro>
+        <cMun>${e.municipio_ibge || "5107602"}</cMun>
+        <xMun>${esc(e.municipio_nome || "Nova Mutum")}</xMun>
+        <CEP>${(e.cep || "78450000").replace(/\D/g, "").padEnd(8, "0").slice(0, 8)}</CEP>
+        <UF>${e.uf || "MT"}</UF>
         ${e.fone ? `<fone>${e.fone.replace(/\D/g, "")}</fone>` : ""}
       </enderEmit>
       <CRT>${e.crt}</CRT>

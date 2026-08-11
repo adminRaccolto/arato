@@ -123,6 +123,8 @@ export async function emitirCTe(
 
   // 5. Construir XML
   const built = buildCTe({ ...inputBase, emitente });
+  // Log dos primeiros 800 chars para diagnóstico de cStat 215 sem expor dados sensíveis completos
+  console.log("[CT-e XML preview]", built.xml.slice(0, 800));
 
   // 6. Assinar
   let xmlAssinado: string;
