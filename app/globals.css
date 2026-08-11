@@ -8,54 +8,60 @@
    Cores semânticas (verde, vermelho, mostarda) são iguais nos dois.
    ════════════════════════════════════════════════════════════════ */
 
-/* ── Tema Claro (padrão) ─────────────────────────────────────── */
+/* ── Tema Claro (padrão) — Paleta: branco · cinza · chumbo · oliva · mostarda ── */
 :root,
 :root[data-theme="light"] {
   /* Estrutura */
-  --bg-page:        #F4F6FA;
-  --bg-card:        #ffffff;
-  --bg-header:      #ffffff;
-  --bg-nav:         #F4F6FA;
-  --bg-input:       #ffffff;
-  --bg-input-f:     #FAFBFC;   /* filtros de coluna */
-  --bg-hover:       #F9FAFC;
-  --bg-stripe:      #F4F6FA;   /* thead, tfoot */
-  --bg-tag:         #EEF1F6;   /* badges neutros */
+  --bg-page:        #F2F4EF;   /* off-white com toque oliva */
+  --bg-card:        #FFFFFF;
+  --bg-header:      #FFFFFF;
+  --bg-nav:         #EDEEE9;
+  --bg-input:       #FFFFFF;
+  --bg-input-f:     #F7F8F4;   /* filtros de coluna */
+  --bg-hover:       #E8EAE3;
+  --bg-stripe:      #EDEEE9;   /* thead, tfoot */
+  --bg-tag:         #E1E4DA;   /* badges neutros */
 
   /* Bordas */
-  --border:         #DDE2EE;
-  --border-table:   #D4DCE8;
-  --border-row:     #DEE5EE;
+  --border:         #CDD1C7;
+  --border-table:   #C2C8BA;
+  --border-row:     #CACEC4;
 
-  /* Texto */
-  --text-1:         #1a1a1a;
-  --text-2:         #555555;
-  --text-3:         #888888;
-  --text-muted:     #aaaaaa;
+  /* Texto — chumbo */
+  --text-1:         #26271E;   /* chumbo principal */
+  --text-2:         #4E5048;   /* chumbo médio */
+  --text-3:         #80847A;   /* cinza morno */
+  --text-muted:     #AAAAAA;
 
-  /* TopNav */
-  --nav-bg:         #050D1A;
-  --nav-faixa1:     #0A1628;
-  --nav-faixa2:     #1A5CB8;
-  --nav-text:       #ffffff;
-  --nav-border:     rgba(255,255,255,0.07);
+  /* TopNav — chumbo (faixa 1) + oliva (faixa 2) */
+  --nav-bg:         #26271E;
+  --nav-faixa1:     #26271E;   /* chumbo */
+  --nav-faixa2:     #4A5530;   /* verde oliva */
+  --nav-text:       #FFFFFF;
+  --nav-border:     rgba(255,255,255,0.08);
 
-  /* Sombras */
-  --shadow-card:    0 1px 4px rgba(11,45,80,0.05);
-  --shadow-modal:   0 4px 20px rgba(11,45,80,0.10);
-  --overlay:        rgba(11,45,80,0.35);
+  /* Sombras neutras */
+  --shadow-card:    0 1px 4px rgba(0,0,0,0.06);
+  --shadow-modal:   0 4px 24px rgba(0,0,0,0.13);
+  --overlay:        rgba(0,0,0,0.38);
+
+  /* Oliva — cor primária */
+  --c-olive:        #4A5530;   /* verde oliva principal */
+  --c-olive-mid:    #6B7A48;   /* oliva médio (hover, ícones) */
+  --c-olive-light:  #E2ECCE;   /* oliva claro (badge bg, active bg) */
+  --c-olive-pale:   #EEF4E4;   /* oliva palíssimo (hover ativo) */
 
   /* Legados (compatibilidade) */
-  --c-primary:       #1A4870;
-  --c-primary-light: #D5E8F5;
-  --c-accent:        #C9921B;
-  --c-bg:            #F4F6FA;
-  --c-surface:       #ffffff;
-  --c-border:        #DDE2EE;
-  --c-border-light:  #EEF1F6;
-  --c-text:          #1a1a1a;
-  --c-text-sub:      #555555;
-  --c-text-weak:     #888888;
+  --c-primary:       #4A5530;   /* oliva substitui azul petróleo */
+  --c-primary-light: #E2ECCE;
+  --c-accent:        #C9921B;   /* mostarda (ação manual — mantém) */
+  --c-bg:            #F2F4EF;
+  --c-surface:       #FFFFFF;
+  --c-border:        #CDD1C7;
+  --c-border-light:  #E1E4DA;
+  --c-text:          #26271E;
+  --c-text-sub:      #4E5048;
+  --c-text-weak:     #80847A;
   --r-card:          10px;
   --r-modal:         12px;
 }
@@ -109,6 +115,53 @@
   --c-text-weak:     #475569;
   --r-card:          10px;
   --r-modal:         12px;
+}
+
+/* ── Paletas alternativas ──────────────────────────────────── */
+/* Aplicadas via data-palette no <html>. Sem data-palette = padrão Arato. */
+
+[data-palette="pitch"] {
+  --nav-bg: #18181B; --nav-faixa1: #18181B; --nav-faixa2: #27272A;
+  --bg-page: #FAFAFA; --bg-nav: #F7F7F7; --bg-hover: #F4F4F5; --bg-stripe: #F7F7F7; --bg-tag: #F0F0F2;
+  --border: #EBEBEB; --border-table: #E4E4E6; --border-row: #EBEBEB;
+  --text-1: #09090B; --text-2: #52525B; --text-3: #A1A1AA;
+  --c-primary: #09090B; --c-primary-light: #F4F4F5;
+  --c-bg: #FAFAFA; --c-surface: #FFFFFF; --c-border: #EBEBEB; --c-border-light: #F4F4F5;
+  --c-text: #09090B; --c-text-sub: #52525B; --c-text-weak: #A1A1AA;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08); --shadow-modal: 0 4px 20px rgba(0,0,0,0.12); --overlay: rgba(0,0,0,0.40);
+}
+
+[data-palette="terra"] {
+  --nav-bg: #1C1512; --nav-faixa1: #1C1512; --nav-faixa2: #2B1D16;
+  --bg-page: #FAF9F6; --bg-nav: #F5F0E8; --bg-hover: #F0EAE0; --bg-stripe: #F5F0E8; --bg-tag: #EDE5D8;
+  --border: #EDE6DC; --border-table: #E4DACE; --border-row: #EDE6DC;
+  --text-1: #1A1410; --text-2: #5E5048; --text-3: #A89088;
+  --c-primary: #C9921B; --c-primary-light: #FBF3E0;
+  --c-bg: #FAF9F6; --c-surface: #FFFFFF; --c-border: #EDE6DC; --c-border-light: #F5EEE4;
+  --c-text: #1A1410; --c-text-sub: #5E5048; --c-text-weak: #A89088;
+  --shadow-card: 0 1px 3px rgba(28,21,18,0.08); --shadow-modal: 0 4px 20px rgba(28,21,18,0.14); --overlay: rgba(20,14,10,0.40);
+}
+
+[data-palette="alto"] {
+  --nav-bg: #1B2235; --nav-faixa1: #1B2235; --nav-faixa2: #243252;
+  --bg-page: #F5F7F9; --bg-nav: #F8FAFB; --bg-hover: #ECF0F5; --bg-stripe: #F8FAFB; --bg-tag: #E8ECF2;
+  --border: #E3E8EF; --border-table: #D8DEE8; --border-row: #E3E8EF;
+  --text-1: #0F172A; --text-2: #475569; --text-3: #94A3B8;
+  --c-primary: #1B2235; --c-primary-light: #E8ECF2;
+  --c-bg: #F5F7F9; --c-surface: #FFFFFF; --c-border: #E3E8EF; --c-border-light: #EDF1F6;
+  --c-text: #0F172A; --c-text-sub: #475569; --c-text-weak: #94A3B8;
+  --shadow-card: 0 1px 3px rgba(26,34,53,0.07); --shadow-modal: 0 4px 20px rgba(26,34,53,0.12); --overlay: rgba(15,23,42,0.40);
+}
+
+[data-palette="campo"] {
+  --nav-bg: #14201A; --nav-faixa1: #14201A; --nav-faixa2: #1D3325;
+  --bg-page: #F5F8F2; --bg-nav: #EEF4E9; --bg-hover: #EAF0E4; --bg-stripe: #EEF4E9; --bg-tag: #E0EBD8;
+  --border: #DEE9D6; --border-table: #D4E0CB; --border-row: #DEE9D6;
+  --text-1: #0D1A10; --text-2: #3B5444; --text-3: #78937F;
+  --c-primary: #1D3325; --c-primary-light: #DEE9D6;
+  --c-bg: #F5F8F2; --c-surface: #FFFFFF; --c-border: #DEE9D6; --c-border-light: #E8F2E0;
+  --c-text: #0D1A10; --c-text-sub: #3B5444; --c-text-weak: #78937F;
+  --shadow-card: 0 1px 3px rgba(20,32,26,0.08); --shadow-modal: 0 4px 20px rgba(20,32,26,0.13); --overlay: rgba(13,26,16,0.40);
 }
 
 body {
@@ -217,6 +270,46 @@ table th *  { font-size: 11px !important; }
   letter-spacing: 0.05em;
   color: var(--text-2);
   margin-bottom: 5px;
+}
+
+/* ── KPI Cards ───────────────────────────────────────────────── */
+/* Uso: <div className="kpi-card"> — substitui estilos inline dos quadros de KPI */
+.kpi-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  border-left: 3px solid var(--c-olive);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-card.kpi-accent {
+  border-left-color: var(--c-accent);   /* mostarda para KPIs de ação */
+}
+
+.kpi-card .kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.kpi-card .kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+.kpi-card .kpi-sub {
+  font-size: 11px;
+  color: var(--text-2);
+  margin-top: 2px;
 }
 
 /* ── Badges ─────────────────────────────────────────────────── */

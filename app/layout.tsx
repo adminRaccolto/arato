@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 // Script inline que aplica o tema ANTES da primeira pintura — elimina flash
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('arato-theme');document.documentElement.setAttribute('data-theme',t||'light')}catch(e){}})()`;
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('arato-theme');document.documentElement.setAttribute('data-theme',t||'light');var p=localStorage.getItem('arato-palette');if(p&&p!=='default')document.documentElement.setAttribute('data-palette',p);}catch(e){}})()`;
 
 // Script de registro do Service Worker
 const SW_SCRIPT = `(function(){if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});})}})()`;
