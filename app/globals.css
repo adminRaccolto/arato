@@ -13,37 +13,37 @@
 :root[data-theme="light"] {
   /* Estrutura */
   --bg-page:        #F4F6FA;
-  --bg-card:        #FFFFFF;
-  --bg-header:      #FFFFFF;
+  --bg-card:        #ffffff;
+  --bg-header:      #ffffff;
   --bg-nav:         #F4F6FA;
-  --bg-input:       #FFFFFF;
-  --bg-input-f:     #F4F6FA;
-  --bg-hover:       #EEF2FA;
-  --bg-stripe:      #F7F9FD;
-  --bg-tag:         #EEF2FA;
+  --bg-input:       #ffffff;
+  --bg-input-f:     #FAFBFC;
+  --bg-hover:       #F9FAFC;
+  --bg-stripe:      #F4F6FA;
+  --bg-tag:         #EEF1F6;
 
   /* Bordas */
   --border:         #DDE2EE;
-  --border-table:   #DDE2EE;
-  --border-row:     #E8ECF4;
+  --border-table:   #D4DCE8;
+  --border-row:     #DEE5EE;
 
   /* Texto */
   --text-1:         #1a1a1a;
   --text-2:         #555555;
-  --text-3:         #666666;
-  --text-muted:     #888888;
+  --text-3:         #888888;
+  --text-muted:     #aaaaaa;
 
-  /* TopNav — branco (faixa 1) + azul petróleo (faixa 2) */
-  --nav-bg:         #1A5CB8;
-  --nav-faixa1:     #FFFFFF;
+  /* TopNav — dark navy (faixa 1) + azul petróleo (faixa 2) */
+  --nav-bg:         #050D1A;
+  --nav-faixa1:     #0A1628;
   --nav-faixa2:     #1A5CB8;
-  --nav-text:       #FFFFFF;
-  --nav-border:     rgba(255,255,255,0.08);
+  --nav-text:       #ffffff;
+  --nav-border:     rgba(255,255,255,0.07);
 
   /* Sombras */
-  --shadow-card:    0 1px 4px rgba(0,0,0,0.06);
-  --shadow-modal:   0 4px 24px rgba(0,0,0,0.13);
-  --overlay:        rgba(0,0,0,0.38);
+  --shadow-card:    0 1px 4px rgba(11,45,80,0.05);
+  --shadow-modal:   0 4px 20px rgba(11,45,80,0.10);
+  --overlay:        rgba(11,45,80,0.35);
 
   /* Oliva (mantido para kpi-card e compatibilidade) */
   --c-olive:        #4A5530;
@@ -56,12 +56,12 @@
   --c-primary-light: #D5E8F5;
   --c-accent:        #C9921B;
   --c-bg:            #F4F6FA;
-  --c-surface:       #FFFFFF;
+  --c-surface:       #ffffff;
   --c-border:        #DDE2EE;
-  --c-border-light:  #EEF2FA;
+  --c-border-light:  #EEF1F6;
   --c-text:          #1a1a1a;
   --c-text-sub:      #555555;
-  --c-text-weak:     #666666;
+  --c-text-weak:     #888888;
   --r-card:          10px;
   --r-modal:         12px;
 }

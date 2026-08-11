@@ -728,7 +728,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-modal)", padding: 10, display: "flex", flexDirection: "column", gap: 4, minWidth: 170, zIndex: 9999 }}>
                   <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", padding: "0 4px 4px", borderBottom: "0.5px solid var(--border)", marginBottom: 2 }}>Paleta de cores</div>
                   {[
-                    { id: "default", label: "Arato",  f1: "#FFFFFF", f2: "#1A5CB8" },
+                    { id: "default", label: "Arato",  f1: "#0A1628", f2: "#1A5CB8" },
                     { id: "pitch",   label: "Pitch",   f1: "#18181B", f2: "#27272A" },
                     { id: "terra",   label: "Terra",   f1: "#1C1512", f2: "#2B1D16" },
                     { id: "alto",    label: "Alto",    f1: "#1B2235", f2: "#243252" },
