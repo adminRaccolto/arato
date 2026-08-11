@@ -1691,6 +1691,8 @@ export async function processarNfEntrada(
     operacaoGerencialId?: string;
     centroCustoId?: string;
     pedidoCompraId?: string;
+    produtorId?: string;
+    maquinaId?: string;
   },
 ): Promise<void> {
   for (const item of itens) {
@@ -1898,8 +1900,13 @@ export async function processarNfEntrada(
         valor:                 valorTotal,
         data_vencimento:       opts?.dataVencimentoCp ?? dataEntrada,
         nfe_numero:            opts?.nfeNumero ?? undefined,
+        numero_documento:      opts?.nfeNumero ?? undefined,
+        tipo_documento_lcdpr:  "NF",
+        nf_entrada_id:         nfId,
         origem_lancamento:     "nf_entrada",
         pessoa_id:             pessoaId ?? undefined,
+        produtor_id:           opts?.produtorId ?? undefined,
+        maquina_id:            opts?.maquinaId ?? undefined,
         ano_safra_id:          opts?.anoSafraId ?? undefined,
         ciclo_id:              opts?.cicloId ?? undefined,
         operacao_gerencial_id: opts?.operacaoGerencialId ?? undefined,
@@ -1926,7 +1933,12 @@ export async function processarNfEntrada(
         auto:                    true,
         pessoa_id:               pessoaId ?? undefined,
         nfe_numero:              opts?.nfeNumero ?? undefined,
+        numero_documento:        opts?.nfeNumero ?? undefined,
+        tipo_documento_lcdpr:    "NF",
+        nf_entrada_id:           nfId,
         origem_lancamento:       "nf_entrada",
+        produtor_id:             opts?.produtorId ?? undefined,
+        maquina_id:              opts?.maquinaId ?? undefined,
         ano_safra_id:            opts?.anoSafraId ?? undefined,
         ciclo_id:                opts?.cicloId ?? undefined,
         operacao_gerencial_id:   opts?.operacaoGerencialId ?? undefined,

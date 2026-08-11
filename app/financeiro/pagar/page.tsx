@@ -201,6 +201,7 @@ function ContasPagarInner() {
 
   // ── Edição: reutiliza o modal de Nova CP com editandoId marcado ──
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [isNfOrigin, setIsNfOrigin] = useState(false);  // CP originado de NF — campos bloqueados
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
 
   function fecharModal(salvo = false) {
@@ -208,6 +209,7 @@ function ContasPagarInner() {
     if (salvo) lastCascadeRef.current = cascade;
     setModalNovo(false);
     setEditandoId(null);
+    setIsNfOrigin(false);
     setParcelas([]);
     setErrosForm([]);
     setOpGerBusca("");
@@ -236,11 +238,14 @@ function ContasPagarInner() {
 
   function abrirEditar(l: Lancamento) {
     setEditandoId(l.id);
+    setIsNfOrigin(l.origem_lancamento === "nf_entrada");
     setModalTab("principal");
     setErrosForm([]);
     setOpGerBusca("");
     setArquivoNF(null);
     setParcelas([]);
+    // Quando CC foi salvo por UUID (nf_entrada), deriva o nome para o select que usa texto
+    const ccNomeDeriv = l.centro_custo || centrosCusto.find(c => c.id === l.centro_custo_id)?.nome || "";
     setForm({
       moeda:                 (l.moeda as Moeda) ?? "BRL",
       pessoa_id:             l.pessoa_id             ?? "",
@@ -262,7 +267,7 @@ function ContasPagarInner() {
       desconto_pct:          l.desconto_pontualidade_pct ?? 0,
       meses_diferido:        "0",
       chave_xml:             l.chave_xml             ?? "",
-      centro_custo:          l.centro_custo          ?? "",
+      centro_custo:          ccNomeDeriv,
       ano_safra_id:          l.ano_safra_id          ?? "",
       produtor_id:           l.produtor_id           ?? "",
       ciclo_id:              l.ciclo_id              ?? "",
@@ -995,7 +1000,7 @@ function ContasPagarInner() {
                 {([
                   { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => statusEfetivo(l) !== "baixado" && l.moeda !== "barter").length, cor: "#60A5FA", activeBg: "rgba(59,130,246,0.15)",  activeBorder: "rgba(59,130,246,0.4)"  },
                   { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                 cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",   activeBorder: "rgba(239,68,68,0.4)"   },
-                  { key: "baixado",  label: "Pagos",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
+                  { key: "baixado",  label: "Baixados",   count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#555555", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
                   { key: "previsao",            label: "Previsões",           count: lancamentos.filter(l => l.natureza === "previsao").length,                                                                           cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
                   { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#444444", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
@@ -1846,6 +1851,17 @@ function ContasPagarInner() {
               {modalTab === "principal" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
+                  {/* Banner — campos originados de NF */}
+                  {isNfOrigin && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8 }}>
+                      <span style={{ fontSize: 16 }}>🔒</span>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8" }}>Lançamento originado de NF processada</span>
+                        <span style={{ fontSize: 11, color: "#3B82F6", marginLeft: 8 }}>Fornecedor, N° Doc, Tipo Doc, CC e Máquina são bloqueados. Para alterar, estorne e reprocesse a NF.</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
                   <CascadeSelector
                     contaId={contaId}
@@ -1861,7 +1877,7 @@ function ContasPagarInner() {
                   <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 140px", gap: 12 }}>
                     <div>
                       <label style={lbl}>Moeda</label>
-                      <select style={inp} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda, valorMask: "", sacasMask: "" }))}>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda, valorMask: "", sacasMask: "" }))}>
                         <option value="BRL">Real (R$)</option>
                         <option value="USD">Dólar (US$)</option>
                         <option value="barter">Barter</option>
@@ -1902,7 +1918,7 @@ function ContasPagarInner() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 140px 90px 160px", gap: 12 }}>
                     <div style={{ gridColumn: "span 2" }}>
                       <label style={lbl}>Fornecedor / Credor</label>
-                      <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                         <option value="">— Selecionar do cadastro —</option>
                         {[...pessoas].sort((a, b) => {
                           if (a.fornecedor && !b.fornecedor) return -1;
@@ -1915,7 +1931,7 @@ function ContasPagarInner() {
                     </div>
                     <div>
                       <label style={lbl}>Nº Documento</label>
-                      <input style={inp} placeholder="Ex: 001234" value={form.numero_documento} onChange={e => setForm(p => ({ ...p, numero_documento: e.target.value }))} />
+                      <input style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed", background: "var(--bg-page)" } : {}) }} readOnly={isNfOrigin} placeholder="Ex: 001234" value={form.numero_documento} onChange={e => setForm(p => ({ ...p, numero_documento: e.target.value }))} />
                     </div>
                     <div>
                       <label style={lbl}>Série</label>
@@ -1923,7 +1939,7 @@ function ContasPagarInner() {
                     </div>
                     <div>
                       <label style={lbl}>Tipo de Documento</label>
-                      <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>
                         <option value="NF">Nota Fiscal (NF-e)</option>
                         <option value="FATURA">Fatura</option>
                         <option value="BOLETO">Boleto</option>
@@ -2177,7 +2193,7 @@ function ContasPagarInner() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <label style={lbl}>Centro de Custo</label>
-                      <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
                         <option value="">— Sem vínculo —</option>
                         {centrosCusto.map(c => {
                           const isLeaf = !centrosCusto.some(x => x.parent_id === c.id);
@@ -2203,7 +2219,7 @@ function ContasPagarInner() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div>
                           <label style={lbl}>Veículo / Máquina (opcional)</label>
-                          <select style={inp} value={form.veiculo_sel} onChange={e => setForm(p => ({ ...p, veiculo_sel: e.target.value }))}>
+                          <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.veiculo_sel} onChange={e => setForm(p => ({ ...p, veiculo_sel: e.target.value }))}>
                             <option value="">— Sem vínculo —</option>
                             <optgroup label="Fazenda">
                               {lista.filter(v => v.origem === "fazenda").map(v => (

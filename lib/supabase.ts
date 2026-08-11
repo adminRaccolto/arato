@@ -1101,6 +1101,8 @@ export type NfEntrada = {
   // Destinatário (exatamente como consta no XML <dest> — essencial para Manifestação SIEG)
   cnpj_destino?: string;
   nome_destinatario?: string;
+  // Produtor vinculado (quem efetivamente incorreu no custo — propaga para o CP)
+  produtor_id?: string;
   // Manifestação do Destinatário (SEFAZ)
   manifestacao_tipo?: number | null;
   manifestacao_data?: string | null;

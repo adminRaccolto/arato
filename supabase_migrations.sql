@@ -9320,6 +9320,14 @@ ALTER TABLE nf_entrada_itens
 
 NOTIFY pgrst, 'reload schema';
 
+-- ─── Migration: produtor_id em nf_entradas ───────────────────────────────────
+-- Permite identificar qual produtor está vinculado à NF de entrada,
+-- propagando para o CP gerado no processamento (LCDPR + rastreabilidade).
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS produtor_id UUID REFERENCES produtores(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';
+
 -- ─── RLS policies para ctes e mdfes ──────────────────────────────────────────
 -- ctes não tinha policy — RLS bloqueava toda leitura pelo cliente anon.
 -- mdfes (tabela nova, não a mdfe legacy) idem.

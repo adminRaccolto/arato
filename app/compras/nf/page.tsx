@@ -197,9 +197,10 @@ export default function NfCompraPage() {
   const [pedidos, setPedidos]     = useState<PedidoMin[]>([]);
   const [regrasClass, setRegrasClass] = useState<RegraClassificacao[]>([]);
   // Dados do wizard — recarregados para a fazenda específica de cada NF
-  const [wCentros,   setWCentros]   = useState<CentroCusto[]>([]);
-  const [wDepositos, setWDepositos] = useState<Deposito[]>([]);
-  const [wPedidos,   setWPedidos]   = useState<PedidoMin[]>([]);
+  const [wCentros,    setWCentros]    = useState<CentroCusto[]>([]);
+  const [wDepositos,  setWDepositos]  = useState<Deposito[]>([]);
+  const [wPedidos,    setWPedidos]    = useState<PedidoMin[]>([]);
+  const [wProdutores, setWProdutores] = useState<Array<{id: string; nome: string; cpf_cnpj?: string}>>([]);
   const [sugestaoNome, setSugestaoNome] = useState<string | null>(null); // nome da regra aplicada
   const [depFiltro, setDepFiltro] = useState<"proprio" | "terceiro">("proprio");
 
@@ -305,6 +306,8 @@ export default function NfCompraPage() {
     // Safra e ciclo
     ano_safra_id: "",
     ciclo_id: "",
+    // Produtor responsável pelo custo (propaga para o CP)
+    produtor_id: "",
     // Contabilidade / LCDPR
     vinculo_atividade: "rural" as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
     entidade_contabil: "pf" as "pf" | "pj",
@@ -420,6 +423,14 @@ export default function NfCompraPage() {
     ]);
     setWCentros(ccData);
     setWDepositos(depData);
+    // Produtores para o select de Produtor da NF
+    try {
+      const prodsQ = contaId
+        ? supabase.from("produtores").select("id,nome,cpf_cnpj").eq("conta_id", contaId).order("nome")
+        : supabase.from("produtores").select("id,nome,cpf_cnpj").in("fazenda_id", allFazIds).order("nome");
+      const { data: prods } = await prodsQ;
+      setWProdutores((prods ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>);
+    } catch { setWProdutores([]); }
     try {
       const { data } = await supabase
         .from("pedidos_compra")
@@ -567,6 +578,7 @@ export default function NfCompraPage() {
       observacao: "",
       ano_safra_id: "",
       ciclo_id: "",
+      produtor_id: "",
       vinculo_atividade: "rural" as const,
       entidade_contabil: "pf" as const,
       valor_ipi: "", valor_st: "", valor_fcp_st: "", valor_difal: "", valor_desconto: "",
@@ -607,6 +619,7 @@ export default function NfCompraPage() {
       observacao: nf.observacao ?? "",
       ano_safra_id: nf.ano_safra_id ?? "",
       ciclo_id: nf.ciclo_id ?? "",
+      produtor_id: nf.produtor_id ?? "",
       vinculo_atividade: (nf.vinculo_atividade ?? "rural") as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
       entidade_contabil: (nf.entidade_contabil ?? "pf") as "pf" | "pj",
       valor_ipi:      String((nf as Record<string,unknown>).valor_ipi      ?? ""),
@@ -835,6 +848,7 @@ export default function NfCompraPage() {
       observacao:            cab.observacao           || undefined,
       ano_safra_id:          cab.ano_safra_id         || undefined,
       ciclo_id:              cab.ciclo_id             || undefined,
+      produtor_id:           cab.produtor_id          || undefined,
       vinculo_atividade:     cab.vinculo_atividade,
       entidade_contabil:     cab.entidade_contabil,
       valor_produtos:        parseFloat(cab.valor_total) || 0,
@@ -913,6 +927,8 @@ export default function NfCompraPage() {
 
       // 2. Processar: movimentações de estoque, CP, VEF etc.
       const itensDB = await listarNfEntradaItens(nfEdit.id);
+      // Deriva a máquina do item de manutenção (primeiro item com maquina_id)
+      const maquinaIdDominante = itensDB.find(i => i.maquina_id)?.maquina_id || undefined;
       await processarNfEntrada(
         nfEdit.id,
         fazendaId,
@@ -930,6 +946,8 @@ export default function NfCompraPage() {
           operacaoGerencialId: nfEdit.operacao_gerencial_id,
           centroCustoId:       nfEdit.centro_custo_id,
           pedidoCompraId:      nfEdit.pedido_compra_id || undefined,
+          produtorId:          nfEdit.produtor_id || undefined,
+          maquinaId:           maquinaIdDominante,
         },
       );
 
@@ -2262,6 +2280,15 @@ export default function NfCompraPage() {
                           {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ? `— ${c.descricao}` : ""}</option>)}
                         </select>
                       </div>
+                      {wProdutores.length > 0 && (
+                        <div>
+                          <label style={lbl}>Produtor *</label>
+                          <select value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value}))} style={inp}>
+                            <option value="">— selecionar —</option>
+                            {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </div>
 
