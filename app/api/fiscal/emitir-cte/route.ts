@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       fazenda_id:         string;
+      emitente_cnpj?:     string | null;
+      emitente_id?:       string | null;
       remetente:          CTeInput["remetente"];
       destinatario:       CTeInput["destinatario"];
       municipio_ini_ibge: string;
@@ -76,7 +78,9 @@ export async function POST(req: NextRequest) {
       observacao:         body.observacao,
     };
 
-    const resultado = await emitirCTe(body.fazenda_id, input);
+    const resultado = await emitirCTe(body.fazenda_id, input, {
+      emitente_cnpj: body.emitente_cnpj,
+    });
     return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
   } catch (err) {
     console.error("[emitir-cte]", err);

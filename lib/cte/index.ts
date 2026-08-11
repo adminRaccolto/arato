@@ -1,7 +1,7 @@
 /**
  * lib/cte/index.ts
  * Ponto central da emissão de CT-e:
- *   1. Busca config do emitente (módulo "cte" em configuracoes_modulo)
+ *   1. Busca config do emitente (cte_emp_{CNPJ} + fiscal_emp_{CNPJ})
  *   2. Carrega certificado A1 (mesmo cert do módulo fiscal referenciado)
  *   3. Gera XML → assina → transmite
  *   4. Salva XML autorizado no Storage e retorna resultado
@@ -12,6 +12,7 @@ import { buildCTe }     from "./builder";
 import { assinarCTe }   from "./signer";
 import { transmitirCTe } from "./transmitter";
 import { pfxParaPem }   from "../nfe/signer";
+import { resolverConfigCTe } from "./config";
 import type { CTeInput, EmitenteCTe } from "./builder";
 
 export type { CTeInput, EmitenteCTe };
@@ -31,13 +32,13 @@ async function carregarPfx(storagePath: string): Promise<Buffer> {
 }
 
 // ─── Próximo número do CT-e ───────────────────────────────────────────────────
-async function proximoNumero(fazendaId: string, confg: Record<string, string>): Promise<number> {
+async function proximoNumero(fazendaId: string, modulo: string, confg: Record<string, string>): Promise<number> {
   const atual = parseInt(String(confg.numero_inicial ?? "1"));
   await sb()
     .from("configuracoes_modulo")
     .update({ config: { ...confg, numero_inicial: String(atual + 1) } })
     .eq("fazenda_id", fazendaId)
-    .eq("modulo", "cte");
+    .eq("modulo", modulo);
   return atual;
 }
 
@@ -63,33 +64,30 @@ export interface ResultadoEmissaoCTe {
   xmlAssinado?: string;
 }
 
+export interface EmitirCTeOptions {
+  emitente_cnpj?: string | null;
+}
+
 // ─── Função principal ────────────────────────────────────────────────────────
 export async function emitirCTe(
   fazendaId: string,
-  inputBase: Omit<CTeInput, "emitente">
+  inputBase: Omit<CTeInput, "emitente">,
+  options: EmitirCTeOptions = {},
 ): Promise<ResultadoEmissaoCTe> {
 
   // 1. Config CT-e
-  const { data: cteRow } = await sb()
-    .from("configuracoes_modulo")
-    .select("config")
-    .eq("fazenda_id", fazendaId)
-    .eq("modulo", "cte")
-    .single();
+  const resolved = await resolverConfigCTe(fazendaId, options.emitente_cnpj);
+  if (!resolved) return { sucesso: false, cStat: "500", xMotivo: "Configuração CT-e não encontrada — configure em Parâmetros → CT-e" };
+  if (!resolved.cteConfigEncontrada) {
+    return {
+      sucesso: false,
+      cStat: "500",
+      xMotivo: "Configuração CT-e não encontrada para o emitente selecionado — salve os Parâmetros CT-e desta transportadora.",
+    };
+  }
 
-  const confg = cteRow?.config as Record<string, string> | null;
-  if (!confg) return { sucesso: false, cStat: "500", xMotivo: "Configuração CT-e não encontrada — configure em Parâmetros → CT-e" };
-
-  // 2. Config fiscal (para emitter identity + cert)
-  const moduloFiscal = confg.modulo_fiscal_ref ?? "fiscal";
-  const { data: fiscalRow } = await sb()
-    .from("configuracoes_modulo")
-    .select("config")
-    .eq("fazenda_id", fazendaId)
-    .eq("modulo", moduloFiscal)
-    .single();
-
-  const fc = fiscalRow?.config as Record<string, string> | null ?? {};
+  const confg = resolved.cteConfig;
+  const fc = resolved.fiscalConfig;
   const certPath  = confg.cert_a1_path  ?? fc.cert_a1_path;
   const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
   if (!certPath || !certSenha)
@@ -102,10 +100,10 @@ export async function emitirCTe(
   const pem = pfxParaPem(pfxBuffer, certSenha);
 
   // 4. Número sequencial
-  const numero = await proximoNumero(fazendaId, confg);
+  const numero = await proximoNumero(fazendaId, resolved.cteModulo, confg);
 
   const emitente: EmitenteCTe = {
-    cpf_cnpj:       fc.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? "",
+    cpf_cnpj:       fc.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits,
     razao_social:   fc.razao_social       ?? confg.razao_social       ?? "",
     ie:             fc.ie_emitente        ?? confg.ie_emitente        ?? "",
     crt:            (fc.crt as EmitenteCTe["crt"]) ?? "3",
@@ -113,7 +111,7 @@ export async function emitirCTe(
     numero:         fc.numero             ?? confg.numero             ?? "S/N",
     bairro:         fc.bairro             ?? confg.bairro             ?? "",
     municipio_ibge: fc.municipio_ibge     ?? confg.municipio_ibge     ?? "5106455",
-    municipio_nome: fc.municipio_nome     ?? confg.municipio_nome     ?? "Nova Mutum",
+    municipio_nome: fc.municipio_nome     ?? fc.municipio ?? confg.municipio_nome ?? confg.municipio ?? "Nova Mutum",
     uf:             fc.uf_emitente        ?? confg.uf_emitente        ?? "MT",
     cep:            fc.cep               ?? confg.cep               ?? "00000000",
     fone:           fc.fone              ?? confg.fone,

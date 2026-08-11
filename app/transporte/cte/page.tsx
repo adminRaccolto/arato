@@ -525,6 +525,9 @@ function CtePageInner() {
     // Monta ibge do município se disponível
     const payload = {
       fazenda_id:         fazendaId,
+      emitente_id:        c.emitente_id ?? undefined,
+      emitente_cnpj:      c.emitente_cnpj ?? undefined,
+      emitente_razao_social: c.emitente_razao_social ?? undefined,
       remetente:          { nome: c.remetente_nome,    cpf_cnpj: c.remetente_cnpj    ?? undefined },
       destinatario:       { nome: c.destinatario_nome, cpf_cnpj: c.destinatario_cnpj ?? undefined },
       municipio_ini_ibge: "0000000",

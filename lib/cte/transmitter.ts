@@ -7,7 +7,7 @@
  */
 
 import https from "https";
-import { gunzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import type { PemPair } from "../nfe/signer";
 
 // ─── Autorizadores por UF ─────────────────────────────────────────────────────
@@ -67,9 +67,10 @@ const CUF_MAP: Record<string, string> = {
   SE:"28",SP:"35",TO:"17",
 };
 
-// CT-e 3.00: XML direto em cteDadosMsg + cteCabecMsg obrigatório no Header
+// CT-e 4.00: XML compactado em GZip/Base64 dentro de cteDadosMsg.
 function envelopeCTe(cteXml: string, cuf: string): string {
-  const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
+  const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
+  const cteXmlGzipBase64 = gzipSync(Buffer.from(cteXmlBody, "utf8")).toString("base64");
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -82,7 +83,7 @@ function envelopeCTe(cteXml: string, cuf: string): string {
   </soap12:Header>
   <soap12:Body>
     <cteDadosMsg xmlns="${SOAP_NS}">
-      ${cteXmlBody}
+      ${cteXmlGzipBase64}
     </cteDadosMsg>
   </soap12:Body>
 </soap12:Envelope>`;
@@ -101,7 +102,7 @@ function inspectSoapEnvelope(soapBody: string): void {
     gzipValid    = true;
     cteVersion   = cteXml.match(/<infCte[^>]*versao="([^"]+)"/)?.[1] ?? null;
   } catch {
-    // payload não é gzip — esperado no formato atual (CT-e 3.00 direto)
+    // payload não é gzip — mantido no diagnóstico para evidenciar envelope inválido.
   }
 
   console.log("[CT-e SOAP check]", {

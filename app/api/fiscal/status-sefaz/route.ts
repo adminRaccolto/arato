@@ -8,12 +8,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { pfxParaPem } from "../../../../lib/nfe/signer";
+import { resolverConfigCTe } from "../../../../lib/cte/config";
 
 export const runtime = "nodejs";
 export const preferredRegion = ["gru1"];
 
 const SOAP_NS  = "http://www.portalfiscal.inf.br/cte/wsdl/CTeStatusServicoV4";
-const ACTION   = `${SOAP_NS}/cteStatusServico`;
+const ACTION   = `${SOAP_NS}/cteStatusServicoCT`;
 
 const ENDPOINTS = {
   homologacao: "https://homologacao.sefaz.mt.gov.br/ctews2/services/CTeStatusServicoV4",
@@ -36,6 +37,7 @@ function buildStatusSoap(tpAmb: "1" | "2"): string {
       <consStatServCTe versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte">
         <tpAmb>${tpAmb}</tpAmb>
         <cUF>51</cUF>
+        <xServ>STATUS</xServ>
       </consStatServCTe>
     </cteDadosMsg>
   </soap12:Body>
@@ -58,35 +60,57 @@ async function carregarPfx(storagePath: string): Promise<Buffer> {
 export async function POST(req: NextRequest) {
   const t0 = Date.now();
   try {
-    const { fazenda_id } = await req.json() as { fazenda_id?: string };
-    console.log("[status-sefaz] iniciando diagnóstico", { fazenda_id: fazenda_id ?? "sem_fazenda" });
+    const { fazenda_id, emitente_cnpj } = await req.json() as { fazenda_id?: string; emitente_cnpj?: string | null };
+    console.log("[status-sefaz] iniciando diagnóstico", { fazenda_id: fazenda_id ?? "sem_fazenda", emitente_cnpj: emitente_cnpj ?? null });
+    if (!fazenda_id) {
+      return NextResponse.json({
+        ok: false,
+        diagnostico: "fazenda_nao_informada",
+        detalhe: "Informe a fazenda para localizar o emitente e o certificado A1.",
+        elapsed_ms: Date.now() - t0,
+      }, { status: 400 });
+    }
 
     let certPem: string | undefined;
     let keyPem:  string | undefined;
     let ambiente: string = "homologacao";
+    let cteModulo: string | undefined;
+    let fiscalModulo: string | undefined;
 
-    // Carrega cert se fazenda_id fornecido
-    if (fazenda_id) {
-      const { data: cteRow } = await sb()
-        .from("configuracoes_modulo").select("config")
-        .eq("fazenda_id", fazenda_id).eq("modulo", "cte").single();
-      const { data: fiscalRow } = await sb()
-        .from("configuracoes_modulo").select("config")
-        .eq("fazenda_id", fazenda_id).eq("modulo", "fiscal").single();
-
-      const confg = (cteRow?.config ?? {}) as Record<string, string>;
-      const fc    = (fiscalRow?.config ?? {}) as Record<string, string>;
-      const certPath  = confg.cert_a1_path  ?? fc.cert_a1_path;
-      const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
-      ambiente = (confg.ambiente ?? "homologacao") as typeof ambiente;
-
-      if (certPath && certSenha) {
-        const pfx = await carregarPfx(certPath);
-        const pem = pfxParaPem(pfx, certSenha);
-        certPem = pem.certChain ?? pem.cert;
-        keyPem  = pem.key;
-      }
+    const resolved = await resolverConfigCTe(fazenda_id, emitente_cnpj);
+    if (!resolved) {
+      return NextResponse.json({
+        ok: false,
+        diagnostico: "configuracao_cte_nao_encontrada",
+        detalhe: "Nenhuma configuração CT-e encontrada para o emitente selecionado.",
+        elapsed_ms: Date.now() - t0,
+      });
     }
+
+    const confg = resolved.cteConfig;
+    const fc    = resolved.fiscalConfig;
+    cteModulo = resolved.cteModulo;
+    fiscalModulo = resolved.fiscalModulo;
+    const certPath  = confg.cert_a1_path  ?? fc.cert_a1_path;
+    const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
+    ambiente = (confg.ambiente ?? "homologacao") as typeof ambiente;
+
+    if (!certPath || !certSenha) {
+      return NextResponse.json({
+        ok: false,
+        diagnostico: "certificado_nao_configurado",
+        detalhe: "Certificado A1 ou senha não encontrados para o emitente selecionado. Verifique Fiscal → Certificado Digital.",
+        elapsed_ms: Date.now() - t0,
+        certCarregado: false,
+        cteModulo,
+        fiscalModulo,
+      });
+    }
+
+    const pfx = await carregarPfx(certPath);
+    const pem = pfxParaPem(pfx, certSenha);
+    certPem = pem.certChain ?? pem.cert;
+    keyPem  = pem.key;
 
     const endpoint = ENDPOINTS[ambiente as keyof typeof ENDPOINTS] ?? ENDPOINTS.homologacao;
     const tpAmb    = ambiente === "producao" ? "1" : "2";
@@ -129,14 +153,15 @@ export async function POST(req: NextRequest) {
     if (edgeResult.error) {
       // Classifica o tipo de erro para facilitar diagnóstico
       const e = edgeResult.error;
+      const eLower = e.toLowerCase();
       let diagnostico = "transporte_desconhecido";
-      if (e.includes("Connection reset") || e.includes("connection error"))
+      if (eLower.includes("connection reset") || eLower.includes("connection error") || eLower.includes("reset by peer"))
         diagnostico = "connection_reset — provável falha de mTLS ou IP bloqueado";
-      else if (e.includes("timeout") || e.includes("timed out"))
+      else if (eLower.includes("timeout") || eLower.includes("timed out"))
         diagnostico = "timeout — SEFAZ não respondeu em 45s";
-      else if (e.includes("UnknownIssuer") || e.includes("unknown issuer"))
+      else if (eLower.includes("unknownissuer") || eLower.includes("unknown issuer"))
         diagnostico = "tls_unknown_issuer — ICP_BRASIL_CA_BUNDLE_B64 incorreto";
-      else if (e.includes("CertificateExpired"))
+      else if (eLower.includes("certificateexpired") || eLower.includes("certificate expired"))
         diagnostico = "certificado_expirado";
 
       return NextResponse.json({
@@ -146,6 +171,8 @@ export async function POST(req: NextRequest) {
         httpStatus: edgeResult.httpStatus ?? 0,
         elapsed_ms: elapsed,
         certCarregado: !!certPem,
+        cteModulo,
+        fiscalModulo,
       });
     }
 
@@ -165,6 +192,8 @@ export async function POST(req: NextRequest) {
       certCarregado: !!certPem,
       ambiente,
       endpoint,
+      cteModulo,
+      fiscalModulo,
       diagnostico: cStat === "107"
         ? "SEFAZ em operação — mTLS e rede OK ✓"
         : cStat

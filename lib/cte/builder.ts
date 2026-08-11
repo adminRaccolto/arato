@@ -244,7 +244,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <chave>${input.nfe_chave.replace(/\D/g, "")}</chave>
         </infNFe>
       </infDoc>` : ""}
-      <infModal versaoModal="3.00"><!-- modal rodoviário mantém versão 3.00 -->
+      <infModal versaoModal="4.00">
         <rodo>
           <RNTRC>${e.rntrc}</RNTRC>
           <veic>

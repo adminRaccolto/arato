@@ -510,10 +510,40 @@ Visão consolidada de todas as entradas e saídas de dinheiro da fazenda, com pr
 - Barter (sacas de soja/milho — exibido em sc)
 
 ### Conciliação OFX
-1. Clique em **Importar Extrato OFX**
+
+A tela de Conciliação tem layout em dois painéis lado a lado:
+
+**Painel esquerdo (360px fixo) — Lançamentos CP/CR:**
+- Lista todos os lançamentos em aberto (Contas a Pagar e Contas a Receber)
+- Filtros: tipo (CP/CR), busca por descrição, período
+- Cada lançamento tem um checkbox — útil para selecionar múltiplos para um borderô
+
+**Painel direito (flexível) — Extrato OFX:**
+- Exibe as linhas do arquivo OFX importado com colunas redimensionáveis
+- Para redimensionar uma coluna: arraste a borda direita do cabeçalho da coluna
+- Linhas com vínculo confirmado ficam em verde; sem vínculo, em branco
+
+**Como importar e conciliar:**
+1. Clique em **Importar Extrato OFX** no painel direito
 2. Faça upload do arquivo .ofx baixado do banco
-3. O sistema identifica automaticamente lançamentos correspondentes
-4. Confirme os vínculos ou crie lançamentos manualmente para os não reconhecidos
+3. O sistema tenta automaticamente casar lançamentos por valor (±R$ 0,02) e data (±7 dias)
+4. Linhas com casamento automático ficam pré-vinculadas (confirme ou desvincule)
+5. Para linhas sem casamento: clique em **Vincular** na linha OFX → selecione o lançamento no painel esquerdo → clique **Confirmar**
+
+**Borderô (um pagamento bancário para múltiplos lançamentos):**
+- Exemplo: um débito de R$ 12.000 que quita 3 fornecedores de R$ 4.000 cada
+- Ao clicar **Vincular** na linha OFX, o painel esquerdo exibe checkboxes
+- Selecione todos os lançamentos que compõem o borderô → clique **Confirmar**
+- O sistema vincula os N lançamentos a essa única linha do extrato
+
+**Persistência do extrato:**
+- O extrato OFX importado é salvo automaticamente no banco de dados (tabela `extratos_bancarios`)
+- Na próxima vez que abrir a tela, o extrato já aparece sem precisar reimportar
+- Banner informativo aparece no topo quando há conciliações pendentes
+- Para limpar e reimportar um novo extrato: clique em **Remover Extrato**
+
+**Como desvincular:**
+- Clique no ícone de desvínculo (✕) na linha OFX já vinculada
 
 ### Simulações
 Clique em **+ Simulação** para criar um lançamento hipotético e ver o impacto no fluxo sem salvar como real.
@@ -1013,6 +1043,7 @@ Campos principais:
 - **Fornecedor não preenchido automaticamente pelo Sieg:** o CNPJ da NF pode não estar cadastrado em Pessoas. Vá em **Cadastros → Pessoas**, cadastre o fornecedor com o CNPJ correto e volte para processar a NF.
 - **Depósito não aparece:** os depósitos listados dependem do toggle Próprio/Terceiro. Mude o toggle e verifique se o depósito desejado aparece.
 - **"Associar ao insumo":** se um item não é encontrado no catálogo, clique no select da coluna "Insumo / Centro Custo" e busque pelo nome. Se não houver, crie o insumo em **Cadastros → Insumos**.
+- **Centro de Custo (CC) não aparece no Passo 3:** o select de CC no processamento de NF busca os centros de custo de **todas as fazendas da conta** — não apenas da fazenda ativa. Se ainda aparecer vazio, verifique se existem centros de custo cadastrados em **Cadastros → Centros de Custo**.
 - **Estoque duplicado / saldo incorreto após processar NF:** clique em **Estornar** na linha da NF processada (botão laranja claro). Isso reverte todo o estoque creditado e o lançamento financeiro (CP), retornando a NF para "Pendente". Depois reabra via "Processar", corrija os itens e processe uma única vez.
 - **Não consigo reprocessar uma NF já processada:** proposital — o sistema bloqueia reprocessamento para evitar duplicação de estoque. Use o botão **Estornar** primeiro.
 - **NF lançada pelo WhatsApp:** aparece na grade com o badge "📱 WhatsApp" em verde abaixo do valor. Tem os mesmos botões de ação que qualquer outra NF (Estornar, Excluir). Para excluí-la completamente (inclusive a pendência fiscal e o CP associado), clique em **Excluir** — o sistema remove todos os registros vinculados automaticamente.
@@ -1313,7 +1344,7 @@ Lançamentos sem OG configurada ou sem contas débito/crédito no plano de conta
 **Caminho:** Menu superior → **Transporte** → **CT-e**
 
 ### O que faz
-Emite Conhecimentos de Transporte Eletrônico para frota própria da fazenda (motoristas e veículos cadastrados em Transporte → Cadastros).
+Emite Conhecimentos de Transporte Eletrônico (CT-e **4.00**) para frota própria da fazenda (motoristas e veículos cadastrados em Transporte → Cadastros). O schema CT-e 3.00 foi **extinto pela SEFAZ em 31/01/2024** — o sistema emite exclusivamente CT-e 4.00.
 
 ### Conceito: Emitente vs Transportadoras de terceiros
 - **Emitente do CT-e**: SEMPRE uma das suas empresas registradas em **Cadastros → Empresas** com finalidade **Transportadora** (ex: MURIANA TRANSPORTES LTDA, OGLIARI TRANSPORTES LTDA).
@@ -1346,6 +1377,41 @@ rascunho → autorizado → cancelado
 ### DACTE (documento impresso)
 - Clique no ícone de impressora na linha do CT-e
 - Inclui: emitente, remetente, destinatário, percurso, valores, modal rodoviário, código de barras da chave de acesso
+
+### Diagnóstico de conexão com a SEFAZ
+
+Antes de tentar emitir, é possível testar se a comunicação com a SEFAZ está funcionando sem enviar nenhum CT-e real:
+
+1. Vá em **Configurações → Parâmetros do Sistema → aba CT-e**
+2. Clique em **🔌 Testar Conexão SEFAZ** (botão no canto superior direito da aba)
+3. O sistema envia uma consulta de status (`CTeStatusServicoV4`) para a SEFAZ
+4. Resultado possível:
+   - ✅ Verde: "SEFAZ em operação — mTLS e rede OK ✓" — comunicação funcionando
+   - ❌ Vermelho: mensagem de erro com diagnóstico específico (veja abaixo)
+5. O tempo de resposta (ex: 1.243ms) aparece no resultado para referência
+
+### Erros de comunicação vs Rejeições fiscais — como distinguir
+
+O sistema exibe mensagens diferentes conforme o tipo de problema:
+
+**Falha de comunicação (problema técnico de rede/TLS):**
+- Mensagem: "Falha de comunicação com a SEFAZ"
+- Causas: certificado A1 com cadeia incompleta, IP bloqueado, timeout de rede
+- O que fazer: use o botão **🔌 Testar Conexão SEFAZ** em Parâmetros → CT-e para diagnosticar
+- Não é uma rejeição fiscal — o CT-e nem chegou até a SEFAZ
+
+**Rejeição fiscal (a SEFAZ recebeu e recusou):**
+- Mensagem: "CT-e rejeitado pela SEFAZ — cStat NNN: [motivo]"
+- Causas: dado inválido no XML (CNPJ, CFOP, RNTRC), série duplicada, certificado expirado
+- O que fazer: corrija os dados apontados no motivo e reemita
+
+### Erros de diagnóstico específicos
+- `connection_reset`: falha de mTLS — a SEFAZ encerrou a conexão TLS antes de receber dados. Verifique se o certificado A1 tem a cadeia completa de ACs intermediárias.
+- `timeout`: SEFAZ não respondeu em 45s — problema na SEFAZ ou rota de rede
+- `tls_unknown_issuer`: o bundle de ACs raiz não contém a AC ICP-Brasil necessária
+- `certificado_expirado`: o certificado A1 expirou — renove em **Fiscal → Certificado Digital**
+- `configuracao_cte_nao_encontrada`: nenhuma configuração CT-e encontrada para o emitente. Configure em Parâmetros do Sistema → CT-e.
+- `certificado_nao_configurado`: certificado A1 ou senha ausentes para o emitente selecionado
 
 ---
 
@@ -1628,8 +1694,9 @@ Configurações globais do sistema: dados fiscais do emitente, certificado digit
 - CFOPs padrão de venda dentro do estado, venda fora do estado, remessa para depósito
 
 **Aba CT-e:**
-- Ambiente, Série, Número inicial, RNTRC do transportador
+- Ambiente (Homologação / Produção), Série, Número inicial, RNTRC do transportador
 - Certificado A1 do CT-e (opcional — usa o da NF-e se vazio)
+- Botão **🔌 Testar Conexão SEFAZ** (canto superior direito da aba): envia uma consulta de status `CTeStatusServicoV4` para validar mTLS e rede **sem emitir CT-e**. Resultado verde = comunicação OK; resultado vermelho = diagnóstico do erro de rede/TLS. Use antes de tentar emitir para isolar problemas técnicos de rejeições fiscais.
 
 **Aba MDF-e:**
 - Ambiente, Série, Número inicial, RNTRC emitente, Tipo Emitente (Autônomo/ETC/CTC)

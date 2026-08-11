@@ -430,7 +430,16 @@ function ParametrosSistemaContent() {
     setCteTestando(true);
     setCteTesteResult(null);
     try {
-      const res  = await fetch("/api/fiscal/status-sefaz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fazenda_id: fazendaId }) });
+      const expandedCnpj = expandedEmitter?.startsWith("cte_emp_") ? expandedEmitter.replace("cte_emp_", "") : "";
+      const emitenteTeste =
+        empresas.find(e => (e.cpf_cnpj ?? "").replace(/\D/g, "") === expandedCnpj)
+        ?? empresas.find(e => (e.cpf_cnpj ?? "").replace(/\D/g, "").length === 14);
+      const emitenteCnpj = emitenteTeste?.cpf_cnpj ?? (expandedCnpj || undefined);
+      const res  = await fetch("/api/fiscal/status-sefaz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, emitente_cnpj: emitenteCnpj }),
+      });
       const data = await res.json();
       setCteTesteResult({ ok: data.ok, diagnostico: data.diagnostico ?? data.detalhe ?? "sem diagnóstico", detalhe: data.detalhe, elapsed_ms: data.elapsed_ms });
     } catch (e) {
