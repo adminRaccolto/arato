@@ -136,22 +136,20 @@ export async function emitirCTe(
   try { resposta = await transmitirCTe(xmlAssinado, pem, emitente.uf, emitente.ambiente); }
   catch (e) { return { sucesso: false, cStat: "504", xMotivo: `Falha na comunicação SEFAZ: ${e}`, xmlAssinado }; }
 
-  const autorizado = resposta.cStat === "100";
-
-  // 8. Salvar XML
+  // 8. Salvar XML se autorizado
   let xmlUrl: string | undefined;
-  if (autorizado && resposta.xmlProt) {
+  if (resposta.sucesso && resposta.xmlProt) {
     try { xmlUrl = await salvarXml(fazendaId, built.chave, resposta.xmlProt); } catch { /* best-effort */ }
   }
 
   return {
-    sucesso:    autorizado,
+    sucesso:    resposta.sucesso,
     chave:      built.chave,
     numero:     built.numero,
     protocolo:  resposta.protocolo,
     dhRecbto:   resposta.dhRecbto,
     xmlUrl,
-    cStat:      resposta.cStat,
+    cStat:      resposta.cStat ?? resposta.errorCode ?? "ERR",
     xMotivo:    resposta.xMotivo,
     xmlAssinado,
   };

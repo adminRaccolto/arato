@@ -139,16 +139,24 @@ async function soapPost(
 
 // ─── Hosts permitidos (autorizadores SEFAZ) ───────────────────────────────────
 const ALLOWED_HOSTS = new Set([
-  // MT produção (autorizador próprio)
+  // MT
   "cte.sefaz.mt.gov.br",
-  // SVRS (RS) — homologação MT + demais estados SVRS
-  "cte.svrs.rs.gov.br",
-  "cte-homologacao.svrs.rs.gov.br",
-  // SP e MG têm autorizadores próprios
-  "nfe.fazenda.sp.gov.br",
-  "homologacao.nfe.fazenda.sp.gov.br",
+  "homologacao.sefaz.mt.gov.br",
+  // MS
+  "producao.cte.ms.gov.br",
+  "homologacao.cte.ms.gov.br",
+  // MG
   "cte.fazenda.mg.gov.br",
   "hcte.fazenda.mg.gov.br",
+  // PR
+  "cte.fazenda.pr.gov.br",
+  "homologacao.cte.fazenda.pr.gov.br",
+  // RS / SVRS
+  "cte.svrs.rs.gov.br",
+  "cte-homologacao.svrs.rs.gov.br",
+  // SP / SVSP
+  "nfe.fazenda.sp.gov.br",
+  "homologacao.nfe.fazenda.sp.gov.br",
 ]);
 
 // @ts-ignore
