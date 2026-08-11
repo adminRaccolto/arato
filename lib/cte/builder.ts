@@ -265,5 +265,11 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   </infCte>
 </CTe>`;
 
-  return { xml, chave, numero: nCT };
+  // Compacta ANTES de retornar — SEFAZ-MT rejeita (cStat 599) qualquer whitespace entre tags
+  // após descompressão do gzip. Compactar aqui (pré-assinatura) preserva a validade do digest;
+  // compactar pós-assinatura alteraria o canonical form e quebraria a verificação SEFAZ.
+  // />\s+</ remove text-nodes de apenas whitespace; conteúdo de elementos é preservado.
+  const xmlCompact = xml.replace(/>\s+</g, "><").trim();
+
+  return { xml: xmlCompact, chave, numero: nCT };
 }
