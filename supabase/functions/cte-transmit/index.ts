@@ -7,14 +7,13 @@
  *    → DESABILITAR "Verify JWT"
  * 2. Supabase Dashboard → Edge Functions → Secrets
  *    → EDGE_BEARER_SECRET = <mesmo valor configurado na Vercel>
- *    → ICP_BRASIL_CA_BUNDLE_B64 = <bundle PEM em Base64 — AC Raiz v10 + SERPRO SSLv1>
- *       Gerado via: base64 -i supabase/functions/cte-transmit/icp-brasil-bundle.pem
+ *    → ICP_BRASIL_CA_BUNDLE_B64 = <bundle PEM em Base64>
+ *       Gerado via: base64 -i supabase/functions/cte-transmit/icp-brasil-bundle.pem | tr -d '\n'
+ *
+ * DIAGNÓSTICO: se ICP_BRASIL_CA_BUNDLE_B64 não estiver configurado, a Edge Function
+ * retorna SEFAZ_TLS_UNKNOWN_ISSUER — o Deno ignora rejectUnauthorized:false em node:https
+ * e sempre valida o certificado do servidor usando seu CA store nativo (sem ICP-Brasil).
  */
-
-// @ts-ignore — node: disponível no Deno 1.30+ (Supabase usa versão recente)
-import https from "node:https";
-// @ts-ignore
-import { Buffer } from "node:buffer";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,7 +28,7 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-/** Divide um PEM com múltiplos certificados em array de strings PEM */
+/** Divide um PEM com múltiplos certificados em array de PEM individuais */
 function splitCerts(pem: string): string[] {
   const matches = pem.match(
     /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g,
@@ -38,95 +37,78 @@ function splitCerts(pem: string): string[] {
 }
 
 /**
- * Decodifica ICP_BRASIL_CA_BUNDLE_B64 (Base64 → PEM).
- * Retorna array vazio se a variável não estiver configurada.
- * node:https aceita o array `ca` diretamente.
+ * Decodifica ICP_BRASIL_CA_BUNDLE_B64 (Base64 → array de PEM).
+ * Retorna null se o secret não estiver configurado (sem fallback — é obrigatório).
  */
-function loadCaBundle(): string[] {
+function loadCaBundle(): string[] | null {
   // @ts-ignore
   const b64 = (typeof Deno !== "undefined" ? Deno.env.get("ICP_BRASIL_CA_BUNDLE_B64") : null) as string | null;
-  if (!b64) return [];
+  if (!b64) return null;
   try {
     const pem = atob(b64);
-    return splitCerts(pem);
+    const certs = splitCerts(pem);
+    if (certs.length === 0) {
+      console.error("[cte-transmit] ICP_BRASIL_CA_BUNDLE_B64 decodificado mas sem certificados PEM válidos");
+      return null;
+    }
+    return certs;
   } catch (e) {
     console.error("[cte-transmit] Falha ao decodificar ICP_BRASIL_CA_BUNDLE_B64:", e);
-    return [];
+    return null;
   }
 }
 
 /**
- * POST SOAP com mTLS via node:https.
- * Usa `ca` para validar a cadeia ICP-Brasil quando o bundle estiver configurado;
- * caso contrário usa rejectUnauthorized:false (fallback inseguro com aviso).
+ * POST SOAP com mTLS via Deno.createHttpClient + caCerts.
  *
- * soapVersion "1.2": Content-Type application/soap+xml (SVRS exige 1.2)
- * soapVersion "1.1": Content-Type text/xml + SOAPAction header (legado)
+ * Por que Deno.createHttpClient e não node:https?
+ * O Deno ignora rejectUnauthorized:false em node:https — o TLS usa o stack
+ * nativo do Deno que não inclui as CAs da ICP-Brasil. Deno.createHttpClient
+ * é a única API que aceita caCerts customizados no runtime do Supabase.
+ *
+ * soapVersion "1.2": Content-Type application/soap+xml + SOAPAction header
  */
-function soapPostMtls(
+async function soapPost(
   url: string,
   body: string,
   certPem: string,
   keyPem: string,
   soapAction: string,
   soapVersion: string,
-  caBundlePems: string[],
+  caCerts: string[],
 ): Promise<{ status: number; body: string }> {
-  const secureMode = caBundlePems.length > 0;
-  if (!secureMode) {
-    console.warn(
-      "[cte-transmit] ICP_BRASIL_CA_BUNDLE_B64 não configurado — usando rejectUnauthorized:false. " +
-      "Configure o secret para validação TLS completa da ICP-Brasil.",
-    );
-  }
+  // @ts-ignore — Deno.createHttpClient: disponível no Supabase Edge Functions
+  const client = Deno.createHttpClient({
+    cert:    certPem,
+    key:     keyPem,
+    caCerts,          // CAs da ICP-Brasil (AC Raiz v10 + SERPRO SSLv1)
+  });
 
-  // Headers SOAP — mesmo para SOAP 1.2, sped-cte envia SOAPAction separado.
-  // Format exato do sped-cte: application/soap+xml;charset=UTF-8;action="..."
+  // Headers exatos do sped-cte (padrão de facto para CT-e no Brasil)
   const contentType = soapVersion === "1.2"
     ? `application/soap+xml;charset=UTF-8;action="${soapAction}"`
-    : "text/xml;charset=UTF-8";
-  const soapActionHeader = `"${soapAction}"`;
+    : `text/xml;charset=UTF-8`;
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "SOAPAction":   `"${soapAction}"`,
+  };
 
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const bodyBuf = Buffer.from(body, "utf8");
-
-    const reqOptions: Record<string, unknown> = {
-      hostname: u.hostname,
-      port: 443,
-      path: u.pathname + u.search,
+  let resp: Response;
+  try {
+    resp = await fetch(url, {
+      // @ts-ignore — extensão Deno: client é aceito pelo fetch do Supabase runtime
+      client,
       method: "POST",
-      headers: {
-        "Content-Type":   contentType,
-        "SOAPAction":     soapActionHeader,
-        "Content-Length": bodyBuf.length,
-      },
-      cert: certPem,
-      key:  keyPem,
-    };
+      headers,
+      body,
+    });
+  } finally {
+    // @ts-ignore
+    client.close?.();
+  }
 
-    if (secureMode) {
-      // Valida servidor com as CAs da ICP-Brasil
-      reqOptions.ca = caBundlePems;
-      reqOptions.rejectUnauthorized = true;
-    } else {
-      reqOptions.rejectUnauthorized = false;
-    }
-
-    const req = https.request(
-      reqOptions,
-      (res: { statusCode?: number; on: (e: string, cb: (d?: unknown) => void) => void }) => {
-        const status = res.statusCode ?? 0;
-        let data = "";
-        res.on("data", (chunk) => { data += chunk; });
-        res.on("end", () => resolve({ status, body: data }));
-      },
-    );
-
-    req.on("error", (err: Error) => reject(err));
-    req.write(bodyBuf);
-    req.end();
-  });
+  const text = await resp.text();
+  return { status: resp.status, body: text };
 }
 
 // @ts-ignore
@@ -134,7 +116,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
-
   if (req.method !== "POST") {
     return json({ error: "Method Not Allowed" }, 405);
   }
@@ -142,8 +123,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // @ts-ignore
   const EDGE_SECRET = (typeof Deno !== "undefined" ? Deno.env.get("EDGE_BEARER_SECRET") : null) as string | null;
   if (EDGE_SECRET) {
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer /, "");
     if (token !== EDGE_SECRET) {
       console.warn("[cte-transmit] acesso negado — EDGE_BEARER_SECRET inválido");
       return json({ error: "Unauthorized — EDGE_BEARER_SECRET inválido" }, 401);
@@ -153,20 +133,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   let endpoint: string, soapBody: string, certPem: string, keyPem: string,
       soapAction: string, soapVersion: string;
   try {
-    const payload = await req.json() as {
-      endpoint: string;
-      soapBody: string;
-      certPem: string;
-      keyPem: string;
-      soapAction?: string;
-      soapVersion?: string;
+    const p = await req.json() as {
+      endpoint: string; soapBody: string; certPem: string; keyPem: string;
+      soapAction?: string; soapVersion?: string;
     };
-    endpoint    = payload.endpoint;
-    soapBody    = payload.soapBody;
-    certPem     = payload.certPem;
-    keyPem      = payload.keyPem;
-    soapVersion = payload.soapVersion ?? "1.2";
-    soapAction  = payload.soapAction  ?? "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao";
+    endpoint    = p.endpoint;
+    soapBody    = p.soapBody;
+    certPem     = p.certPem;
+    keyPem      = p.keyPem;
+    soapVersion = p.soapVersion ?? "1.2";
+    soapAction  = p.soapAction  ?? "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao";
   } catch {
     return json({ error: "Bad Request — JSON inválido" }, 400);
   }
@@ -185,34 +161,41 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const host = new URL(endpoint).hostname;
     if (!allowedHosts.some(h => host.endsWith(h))) {
-      console.warn("[cte-transmit] endpoint não permitido:", host);
       return json({ error: `Endpoint não permitido: ${host}` }, 403);
     }
   } catch {
     return json({ error: "Endpoint inválido" }, 400);
   }
 
-  const caBundlePems = loadCaBundle();
-  console.log(
-    `[cte-transmit] SOAP ${soapVersion} | TLS: ${caBundlePems.length > 0 ? `seguro (${caBundlePems.length} CA(s) ICP-Brasil)` : "fallback rejectUnauthorized:false"}`
-  );
+  // ICP_BRASIL_CA_BUNDLE_B64 é obrigatório — Deno não tem as CAs da ICP-Brasil nativamente
+  const caCerts = loadCaBundle();
+  if (!caCerts) {
+    console.error("[cte-transmit] ICP_BRASIL_CA_BUNDLE_B64 não configurado");
+    return json({
+      error:  "SEFAZ_TLS_UNKNOWN_ISSUER: ICP_BRASIL_CA_BUNDLE_B64 não configurado nas Secrets da Edge Function. " +
+              "Gere o Base64 com: base64 -i supabase/functions/cte-transmit/icp-brasil-bundle.pem | tr -d '\\n' " +
+              "e adicione como secret ICP_BRASIL_CA_BUNDLE_B64 no Supabase Dashboard.",
+      cStat:  null,
+    }, 502);
+  }
+
+  console.log(`[cte-transmit] SOAP ${soapVersion} | ${caCerts.length} CA(s) ICP-Brasil | ${new URL(endpoint).hostname}`);
 
   try {
-    const result = await soapPostMtls(
-      endpoint, soapBody, certPem, keyPem, soapAction, soapVersion, caBundlePems,
-    );
-    console.log(`[cte-transmit] ${new URL(endpoint).hostname} → HTTP ${result.status} (${result.body.length} bytes)`);
+    const result = await soapPost(endpoint, soapBody, certPem, keyPem, soapAction, soapVersion, caCerts);
+    console.log(`[cte-transmit] → HTTP ${result.status} (${result.body.length} bytes)`);
     if (result.status !== 200) {
       console.log("[cte-transmit] body:", result.body.slice(0, 500));
     }
     return json({ httpStatus: result.status, body: result.body });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[cte-transmit] erro mTLS:", msg);
+    console.error("[cte-transmit] erro:", msg);
 
     if (msg.includes("UnknownIssuer") || msg.includes("unknown issuer") || msg.includes("UNABLE_TO_GET_ISSUER_CERT")) {
       return json({
-        error: `SEFAZ_TLS_UNKNOWN_ISSUER: ${msg}. Configure ICP_BRASIL_CA_BUNDLE_B64 nas Secrets.`,
+        error: `SEFAZ_TLS_UNKNOWN_ISSUER: ${msg}. ` +
+               "Verifique se ICP_BRASIL_CA_BUNDLE_B64 está correto nas Secrets.",
         cStat: null,
       }, 502);
     }
