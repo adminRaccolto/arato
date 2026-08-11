@@ -117,11 +117,13 @@ async function soapPost(
 
   try {
     const resp = await fetch(url, {
+      // @ts-expect-error — extensão Deno: client não existe no RequestInit padrão
       client,
       method: "POST",
       headers: {
-        // SOAP 1.2: action embutido no Content-Type (não usa SOAPAction separado)
-        "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
+        // Axis2/CXF legado: charset maiúsculo + SOAPAction separado obrigatório mesmo em SOAP 1.2
+        "Content-Type": `application/soap+xml;charset=UTF-8;action="${soapAction}"`,
+        "SOAPAction":   `"${soapAction}"`,
       },
       body,
       signal: AbortSignal.timeout(45_000),
