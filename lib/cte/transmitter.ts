@@ -55,11 +55,14 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
     headers: {
       "Content-Type":  "application/json",
       "Authorization": `Bearer ${edgeSecret}`,
+      // Força execução no Brasil — SEFAZ bloqueia IPs fora do país
+      "x-region": "sa-east-1",
     },
     body: JSON.stringify({
       endpoint:    url,
       soapBody:    body,
-      certPem:     pem.cert,
+      // certChain inclui folha + intermediárias: necessário para mTLS com SEFAZ
+      certPem:     pem.certChain ?? pem.cert,
       keyPem:      pem.key,
       soapAction:  SOAP_ACTION,
       soapVersion: "1.2",

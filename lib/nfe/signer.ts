@@ -10,8 +10,9 @@ import forge from "node-forge";
 const { SignedXml } = require("xml-crypto");
 
 export interface PemPair {
-  cert: string; // PEM do certificado
-  key: string;  // PEM da chave privada
+  cert: string;       // PEM do certificado folha (usado no xmldsig)
+  key: string;        // PEM da chave privada
+  certChain?: string; // PEM completo: folha + intermediárias (usado no mTLS com SEFAZ)
 }
 
 // ─── Extrai PEM do PFX (reusado de sefaz-consulta.ts) ────────────────────────
@@ -33,11 +34,14 @@ export function pfxParaPem(pfxBuffer: Buffer, senha: string): PemPair {
   if (!certBags.length || !keyBags.length)
     throw new Error("Certificado inválido ou senha incorreta");
 
-  const cert = forge.pki.certificateToPem(certBags[0].cert!);
+  // Primeiro bag = certificado folha (emitente), demais = intermediárias da AC
+  const allCertPems = certBags.map(bag => forge.pki.certificateToPem(bag.cert!));
+  const cert      = allCertPems[0];                    // folha — usada no xmldsig
+  const certChain = allCertPems.join("\n");             // folha + intermediárias — mTLS
   const key = forge.pki.privateKeyToPem(
     keyBags[0].key as forge.pki.rsa.PrivateKey
   );
-  return { cert, key };
+  return { cert, key, certChain };
 }
 
 // ─── Extrai apenas o corpo base64 do PEM (sem headers) ───────────────────────

@@ -112,7 +112,8 @@ async function soapPost(
   caCerts: string[],
 ): Promise<{ status: number; body: string }> {
   // @ts-expect-error — Deno.createHttpClient: única API que aceita caCerts no Supabase Edge
-  const client = Deno.createHttpClient({ cert: certPem, key: keyPem, caCerts });
+  // http1:true / http2:false — SEFAZ-MT usa TLS 1.2 com serviços legados sem HTTP/2
+  const client = Deno.createHttpClient({ cert: certPem, key: keyPem, caCerts, http1: true, http2: false });
 
   try {
     const resp = await fetch(url, {
@@ -230,6 +231,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     encoding: caResult.encoding,
     certificateCount: caCerts.length,
     endpoint: host,
+    // @ts-expect-error — Deno.env disponível só em runtime Supabase
+    region: typeof Deno !== "undefined" ? Deno.env.get("SB_REGION") : "unknown",
+    clientCertificateCount: splitCerts(certPem).length,
   });
 
   try {
