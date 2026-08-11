@@ -102,6 +102,24 @@ function loadCaBundle(): CaBundleResult {
   return { ok: true, certs, encoding };
 }
 
+// ─── Bundle de intermediários do cliente (AC SAFEWEB RFB v5 + AC SRF v4) ─────
+// Carregado uma vez no início para evitar re-processamento a cada request.
+// A SEFAZ-MT exige que o cliente apresente a cadeia completa no mTLS.
+function loadClientChain(): string[] {
+  // @ts-expect-error — Deno.env disponível só em runtime Supabase
+  const raw = (typeof Deno !== "undefined" ? Deno.env.get("ICP_CLIENT_CHAIN_B64") : undefined) as string | undefined;
+  if (!raw?.trim()) return [];
+  try {
+    const pem = atob(raw.replace(/\s+/g, ""));
+    return splitCerts(pem);
+  } catch {
+    console.warn("[cte-transmit] ICP_CLIENT_CHAIN_B64 inválido — mTLS sem intermediários");
+    return [];
+  }
+}
+
+const CLIENT_CHAIN_CERTS = loadClientChain();
+
 // ─── POST SOAP com mTLS via Deno.createHttpClient ────────────────────────────
 async function soapPost(
   url: string,
@@ -111,9 +129,14 @@ async function soapPost(
   soapAction: string,
   caCerts: string[],
 ): Promise<{ status: number; body: string }> {
+  // Monta a cadeia do cliente: folha (do PFX) + intermediários ICP-Brasil
+  // Necessário pois a maioria dos PFX de e-CPF/e-CNPJ contém apenas o cert folha.
+  const leafCerts = splitCerts(certPem);
+  const fullClientChain = [...leafCerts, ...CLIENT_CHAIN_CERTS].join("\n");
+
   // @ts-expect-error — Deno.createHttpClient: única API que aceita caCerts no Supabase Edge
   // http1:true / http2:false — SEFAZ-MT usa TLS 1.2 com serviços legados sem HTTP/2
-  const client = Deno.createHttpClient({ cert: certPem, key: keyPem, caCerts, http1: true, http2: false });
+  const client = Deno.createHttpClient({ cert: fullClientChain, key: keyPem, caCerts, http1: true, http2: false });
 
   try {
     const resp = await fetch(url, {
@@ -240,10 +263,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   console.log("[cte-transmit] CA carregada:", {
     encoding: caResult.encoding,
     certificateCount: caCerts.length,
+    clientChainIntermediaries: CLIENT_CHAIN_CERTS.length,
+    clientCertificateCount: splitCerts(certPem).length + CLIENT_CHAIN_CERTS.length,
     endpoint: host,
     // @ts-expect-error — Deno.env disponível só em runtime Supabase
     region: typeof Deno !== "undefined" ? Deno.env.get("SB_REGION") : "unknown",
-    clientCertificateCount: splitCerts(certPem).length,
   });
 
   try {
