@@ -117,10 +117,12 @@
   --r-modal:         12px;
 }
 
-/* ── Paletas alternativas ──────────────────────────────────── */
-/* Aplicadas via data-palette no <html>. Sem data-palette = padrão Arato. */
+/* ── Paletas alternativas ──────────────────────────────────────────────────────
+   Usam :root[data-palette="x"] para ter especificidade 0-2-0, igual ao seletor
+   :root[data-theme="light"]. Como vêm DEPOIS no arquivo, ganham na cascata.
+   ──────────────────────────────────────────────────────────────────────────── */
 
-[data-palette="pitch"] {
+:root[data-palette="pitch"] {
   --nav-bg: #18181B; --nav-faixa1: #18181B; --nav-faixa2: #27272A;
   --bg-page: #FAFAFA; --bg-nav: #F7F7F7; --bg-hover: #F4F4F5; --bg-stripe: #F7F7F7; --bg-tag: #F0F0F2;
   --border: #EBEBEB; --border-table: #E4E4E6; --border-row: #EBEBEB;
@@ -131,7 +133,7 @@
   --shadow-card: 0 1px 3px rgba(0,0,0,0.08); --shadow-modal: 0 4px 20px rgba(0,0,0,0.12); --overlay: rgba(0,0,0,0.40);
 }
 
-[data-palette="terra"] {
+:root[data-palette="terra"] {
   --nav-bg: #1C1512; --nav-faixa1: #1C1512; --nav-faixa2: #2B1D16;
   --bg-page: #FAF9F6; --bg-nav: #F5F0E8; --bg-hover: #F0EAE0; --bg-stripe: #F5F0E8; --bg-tag: #EDE5D8;
   --border: #EDE6DC; --border-table: #E4DACE; --border-row: #EDE6DC;
@@ -142,7 +144,7 @@
   --shadow-card: 0 1px 3px rgba(28,21,18,0.08); --shadow-modal: 0 4px 20px rgba(28,21,18,0.14); --overlay: rgba(20,14,10,0.40);
 }
 
-[data-palette="alto"] {
+:root[data-palette="alto"] {
   --nav-bg: #1B2235; --nav-faixa1: #1B2235; --nav-faixa2: #243252;
   --bg-page: #F5F7F9; --bg-nav: #F8FAFB; --bg-hover: #ECF0F5; --bg-stripe: #F8FAFB; --bg-tag: #E8ECF2;
   --border: #E3E8EF; --border-table: #D8DEE8; --border-row: #E3E8EF;
@@ -153,7 +155,7 @@
   --shadow-card: 0 1px 3px rgba(26,34,53,0.07); --shadow-modal: 0 4px 20px rgba(26,34,53,0.12); --overlay: rgba(15,23,42,0.40);
 }
 
-[data-palette="campo"] {
+:root[data-palette="campo"] {
   --nav-bg: #14201A; --nav-faixa1: #14201A; --nav-faixa2: #1D3325;
   --bg-page: #F5F8F2; --bg-nav: #EEF4E9; --bg-hover: #EAF0E4; --bg-stripe: #EEF4E9; --bg-tag: #E0EBD8;
   --border: #DEE9D6; --border-table: #D4E0CB; --border-row: #DEE9D6;
