@@ -2,13 +2,15 @@
  * POST /api/fiscal/status-sefaz
  * Diagnóstico: consulta CTeStatusServicoV4 na SEFAZ-MT (homologação ou produção).
  * Útil para isolar problema de TLS/rede antes de tentar emitir CT-e.
- * Não requer CT-e; apenas testa se a camada mTLS está funcionando.
+ * Usa SOAP direto (Node.js https) sem passar pelo Supabase Edge Function.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import https from "https";
 import { pfxParaPem } from "../../../../lib/nfe/signer";
 import { resolverConfigCTe } from "../../../../lib/cte/config";
+import { ICP_BRASIL_CA_BUNDLE } from "../../../../lib/cte/transmitter";
 
 export const runtime = "nodejs";
 export const preferredRegion = ["gru1"];
@@ -112,86 +114,54 @@ export async function POST(req: NextRequest) {
     certPem = pem.certChain ?? pem.cert;
     keyPem  = pem.key;
 
-    const endpoint = ENDPOINTS[ambiente as keyof typeof ENDPOINTS] ?? ENDPOINTS.homologacao;
-    const tpAmb    = ambiente === "producao" ? "1" : "2";
-    const soapBody = buildStatusSoap(tpAmb);
+    const endpointUrl = ENDPOINTS[ambiente as keyof typeof ENDPOINTS] ?? ENDPOINTS.homologacao;
+    const tpAmb       = ambiente === "producao" ? "1" : "2";
+    const soapBody    = buildStatusSoap(tpAmb);
 
-    // Chama via Edge Function (mesmo relay usado pelo CT-e)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const edgeSecret  = process.env.EDGE_BEARER_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const edgeFnUrl   = `${supabaseUrl}/functions/v1/cte-transmit`;
-
-    const edgeResp = await fetch(edgeFnUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${edgeSecret}`,
-      },
-      body: JSON.stringify({
-        endpoint,
-        soapBody,
-        certPem:    certPem ?? "",
-        keyPem:     keyPem  ?? "",
-        soapAction: ACTION,
-      }),
+    // SOAP direto via Node.js https — sem relay Supabase Edge Function.
+    // preferredRegion: ["gru1"] garante IP brasileiro (São Paulo) aceito pela SEFAZ.
+    const soapResp = await new Promise<string>((resolve, reject) => {
+      const u = new URL(endpointUrl);
+      const req = https.request({
+        hostname: u.hostname, port: 443, path: u.pathname + u.search, method: "POST",
+        headers: {
+          "Content-Type":   `application/soap+xml;charset=UTF-8;action="${ACTION}"`,
+          "SOAPAction":     `"${ACTION}"`,
+          "Content-Length": Buffer.byteLength(soapBody, "utf8"),
+        },
+        cert: certPem,
+        key:  keyPem,
+        ca:   ICP_BRASIL_CA_BUNDLE,
+        timeout: 30_000,
+      }, (res) => {
+        let data = "";
+        res.on("data", (c) => { data += c; });
+        res.on("end",  () => resolve(data));
+      });
+      req.on("error",   (err) => reject(err));
+      req.on("timeout", ()    => { req.destroy(); reject(new Error("timeout — SEFAZ não respondeu em 30s")); });
+      req.write(soapBody);
+      req.end();
     });
 
     const elapsed = Date.now() - t0;
 
-    if (!edgeResp.ok && !edgeResp.headers.get("content-type")?.includes("json")) {
-      const text = await edgeResp.text();
-      return NextResponse.json({
-        ok: false,
-        diagnostico: "edge_function_erro",
-        detalhe: `Edge Function retornou HTTP ${edgeResp.status}: ${text.slice(0, 300)}`,
-        elapsed_ms: elapsed,
-      });
-    }
-
-    const edgeResult = await edgeResp.json() as { httpStatus?: number; body?: string; error?: string };
-
-    if (edgeResult.error) {
-      // Classifica o tipo de erro para facilitar diagnóstico
-      const e = edgeResult.error;
-      const eLower = e.toLowerCase();
-      let diagnostico = "transporte_desconhecido";
-      if (eLower.includes("connection reset") || eLower.includes("connection error") || eLower.includes("reset by peer"))
-        diagnostico = "connection_reset — provável falha de mTLS ou IP bloqueado";
-      else if (eLower.includes("timeout") || eLower.includes("timed out"))
-        diagnostico = "timeout — SEFAZ não respondeu em 45s";
-      else if (eLower.includes("unknownissuer") || eLower.includes("unknown issuer"))
-        diagnostico = "tls_unknown_issuer — ICP_BRASIL_CA_BUNDLE_B64 incorreto";
-      else if (eLower.includes("certificateexpired") || eLower.includes("certificate expired"))
-        diagnostico = "certificado_expirado";
-
-      return NextResponse.json({
-        ok: false,
-        diagnostico,
-        detalhe: e,
-        httpStatus: edgeResult.httpStatus ?? 0,
-        elapsed_ms: elapsed,
-        certCarregado: !!certPem,
-        cteModulo,
-        fiscalModulo,
-      });
-    }
-
-    const soapResp = edgeResult.body ?? "";
-    // Extrai cStat e xMotivo da resposta de status
-    const cStat   = soapResp.match(/<cStat>(\d+)<\/cStat>/)?.[1] ?? null;
-    const xMotivo = soapResp.match(/<xMotivo>([^<]+)<\/xMotivo>/)?.[1] ?? null;
+    const cStat    = soapResp.match(/<cStat>(\d+)<\/cStat>/)?.[1] ?? null;
+    const xMotivo  = soapResp.match(/<xMotivo>([^<]+)<\/xMotivo>/)?.[1] ?? null;
     const dhRecbto = soapResp.match(/<dhRecbto>([^<]+)<\/dhRecbto>/)?.[1] ?? null;
 
+    console.log("[status-sefaz]", { cStat, xMotivo, elapsed_ms: elapsed, ambiente });
+
     return NextResponse.json({
-      ok:           edgeResult.httpStatus === 200 && cStat === "107",
-      httpStatus:   edgeResult.httpStatus,
+      ok:            cStat === "107",
+      httpStatus:    200,
       cStat,
       xMotivo,
       dhRecbto,
-      elapsed_ms:   elapsed,
-      certCarregado: !!certPem,
+      elapsed_ms:    elapsed,
+      certCarregado: true,
       ambiente,
-      endpoint,
+      endpoint:      endpointUrl,
       cteModulo,
       fiscalModulo,
       diagnostico: cStat === "107"
@@ -202,10 +172,23 @@ export async function POST(req: NextRequest) {
       soapRespPreview: soapResp.slice(0, 600),
     });
   } catch (err) {
+    const msg = String(err);
+    const eLower = msg.toLowerCase();
+    let diagnostico = "erro_interno";
+    if (eLower.includes("connection reset") || eLower.includes("reset by peer"))
+      diagnostico = "connection_reset — falha de mTLS ou IP bloqueado";
+    else if (eLower.includes("timeout"))
+      diagnostico = "timeout — SEFAZ não respondeu";
+    else if (eLower.includes("unknown") && eLower.includes("issuer"))
+      diagnostico = "tls_unknown_issuer — CA bundle incorreto";
+    else if (eLower.includes("expired"))
+      diagnostico = "certificado_expirado";
+
+    console.error("[status-sefaz] erro:", msg);
     return NextResponse.json({
       ok: false,
-      diagnostico: "erro_interno",
-      detalhe: String(err),
+      diagnostico,
+      detalhe: msg,
       elapsed_ms: Date.now() - t0,
     }, { status: 500 });
   }
