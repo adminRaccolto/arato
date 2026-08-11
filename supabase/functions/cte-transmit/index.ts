@@ -36,6 +36,7 @@ function soapPostMtls(
   body: string,
   certPem: string,
   keyPem: string,
+  soapAction: string,
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -48,7 +49,7 @@ function soapPostMtls(
         path: u.pathname + u.search,
         method: "POST",
         headers: {
-          "Content-Type": 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/cte/wsdl/CTeAutorizacao4/cteDadosMsg"',
+          "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
           "Content-Length": bodyBuf.length,
         },
         cert: certPem,
@@ -94,18 +95,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   }
 
-  let endpoint: string, soapBody: string, certPem: string, keyPem: string;
+  let endpoint: string, soapBody: string, certPem: string, keyPem: string, soapAction: string;
   try {
     const payload = await req.json() as {
       endpoint: string;
       soapBody: string;
       certPem: string;
       keyPem: string;
+      soapAction?: string;
     };
-    endpoint = payload.endpoint;
-    soapBody = payload.soapBody;
-    certPem  = payload.certPem;
-    keyPem   = payload.keyPem;
+    endpoint   = payload.endpoint;
+    soapBody   = payload.soapBody;
+    certPem    = payload.certPem;
+    keyPem     = payload.keyPem;
+    soapAction = payload.soapAction ?? "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao";
   } catch {
     return json({ error: "Bad Request — JSON inválido" }, 400);
   }
@@ -117,6 +120,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // Valida que o endpoint é SVRS/SEFAZ (segurança mínima)
   const allowedHosts = [
     "cte.svrs.rs.gov.br",
+    "cte-homologacao.svrs.rs.gov.br",
     "nfe.fazenda.sp.gov.br",
     "cte.fazenda.mg.gov.br",
     "hom.cte.fazenda.gov.br",
@@ -132,7 +136,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const result = await soapPostMtls(endpoint, soapBody, certPem, keyPem);
+    const result = await soapPostMtls(endpoint, soapBody, certPem, keyPem, soapAction);
     console.log(`[cte-transmit] ${new URL(endpoint).hostname} → HTTP ${result.status} (${result.body.length} bytes)`);
     if (result.status !== 200) {
       console.log("[cte-transmit] body:", result.body.slice(0, 500));

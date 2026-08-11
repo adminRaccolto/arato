@@ -12,21 +12,23 @@ import https from "https";
 import type { PemPair } from "../nfe/signer";
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
-// Produção: SVRS para MT e demais estados que usam SVRS.
-// Homologação: SVC-AN (hom.cte.fazenda.gov.br) — o SVRS homologação foi descontinuado.
-// O campo tpAmb no XML também deve refletir o ambiente correto.
+// Serviço CT-e 3.00: CTeRecepcaoSincV4 (recepção síncrona)
+// MT e demais estados SVRS usam o autorizador do RS.
 const ENDPOINT_PROD: Record<string, string> = {
-  SP:    "https://nfe.fazenda.sp.gov.br/cteWEB/services/CTeAutorizacao4.asmx",
-  MG:    "https://cte.fazenda.mg.gov.br/cte/services/CTeAutorizacao4",
-  _svrs: "https://cte.svrs.rs.gov.br/ws/CTeAutorizacao/CTeAutorizacao4.asmx",
+  SP:    "https://nfe.fazenda.sp.gov.br/cteWEB/services/CTeRecepcaoSincV4",
+  MG:    "https://cte.fazenda.mg.gov.br/cte/services/CTeRecepcaoSincV4",
+  _svrs: "https://cte.svrs.rs.gov.br/ws/CTeRecepcaoSincV4/CTeRecepcaoSincV4.asmx",
 };
 
-// Homologação: o SVRS hom foi descontinuado (NXDOMAIN) e o SVC-AN federal
-// não expõe endpoint SOAP sem mTLS. Usamos o SVRS produção com tpAmb=2 no XML.
-// O SVRS processa tpAmb=2 como teste sem registrar na base de produção.
-// REQUISITO: certificado A1 real emitido por AC ICP-Brasil (Certisign, Soluti, Valid, SERPRO...).
+const ENDPOINT_HOM: Record<string, string> = {
+  _svrs: "https://cte-homologacao.svrs.rs.gov.br/ws/CTeRecepcaoSincV4/CTeRecepcaoSincV4.asmx",
+};
 
-function endpoint(uf: string, _ambiente: "producao" | "homologacao"): string {
+const SOAP_ACTION = 'http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao';
+const SOAP_NS    = 'http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4';
+
+function endpoint(uf: string, ambiente: "producao" | "homologacao"): string {
+  if (ambiente === "homologacao") return ENDPOINT_HOM[uf] ?? ENDPOINT_HOM["_svrs"];
   return ENDPOINT_PROD[uf] ?? ENDPOINT_PROD["_svrs"];
 }
 
@@ -50,10 +52,11 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
       "Authorization": `Bearer ${edgeSecret}`,
     },
     body: JSON.stringify({
-      endpoint: url,
-      soapBody: body,
-      certPem:  pem.cert,
-      keyPem:   pem.key,
+      endpoint:   url,
+      soapBody:   body,
+      certPem:    pem.cert,
+      keyPem:     pem.key,
+      soapAction: SOAP_ACTION,
     }),
   });
 
@@ -108,8 +111,7 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         path: u.pathname + u.search,
         method: "POST",
         headers: {
-          // SOAP 1.2: action fica no Content-Type
-          "Content-Type": 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/cte/wsdl/CTeAutorizacao4/cteDadosMsg"',
+          "Content-Type": `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
           "Content-Length": Buffer.byteLength(body, "utf8"),
         },
         cert: pem.cert,
@@ -153,9 +155,8 @@ const CUF_MAP: Record<string, string> = {
   SE:"28",SP:"35",TO:"17",
 };
 
-// ─── Envelope SOAP — CTeAutorizacao4 ─────────────────────────────────────────
+// ─── Envelope SOAP — CTeRecepcaoSincV4 ───────────────────────────────────────
 function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
-  // Remove a declaração XML <?xml...?> que não pode aparecer dentro de um elemento SOAP
   const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
   const idLote = Date.now().toString().slice(-15);
   return `<?xml version="1.0" encoding="utf-8"?>
@@ -163,13 +164,13 @@ function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
   <soap12:Header>
-    <cteCabecMsg xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeAutorizacao4">
+    <cteCabecMsg xmlns="${SOAP_NS}">
       <cUF>${cuf}</cUF>
       <versaoDados>3.00</versaoDados>
     </cteCabecMsg>
   </soap12:Header>
   <soap12:Body>
-    <cteDadosMsg xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeAutorizacao4">
+    <cteDadosMsg xmlns="${SOAP_NS}">
       <enviCTe versao="3.00" xmlns="http://www.portalfiscal.inf.br/cte">
         <idLote>${idLote}</idLote>
         <indSinc>1</indSinc>
