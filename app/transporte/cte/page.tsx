@@ -568,7 +568,28 @@ function CtePageInner() {
       if (data.sucesso) {
         alert(`✓ CT-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
       } else {
-        alert(`⚠ CT-e rejeitado pela SEFAZ\ncStat ${data.cStat}: ${data.xMotivo}`);
+        // cStats internos (5xx) = falha de comunicação antes de a SEFAZ responder.
+        // cStats fiscais reais da SEFAZ são 3 dígitos começando com 1-4 (ex: 100, 539, 225).
+        const cStatNum = parseInt(data.cStat ?? "0");
+        const ehFalhaComunicacao =
+          isNaN(cStatNum) ||
+          cStatNum >= 500 ||
+          cStatNum === 0 ||
+          data.xMotivo?.includes("SEFAZ_TRANSPORT") ||
+          data.xMotivo?.includes("Edge Function") ||
+          data.xMotivo?.includes("connection error") ||
+          data.xMotivo?.includes("timeout");
+
+        if (ehFalhaComunicacao) {
+          alert(
+            `⚠ Falha de comunicação com a SEFAZ\n` +
+            `A SEFAZ não chegou a processar o documento — a conexão foi interrompida antes.\n\n` +
+            `Detalhe: ${data.xMotivo}\n\n` +
+            `Use o botão "Testar Conexão SEFAZ" em Parâmetros → CT-e para diagnosticar.`
+          );
+        } else {
+          alert(`⚠ CT-e rejeitado pela SEFAZ\ncStat ${data.cStat}: ${data.xMotivo}`);
+        }
       }
     } catch (e) {
       alert("Erro ao transmitir: " + (e instanceof Error ? e.message : String(e)));

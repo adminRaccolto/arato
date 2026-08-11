@@ -77,7 +77,7 @@ function envelopeCTe(cteXml: string, cuf: string): string {
   <soap12:Header>
     <cteCabecMsg xmlns="${SOAP_NS}">
       <cUF>${cuf}</cUF>
-      <versaoDados>3.00</versaoDados>
+      <versaoDados>4.00</versaoDados>
     </cteCabecMsg>
   </soap12:Header>
   <soap12:Body>

@@ -421,6 +421,25 @@ function ParametrosSistemaContent() {
   const [logoOk,         setLogoOk]         = useState(false);
   const [resolvedContaId, setResolvedContaId] = useState<string | null>(null);;
 
+  // ── Teste de conexão CT-e
+  const [cteTestando, setCteTestando] = useState(false);
+  const [cteTesteResult, setCteTesteResult] = useState<{ ok: boolean; diagnostico: string; detalhe?: string; elapsed_ms?: number } | null>(null);
+
+  async function testarConexaoSefaz() {
+    if (!fazendaId) return;
+    setCteTestando(true);
+    setCteTesteResult(null);
+    try {
+      const res  = await fetch("/api/fiscal/status-sefaz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fazenda_id: fazendaId }) });
+      const data = await res.json();
+      setCteTesteResult({ ok: data.ok, diagnostico: data.diagnostico ?? data.detalhe ?? "sem diagnóstico", detalhe: data.detalhe, elapsed_ms: data.elapsed_ms });
+    } catch (e) {
+      setCteTesteResult({ ok: false, diagnostico: "Erro ao chamar endpoint de diagnóstico: " + String(e) });
+    } finally {
+      setCteTestando(false);
+    }
+  }
+
   // ── Transportes
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
@@ -1612,12 +1631,29 @@ function ParametrosSistemaContent() {
 
           {aba === "cte" && (
             <div>
-              <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros CT-e 3.00 — por Emitente</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
-                  Cada empresa emissora tem sua própria série, numeração, RNTRC e certificado.
-                  MT usa SVRS (RS) como autorizador.
-                </p>
+              <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+                <div>
+                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros CT-e 4.00 — por Emitente</h2>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
+                    Cada empresa emissora tem sua própria série, numeração, RNTRC e certificado.
+                    Autorizador por UF (MT → SVMT, outros → SVRS/SVSP).
+                  </p>
+                </div>
+                <div style={{ flexShrink: 0 }}>
+                  <button onClick={testarConexaoSefaz} disabled={cteTestando || !fazendaId}
+                    style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#EBF4FF", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    {cteTestando ? "⏳ Testando..." : "🔌 Testar Conexão SEFAZ"}
+                  </button>
+                  {cteTesteResult && (
+                    <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: `0.5px solid ${cteTesteResult.ok ? "#16A34A" : "#E24B4A"}`, background: cteTesteResult.ok ? "#DCFCE7" : "#FEF2F2", fontSize: 11, maxWidth: 340 }}>
+                      <div style={{ fontWeight: 700, color: cteTesteResult.ok ? "#14532D" : "#B91C1C", marginBottom: 3 }}>
+                        {cteTesteResult.ok ? "✓ SEFAZ acessível" : "✗ Falha de conexão"}
+                      </div>
+                      <div style={{ color: cteTesteResult.ok ? "#166534" : "#991B1B", lineHeight: 1.4 }}>{cteTesteResult.diagnostico}</div>
+                      {cteTesteResult.elapsed_ms && <div style={{ color: "#666", marginTop: 3 }}>{cteTesteResult.elapsed_ms}ms</div>}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {empresas.length === 0 && (

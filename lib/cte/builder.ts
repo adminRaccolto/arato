@@ -1,8 +1,9 @@
 /**
  * lib/cte/builder.ts
- * Gera o XML do CT-e 3.00 (modal rodoviário, frota própria).
+ * Gera o XML do CT-e 4.00 (modal rodoviário, frota própria).
  * Namespace: http://www.portalfiscal.inf.br/cte
  * Modelo 57 — série/número configuráveis via configuracoes_modulo.
+ * CT-e 3.00 foi extinto em 31/01/2024 pela SEFAZ.
  */
 
 export interface EmitenteCTe {
@@ -155,8 +156,8 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<CTe xmlns="http://www.portalfiscal.inf.br/cte" versao="3.00">
-  <infCte Id="CTe${chave}" versao="3.00">
+<CTe xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+  <infCte Id="CTe${chave}" versao="4.00">
     <ide>
       <cUF>${cuf}</cUF>
       <cCT>${cCT}</cCT>
@@ -172,7 +173,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <tpAmb>${tpAmb}</tpAmb>
       <tpCTe>0</tpCTe>
       <procEmi>0</procEmi>
-      <verProc>3.00</verProc>
+      <verProc>4.00</verProc>
       <cMunEnv>${e.municipio_ibge}</cMunEnv>
       <xMunEnv>${esc(e.municipio_nome)}</xMunEnv>
       <UFEnv>${e.uf}</UFEnv>
@@ -185,9 +186,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <xMunFim>${esc(input.municipio_fim_nome)}</xMunFim>
       <UFFim>${input.uf_fim}</UFFim>
       <retira>0</retira>
-      <toma3>
-        <toma>${input.tomador_tipo}</toma>
-      </toma3>
+      <toma>${input.tomador_tipo}</toma>
     </ide>
     ${input.observacao ? `<compl><xObs>${esc(input.observacao)}</xObs></compl>` : ""}
     <emit>
@@ -245,7 +244,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <chave>${input.nfe_chave.replace(/\D/g, "")}</chave>
         </infNFe>
       </infDoc>` : ""}
-      <infModal versaoModal="3.00">
+      <infModal versaoModal="3.00"><!-- modal rodoviário mantém versão 3.00 -->
         <rodo>
           <RNTRC>${e.rntrc}</RNTRC>
           <veic>
