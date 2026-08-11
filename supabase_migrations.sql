@@ -9385,19 +9385,11 @@ SET
        AND i.maquina_id IS NOT NULL
      ORDER BY i.created_at
      LIMIT 1)
-  ),
-  bomba_id             = COALESCE(
-    l.bomba_id,
-    (SELECT i.bomba_id
-     FROM nf_entrada_itens i
-     WHERE i.nf_entrada_id = nf.id
-       AND i.bomba_id IS NOT NULL
-     ORDER BY i.created_at
-     LIMIT 1)
   )
 FROM nf_entradas nf
 WHERE l.nf_entrada_id = nf.id
   AND l.origem_lancamento = 'nf_entrada';
+-- (bomba_id não existe em lancamentos — campo só existe em nf_entrada_itens)
 
 -- Confirme quantas linhas foram alteradas antes de fechar o editor:
 -- SELECT COUNT(*) FROM lancamentos WHERE nf_entrada_id IS NOT NULL AND origem_lancamento = 'nf_entrada';
