@@ -45,15 +45,19 @@ function loadCaBundle(): string[] | null {
   const b64 = (typeof Deno !== "undefined" ? Deno.env.get("ICP_BRASIL_CA_BUNDLE_B64") : null) as string | null;
   if (!b64) return null;
   try {
-    const pem = atob(b64);
+    // Remove espaços/quebras de linha — macOS base64 insere \n a cada 76 chars;
+    // atob() do Deno é estrito e rejeita qualquer caractere fora do alfabeto Base64.
+    const b64clean = b64.replace(/\s+/g, "");
+    const pem = atob(b64clean);
     const certs = splitCerts(pem);
     if (certs.length === 0) {
       console.error("[cte-transmit] ICP_BRASIL_CA_BUNDLE_B64 decodificado mas sem certificados PEM válidos");
       return null;
     }
+    console.log(`[cte-transmit] CA bundle carregado: ${certs.length} cert(s)`);
     return certs;
   } catch (e) {
-    console.error("[cte-transmit] Falha ao decodificar ICP_BRASIL_CA_BUNDLE_B64:", e);
+    console.error("[cte-transmit] Falha ao decodificar ICP_BRASIL_CA_BUNDLE_B64 (Base64 inválido?):", e);
     return null;
   }
 }
