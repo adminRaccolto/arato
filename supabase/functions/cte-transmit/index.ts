@@ -80,10 +80,12 @@ function soapPostMtls(
     );
   }
 
-  // Monta headers conforme versão SOAP
+  // Headers SOAP — mesmo para SOAP 1.2, sped-cte envia SOAPAction separado.
+  // Format exato do sped-cte: application/soap+xml;charset=UTF-8;action="..."
   const contentType = soapVersion === "1.2"
-    ? `application/soap+xml; charset=utf-8; action="${soapAction}"`
-    : "text/xml; charset=utf-8";
+    ? `application/soap+xml;charset=UTF-8;action="${soapAction}"`
+    : "text/xml;charset=UTF-8";
+  const soapActionHeader = `"${soapAction}"`;
 
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -96,8 +98,8 @@ function soapPostMtls(
       method: "POST",
       headers: {
         "Content-Type":   contentType,
+        "SOAPAction":     soapActionHeader,
         "Content-Length": bodyBuf.length,
-        ...(soapVersion === "1.1" ? { SOAPAction: `"${soapAction}"` } : {}),
       },
       cert: certPem,
       key:  keyPem,

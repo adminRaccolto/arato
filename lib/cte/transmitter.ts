@@ -159,10 +159,10 @@ const CUF_MAP: Record<string, string> = {
 };
 
 // ─── Envelope SOAP 1.2 — CTeRecepcaoSincV4 ──────────────────────────────────
-// SVRS exige SOAP 1.2: retorna soap12:Upgrade fault para requisições SOAP 1.1.
+// CTeRecepcaoSincV4 = serviço síncrono: cteDadosMsg contém o CTe diretamente.
+// (enviCTe é só para o serviço assíncrono de lote — não usar aqui)
 function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
   const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
-  const idLote = Date.now().toString().slice(-15);
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -175,11 +175,7 @@ function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
   </soap12:Header>
   <soap12:Body>
     <cteDadosMsg xmlns="${SOAP_NS}">
-      <enviCTe versao="3.00" xmlns="http://www.portalfiscal.inf.br/cte">
-        <idLote>${idLote}</idLote>
-        <indSinc>1</indSinc>
-        ${cteXmlBody}
-      </enviCTe>
+      ${cteXmlBody}
     </cteDadosMsg>
   </soap12:Body>
 </soap12:Envelope>`;
