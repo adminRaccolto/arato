@@ -13,6 +13,7 @@ import {
   listarPessoas,
   criarPessoa,
   listarCentrosCustoGeral,
+  listarCentrosCustoGeralDaConta,
   listarRegrasClassificacao,
   aplicarRegraClassificacao,
   listarOperacoesGerenciaisAtivas,
@@ -365,9 +366,9 @@ export default function NfCompraPage() {
     setDepositos(depData);
     setPessoas(pesData);
 
-    // Centros de custo
+    // Centros de custo — usa da conta para abranger todas as fazendas do produtor
     try {
-      const cc = await listarCentrosCustoGeral(fazendaId);
+      const cc = await listarCentrosCustoGeralDaConta(fazendaId);
       setCentros(cc);
     } catch {}
 
@@ -414,7 +415,7 @@ export default function NfCompraPage() {
   async function carregarWizardData(fId: string) {
     const allFazIds = fazendaIds.length > 1 ? fazendaIds : (fId ? [fId] : []);
     const [ccData, depData] = await Promise.all([
-      listarCentrosCustoGeral(fId).catch(() => [] as CentroCusto[]),
+      listarCentrosCustoGeralDaConta(fId).catch(() => [] as CentroCusto[]),
       listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
     ]);
     setWCentros(ccData);
@@ -539,7 +540,10 @@ export default function NfCompraPage() {
   // ── Helpers ─────────────────────────────────────────────────
   const nomeDeposito   = (id: string) => depositos.find(d => d.id === id)?.nome ?? "—";
   const nomeInsumo     = (id: string) => insumos.find(i => i.id === id)?.nome ?? "—";
-  const ccManutencao   = (id: string) => !!(wCentros.length ? wCentros : centros).find(c => c.id === id)?.manutencao_maquinas;
+  // ccOpts: usa wCentros (específico da fazenda da NF) com fallback para centros (da conta)
+  // Garante que o dropdown de CC nunca fique vazio enquanto wCentros carrega
+  const ccOpts = wCentros.length > 0 ? wCentros : centros;
+  const ccManutencao   = (id: string) => !!ccOpts.find(c => c.id === id)?.manutencao_maquinas;
 
   // ── Abrir wizard novo ──────────────────────────────────────
   async function abrirNovo() {
@@ -2248,7 +2252,7 @@ export default function NfCompraPage() {
                         </div>
                         <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); }} style={inp}>
                           <option value="">— nenhum —</option>
-                          {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                          {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
                         </select>
                       </div>
                       <div>
@@ -2388,7 +2392,7 @@ export default function NfCompraPage() {
                           <label style={lbl}>Centro de Custo</label>
                           <select value={bulkCC} onChange={e => setBulkCC(e.target.value)} style={{ ...inp, fontSize: 12 }}>
                             <option value="">— não alterar —</option>
-                            {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                            {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
                           </select>
                         </div>
                         <button
@@ -2483,7 +2487,7 @@ export default function NfCompraPage() {
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                   <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                     <option value="">— selecionar CC —</option>
-                                    {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => (
+                                    {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
                                       <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>
                                     ))}
                                   </select>
@@ -2612,7 +2616,7 @@ export default function NfCompraPage() {
                             <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
                               <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">— selecionar CC —</option>
-                                {wCentros.map(c => (
+                                {ccOpts.map(c => (
                                   <option key={c.id} value={c.id}>
                                     {c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}
                                   </option>
@@ -2646,7 +2650,7 @@ export default function NfCompraPage() {
                             <div style={{ padding: "6px 8px" }}>
                               <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">—</option>
-                                {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                                {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
                               </select>
                             </div>
                             <div style={{ padding: "6px 8px" }}>
@@ -3195,7 +3199,7 @@ export default function NfCompraPage() {
                 <label style={lbl}>Centro de Custo (padrão)</label>
                 <select value={batchSettings.centro_custo_id} onChange={e => setBatchSettings(p => ({ ...p, centro_custo_id: e.target.value }))} style={inp}>
                   <option value="">— manter individual —</option>
-                  {wCentros.filter(c => !wCentros.some(x => x.parent_id === c.id)).map(c => (
+                  {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
                     <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
                   ))}
                 </select>
