@@ -517,12 +517,48 @@ function CtePageInner() {
     }
   }
 
+  // ── Busca IBGE de um município via ViaCEP ─────────────────
+  async function buscarIbge(cidade: string, uf: string): Promise<string> {
+    // Lookup estático para cidades mais comuns do MT agro — evita round-trip desnecessário
+    const IBGE_MT: Record<string, string> = {
+      "nova mutum": "5106455", "lucas do rio verde": "5105259", "sorriso": "5107925",
+      "sinop": "5107909", "cuiabá": "5103403", "campo verde": "5102637",
+      "rondonópolis": "5107602", "primavera do leste": "5106208", "tapurah": "5108006",
+      "ipiranga do norte": "5104526", "campo novo do parecis": "5102637",
+      "diamantino": "5103502", "tangará da serra": "5107958", "alta floresta": "5100250",
+      "colíder": "5103205", "matupá": "5105606", "guarantã do norte": "5104104",
+      "juara": "5105101", "juína": "5105150", "vila rica": "5108600",
+    };
+    const chave = cidade.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const ibgeMt = Object.entries(IBGE_MT).find(([k]) =>
+      k.normalize("NFD").replace(/[̀-ͯ]/g, "") === chave
+    );
+    if (ibgeMt) return ibgeMt[1];
+
+    // Fallback: ViaCEP por nome de cidade
+    try {
+      const enc = encodeURIComponent(cidade.trim());
+      const r = await fetch(`https://viacep.com.br/ws/${uf}/${enc}/json/`);
+      if (r.ok) {
+        const arr = await r.json() as Array<{ ibge?: string }>;
+        if (Array.isArray(arr) && arr[0]?.ibge) return arr[0].ibge;
+      }
+    } catch { /* ignora falha de rede */ }
+
+    return "0000000"; // último recurso — SEFAZ irá rejeitar; usuário precisa corrigir cidade
+  }
+
   // ── Autorizar — transmissão real SEFAZ ──────────────────
   async function autorizar(c: Cte) {
     if (!fazendaId) return;
     if (!confirm(`Transmitir CT-e ${c.numero_cte} para a SEFAZ?\nAmbiente configurado em Parâmetros → CT-e.`)) return;
 
-    // Monta ibge do município se disponível
+    // Busca IBGE das cidades de origem e destino (obrigatório no schema CT-e 4.00)
+    const [ibgeIni, ibgeFim] = await Promise.all([
+      buscarIbge(c.municipio_origem, c.uf_origem),
+      buscarIbge(c.municipio_destino, c.uf_destino),
+    ]);
+
     const payload = {
       fazenda_id:         fazendaId,
       emitente_id:        c.emitente_id ?? undefined,
@@ -530,10 +566,10 @@ function CtePageInner() {
       emitente_razao_social: c.emitente_razao_social ?? undefined,
       remetente:          { nome: c.remetente_nome,    cpf_cnpj: c.remetente_cnpj    ?? undefined },
       destinatario:       { nome: c.destinatario_nome, cpf_cnpj: c.destinatario_cnpj ?? undefined },
-      municipio_ini_ibge: "0000000",
+      municipio_ini_ibge: ibgeIni,
       municipio_ini_nome: c.municipio_origem,
       uf_ini:             c.uf_origem,
-      municipio_fim_ibge: "0000000",
+      municipio_fim_ibge: ibgeFim,
       municipio_fim_nome: c.municipio_destino,
       uf_fim:             c.uf_destino,
       cfop:               c.cfop,
