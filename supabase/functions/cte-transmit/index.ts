@@ -2,21 +2,15 @@
  * Supabase Edge Function: cte-transmit
  * Relay para transmissão de CT-e à SEFAZ via mTLS de IP brasileiro.
  *
- * Usa node:https com rejectUnauthorized:false porque o SVRS usa certificado
- * assinado pela AC ICP-Brasil, que não está no bundle de CAs padrão do Deno.
- * A segurança é garantida pela assinatura digital do XML (não pelo TLS do servidor).
- *
  * CONFIGURAÇÃO OBRIGATÓRIA:
  * 1. Supabase Dashboard → Edge Functions → cte-transmit → Settings
  *    → DESABILITAR "Verify JWT"
  * 2. Supabase Dashboard → Edge Functions → Secrets
  *    → EDGE_BEARER_SECRET = <mesmo valor configurado na Vercel>
+ *    → ICP_BRASIL_CA_BUNDLE_B64 = <bundle PEM da ICP-Brasil em Base64>
+ *       (AC Raiz Brasileira v10 + Autoridade Certificadora SERPRO SSLv1)
+ *       Gerado via: base64 -w0 icp-brasil-bundle.pem
  */
-
-// @ts-ignore — node: disponível no Deno 1.30+ (Supabase usa versão recente)
-import https from "node:https";
-// @ts-ignore
-import { Buffer } from "node:buffer";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,18 +25,94 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-function soapPostMtls(
+/** Divide um PEM com múltiplos certificados em array de PEM individuais */
+function splitCerts(pem: string): string[] {
+  const matches = pem.match(
+    /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g,
+  );
+  return matches ?? [];
+}
+
+/**
+ * Decodifica ICP_BRASIL_CA_BUNDLE_B64 (Base64 → PEM string).
+ * Retorna array vazio se a variável não estiver configurada.
+ */
+function loadCaBundle(): string[] {
+  // @ts-ignore — Deno env
+  const b64 = (typeof Deno !== "undefined" ? Deno.env.get("ICP_BRASIL_CA_BUNDLE_B64") : null) as string | null;
+  if (!b64) return [];
+  try {
+    const pem = atob(b64);
+    const certs = splitCerts(pem);
+    if (certs.length === 0) {
+      console.warn("[cte-transmit] ICP_BRASIL_CA_BUNDLE_B64 decodificado mas sem certificados PEM");
+    }
+    return certs;
+  } catch (e) {
+    console.error("[cte-transmit] Falha ao decodificar ICP_BRASIL_CA_BUNDLE_B64:", e);
+    return [];
+  }
+}
+
+/**
+ * POST SOAP com mTLS usando Deno.createHttpClient + CA bundle da ICP-Brasil.
+ * Fallback para node:https com rejectUnauthorized:false se o bundle não estiver configurado.
+ */
+async function soapPostMtls(
   url: string,
   body: string,
   certPem: string,
   keyPem: string,
   soapAction: string,
+  caCerts: string[],
 ): Promise<{ status: number; body: string }> {
+  // ─── Caminho A: Deno.createHttpClient com CA bundle (seguro) ──────────────
+  if (caCerts.length > 0) {
+    // @ts-ignore — Deno API
+    const client = Deno.createHttpClient({
+      cert: certPem,
+      key: keyPem,
+      caCerts,
+    });
+
+    let resp: Response;
+    try {
+      resp = await fetch(url, {
+        // @ts-ignore — extensão Deno: client é aceito pelo fetch do Deno
+        client,
+        method: "POST",
+        headers: {
+          "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
+        },
+        body,
+      });
+    } finally {
+      // @ts-ignore
+      client.close?.();
+    }
+
+    const text = await resp.text();
+    return { status: resp.status, body: text };
+  }
+
+  // ─── Caminho B: node:https sem validação de CA (fallback inseguro) ────────
+  // Usado apenas quando ICP_BRASIL_CA_BUNDLE_B64 não está configurado.
+  // A integridade é garantida pela assinatura digital do XML CT-e.
+  console.warn(
+    "[cte-transmit] ICP_BRASIL_CA_BUNDLE_B64 não configurado — usando rejectUnauthorized:false. " +
+    "Configure o secret para habilitar validação TLS completa da ICP-Brasil.",
+  );
+
+  // @ts-ignore — node: disponível no Deno 1.30+ (Supabase usa versão recente)
+  const https = await import("node:https");
+  // @ts-ignore
+  const { Buffer } = await import("node:buffer");
+
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const bodyBuf = Buffer.from(body, "utf8");
 
-    const req = https.request(
+    const req = https.default.request(
       {
         hostname: u.hostname,
         port: 443,
@@ -54,8 +124,6 @@ function soapPostMtls(
         },
         cert: certPem,
         key: keyPem,
-        // ICP-Brasil CA não está no bundle padrão do Deno/Node.
-        // A integridade é garantida pela assinatura digital do XML CT-e.
         rejectUnauthorized: false,
       },
       (res: { statusCode?: number; on: (e: string, cb: (d?: unknown) => void) => void }) => {
@@ -135,8 +203,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "Endpoint inválido" }, 400);
   }
 
+  const caCerts = loadCaBundle();
+  const secureMode = caCerts.length > 0;
+  console.log(`[cte-transmit] modo TLS: ${secureMode ? `seguro (${caCerts.length} CA(s) ICP-Brasil)` : "fallback rejectUnauthorized:false"}`);
+
   try {
-    const result = await soapPostMtls(endpoint, soapBody, certPem, keyPem, soapAction);
+    const result = await soapPostMtls(endpoint, soapBody, certPem, keyPem, soapAction, caCerts);
     console.log(`[cte-transmit] ${new URL(endpoint).hostname} → HTTP ${result.status} (${result.body.length} bytes)`);
     if (result.status !== 200) {
       console.log("[cte-transmit] body:", result.body.slice(0, 500));
@@ -144,7 +216,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ httpStatus: result.status, body: result.body });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    const isUnknownIssuer = msg.includes("UnknownIssuer") || msg.includes("unknown issuer");
     console.error("[cte-transmit] erro mTLS:", msg);
-    return json({ error: msg }, 502);
+
+    if (isUnknownIssuer) {
+      return json({
+        error: `SEFAZ_TLS_UNKNOWN_ISSUER: ${msg}. ` +
+          "Configure ICP_BRASIL_CA_BUNDLE_B64 nas Secrets da Edge Function com o bundle da ICP-Brasil.",
+        cStat: null,
+      }, 502);
+    }
+
+    const isTimeout = msg.includes("timed out") || msg.includes("timeout");
+    if (isTimeout) {
+      return json({ error: `SEFAZ_TIMEOUT: ${msg}`, cStat: null }, 504);
+    }
+
+    return json({ error: `SEFAZ_TRANSPORT_ERROR: ${msg}`, cStat: null }, 502);
   }
 });
