@@ -9,7 +9,6 @@
  */
 
 import https from "https";
-import { gzipSync } from "node:zlib";
 import type { PemPair } from "../nfe/signer";
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -21,8 +20,9 @@ const ENDPOINT_PROD: Record<string, string> = {
   _svrs: "https://cte.svrs.rs.gov.br/ws/CTeRecepcaoSincV4/CTeRecepcaoSincV4.asmx",
 };
 
+// Em homologação, MT (e demais estados SVRS) usam o autorizador centralizado do RS.
+// O servidor homologacao.sefaz.mt.gov.br exige mTLS mesmo para probe — não usar direto.
 const ENDPOINT_HOM: Record<string, string> = {
-  MT:    "https://homologacao.sefaz.mt.gov.br/ctews2/services/CTeRecepcaoSincV4",
   SP:    "https://homologacao.nfe.fazenda.sp.gov.br/CTeWS/WS/CTeRecepcaoSincV4.asmx",
   MG:    "https://hcte.fazenda.mg.gov.br/cte/services/CTeRecepcaoSincV4",
   _svrs: "https://cte-homologacao.svrs.rs.gov.br/ws/CTeRecepcaoSincV4/CTeRecepcaoSincV4.asmx",
@@ -159,16 +159,24 @@ const CUF_MAP: Record<string, string> = {
 };
 
 // ─── Envelope SOAP 1.2 — CTeRecepcaoSincV4 ──────────────────────────────────
-// CT-e 4.00: cteDadosMsg contém o XML assinado comprimido em GZip e codificado em Base64.
-// Sem cteCabecMsg — o cabeçalho foi removido no protocolo 4.00.
-function envelopeCTe(cteXml: string): string {
-  const payload = gzipSync(Buffer.from(cteXml, "utf8")).toString("base64");
+// CT-e 3.00: cteDadosMsg contém o CT-e assinado diretamente (sem gzip).
+// cteCabecMsg no Header é obrigatório (cUF + versaoDados="3.00").
+function envelopeCTe(cteXml: string, cuf: string): string {
+  const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap12:Header>
+    <cteCabecMsg xmlns="${SOAP_NS}">
+      <cUF>${cuf}</cUF>
+      <versaoDados>3.00</versaoDados>
+    </cteCabecMsg>
+  </soap12:Header>
   <soap12:Body>
-    <cteDadosMsg xmlns="${SOAP_NS}">${payload}</cteDadosMsg>
+    <cteDadosMsg xmlns="${SOAP_NS}">
+      ${cteXmlBody}
+    </cteDadosMsg>
   </soap12:Body>
 </soap12:Envelope>`;
 }
@@ -243,8 +251,9 @@ export async function transmitirCTe(
   uf:             string,
   ambiente:       "producao" | "homologacao"
 ): Promise<RespostaCTe> {
-  const ep = endpoint(uf, ambiente);
-  const soapBody = envelopeCTe(cteXmlAssinado);
+  const ep  = endpoint(uf, ambiente);
+  const cuf = CUF_MAP[uf] ?? "51";
+  const soapBody = envelopeCTe(cteXmlAssinado, cuf);
 
   const edgeUrl    = process.env.SUPABASE_SEFAZ_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const edgeSecret = process.env.EDGE_BEARER_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
