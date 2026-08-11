@@ -24,7 +24,8 @@ const ENDPOINT_HOM: Record<string, string> = {
   _svrs: "https://cte-homologacao.svrs.rs.gov.br/ws/CTeRecepcaoSincV4/CTeRecepcaoSincV4.asmx",
 };
 
-const SOAP_ACTION = 'http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao';
+// SOAP 1.1 — SEFAZ/SVRS usa SOAP 1.1 (text/xml + SOAPAction header, não application/soap+xml)
+const SOAP_ACTION = '"http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao"';
 const SOAP_NS    = 'http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4';
 
 function endpoint(uf: string, ambiente: "producao" | "homologacao"): string {
@@ -52,11 +53,12 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
       "Authorization": `Bearer ${edgeSecret}`,
     },
     body: JSON.stringify({
-      endpoint:   url,
-      soapBody:   body,
-      certPem:    pem.cert,
-      keyPem:     pem.key,
-      soapAction: SOAP_ACTION,
+      endpoint:       url,
+      soapBody:       body,
+      certPem:        pem.cert,
+      keyPem:         pem.key,
+      soapAction:     SOAP_ACTION,  // inclui aspas: "http://...wsdl/cteRecepcao"
+      soapVersion:    "1.1",
     }),
   });
 
@@ -111,7 +113,8 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         path: u.pathname + u.search,
         method: "POST",
         headers: {
-          "Content-Type": `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
+          "Content-Type": "text/xml; charset=utf-8",
+          "SOAPAction":   SOAP_ACTION,
           "Content-Length": Buffer.byteLength(body, "utf8"),
         },
         cert: pem.cert,
@@ -155,21 +158,23 @@ const CUF_MAP: Record<string, string> = {
   SE:"28",SP:"35",TO:"17",
 };
 
-// ─── Envelope SOAP — CTeRecepcaoSincV4 ───────────────────────────────────────
+// ─── Envelope SOAP 1.1 — CTeRecepcaoSincV4 ───────────────────────────────────
+// SEFAZ usa SOAP 1.1: envelope http://schemas.xmlsoap.org/soap/envelope/,
+// Content-Type text/xml, SOAPAction em header separado (não no Content-Type).
 function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
   const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "");
   const idLote = Date.now().toString().slice(-15);
   return `<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-  xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Header>
+  xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Header>
     <cteCabecMsg xmlns="${SOAP_NS}">
       <cUF>${cuf}</cUF>
       <versaoDados>3.00</versaoDados>
     </cteCabecMsg>
-  </soap12:Header>
-  <soap12:Body>
+  </soap:Header>
+  <soap:Body>
     <cteDadosMsg xmlns="${SOAP_NS}">
       <enviCTe versao="3.00" xmlns="http://www.portalfiscal.inf.br/cte">
         <idLote>${idLote}</idLote>
@@ -177,8 +182,8 @@ function envelopeCTe(cteXml: string, cuf: string, tpAmb: "1" | "2"): string {
         ${cteXmlBody}
       </enviCTe>
     </cteDadosMsg>
-  </soap12:Body>
-</soap12:Envelope>`;
+  </soap:Body>
+</soap:Envelope>`;
 }
 
 // ─── Parser de resposta ───────────────────────────────────────────────────────

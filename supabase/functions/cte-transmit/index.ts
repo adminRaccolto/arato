@@ -58,14 +58,31 @@ function loadCaBundle(): string[] {
  * POST SOAP com mTLS usando Deno.createHttpClient + CA bundle da ICP-Brasil.
  * Fallback para node:https com rejectUnauthorized:false se o bundle não estiver configurado.
  */
+/** Monta os headers HTTP para SOAP 1.1 ou 1.2 */
+function soapHeaders(soapAction: string, soapVersion: string): Record<string, string> {
+  if (soapVersion === "1.2") {
+    // SOAP 1.2: action embutido no Content-Type
+    return { "Content-Type": `application/soap+xml; charset=utf-8; action=${soapAction}` };
+  }
+  // SOAP 1.1 (padrão SEFAZ): text/xml + SOAPAction header separado
+  // soapAction já vem com aspas: '"http://..."'
+  return {
+    "Content-Type": "text/xml; charset=utf-8",
+    "SOAPAction":   soapAction,
+  };
+}
+
 async function soapPostMtls(
   url: string,
   body: string,
   certPem: string,
   keyPem: string,
   soapAction: string,
+  soapVersion: string,
   caCerts: string[],
 ): Promise<{ status: number; body: string }> {
+  const headers = soapHeaders(soapAction, soapVersion);
+
   // ─── Caminho A: Deno.createHttpClient com CA bundle (seguro) ──────────────
   if (caCerts.length > 0) {
     // @ts-ignore — Deno API
@@ -81,9 +98,7 @@ async function soapPostMtls(
         // @ts-ignore — extensão Deno: client é aceito pelo fetch do Deno
         client,
         method: "POST",
-        headers: {
-          "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
-        },
+        headers,
         body,
       });
     } finally {
@@ -96,8 +111,6 @@ async function soapPostMtls(
   }
 
   // ─── Caminho B: node:https sem validação de CA (fallback inseguro) ────────
-  // Usado apenas quando ICP_BRASIL_CA_BUNDLE_B64 não está configurado.
-  // A integridade é garantida pela assinatura digital do XML CT-e.
   console.warn(
     "[cte-transmit] ICP_BRASIL_CA_BUNDLE_B64 não configurado — usando rejectUnauthorized:false. " +
     "Configure o secret para habilitar validação TLS completa da ICP-Brasil.",
@@ -118,10 +131,7 @@ async function soapPostMtls(
         port: 443,
         path: u.pathname + u.search,
         method: "POST",
-        headers: {
-          "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
-          "Content-Length": bodyBuf.length,
-        },
+        headers: { ...headers, "Content-Length": bodyBuf.length },
         cert: certPem,
         key: keyPem,
         rejectUnauthorized: false,
@@ -163,7 +173,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   }
 
-  let endpoint: string, soapBody: string, certPem: string, keyPem: string, soapAction: string;
+  let endpoint: string, soapBody: string, certPem: string, keyPem: string, soapAction: string, soapVersion: string;
   try {
     const payload = await req.json() as {
       endpoint: string;
@@ -171,12 +181,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       certPem: string;
       keyPem: string;
       soapAction?: string;
+      soapVersion?: string;  // "1.1" (text/xml + SOAPAction header) ou "1.2" (application/soap+xml)
     };
-    endpoint   = payload.endpoint;
-    soapBody   = payload.soapBody;
-    certPem    = payload.certPem;
-    keyPem     = payload.keyPem;
-    soapAction = payload.soapAction ?? "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao";
+    endpoint    = payload.endpoint;
+    soapBody    = payload.soapBody;
+    certPem     = payload.certPem;
+    keyPem      = payload.keyPem;
+    soapVersion = payload.soapVersion ?? "1.1";
+    soapAction  = payload.soapAction ?? '"http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao"';
   } catch {
     return json({ error: "Bad Request — JSON inválido" }, 400);
   }
@@ -205,10 +217,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const caCerts = loadCaBundle();
   const secureMode = caCerts.length > 0;
-  console.log(`[cte-transmit] modo TLS: ${secureMode ? `seguro (${caCerts.length} CA(s) ICP-Brasil)` : "fallback rejectUnauthorized:false"}`);
+  console.log(`[cte-transmit] SOAP ${soapVersion} | TLS: ${secureMode ? `seguro (${caCerts.length} CA(s) ICP-Brasil)` : "fallback rejectUnauthorized:false"}`);
 
   try {
-    const result = await soapPostMtls(endpoint, soapBody, certPem, keyPem, soapAction, caCerts);
+    const result = await soapPostMtls(endpoint, soapBody, certPem, keyPem, soapAction, soapVersion, caCerts);
     console.log(`[cte-transmit] ${new URL(endpoint).hostname} → HTTP ${result.status} (${result.body.length} bytes)`);
     if (result.status !== 200) {
       console.log("[cte-transmit] body:", result.body.slice(0, 500));
