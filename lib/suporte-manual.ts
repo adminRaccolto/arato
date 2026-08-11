@@ -537,7 +537,7 @@ A tela de Conciliação tem layout em dois painéis lado a lado:
 - O sistema vincula os N lançamentos a essa única linha do extrato
 
 **Persistência do extrato:**
-- O extrato OFX importado é salvo automaticamente no banco de dados (tabela `extratos_bancarios`)
+- O extrato OFX importado é salvo automaticamente no banco de dados (tabela "extratos_bancarios")
 - Na próxima vez que abrir a tela, o extrato já aparece sem precisar reimportar
 - Banner informativo aparece no topo quando há conciliações pendentes
 - Para limpar e reimportar um novo extrato: clique em **Remover Extrato**
@@ -1384,7 +1384,7 @@ Antes de tentar emitir, é possível testar se a comunicação com a SEFAZ está
 
 1. Vá em **Configurações → Parâmetros do Sistema → aba CT-e**
 2. Clique em **🔌 Testar Conexão SEFAZ** (botão no canto superior direito da aba)
-3. O sistema envia uma consulta de status (`CTeStatusServicoV4`) para a SEFAZ
+3. O sistema envia uma consulta de status (CTeStatusServicoV4) para a SEFAZ
 4. Resultado possível:
    - ✅ Verde: "SEFAZ em operação — mTLS e rede OK ✓" — comunicação funcionando
    - ❌ Vermelho: mensagem de erro com diagnóstico específico (veja abaixo)
@@ -1406,12 +1406,12 @@ O sistema exibe mensagens diferentes conforme o tipo de problema:
 - O que fazer: corrija os dados apontados no motivo e reemita
 
 ### Erros de diagnóstico específicos
-- `connection_reset`: falha de mTLS — a SEFAZ encerrou a conexão TLS antes de receber dados. Verifique se o certificado A1 tem a cadeia completa de ACs intermediárias.
-- `timeout`: SEFAZ não respondeu em 45s — problema na SEFAZ ou rota de rede
-- `tls_unknown_issuer`: o bundle de ACs raiz não contém a AC ICP-Brasil necessária
-- `certificado_expirado`: o certificado A1 expirou — renove em **Fiscal → Certificado Digital**
-- `configuracao_cte_nao_encontrada`: nenhuma configuração CT-e encontrada para o emitente. Configure em Parâmetros do Sistema → CT-e.
-- `certificado_nao_configurado`: certificado A1 ou senha ausentes para o emitente selecionado
+- connection_reset: falha de mTLS — a SEFAZ encerrou a conexão TLS antes de receber dados. Verifique se o certificado A1 tem a cadeia completa de ACs intermediárias.
+- timeout: SEFAZ não respondeu em 45s — problema na SEFAZ ou rota de rede
+- tls_unknown_issuer: o bundle de ACs raiz não contém a AC ICP-Brasil necessária
+- certificado_expirado: o certificado A1 expirou — renove em Fiscal → Certificado Digital
+- configuracao_cte_nao_encontrada: nenhuma configuração CT-e encontrada para o emitente. Configure em Parâmetros do Sistema → CT-e.
+- certificado_nao_configurado: certificado A1 ou senha ausentes para o emitente selecionado
 
 ---
 
@@ -1696,7 +1696,7 @@ Configurações globais do sistema: dados fiscais do emitente, certificado digit
 **Aba CT-e:**
 - Ambiente (Homologação / Produção), Série, Número inicial, RNTRC do transportador
 - Certificado A1 do CT-e (opcional — usa o da NF-e se vazio)
-- Botão **🔌 Testar Conexão SEFAZ** (canto superior direito da aba): envia uma consulta de status `CTeStatusServicoV4` para validar mTLS e rede **sem emitir CT-e**. Resultado verde = comunicação OK; resultado vermelho = diagnóstico do erro de rede/TLS. Use antes de tentar emitir para isolar problemas técnicos de rejeições fiscais.
+- Botão **🔌 Testar Conexão SEFAZ** (canto superior direito da aba): envia uma consulta de status (CTeStatusServicoV4) para validar mTLS e rede sem emitir CT-e. Resultado verde = comunicação OK; resultado vermelho = diagnóstico do erro de rede/TLS. Use antes de tentar emitir para isolar problemas técnicos de rejeições fiscais.
 
 **Aba MDF-e:**
 - Ambiente, Série, Número inicial, RNTRC emitente, Tipo Emitente (Autônomo/ETC/CTC)
