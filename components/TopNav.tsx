@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "../lib/supabase";
-import { useTheme } from "../hooks/useTheme";
 import type { Fazenda } from "../lib/supabase";
 
 
@@ -337,7 +336,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   const pathname = usePathname();
   const { fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente, anoSafraVigenteDesc } = useAuth();
-  const { toggle: toggleTheme, isDark } = useTheme();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -753,13 +751,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               )}
             </div>
 
-            <button
-              onClick={toggleTheme}
-              title={isDark ? "Tema claro" : "Tema escuro"}
-              style={{ background: "var(--bg-input)", border: "0.5px solid rgba(255,255,255,0.12)", cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28 }}
-            >
-              {isDark ? "☀️" : "🌙"}
-            </button>
             <div style={{ width: 28, height: 28, background: "#C9921B", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
               {nomeUsuario ? nomeUsuario.substring(0, 2).toUpperCase() : "—"}
             </div>
