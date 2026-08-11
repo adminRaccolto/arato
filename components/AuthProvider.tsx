@@ -103,6 +103,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [stepsCompletos,         setStepsCompletos]         = useState<number>(0);
   const [permissoes,             setPermissoes]             = useState<Record<string, ModuloPermissao>>({});
   const [contaModulosOverrides,  setContaModulosOverrides]  = useState<ContaModulosOverrides>({});
+  const [modulosCarregados,      setModulosCarregados]      = useState<boolean>(false);
   const [logoCliente,            setLogoCliente]            = useState<string | null>(null);
   const [planoAtual,             setPlanoAtual]             = useState<PlanoId | null>(null);
   const [contaStatus,            setContaStatus]            = useState<string | null>(null);
@@ -237,12 +238,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             Promise.resolve(
               supabase.from("conta_modulos").select("modulo, habilitado").eq("conta_id", cidReal)
             ).then(({ data }) => {
-              if (data) {
-                const overrides: ContaModulosOverrides = {};
-                data.forEach((r: { modulo: string; habilitado: boolean }) => { overrides[r.modulo] = r.habilitado; });
-                setContaModulosOverrides(overrides);
-              }
-            }).catch(() => {});
+              const overrides: ContaModulosOverrides = {};
+              (data ?? []).forEach((r: { modulo: string; habilitado: boolean }) => { overrides[r.modulo] = r.habilitado; });
+              setContaModulosOverrides(overrides);
+              setModulosCarregados(true);
+            }).catch(() => { setModulosCarregados(true); });
           }
           // Resolve todas as fazendas da conta para queries multi-fazenda (fire-and-forget)
           fetch("/api/fazenda/da-conta", {
@@ -335,11 +335,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Processa add-ons da conta (conta_modulos)
-      if (modulosRes.status === "fulfilled") {
-        const rows = (modulosRes.value as { data?: { modulo: string; habilitado: boolean }[] | null }).data ?? [];
+      {
+        const rows = modulosRes.status === "fulfilled"
+          ? ((modulosRes.value as { data?: { modulo: string; habilitado: boolean }[] | null }).data ?? [])
+          : [];
         const overrides: ContaModulosOverrides = {};
         rows.forEach(r => { overrides[r.modulo] = r.habilitado; });
         setContaModulosOverrides(overrides);
+        setModulosCarregados(true); // flag: overrides disponíveis — podeAcessarPlano pode decidir
       }
 
       // Assina mudanças em usuarios para recarregar permissões em tempo real
@@ -533,13 +536,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const podeAcessarPlano = useCallback((modulo: string) => {
     // Override explícito via conta_modulos tem precedência — inclusive durante impersonação raccotlo
     if (modulo in contaModulosOverrides) return contaModulosOverrides[modulo];
-    // Sem override: raccotlo tem acesso irrestrito
-    if (userRole === "raccotlo") return true;
-    if (!planoAtual) return true; // sem plano carregado ainda → não bloqueia
+    // Sem override: raccotlo tem acesso irrestrito (add-ons aparecem imediatamente para staff)
+    if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") return true;
+    // Aguarda overrides carregarem antes de decidir — evita flicker de add-ons em clientes sem o módulo
+    if (!modulosCarregados) return false;
+    if (!planoAtual) return false;
     // Plano desconhecido (ID inválido ou legado) → não bloquear para evitar sumiço de menus
     if (!["essencial", "gestao", "performance"].includes(planoAtual)) return true;
     return planoInclui(planoAtual, modulo);
-  }, [planoAtual, userRole, contaModulosOverrides]);
+  }, [planoAtual, userRole, contaModulosOverrides, modulosCarregados]);
 
   // Troca de fazenda ativa dentro da mesma conta (farm switcher)
   const setFazendaAtiva = useCallback(async (id: string, nome: string) => {
