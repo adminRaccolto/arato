@@ -8,60 +8,60 @@
    Cores semânticas (verde, vermelho, mostarda) são iguais nos dois.
    ════════════════════════════════════════════════════════════════ */
 
-/* ── Tema Claro (padrão) — Paleta: branco · cinza · chumbo · oliva · mostarda ── */
+/* ── Tema Claro (padrão) — Paleta Original Arato ── */
 :root,
 :root[data-theme="light"] {
   /* Estrutura */
-  --bg-page:        #F2F4EF;   /* off-white com toque oliva */
+  --bg-page:        #F4F6FA;
   --bg-card:        #FFFFFF;
   --bg-header:      #FFFFFF;
-  --bg-nav:         #EDEEE9;
+  --bg-nav:         #F4F6FA;
   --bg-input:       #FFFFFF;
-  --bg-input-f:     #F7F8F4;   /* filtros de coluna */
-  --bg-hover:       #E8EAE3;
-  --bg-stripe:      #EDEEE9;   /* thead, tfoot */
-  --bg-tag:         #E1E4DA;   /* badges neutros */
+  --bg-input-f:     #F4F6FA;
+  --bg-hover:       #EEF2FA;
+  --bg-stripe:      #F7F9FD;
+  --bg-tag:         #EEF2FA;
 
   /* Bordas */
-  --border:         #CDD1C7;
-  --border-table:   #C2C8BA;
-  --border-row:     #CACEC4;
+  --border:         #DDE2EE;
+  --border-table:   #DDE2EE;
+  --border-row:     #E8ECF4;
 
-  /* Texto — chumbo */
-  --text-1:         #26271E;   /* chumbo principal */
-  --text-2:         #4E5048;   /* chumbo médio */
-  --text-3:         #80847A;   /* cinza morno */
-  --text-muted:     #AAAAAA;
+  /* Texto */
+  --text-1:         #1a1a1a;
+  --text-2:         #555555;
+  --text-3:         #666666;
+  --text-muted:     #888888;
 
-  /* TopNav — chumbo (faixa 1) + oliva (faixa 2) */
-  --nav-bg:         #26271E;
-  --nav-faixa1:     #26271E;   /* chumbo */
-  --nav-faixa2:     #4A5530;   /* verde oliva */
+  /* TopNav — branco (faixa 1) + azul petróleo (faixa 2) */
+  --nav-bg:         #1A5CB8;
+  --nav-faixa1:     #FFFFFF;
+  --nav-faixa2:     #1A5CB8;
   --nav-text:       #FFFFFF;
   --nav-border:     rgba(255,255,255,0.08);
 
-  /* Sombras neutras */
+  /* Sombras */
   --shadow-card:    0 1px 4px rgba(0,0,0,0.06);
   --shadow-modal:   0 4px 24px rgba(0,0,0,0.13);
   --overlay:        rgba(0,0,0,0.38);
 
-  /* Oliva — cor primária */
-  --c-olive:        #4A5530;   /* verde oliva principal */
-  --c-olive-mid:    #6B7A48;   /* oliva médio (hover, ícones) */
-  --c-olive-light:  #E2ECCE;   /* oliva claro (badge bg, active bg) */
-  --c-olive-pale:   #EEF4E4;   /* oliva palíssimo (hover ativo) */
+  /* Oliva (mantido para kpi-card e compatibilidade) */
+  --c-olive:        #4A5530;
+  --c-olive-mid:    #6B7A48;
+  --c-olive-light:  #E2ECCE;
+  --c-olive-pale:   #EEF4E4;
 
-  /* Legados (compatibilidade) */
-  --c-primary:       #4A5530;   /* oliva substitui azul petróleo */
-  --c-primary-light: #E2ECCE;
-  --c-accent:        #C9921B;   /* mostarda (ação manual — mantém) */
-  --c-bg:            #F2F4EF;
+  /* Primário — azul petróleo */
+  --c-primary:       #1A4870;
+  --c-primary-light: #D5E8F5;
+  --c-accent:        #C9921B;
+  --c-bg:            #F4F6FA;
   --c-surface:       #FFFFFF;
-  --c-border:        #CDD1C7;
-  --c-border-light:  #E1E4DA;
-  --c-text:          #26271E;
-  --c-text-sub:      #4E5048;
-  --c-text-weak:     #80847A;
+  --c-border:        #DDE2EE;
+  --c-border-light:  #EEF2FA;
+  --c-text:          #1a1a1a;
+  --c-text-sub:      #555555;
+  --c-text-weak:     #666666;
   --r-card:          10px;
   --r-modal:         12px;
 }
