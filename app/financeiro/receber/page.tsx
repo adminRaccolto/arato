@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+export const dynamic = "force-dynamic";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -120,6 +121,10 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 
 // ═══════════════════════════════════════════════════════════════
 export default function ContasReceber() {
+  return <Suspense><ContasReceberInner /></Suspense>;
+}
+
+function ContasReceberInner() {
   const { fazendaId, contaId, anoSafraVigenteId, emailUsuario } = useAuth();
   const searchParams = useSearchParams();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});

@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+export const dynamic = "force-dynamic";
+import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -115,6 +116,10 @@ const COL_INIT = [80, 280, 110, 95, 230, 95];
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Conciliacao() {
+  return <Suspense><ConciliacaoInner /></Suspense>;
+}
+
+function ConciliacaoInner() {
   const { fazendaId, fazendaIds } = useAuth();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
