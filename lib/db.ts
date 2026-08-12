@@ -966,6 +966,9 @@ export async function excluirMatricula(id: string): Promise<void> {
 // PESSOAS (CLIENTES / FORNECEDORES)
 // ————————————————————————————————————————
 
+const sortPessoas = (arr: Pessoa[]) =>
+  [...arr].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+
 export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
   const PAGE = 1000;
   let all: Pessoa[] = [];
@@ -977,7 +980,7 @@ export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
     if (!data || data.length < PAGE) break;
     from += PAGE;
   }
-  return all;
+  return sortPessoas(all);
 }
 
 // Resolve IDs de fazendas dado contaId + fallback de fazenda individual
@@ -1012,7 +1015,7 @@ export async function listarPessoasDaConta(fazenda_id_fallback?: string | null):
     if (!data || data.length < PAGE) break;
     from += PAGE;
   }
-  return all;
+  return sortPessoas(all);
 }
 
 // Carrega contas bancárias de TODAS as fazendas da conta

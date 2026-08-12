@@ -1528,12 +1528,8 @@ function ContasReceberInner() {
                       <label style={lbl}>Cliente / Comprador</label>
                       <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                         <option value="">— Selecionar do cadastro —</option>
-                        {[...pessoas].sort((a, b) => {
-                          if (a.cliente && !b.cliente) return -1;
-                          if (!a.cliente && b.cliente) return 1;
-                          return a.nome.localeCompare(b.nome, "pt-BR");
-                        }).map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}{p.fornecedor && p.cliente ? " (Cli/Forn)" : p.fornecedor ? " (Fornecedor)" : ""}</option>
+                        {pessoas.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
                         ))}
                       </select>
                     </div>

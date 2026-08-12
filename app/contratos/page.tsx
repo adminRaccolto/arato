@@ -2137,10 +2137,7 @@ export default function Contratos() {
                       </label>
                       <select style={inp} value={fC.pessoa_id} onChange={e => setFC(p=>({...p,pessoa_id:e.target.value}))}>
                         <option value="">— selecione —</option>
-                        {pessoas.filter(p => p.cliente).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                        {pessoas.filter(p => !p.cliente).length > 0 && <optgroup label="── Outros ──">
-                          {pessoas.filter(p => !p.cliente).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                        </optgroup>}
+                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                       </select>
                     </div>
                     {fC.is_triangulacao && (
@@ -2148,10 +2145,7 @@ export default function Contratos() {
                         <label style={lbl}>Comprador Final (Trading / Destino do Grão)</label>
                         <select style={{ ...inp, borderColor:"#C9921B" }} value={fC.comprador_final_id} onChange={e => setFC(p=>({...p,comprador_final_id:e.target.value}))}>
                           <option value="">— selecione —</option>
-                          {pessoas.filter(p => p.cliente).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                          {pessoas.filter(p => !p.cliente).length > 0 && <optgroup label="── Outros ──">
-                            {pessoas.filter(p => !p.cliente).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                          </optgroup>}
+                          {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                         </select>
                       </div>
                     )}

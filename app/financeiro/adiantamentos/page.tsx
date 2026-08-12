@@ -320,10 +320,7 @@ export default function AdiantamentosPage() {
               <label style={lbl}>Fornecedor</label>
               <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                 <option value="">— selecione —</option>
-                {pessoas.filter(p => p.fornecedor).map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                {pessoas.filter(p => !p.fornecedor).length > 0 && <optgroup label="── Outros ──">
-                  {pessoas.filter(p => !p.fornecedor).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </optgroup>}
+                {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
               </select>
             </div>
 
