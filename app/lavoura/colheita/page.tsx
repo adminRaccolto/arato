@@ -710,6 +710,7 @@ export default function ColheitaPage() {
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
+                levels={["produtor", "ie", "fazenda", "anoSafra", "ciclo", "talhao"]}
                 onChange={next => {
                   setCascade(next);
                   setAnoSafraSel(next.anoSafraId ?? "");

@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "conta_id ou fazenda_id obrigatório" }, { status: 400 });
   }
 
+  const apenas_com_ie = req.nextUrl.searchParams.get("apenas_com_ie") === "true";
+
   let q = admin.from("produtores").select("*").order("nome");
 
   if (conta_id && fazenda_id) {
@@ -44,5 +46,19 @@ export async function GET(req: NextRequest) {
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ produtores: data ?? [] });
+  let produtores = data ?? [];
+
+  // Quando solicitado, filtra apenas produtores que têm ao menos uma IE cadastrada
+  if (apenas_com_ie && produtores.length > 0) {
+    const ids = produtores.map((p: { id: string }) => p.id);
+    const { data: iesData } = await admin
+      .from("produtor_inscricoes_estaduais")
+      .select("produtor_id")
+      .in("produtor_id", ids)
+      .eq("ativa", true);
+    const idsComIE = new Set((iesData ?? []).map((r: { produtor_id: string }) => r.produtor_id));
+    produtores = produtores.filter((p: { id: string }) => idsComIE.has(p.id));
+  }
+
+  return NextResponse.json({ produtores });
 }

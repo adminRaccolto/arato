@@ -276,6 +276,7 @@ export default function PlantioPage() {
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
+                levels={["produtor", "ie", "fazenda", "anoSafra", "ciclo", "talhao"]}
                 onChange={next => {
                   setCascade(next);
                   setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));

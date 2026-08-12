@@ -2,28 +2,28 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-// Hierarquia: Conta → Produtor → Fazenda → Ano Safra → Ciclo → Talhão
+// Hierarquia: Conta → Produtor → IE → Fazenda → Ano Safra → Ciclo → Talhão
 
 export interface CascadeValues {
   produtorId: string;
+  ieId?:      string;   // Inscrição Estadual — opcional, só quando level "ie" está ativo
   fazendaId:  string;
   anoSafraId: string;
   cicloId:    string;
   talhaoId:   string;
 }
 
-interface Row { id: string; nome: string }
+interface Row    { id: string; nome: string }
+interface IeRow  { id: string; inscricao_estadual: string; estado: string; fazenda_id?: string | null; ativa: boolean }
 interface CicloRow extends Row { ano_safra_id: string; cultura?: string; descricao?: string }
 
 interface Props {
   contaId:           string | null;
-  /** Fazenda ativa do admin raccotlo (contexto do cliente selecionado).
-   *  Usado quando contaId é null (cliente sem conta real no banco ainda). */
   fazendaIdFallback?: string | null;
   values:     Partial<CascadeValues>;
   onChange:   (next: Partial<CascadeValues>) => void;
-  /** Quais níveis exibir. Padrão: todos os 5 */
-  levels?:    Array<"produtor" | "fazenda" | "anoSafra" | "ciclo" | "talhao">;
+  /** Quais níveis exibir. Padrão: todos sem "ie". Adicione "ie" para ativar o seletor de IE. */
+  levels?:    Array<"produtor" | "ie" | "fazenda" | "anoSafra" | "ciclo" | "talhao">;
 }
 
 const inp: React.CSSProperties = {
@@ -44,14 +44,16 @@ const CULTURAS: Record<string, string> = {
 
 export default function CascadeSelector({ contaId, fazendaIdFallback, values, onChange, levels }: Props) {
   const show = levels ?? ["produtor", "fazenda", "anoSafra", "ciclo", "talhao"];
+  const useIE = show.includes("ie");
 
   const [produtores, setProdutores] = useState<Row[]>([]);
+  const [ies,        setIes]        = useState<IeRow[]>([]);
   const [fazendas,   setFazendas]   = useState<Row[]>([]);
   const [anosSafra,  setAnosSafra]  = useState<Row[]>([]);
   const [ciclos,     setCiclos]     = useState<CicloRow[]>([]);
   const [talhoes,    setTalhoes]    = useState<Row[]>([]);
 
-  // 1. Carrega produtores via API route (service_role_key — imune a JWT expirado)
+  // 1. Produtores — quando "ie" está ativo, filtra apenas os que têm IE cadastrada
   useEffect(() => {
     const params = new URLSearchParams();
     if (contaId && !contaId.startsWith("sem_conta_")) {
@@ -62,13 +64,35 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
       setProdutores([]);
       return;
     }
+    if (useIE) params.set("apenas_com_ie", "true");
+
     fetch(`/api/produtores/listar?${params}`)
       .then(r => r.ok ? r.json() : { produtores: [] })
       .then(json => setProdutores((json.produtores ?? []).map((p: { id: string; nome: string }) => ({ id: p.id, nome: p.nome }))))
       .catch(() => setProdutores([]));
-  }, [contaId, fazendaIdFallback]);
+  }, [contaId, fazendaIdFallback, useIE]);
 
-  // 2. Carrega fazendas via API route (service_role_key)
+  // 2. IEs do Produtor selecionado (só quando nível "ie" está ativo)
+  useEffect(() => {
+    if (!useIE || !values.produtorId) { setIes([]); return; }
+    supabase
+      .from("produtor_inscricoes_estaduais")
+      .select("id, inscricao_estadual, estado, fazenda_id, ativa")
+      .eq("produtor_id", values.produtorId)
+      .eq("ativa", true)
+      .order("estado")
+      .then(({ data }) => {
+        const lista = (data ?? []) as IeRow[];
+        setIes(lista);
+        // Auto-seleciona se houver apenas 1 IE
+        if (lista.length === 1 && !values.ieId) {
+          const ie = lista[0];
+          onChange({ ...values, ieId: ie.id, fazendaId: ie.fazenda_id ?? values.fazendaId ?? "" });
+        }
+      });
+  }, [values.produtorId, useIE]);
+
+  // 3. Fazendas
   useEffect(() => {
     const cidReal = contaId && !contaId.startsWith("sem_conta_") ? contaId : null;
     if (!cidReal && !fazendaIdFallback) { setFazendas([]); return; }
@@ -82,8 +106,7 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
       .then(json => {
         let fzs: Row[] = (json.fazendas ?? []).map((f: { id: string; nome: string }) => ({ id: f.id, nome: f.nome }));
 
-        // Filtrar por produtor selecionado se houver
-        // (fazendas sem produtor_id vinculado aparecem para todos os produtores)
+        // Filtra por produtor_id se houver vínculo direto
         if (values.produtorId) {
           const comProdutor = (json.fazendas ?? []).filter((f: { produtor_id?: string }) => f.produtor_id === values.produtorId);
           if (comProdutor.length > 0) {
@@ -97,7 +120,7 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
       .catch(() => setFazendas([]));
   }, [values.produtorId, contaId, fazendaIdFallback]);
 
-  // 3. Carrega Anos Safra quando Fazenda muda
+  // 4. Anos Safra e Talhões quando Fazenda muda
   useEffect(() => {
     if (!values.fazendaId) { setAnosSafra([]); setCiclos([]); setTalhoes([]); return; }
     supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", values.fazendaId).order("descricao", { ascending: false })
@@ -106,7 +129,7 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
       .then(({ data }) => setTalhoes(data ?? []));
   }, [values.fazendaId]);
 
-  // 4. Carrega Ciclos quando Fazenda ou Ano Safra muda
+  // 5. Ciclos quando Fazenda ou Ano Safra muda
   useEffect(() => {
     if (!values.fazendaId) { setCiclos([]); return; }
     let q = supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", values.fazendaId);
@@ -116,7 +139,13 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
 
   function sel(field: keyof CascadeValues, id: string) {
     const reset: Partial<CascadeValues> = {};
-    if (field === "produtorId") { reset.fazendaId = ""; reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = ""; }
+    if (field === "produtorId") { reset.ieId = ""; reset.fazendaId = ""; reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = ""; }
+    if (field === "ieId") {
+      // Auto-preenche fazendaId a partir da IE selecionada
+      const ie = ies.find(i => i.id === id);
+      reset.fazendaId = ie?.fazenda_id ?? "";
+      reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = "";
+    }
     if (field === "fazendaId")  { reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = ""; }
     if (field === "anoSafraId") { reset.cicloId = ""; }
     onChange({ ...values, [field]: id, ...reset });
@@ -126,15 +155,25 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
     ? ciclos.filter(c => c.ano_safra_id === values.anoSafraId)
     : ciclos;
 
+  // ── Colunas da linha 1 (Produtor · IE · Fazenda) ──────────────────────────
+  const row1Cols = [
+    show.includes("produtor"),
+    show.includes("ie") && show.includes("produtor"),  // IE só aparece se Produtor também está
+    show.includes("fazenda"),
+  ].filter(Boolean).length;
+
+  const row1Grid = `repeat(${row1Cols}, 1fr)`;
+
   return (
     <div style={{ background: "#F2F2F2", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 16px" }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
         Este lançamento pertence a
       </div>
 
-      {/* Linha 1: Produtor | Fazenda */}
+      {/* Linha 1: Produtor | IE | Fazenda */}
       {(show.includes("produtor") || show.includes("fazenda")) && (
-        <div style={{ display: "grid", gridTemplateColumns: show.includes("produtor") && show.includes("fazenda") ? "1fr 1fr" : "1fr", gap: 12, marginBottom: (show.includes("anoSafra") || show.includes("ciclo") || show.includes("talhao")) ? 10 : 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: row1Grid, gap: 12, marginBottom: (show.includes("anoSafra") || show.includes("ciclo") || show.includes("talhao")) ? 10 : 0 }}>
+
           {show.includes("produtor") && (
             <div>
               <label style={lbl}>Produtor <span style={{ color: "#E24B4A" }}>*</span></label>
@@ -145,11 +184,30 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
               </select>
             </div>
           )}
+
+          {/* IE — só exibe quando o level "ie" está ativo e o Produtor foi selecionado */}
+          {show.includes("ie") && show.includes("produtor") && (
+            <div>
+              <label style={lbl}>IE <span style={{ color: "#E24B4A" }}>*</span></label>
+              <select style={inp} value={values.ieId ?? ""}
+                onChange={e => sel("ieId", e.target.value)}
+                disabled={!values.produtorId}>
+                <option value="">— Selecionar —</option>
+                {ies.map(ie => (
+                  <option key={ie.id} value={ie.id}>
+                    {ie.inscricao_estadual} — {ie.estado}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {show.includes("fazenda") && (
             <div>
               <label style={lbl}>Fazenda <span style={{ color: "#E24B4A" }}>*</span></label>
               <select style={inp} value={values.fazendaId ?? ""}
-                onChange={e => sel("fazendaId", e.target.value)}>
+                onChange={e => sel("fazendaId", e.target.value)}
+                disabled={useIE && show.includes("produtor") && !values.ieId}>
                 <option value="">— Selecionar —</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
