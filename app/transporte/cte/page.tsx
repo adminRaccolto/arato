@@ -97,10 +97,10 @@ const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> 
 };
 
 const CFOPS_CTE = [
-  { cfop: "6353", desc: "Prestação de serviço de transporte a estabelecimento comercial" },
-  { cfop: "5353", desc: "Prestação de serviço de transporte a estabelecimento industrial (intraestadual)" },
-  { cfop: "6354", desc: "Prestação de serviço de transporte a estabelecimento de produtor rural" },
-  { cfop: "5354", desc: "Prestação de serviço de transporte a produtor rural (intraestadual)" },
+  { cfop: "6353", desc: "Transporte a estabelecimento comercial" },
+  { cfop: "5353", desc: "Transporte a estab. industrial (intraestadual)" },
+  { cfop: "6354", desc: "Prestação de transporte a produtor rural" },
+  { cfop: "5354", desc: "Transporte a produtor rural (intraestadual)" },
   { cfop: "6932", desc: "Prestação de serviço de transporte — operações de exportação" },
 ];
 
@@ -923,7 +923,7 @@ function CtePageInner() {
               </div>
               <div>
                 <label style={lbl}>Natureza da Operação</label>
-                <input value={form.natureza_operacao} onChange={e => setForm(f => ({ ...f, natureza_operacao: e.target.value }))} style={inp} />
+                <input value={form.natureza_operacao} maxLength={60} onChange={e => setForm(f => ({ ...f, natureza_operacao: e.target.value }))} style={inp} />
               </div>
 
               {/* ── Remetente ── */}

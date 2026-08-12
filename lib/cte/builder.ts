@@ -261,6 +261,13 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   const baseCalc  = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
+  const naturezaOp = input.natureza.trim();
+  if (naturezaOp.length < 1 || naturezaOp.length > 60) {
+    throw new Error(
+      `Natureza da operação deve ter entre 1 e 60 caracteres; recebidos ${naturezaOp.length}`
+    );
+  }
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <CTe xmlns="http://www.portalfiscal.inf.br/cte">
   <infCte Id="CTe${chave}" versao="4.00">
@@ -268,7 +275,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <cUF>${cuf}</cUF>
       <cCT>${cCT}</cCT>
       <CFOP>${input.cfop.replace(/\D/g, "")}</CFOP>
-      <natOp>${esc(input.natureza)}</natOp>
+      <natOp>${esc(naturezaOp)}</natOp>
       <mod>57</mod>
       <serie>${serieXml}</serie>
       <nCT>${nCTXml}</nCT>
