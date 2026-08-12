@@ -710,9 +710,13 @@ export async function atualizarRomaneio(id: string, r: Partial<Omit<Romaneio, "i
   if (error) throw error;
 }
 
-export async function excluirRomaneio(id: string): Promise<void> {
-  const { error } = await supabase.from("romaneios").delete().eq("id", id);
-  if (error) throw error;
+export async function excluirRomaneio(id: string): Promise<{ entregue_sc: number; status: string }> {
+  const res = await fetch(`/api/romaneios?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `Erro ao excluir romaneio (${res.status})`);
+  }
+  return res.json();
 }
 
 export async function atualizarContrato(id: string, c: Partial<Contrato>): Promise<void> {

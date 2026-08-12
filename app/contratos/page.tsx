@@ -1321,20 +1321,16 @@ export default function Contratos() {
   const deletarRomaneio = async (r: Romaneio & { contratoNumero?: string }) => {
     if (!confirm(`Excluir romaneio ${r.numero}? As sacas serão estornadas do contrato.`)) return;
     try {
-      await excluirRomaneio(r.id);
-      // Trigger do banco não subtrai no DELETE — recalcula a partir dos romaneios restantes
+      // API route usa service_role_key — ignora RLS e já recalcula entregue_sc no banco
+      const resultado = await excluirRomaneio(r.id);
       setContratos(prev => prev.map(c => {
         if (c.id !== r.contrato_id) return c;
-        const restantes    = c.romaneios.filter(rm => rm.id !== r.id);
-        const novoEntregue = restantes.reduce((s, rm) => s + (rm.sacas ?? 0), 0);
-        const novoStatus   = novoEntregue === 0
-          ? "aberto"
-          : novoEntregue >= (c.quantidade_sc ?? 0) ? "encerrado" : "parcial";
-        supabase.from("contratos")
-          .update({ entregue_sc: novoEntregue, status: novoStatus })
-          .eq("id", c.id)
-          .then(() => {});
-        return { ...c, entregue_sc: novoEntregue, status: novoStatus, romaneios: restantes };
+        return {
+          ...c,
+          entregue_sc: resultado.entregue_sc,
+          status:      resultado.status as ContratoVM["status"],
+          romaneios:   c.romaneios.filter(rm => rm.id !== r.id),
+        };
       }));
     } catch(e: unknown) { alert("Erro ao excluir romaneio: " + sbErr(e)); }
   };
