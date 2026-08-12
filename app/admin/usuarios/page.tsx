@@ -57,6 +57,13 @@ const MODULOS_PERM: ModuloPermissao[] = [
   { id: "conf_importacao",     label: "Importação de Dados",            grupo: "Configurações",  acoes: ["visualizar","criar"] },
   { id: "usuarios",            label: "Usuários & Permissões",          grupo: "Configurações",  acoes: ["visualizar","criar","editar","excluir"] },
   { id: "logs",                label: "Log do Sistema",                 grupo: "Configurações",  acoes: ["visualizar","exportar"] },
+  // Add-ons opcionais — habilitados por conta em Admin › Módulos
+  { id: "algodao",             label: "Algodão",                        grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "cerealista",          label: "Cerealista",                     grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "sementes",            label: "Sementes",                       grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "pecuaria",            label: "Pecuária",                       grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "ia_cedula",           label: "IA — Extração de Cédula",        grupo: "Add-ons",        acoes: ["visualizar","criar"] },
+  { id: "hedge",               label: "Hedge & Proteção de Margem",     grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
 ];
 
 // Perfis predefinidos
@@ -79,6 +86,7 @@ const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: str
       m.id === "conf_importacao"    ? [] as Acao[] :
       m.id === "logs"               ? ["visualizar"] as Acao[] :
       m.id === "cadastros"          ? ["visualizar","criar","editar","excluir"] as Acao[] :
+      m.grupo === "Add-ons"         ? [...m.acoes] as Acao[] :
       [...m.acoes]
     ])),
   },

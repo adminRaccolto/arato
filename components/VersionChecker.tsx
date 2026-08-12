@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const CHECK_INTERVAL_MS = 3 * 60 * 1000; // verifica a cada 3 minutos
 
 export default function VersionChecker() {
+  const router = useRouter();
   const [desatualizado, setDesatualizado] = useState(false);
   const versaoInicial = useRef<string | null>(null);
 
@@ -40,7 +42,12 @@ export default function VersionChecker() {
     }}>
       <span>🔄 Nova versão disponível</span>
       <button
-        onClick={() => window.location.reload()}
+        onClick={() => {
+          setDesatualizado(false);
+          // router.refresh() revalida os Server Components sem navegar para a home,
+          // evitando o flash da página de marketing durante o reload.
+          router.refresh();
+        }}
         style={{
           background: "#C9921B", color: "#fff", border: "none",
           borderRadius: 8, padding: "7px 16px", fontSize: 13,

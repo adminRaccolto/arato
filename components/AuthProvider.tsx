@@ -532,19 +532,26 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return (p as string) === "escrita";
   }, [permissoes]);
 
-  // raccotlo tem acesso irrestrito a tudo; clientes verificam add-on ou plano
+  // raccotlo tem acesso irrestrito a tudo; clientes verificam add-on + permissão de grupo
   const podeAcessarPlano = useCallback((modulo: string) => {
-    // Override explícito via conta_modulos tem precedência — inclusive durante impersonação raccotlo
-    if (modulo in contaModulosOverrides) return contaModulosOverrides[modulo];
-    // Sem override: raccotlo tem acesso irrestrito (add-ons aparecem imediatamente para staff)
+    // Sem override de conta: raccotlo tem acesso irrestrito (staff vê tudo imediatamente)
     if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") return true;
+    // Override explícito via conta_modulos — verifica se o add-on está habilitado para a conta
+    if (modulo in contaModulosOverrides) {
+      if (!contaModulosOverrides[modulo]) return false; // add-on desabilitado para a conta
+      // Add-on habilitado para a conta — verifica também permissão de grupo do usuário
+      const p = permissoes[modulo] as unknown;
+      if (p === undefined) return true;              // sem restrição de grupo = acesso permitido
+      if (Array.isArray(p)) return (p as string[]).includes("visualizar");
+      return (p as string) !== "nenhum";
+    }
     // Aguarda overrides carregarem antes de decidir — evita flicker de add-ons em clientes sem o módulo
     if (!modulosCarregados) return false;
     if (!planoAtual) return false;
     // Plano desconhecido (ID inválido ou legado) → não bloquear para evitar sumiço de menus
     if (!["essencial", "gestao", "performance"].includes(planoAtual)) return true;
     return planoInclui(planoAtual, modulo);
-  }, [planoAtual, userRole, contaModulosOverrides, modulosCarregados]);
+  }, [planoAtual, userRole, contaModulosOverrides, modulosCarregados, permissoes]);
 
   // Troca de fazenda ativa dentro da mesma conta (farm switcher)
   const setFazendaAtiva = useCallback(async (id: string, nome: string) => {

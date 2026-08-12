@@ -1216,74 +1216,78 @@ export default function ComprasPage() {
                   </div>
                 </div>
 
-                {/* Linha 3b: Produtor responsável + IE + Município */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <label style={lbl}>
-                      Produtor responsável
-                      <span style={{ marginLeft: 6, fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>— a quem o custo pertence</span>
-                    </label>
-                    <ProdutorSelect
-                      value={f.produtor_id}
-                      onChange={async id => {
-                        const pr = produtores.find(p => p.id === id);
-                        const ies = id ? await listarIEsDoProdutor(id) : [];
-                        setIeOpcoes(ies);
-                        const ieDefault = ies.find(ie => ie.ativa)?.inscricao_estadual
-                          ?? ies[0]?.inscricao_estadual
-                          ?? pr?.inscricao_est ?? "";
-                        setF(p => ({ ...p, produtor_id: id, ie_produtor: ieDefault }));
-                      }}
-                      produtores={produtores}
-                      ieMap={ieMap}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ ...lbl, display: "flex", alignItems: "center", gap: 6 }}>
-                      Inscrição Estadual
-                      {ieOpcoes.length > 1 && (
-                        <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>
-                          {ieOpcoes.length} IEs
-                        </span>
+                {/* Linha 3b: Produtor responsável (linha própria) */}
+                <div style={{ marginBottom: 12 }}>
+                  <label style={lbl}>
+                    Produtor responsável
+                    <span style={{ marginLeft: 6, fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>— a quem o custo pertence</span>
+                  </label>
+                  <ProdutorSelect
+                    value={f.produtor_id}
+                    onChange={async id => {
+                      const pr = produtores.find(p => p.id === id);
+                      const ies = id ? await listarIEsDoProdutor(id) : [];
+                      setIeOpcoes(ies);
+                      const ieDefault = ies.find(ie => ie.ativa)?.inscricao_estadual
+                        ?? ies[0]?.inscricao_estadual
+                        ?? pr?.inscricao_est ?? "";
+                      setF(p => ({ ...p, produtor_id: id, ie_produtor: ieDefault }));
+                    }}
+                    produtores={produtores}
+                    ieMap={ieMap}
+                  />
+                </div>
+
+                {/* Linha 3c: IE (cascata — aparece após selecionar produtor) + Município */}
+                {f.produtor_id && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12, padding: "10px 12px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)" }}>
+                    <div>
+                      <label style={{ ...lbl, display: "flex", alignItems: "center", gap: 6 }}>
+                        Inscrição Estadual do Produtor
+                        {ieOpcoes.length > 1 && (
+                          <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>
+                            {ieOpcoes.length} IEs
+                          </span>
+                        )}
+                      </label>
+                      {ieOpcoes.length > 0 ? (
+                        <select
+                          style={inp}
+                          value={f.ie_produtor}
+                          onChange={e => setF(p => ({ ...p, ie_produtor: e.target.value }))}
+                        >
+                          <option value="">— Selecionar IE —</option>
+                          {ieOpcoes.map(ie => (
+                            <option key={ie.id} value={ie.inscricao_estadual}>
+                              {ie.inscricao_estadual}{ie.estado ? ` (${ie.estado})` : ""}
+                              {ie.municipio ? ` — ${ie.municipio}` : ""}
+                              {!ie.ativa ? " [inativa]" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          style={inp}
+                          value={f.ie_produtor || (produtores.find(pr => pr.id === f.produtor_id)?.inscricao_est ?? "")}
+                          onChange={e => setF(p => ({ ...p, ie_produtor: e.target.value }))}
+                          placeholder="Inscrição Estadual"
+                        />
                       )}
-                    </label>
-                    {ieOpcoes.length > 1 ? (
-                      <select
-                        style={inp}
-                        value={f.ie_produtor}
-                        onChange={e => setF(p => ({ ...p, ie_produtor: e.target.value }))}
-                      >
-                        <option value="">— Selecionar IE —</option>
-                        {ieOpcoes.map(ie => (
-                          <option key={ie.id} value={ie.inscricao_estadual}>
-                            {ie.inscricao_estadual}{ie.estado ? ` (${ie.estado})` : ""}
-                            {ie.municipio ? ` — ${ie.municipio}` : ""}
-                            {!ie.ativa ? " [inativa]" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
+                    </div>
+                    <div>
+                      <label style={lbl}>Município / Estado</label>
                       <input
-                        style={inp}
-                        value={f.ie_produtor || (produtores.find(pr => pr.id === f.produtor_id)?.inscricao_est ?? "")}
-                        onChange={e => setF(p => ({ ...p, ie_produtor: e.target.value }))}
+                        style={{ ...inp, background: "var(--bg-card)", color: "var(--text-2)" }}
+                        readOnly
+                        value={[
+                          produtores.find(pr => pr.id === f.produtor_id)?.municipio,
+                          produtores.find(pr => pr.id === f.produtor_id)?.estado,
+                        ].filter(Boolean).join(" — ") || ""}
                         placeholder="—"
                       />
-                    )}
+                    </div>
                   </div>
-                  <div>
-                    <label style={lbl}>Município / Estado</label>
-                    <input
-                      style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }}
-                      readOnly
-                      value={[
-                        produtores.find(pr => pr.id === f.produtor_id)?.municipio,
-                        produtores.find(pr => pr.id === f.produtor_id)?.estado,
-                      ].filter(Boolean).join(" — ") || ""}
-                      placeholder="—"
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Linha 4: Operação NF (auto) + Meio de Pagamento */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
