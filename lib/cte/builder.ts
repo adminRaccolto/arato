@@ -83,6 +83,65 @@ const CUF: Record<string, string> = {
   SE:"28",SP:"35",TO:"17",
 };
 
+// ── Timezone por UF (IANA) ─────────────────────────────────────────────────────
+// Fonte: https://www.timeanddate.com/time/brazil/
+const TZ_UF: Record<string, string> = {
+  AC:"America/Rio_Branco",   // UTC-5, sem DST
+  AL:"America/Maceio",       // UTC-3, sem DST
+  AM:"America/Manaus",       // UTC-4, sem DST
+  AP:"America/Belem",        // UTC-3, sem DST
+  BA:"America/Bahia",        // UTC-3, sem DST
+  CE:"America/Fortaleza",    // UTC-3, sem DST
+  DF:"America/Sao_Paulo",    // UTC-3, com DST
+  ES:"America/Sao_Paulo",    // UTC-3, com DST
+  GO:"America/Sao_Paulo",    // UTC-3, com DST
+  MA:"America/Fortaleza",    // UTC-3, sem DST
+  MG:"America/Sao_Paulo",    // UTC-3, com DST
+  MS:"America/Campo_Grande", // UTC-4, com DST
+  MT:"America/Cuiaba",       // UTC-4, sem DST (aboliu DST em 2019)
+  PA:"America/Belem",        // UTC-3, sem DST
+  PB:"America/Fortaleza",    // UTC-3, sem DST
+  PE:"America/Recife",       // UTC-3, sem DST
+  PI:"America/Fortaleza",    // UTC-3, sem DST
+  PR:"America/Sao_Paulo",    // UTC-3, com DST
+  RJ:"America/Sao_Paulo",    // UTC-3, com DST
+  RN:"America/Fortaleza",    // UTC-3, sem DST
+  RO:"America/Porto_Velho",  // UTC-4, sem DST
+  RR:"America/Boa_Vista",    // UTC-4, sem DST
+  RS:"America/Sao_Paulo",    // UTC-3, com DST
+  SC:"America/Sao_Paulo",    // UTC-3, com DST
+  SE:"America/Maceio",       // UTC-3, sem DST
+  SP:"America/Sao_Paulo",    // UTC-3, com DST
+  TO:"America/Araguaina",    // UTC-3, sem DST
+};
+
+// Gera dhEmi no formato YYYY-MM-DDTHH:MM:SS-HH:MM respeitando o fuso do emitente
+function dhEmiParaUF(uf: string): string {
+  const tz = TZ_UF[uf] ?? "America/Sao_Paulo";
+  const now = new Date();
+  // Hora local formatada via sv-SE (produz "YYYY-MM-DD HH:MM:SS")
+  const local = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: tz,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).format(now).replace(" ", "T");
+  // Calcular offset real (considera DST) comparando UTC com hora local
+  const utcMs  = now.getTime();
+  const localMs = new Date(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+    }).format(now).replace(", ", "T")
+  ).getTime();
+  const diffMin = Math.round((localMs - utcMs) / 60000);
+  const sign    = diffMin >= 0 ? "+" : "-";
+  const abs     = Math.abs(diffMin);
+  const hh      = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm      = String(abs % 60).padStart(2, "0");
+  return `${local}${sign}${hh}:${mm}`;
+}
+
 // ── cDV — módulo 11 (mesmo algoritmo da NF-e) ─────────────────────────────────
 function calcCDV(key43: string): string {
   const weights = [2,3,4,5,6,7,8,9];
@@ -150,11 +209,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   const cdv   = calcCDV(key43);
   const chave = key43 + cdv;
 
-  const dhEmi = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "America/Cuiaba",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
-  }).format(new Date()).replace(" ", "T") + "-04:00";
+  const dhEmi = dhEmiParaUF(e.uf);
   const baseCalc = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
