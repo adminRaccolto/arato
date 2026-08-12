@@ -578,32 +578,35 @@ function CtePageInner() {
       emitente_razao_social: c.emitente_razao_social ?? undefined,
       remetente: (() => {
         const rem = pessoas.find(p => p.id === c.remetente_id);
+        // IBGE: tenta pessoa → CT-e salvo → busca já feita em ibgeIni
+        const ibgeRem = rem?.municipio_ibge || cExt.ibge_origem || ibgeIni;
         return {
           nome:           c.remetente_nome,
           cpf_cnpj:       c.remetente_cnpj    ?? undefined,
           ie:             rem?.inscricao_est   ?? undefined,
-          logradouro:     rem?.logradouro      ?? undefined,
-          numero:         rem?.numero          ?? undefined,
-          bairro:         rem?.bairro          ?? undefined,
-          municipio_ibge: rem?.municipio_ibge  ?? undefined,
-          municipio_nome: rem?.municipio       ?? undefined,
-          uf:             rem?.estado          ?? undefined,
+          logradouro:     rem?.logradouro      || "ZONA RURAL",
+          numero:         rem?.numero          || "S/N",
+          bairro:         rem?.bairro          || "ZONA RURAL",
+          municipio_ibge: ibgeRem             || undefined,
+          municipio_nome: rem?.municipio       ?? c.municipio_origem,
+          uf:             rem?.estado          ?? c.uf_origem,
           cep:            rem?.cep             ?? undefined,
           fone:           rem?.telefone        ?? undefined,
         };
       })(),
       destinatario: (() => {
         const dest = pessoas.find(p => p.id === c.destinatario_id);
+        const ibgeDest = dest?.municipio_ibge || cExt.ibge_destino || ibgeFim;
         return {
           nome:           c.destinatario_nome,
           cpf_cnpj:       c.destinatario_cnpj ?? undefined,
           ie:             dest?.inscricao_est  ?? undefined,
-          logradouro:     dest?.logradouro     ?? undefined,
-          numero:         dest?.numero         ?? undefined,
-          bairro:         dest?.bairro         ?? undefined,
-          municipio_ibge: dest?.municipio_ibge ?? undefined,
-          municipio_nome: dest?.municipio      ?? undefined,
-          uf:             dest?.estado         ?? undefined,
+          logradouro:     dest?.logradouro     || "ZONA RURAL",
+          numero:         dest?.numero         || "S/N",
+          bairro:         dest?.bairro         || "ZONA RURAL",
+          municipio_ibge: ibgeDest            || undefined,
+          municipio_nome: dest?.municipio      ?? c.municipio_destino,
+          uf:             dest?.estado         ?? c.uf_destino,
           cep:            dest?.cep            ?? undefined,
           fone:           dest?.telefone       ?? undefined,
         };
@@ -633,20 +636,17 @@ function CtePageInner() {
       observacao:         c.observacao  ?? undefined,
     };
 
-    // Validação local: endereço do remetente obrigatório antes de transmitir
-    const camposRemetente: Record<string, string | undefined> = {
-      logradouro:     payload.remetente?.logradouro,
-      numero:         payload.remetente?.numero,
-      bairro:         payload.remetente?.bairro,
+    // Validação local: campos críticos para o XML do CT-e
+    const camposCriticos: Record<string, string | undefined> = {
       municipio_ibge: payload.remetente?.municipio_ibge,
       municipio_nome: payload.remetente?.municipio_nome,
       uf:             payload.remetente?.uf,
     };
-    const faltantes = Object.entries(camposRemetente)
-      .filter(([, valor]) => !String(valor ?? "").trim())
+    const faltantes = Object.entries(camposCriticos)
+      .filter(([, valor]) => !String(valor ?? "").trim() || valor === "0000000")
       .map(([campo]) => campo);
     if (faltantes.length) {
-      alert(`Endereço do remetente incompleto.\n\nCampos ausentes: ${faltantes.join(", ")}\n\nEdite o cadastro do remetente em Cadastros → Pessoas e preencha o endereço completo antes de transmitir.`);
+      alert(`Não foi possível determinar o município do remetente.\n\nCampos ausentes: ${faltantes.join(", ")}\n\nPreencha o campo "Cód. IBGE Origem" diretamente neste CT-e ou cadastre o município correto no cadastro do remetente.`);
       return;
     }
 

@@ -862,6 +862,16 @@ export default function IntegracoesPage() {
   const [loading,  setLoading]  = useState(true);
   const [modal,    setModal]    = useState<IntegracaoCatalogo | null>(null);
 
+  // Balança ativa — configurada na implantação
+  const [marcaAtiva, setMarcaAtiva] = useState<MarcaBalanca>(() => {
+    if (typeof window === "undefined") return "toledo";
+    return (localStorage.getItem("balanca_marca") as MarcaBalanca) || "toledo";
+  });
+  function salvarMarcaAtiva(m: MarcaBalanca) {
+    setMarcaAtiva(m);
+    localStorage.setItem("balanca_marca", m);
+  }
+
   // Sieg — config vinda do configuracoes_modulo
   const [siegCfg,   setSiegCfg]   = useState<SiegCfg>({ cnpjs_destino: [] });
   const [siegAtivo, setSiegAtivo] = useState(false);
@@ -1134,6 +1144,27 @@ export default function IntegracoesPage() {
 
             {abaCat === "balanca" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 4 }}>
+
+                {/* Seletor de balança ativa */}
+                <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #C9921B", padding: "14px 18px", maxWidth: 560, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>Balança em uso nesta instalação</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Define qual marca é usada nos romaneios. Configurado uma vez na implantação.</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, background: "var(--bg-page)", borderRadius: 8, padding: 3, flexShrink: 0 }}>
+                    {(["toledo", "capital"] as MarcaBalanca[]).map(m => (
+                      <button key={m} type="button" onClick={() => salvarMarcaAtiva(m)}
+                        style={{
+                          fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 6, border: "none", cursor: "pointer",
+                          background: marcaAtiva === m ? "#1A4870" : "transparent",
+                          color:      marcaAtiva === m ? "#fff"    : "var(--text-3)",
+                          boxShadow:  marcaAtiva === m ? "0 1px 3px rgba(0,0,0,0.15)" : "none",
+                        }}>
+                        {m === "toledo" ? "Toledo PRIX" : "Capital Balancas"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Card Toledo PRIX */}
                 <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #111111", padding: 20, maxWidth: 560 }}>

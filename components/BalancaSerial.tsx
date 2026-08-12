@@ -51,7 +51,12 @@ interface Props {
 }
 
 export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: marcaProp = "toledo" }: Props) {
-  const [marca,     setMarca]     = useState<MarcaBalanca>(marcaProp);
+  // Lê a marca configurada nas Integrações; usa prop como fallback
+  const [marca] = useState<MarcaBalanca>(() => {
+    if (typeof window === "undefined") return marcaProp;
+    const salva = localStorage.getItem("balanca_marca") as MarcaBalanca | null;
+    return (salva && MARCA_CONFIG[salva]) ? salva : marcaProp;
+  });
   const [modo,      setModo]      = useState<Modo>("bridge");
   const [conectada, setConectada] = useState(false);
   const [pesoAtual, setPesoAtual] = useState<number | null>(null);
@@ -162,26 +167,6 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
 
   return (
     <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
-
-      {/* Seletor de marca — só exibe quando desconectada */}
-      {!conectada && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>Marca:</span>
-          <div style={{ display: "flex", gap: 3, background: "var(--bg-tag)", borderRadius: 7, padding: 2 }}>
-            {(Object.keys(MARCA_CONFIG) as MarcaBalanca[]).map(m => (
-              <button key={m} type="button" onClick={() => { setMarca(m); setErro(null); }}
-                style={{
-                  fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
-                  background: marca === m ? "var(--bg-card)" : "transparent",
-                  color:      marca === m ? "var(--text-1)" : "var(--text-3)",
-                  boxShadow:  marca === m ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-                }}>
-                {MARCA_CONFIG[m].label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
