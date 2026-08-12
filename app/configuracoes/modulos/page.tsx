@@ -1595,13 +1595,13 @@ function ParametrosSistemaContent() {
                   <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Tema de Cores</h2>
                   <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Escolha a aparência do sistema. A seleção é salva no navegador.</p>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
                   {[
-                    { id: "default", label: "Arato",  descricao: "Original — azul petróleo",   f1: "#0A1628", f2: "#1A5CB8", bg: "#F4F6FA" },
-                    { id: "pitch",   label: "Pitch",   descricao: "Monocromático zinc",          f1: "#18181B", f2: "#27272A", bg: "#FAFAFA" },
-                    { id: "terra",   label: "Terra",   descricao: "Tons quentes terrosos",       f1: "#1C1512", f2: "#2B1D16", bg: "#FAF9F6" },
-                    { id: "alto",    label: "Alto",    descricao: "Azul meia-noite",             f1: "#1B2235", f2: "#243252", bg: "#F5F7F9" },
-                    { id: "campo",   label: "Campo",   descricao: "Verde oliva",                 f1: "#14201A", f2: "#1D3325", bg: "#F5F8F2" },
+                    { id: "default", label: "Arato",  descricao: "Azul petróleo original", f1: "#0A1628", f2: "#1A5CB8", bg: "#F4F6FA", accent: "#C9921B", card: "#ffffff" },
+                    { id: "pitch",   label: "Pitch",   descricao: "Monocromático zinc",     f1: "#18181B", f2: "#27272A", bg: "#FAFAFA", accent: "#3F3F46", card: "#ffffff" },
+                    { id: "terra",   label: "Terra",   descricao: "Tons terrosos quentes",  f1: "#1C1512", f2: "#2B1D16", bg: "#FAF9F6", accent: "#C9921B", card: "#ffffff" },
+                    { id: "alto",    label: "Alto",    descricao: "Azul meia-noite",         f1: "#1B2235", f2: "#243252", bg: "#F5F7F9", accent: "#1B2235", card: "#ffffff" },
+                    { id: "campo",   label: "Campo",   descricao: "Verde oliva",             f1: "#14201A", f2: "#1D3325", bg: "#F5F8F2", accent: "#1D3325", card: "#ffffff" },
                   ].map(p => {
                     const ativo = paletaAtual === p.id;
                     return (
@@ -1610,32 +1610,39 @@ function ParametrosSistemaContent() {
                         onClick={() => aplicarPaleta(p.id)}
                         style={{
                           display: "flex", flexDirection: "column", gap: 0,
-                          width: 150, border: ativo ? "2px solid #C9921B" : "1.5px solid var(--border)",
+                          width: 140, border: ativo ? "2.5px solid #C9921B" : "1.5px solid #DDE2EE",
                           borderRadius: 10, overflow: "hidden", cursor: "pointer",
-                          background: "var(--bg-card)",
-                          boxShadow: ativo ? "0 0 0 3px rgba(201,146,27,0.15)" : "0 1px 3px rgba(0,0,0,0.05)",
-                          transition: "box-shadow 0.15s",
-                          padding: 0,
+                          background: "#ffffff",
+                          boxShadow: ativo ? "0 0 0 4px rgba(201,146,27,0.18), 0 2px 8px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.07)",
+                          transition: "box-shadow 0.15s, border-color 0.15s",
+                          padding: 0, outline: "none",
                         }}
                       >
-                        {/* Mini mock nav */}
-                        <div style={{ height: 32, display: "flex", flexDirection: "column" }}>
-                          <div style={{ background: p.f1, flex: "55%" }} />
-                          <div style={{ background: p.f2, flex: "45%" }} />
+                        {/* Barra nav faixa1 */}
+                        <div style={{ height: 14, background: p.f1 }} />
+                        {/* Barra nav faixa2 */}
+                        <div style={{ height: 10, background: p.f2, display: "flex", alignItems: "center", gap: 3, padding: "0 5px" }}>
+                          {[60, 45, 50, 40].map((w, i) => (
+                            <div key={i} style={{ height: 3, width: w, background: "rgba(255,255,255,0.45)", borderRadius: 2 }} />
+                          ))}
                         </div>
-                        {/* Conteúdo mock */}
-                        <div style={{ background: p.bg, flex: 1, padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
-                          <div style={{ height: 4, background: "rgba(0,0,0,0.08)", borderRadius: 2, width: "80%" }} />
-                          <div style={{ height: 4, background: "rgba(0,0,0,0.05)", borderRadius: 2, width: "60%" }} />
-                          <div style={{ height: 4, background: "rgba(0,0,0,0.05)", borderRadius: 2, width: "70%" }} />
+                        {/* Página mock */}
+                        <div style={{ background: p.bg, padding: "6px 7px", display: "flex", flexDirection: "column", gap: 3 }}>
+                          {/* Card mock */}
+                          <div style={{ background: p.card, borderRadius: 4, border: "0.5px solid rgba(0,0,0,0.07)", padding: "4px 5px", display: "flex", flexDirection: "column", gap: 2 }}>
+                            <div style={{ height: 3, background: p.accent, borderRadius: 1, width: "55%", opacity: 0.7 }} />
+                            <div style={{ height: 3, background: "rgba(0,0,0,0.1)", borderRadius: 1, width: "80%" }} />
+                            <div style={{ height: 3, background: "rgba(0,0,0,0.06)", borderRadius: 1, width: "65%" }} />
+                          </div>
+                          <div style={{ height: 3, background: p.accent, borderRadius: 2, width: "40%", opacity: 0.5 }} />
                         </div>
                         {/* Label */}
-                        <div style={{ padding: "8px 10px 10px", background: "var(--bg-card)", borderTop: "0.5px solid var(--border)" }}>
+                        <div style={{ padding: "6px 8px 8px", background: "#ffffff", borderTop: "0.5px solid #DDE2EE" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 600, color: ativo ? "#C9921B" : "var(--text-1)" }}>{p.label}</span>
-                            {ativo && <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 700 }}>✓ Ativo</span>}
+                            <span style={{ fontSize: 12, fontWeight: 700, color: ativo ? "#C9921B" : "#1a1a1a" }}>{p.label}</span>
+                            {ativo && <span style={{ fontSize: 11, color: "#C9921B" }}>✓</span>}
                           </div>
-                          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{p.descricao}</div>
+                          <div style={{ fontSize: 10, color: "#888888", marginTop: 1 }}>{p.descricao}</div>
                         </div>
                       </button>
                     );

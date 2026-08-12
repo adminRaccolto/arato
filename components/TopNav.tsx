@@ -435,11 +435,17 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  // Lê paleta salva no mount
+  // Lê paleta salva no mount e aplica no DOM (o inline script do layout.tsx já
+  // aplicou no SSR, mas este efeito garante consistência em hydration mismatch)
   useEffect(() => {
     try {
       const p = localStorage.getItem("arato-palette") ?? "default";
       setCurrentPalette(p);
+      if (p === "default") {
+        document.documentElement.removeAttribute("data-palette");
+      } else {
+        document.documentElement.setAttribute("data-palette", p);
+      }
     } catch { /* */ }
   }, []);
 
