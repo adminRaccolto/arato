@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
-import BalancaSerial from "../../../components/BalancaSerial";
+import BalancaSerial, { type MarcaBalanca } from "../../../components/BalancaSerial";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -1185,10 +1185,59 @@ export default function IntegracoesPage() {
                   </div>
                 </div>
 
+                {/* Card Capital Balancas */}
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 20, maxWidth: 560 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
+                    <div style={{ fontSize: 32, lineHeight: 1 }}>⚖️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Capital Balancas</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Capital Balancas · Balanças industriais e rodoviárias</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                        <span style={{ padding: "2px 8px", background: "#FBF3E0", color: "#7A5A12", border: "0.5px solid #C9921B", borderRadius: 20, fontSize: 11 }}>Requer hardware</span>
+                        <span style={{ padding: "2px 8px", background: "#DCFCE7", color: "#166534", border: "0.5px solid #16A34A40", borderRadius: 20, fontSize: 11 }}>Integrado</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, marginBottom: 14 }}>
+                    Leitura do peso via porta serial RS-232. Protocolo M1 (saída contínua): a balança envia o peso
+                    automaticamente. Ao abrir um romaneio, clique em <strong>"Conectar"</strong> e capture
+                    Peso Bruto e Tara com um clique.
+                  </div>
+
+                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>
+                    {[
+                      ["Protocolo",    "RS-232 saída contínua (M1)"],
+                      ["Baud rate",    "9600"],
+                      ["Paridade",     "None"],
+                      ["Data bits",    "8"],
+                      ["Stop bits",    "1"],
+                      ["Conector",     "DB9 → adaptador USB-Serial"],
+                    ].map(([k, v]) => (
+                      <div key={k} style={{ display: "flex", gap: 6, fontSize: 11 }}>
+                        <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>{k}:</span>
+                        <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ borderTop: "0.5px solid var(--bg-tag)", paddingTop: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Testar conexão</div>
+                    <BalancaSerial
+                      marca={"capital" as MarcaBalanca}
+                      onCapturarBruto={kg => alert(`✓ Peso Bruto capturado: ${kg.toLocaleString("pt-BR")} kg`)}
+                      onCapturarTara={kg  => alert(`✓ Tara capturada: ${kg.toLocaleString("pt-BR")} kg`)}
+                    />
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>
+                      Use este painel para confirmar que a balança está enviando dados corretamente antes de usar no romaneio.
+                    </div>
+                  </div>
+                </div>
+
                 {/* Dica de hardware */}
                 <div style={{ padding: "12px 16px", background: "#F0F4FF", border: "0.5px solid #7C8FD9", borderRadius: 8, fontSize: 12, color: "#3B5BDB", maxWidth: 560 }}>
-                  <strong>Cabo necessário:</strong> Toledo RJ45 proprietário → DB9 fêmea + adaptador USB-Serial (Prolific PL2303 ou FTDI).
-                  Disponível em lojas de automação ou diretamente com a Toledo do Brasil.
+                  <strong>Cabo Toledo:</strong> RJ45 proprietário → DB9 fêmea + adaptador USB-Serial (Prolific PL2303 ou FTDI).<br />
+                  <strong>Cabo Capital:</strong> DB9 macho → adaptador USB-Serial (Prolific PL2303 ou FTDI). Disponível em lojas de automação.
                 </div>
               </div>
             )}

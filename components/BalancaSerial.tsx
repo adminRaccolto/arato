@@ -15,20 +15,51 @@ function parseToledo(linha: string): number | null {
   return null;
 }
 
+// ── Parser Capital Balancas ───────────────────────────────────────────────────
+// Saída típica: "G 00012345\r\n" ou "B 00012345\r\n" (G/B = estável, M/N = instável)
+// Também suporta: "      12345\r\n" (somente números, direita-alinhado)
+// Ref: protocolo M1 Capital Balancas - RS-232 saída contínua
+function parseCapital(linha: string): number | null {
+  const limpa = linha.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+  if (!limpa) return null;
+  // Formato com indicador de estabilidade: G 00012345 ou B 00012345
+  const m1 = limpa.match(/^[GBSsgbs]\s+0*(\d+[\.,]?\d*)/);
+  if (m1) { const v = parseFloat(m1[1].replace(",",".")); return isFinite(v) && v > 0 ? v : null; }
+  // Formato com kg explícito
+  const m2 = limpa.match(/[+-]?\d+[\.,]?\d*\s*kg/i);
+  if (m2) { const v = parseFloat(m2[0].replace(/kg/i,"").replace(",",".").trim()); return isFinite(v) && v > 0 ? v : null; }
+  // Formato numérico puro (peso direto)
+  const m3 = limpa.match(/^[+-]?\s*0*(\d{3,7}[\.,]?\d*)\s*$/);
+  if (m3) { const v = parseFloat(m3[1].replace(",",".")); return isFinite(v) && v >= 100 ? v : null; }
+  return null;
+}
+
+// ── Configuração por marca ────────────────────────────────────────────────────
+const MARCA_CONFIG = {
+  toledo:  { label: "Toledo PRIX",        baud: 9600, parser: parseToledo },
+  capital: { label: "Capital Balancas",   baud: 9600, parser: parseCapital },
+} as const;
+
+export type MarcaBalanca = keyof typeof MARCA_CONFIG;
+
 type Modo = "bridge" | "serial";
 
 interface Props {
   onCapturarBruto: (kg: number) => void;
   onCapturarTara:  (kg: number) => void;
+  marca?: MarcaBalanca;
 }
 
-export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props) {
+export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: marcaProp = "toledo" }: Props) {
+  const [marca,     setMarca]     = useState<MarcaBalanca>(marcaProp);
   const [modo,      setModo]      = useState<Modo>("bridge");
   const [conectada, setConectada] = useState(false);
   const [pesoAtual, setPesoAtual] = useState<number | null>(null);
   const [status,    setStatus]    = useState<string>("");
   const [erro,      setErro]      = useState<string | null>(null);
   const [temSerial, setTemSerial] = useState(false);
+
+  const cfg = MARCA_CONFIG[marca];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const portRef  = useRef<any>(null);
@@ -90,7 +121,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const port = await (navigator as any).serial.requestPort();
-      await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: "none" });
+      await port.open({ baudRate: cfg.baud, dataBits: 8, stopBits: 1, parity: "none" });
       portRef.current  = port;
       ativoRef.current = true;
       setConectada(true);
@@ -107,7 +138,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
           buf += value;
           const linhas = buf.split(/\r?\n/);
           buf = linhas.pop() ?? "";
-          for (const l of linhas) { const p = parseToledo(l); if (p !== null) { setPesoAtual(p); setStatus(""); } }
+          for (const l of linhas) { const p = cfg.parser(l); if (p !== null) { setPesoAtual(p); setStatus(""); } }
         } catch { break; }
       }
       reader.releaseLock();
@@ -115,7 +146,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
       const err = e as { name?: string; message?: string };
       if (err?.name !== "NotFoundError") setErro("Erro: " + (err?.message ?? String(e)));
     }
-  }, []);
+  }, [cfg]);
 
   const desconectarSerial = useCallback(async () => {
     ativoRef.current = false;
@@ -132,10 +163,30 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
   return (
     <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
 
+      {/* Seletor de marca — só exibe quando desconectada */}
+      {!conectada && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>Marca:</span>
+          <div style={{ display: "flex", gap: 3, background: "var(--bg-tag)", borderRadius: 7, padding: 2 }}>
+            {(Object.keys(MARCA_CONFIG) as MarcaBalanca[]).map(m => (
+              <button key={m} type="button" onClick={() => { setMarca(m); setErro(null); }}
+                style={{
+                  fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
+                  background: marca === m ? "var(--bg-card)" : "transparent",
+                  color:      marca === m ? "var(--text-1)" : "var(--text-3)",
+                  boxShadow:  marca === m ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                }}>
+                {MARCA_CONFIG[m].label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Balança Toledo PRIX</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Balança {cfg.label}</span>
           <span style={{
             fontSize: 10, padding: "2px 8px", borderRadius: 10,
             background: conectada ? "#DCFCE7" : "var(--bg-tag)",
