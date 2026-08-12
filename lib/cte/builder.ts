@@ -53,7 +53,7 @@ export interface CTeInput {
   natureza:         string;
   valor_prestacao:  number;
   valor_receber:    number;
-  componentes:      Array<{ nome: string; valor: number }>;  // ex: [{nome:"Frete Peso", valor:1500}]
+  componentes:      Array<{ nome: string; valor: number }>;
   produto_descricao: string;
   ncm?:             string;
   peso_bruto_kg:    number;
@@ -64,7 +64,7 @@ export interface CTeInput {
   veiculo_renavam?: string;
   motorista_nome:   string;
   motorista_cpf:    string;
-  nfe_chave?:       string;   // chave da NF-e documentada
+  nfe_chave?:       string;
   tomador_tipo:     "0" | "1" | "2" | "3";  // 0=rem, 1=exped, 2=receb, 3=dest
   observacao?:      string;
 }
@@ -84,7 +84,6 @@ const CUF: Record<string, string> = {
 };
 
 // ── Timezone por UF (IANA) ─────────────────────────────────────────────────────
-// Fonte: https://www.timeanddate.com/time/brazil/
 const TZ_UF: Record<string, string> = {
   AC:"America/Rio_Branco",   // UTC-5, sem DST
   AL:"America/Maceio",       // UTC-3, sem DST
@@ -115,17 +114,16 @@ const TZ_UF: Record<string, string> = {
   TO:"America/Araguaina",    // UTC-3, sem DST
 };
 
-// Gera dhEmi no formato YYYY-MM-DDTHH:MM:SS-HH:MM respeitando o fuso do emitente
+// Gera dhEmi no formato YYYY-MM-DDTHH:MM:SS±HH:MM respeitando o fuso do emitente
 function dhEmiParaUF(uf: string): string {
   const tz = TZ_UF[uf] ?? "America/Sao_Paulo";
   const now = new Date();
-  // Hora local formatada via sv-SE (produz "YYYY-MM-DD HH:MM:SS")
   const local = new Intl.DateTimeFormat("sv-SE", {
     timeZone: tz,
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
   }).format(now).replace(" ", "T");
-  // Calcular offset real (considera DST) comparando UTC com hora local
+  // Offset real, considerando DST
   const utcMs  = now.getTime();
   const localMs = new Date(
     new Intl.DateTimeFormat("en-CA", {
@@ -142,7 +140,7 @@ function dhEmiParaUF(uf: string): string {
   return `${local}${sign}${hh}:${mm}`;
 }
 
-// ── cDV — módulo 11 (mesmo algoritmo da NF-e) ─────────────────────────────────
+// ── cDV — módulo 11 ────────────────────────────────────────────────────────────
 function calcCDV(key43: string): string {
   const weights = [2,3,4,5,6,7,8,9];
   let sum = 0;
@@ -193,28 +191,67 @@ function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string): strin
 export function buildCTe(input: CTeInput): CTeBuiltResult {
   const { emitente: e } = input;
 
-  const cuf       = CUF[e.uf] ?? "51";
-  const tpAmb     = e.ambiente === "producao" ? "1" : "2";
-  const serieNum  = parseInt(e.serie, 10) || 0;
-  const serieXml  = String(serieNum);                  // para o elemento XML: "1" (XSD proíbe "001")
-  const serie     = String(serieNum).padStart(3, "0"); // para a chave 44: "001"
-  const nCT       = String(e.numero_cte).padStart(9, "0");
-  const aamm   = new Date().toISOString().slice(2, 4) + new Date().toISOString().slice(5, 7);
+  const cuf   = CUF[e.uf] ?? "51";
+  const tpAmb = e.ambiente === "producao" ? "1" : "2";
+
+  const serieNum   = Number.parseInt(e.serie, 10);
+  const serieXml   = String(serieNum);
+  const serieChave = serieXml.padStart(3, "0");
+
+  const nCTXml   = String(e.numero_cte);
+  const nCTChave = nCTXml.padStart(9, "0");
+
+  if (!/^(0|[1-9][0-9]{0,2})$/.test(serieXml)) {
+    throw new Error(`Série inválida para CT-e: ${serieXml}`);
+  }
+
+  if (!/^[1-9][0-9]{0,8}$/.test(nCTXml)) {
+    throw new Error(`Número de CT-e inválido: ${nCTXml}`);
+  }
+
+  const dhEmi = dhEmiParaUF(e.uf);
+  const aamm  = dhEmi.slice(2, 4) + dhEmi.slice(5, 7);
+
   const cpfcnpjE = e.cpf_cnpj.replace(/\D/g, "");
   const docTagE  = cpfcnpjE.length === 14 ? "CNPJ" : "CPF";
-  const cCT    = gerarCCT();
+  const cCT      = gerarCCT();
 
   // Chave 44 = cUF(2)+AAMM(4)+CNPJ/CPF(14)+mod(2)+serie(3)+nCT(9)+tpEmis(1)+cCT(8)+cDV(1)
-  const key43 = `${cuf}${aamm}${cpfcnpjE.padStart(14,"0")}57${serie}${nCT}1${cCT}`;
+  const key43 =
+    `${cuf}${aamm}${cpfcnpjE.padStart(14, "0")}57` +
+    `${serieChave}${nCTChave}1${cCT}`;
+
   const cdv   = calcCDV(key43);
   const chave = key43 + cdv;
 
-  const dhEmi = dhEmiParaUF(e.uf);
-  const baseCalc = p2(input.valor_prestacao);
+  // ── indIEToma — calculado a partir do participante que é o tomador ──────────
+  const tomador =
+    input.tomador_tipo === "0"
+      ? input.remetente
+      : input.tomador_tipo === "3"
+        ? input.destinatario
+        : undefined;
+
+  if (!tomador) {
+    throw new Error(
+      "Tomador 1 ou 2 exige os dados do expedidor ou recebedor, ainda não existentes no CTeInput"
+    );
+  }
+
+  const ieTomador = tomador.ie?.trim().toUpperCase();
+
+  const indIEToma: "1" | "2" | "9" =
+    !ieTomador
+      ? "9"
+      : ieTomador === "ISENTO"
+        ? "2"
+        : "1";
+
+  const baseCalc  = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<CTe xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+<CTe xmlns="http://www.portalfiscal.inf.br/cte">
   <infCte Id="CTe${chave}" versao="4.00">
     <ide>
       <cUF>${cuf}</cUF>
@@ -223,7 +260,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <natOp>${esc(input.natureza)}</natOp>
       <mod>57</mod>
       <serie>${serieXml}</serie>
-      <nCT>${nCT}</nCT>
+      <nCT>${nCTXml}</nCT>
       <dhEmi>${dhEmi}</dhEmi>
       <tpImp>1</tpImp>
       <tpEmis>1</tpEmis>
@@ -244,7 +281,10 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <xMunFim>${esc(input.municipio_fim_nome)}</xMunFim>
       <UFFim>${input.uf_fim}</UFFim>
       <retira>0</retira>
-      <toma>${input.tomador_tipo}</toma>
+      <indIEToma>${indIEToma}</indIEToma>
+      <toma3>
+        <toma>${input.tomador_tipo}</toma>
+      </toma3>
     </ide>
     ${input.observacao ? `<compl><xObs>${esc(input.observacao)}</xObs></compl>` : ""}
     <emit>
@@ -277,7 +317,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <vBC>${baseCalc}</vBC>
           <pICMS>${p2(input.aliquota_icms)}</pICMS>
           <vICMS>${valorICMS}</vICMS>
-        </ICMS00>` : `<ICMS45><CST>45</CST></ICMS45>`}
+        </ICMS00>` : `<ICMS40><CST>40</CST></ICMS40>`}
       </ICMS>
       <vTotTrib>0.00</vTotTrib>
     </imp>
@@ -305,29 +345,15 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <infModal versaoModal="4.00">
         <rodo>
           <RNTRC>${e.rntrc || "ISENTO"}</RNTRC>
-          <veic>
-            <placa>${input.veiculo_placa.replace(/[^A-Z0-9]/gi, "").toUpperCase()}</placa>
-            ${input.veiculo_renavam ? `<RENAVAM>${input.veiculo_renavam}</RENAVAM>` : ""}
-            <tpVeic>06</tpVeic>
-            <tpRod>04</tpRod>
-            <tpCar>00</tpCar>
-            <UF>${e.uf}</UF>
-            <condutor>
-              <xNome>${esc(input.motorista_nome)}</xNome>
-              <CPF>${input.motorista_cpf.replace(/\D/g, "")}</CPF>
-            </condutor>
-          </veic>
         </rodo>
       </infModal>
     </infCTeNorm>
   </infCte>
 </CTe>`;
 
-  // Compacta ANTES de retornar — SEFAZ-MT rejeita (cStat 599) qualquer whitespace entre tags
-  // após descompressão do gzip. Compactar aqui (pré-assinatura) preserva a validade do digest;
-  // compactar pós-assinatura alteraria o canonical form e quebraria a verificação SEFAZ.
-  // />\s+</ remove text-nodes de apenas whitespace; conteúdo de elementos é preservado.
+  // Compacta ANTES de retornar — SEFAZ-MT rejeita whitespace entre tags após descompressão do gzip.
+  // Compactar pré-assinatura preserva o digest; pós-assinatura quebraria o canonical form.
   const xmlCompact = xml.replace(/>\s+</g, "><").trim();
 
-  return { xml: xmlCompact, chave, numero: nCT };
+  return { xml: xmlCompact, chave, numero: nCTXml };
 }
