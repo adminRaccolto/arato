@@ -98,12 +98,15 @@ interface PlanoGateProps {
 }
 
 export default function PlanoGate({ modulo, children }: PlanoGateProps) {
-  const { podeAcessarPlano, planoAtual, userRole, inadimplente, contaStatus } = useAuth();
+  const { podeAcessarPlano, planoAtual, userRole, inadimplente, contaStatus, modulosCarregados } = useAuth();
 
   // Inadimplente: bloqueia TUDO independente do plano
   if (inadimplente && userRole !== "raccotlo") {
     return <TelaInadimplente contaStatus={contaStatus} />;
   }
+
+  // Módulos ainda carregando → não exibir tela de bloqueio prematura
+  if (!modulosCarregados && !inadimplente) return null;
 
   // raccotlo tem acesso irrestrito; plano ainda carregando → não bloqueia
   if (podeAcessarPlano(modulo)) return children ? <>{children}</> : null;

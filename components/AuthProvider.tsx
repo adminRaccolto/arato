@@ -46,6 +46,7 @@ type AuthCtx = {
   podeAcessar:            (modulo: string) => boolean;  // false quando 'nenhum'
   podeEscrever:           (modulo: string) => boolean;  // true quando 'escrita'
   podeAcessarPlano:       (modulo: string) => boolean;  // false se módulo não está no plano nem em add-on
+  modulosCarregados:      boolean;  // true quando plano e overrides foram carregados
   refetchOnboarding:      () => void;
   selectFazenda:          (id: string, fazendaNome: string, produtorNome?: string | null) => void;
   setFazendaAtiva:        (id: string, nome: string) => Promise<void>;
@@ -78,6 +79,7 @@ const Ctx = createContext<AuthCtx>({
   podeAcessar:            () => true,
   podeEscrever:           () => true,
   podeAcessarPlano:       () => true,
+  modulosCarregados:      false,
   refetchOnboarding:      () => {},
   selectFazenda:          () => {},
   setFazendaAtiva:        async () => {},
@@ -587,7 +589,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,
-      permissoes, contaModulosOverrides, podeAcessar, podeEscrever, podeAcessarPlano,
+      permissoes, contaModulosOverrides, podeAcessar, podeEscrever, podeAcessarPlano, modulosCarregados,
       anoSafraVigenteId, anoSafraVigenteDesc,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,
     }}>
