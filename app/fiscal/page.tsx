@@ -67,7 +67,15 @@ const MODOS_EMISSAO: Record<number, string> = {
   6: "SVC-RS (Contingência)",
 };
 
-type Aba = "venda" | "devolucao" | "cancelamento" | "complemento" | "certificado" | "contingencia";
+type Aba = "venda" | "devolucao" | "transferencia" | "cancelamento" | "complemento" | "certificado" | "contingencia";
+
+// ── Naturezas de Transferência ────────────────────────────────────────────────
+const NATUREZAS_TRANSFERENCIA = [
+  { codigo: "5.152", descricao: "Transferência de Produção do Estabelecimento — Intraestadual (CFOP 5.152)", obs: "Transferência entre estabelecimentos do mesmo produtor rural. Operação não configura venda. ICMS diferido nos termos do Decreto MT n. 4.540/2004. Não incide PIS/COFINS nem Funrural." },
+  { codigo: "6.152", descricao: "Transferência de Produção do Estabelecimento — Interestadual (CFOP 6.152)", obs: "Transferência interestadual entre estabelecimentos do mesmo produtor rural. Operação não configura venda. Verificar legislação do estado destinatário para ICMS." },
+  { codigo: "5.906", descricao: "Remessa para Armazém Geral Próprio — Intraestadual (CFOP 5.906)", obs: "Remessa de mercadoria para depósito em armazém geral de propriedade do emitente ou vinculado. Operação não configura venda. Não incide ICMS, PIS, COFINS nem Funrural." },
+  { codigo: "6.906", descricao: "Remessa para Armazém Geral Próprio — Interestadual (CFOP 6.906)", obs: "Remessa interestadual de mercadoria para depósito em armazém geral de propriedade do emitente ou vinculado." },
+];
 
 const inputSt: React.CSSProperties = {
   width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)",
@@ -688,9 +696,23 @@ function FiscalInner() {
   // Filtro de status — aba Notas de Venda
   const [filtroStatusVenda, setFiltroStatusVenda] = useState<string | null>(null);
 
+  // Fazendas da conta (para transferência)
+  const [fazendasConta, setFazendasConta] = useState<{id: string; nome: string; municipio?: string; estado?: string}[]>([]);
+
   // Modais
   const [modalVenda, setModalVenda] = useState(false);
   const [modalDevolucao, setModalDevolucao] = useState(false);
+  const [modalTransferencia, setModalTransferencia] = useState(false);
+  const [salvandoTransf, setSalvandoTransf] = useState(false);
+  const [fTransf, setFTransf] = useState({
+    produtor_id: "", ie_selecionada: "",
+    fazenda_destino_id: "",
+    cfop: "5.152",
+    ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "",
+    data_emissao: new Date().toISOString().slice(0, 10),
+    data_saida:   new Date().toISOString().slice(0, 10),
+    obs: "",
+  });
   const [retransmitindoNota, setRetransmitindoNota] = useState<NotaFiscal | null>(null);
   const [modalCancelamento, setModalCancelamento] = useState<NotaFiscal | null>(null);
   const [modalComplemento, setModalComplemento] = useState<NotaFiscal | null>(null);
@@ -875,6 +897,11 @@ function FiscalInner() {
     if (!fazendaId) return;
     carregar();
     listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
+    // Carrega fazendas da conta (para transferência)
+    listarFazendasDaConta(contaId, fazendaId)
+      .then(fzs => setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome, municipio: f.municipio ?? undefined, estado: f.estado ?? undefined }))))
+      .catch(() => {});
+
     // Carrega empresas de todas as fazendas da conta
     void (async () => {
       try {
@@ -1371,6 +1398,98 @@ function FiscalInner() {
     }, { onConflict: "fazenda_id,modulo" });
   }
 
+  // Emitir NF-e de Transferência (CFOP 5.152 / 6.152)
+  const emitirTransferencia = async () => {
+    if (!fazendaId) return;
+    const fzDest = fazendasConta.find(f => f.id === fTransf.fazenda_destino_id);
+    if (!fzDest) { alert("Selecione a fazenda de destino."); return; }
+    if (!fTransf.quantidade || !fTransf.valor_unitario) { alert("Informe quantidade e valor unitário."); return; }
+    const qtd   = parseFloat(fTransf.quantidade.replace(",", ".")) || 0;
+    const vUnit = desmascarar(fTransf.valor_unitario);
+    const total = qtd * vUnit;
+    const natObj = NATUREZAS_TRANSFERENCIA.find(n => n.codigo === fTransf.cfop) ?? NATUREZAS_TRANSFERENCIA[0];
+    const prodSel = produtores.find(p => p.id === fTransf.produtor_id);
+    const TODAY = new Date().toISOString().slice(0, 10);
+    setSalvandoTransf(true);
+    try {
+      // Busca endereço da fazenda destino da tabela fazendas
+      const { data: fzData } = await supabase
+        .from("fazendas").select("nome, municipio, estado, logradouro, numero, bairro, cep, municipio_ibge, cpf_cnpj")
+        .eq("id", fzDest.id).maybeSingle();
+
+      const res = await fetch("/api/fiscal/emitir-nfe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id:       fazendaId,
+          modulo_key:       moduloKeyAtivo || undefined,
+          emit_ie_override: fTransf.ie_selecionada || prodSel?.inscricao_est || undefined,
+          destinatario: {
+            nome:           fzData?.nome ?? fzDest.nome,
+            cpf_cnpj:       (fzData as {cpf_cnpj?: string} | null)?.cpf_cnpj || undefined,
+            logradouro:     fzData?.logradouro ?? undefined,
+            numero:         fzData?.numero ?? undefined,
+            bairro:         fzData?.bairro ?? undefined,
+            municipio_nome: fzData?.municipio ?? fzDest.municipio ?? undefined,
+            municipio_ibge: (fzData as {municipio_ibge?: string} | null)?.municipio_ibge ?? undefined,
+            uf:             fzData?.estado ?? fzDest.estado ?? undefined,
+            cep:            fzData?.cep ?? undefined,
+            tipo_pessoa:    "juridica" as const,
+          },
+          itens: [{
+            numero: 1, codigo: fTransf.ncm.replace(/\D/g,""), descricao: NCM_OPTIONS.find(n => n.codigo === fTransf.ncm)?.descricao ?? "Produto rural",
+            ncm: fTransf.ncm, cfop: fTransf.cfop, unidade: fTransf.unidade,
+            quantidade: qtd, valor_unitario: vUnit, valor_bruto: total, valor_liquido: total,
+            cst_icms: "51", cst_pis: "07", cst_cofins: "07",
+            bc_icms: 0, aliq_icms: 0, valor_icms: 0,
+            bc_pis: 0, aliq_pis: 0, valor_pis: 0,
+            bc_cofins: 0, aliq_cofins: 0, valor_cofins: 0,
+            ind_total: "1",
+          }],
+          natureza: natObj.descricao,
+          inf_cpl:  [natObj.obs, fTransf.obs].filter(Boolean).join(" | "),
+          frete: "9",
+          tipo: "1",
+        }),
+      });
+      const resBody = await res.json() as { sucesso?: boolean; chave?: string; numero?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string; erro?: string };
+
+      if (!res.ok && !resBody.cStat) {
+        alert(`⚠ Falha na emissão\n\n${resBody.erro ?? `Erro HTTP ${res.status}`}`);
+        return;
+      }
+
+      await criarNotaFiscal({
+        fazenda_id:        fazendaId,
+        numero:            resBody.numero ?? proximoNumero(),
+        serie:             "1",
+        tipo:              "saida",
+        cfop:              fTransf.cfop,
+        natureza:          natObj.descricao,
+        destinatario:      fzDest.nome,
+        cnpj_destinatario: (fzData as {cpf_cnpj?: string} | null)?.cpf_cnpj || undefined,
+        valor_total:       total,
+        data_emissao:      fTransf.data_emissao || TODAY,
+        status:            resBody.sucesso ? "autorizada" : "rejeitada",
+        chave_acesso:      resBody.chave    ?? undefined,
+        xml_url:           resBody.xmlUrl   ?? undefined,
+        observacao:        [natObj.obs, fTransf.obs].filter(Boolean).join(" | ") || undefined,
+        auto:              false,
+      });
+
+      if (resBody.sucesso) {
+        alert(`✓ NF-e de Transferência autorizada!\nNúmero: ${resBody.numero}\nProtocolo: ${resBody.protocolo ?? "—"}`);
+      } else {
+        alert(`⚠ NF-e rejeitada pela SEFAZ\ncStat ${resBody.cStat}: ${resBody.xMotivo}`);
+      }
+
+      setModalTransferencia(false);
+      setFTransf({ produtor_id: "", ie_selecionada: "", fazenda_destino_id: "", cfop: "5.152", ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "", data_emissao: TODAY, data_saida: TODAY, obs: "" });
+      await carregar();
+    } catch (e: unknown) { alert("Erro ao emitir: " + (e instanceof Error ? e.message : String(e))); }
+    finally { setSalvandoTransf(false); }
+  };
+
   async function transmitirLoteContingencia() {
     const pendentes = notas.filter(n => n.status === "contingencia");
     if (pendentes.length === 0) return;
@@ -1390,22 +1509,26 @@ function FiscalInner() {
 
   const notasContingencia = notas.filter(n => n.status === "contingencia");
 
+  const notasTransferencia = notas.filter(n => ["5.152","6.152","5.906","6.906"].includes(n.cfop));
+
   const ABAS: { key: Aba; label: string; count?: number; alert?: boolean }[] = [
-    { key: "venda",        label: "Notas de Venda",      count: notasVenda.length },
-    { key: "devolucao",    label: "Nota de Devolução",    count: notasDevolucao.length },
-    { key: "cancelamento", label: "Cancelamento de Nota", count: notasCanceladas.length },
-    { key: "complemento",  label: "Nota de Complemento"  },
-    { key: "certificado",  label: "Certificado Digital"   },
-    { key: "contingencia", label: "Contingência",         count: notasContingencia.length, alert: modoContingencia },
+    { key: "venda",         label: "Notas de Venda",       count: notasVenda.length },
+    { key: "devolucao",     label: "Nota de Devolução",    count: notasDevolucao.length },
+    { key: "transferencia", label: "NF de Transferência",  count: notasTransferencia.length },
+    { key: "cancelamento",  label: "Cancelamento de Nota", count: notasCanceladas.length },
+    { key: "complemento",   label: "Nota de Complemento"  },
+    { key: "certificado",   label: "Certificado Digital"   },
+    { key: "contingencia",  label: "Contingência",         count: notasContingencia.length, alert: modoContingencia },
   ];
 
   const botaoNovo: Record<Aba, { label: string; onClick: () => void } | null> = {
-    venda:        { label: "◈ Nova NF-e de Venda",     onClick: () => { setBuscaPessoa(""); setDropdownPessoa(false); setModalVenda(true); } },
-    devolucao:    { label: "◈ Nova NF-e de Devolução", onClick: () => setModalDevolucao(true) },
-    cancelamento: null,
-    complemento:  null,
-    certificado:  null,
-    contingencia: null,
+    venda:         { label: "◈ Nova NF-e de Venda",         onClick: () => { setBuscaPessoa(""); setDropdownPessoa(false); setModalVenda(true); } },
+    devolucao:     { label: "◈ Nova NF-e de Devolução",     onClick: () => setModalDevolucao(true) },
+    transferencia: { label: "◈ Nova NF de Transferência",   onClick: () => setModalTransferencia(true) },
+    cancelamento:  null,
+    complemento:   null,
+    certificado:   null,
+    contingencia:  null,
   };
 
   return (
@@ -1562,6 +1685,31 @@ function FiscalInner() {
                     </div>
                   ) : (
                     <TabelaNFe notas={notasDevolucao} />
+                  )}
+                </div>
+              )}
+
+              {/* ── ABA: NF DE TRANSFERÊNCIA ── */}
+              {aba === "transferencia" && (
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
+                      A <strong>NF de Transferência</strong> é emitida para movimentação de mercadorias entre estabelecimentos do mesmo produtor rural.
+                      CFOPs: <strong>5.152</strong> (intraestadual MT → MT) · <strong>6.152</strong> (interestadual) · <strong>5.906 / 6.906</strong> (remessa para armazém próprio).
+                      <strong style={{ color: "#C9921B" }}> Não configura venda e não gera recebimento financeiro.</strong>
+                    </div>
+                  </div>
+                  {notasTransferencia.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
+                      <div style={{ fontSize: 32, marginBottom: 12 }}>⇄</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma NF de Transferência</div>
+                      <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>Clique em "Nova NF de Transferência" para emitir.</div>
+                      <button onClick={() => setModalTransferencia(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        ◈ Nova NF de Transferência
+                      </button>
+                    </div>
+                  ) : (
+                    <TabelaNFe notas={notasTransferencia} />
                   )}
                 </div>
               )}
@@ -2674,6 +2822,135 @@ function FiscalInner() {
               <button onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Emitindo…" : "⟳ Emitir NF-e de Devolução"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: NF de Transferência ── */}
+      {modalTransferencia && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={e => { if (e.target === e.currentTarget) setModalTransferencia(false); }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 640, maxWidth: "97vw", maxHeight: "90vh", overflow: "auto" }}>
+            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>NF de Transferência</div>
+                <div style={{ fontSize: 11, color: "#C9921B", marginTop: 2 }}>CFOP 5.152 / 6.152 — entre estabelecimentos do mesmo produtor</div>
+              </div>
+              <button onClick={() => setModalTransferencia(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+            </div>
+
+            <div style={{ padding: "18px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              {/* Emitente */}
+              <div style={{ gridColumn: "1/-1" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" }}>EMITENTE (ORIGEM)</div>
+              </div>
+              <div>
+                <label style={labelSt}>Produtor / Emitente *</label>
+                <select style={inputSt} value={fTransf.produtor_id} onChange={e => setFTransf(p => ({ ...p, produtor_id: e.target.value, ie_selecionada: "" }))}>
+                  <option value="">— Selecionar —</option>
+                  {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelSt}>Natureza / CFOP *</label>
+                <select style={inputSt} value={fTransf.cfop} onChange={e => setFTransf(p => ({ ...p, cfop: e.target.value }))}>
+                  {NATUREZAS_TRANSFERENCIA.map(n => <option key={n.codigo} value={n.codigo}>{n.codigo} — {n.descricao.split("—")[0].trim()}</option>)}
+                </select>
+              </div>
+
+              {/* Destino */}
+              <div style={{ gridColumn: "1/-1", marginTop: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" }}>DESTINATÁRIO (DESTINO)</div>
+              </div>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={labelSt}>Fazenda de Destino *</label>
+                <select style={inputSt} value={fTransf.fazenda_destino_id} onChange={e => setFTransf(p => ({ ...p, fazenda_destino_id: e.target.value }))}>
+                  <option value="">— Selecionar fazenda de destino —</option>
+                  {fazendasConta.filter(f => f.id !== fazendaId).map(f => (
+                    <option key={f.id} value={f.id}>{f.nome}{f.municipio ? ` — ${f.municipio}/${f.estado ?? ""}` : ""}</option>
+                  ))}
+                </select>
+                {fazendasConta.filter(f => f.id !== fazendaId).length === 0 && (
+                  <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>⚠ Nenhuma outra fazenda cadastrada nesta conta. Cadastre em Cadastros → Fazendas.</div>
+                )}
+              </div>
+
+              {/* Mercadoria */}
+              <div style={{ gridColumn: "1/-1", marginTop: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" }}>MERCADORIA</div>
+              </div>
+              <div>
+                <label style={labelSt}>NCM / Produto *</label>
+                <select style={inputSt} value={fTransf.ncm} onChange={e => setFTransf(p => ({ ...p, ncm: e.target.value }))}>
+                  {NCM_OPTIONS.map(n => <option key={n.codigo} value={n.codigo}>{n.descricao}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+                <div>
+                  <label style={labelSt}>Quantidade *</label>
+                  <input style={inputSt} type="number" step="0.001" min="0" value={fTransf.quantidade}
+                    onChange={e => setFTransf(p => ({ ...p, quantidade: e.target.value }))} placeholder="0,000" />
+                </div>
+                <div>
+                  <label style={labelSt}>Unidade</label>
+                  <select style={inputSt} value={fTransf.unidade} onChange={e => setFTransf(p => ({ ...p, unidade: e.target.value }))}>
+                    <option value="sc">sc</option>
+                    <option value="KG">KG</option>
+                    <option value="T">T</option>
+                    <option value="@">@</option>
+                    <option value="FD">FD</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={labelSt}>Valor Unitário R$ * <span style={{ color: "var(--text-3)" }}>(base de cálculo)</span></label>
+                <input style={inputSt} value={fTransf.valor_unitario} placeholder="0,00"
+                  onChange={e => setFTransf(p => ({ ...p, valor_unitario: aplicarMascara(e.target.value) }))} />
+              </div>
+              <div>
+                <label style={labelSt}>Valor Total (calculado)</label>
+                <input style={{ ...inputSt, background: "var(--bg-page)", color: "var(--text-2)" }} readOnly
+                  value={(() => { const q = parseFloat(fTransf.quantidade.replace(",",".")) || 0; const v = desmascarar(fTransf.valor_unitario); return (q * v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); })()} />
+              </div>
+
+              {/* Datas */}
+              <div>
+                <label style={labelSt}>Data de Emissão *</label>
+                <input style={inputSt} type="date" value={fTransf.data_emissao} onChange={e => setFTransf(p => ({ ...p, data_emissao: e.target.value }))} />
+              </div>
+              <div>
+                <label style={labelSt}>Data de Saída</label>
+                <input style={inputSt} type="date" value={fTransf.data_saida} onChange={e => setFTransf(p => ({ ...p, data_saida: e.target.value }))} />
+              </div>
+
+              {/* Obs. */}
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={labelSt}>Observação adicional (opcional)</label>
+                <textarea style={{ ...inputSt, height: 64, resize: "vertical" }} value={fTransf.obs}
+                  onChange={e => setFTransf(p => ({ ...p, obs: e.target.value }))}
+                  placeholder="Complemento da observação legal — destino, lote, ciclo, etc." />
+              </div>
+
+              {/* Preview obs legal */}
+              {(() => { const nat = NATUREZAS_TRANSFERENCIA.find(n => n.codigo === fTransf.cfop); return nat ? (
+                <div style={{ gridColumn: "1/-1", background: "#F0F7FF", border: "0.5px solid #c0d8f0", borderRadius: 8, padding: "10px 14px", fontSize: 11, color: "#1A4870" }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Obs. Legal que constará na NF-e</div>
+                  <div style={{ lineHeight: 1.6 }}>{nat.obs}{fTransf.obs ? ` | ${fTransf.obs}` : ""}</div>
+                </div>
+              ) : null; })()}
+            </div>
+
+            <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 11, color: "var(--text-3)" }}>Não gera recebimento financeiro · CFOP {fTransf.cfop}</div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setModalTransferencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={emitirTransferencia}
+                  disabled={!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf}
+                  style={{ padding: "8px 18px", background: (!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf) ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                  {salvandoTransf ? "⟳ Emitindo…" : "⟳ Emitir NF de Transferência"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
