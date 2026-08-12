@@ -36,8 +36,8 @@ function parseCapital(linha: string): number | null {
 
 // ── Configuração por marca ────────────────────────────────────────────────────
 const MARCA_CONFIG = {
-  toledo:  { label: "Toledo PRIX",        baud: 9600, parser: parseToledo },
-  capital: { label: "Capital Balancas",   baud: 9600, parser: parseCapital },
+  toledo:  { label: "Toledo PRIX",      baud: 9600, defaultModo: "bridge" as const, parser: parseToledo  },
+  capital: { label: "Capital Balancas", baud: 9600, defaultModo: "serial" as const, parser: parseCapital },
 } as const;
 
 export type MarcaBalanca = keyof typeof MARCA_CONFIG;
@@ -50,14 +50,17 @@ interface Props {
   marca?: MarcaBalanca;
 }
 
-export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: marcaProp = "toledo" }: Props) {
-  // Lê a marca configurada nas Integrações; usa prop como fallback
+// marcaProp só vem via prop quando é um card de teste na página de Integrações.
+// Nos romaneios nenhuma prop é passada — o widget lê do localStorage.
+export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: marcaExplicita }: Props) {
   const [marca] = useState<MarcaBalanca>(() => {
-    if (typeof window === "undefined") return marcaProp;
+    // Prop explícita (cards de teste) tem prioridade
+    if (marcaExplicita) return marcaExplicita;
+    if (typeof window === "undefined") return "toledo";
     const salva = localStorage.getItem("balanca_marca") as MarcaBalanca | null;
-    return (salva && MARCA_CONFIG[salva]) ? salva : marcaProp;
+    return (salva && MARCA_CONFIG[salva]) ? salva : "toledo";
   });
-  const [modo,      setModo]      = useState<Modo>("bridge");
+  const [modo, setModo] = useState<Modo>(() => MARCA_CONFIG[marca].defaultModo);
   const [conectada, setConectada] = useState(false);
   const [pesoAtual, setPesoAtual] = useState<number | null>(null);
   const [status,    setStatus]    = useState<string>("");
