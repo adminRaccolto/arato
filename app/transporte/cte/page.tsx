@@ -532,7 +532,7 @@ function CtePageInner() {
   async function buscarIbge(cidade: string, uf: string): Promise<string> {
     // Lookup estático para cidades mais comuns do MT agro — evita round-trip desnecessário
     const IBGE_MT: Record<string, string> = {
-      "nova mutum": "5106455", "lucas do rio verde": "5105259", "sorriso": "5107925",
+      "nova mutum": "5106224", "lucas do rio verde": "5105259", "sorriso": "5107925",
       "sinop": "5107909", "cuiabá": "5103403", "campo verde": "5102637",
       "rondonópolis": "5107602", "primavera do leste": "5106208", "tapurah": "5108006",
       "ipiranga do norte": "5104526", "campo novo do parecis": "5102637",
@@ -976,7 +976,7 @@ function CtePageInner() {
               </div>
               <div>
                 <label style={lbl}>Cód. IBGE Origem {form.ibge_origem ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
-                <input value={form.ibge_origem} onChange={e => setForm(f => ({ ...f, ibge_origem: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106455" maxLength={7} />
+                <input value={form.ibge_origem} onChange={e => setForm(f => ({ ...f, ibge_origem: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" maxLength={7} />
               </div>
               <div style={{ gridColumn: "4 / 5" }} />
               <div>

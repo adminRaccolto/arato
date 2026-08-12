@@ -110,7 +110,7 @@ export async function emitirCTe(
     logradouro:     fc.logradouro         ?? confg.logradouro         ?? "",
     numero:         fc.numero             ?? confg.numero             ?? "S/N",
     bairro:         fc.bairro             ?? confg.bairro             ?? "",
-    municipio_ibge: fc.municipio_ibge     ?? confg.municipio_ibge     ?? "5106455",
+    municipio_ibge: fc.municipio_ibge     ?? confg.municipio_ibge     ?? "5106224",
     municipio_nome: fc.municipio_nome     ?? fc.municipio ?? confg.municipio_nome ?? confg.municipio ?? "Nova Mutum",
     uf:             fc.uf_emitente        ?? confg.uf_emitente        ?? "MT",
     cep:            fc.cep               ?? confg.cep               ?? "00000000",

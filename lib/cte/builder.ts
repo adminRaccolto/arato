@@ -167,7 +167,7 @@ function xmlEndereco(tag: string, p: ParticipanteCTe): string {
   // Usar fallbacks quando o cadastro estiver incompleto.
   const lgr  = p.logradouro    || "Não informado";
   const uf   = p.uf             || "MT";
-  const cMun = p.municipio_ibge || "5106455";       // Nova Mutum como fallback de IBGE
+  const cMun = p.municipio_ibge || "5106224";       // Nova Mutum como fallback de IBGE
   // xMun deve ser o NOME da cidade — nunca usar o código IBGE como nome
   const xMun = p.municipio_nome || "Nova Mutum";
   return `<${tag}>
@@ -180,7 +180,6 @@ function xmlEndereco(tag: string, p: ParticipanteCTe): string {
     <UF>${uf}</UF>
     <cPais>1058</cPais>
     <xPais>BRASIL</xPais>
-    ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
   </${tag}>`;
 }
 
@@ -304,7 +303,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
         <xLgr>${esc(e.logradouro || "Não informado")}</xLgr>
         <nro>${esc(e.numero || "S/N")}</nro>
         <xBairro>${esc(e.bairro || "Centro")}</xBairro>
-        <cMun>${e.municipio_ibge || "5107602"}</cMun>
+        <cMun>${e.municipio_ibge || "5106224"}</cMun>
         <xMun>${esc(e.municipio_nome || "Nova Mutum")}</xMun>
         <CEP>${(e.cep || "78450000").replace(/\D/g, "").padEnd(8, "0").slice(0, 8)}</CEP>
         <UF>${e.uf || "MT"}</UF>
@@ -351,7 +350,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <chave>${input.nfe_chave.replace(/\D/g, "")}</chave>
         </infNFe>
       </infDoc>` : ""}
-      <infModal versao="4.00">
+      <infModal versaoModal="4.00">
         <rodo>
           <RNTRC>${e.rntrc || "ISENTO"}</RNTRC>
         </rodo>

@@ -1442,6 +1442,52 @@ O MDF-e "envelopa" um conjunto de CT-es (ou NF-es avulsas) em uma única viagem.
 
 ---
 
+## MÓDULO 30B — TRANSPORTE / Acerto de Frete
+
+**Caminho:** Menu superior → **Transporte** → **Acerto de Frete (TAC)**
+
+### O que faz
+Realiza o fechamento mensal de motoristas **TAC (Transportador Autônomo de Cargas)** — motoristas autônomos que prestam serviço com caminhão próprio (terceiro). Consolida todos os fretes realizados no mês, desconta combustível abastecido na fazenda, adiantamentos pagos e outros descontos, e calcula o valor líquido a pagar. Ao fechar, gera automaticamente uma Conta a Pagar.
+
+### Conceito — Próprio vs Terceiro
+- **Veículo próprio**: pertence à fazenda (frota interna). Custo de combustível já está no lançamento da bomba.
+- **Veículo de terceiro (TAC)**: pertence ao motorista autônomo. A fazenda pode abastecer o caminhão dele e descontar no acerto mensal.
+
+### Cadastro de veículos de terceiros
+1. Vá em **Configurações → Parâmetros do Sistema → aba Transportes → Veículos**
+2. Clique em **+ Novo Veículo** ou edite um existente
+3. No campo **Propriedade**: selecione **Terceiro (caminhão autônomo)**
+4. No campo **Proprietário**: selecione a pessoa cadastrada (nome/CPF do dono do caminhão)
+5. Os campos **Tara**, **Capacidade** e **RNTRC** são obrigatórios para usar em CT-e
+
+### Fluxo do Acerto de Frete mensal
+1. Vá em **Transporte → Acerto de Frete (TAC)**
+2. Selecione o **mês** e **ano** do fechamento
+3. Clique em **+ Abrir Acerto** para cada motorista TAC do período
+4. Dentro do acerto:
+   - Clique em **+ Importar** nos CT-es autorizados do período (aparecendo automaticamente)
+   - Adicione itens manuais: combustível, adiantamentos, descontos, bônus
+   - Confira o **Valor Líquido a Pagar** calculado automaticamente
+5. Clique em **Fechar Acerto e Gerar CP** — uma Conta a Pagar é criada automaticamente
+6. Status do acerto: **Aberto** → **Fechado** (CP gerado) → **Pago** (quando a CP for quitada)
+
+### Cálculo do Acerto
+\`\`\`
+Valor Bruto     = soma dos fretes (CT-e importados + bônus)
+Combustível     = litros × preço do diesel abastecido na fazenda
+Adiantamentos   = valores pagos ao motorista antes do fechamento
+Outros Descontos = multas, danos, etc.
+──────────────────────────────────────
+Valor Líquido = Bruto − Combustível − Adiantamentos − Outros Descontos
+\`\`\`
+
+### Dica operacional
+- Cadastre o motorista em **Parâmetros → Transportes → Motoristas** como **TAC** (não CLT)
+- Apenas motoristas com tipo **TAC** aparecem na tela de Acerto de Frete
+- Motoristas CLT (celetistas) são funcionários da fazenda — seu custo vai pela folha de pagamento, não pelo acerto de frete
+
+---
+
 ## MÓDULO 31 — BI (Business Intelligence)
 
 **Caminho:** Menu superior → **BI** (ou acessado pelo ícone do gráfico)
