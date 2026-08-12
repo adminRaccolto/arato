@@ -777,7 +777,39 @@ export type Veiculo = {
   uf?: string;
   rntrc?: string;
   proprietario?: string;
+  proprietario_tipo?: "proprio" | "terceiro";
+  proprietario_id?: string;
   ativo: boolean;
+  created_at?: string;
+};
+
+export type AcertoFrete = {
+  id: string;
+  fazenda_id: string;
+  motorista_id?: string;
+  motorista_nome?: string;
+  periodo_mes: number;
+  periodo_ano: number;
+  status: "aberto" | "fechado" | "pago";
+  valor_bruto: number;
+  valor_combustivel: number;
+  valor_adiantamentos: number;
+  valor_outros_descontos: number;
+  valor_liquido?: number;
+  lancamento_id?: string;
+  observacao?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AcertoFreteItem = {
+  id: string;
+  acerto_id: string;
+  tipo: "cte" | "combustivel" | "adiantamento" | "desconto" | "bonus";
+  descricao?: string;
+  referencia_id?: string;
+  data_ref?: string;
+  valor: number;
   created_at?: string;
 };
 

@@ -40,7 +40,10 @@ interface Transportadora {
 interface Veiculo {
   id: string; placa: string; tipo: string; tara_kg?: number;
   cap_kg?: number; rntrc?: string; ativo: boolean;
+  proprietario_tipo?: "proprio" | "terceiro";
+  proprietario_id?: string;
 }
+interface PessoaMin { id: string; nome: string; cpf_cnpj?: string; }
 interface Motorista {
   id: string; nome: string; cpf: string; cnh?: string;
   cnh_validade?: string; tipo?: string; rntrc?: string; ativo: boolean;
@@ -464,6 +467,7 @@ function ParametrosSistemaContent() {
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
+  const [pessoasFrota, setPessoasFrota] = useState<PessoaMin[]>([]);
   const [modalT, setModalT] = useState<Partial<Transportadora> | null>(null);
   const [modalV, setModalV] = useState<Partial<Veiculo> | null>(null);
   const [modalM, setModalM] = useState<Partial<Motorista> | null>(null);
@@ -494,6 +498,7 @@ function ParametrosSistemaContent() {
     supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setTransportadoras(data));
     supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setVeiculos(data));
     supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setMotoristas(data));
+    supabase.from("pessoas").select("id, nome, cpf_cnpj").eq("fazenda_id", fazendaId).order("nome").then(({ data }) => data && setPessoasFrota(data as PessoaMin[]));
   }, [fazendaId]);
 
   // Resolve contaId: usa direto se disponível, senão busca da fazenda (admin Raccolto ou backfill pendente)
@@ -1453,27 +1458,36 @@ function ParametrosSistemaContent() {
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
-              {["Placa","Tipo","Tara (kg)","Cap. (kg)","RNTRC","Status",""].map(h => (
+              {["Placa","Tipo Veículo","Propriedade","Tara (kg)","Cap. (kg)","RNTRC","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
-              {veiculos.map(v => (
-                <tr key={v.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 700, fontFamily: "monospace" }}>{v.placa}</td>
-                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tipo}</td>
-                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tara_kg?.toLocaleString("pt-BR") || "—"}</td>
-                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.cap_kg?.toLocaleString("pt-BR") || "—"}</td>
-                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.rntrc || "—"}</td>
-                  <td style={{ padding: "8px 12px" }}>
-                    <span style={{ padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: v.ativo ? "#DCFCE7" : "#FEE2E2", color: v.ativo ? "#16A34A" : "#E24B4A" }}>
-                      {v.ativo ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "8px 12px" }}><button onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
-                </tr>
-              ))}
-              {veiculos.length === 0 && <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum veículo cadastrado</td></tr>}
+              {veiculos.map(v => {
+                const propTipo = v.proprietario_tipo ?? "proprio";
+                const propNome = propTipo === "terceiro" ? (pessoasFrota.find(p => p.id === v.proprietario_id)?.nome ?? "Terceiro") : "Próprio";
+                return (
+                  <tr key={v.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
+                    <td style={{ padding: "8px 12px", fontWeight: 700, fontFamily: "monospace" }}>{v.placa}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tipo}</td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: propTipo === "terceiro" ? "#FBF3E0" : "#EBF3FB", color: propTipo === "terceiro" ? "#7A5400" : "#1A4870" }}>
+                        {propNome}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tara_kg?.toLocaleString("pt-BR") || "—"}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.cap_kg?.toLocaleString("pt-BR") || "—"}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.rntrc || "—"}</td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <span style={{ padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: v.ativo ? "#DCFCE7" : "#FEE2E2", color: v.ativo ? "#16A34A" : "#E24B4A" }}>
+                        {v.ativo ? "Ativo" : "Inativo"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 12px" }}><button onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                  </tr>
+                );
+              })}
+              {veiculos.length === 0 && <tr><td colSpan={8} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum veículo cadastrado</td></tr>}
             </tbody>
           </table>
         </div>
@@ -2164,6 +2178,11 @@ function ParametrosSistemaContent() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Placa *", inp({ value: modalV.placa ?? "", onChange: e => setModalV(p => ({ ...p!, placa: e.target.value.toUpperCase() })), placeholder: "AAA-0000" }))}
               {campo("Tipo *", sel({ value: modalV.tipo ?? "", onChange: e => setModalV(p => ({ ...p!, tipo: e.target.value })), children: [<option key="" value="">— selecione —</option>, <option key="toco" value="Toco">Toco</option>, <option key="truck" value="Truck">Truck</option>, <option key="bitruck" value="Bi-Truck">Bi-Truck</option>, <option key="ls" value="LS / Cavalo">LS / Cavalo</option>, <option key="carreta" value="Carreta">Carreta</option>, <option key="bitrem" value="Bitrem">Bitrem</option>] as React.ReactNode }))}
+              {campo("Propriedade *", sel({ value: modalV.proprietario_tipo ?? "proprio", onChange: e => setModalV(p => ({ ...p!, proprietario_tipo: e.target.value as "proprio" | "terceiro", proprietario_id: e.target.value === "proprio" ? undefined : p?.proprietario_id })), children: [<option key="proprio" value="proprio">Próprio (frota da fazenda)</option>, <option key="terceiro" value="terceiro">Terceiro (caminhão autônomo)</option>] as React.ReactNode }))}
+              {(modalV.proprietario_tipo ?? "proprio") === "terceiro"
+                ? campo("Proprietário (Pessoa) *", sel({ value: modalV.proprietario_id ?? "", onChange: e => setModalV(p => ({ ...p!, proprietario_id: e.target.value })), children: [<option key="" value="">— selecione —</option>, ...pessoasFrota.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` (${p.cpf_cnpj})` : ""}</option>)] as React.ReactNode }))
+                : campo("Proprietário", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, color: "var(--text-3)", background: "var(--bg-page)" }}>Fazenda (frota própria)</div>)
+              }
               {campo("Tara (kg)", inp({ type: "number", value: modalV.tara_kg ?? "", onChange: e => setModalV(p => ({ ...p!, tara_kg: Number(e.target.value) })) }))}
               {campo("Capacidade (kg)", inp({ type: "number", value: modalV.cap_kg ?? "", onChange: e => setModalV(p => ({ ...p!, cap_kg: Number(e.target.value) })) }))}
               {campo("RNTRC", inp({ value: modalV.rntrc ?? "", onChange: e => setModalV(p => ({ ...p!, rntrc: e.target.value })) }))}

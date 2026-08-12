@@ -9448,3 +9448,61 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_lancamentos_numero ON lancamentos (fazenda
 -- =============================================================================
 ALTER TABLE ctes ADD COLUMN IF NOT EXISTS ibge_origem  text;
 ALTER TABLE ctes ADD COLUMN IF NOT EXISTS ibge_destino text;
+
+-- =============================================================================
+-- Seção 93 — Veículos de terceiros (proprietário) + Acerto de Frete
+-- =============================================================================
+
+-- Adiciona tipo de propriedade e FK para o proprietário em veiculos
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS proprietario_tipo text DEFAULT 'proprio' CHECK (proprietario_tipo IN ('proprio','terceiro'));
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS proprietario_id   uuid REFERENCES pessoas(id) ON DELETE SET NULL;
+
+-- Tabela de acertos de frete (fechamento mensal por motorista TAC)
+CREATE TABLE IF NOT EXISTS acertos_frete (
+  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id      UUID        NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  motorista_id    UUID        REFERENCES motoristas(id) ON DELETE SET NULL,
+  motorista_nome  TEXT,
+  periodo_mes     INTEGER     NOT NULL CHECK (periodo_mes BETWEEN 1 AND 12),
+  periodo_ano     INTEGER     NOT NULL,
+  status          TEXT        NOT NULL DEFAULT 'aberto' CHECK (status IN ('aberto','fechado','pago')),
+  valor_bruto     NUMERIC(14,2) DEFAULT 0,    -- soma dos fretes dos CT-e do período
+  valor_combustivel NUMERIC(14,2) DEFAULT 0,  -- abastecimentos debitados
+  valor_adiantamentos NUMERIC(14,2) DEFAULT 0, -- adiantamentos pagos no mês
+  valor_outros_descontos NUMERIC(14,2) DEFAULT 0,
+  valor_liquido   NUMERIC(14,2) GENERATED ALWAYS AS (valor_bruto - valor_combustivel - valor_adiantamentos - valor_outros_descontos) STORED,
+  lancamento_id   UUID,                        -- CP gerado ao fechar o acerto
+  observacao      TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Itens do acerto de frete
+CREATE TABLE IF NOT EXISTS acerto_frete_itens (
+  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  acerto_id       UUID        NOT NULL REFERENCES acertos_frete(id) ON DELETE CASCADE,
+  tipo            TEXT        NOT NULL CHECK (tipo IN ('cte','combustivel','adiantamento','desconto','bonus')),
+  descricao       TEXT,
+  referencia_id   UUID,        -- cte_id ou lancamento_id conforme tipo
+  data_ref        DATE,
+  valor           NUMERIC(14,2) NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE acertos_frete      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE acerto_frete_itens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "fazenda_acertos_frete" ON acertos_frete
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+CREATE POLICY "acerto_itens_via_acerto" ON acerto_frete_itens
+  USING (acerto_id IN (SELECT id FROM acertos_frete));
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_acertos_frete_fazenda ON acertos_frete (fazenda_id, periodo_ano, periodo_mes);
+CREATE INDEX IF NOT EXISTS idx_acerto_itens_acerto   ON acerto_frete_itens (acerto_id);
