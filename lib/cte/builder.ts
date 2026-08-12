@@ -134,10 +134,12 @@ function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string): strin
 export function buildCTe(input: CTeInput): CTeBuiltResult {
   const { emitente: e } = input;
 
-  const cuf    = CUF[e.uf] ?? "51";
-  const tpAmb  = e.ambiente === "producao" ? "1" : "2";
-  const serie  = e.serie.padStart(3, "0");
-  const nCT    = String(e.numero_cte).padStart(9, "0");
+  const cuf       = CUF[e.uf] ?? "51";
+  const tpAmb     = e.ambiente === "producao" ? "1" : "2";
+  const serieNum  = parseInt(e.serie, 10) || 0;
+  const serieXml  = String(serieNum);                  // para o elemento XML: "1" (XSD proíbe "001")
+  const serie     = String(serieNum).padStart(3, "0"); // para a chave 44: "001"
+  const nCT       = String(e.numero_cte).padStart(9, "0");
   const aamm   = new Date().toISOString().slice(2, 4) + new Date().toISOString().slice(5, 7);
   const cpfcnpjE = e.cpf_cnpj.replace(/\D/g, "");
   const docTagE  = cpfcnpjE.length === 14 ? "CNPJ" : "CPF";
@@ -151,7 +153,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   // MT = UTC-4 (sem horário de verão): subtrai 4h do UTC e representa com offset -04:00
   const nowMs = Date.now();
   const utcMinus4 = new Date(nowMs - 4 * 60 * 60 * 1000);
-  const dhEmi = utcMinus4.toISOString().replace("Z", "-04:00");
+  const dhEmi = utcMinus4.toISOString().replace(/\.\d{3}Z$/, "-04:00"); // remove ms, substitui Z pelo offset
   const baseCalc = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
@@ -164,7 +166,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <CFOP>${input.cfop.replace(/\D/g, "")}</CFOP>
       <natOp>${esc(input.natureza)}</natOp>
       <mod>57</mod>
-      <serie>${serie}</serie>
+      <serie>${serieXml}</serie>
       <nCT>${nCT}</nCT>
       <dhEmi>${dhEmi}</dhEmi>
       <tpImp>1</tpImp>
@@ -246,7 +248,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       </infDoc>` : ""}
       <infModal versaoModal="4.00">
         <rodo>
-          <RNTRC>${e.rntrc}</RNTRC>
+          <RNTRC>${e.rntrc || "ISENTO"}</RNTRC>
           <veic>
             <placa>${input.veiculo_placa.replace(/[^A-Z0-9]/gi, "").toUpperCase()}</placa>
             ${input.veiculo_renavam ? `<RENAVAM>${input.veiculo_renavam}</RENAVAM>` : ""}
