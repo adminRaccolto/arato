@@ -36,7 +36,7 @@
   /* TopNav — dark navy (faixa 1) + azul petróleo (faixa 2) */
   --nav-bg:         #050D1A;
   --nav-faixa1:     #0A1628;
-  --nav-faixa2:     #1A5CB8;
+  --nav-faixa2:     #1A4870;
   --nav-text:       #ffffff;
   --nav-border:     rgba(255,255,255,0.07);
 
@@ -93,7 +93,7 @@
   /* TopNav — igual nos dois temas (sempre dark) */
   --nav-bg:         #050D1A;
   --nav-faixa1:     #0A1628;
-  --nav-faixa2:     #1A5CB8;
+  --nav-faixa2:     #1A4870;
   --nav-text:       #ffffff;
   --nav-border:     rgba(255,255,255,0.07);
 
@@ -125,7 +125,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 
 :root[data-palette="default"] {
-  --nav-bg: #050D1A; --nav-faixa1: #0A1628; --nav-faixa2: #1A5CB8;
+  --nav-bg: #050D1A; --nav-faixa1: #0A1628; --nav-faixa2: #1A4870;
   --bg-page: #F4F6FA; --bg-nav: #F4F6FA; --bg-hover: #F9FAFC; --bg-stripe: #F4F6FA; --bg-tag: #EEF1F6;
   --border: #DDE2EE; --border-table: #D4DCE8; --border-row: #DEE5EE;
   --text-1: #1a1a1a; --text-2: #555555; --text-3: #888888;

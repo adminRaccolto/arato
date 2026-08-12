@@ -1593,7 +1593,7 @@ function ParametrosSistemaContent() {
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
                   {[
-                    { id: "default", label: "Arato",  descricao: "Azul petróleo original", f1: "#0A1628", f2: "#1A5CB8", bg: "#F4F6FA", accent: "#C9921B", card: "#ffffff" },
+                    { id: "default", label: "Arato",  descricao: "Azul petróleo original", f1: "#0A1628", f2: "#1A4870", bg: "#F4F6FA", accent: "#C9921B", card: "#ffffff" },
                     { id: "pitch",   label: "Pitch",   descricao: "Monocromático zinc",     f1: "#18181B", f2: "#27272A", bg: "#FAFAFA", accent: "#3F3F46", card: "#ffffff" },
                     { id: "terra",   label: "Terra",   descricao: "Tons terrosos quentes",  f1: "#1C1512", f2: "#2B1D16", bg: "#FAF9F6", accent: "#C9921B", card: "#ffffff" },
                     { id: "alto",    label: "Alto",    descricao: "Azul meia-noite",         f1: "#1B2235", f2: "#243252", bg: "#F5F7F9", accent: "#1B2235", card: "#ffffff" },
