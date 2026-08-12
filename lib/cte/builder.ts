@@ -164,10 +164,11 @@ const esc = (s: string) =>
 function xmlEndereco(tag: string, p: ParticipanteCTe): string {
   // enderReme/enderDest são obrigatórios no schema CT-e 4.00 — nunca omitir.
   // Usar fallbacks quando o cadastro estiver incompleto.
-  const lgr  = p.logradouro   || "Não informado";
-  const uf   = p.uf           || "MT";
-  const cMun = p.municipio_ibge || "5106455";      // Nova Mutum como fallback
-  const xMun = p.municipio_nome || cMun;
+  const lgr  = p.logradouro    || "Não informado";
+  const uf   = p.uf             || "MT";
+  const cMun = p.municipio_ibge || "5106455";       // Nova Mutum como fallback de IBGE
+  // xMun deve ser o NOME da cidade — nunca usar o código IBGE como nome
+  const xMun = p.municipio_nome || "Nova Mutum";
   return `<${tag}>
     <xLgr>${esc(lgr)}</xLgr>
     <nro>${esc(p.numero || "S/N")}</nro>
@@ -176,6 +177,8 @@ function xmlEndereco(tag: string, p: ParticipanteCTe): string {
     <xMun>${esc(xMun)}</xMun>
     ${p.cep ? `<CEP>${p.cep.replace(/\D/g, "").padEnd(8, "0").slice(0, 8)}</CEP>` : ""}
     <UF>${uf}</UF>
+    <cPais>1058</cPais>
+    <xPais>BRASIL</xPais>
     ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
   </${tag}>`;
 }

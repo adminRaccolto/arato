@@ -81,7 +81,13 @@ interface Cte {
 
 interface VeiculoMin { id: string; placa: string; tipo?: string; cap_kg?: number; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; cnh?: string; }
-interface PessoaMin { id: string; nome: string; cpf_cnpj?: string; municipio?: string; estado?: string; }
+interface PessoaMin {
+  id: string; nome: string; cpf_cnpj?: string;
+  inscricao_est?: string;
+  logradouro?: string; numero?: string; bairro?: string; complemento?: string;
+  municipio?: string; municipio_ibge?: string; estado?: string; cep?: string;
+  telefone?: string;
+}
 interface EmpresaTransp { id: string; razao_social?: string | null; nome?: string | null; cpf_cnpj?: string | null; rntrc?: string | null; }
 
 const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> = {
@@ -565,8 +571,38 @@ function CtePageInner() {
       emitente_id:        c.emitente_id ?? undefined,
       emitente_cnpj:      c.emitente_cnpj ?? undefined,
       emitente_razao_social: c.emitente_razao_social ?? undefined,
-      remetente:          { nome: c.remetente_nome,    cpf_cnpj: c.remetente_cnpj    ?? undefined },
-      destinatario:       { nome: c.destinatario_nome, cpf_cnpj: c.destinatario_cnpj ?? undefined },
+      remetente: (() => {
+        const rem = pessoas.find(p => p.id === c.remetente_id);
+        return {
+          nome:           c.remetente_nome,
+          cpf_cnpj:       c.remetente_cnpj    ?? undefined,
+          ie:             rem?.inscricao_est   ?? undefined,
+          logradouro:     rem?.logradouro      ?? undefined,
+          numero:         rem?.numero          ?? undefined,
+          bairro:         rem?.bairro          ?? undefined,
+          municipio_ibge: rem?.municipio_ibge  ?? undefined,
+          municipio_nome: rem?.municipio       ?? undefined,
+          uf:             rem?.estado          ?? undefined,
+          cep:            rem?.cep             ?? undefined,
+          fone:           rem?.telefone        ?? undefined,
+        };
+      })(),
+      destinatario: (() => {
+        const dest = pessoas.find(p => p.id === c.destinatario_id);
+        return {
+          nome:           c.destinatario_nome,
+          cpf_cnpj:       c.destinatario_cnpj ?? undefined,
+          ie:             dest?.inscricao_est  ?? undefined,
+          logradouro:     dest?.logradouro     ?? undefined,
+          numero:         dest?.numero         ?? undefined,
+          bairro:         dest?.bairro         ?? undefined,
+          municipio_ibge: dest?.municipio_ibge ?? undefined,
+          municipio_nome: dest?.municipio      ?? undefined,
+          uf:             dest?.estado         ?? undefined,
+          cep:            dest?.cep            ?? undefined,
+          fone:           dest?.telefone       ?? undefined,
+        };
+      })(),
       municipio_ini_ibge: ibgeIni,
       municipio_ini_nome: c.municipio_origem,
       uf_ini:             c.uf_origem,
