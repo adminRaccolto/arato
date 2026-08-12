@@ -584,7 +584,7 @@ export default function NfCompraPage() {
       entidade_contabil: "pf" as const,
       valor_ipi: "", valor_st: "", valor_fcp_st: "", valor_difal: "", valor_desconto: "",
     });
-    setBulkCC(""); setBulkOpGer("");
+    setBulkOpGer("");
     setItens([ITEM_VAZIO()]);
     setErr("");
     setSiegChave("");
