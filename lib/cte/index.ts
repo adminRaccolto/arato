@@ -122,6 +122,32 @@ export async function emitirCTe(
   };
 
   // 5. Construir XML
+  console.log("[CT-e diagnóstico schema]", {
+    remetente: {
+      docLength: inputBase.remetente?.cpf_cnpj?.replace(/\D/g, "").length,
+      temLogradouro: Boolean(inputBase.remetente?.logradouro),
+      temNumero: Boolean(inputBase.remetente?.numero),
+      temBairro: Boolean(inputBase.remetente?.bairro),
+      temMunicipioIbge: Boolean(inputBase.remetente?.municipio_ibge),
+      temMunicipioNome: Boolean(inputBase.remetente?.municipio_nome),
+      temUF: Boolean(inputBase.remetente?.uf),
+    },
+    destinatario: {
+      docLength: inputBase.destinatario?.cpf_cnpj?.replace(/\D/g, "").length,
+      temLogradouro: Boolean(inputBase.destinatario?.logradouro),
+      temNumero: Boolean(inputBase.destinatario?.numero),
+      temBairro: Boolean(inputBase.destinatario?.bairro),
+      temMunicipioIbge: Boolean(inputBase.destinatario?.municipio_ibge),
+      temMunicipioNome: Boolean(inputBase.destinatario?.municipio_nome),
+      temUF: Boolean(inputBase.destinatario?.uf),
+    },
+    aliquotaIcms: inputBase.aliquota_icms,
+    nfeChaveLength: inputBase.nfe_chave?.replace(/\D/g, "").length,
+    componentes: inputBase.componentes?.map(c => ({
+      nome: c.nome,
+      tamanhoNome: c.nome.length,
+    })),
+  });
   const built = buildCTe({ ...inputBase, emitente });
   // Log dos primeiros 800 chars para diagnóstico de cStat 215 sem expor dados sensíveis completos
   console.log("[CT-e XML preview]", built.xml.slice(0, 800));

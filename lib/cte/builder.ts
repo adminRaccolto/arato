@@ -162,15 +162,20 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 function xmlEndereco(tag: string, p: ParticipanteCTe): string {
-  if (!p.logradouro || !p.uf || !p.municipio_ibge) return "";
+  // enderReme/enderDest são obrigatórios no schema CT-e 4.00 — nunca omitir.
+  // Usar fallbacks quando o cadastro estiver incompleto.
+  const lgr  = p.logradouro   || "Não informado";
+  const uf   = p.uf           || "MT";
+  const cMun = p.municipio_ibge || "5106455";      // Nova Mutum como fallback
+  const xMun = p.municipio_nome || cMun;
   return `<${tag}>
-    <xLgr>${esc(p.logradouro)}</xLgr>
+    <xLgr>${esc(lgr)}</xLgr>
     <nro>${esc(p.numero || "S/N")}</nro>
     <xBairro>${esc(p.bairro || "Centro")}</xBairro>
-    <cMun>${p.municipio_ibge}</cMun>
-    <xMun>${esc(p.municipio_nome || p.municipio_ibge)}</xMun>
+    <cMun>${cMun}</cMun>
+    <xMun>${esc(xMun)}</xMun>
     ${p.cep ? `<CEP>${p.cep.replace(/\D/g, "").padEnd(8, "0").slice(0, 8)}</CEP>` : ""}
-    <UF>${p.uf}</UF>
+    <UF>${uf}</UF>
     ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
   </${tag}>`;
 }
@@ -308,7 +313,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     <vPrest>
       <vTPrest>${p2(input.valor_prestacao)}</vTPrest>
       <vRec>${p2(input.valor_receber)}</vRec>
-      ${input.componentes.map(c => `<Comp><xNome>${esc(c.nome)}</xNome><vComp>${p2(c.valor)}</vComp></Comp>`).join("\n      ")}
+      ${input.componentes.map(c => `<Comp><xNome>${esc(c.nome.slice(0, 15))}</xNome><vComp>${p2(c.valor)}</vComp></Comp>`).join("\n      ")}
     </vPrest>
     <imp>
       <ICMS>
