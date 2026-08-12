@@ -324,7 +324,7 @@ function CtePageInner() {
     setCtes(cd ?? []);
     setVeiculos(vd ?? []);
     setMotoristas(md ?? []);
-    setPessoas(pd ?? []);
+    setPessoas((pd ?? []).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })));
     setEmpresasTransp((ed ?? []).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
     // Próximo número
     if (cd && cd.length > 0) {

@@ -192,7 +192,7 @@ export default function Arrendamentos() {
       setArrendamentos((arrR.data ?? []) as Arrendamento[]);
       setPagamentos((pagR.data ?? []) as Pagamento[]);
       setAnosSafra(anos);
-      setPessoas((pesR.data ?? []) as Pessoa[]);
+      setPessoas(((pesR.data ?? []) as Pessoa[]).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })));
       setFazendas((fazR.data ?? []) as Fazenda[]);
       setProdutores(prods as Produtor[]);
       setInsumosPA((paR.data ?? []) as InsumoPA[]);

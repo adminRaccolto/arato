@@ -184,7 +184,7 @@ export default function TriangulacaoPage() {
       supabase.from("produtores").select("id,nome,tipo,cpf_cnpj,inscricao_est,municipio,estado").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     setLista((tri ?? []) as Triangulacao[]);
-    setPessoas((pes ?? []) as Pessoa[]);
+    setPessoas(((pes ?? []) as Pessoa[]).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })));
     setProdutores((prod ?? []) as Produtor[]);
     setLoading(false);
   }, [fazendaId]);

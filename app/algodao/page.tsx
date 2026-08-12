@@ -203,7 +203,7 @@ export default function AlgodaoPage() {
     supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazTrabalho).order("nome")
       .then(({ data }) => setTalhoes((data ?? []) as Talhao[]));
     supabase.from("pessoas").select("id, nome").order("nome")
-      .then(({ data }) => setPessoas((data ?? []) as Pessoa[]));
+      .then(({ data }) => setPessoas(((data ?? []) as Pessoa[]).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }))));
     // Busca todos os ciclos da fazenda — dois caminhos para garantir
     const loadCiclos = async () => {
       // caminho 1: direto por fazenda_id (ciclos tem fazenda_id na coluna)
