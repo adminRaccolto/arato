@@ -285,6 +285,7 @@ export type Lancamento = {
   // Veículo vinculado (manutenção, multa de trânsito, etc.)
   maquina_id?: string;                // FK maquinas.id — máquina/veículo próprio da fazenda
   veiculo_id?: string;                // FK veiculos.id — veículo de transportadora
+  numero?: number;                    // Número sequencial de lançamento (GENERATED ALWAYS AS IDENTITY)
   created_at?: string;
 };
 

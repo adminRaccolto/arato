@@ -1058,6 +1058,7 @@ function ContasPagarInner() {
                             checked={filtrados.length > 0 && filtrados.every(l => selecionados.has(l.id))}
                             onChange={toggleTodos} title="Selecionar todos" />
                         </th>
+                        <th style={{ ...thS(52, "center"), width: 52 }}>Nº</th>
                         <th style={{ ...thS(cw("fornecedor"), "left"), width: cw("fornecedor"), position: "relative", userSelect: "none" }}>Fornecedor / Cliente<ResizeHandle onMouseDown={startResize("fornecedor")} /></th>
                         <th style={{ ...thS(44, "center"), width: 44 }}>Parc.</th>
                         {col("operacao")   && <th style={{ ...thS(cw("operacao"),   "left"),   width: cw("operacao"),   position: "relative", userSelect: "none" }}>Operação<ResizeHandle onMouseDown={startResize("operacao")} /></th>}
@@ -1080,6 +1081,7 @@ function ContasPagarInner() {
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
+                        <td></td>
                         <td></td>
                         <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} /></td>
                         <td></td>
@@ -1131,6 +1133,10 @@ function ContasPagarInner() {
                             <td style={{ padding: "8px 4px", textAlign: "center" }}>
                               <input type="checkbox" style={{ cursor: "pointer", accentColor: "#60A5FA" }}
                                 checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />
+                            </td>
+                            {/* Nº */}
+                            <td style={{ padding: "8px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                              {l.numero ?? "—"}
                             </td>
                             {/* Fornecedor / Cliente */}
                             <td style={{ padding: "8px 10px", maxWidth: cw("fornecedor"), overflow: "hidden" }}>

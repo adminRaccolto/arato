@@ -9435,3 +9435,10 @@ ALTER TABLE romaneios_entrada ADD COLUMN IF NOT EXISTS ie_produtor   text;
 
 CREATE INDEX IF NOT EXISTS idx_rom_entrada_produtor ON romaneios_entrada (produtor_id);
 ALTER TABLE romaneios_entrada ADD COLUMN IF NOT EXISTS ie_municipio  text;
+
+-- =============================================================================
+-- Seção 91 — Número sequencial de lançamento
+-- =============================================================================
+ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS numero bigint GENERATED ALWAYS AS IDENTITY;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_lancamentos_numero ON lancamentos (fazenda_id, numero);

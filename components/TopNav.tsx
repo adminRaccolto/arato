@@ -86,12 +86,6 @@ const NAV: NavItem[] = [
           { id: "com-migrar-nf",     label: "Migrar NF entre Contratos", path: "/contratos/migrar-nf",   moduleId: "contratos"   },
         ],
       },
-      {
-        type: "subgroup", id: "sg-hedge", label: "Proteção de Margem", moduleId: "protecao_margem",
-        children: [
-          { id: "com-hedge", label: "Hedge & Precificação", path: "/comercial/hedge", moduleId: "protecao_margem" },
-        ],
-      },
     ],
   },
 
@@ -254,6 +248,16 @@ const NAV: NavItem[] = [
   },
 
   {
+    type: "group", id: "bi", label: "BI",
+    children: [
+      { id: "bi-raccotlo",        label: "BI — Painel Raccolto",       path: "/bi",                      moduleId: "conf_raccotlo"   },
+      { id: "bi-hedge",           label: "Proteção de Margem",         path: "/comercial/hedge",         moduleId: "protecao_margem" },
+      { type: "divider", label: "Auditorias" },
+      { id: "bi-auditoria-class", label: "Auditoria de Classificação", path: "/auditoria/classificacao", moduleId: "conf_fiscal"     },
+    ],
+  },
+
+  {
     type: "group", id: "configuracoes", label: "Configurações", minStep: 0,
     children: [
       { type: "divider", label: "Fiscal" },
@@ -261,7 +265,6 @@ const NAV: NavItem[] = [
       { id: "conf-op-fiscais",     label: "Operações Fiscais",          path: "/configuracoes/modulos?aba=operacoes", moduleId: "conf_fiscal" },
       { id: "conf-historico-cfop", label: "Histórico Fiscal (CFOPs)",   path: "/cadastros?tab=historico_fiscal",      moduleId: "conf_fiscal" },
       { id: "conf-classificacao",  label: "Classificação Automática",   path: "/configuracoes/classificacao",         moduleId: "conf_fiscal" },
-      { id: "conf-auditoria-class", label: "Auditoria de Classificação", path: "/auditoria/classificacao",           moduleId: "conf_fiscal" },
 
       { type: "divider", label: "Financeiro" },
       { id: "conf-plano-contas",  label: "Plano de Contas",       path: "/configuracoes/plano-contas",            moduleId: "conf_financeiro" },
@@ -302,7 +305,8 @@ const NAV: NavItem[] = [
 // Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
 const NAV_MODULE_MAP: Record<string, string[]> = {
   // "cadastros" sem entrada → sempre visível (módulo base, igual ao dashboard/mapa)
-  "comercial":     ["contratos", "expedicao", "arrendamento", "protecao_margem"],
+  "comercial":     ["contratos", "expedicao", "arrendamento"],
+  "bi":            ["bi", "conf_raccotlo", "protecao_margem", "conf_fiscal"],
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],
   // "estoque" removido — estoque é módulo fixo (sempre visível), não add-on
@@ -478,7 +482,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "lavoura")         return pathname.startsWith("/lavoura") || pathname === "/estoque/romaneio-entrada";
     if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias" || pathname.startsWith("/fiscal");
     if (item.id === "custos")          return pathname.startsWith("/custos") || pathname.startsWith("/relatorios/dre");
-    if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin") || pathname.startsWith("/auditoria");
+    if (item.id === "bi")              return pathname === "/bi" || pathname.startsWith("/comercial/hedge") || pathname.startsWith("/auditoria");
+    if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
     if (item.id === "algodao")         return pathname.startsWith("/algodao");
     if (item.id === "ajuda")           return pathname === "/learning" || pathname === "/suporte";
     return false;
@@ -965,21 +970,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 }}
               >
                 ⚙ Gestão Arato
-              </Link>
-            )}
-            {raccotloGestor && (
-              <Link
-                href="/bi"
-                style={{
-                  display: "flex", alignItems: "center", gap: 5,
-                  padding: "4px 10px", borderRadius: 5, textDecoration: "none",
-                  background: pathname === "/bi" ? "rgba(255,255,255,0.12)" : "var(--bg-input)",
-                  color: "var(--text-2)", fontWeight: pathname === "/bi" ? 700 : 400,
-                  fontSize: 13, whiteSpace: "nowrap",
-                  border: "0.5px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                BI Raccotlo
               </Link>
             )}
             {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (

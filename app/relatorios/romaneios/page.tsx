@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -43,7 +43,11 @@ const statusBadge = (st: string | undefined | null) => {
   return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: c.bg, color: c.color, textTransform: "capitalize" }}>{st ?? "rascunho"}</span>;
 };
 
-export default function RelatorioRomaneios() {
+export default function Page() {
+  return <Suspense><RelatorioRomaneios /></Suspense>;
+}
+
+function RelatorioRomaneios() {
   const { fazendaId, fazendaIds, contaId } = useAuth();
   const params = useSearchParams();
 
