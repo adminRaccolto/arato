@@ -8,6 +8,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { createHash }  from "crypto";
 import { buildCTe }     from "./builder";
 import { assinarCTe }   from "./signer";
 import { transmitirCTe } from "./transmitter";
@@ -40,6 +41,47 @@ async function proximoNumero(fazendaId: string, modulo: string, confg: Record<st
     .eq("fazenda_id", fazendaId)
     .eq("modulo", modulo);
   return atual;
+}
+
+// ─── QR Code CT-e 4.00 ───────────────────────────────────────────────────────
+// infCTeSupl deve aparecer entre </infCte> e <Signature> no XML final.
+// A assinatura só cobre infCte, então inserir infCTeSupl depois não quebra o digest.
+const QR_BASE: Record<string, Record<string, string>> = {
+  MT: {
+    producao:    "https://www.sefaz.mt.gov.br/cte/qrcode",
+    homologacao: "https://homologacao.sefaz.mt.gov.br/cte/qrcode",
+  },
+};
+
+function buildQrCodeCTe(
+  chave:    string,
+  tpAmb:    string,         // "1" | "2"
+  dhEmiIso: string,         // ISO-8601 ex "2026-08-12T15:42:46-04:00"
+  vICMS:    number,
+  digVal:   string,         // DigestValue base64 extraído da assinatura
+  uf:       string,
+  cscIdToken: string,       // ex "000001"
+  cscToken:   string,       // token CSC registrado na SEFAZ
+): string {
+  const urlBase    = QR_BASE[uf]?.[tpAmb === "1" ? "producao" : "homologacao"]
+                  ?? `https://homologacao.sefaz.mt.gov.br/cte/qrcode`;
+  const hexDhEmi   = Math.floor(new Date(dhEmiIso).getTime() / 1000).toString(16).toUpperCase();
+  const vICMSStr   = vICMS.toFixed(2);
+  const hashInput  = chave + tpAmb + "100" + hexDhEmi + vICMSStr + digVal + cscIdToken + cscToken;
+  const qrHash     = createHash("sha1").update(hashInput).digest("hex").toUpperCase();
+  const digValEnc  = encodeURIComponent(digVal);
+
+  return `${urlBase}?chCTe=${chave}&tpAmb=${tpAmb}&nVersao=100&dhEmi=${hexDhEmi}&vICMS=${vICMSStr}&digVal=${digValEnc}&cIdToken=${cscIdToken}&cHashQRCode=${qrHash}`;
+}
+
+function inserirInfCTeSupl(xmlAssinado: string, qrUrl: string): string {
+  const supl = `<infCTeSupl><qrCodCTe>${qrUrl}</qrCodCTe></infCTeSupl>`;
+  // Insere entre </infCte> e <Signature> (ordem exigida pelo schema CT-e 4.00)
+  if (xmlAssinado.includes("</infCte><Signature")) {
+    return xmlAssinado.replace("</infCte><Signature", `</infCte>${supl}<Signature`);
+  }
+  // Fallback: insere antes de </CTe>
+  return xmlAssinado.replace("</CTe>", `${supl}</CTe>`);
 }
 
 // ─── Salva XML no Storage ────────────────────────────────────────────────────
@@ -155,15 +197,17 @@ export async function emitirCTe(
   try { xmlAssinado = assinarCTe(built.xml, pem); }
   catch (e) { return { sucesso: false, cStat: "503", xMotivo: `Erro na assinatura: ${e}`, xmlAssinado: built.xml }; }
 
-  // Log completo do XML assinado em partes para diagnóstico de cStat 215
-  const tamanhoParte = 1200;
-  const totalPartes = Math.ceil(xmlAssinado.length / tamanhoParte);
-  for (let i = 0; i < totalPartes; i++) {
-    console.log(
-      `[CT-e XML PARTE ${i + 1}/${totalPartes}]`,
-      xmlAssinado.slice(i * tamanhoParte, (i + 1) * tamanhoParte)
-    );
-  }
+  // 6b. Inserir infCTeSupl (QR Code) — obrigatório CT-e 4.00 (cStat 850)
+  const tpAmb      = emitente.ambiente === "producao" ? "1" : "2";
+  const digValMatch = xmlAssinado.match(/<DigestValue>(.*?)<\/DigestValue>/);
+  const digVal     = digValMatch?.[1] ?? "";
+  const dhEmiMatch  = xmlAssinado.match(/<dhEmi>(.*?)<\/dhEmi>/);
+  const dhEmiIso   = dhEmiMatch?.[1] ?? new Date().toISOString();
+  const vICMS      = inputBase.valor_prestacao * inputBase.aliquota_icms / 100;
+  const cscIdToken = confg.csc_id_token ?? "000001";
+  const cscToken   = confg.csc_token    ?? "";
+  const qrUrl      = buildQrCodeCTe(built.chave, tpAmb, dhEmiIso, vICMS, digVal, emitente.uf, cscIdToken, cscToken);
+  xmlAssinado      = inserirInfCTeSupl(xmlAssinado, qrUrl);
 
   // 7. Transmitir
   let resposta;
