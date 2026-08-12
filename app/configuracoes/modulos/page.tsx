@@ -429,11 +429,7 @@ function ParametrosSistemaContent() {
   function aplicarPaleta(id: string) {
     setPaletaAtual(id);
     try { localStorage.setItem("arato-palette", id); } catch { /* */ }
-    if (id === "default") {
-      document.documentElement.removeAttribute("data-palette");
-    } else {
-      document.documentElement.setAttribute("data-palette", id);
-    }
+    document.documentElement.setAttribute("data-palette", id);
   }
 
   // ── Teste de conexão CT-e

@@ -120,7 +120,20 @@
 /* ── Paletas alternativas ──────────────────────────────────────────────────────
    Usam :root[data-palette="x"] para ter especificidade 0-2-0, igual ao seletor
    :root[data-theme="light"]. Como vêm DEPOIS no arquivo, ganham na cascata.
+   "default" é explicitamente definido para tornar a troca de volta ao Arato
+   tão ativa quanto trocar para qualquer outra paleta.
    ──────────────────────────────────────────────────────────────────────────── */
+
+:root[data-palette="default"] {
+  --nav-bg: #050D1A; --nav-faixa1: #0A1628; --nav-faixa2: #1A5CB8;
+  --bg-page: #F4F6FA; --bg-nav: #F4F6FA; --bg-hover: #F9FAFC; --bg-stripe: #F4F6FA; --bg-tag: #EEF1F6;
+  --border: #DDE2EE; --border-table: #D4DCE8; --border-row: #DEE5EE;
+  --text-1: #1a1a1a; --text-2: #555555; --text-3: #888888;
+  --c-primary: #1A4870; --c-primary-light: #D5E8F5;
+  --c-bg: #F4F6FA; --c-surface: #FFFFFF; --c-border: #DDE2EE; --c-border-light: #EEF1F6;
+  --c-text: #1a1a1a; --c-text-sub: #555555; --c-text-weak: #888888;
+  --shadow-card: 0 1px 4px rgba(11,45,80,0.05); --shadow-modal: 0 4px 20px rgba(11,45,80,0.10); --overlay: rgba(11,45,80,0.35);
+}
 
 :root[data-palette="pitch"] {
   --nav-bg: #18181B; --nav-faixa1: #18181B; --nav-faixa2: #27272A;

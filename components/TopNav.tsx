@@ -441,11 +441,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     try {
       const p = localStorage.getItem("arato-palette") ?? "default";
       setCurrentPalette(p);
-      if (p === "default") {
-        document.documentElement.removeAttribute("data-palette");
-      } else {
-        document.documentElement.setAttribute("data-palette", p);
-      }
+      document.documentElement.setAttribute("data-palette", p);
     } catch { /* */ }
   }, []);
 
@@ -453,11 +449,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     setCurrentPalette(name);
     setShowPalette(false);
     try { localStorage.setItem("arato-palette", name); } catch { /* */ }
-    if (name === "default") {
-      document.documentElement.removeAttribute("data-palette");
-    } else {
-      document.documentElement.setAttribute("data-palette", name);
-    }
+    document.documentElement.setAttribute("data-palette", name);
   }
 
   const isAtivo = (path: string) => {
