@@ -44,9 +44,7 @@ export default function VersionChecker() {
       <button
         onClick={() => {
           setDesatualizado(false);
-          // router.refresh() revalida os Server Components sem navegar para a home,
-          // evitando o flash da página de marketing durante o reload.
-          router.refresh();
+          window.location.reload();
         }}
         style={{
           background: "#C9921B", color: "#fff", border: "none",

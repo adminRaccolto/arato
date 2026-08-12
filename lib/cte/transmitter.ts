@@ -195,13 +195,32 @@ const CUF_MAP: Record<string, string> = {
 // CT-e 4.00: XML compactado em GZip/Base64 dentro de cteDadosMsg.
 // SEFAZ rejeita (cStat 599) qualquer whitespace entre tags ou ao redor do payload —
 // o envelope MUST ser compacto (sem newlines, sem indentação).
-function envelopeCTe(cteXml: string, cuf: string): string {
-  // SEFAZ 402: decomprime e exige declaração UTF-8 no início — inclui a declaração no gzip
-  const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
-  const cteXmlWithDecl = '<?xml version="1.0" encoding="UTF-8"?>' + cteXmlBody;
-  const cteXmlGzipBase64 = gzipSync(Buffer.from(cteXmlWithDecl, "utf8")).toString("base64");
+
+function compactarCTeBase64(xmlAssinado: string): string {
+  // Converte a string JavaScript explicitamente para bytes UTF-8
+  const xmlUtf8 = Buffer.from(xmlAssinado, "utf8");
+
+  // Compacta os bytes UTF-8
+  const gzip = gzipSync(xmlUtf8, { level: 9 });
+
+  // Validação local: falha antes de transmitir se não for UTF-8 válido
+  const descompactado = gunzipSync(gzip);
+  const xmlValidado = new TextDecoder("utf-8", { fatal: true }).decode(descompactado);
+  if (xmlValidado !== xmlAssinado) {
+    throw new Error("Falha interna: XML alterado durante conversão UTF-8/GZip");
+  }
+
+  return gzip.toString("base64");
+}
+
+function envelopeCTe(xmlAssinado: string, cuf: string): string {
+  // xml-crypto remove a declaração XML ao assinar — reinsere antes de compactar
+  const xmlComDecl = xmlAssinado.startsWith("<?xml")
+    ? xmlAssinado
+    : '<?xml version="1.0" encoding="UTF-8"?>' + xmlAssinado;
+  const cteGzipBase64 = compactarCTeBase64(xmlComDecl);
   return (
-    `<?xml version="1.0" encoding="utf-8"?>` +
+    `<?xml version="1.0" encoding="UTF-8"?>` +
     `<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">` +
     `<soap12:Header>` +
     `<cteCabecMsg xmlns="${SOAP_NS}">` +
@@ -210,7 +229,7 @@ function envelopeCTe(cteXml: string, cuf: string): string {
     `</cteCabecMsg>` +
     `</soap12:Header>` +
     `<soap12:Body>` +
-    `<cteDadosMsg xmlns="${SOAP_NS}">${cteXmlGzipBase64}</cteDadosMsg>` +
+    `<cteDadosMsg xmlns="${SOAP_NS}">${cteGzipBase64}</cteDadosMsg>` +
     `</soap12:Body>` +
     `</soap12:Envelope>`
   );

@@ -248,14 +248,6 @@ const NAV: NavItem[] = [
     ],
   },
 
-  {
-    type: "group", id: "bi", label: "BI",
-    children: [
-      { id: "bi-hedge",           label: "Proteção de Margem",         path: "/comercial/hedge",         moduleId: "protecao_margem" },
-      { type: "divider", label: "Auditorias" },
-      { id: "bi-auditoria-class", label: "Auditoria de Classificação", path: "/auditoria/classificacao", moduleId: "conf_fiscal"     },
-    ],
-  },
 
   {
     type: "group", id: "configuracoes", label: "Configurações", minStep: 0,
@@ -306,7 +298,6 @@ const NAV: NavItem[] = [
 const NAV_MODULE_MAP: Record<string, string[]> = {
   // "cadastros" sem entrada → sempre visível (módulo base, igual ao dashboard/mapa)
   "comercial":     ["contratos", "expedicao", "arrendamento"],
-  "bi":            ["protecao_margem", "conf_fiscal"],
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],
   // "estoque" removido — estoque é módulo fixo (sempre visível), não add-on
