@@ -1841,7 +1841,7 @@ export default function Contratos() {
       {modalContrato && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
           onClick={e => { if (e.target===e.currentTarget) setModalContrato(false); }}>
-          <div style={{ background:"var(--bg-card)", borderRadius:14, width:980, maxWidth:"97vw", maxHeight:"95vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <div style={{ background:"var(--bg-card)", borderRadius:14, width:1280, maxWidth:"98vw", maxHeight:"95vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
             {/* Cabeçalho do modal */}
             <div style={{ padding:"14px 20px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -2137,16 +2137,26 @@ export default function Contratos() {
                       </label>
                       <select style={inp} value={fC.pessoa_id} onChange={e => setFC(p=>({...p,pessoa_id:e.target.value}))}>
                         <option value="">— selecione —</option>
-                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.cpf_cnpj ? `${p.cpf_cnpj}  —  ` : ""}{p.nome}</option>)}
                       </select>
+                      {fC.pessoa_id && (() => { const cnpj = pessoas.find(p => p.id === fC.pessoa_id)?.cpf_cnpj; return cnpj ? (
+                        <div style={{ marginTop:4, padding:"4px 8px", background:"var(--bg-page)", border:"0.5px solid var(--border-table)", borderRadius:6, fontSize:11, fontFamily:"monospace", color:"var(--text-2)", letterSpacing:"0.03em" }}>
+                          {cnpj}
+                        </div>
+                      ) : null; })()}
                     </div>
                     {fC.is_triangulacao && (
                       <div>
                         <label style={lbl}>Comprador Final (Trading / Destino do Grão)</label>
                         <select style={{ ...inp, borderColor:"#C9921B" }} value={fC.comprador_final_id} onChange={e => setFC(p=>({...p,comprador_final_id:e.target.value}))}>
                           <option value="">— selecione —</option>
-                          {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                          {pessoas.map(p => <option key={p.id} value={p.id}>{p.cpf_cnpj ? `${p.cpf_cnpj}  —  ` : ""}{p.nome}</option>)}
                         </select>
+                        {fC.comprador_final_id && (() => { const cnpj = pessoas.find(p => p.id === fC.comprador_final_id)?.cpf_cnpj; return cnpj ? (
+                          <div style={{ marginTop:4, padding:"4px 8px", background:"var(--bg-page)", border:"0.5px solid var(--border-table)", borderRadius:6, fontSize:11, fontFamily:"monospace", color:"var(--text-2)", letterSpacing:"0.03em" }}>
+                            {cnpj}
+                          </div>
+                        ) : null; })()}
                       </div>
                     )}
                     <div>
