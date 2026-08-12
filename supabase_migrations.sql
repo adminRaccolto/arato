@@ -9442,3 +9442,9 @@ ALTER TABLE romaneios_entrada ADD COLUMN IF NOT EXISTS ie_municipio  text;
 ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS numero bigint GENERATED ALWAYS AS IDENTITY;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_lancamentos_numero ON lancamentos (fazenda_id, numero);
+
+-- =============================================================================
+-- Seção 92 — IBGE de origem e destino na tabela ctes
+-- =============================================================================
+ALTER TABLE ctes ADD COLUMN IF NOT EXISTS ibge_origem  text;
+ALTER TABLE ctes ADD COLUMN IF NOT EXISTS ibge_destino text;

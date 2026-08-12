@@ -301,8 +301,8 @@ function CtePageInner() {
     tomador_tipo: "remetente" as TomadorTipo,
     remetente_id: "", remetente_nome: "", remetente_cnpj: "",
     destinatario_id: "", destinatario_nome: "", destinatario_cnpj: "",
-    municipio_origem: "", uf_origem: "MT",
-    municipio_destino: "", uf_destino: "MT",
+    municipio_origem: "", uf_origem: "MT", ibge_origem: "",
+    municipio_destino: "", uf_destino: "MT", ibge_destino: "",
     produto_descricao: "Soja em Grão", ncm: "12010090",
     quantidade: 0, unidade: "TON",
     peso_bruto_kg: 0, peso_liquido_kg: 0,
@@ -401,8 +401,8 @@ function CtePageInner() {
       tomador_tipo: c.tomador_tipo,
       remetente_id: c.remetente_id ?? "", remetente_nome: c.remetente_nome, remetente_cnpj: c.remetente_cnpj ?? "",
       destinatario_id: c.destinatario_id ?? "", destinatario_nome: c.destinatario_nome, destinatario_cnpj: c.destinatario_cnpj ?? "",
-      municipio_origem: c.municipio_origem, uf_origem: c.uf_origem,
-      municipio_destino: c.municipio_destino, uf_destino: c.uf_destino,
+      municipio_origem: c.municipio_origem, uf_origem: c.uf_origem, ibge_origem: (c as Cte & { ibge_origem?: string }).ibge_origem ?? "",
+      municipio_destino: c.municipio_destino, uf_destino: c.uf_destino, ibge_destino: (c as Cte & { ibge_destino?: string }).ibge_destino ?? "",
       produto_descricao: c.produto_descricao, ncm: c.ncm ?? "",
       quantidade: c.quantidade ?? 0, unidade: c.unidade,
       peso_bruto_kg: c.peso_bruto_kg ?? 0, peso_liquido_kg: c.peso_liquido_kg ?? 0,
@@ -425,6 +425,7 @@ function CtePageInner() {
       remetente_cnpj: p?.cpf_cnpj ?? "",
       municipio_origem: p?.municipio ?? f.municipio_origem,
       uf_origem: p?.estado ?? f.uf_origem,
+      ibge_origem: p?.municipio_ibge ?? f.ibge_origem,
     }));
   }
 
@@ -437,6 +438,7 @@ function CtePageInner() {
       destinatario_cnpj: p?.cpf_cnpj ?? "",
       municipio_destino: p?.municipio ?? f.municipio_destino,
       uf_destino: p?.estado ?? f.uf_destino,
+      ibge_destino: p?.municipio_ibge ?? f.ibge_destino,
     }));
   }
 
@@ -475,8 +477,10 @@ function CtePageInner() {
         destinatario_cnpj: form.destinatario_cnpj || null,
         municipio_origem: form.municipio_origem,
         uf_origem: form.uf_origem,
+        ibge_origem: form.ibge_origem || null,
         municipio_destino: form.municipio_destino,
         uf_destino: form.uf_destino,
+        ibge_destino: form.ibge_destino || null,
         produto_descricao: form.produto_descricao,
         ncm: form.ncm || null,
         quantidade: form.quantidade || 0,
@@ -560,10 +564,11 @@ function CtePageInner() {
     if (!fazendaId) return;
     if (!confirm(`Transmitir CT-e ${c.numero_cte} para a SEFAZ?\nAmbiente configurado em Parâmetros → CT-e.`)) return;
 
-    // Busca IBGE das cidades de origem e destino (obrigatório no schema CT-e 4.00)
+    // Usa IBGE salvo no cadastro; fallback por nome de cidade via ViaCEP
+    const cExt = c as Cte & { ibge_origem?: string; ibge_destino?: string };
     const [ibgeIni, ibgeFim] = await Promise.all([
-      buscarIbge(c.municipio_origem, c.uf_origem),
-      buscarIbge(c.municipio_destino, c.uf_destino),
+      cExt.ibge_origem ? Promise.resolve(cExt.ibge_origem) : buscarIbge(c.municipio_origem, c.uf_origem),
+      cExt.ibge_destino ? Promise.resolve(cExt.ibge_destino) : buscarIbge(c.municipio_destino, c.uf_destino),
     ]);
 
     const payload = {
@@ -959,7 +964,7 @@ function CtePageInner() {
 
               {/* ── Percurso: Origem e Destino na mesma linha ── */}
               <div style={divider}>Percurso</div>
-              <div style={{ gridColumn: "1 / 3" }}>
+              <div>
                 <label style={lbl}>Município de Origem</label>
                 <input value={form.municipio_origem} onChange={e => setForm(f => ({ ...f, municipio_origem: e.target.value }))} style={inp} placeholder="Nova Mutum" />
               </div>
@@ -969,8 +974,12 @@ function CtePageInner() {
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
+              <div>
+                <label style={lbl}>Cód. IBGE Origem {form.ibge_origem ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
+                <input value={form.ibge_origem} onChange={e => setForm(f => ({ ...f, ibge_origem: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106455" maxLength={7} />
+              </div>
               <div style={{ gridColumn: "4 / 5" }} />
-              <div style={{ gridColumn: "1 / 3" }}>
+              <div>
                 <label style={lbl}>Município de Destino</label>
                 <input value={form.municipio_destino} onChange={e => setForm(f => ({ ...f, municipio_destino: e.target.value }))} style={inp} placeholder="Rondonópolis" />
               </div>
@@ -979,6 +988,10 @@ function CtePageInner() {
                 <select value={form.uf_destino} onChange={e => setForm(f => ({ ...f, uf_destino: e.target.value }))} style={inp}>
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
+              </div>
+              <div>
+                <label style={lbl}>Cód. IBGE Destino {form.ibge_destino ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
+                <input value={form.ibge_destino} onChange={e => setForm(f => ({ ...f, ibge_destino: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5107602" maxLength={7} />
               </div>
               <div style={{ gridColumn: "4 / 5" }} />
 
