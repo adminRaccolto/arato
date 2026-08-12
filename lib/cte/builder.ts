@@ -157,7 +157,8 @@ function gerarCCT(): string {
 
 // ── Formatadores ──────────────────────────────────────────────────────────────
 const p2 = (n: number) => n.toFixed(2);
-const p3 = (n: number) => n.toFixed(3);
+// qCarga usa TDec_1204 (4 casas decimais obrigatórias no schema CT-e 4.00)
+const p4 = (n: number) => n.toFixed(4);
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -337,12 +338,12 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
         <infQ>
           <cUnid>01</cUnid>
           <tpMed>PESO BRUTO</tpMed>
-          <qCarga>${p3(input.peso_bruto_kg)}</qCarga>
+          <qCarga>${p4(input.peso_bruto_kg)}</qCarga>
         </infQ>
         <infQ>
           <cUnid>01</cUnid>
           <tpMed>PESO LIQUIDO</tpMed>
-          <qCarga>${p3(input.peso_liquido_kg)}</qCarga>
+          <qCarga>${p4(input.peso_liquido_kg)}</qCarga>
         </infQ>
       </infCarga>
       ${input.nfe_chave ? `<infDoc>
