@@ -17,6 +17,7 @@ import {
   listarImoveisUrbanos,
   listarFazendas,
   listarCentrosCustoGeralDaConta,
+  listarPessoasDaConta,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -253,7 +254,7 @@ export default function ContratosFinanceiros() {
       });
     listarFazendas(fazendaId).then(f => setFazendas(f as { id: string; nome: string }[])).catch(() => {});
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
-    supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).eq("fornecedor", true).order("nome").then(({ data }) => setPessoas(data ?? []));
+    listarPessoasDaConta(fazendaId).then(all => setPessoas(all)).catch(() => {});
     supabase.from("produtores").select("*").eq("conta_id", contaId).order("nome").then(({ data }) => setProdutores(data ?? []));
     const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => { const t = d.usdPtax ?? d.usdBrl; if (t && t > 1) setPtax(t); }).catch(() => {});
     buscarPtax();
@@ -298,8 +299,8 @@ export default function ContratosFinanceiros() {
     // 1. Tenta na lista já carregada
     const local = pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
     if (local) { onPessoaChange(local.id); setCnpjBuscaStatus("encontrado"); return; }
-    // 2. Busca no banco (inclui pessoas sem flag fornecedor)
-    const { data } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).limit(500);
+    // 2. Busca direta por CPF/CNPJ (fallback — pessoas já deveriam estar em memória)
+    const { data } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).ilike("cpf_cnpj", `%${doc}%`).limit(5);
     const match = (data ?? []).find((p: { cpf_cnpj?: string }) => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
     if (match) {
       setPessoas(prev => prev.find(p => p.id === match.id) ? prev : [...prev, match as Pessoa]);

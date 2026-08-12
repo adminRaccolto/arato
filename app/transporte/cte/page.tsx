@@ -5,6 +5,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarPessoasDaConta } from "../../../lib/db";
 import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
@@ -314,17 +315,17 @@ function CtePageInner() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId];
-    const [{ data: cd }, { data: vd }, { data: md }, { data: pd }, { data: ed }] = await Promise.all([
+    const [{ data: cd }, { data: vd }, { data: md }, todasPessoas, { data: ed }] = await Promise.all([
       supabase.from("ctes").select("*").in("fazenda_id", ids).order("data_emissao", { ascending: false }),
       supabase.from("veiculos").select("id, placa, tipo, cap_kg").in("fazenda_id", ids).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, cnh").in("fazenda_id", ids).eq("ativo", true),
-      supabase.from("pessoas").select("id, nome, cpf_cnpj, municipio, estado").in("fazenda_id", ids),
+      listarPessoasDaConta(fazendaId),  // paginado — retorna todas as pessoas sem limite de 1000
       supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, rntrc").in("fazenda_id", ids).contains("finalidades", ["transportadora"]),
     ]);
     setCtes(cd ?? []);
     setVeiculos(vd ?? []);
     setMotoristas(md ?? []);
-    setPessoas((pd ?? []).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })));
+    setPessoas(todasPessoas);  // já vem ordenado por localeCompare pt-BR
     setEmpresasTransp((ed ?? []).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
     // Próximo número
     if (cd && cd.length > 0) {

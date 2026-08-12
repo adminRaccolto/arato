@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarPessoasDaConta } from "../../../lib/db";
 import type { Pessoa, Produtor } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
 import ProdutorCombo from "../../../components/ProdutorCombo";
@@ -178,13 +179,13 @@ export default function TriangulacaoPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
-    const [{ data: tri }, { data: pes }, { data: prod }] = await Promise.all([
+    const [{ data: tri }, todasPessoas, { data: prod }] = await Promise.all([
       supabase.from("triangulacoes").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }),
-      supabase.from("pessoas").select("id,nome,tipo,cpf_cnpj,municipio,estado,logradouro").in("fazenda_id", fazendaIds).order("nome"),
+      listarPessoasDaConta(fazendaId),  // paginado — retorna todas as pessoas sem limite de 1000
       supabase.from("produtores").select("id,nome,tipo,cpf_cnpj,inscricao_est,municipio,estado").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     setLista((tri ?? []) as Triangulacao[]);
-    setPessoas(((pes ?? []) as Pessoa[]).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })));
+    setPessoas(todasPessoas as Pessoa[]);  // já ordenado por localeCompare pt-BR
     setProdutores((prod ?? []) as Produtor[]);
     setLoading(false);
   }, [fazendaId]);
