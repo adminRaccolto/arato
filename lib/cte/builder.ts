@@ -295,7 +295,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
         <toma>${input.tomador_tipo}</toma>
       </toma3>
     </ide>
-    ${input.observacao ? `<compl><xObs>${esc(input.observacao)}</xObs></compl>` : ""}
+    ${input.observacao && input.observacao.trim().length >= 15 ? `<compl><xObs>${esc(input.observacao.trim().slice(0, 2000))}</xObs></compl>` : ""}
     <emit>
       <${docTagE}>${cpfcnpjE}</${docTagE}>
       ${e.ie ? `<IE>${esc(e.ie)}</IE>` : "<IE>ISENTO</IE>"}
@@ -333,7 +333,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     <infCTeNorm>
       <infCarga>
         <vCarga>${p2(input.valor_mercadoria)}</vCarga>
-        <proPred>${esc(input.produto_descricao)}</proPred>
+        <proPred>${esc((input.produto_descricao || "CARGA AGRICOLA").trim().slice(0, 60) || "CARGA AGRICOLA")}</proPred>
         ${input.ncm ? `<xOutCat>${input.ncm}</xOutCat>` : ""}
         <infQ>
           <cUnid>01</cUnid>
@@ -351,7 +351,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <chave>${input.nfe_chave.replace(/\D/g, "")}</chave>
         </infNFe>
       </infDoc>` : ""}
-      <infModal versaoModal="4.00">
+      <infModal versao="4.00">
         <rodo>
           <RNTRC>${e.rntrc || "ISENTO"}</RNTRC>
         </rodo>

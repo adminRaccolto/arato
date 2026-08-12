@@ -149,13 +149,21 @@ export async function emitirCTe(
     })),
   });
   const built = buildCTe({ ...inputBase, emitente });
-  // Log dos primeiros 800 chars para diagnóstico de cStat 215 sem expor dados sensíveis completos
-  console.log("[CT-e XML preview]", built.xml.slice(0, 800));
 
   // 6. Assinar
   let xmlAssinado: string;
   try { xmlAssinado = assinarCTe(built.xml, pem); }
   catch (e) { return { sucesso: false, cStat: "503", xMotivo: `Erro na assinatura: ${e}`, xmlAssinado: built.xml }; }
+
+  // Log completo do XML assinado em partes para diagnóstico de cStat 215
+  const tamanhoParte = 1200;
+  const totalPartes = Math.ceil(xmlAssinado.length / tamanhoParte);
+  for (let i = 0; i < totalPartes; i++) {
+    console.log(
+      `[CT-e XML PARTE ${i + 1}/${totalPartes}]`,
+      xmlAssinado.slice(i * tamanhoParte, (i + 1) * tamanhoParte)
+    );
+  }
 
   // 7. Transmitir
   let resposta;
