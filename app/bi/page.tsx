@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import TopNav from "../../components/TopNav";
+import PlanoGate from "../../components/PlanoGate";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
@@ -293,7 +294,7 @@ const CAT_ICONE: Record<Categoria,  string> = { Fiscal: "📄", Financeiro: "�
 
 // ── Componente principal ──────────────────────────────────────
 export default function BI() {
-  const { fazendaId, fazendaIds, contaId, userRole, logoCliente } = useAuth();
+  const { fazendaId, fazendaIds, contaId, userRole, logoCliente, podeAcessarPlano, modulosCarregados } = useAuth();
   const router = useRouter();
 
   const [fazenda,     setFazenda]     = useState<Fazenda | null>(null);
@@ -1082,6 +1083,8 @@ export default function BI() {
     } catch { setRtLancModal(l); }
     finally { setLoadingContrato(false); }
   }
+
+  if (modulosCarregados && !podeAcessarPlano("bi")) return <PlanoGate modulo="bi" />;
 
   // ─────────────────────────────────────────────────────────────
   return (

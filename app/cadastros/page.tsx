@@ -7704,7 +7704,8 @@ function CadastrosInner() {
             <div style={{ marginBottom: 14 }}><label style={lbl}>Número</label><input style={inp} value={fPes.numero} onChange={e => setFPes(p => ({ ...p, numero: e.target.value }))} /></div>
             <div style={{ marginBottom: 14 }}><label style={lbl}>Complemento</label><input style={inp} value={fPes.complemento} onChange={e => setFPes(p => ({ ...p, complemento: e.target.value }))} /></div>
             <div style={{ marginBottom: 14 }}><label style={lbl}>Bairro</label><input style={inp} value={fPes.bairro} onChange={e => setFPes(p => ({ ...p, bairro: e.target.value }))} /></div>
-            <div style={{ gridColumn: "1/3", marginBottom: 20 }}><label style={lbl}>Município</label><input style={inp} value={fPes.municipio} onChange={e => setFPes(p => ({ ...p, municipio: e.target.value }))} /></div>
+            <div style={{ marginBottom: 20 }}><label style={lbl}>Município</label><input style={inp} value={fPes.municipio} onChange={e => setFPes(p => ({ ...p, municipio: e.target.value }))} /></div>
+            <div style={{ marginBottom: 20 }}><label style={lbl}>Cód. IBGE Município</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" value={fPes.municipio_ibge} onChange={e => setFPes(p => ({ ...p, municipio_ibge: e.target.value.replace(/\D/g, "") }))} /></div>
             <div style={{ marginBottom: 20 }}><label style={lbl}>Estado</label><select style={inp} value={fPes.estado} onChange={e => setFPes(p => ({ ...p, estado: e.target.value }))}>{ESTADOS.map(s => <option key={s}>{s}</option>)}</select></div>
 
             {/* ── Seção 3: Tributação ── */}

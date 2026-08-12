@@ -2092,4 +2092,102 @@ Ferramenta de manutenção de dados: permite contar, limpar e zerar registros de
 | Definir regras de rateio | Configurações → Regras de Rateio |
 | Limpar ou zerar dados de uma fazenda (raccotlo) | /admin/dados |
 | Zerar estoque sem apagar cadastro (raccotlo) | /admin/dados → Estoque & Compras → Zeramento de Estoque |
+| Relatório de romaneios de entrada | Estoque → Relatórios → Romaneios de Entrada |
+| Relatório de romaneios de saída por contrato | Estoque → Relatórios → Romaneios de Saída |
+| Emitir NF de transferência entre fazendas | Fiscal → NF-e → aba NF de Transferência |
+| Preencher código IBGE do município (pessoa) | Cadastros → Pessoas → editar → seção Endereço → campo "Cód. IBGE Município" |
+
+---
+
+## MÓDULO 41 — NF DE TRANSFERÊNCIA ENTRE FAZENDAS
+
+**Caminho:** Fiscal → NF-e → aba **NF de Transferência**
+
+### O que faz
+Emite NF-e de transferência de mercadorias entre estabelecimentos da mesma conta (fazendas do mesmo produtor). Não é uma venda — é uma remessa interna. Usa CFOPs específicos de transferência.
+
+### CFOPs disponíveis
+- **5.152** — Transferência de produção do estabelecimento (intraestadual)
+- **6.152** — Transferência de produção do estabelecimento (interestadual)
+- **5.906** — Remessa para armazenagem (intraestadual)
+- **6.906** — Remessa para armazenagem (interestadual)
+
+### Como emitir
+1. Clique na aba **NF de Transferência**
+2. Selecione o **Produtor / Emitente** (o produtor que aparece como remetente na NF-e)
+3. Selecione o **CFOP / Natureza** conforme o estado de destino e a finalidade
+4. Selecione a **Fazenda Destino** (não pode ser a mesma fazenda ativa)
+5. Escolha o **Produto (NCM)** e informe quantidade + unidade + valor unitário
+6. Preencha as datas de emissão e saída
+7. Clique em **Gerar NF-e**
+
+O sistema preenche automaticamente o texto legal obrigatório no campo de observações conforme a legislação.
+
+### Diferença de NF de Remessa
+- **NF de Remessa (CFOP 5.905/6.905):** para envio a terceiros (ex: armazém de terceiros, industrialização)
+- **NF de Transferência (5.152/6.152):** para envio entre estabelecimentos do **mesmo** titular
+
+---
+
+## MÓDULO 42 — RELATÓRIO DE ROMANEIOS
+
+**Caminho:** Estoque → Relatórios → **Romaneios de Entrada** ou **Romaneios de Saída**
+
+### O que faz
+Exibe todos os romaneios do período com totais de peso e sacas. Separado em duas abas: entrada (lavoura → armazém) e saída (entrega por contrato).
+
+### Aba Entrada (Lavoura → Armazém)
+Mostra os romaneios registrados em **Estoque → Romaneio de Entrada**. Cada linha representa um caminhão que entrou com produção da lavoura.
+
+**Filtros disponíveis:**
+- Fazenda, Data início/fim
+- Ano Safra → Ciclo (hierárquico)
+- Status (Confirmado / Rascunho)
+- Busca por placa, motorista ou produto
+
+**Totais automáticos:** Total de cargas · Peso Bruto (t) · Peso Líquido (t) · Total de sacas
+
+### Aba Saída (Entrega por Contrato)
+Mostra os romaneios de entrega registrados nos contratos de comercialização.
+
+**Agrupamento por contrato:** ativado por padrão. Clique no card do contrato para expandir e ver cada caminhão individual, com subtotal por contrato.
+
+**Impressão:** botão "Imprimir" abre impressão em A4 paisagem com todos os grupos expandidos.
+
+### Dúvidas frequentes
+- **"Não aparecem romaneios":** verifique o período de datas (padrão: último mês). Clique em **Buscar** após alterar os filtros.
+- **"Sacas zeradas":** o campo "sacas" pode não ter sido calculado no romaneio. Verifique se a classificação foi preenchida (umidade, impureza, avariados).
+
+---
+
+## ATUALIZAÇÃO — CT-e: Validação de Endereço do Remetente
+
+O sistema agora **bloqueia a transmissão do CT-e** se o endereço do remetente estiver incompleto. Os campos obrigatórios são:
+- Logradouro, Número, Bairro
+- Código IBGE do município, Nome do município, UF
+
+**Mensagem de erro:** "Endereço do remetente incompleto. Campos ausentes: logradouro, numero..."
+
+**Solução:** Vá em **Cadastros → Pessoas**, edite a pessoa que está como remetente no CT-e e preencha o endereço completo. O campo **Cód. IBGE Município** é preenchido automaticamente quando você digita o CEP e o sistema faz a consulta ViaCEP. Se o IBGE não foi preenchido, edite o campo manualmente com o código de 7 dígitos do município (ex: 5106224 para Lucas do Rio Verde/MT).
+
+---
+
+## ATUALIZAÇÃO — Cadastro de Pessoas: Campo Código IBGE
+
+O cadastro de **Pessoas** agora exibe o campo **Cód. IBGE Município** na seção de Endereço, ao lado de Município e Estado.
+
+**Por que é importante:** o código IBGE do município é obrigatório no schema do CT-e 4.00 e do MDF-e. Sem esse código preenchido, o CT-e não pode ser transmitido.
+
+**Preenchimento automático:** ao digitar o CEP completo, o sistema consulta ViaCEP e preenche automaticamente o código IBGE. Se necessário, edite manualmente: são 7 dígitos numéricos (ex: 5106224 para Lucas do Rio Verde-MT, 5108402 para Sinop-MT, 5102504 para Cuiabá-MT).
+
+---
+
+## ATUALIZAÇÃO — Controle de Módulos Add-on
+
+Os módulos **Algodão**, **BI Raccotlo**, **Proteção de Margem** e outros add-ons agora são bloqueados na própria página quando o módulo está desabilitado para a conta.
+
+**Antes:** o módulo desabilitado sumia do menu mas a página ainda era acessível pela URL direta.
+**Agora:** a página exibe a tela de upgrade/bloqueio se o módulo não estiver habilitado.
+
+**Para o admin (Raccotlo):** para ativar ou desativar um add-on para um cliente, acesse **Gestão Arato → Módulos**, selecione a conta, marque/desmarque o módulo e clique em **Salvar Alterações**. A mudança entra em vigor imediatamente (sem precisar o cliente recarregar a página, graças à sincronização em tempo real via Realtime).
 `;

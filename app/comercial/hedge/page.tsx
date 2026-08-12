@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import PlanoGate from "@/components/PlanoGate";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -78,17 +79,9 @@ function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onC
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function HedgePage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { fazendaId, userRole, raccotloGestor, podeAcessar, fazTrabalho } = useAuth() as any;
+  const { fazendaId, userRole, raccotloGestor, fazTrabalho, podeAcessarPlano, modulosCarregados } = useAuth() as any;
   const router = useRouter();
   const fazId = fazTrabalho || fazendaId;
-
-  // Gate: superadmin OU módulo habilitado para a conta
-  const isSuperadmin = userRole === "raccotlo" || userRole === "raccotlo_gestor";
-  const temAcesso    = isSuperadmin || podeAcessar("protecao_margem");
-
-  useEffect(() => {
-    if (userRole !== null && !temAcesso) router.replace("/");
-  }, [userRole, temAcesso, router]);
 
   const sb = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -432,7 +425,7 @@ export default function HedgePage() {
     finally { setSalvando(false); }
   }
 
-  if (!temAcesso && userRole !== null) return null;
+  const isSuperadmin = userRole === "raccotlo" || userRole === "raccotlo_gestor";
 
   // ─── Render ───────────────────────────────────────────────────────────────
   const ABAS: { key: Aba; label: string }[] = [
@@ -460,6 +453,8 @@ export default function HedgePage() {
       </div>
     );
   }
+
+  if (modulosCarregados && !podeAcessarPlano("protecao_margem")) return <PlanoGate modulo="protecao_margem" />;
 
   return (
     <div style={{ padding: "24px 28px", maxWidth: 1400, margin: "0 auto", background: "var(--bg-page,#F4F6FA)", minHeight: "100vh" }}>

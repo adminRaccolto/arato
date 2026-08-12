@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
 import { listarFazendas } from "../../lib/db";
 import TopNav from "../../components/TopNav";
+import PlanoGate from "../../components/PlanoGate";
 import type { PrecosData } from "../api/precos/route";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -138,7 +139,7 @@ const btnSec: React.CSSProperties = {
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function AlgodaoPage() {
-  const { fazendaId, contaId, fazendaIds, userRole } = useAuth();
+  const { fazendaId, contaId, fazendaIds, userRole, podeAcessarPlano, modulosCarregados } = useAuth();
 
   // ── Seletores globais ──
   const [fazendas,    setFazendas]    = useState<Fazenda[]>([]);
@@ -430,6 +431,8 @@ export default function AlgodaoPage() {
   ];
 
   const alertasBicudo = armadilhas.filter(a => a.ultima_leitura && a.ultima_leitura.capturas >= THRESHOLD_BICUDO);
+
+  if (modulosCarregados && !podeAcessarPlano("algodao")) return <PlanoGate modulo="algodao" />;
 
   return (
     <>

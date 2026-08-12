@@ -134,6 +134,9 @@ const NAV: NavItem[] = [
       { id: "est-kardex",           label: "Kardex (Ficha de Estoque)",  path: "/estoque/kardex"                   },
       { id: "est-transferencias",   label: "Transferência entre Fazendas", path: "/estoque/transferencias"          },
       { id: "est-abastecimento",    label: "Abastecimento de Máquinas",  path: "/estoque/abastecimento"            },
+      { type: "divider", label: "Relatórios" },
+      { id: "est-rom-entrada",      label: "Romaneios de Entrada",        path: "/relatorios/romaneios?aba=entrada" },
+      { id: "est-rom-saida",        label: "Romaneios de Saída",          path: "/relatorios/romaneios?aba=saida"   },
     ],
   },
 
