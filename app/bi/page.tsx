@@ -390,7 +390,8 @@ export default function BI() {
 
   // Guard
   useEffect(() => {
-    if (userRole !== null && userRole !== "raccotlo") router.push("/");
+    const isRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional"].includes(userRole ?? "");
+    if (userRole !== null && !isRaccotlo) router.push("/");
   }, [userRole, router]);
 
   const carregar = useCallback(async () => {
@@ -458,7 +459,7 @@ export default function BI() {
   }, [fazendaId]);
 
   useEffect(() => {
-    if (userRole === "raccotlo" && fazendaId && fazendaIds.length > 0) carregar();
+    if (["raccotlo","raccotlo_gestor","raccotlo_operacional"].includes(userRole ?? "") && fazendaId && fazendaIds.length > 0) carregar();
   }, [userRole, fazendaId, fazendaIds, carregar]);
 
   const carregarAlertas = useCallback(async () => {
@@ -584,7 +585,7 @@ export default function BI() {
   }, [fazendaId, contaId]);
 
   useEffect(() => {
-    if (fazendaId && userRole === "raccotlo") carregarCF();
+    if (fazendaId && ["raccotlo","raccotlo_gestor","raccotlo_operacional"].includes(userRole ?? "")) carregarCF();
   }, [fazendaId, userRole, carregarCF]);
 
   useEffect(() => {
@@ -664,7 +665,8 @@ export default function BI() {
   }, [loading]);
 
   // ── Guard visual ──────────────────────────────────────────────
-  if (userRole === null || userRole !== "raccotlo") {
+  const isRaccotloUser = ["raccotlo","raccotlo_gestor","raccotlo_operacional"].includes(userRole ?? "");
+  if (userRole === null || !isRaccotloUser) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
         <TopNav />

@@ -1322,19 +1322,19 @@ export default function Contratos() {
     if (!confirm(`Excluir romaneio ${r.numero}? As sacas serão estornadas do contrato.`)) return;
     try {
       await excluirRomaneio(r.id);
-      const { data: cAtual } = await supabase
-        .from("contratos")
-        .select("entregue_sc, status")
-        .eq("id", r.contrato_id)
-        .single();
+      // Trigger do banco não subtrai no DELETE — recalcula a partir dos romaneios restantes
       setContratos(prev => prev.map(c => {
         if (c.id !== r.contrato_id) return c;
-        return {
-          ...c,
-          entregue_sc: cAtual?.entregue_sc ?? Math.max(0, (c.entregue_sc ?? 0) - (r.sacas ?? 0)),
-          status: cAtual?.status ?? c.status,
-          romaneios: c.romaneios.filter(rm => rm.id !== r.id),
-        };
+        const restantes    = c.romaneios.filter(rm => rm.id !== r.id);
+        const novoEntregue = restantes.reduce((s, rm) => s + (rm.sacas ?? 0), 0);
+        const novoStatus   = novoEntregue === 0
+          ? "aberto"
+          : novoEntregue >= (c.quantidade_sc ?? 0) ? "encerrado" : "parcial";
+        supabase.from("contratos")
+          .update({ entregue_sc: novoEntregue, status: novoStatus })
+          .eq("id", c.id)
+          .then(() => {});
+        return { ...c, entregue_sc: novoEntregue, status: novoStatus, romaneios: restantes };
       }));
     } catch(e: unknown) { alert("Erro ao excluir romaneio: " + sbErr(e)); }
   };

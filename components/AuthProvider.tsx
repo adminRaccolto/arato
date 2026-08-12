@@ -520,7 +520,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const podeAcessar = useCallback((modulo: string) => {
     // Módulos exclusivos da Raccolto — bloqueados para todos os usuários clientes
-    if (modulo === "conf_raccotlo" && userRole !== "raccotlo") return false;
+    const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor"].includes(userRole ?? "");
+    if (modulo === "conf_raccotlo" && !isAnyRaccotlo) return false;
     const p = permissoes[modulo] as unknown;
     if (p === undefined) return true;                            // sem restrição configurada
     if (Array.isArray(p)) return (p as string[]).includes("visualizar"); // novo formato
