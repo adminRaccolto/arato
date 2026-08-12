@@ -702,8 +702,17 @@ export async function listarRomaneios(fazenda_id: string): Promise<Romaneio[]> {
 export async function criarRomaneio(r: Omit<Romaneio, "id" | "created_at">): Promise<Romaneio> {
   const { data, error } = await supabase.from("romaneios").insert(r).select().single();
   if (error) throw error;
-  // O trigger do banco atualiza entregue_sc e status do contrato automaticamente
   return data;
+}
+
+export async function atualizarRomaneio(id: string, r: Partial<Omit<Romaneio, "id" | "created_at">>): Promise<void> {
+  const { error } = await supabase.from("romaneios").update(r).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirRomaneio(id: string): Promise<void> {
+  const { error } = await supabase.from("romaneios").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export async function atualizarContrato(id: string, c: Partial<Contrato>): Promise<void> {

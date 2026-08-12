@@ -323,8 +323,9 @@ export default function NfCompraPage() {
   const [ciclosNF,    setCiclosNF]    = useState<Ciclo[]>([]);
   // Estado para cadastro rápido de fornecedor
   const [savingForn, setSavingForn] = useState(false);
-  // Estado para "Aplicar a todos" no passo de itens
-  const [bulkCC,    setBulkCC]    = useState("");
+  // Modo de rateio de Centro de Custos
+  const [ccMode, setCcMode] = useState<"nenhum" | "global" | "por_produto">("nenhum");
+  const [ccGlobalMaquinaId, setCcGlobalMaquinaId] = useState("");
   const [bulkOpGer, setBulkOpGer] = useState("");
 
   // Itens
@@ -897,7 +898,18 @@ export default function NfCompraPage() {
           tipo === "vef"          ? "vef"     :
           tipo === "remessa"      ? "remessa" :
           tipo === "custo_direto" ? "direto"  :
+          ccMode === "global"     ? "direto"  :
           it.tipo_apropiacao;
+        // Modo global: sobrescreve CC e maquina de todos os itens
+        if (ccMode === "global") {
+          it.centro_custo_id = cab.centro_custo_id;
+          it.maquina_id      = ccGlobalMaquinaId;
+        }
+        // Modo nenhum: garante que nenhum item herda CC
+        if (ccMode === "nenhum") {
+          it.centro_custo_id = "";
+          it.maquina_id      = "";
+        }
 
         const isPAItem = !!it.principio_ativo_id;
         const itemPayload: Omit<NfEntradaItem, "id" | "created_at"> = {
@@ -2259,19 +2271,53 @@ export default function NfCompraPage() {
                           style={inp}
                         />
                       </div>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-                          <label style={{ ...lbl, marginBottom: 0 }}>Centro de Custo (NF)</label>
-                          {sugestaoNome && (
-                            <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>
-                              ✦ {sugestaoNome}
-                            </span>
+                      {/* Rateio nos centros de custos */}
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: ccMode !== "nenhum" ? 10 : 0 }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" as const }}>
+                            <input type="checkbox" checked={ccMode !== "nenhum"} onChange={e => { setCcMode(e.target.checked ? "global" : "nenhum"); if (!e.target.checked) { setCab(p=>({...p,centro_custo_id:""})); setCcGlobalMaquinaId(""); } }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Ratear nos centros de custos?</span>
+                          </label>
+                          {sugestaoNome && ccMode === "nenhum" && (
+                            <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>
                           )}
                         </div>
-                        <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); }} style={inp}>
-                          <option value="">— nenhum —</option>
-                          {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
-                        </select>
+                        {ccMode !== "nenhum" && (
+                          <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
+                            {/* Toggle Global vs Por produto */}
+                            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                              {(["global", "por_produto"] as const).map(m => (
+                                <button key={m} onClick={() => setCcMode(m)}
+                                  style={{ padding: "5px 14px", borderRadius: 8, border: `0.5px solid ${ccMode === m ? "#1A4870" : "var(--border-table)"}`, background: ccMode === m ? "#1A4870" : "var(--bg-card)", color: ccMode === m ? "#fff" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                                  {m === "global" ? "Global — um único CC para toda a NF" : "Por produto — CC individual por item"}
+                                </button>
+                              ))}
+                            </div>
+                            {ccMode === "global" && (
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                                <div>
+                                  <label style={{ ...lbl, marginBottom: 3 }}>Centro de Custo{sugestaoNome && <span style={{ marginLeft: 6, fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>}</label>
+                                  <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); setCcGlobalMaquinaId(""); }} style={inp}>
+                                    <option value="">— selecionar CC —</option>
+                                    {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                                  </select>
+                                </div>
+                                {ccManutencao(cab.centro_custo_id) && (
+                                  <div>
+                                    <label style={lbl}>Máquina (manutenção)</label>
+                                    <select value={ccGlobalMaquinaId} onChange={e => setCcGlobalMaquinaId(e.target.value)} style={{ ...inp, background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
+                                      <option value="">🔧 Selecionar máquina</option>
+                                      {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {ccMode === "por_produto" && (
+                              <div style={{ fontSize: 11, color: "var(--text-2)" }}>Atribua o centro de custo individualmente em cada produto da NF abaixo.</div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label style={lbl}>Ciclo</label>
@@ -2408,30 +2454,10 @@ export default function NfCompraPage() {
                     </button>
                   </div>
 
-                  {/* Painel "Aplicar Centro de Custo a todos" — custo_direto e insumos */}
-                  {(tipo === "custo_direto" || tipo === "insumos") && (
-                    <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
-                        Aplicar Centro de Custo a todos os itens
-                      </div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                        <div style={{ flex: "1 1 260px" }}>
-                          <label style={lbl}>Centro de Custo</label>
-                          <select value={bulkCC} onChange={e => setBulkCC(e.target.value)} style={{ ...inp, fontSize: 12 }}>
-                            <option value="">— não alterar —</option>
-                            {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
-                          </select>
-                        </div>
-                        <button
-                          onClick={() => {
-                            if (!bulkCC) return;
-                            setItens(prev => prev.map(it => ({ ...it, centro_custo_id: bulkCC })));
-                          }}
-                          style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
-                        >
-                          Aplicar →
-                        </button>
-                      </div>
+                  {/* Painel de CC por produto — só visível no modo "por_produto" */}
+                  {ccMode === "por_produto" && (
+                    <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 11, color: "var(--text-2)" }}>
+                      Atribua o centro de custo em cada produto individualmente — use os botões <strong>📦 Estoque</strong> / <strong>💸 C. Custo</strong> abaixo.
                     </div>
                   )}
 
@@ -2500,17 +2526,20 @@ export default function NfCompraPage() {
 
                             {/* Col 2 — Insumo / C. Custo */}
                             <div style={{ padding: "7px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
-                              <div style={{ display: "flex", gap: 2 }}>
-                                <button
-                                  onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
-                                  style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "var(--border-table)" : "#111111"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#E8E8E8", color: it.tipo_apropiacao === "direto" ? "var(--text-3)" : "#111111", cursor: "pointer", fontWeight: 600 }}
-                                >📦 Estoque</button>
-                                <button
-                                  onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "" })}
-                                  style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--border-table)"}`, background: it.tipo_apropiacao === "direto" ? "#E8F5E9" : "var(--bg-card)", color: it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--text-3)", cursor: "pointer", fontWeight: 600 }}
-                                >💸 C. Custo</button>
-                              </div>
-                              {it.tipo_apropiacao === "direto" ? (
+                              {/* Botões Estoque/CC — só aparecem no modo "por produto" */}
+                              {ccMode === "por_produto" && (
+                                <div style={{ display: "flex", gap: 2 }}>
+                                  <button
+                                    onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
+                                    style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "var(--border-table)" : "#111111"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#E8E8E8", color: it.tipo_apropiacao === "direto" ? "var(--text-3)" : "#111111", cursor: "pointer", fontWeight: 600 }}
+                                  >📦 Estoque</button>
+                                  <button
+                                    onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "" })}
+                                    style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--border-table)"}`, background: it.tipo_apropiacao === "direto" ? "#E8F5E9" : "var(--bg-card)", color: it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--text-3)", cursor: "pointer", fontWeight: 600 }}
+                                  >💸 C. Custo</button>
+                                </div>
+                              )}
+                              {(ccMode === "por_produto" && it.tipo_apropiacao === "direto") ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                   <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                     <option value="">— selecionar CC —</option>

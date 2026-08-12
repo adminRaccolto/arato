@@ -4,7 +4,7 @@ import TopNav from "../../components/TopNav";
 import BalancaSerial from "../../components/BalancaSerial";
 import {
   listarContratos, listarContratosDaConta, criarContrato, atualizarContrato, excluirContrato, encerrarContratosPorSafras,
-  listarRomaneios, criarRomaneio,
+  listarRomaneios, criarRomaneio, atualizarRomaneio, excluirRomaneio,
   listarItensContrato, salvarItensContrato,
   listarCessaoDebitos, salvarCessaoDebitos,
   listarPessoas, listarProdutores, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
@@ -619,6 +619,7 @@ export default function Contratos() {
 
   // ── modal romaneio ───────────────────────────────────────────
   const [modalRomaneio, setModalRomaneio] = useState(false);
+  const [editRomaneio, setEditRomaneio] = useState<Romaneio | null>(null);
   const ROM_VAZIO = () => ({
     contratoId:"", placa:"", pesoBruto:"", tara:"",
     // Peso estimado — CIF: caminhão do comprador pesa no destino
@@ -1061,9 +1062,60 @@ export default function Contratos() {
   const gerarRomaneio = async () => {
     if (!contratoSel || !fRom.placa || plCalc <= 0) return;
     if (!fRom.pesoEstimado && (!fRom.pesoBruto || !fRom.tara)) { alert("Informe Peso Bruto e Tara."); return; }
-    const todosRomaneios = contratos.flatMap(c => c.romaneios);
     setSalvando(true);
     try {
+      // ── EDIÇÃO de romaneio existente ──────────────────────────
+      if (editRomaneio) {
+        await atualizarRomaneio(editRomaneio.id, {
+          placa:                 fRom.placa.toUpperCase(),
+          peso_bruto_kg:         fRom.pesoEstimado ? plCalc : Number(fRom.pesoBruto),
+          tara_kg:               fRom.pesoEstimado ? 0 : Number(fRom.tara),
+          is_peso_estimado:      fRom.pesoEstimado || undefined,
+          umidade_pct:           romUmidade   || undefined,
+          umidade_padrao_pct:    temClassif ? clsComm.umidade_padrao  : undefined,
+          desconto_umidade_kg:   descUmid     || undefined,
+          impureza_pct:          romImpureza  || undefined,
+          impureza_padrao_pct:   temClassif ? clsComm.impureza_padrao : undefined,
+          desconto_impureza_kg:  descImpur    || undefined,
+          avariados_pct:         romAvariados || undefined,
+          avariados_padrao_pct:  temClassif ? clsComm.avariados_padrao : undefined,
+          desconto_avariados_kg: descAvar     || undefined,
+          peso_classificado_kg:  temClassif ? pesoClass : plCalc,
+          data:                  editRomaneio.data,
+          ph_hl:               parseFloat(fRom.ph)               || undefined,
+          ardidos_pct:         pArd  || undefined,
+          mofados_pct:         pMof  || undefined,
+          fermentados_pct:     pFer  || undefined,
+          germinados_pct:      pGer  || undefined,
+          esverdeados_pct:     pEsv  || undefined,
+          quebrados_pct:       pQue  || undefined,
+          carunchados_pct:     pCar  || undefined,
+          outros_avariados_pct: pOut || undefined,
+          peso_liquido_destino: pesoDest  || undefined,
+          sacas_faturadas:      parseFloat(fRom.sacas_faturadas) || undefined,
+          diferenca_kg:         pesoDest > 0 && pesoClass > 0 ? difKg : undefined,
+          obs_divergencia:      fRom.obs_divergencia || undefined,
+        });
+        const [{ data: cAtual }, { data: romAtual }] = await Promise.all([
+          supabase.from("contratos").select("entregue_sc, status").eq("id", contratoSel.id).single(),
+          supabase.from("romaneios").select("*").eq("id", editRomaneio.id).single(),
+        ]);
+        setContratos(prev => prev.map(c => {
+          if (c.id !== contratoSel.id) return c;
+          return {
+            ...c,
+            entregue_sc: cAtual?.entregue_sc ?? c.entregue_sc,
+            status: cAtual?.status ?? c.status,
+            romaneios: c.romaneios.map(r => r.id === editRomaneio.id ? (romAtual ?? r) : r),
+          };
+        }));
+        setEditRomaneio(null);
+        setFRom(ROM_VAZIO());
+        setModalRomaneio(false);
+        return;
+      }
+      // ── CRIAÇÃO de romaneio novo ───────────────────────────────
+      const todosRomaneios = contratos.flatMap(c => c.romaneios);
       const criado = await criarRomaneio({
         contrato_id:           contratoSel.id,
         fazenda_id:            fazendaId!,
@@ -1227,11 +1279,64 @@ export default function Contratos() {
           ));
         }
       }
+      setEditRomaneio(null);
       setFRom(ROM_VAZIO());
       setModalRomaneio(false);
       setAbaLista("expedicao");
     } catch(e: unknown) { alert("Erro ao salvar romaneio: " + sbErr(e)); }
     finally { setSalvando(false); }
+  };
+
+  // ── abrir edição de romaneio ──────────────────────────────────
+  const abrirEditarRomaneio = (r: Romaneio) => {
+    setEditRomaneio(r);
+    setFRom({
+      contratoId:       r.contrato_id,
+      placa:            r.placa,
+      pesoBruto:        String(r.peso_bruto_kg ?? ""),
+      tara:             String(r.tara_kg ?? ""),
+      pesoEstimado:     r.is_peso_estimado ?? false,
+      pesoEstimadoKg:   r.is_peso_estimado ? String(r.peso_bruto_kg ?? "") : "",
+      umidade:          String(r.umidade_pct ?? ""),
+      impureza:         String(r.impureza_pct ?? ""),
+      ph:               String(r.ph_hl ?? ""),
+      ardidos:          String(r.ardidos_pct ?? ""),
+      mofados:          String(r.mofados_pct ?? ""),
+      fermentados:      String(r.fermentados_pct ?? ""),
+      germinados:       String(r.germinados_pct ?? ""),
+      esverdeados:      String(r.esverdeados_pct ?? ""),
+      quebrados:        String(r.quebrados_pct ?? ""),
+      carunchados:      String(r.carunchados_pct ?? ""),
+      outros_avariados: String(r.outros_avariados_pct ?? ""),
+      peso_destino:     String(r.peso_liquido_destino ?? ""),
+      sacas_faturadas:  String(r.sacas_faturadas ?? ""),
+      obs_divergencia:  r.obs_divergencia ?? "",
+      aplicarAdiant:    false,
+      adiantValor:      "",
+    });
+    setModalRomaneio(true);
+  };
+
+  // ── excluir romaneio ──────────────────────────────────────────
+  const deletarRomaneio = async (r: Romaneio & { contratoNumero?: string }) => {
+    if (!confirm(`Excluir romaneio ${r.numero}? As sacas serão estornadas do contrato.`)) return;
+    try {
+      await excluirRomaneio(r.id);
+      const { data: cAtual } = await supabase
+        .from("contratos")
+        .select("entregue_sc, status")
+        .eq("id", r.contrato_id)
+        .single();
+      setContratos(prev => prev.map(c => {
+        if (c.id !== r.contrato_id) return c;
+        return {
+          ...c,
+          entregue_sc: cAtual?.entregue_sc ?? Math.max(0, (c.entregue_sc ?? 0) - (r.sacas ?? 0)),
+          status: cAtual?.status ?? c.status,
+          romaneios: c.romaneios.filter(rm => rm.id !== r.id),
+        };
+      }));
+    } catch(e: unknown) { alert("Erro ao excluir romaneio: " + sbErr(e)); }
   };
 
   // ── registrar novo adiantamento ───────────────────────────────
@@ -1626,8 +1731,8 @@ export default function Contratos() {
                                         <table style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
                                           <thead>
                                             <tr style={{ background:"#FBF0D8" }}>
-                                              {["Romaneio","Data","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e"].map((h,i) => (
-                                                <th key={i} style={{ padding:"6px 10px", textAlign: i>=3?"center":"left", fontSize:10, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)" }}>{h}</th>
+                                              {["Romaneio","Data","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e",""].map((h,i) => (
+                                                <th key={i} style={{ padding:"6px 10px", textAlign: i>=3&&i<8?"center":"left", fontSize:10, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)" }}>{h}</th>
                                               ))}
                                             </tr>
                                           </thead>
@@ -1643,6 +1748,10 @@ export default function Contratos() {
                                                 <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11, fontWeight:600, color:"#111111" }}>{(r.sacas??0).toLocaleString("pt-BR")}</td>
                                                 <td style={{ padding:"6px 10px", textAlign:"center" }}>
                                                   {r.nfe_numero ? badge(`✓ ${r.nfe_numero}`) : <span style={{ fontSize:10, background:"#FAEEDA", color:"#633806", padding:"2px 6px", borderRadius:6 }}>⟳ Gerando…</span>}
+                                                </td>
+                                                <td style={{ padding:"6px 10px", whiteSpace:"nowrap" }}>
+                                                  <button onClick={e=>{e.stopPropagation();abrirEditarRomaneio(r);}} style={{ fontSize:10, padding:"2px 7px", border:"0.5px solid #1A4870", borderRadius:5, background:"transparent", color:"#1A4870", cursor:"pointer", marginRight:4 }}>✏ Editar</button>
+                                                  <button onClick={e=>{e.stopPropagation();deletarRomaneio(r);}} style={{ fontSize:10, padding:"2px 7px", border:"0.5px solid #E24B4A", borderRadius:5, background:"transparent", color:"#E24B4A", cursor:"pointer" }}>🗑</button>
                                                 </td>
                                               </tr>
                                             ))}
@@ -1746,8 +1855,8 @@ export default function Contratos() {
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
                         <tr style={{ background:"var(--bg-page)" }}>
-                          {["Romaneio","Data","Contrato","Comprador","Produto","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e"].map((h,i) => (
-                            <th key={i} style={{ padding:"8px 12px", textAlign:i>=6?"center":"left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
+                          {["Romaneio","Data","Contrato","Comprador","Produto","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e",""].map((h,i) => (
+                            <th key={i} style={{ padding:"8px 12px", textAlign:i>=6&&i<11?"center":"left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1782,6 +1891,10 @@ export default function Contratos() {
                                     </a>
                                   )
                                 }
+                              </td>
+                              <td style={{ padding:"9px 12px", whiteSpace:"nowrap" }}>
+                                <button onClick={()=>abrirEditarRomaneio(r)} style={{ fontSize:10, padding:"3px 8px", border:"0.5px solid #1A4870", borderRadius:5, background:"transparent", color:"#1A4870", cursor:"pointer", marginRight:4 }}>✏ Editar</button>
+                                <button onClick={()=>deletarRomaneio(r)} style={{ fontSize:10, padding:"3px 8px", border:"0.5px solid #E24B4A", borderRadius:5, background:"transparent", color:"#E24B4A", cursor:"pointer" }}>🗑</button>
                               </td>
                             </tr>
                           );
@@ -2644,15 +2757,15 @@ export default function Contratos() {
       {/* ══ MODAL ROMANEIO ══════════════════════════════════════ */}
       {modalRomaneio && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
-          onClick={e => { if (e.target===e.currentTarget) setModalRomaneio(false); }}>
+          onClick={e => { if (e.target===e.currentTarget) { setModalRomaneio(false); setEditRomaneio(null); setFRom(ROM_VAZIO()); } }}>
           <div style={{ background:"var(--bg-card)", borderRadius:14, padding:26, width:780, maxWidth:"97vw", maxHeight:"95vh", overflowY:"auto" }}>
-            <div style={{ fontWeight:600, fontSize:15, color:"var(--text-1)", marginBottom:2 }}>Novo Romaneio de Expedição</div>
-            <div style={{ fontSize:12, color:"var(--text-2)", marginBottom:16 }}>Pesagem + Classificação do grão. NF-e gerada automaticamente.</div>
+            <div style={{ fontWeight:600, fontSize:15, color:"var(--text-1)", marginBottom:2 }}>{editRomaneio ? `Editar Romaneio ${editRomaneio.numero}` : "Novo Romaneio de Expedição"}</div>
+            <div style={{ fontSize:12, color:"var(--text-2)", marginBottom:16 }}>{editRomaneio ? "Corrija os dados e salve. Lançamentos financeiros existentes não são alterados." : "Pesagem + Classificação do grão. NF-e gerada automaticamente."}</div>
 
             {/* Contrato */}
             <div style={{ marginBottom:12 }}>
               <label style={lbl}>Contrato *</label>
-              <select style={{ ...inp, fontSize:13 }} value={fRom.contratoId} onChange={e => setFRom(p=>({...p,contratoId:e.target.value}))}>
+              <select style={{ ...inp, fontSize:13, opacity: editRomaneio ? 0.7 : 1 }} value={fRom.contratoId} onChange={e => setFRom(p=>({...p,contratoId:e.target.value}))} disabled={!!editRomaneio}>
                 <option value="">— selecione —</option>
                 {contratos.filter(c=>c.status!=="encerrado"&&c.status!=="cancelado").map(c => (
                   <option key={c.id} value={c.id}>{c.numero} · {(c.comprador||"").split(" ")[0]} · {c.produto} · saldo {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc</option>
@@ -2944,10 +3057,10 @@ export default function Contratos() {
             )}
 
             <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:8 }}>
-              <button style={btnR} onClick={() => { setModalRomaneio(false); setFRom(ROM_VAZIO()); }}>Cancelar</button>
+              <button style={btnR} onClick={() => { setModalRomaneio(false); setEditRomaneio(null); setFRom(ROM_VAZIO()); }}>Cancelar</button>
               <button onClick={gerarRomaneio} disabled={salvando||!contratoSel||!fRom.placa||plCalc<=0}
                 style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1, background: fRom.pesoEstimado ? "#C9921B" : undefined }}>
-                {salvando ? "Salvando…" : "Confirmar Pesagem"}
+                {salvando ? "Salvando…" : editRomaneio ? "Salvar Alterações" : "Confirmar Pesagem"}
               </button>
             </div>
           </div>
