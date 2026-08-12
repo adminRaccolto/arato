@@ -64,6 +64,8 @@ const MODULOS_PERM: ModuloPermissao[] = [
   { id: "pecuaria",            label: "Pecuária",                       grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
   { id: "ia_cedula",           label: "IA — Extração de Cédula",        grupo: "Add-ons",        acoes: ["visualizar","criar"] },
   { id: "hedge",               label: "Hedge & Proteção de Margem",     grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "protecao_margem",     label: "Proteção de Margem (BI)",        grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "apoio_financeiro",    label: "Apoio Financeiro",               grupo: "Add-ons",        acoes: ["visualizar","criar","editar","excluir"] },
 ];
 
 // Perfis predefinidos

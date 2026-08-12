@@ -196,8 +196,10 @@ const CUF_MAP: Record<string, string> = {
 // SEFAZ rejeita (cStat 599) qualquer whitespace entre tags ou ao redor do payload —
 // o envelope MUST ser compacto (sem newlines, sem indentação).
 function envelopeCTe(cteXml: string, cuf: string): string {
+  // SEFAZ 402: decomprime e exige declaração UTF-8 no início — inclui a declaração no gzip
   const cteXmlBody = cteXml.replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
-  const cteXmlGzipBase64 = gzipSync(Buffer.from(cteXmlBody, "utf8")).toString("base64");
+  const cteXmlWithDecl = '<?xml version="1.0" encoding="UTF-8"?>' + cteXmlBody;
+  const cteXmlGzipBase64 = gzipSync(Buffer.from(cteXmlWithDecl, "utf8")).toString("base64");
   return (
     `<?xml version="1.0" encoding="utf-8"?>` +
     `<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">` +

@@ -519,13 +519,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [fazendaId]);
 
   const podeAcessar = useCallback((modulo: string) => {
-    // Módulos exclusivos da Raccolto — bloqueados para todos os usuários clientes
     const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor"].includes(userRole ?? "");
-    if (modulo === "conf_raccotlo" && !isAnyRaccotlo) return false;
+    if (isAnyRaccotlo) return true;               // raccotlo staff vê tudo
+    if (modulo === "conf_raccotlo") return false;  // clientes bloqueados de páginas raccotlo
     const p = permissoes[modulo] as unknown;
-    if (p === undefined) return true;                            // sem restrição configurada
-    if (Array.isArray(p)) return (p as string[]).includes("visualizar"); // novo formato
-    return (p as string) !== "nenhum";                         // formato legado
+    if (p === undefined) return true;              // não configurado = permitido por padrão
+    if (Array.isArray(p)) {
+      if ((p as string[]).length === 0) return true; // array vazio = não configurado = permitido
+      return (p as string[]).includes("visualizar");
+    }
+    return (p as string) !== "nenhum";             // formato legado
   }, [permissoes, userRole]);
 
   const podeEscrever = useCallback((modulo: string) => {
@@ -539,14 +542,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const podeAcessarPlano = useCallback((modulo: string) => {
     // Sem override de conta: raccotlo tem acesso irrestrito (staff vê tudo imediatamente)
     if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") return true;
-    // Override explícito via conta_modulos — verifica se o add-on está habilitado para a conta
+    // Override explícito via conta_modulos — verifica só se o add-on está habilitado para a conta
+    // Permissões de grupo (podeAcessar) são verificadas separadamente no TopNav
     if (modulo in contaModulosOverrides) {
-      if (!contaModulosOverrides[modulo]) return false; // add-on desabilitado para a conta
-      // Add-on habilitado para a conta — verifica também permissão de grupo do usuário
-      const p = permissoes[modulo] as unknown;
-      if (p === undefined) return true;              // sem restrição de grupo = acesso permitido
-      if (Array.isArray(p)) return (p as string[]).includes("visualizar");
-      return (p as string) !== "nenhum";
+      return contaModulosOverrides[modulo]; // true = habilitado, false = desabilitado
     }
     // Aguarda overrides carregarem antes de decidir — evita flicker de add-ons em clientes sem o módulo
     if (!modulosCarregados) return false;

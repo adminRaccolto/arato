@@ -251,7 +251,6 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "bi", label: "BI",
     children: [
-      { id: "bi-raccotlo",        label: "BI — Painel Raccolto",       path: "/bi",                      moduleId: "conf_raccotlo"   },
       { id: "bi-hedge",           label: "Proteção de Margem",         path: "/comercial/hedge",         moduleId: "protecao_margem" },
       { type: "divider", label: "Auditorias" },
       { id: "bi-auditoria-class", label: "Auditoria de Classificação", path: "/auditoria/classificacao", moduleId: "conf_fiscal"     },
@@ -307,7 +306,7 @@ const NAV: NavItem[] = [
 const NAV_MODULE_MAP: Record<string, string[]> = {
   // "cadastros" sem entrada → sempre visível (módulo base, igual ao dashboard/mapa)
   "comercial":     ["contratos", "expedicao", "arrendamento"],
-  "bi":            ["bi", "conf_raccotlo", "protecao_margem", "conf_fiscal"],
+  "bi":            ["protecao_margem", "conf_fiscal"],
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],
   // "estoque" removido — estoque é módulo fixo (sempre visível), não add-on
@@ -778,8 +777,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         {NAV.map(item => {
           const navId  = item.type === "group" ? item.id : (item as NavLink).id;
           const modulos = NAV_MODULE_MAP[navId];
-          if (modulos && !modulos.some(m => podeAcessar(m))) return null;
-          if (modulos && !modulos.some(m => podeAcessarPlano(m))) return null;
+          if (!isRaccotloStaff && modulos && !modulos.some(m => podeAcessar(m))) return null;
+          if (!isRaccotloStaff && modulos && !modulos.some(m => podeAcessarPlano(m))) return null;
 
           const isLocked = onboardingAtivo && (item.minStep ?? 0) > stepsCompletos;
           if (isLocked) {
@@ -974,19 +973,34 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               </Link>
             )}
             {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (
-              <Link
-                href="/raccotlo"
-                style={{
-                  display: "flex", alignItems: "center", gap: 5,
-                  padding: "4px 10px", borderRadius: 5, textDecoration: "none",
-                  background: pathname === "/raccotlo" ? "rgba(255,255,255,0.12)" : "transparent",
-                  color: "rgba(255,255,255,0.35)", fontWeight: 400,
-                  fontSize: 12, whiteSpace: "nowrap",
-                  border: "0.5px solid var(--border)",
-                }}
-              >
-                Hub
-              </Link>
+              <>
+                <Link
+                  href="/bi"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    padding: "4px 10px", borderRadius: 5, textDecoration: "none",
+                    background: pathname === "/bi" ? "rgba(255,255,255,0.12)" : "transparent",
+                    color: pathname === "/bi" ? "#FFFFFF" : "rgba(255,255,255,0.55)", fontWeight: pathname === "/bi" ? 600 : 400,
+                    fontSize: 12, whiteSpace: "nowrap",
+                    border: "0.5px solid rgba(255,255,255,0.18)",
+                  }}
+                >
+                  BI Raccolto
+                </Link>
+                <Link
+                  href="/raccotlo"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    padding: "4px 10px", borderRadius: 5, textDecoration: "none",
+                    background: pathname === "/raccotlo" ? "rgba(255,255,255,0.12)" : "transparent",
+                    color: "rgba(255,255,255,0.35)", fontWeight: 400,
+                    fontSize: 12, whiteSpace: "nowrap",
+                    border: "0.5px solid var(--border)",
+                  }}
+                >
+                  Hub
+                </Link>
+              </>
             )}
           </div>
         )}
