@@ -1594,7 +1594,7 @@ export type PrincipioAtivo = {
   id: string;
   nome: string;                            // "Glifosato 480 g/L"
   categoria: "herbicida" | "fungicida" | "inseticida" | "acaricida" | "fertilizante" | "inoculante" | "outro";
-  unidade: "L" | "kg" | "g" | "mL" | "un";
+  unidade: "L" | "kg" | "g" | "mL" | "un" | "ton";
   observacao?: string;
   created_at?: string;
 };

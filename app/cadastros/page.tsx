@@ -9659,7 +9659,7 @@ function CadastrosInner() {
             <div>
               <label style={lbl}>Unidade de estoque *</label>
               <select style={inp} value={fPA.unidade} onChange={e => setFPA(p => ({ ...p, unidade: e.target.value as PrincipioAtivo["unidade"] }))}>
-                {(["L","kg","g","mL","un"] as PrincipioAtivo["unidade"][]).map(u => <option key={u} value={u}>{u}</option>)}
+                {(["L","kg","g","mL","ton","un"] as PrincipioAtivo["unidade"][]).map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
