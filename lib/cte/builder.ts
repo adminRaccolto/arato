@@ -183,13 +183,16 @@ function xmlEndereco(tag: string, p: ParticipanteCTe): string {
   </${tag}>`;
 }
 
-function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string): string {
+const NOME_HOMOLOGACAO = "CTE EMITIDO EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL";
+
+function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string, homologacao = false): string {
   const cpfcnpj = (p.cpf_cnpj ?? "").replace(/\D/g, "");
   const docTag  = cpfcnpj.length === 14 ? "CNPJ" : "CPF";
+  const xNome   = homologacao ? NOME_HOMOLOGACAO : p.nome;
   return `<${tag}>
     ${cpfcnpj ? `<${docTag}>${cpfcnpj}</${docTag}>` : "<CNPJ/>"}
     ${p.ie   ? `<IE>${esc(p.ie)}</IE>` : ""}
-    <xNome>${esc(p.nome)}</xNome>
+    <xNome>${esc(xNome)}</xNome>
     ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
     ${xmlEndereco(endTag, p)}
   </${tag}>`;
@@ -311,8 +314,8 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       </enderEmit>
       <CRT>${e.crt}</CRT>
     </emit>
-    ${xmlParticipante("rem", input.remetente, "enderReme")}
-    ${xmlParticipante("dest", input.destinatario, "enderDest")}
+    ${xmlParticipante("rem", input.remetente, "enderReme", tpAmb === "2")}
+    ${xmlParticipante("dest", input.destinatario, "enderDest", tpAmb === "2")}
     <vPrest>
       <vTPrest>${p2(input.valor_prestacao)}</vTPrest>
       <vRec>${p2(input.valor_receber)}</vRec>
