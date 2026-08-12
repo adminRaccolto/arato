@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
@@ -120,6 +121,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 // ═══════════════════════════════════════════════════════════════
 export default function ContasReceber() {
   const { fazendaId, contaId, anoSafraVigenteId, emailUsuario } = useAuth();
+  const searchParams = useSearchParams();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
@@ -135,11 +137,27 @@ export default function ContasReceber() {
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
-  const [filtro,   setFiltro]   = useState<Filtro>("aberto");
+  const [filtro, setFiltro] = useState<Filtro>(() => {
+    const f = searchParams.get("filtro") as Filtro | null;
+    const valid: Filtro[] = ["aberto","vencido","baixado","barter","previsao","pedidos","todos"];
+    return f && valid.includes(f) ? f : "aberto";
+  });
 
-  // ── Janela padrão: 2 anos atrás até 12 meses à frente ────
-  const [periodoInicio, setPeriodoInicio] = useState(() => new Date().toISOString().split("T")[0]);
+  // ── Janela padrão — se filtro=vencido, volta 6 meses ──
+  const [periodoInicio, setPeriodoInicio] = useState(() => {
+    const sp = searchParams.get("periodoInicio");
+    if (sp) return sp;
+    const f = searchParams.get("filtro");
+    if (f === "vencido") {
+      const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split("T")[0];
+    }
+    return new Date().toISOString().split("T")[0];
+  });
   const [periodoFim, setPeriodoFim] = useState(() => {
+    const sp = searchParams.get("periodoFim");
+    if (sp) return sp;
+    const f = searchParams.get("filtro");
+    if (f === "vencido") return new Date().toISOString().split("T")[0];
     const d = new Date(); d.setMonth(d.getMonth() + 3); d.setDate(0);
     return d.toISOString().split("T")[0];
   });
@@ -933,7 +951,7 @@ export default function ContasReceber() {
                             </td>
                             {/* Operação */}
                             {col("operacao") && <td style={{ padding: "8px 8px" }}>
-                              <span style={{ fontSize: 10, background: "rgba(34,197,94,0.1)", color: "#22C55E", padding: "2px 7px", borderRadius: 5, border: "0.5px solid rgba(34,197,94,0.2)", whiteSpace: "nowrap" }}>
+                              <span style={{ fontSize: 11, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                                 {l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}
                               </span>
                             </td>}

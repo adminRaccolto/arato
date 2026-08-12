@@ -164,9 +164,21 @@ function ContasPagarInner() {
     return f && valid.includes(f) ? f : "aberto";
   });
 
-  // ── Janela padrão: 2 anos atrás até 12 meses à frente (cobre vencidos antigos) ────
-  const [periodoInicio, setPeriodoInicio] = useState(() => new Date().toISOString().split("T")[0]);
+  // ── Janela padrão — se filtro=vencido, volta 6 meses para mostrar todos os vencidos ──
+  const [periodoInicio, setPeriodoInicio] = useState(() => {
+    const sp = searchParams.get("periodoInicio");
+    if (sp) return sp;
+    const f = searchParams.get("filtro");
+    if (f === "vencido") {
+      const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split("T")[0];
+    }
+    return new Date().toISOString().split("T")[0];
+  });
   const [periodoFim, setPeriodoFim] = useState(() => {
+    const sp = searchParams.get("periodoFim");
+    if (sp) return sp;
+    const f = searchParams.get("filtro");
+    if (f === "vencido") return new Date().toISOString().split("T")[0];
     const d = new Date(); d.setMonth(d.getMonth() + 3); d.setDate(0);
     return d.toISOString().split("T")[0];
   });
@@ -1144,7 +1156,7 @@ function ContasPagarInner() {
                             </td>
                             {/* Operação */}
                             {col("operacao") && <td style={{ padding: "8px 8px" }}>
-                              <span style={{ fontSize: 10, background: "#F0F0F0", color: "#555555", padding: "2px 7px", borderRadius: 5, border: "0.5px solid #DEDEDE", whiteSpace: "nowrap" }}>
+                              <span style={{ fontSize: 11, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                                 {l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}
                               </span>
                             </td>}

@@ -360,7 +360,7 @@ export default function Dashboard() {
           valor: total,
           dias: -1,
           urgencia: "critico",
-          link: "/financeiro/pagar",
+          link: "/financeiro/pagar?filtro=vencido",
           linkLabel: "Regularizar",
         });
       }
@@ -370,6 +370,10 @@ export default function Dashboard() {
       const cp3 = cpProx.filter(r => diasAte(r.data_vencimento) > 1 && diasAte(r.data_vencimento) <= 3);
       const cp7 = cpProx.filter(r => diasAte(r.data_vencimento) > 3);
 
+      const iso = (offset: number) => {
+        const d = new Date(hoje); d.setDate(hoje.getDate() + offset); return d.toISOString().split("T")[0];
+      };
+
       if (cp1.length > 0) {
         const cp1Hoje = cp1.filter(r => diasAte(r.data_vencimento) === 0);
         const cp1Amanha = cp1.filter(r => diasAte(r.data_vencimento) === 1);
@@ -378,18 +382,17 @@ export default function Dashboard() {
           novosAlertas.push({ id: "cp-hoje", tipo: "cp", desc: `${cp1Hoje.length} CP ${labelDias(0)} · ${fmtMoeda(t)}`, valor: t, dias: 0, urgencia: "alto", link: `/financeiro/pagar?vencDe=${isoHoje}&vencAte=${isoHoje}`, linkLabel: "Pagar" });
         }
         if (cp1Amanha.length > 0) {
-          const isoAmanha = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split("T")[0];
           const t = cp1Amanha.reduce((s, r) => s + (r.valor ?? 0), 0);
-          novosAlertas.push({ id: "cp-amanha", tipo: "cp", desc: `${cp1Amanha.length} CP ${labelDias(1)} · ${fmtMoeda(t)}`, valor: t, dias: 1, urgencia: "alto", link: `/financeiro/pagar?vencDe=${isoAmanha}&vencAte=${isoAmanha}`, linkLabel: "Pagar" });
+          novosAlertas.push({ id: "cp-amanha", tipo: "cp", desc: `${cp1Amanha.length} CP ${labelDias(1)} · ${fmtMoeda(t)}`, valor: t, dias: 1, urgencia: "alto", link: `/financeiro/pagar?vencDe=${iso(1)}&vencAte=${iso(1)}`, linkLabel: "Pagar" });
         }
       }
       if (cp3.length > 0) {
         const total = cp3.reduce((s, r) => s + (r.valor ?? 0), 0);
-        novosAlertas.push({ id: "cp-3dias", tipo: "cp", desc: `${cp3.length} CP vencem em 2–3 dias · ${fmtMoeda(total)}`, valor: total, dias: 3, urgencia: "alto", link: "/financeiro/pagar", linkLabel: "Ver CP" });
+        novosAlertas.push({ id: "cp-3dias", tipo: "cp", desc: `${cp3.length} CP vencem em 2–3 dias · ${fmtMoeda(total)}`, valor: total, dias: 3, urgencia: "alto", link: `/financeiro/pagar?vencDe=${iso(2)}&vencAte=${iso(3)}`, linkLabel: "Ver CP" });
       }
       if (cp7.length > 0) {
         const total = cp7.reduce((s, r) => s + (r.valor ?? 0), 0);
-        novosAlertas.push({ id: "cp-7dias", tipo: "cp", desc: `${cp7.length} CP vencem esta semana · ${fmtMoeda(total)}`, valor: total, dias: 7, urgencia: "medio", link: "/financeiro/pagar", linkLabel: "Ver CP" });
+        novosAlertas.push({ id: "cp-7dias", tipo: "cp", desc: `${cp7.length} CP vencem esta semana · ${fmtMoeda(total)}`, valor: total, dias: 7, urgencia: "medio", link: `/financeiro/pagar?vencDe=${iso(4)}&vencAte=${iso(7)}`, linkLabel: "Ver CP" });
       }
 
       // ── CR vencidos e a vencer ──
@@ -406,14 +409,15 @@ export default function Dashboard() {
           valor: total,
           dias: -1,
           urgencia: "critico",
-          link: "/financeiro/receber",
+          link: "/financeiro/receber?filtro=vencido",
           linkLabel: "Cobrar",
         });
       }
       if (crProx.length > 0) {
         const total = crProx.reduce((s, r) => s + (r.valor ?? 0), 0);
         const minD = Math.min(...crProx.map(r => diasAte(r.data_vencimento)));
-        novosAlertas.push({ id: "cr-prox", tipo: "cr", desc: `${crProx.length} CR a receber · ${fmtMoeda(total)} · ${labelDias(minD)}`, valor: total, dias: minD, urgencia: urgDias(minD), link: "/financeiro/receber", linkLabel: "Ver CR" });
+        const maxD = Math.max(...crProx.map(r => diasAte(r.data_vencimento)));
+        novosAlertas.push({ id: "cr-prox", tipo: "cr", desc: `${crProx.length} CR a receber · ${fmtMoeda(total)} · ${labelDias(minD)}`, valor: total, dias: minD, urgencia: urgDias(minD), link: `/financeiro/receber?vencDe=${isoHoje}&vencAte=${iso(maxD)}`, linkLabel: "Ver CR" });
       }
 
       // ── Arrendamentos ──
@@ -851,7 +855,7 @@ export default function Dashboard() {
               ))}
               {conciliPend.length > 5 && (
                 <div style={{ padding:"10px 20px",textAlign:"center" }}>
-                  <a href="/financeiro/conciliacao" style={{ fontSize:12,color:"#60A5FA",fontWeight:600,textDecoration:"none" }}>Ver todas ({conciliPend.length}) →</a>
+                  <a href="/financeiro/conciliacao?pendentes=true" style={{ fontSize:12,color:"#60A5FA",fontWeight:600,textDecoration:"none" }}>Ver todas ({conciliPend.length}) →</a>
                 </div>
               )}
             </div>

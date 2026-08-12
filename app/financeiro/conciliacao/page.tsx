@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
@@ -43,6 +44,22 @@ interface Extrato {
   conciliados: number;
   pendentes: number;
   linhas: LinhaOFX[];
+}
+
+interface HistoricoConciliacao {
+  id: string;
+  fazenda_id: string;
+  extrato_id: string;
+  fitid: string;
+  conta_nome: string;
+  data_transacao: string;
+  descricao: string;
+  valor: number;
+  tipo: string;
+  acao: "conciliado" | "desvinculado";
+  lancamento_ids: string[];
+  lancamento_desc: string;
+  created_at: string;
 }
 
 // ─── Parse OFX ────────────────────────────────────────────────────────────────
@@ -99,6 +116,7 @@ const COL_INIT = [80, 280, 110, 95, 230, 95];
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Conciliacao() {
   const { fazendaId, fazendaIds } = useAuth();
+  const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [contas, setContas]           = useState<ContaBancaria[]>([]);
@@ -106,9 +124,11 @@ export default function Conciliacao() {
   const [extratos, setExtratos]       = useState<Extrato[]>([]);
   const [extrato, setExtrato]         = useState<Extrato | null>(null);
   const [loading, setLoading]         = useState(false);
+  const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico">("extrato");
+  const [historico, setHistorico]     = useState<HistoricoConciliacao[]>([]);
 
   const [contaSel, setContaSel]     = useState<string>("");
-  const [filtroPend, setFiltroPend] = useState(false);
+  const [filtroPend, setFiltroPend] = useState(() => searchParams.get("pendentes") === "true");
   const [busca, setBusca]           = useState("");
 
   // Painel esquerdo (lançamentos)
@@ -125,23 +145,29 @@ export default function Conciliacao() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lR] = await Promise.all([
+    const [cR, lR, exR, hR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("lancamentos").select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
         .in("fazenda_id", fazendaIds)
         .in("status", ["aberto","vencido","baixado"])
         .order("data_vencimento", { ascending: false }),
+      supabase.from("extratos_bancarios").select("*").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
+      supabase.from("historico_conciliacao").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(200),
     ]);
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     if (lR.data) setLancamentos(lR.data as Lancamento[]);
+    if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
 
-    const { data: exR } = await supabase
-      .from("extratos_bancarios")
-      .select("*")
-      .in("fazenda_id", fazendaIds)
-      .order("data_importacao", { ascending: false });
-    if (exR) setExtratos(exR as unknown as Extrato[]);
-  }, [fazendaId, fazendaIds]);
+    if (exR.data) {
+      const lista = exR.data as unknown as Extrato[];
+      setExtratos(lista);
+      // Auto-abrir o primeiro extrato com pendências quando vindo da dashboard (?pendentes=true)
+      if (searchParams.get("pendentes") === "true") {
+        const primeiroPend = lista.find(e => e.pendentes > 0);
+        if (primeiroPend) { setExtrato(primeiroPend); setFiltroPend(true); }
+      }
+    }
+  }, [fazendaId, fazendaIds, searchParams]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -213,6 +239,26 @@ export default function Conciliacao() {
     }).eq("id", upd.id);
   }
 
+  // ── Registrar no histórico ─────────────────────────────────────────────────
+  async function registrarHistorico(linha: LinhaOFX, acao: "conciliado" | "desvinculado", lancsIds: string[], lancDesc: string) {
+    if (!fazendaId || !extrato) return;
+    const row = {
+      fazenda_id: fazendaId,
+      extrato_id: extrato.id,
+      fitid: linha.id,
+      conta_nome: extrato.conta_nome,
+      data_transacao: linha.data,
+      descricao: linha.descricao,
+      valor: linha.valor,
+      tipo: linha.tipo,
+      acao,
+      lancamento_ids: lancsIds,
+      lancamento_desc: lancDesc,
+    };
+    const { data } = await supabase.from("historico_conciliacao").insert(row).select().single();
+    if (data) setHistorico(prev => [data as HistoricoConciliacao, ...prev]);
+  }
+
   // ── Confirmar vínculo (simples ou bordero) ─────────────────────────────────
   function confirmarVinculo() {
     if (!linhaAtiva || lancsSel.size === 0 || !extrato) return;
@@ -231,10 +277,11 @@ export default function Conciliacao() {
     );
     const conciliadoN = linhas.filter(l => l.conciliado).length;
     persistExtrato({ ...extrato, linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN });
-    // Resolve pendências
+    // Resolve pendências + histórico
     if (fazendaId) {
       supabase.from("conciliacao_pendencias").update({ status: "resolvido", lancamento_id: ids[0] })
         .eq("fazenda_id", fazendaId).eq("fitid", linhaAtiva.id);
+      registrarHistorico(linhaAtiva, "conciliado", ids, descVinc);
     }
     setLinhaAtiva(null);
     setLancsSel(new Set());
@@ -243,11 +290,15 @@ export default function Conciliacao() {
   // ── Desvincular ────────────────────────────────────────────────────────────
   function desvincular(linhaId: string) {
     if (!extrato) return;
+    const linhaOriginal = extrato.linhas.find(l => l.id === linhaId);
     const linhas = extrato.linhas.map(l =>
       l.id === linhaId ? { ...l, conciliado: false, lancamento_id: undefined, lancamento_ids: undefined, lancamento_desc: undefined, lancamento_valor: undefined } : l
     );
     const conciliadoN = linhas.filter(l => l.conciliado).length;
     persistExtrato({ ...extrato, linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN });
+    if (fazendaId && linhaOriginal) {
+      registrarHistorico(linhaOriginal, "desvinculado", linhaOriginal.lancamento_ids ?? [], linhaOriginal.lancamento_desc ?? "");
+    }
   }
 
   // ── Resize colunas ─────────────────────────────────────────────────────────
@@ -342,8 +393,20 @@ export default function Conciliacao() {
           </div>
         </div>
 
+        {/* Abas: Extratos / Histórico */}
+        {!extrato && (
+          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+            {([["extrato", "Extratos OFX"], ["historico", "Histórico de Conciliação"]] as const).map(([k, lbl]) => (
+              <button key={k} onClick={() => setAbaAtiva(k)}
+                style={{ padding: "6px 16px", borderRadius: 8, border: `0.5px solid ${abaAtiva === k ? "#1A5CB8" : "var(--border)"}`, background: abaAtiva === k ? "#1A5CB8" : "var(--bg-card)", color: abaAtiva === k ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: abaAtiva === k ? 700 : 400, cursor: "pointer" }}>
+                {lbl}{k === "historico" && historico.length > 0 ? ` (${historico.length})` : ""}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Banner: extratos pendentes quando não há extrato ativo */}
-        {!extrato && extratosPend.length > 0 && (
+        {!extrato && abaAtiva === "extrato" && extratosPend.length > 0 && (
           <div style={{ background: "#FEF3C7", border: "0.5px solid #F59E0B", borderRadius: 10, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ fontSize: 20 }}>⏳</div>
             <div style={{ flex: 1 }}>
@@ -364,7 +427,7 @@ export default function Conciliacao() {
         )}
 
         {/* Lista de extratos salvos */}
-        {!extrato && (
+        {!extrato && abaAtiva === "extrato" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, marginBottom: 20 }}>
             {extratos.length === 0 ? (
               <div style={{ gridColumn: "1/-1", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
@@ -388,6 +451,55 @@ export default function Conciliacao() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ═══ ABA HISTÓRICO ═══ */}
+        {!extrato && abaAtiva === "historico" && (
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+            {historico.length === 0 ? (
+              <div style={{ padding: "40px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum histórico registrado</div>
+                <div style={{ fontSize: 12 }}>O histórico é registrado automaticamente ao conciliar ou desvincular transações.</div>
+              </div>
+            ) : (
+              <table style={{ tableLayout: "fixed", width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "var(--bg-page)" }}>
+                    {["Data/Hora", "Conta", "Transação OFX", "Valor", "Lançamento Vinculado", "Ação", "Tipo"].map(h => (
+                      <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {historico.map((h, i) => (
+                    <tr key={h.id} style={{ borderBottom: i < historico.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: h.acao === "desvinculado" ? "rgba(239,68,68,0.03)" : "transparent" }}>
+                      <td style={{ padding: "9px 12px", color: "var(--text-3)", fontSize: 11, whiteSpace: "nowrap" }}>
+                        {new Date(h.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.conta_nome}</td>
+                      <td style={{ padding: "9px 12px", overflow: "hidden" }}>
+                        <div style={{ fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.descricao}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{fmtDt(h.data_transacao)} · FITID: {h.fitid}</div>
+                      </td>
+                      <td style={{ padding: "9px 12px", whiteSpace: "nowrap", fontWeight: 700, color: h.tipo === "credito" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
+                        {h.tipo === "credito" ? "+" : "−"}{fmtBRL(h.valor)}
+                      </td>
+                      <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.lancamento_desc || "—"}</td>
+                      <td style={{ padding: "9px 12px" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 5, background: h.acao === "conciliado" ? "#DCFCE7" : "rgba(239,68,68,0.1)", color: h.acao === "conciliado" ? "#16A34A" : "#E24B4A", textTransform: "uppercase" }}>
+                          {h.acao === "conciliado" ? "✓ Conciliado" : "✗ Desvinculado"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-3)" }}>
+                        {h.tipo === "credito" ? "Crédito" : "Débito"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
