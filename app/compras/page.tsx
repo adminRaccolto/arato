@@ -95,6 +95,78 @@ function ProdutorSelect({
   );
 }
 
+function FornecedorSelect({
+  value, onChange, pessoas, placeholder = "— Selecionar —",
+}: {
+  value: string; onChange: (id: string) => void; pessoas: Pessoa[]; placeholder?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen]   = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = pessoas.find(p => p.id === value);
+  const filtered = query.trim() === ""
+    ? pessoas
+    : pessoas.filter(p =>
+        p.nome.toLowerCase().includes(query.toLowerCase()) ||
+        (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(query.replace(/\D/g, "")) ||
+        (p.cpf_cnpj ?? "").toLowerCase().includes(query.toLowerCase())
+      );
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery(""); }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const colNome: React.CSSProperties = { fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+  const colDoc:  React.CSSProperties = { fontSize: 11, fontFamily: "monospace", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <input
+        style={{ ...inp, paddingRight: 26 }}
+        value={open ? query : (selected?.nome ?? "")}
+        placeholder={placeholder}
+        onFocus={() => { setOpen(true); setQuery(""); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        autoComplete="off"
+      />
+      <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#999", pointerEvents: "none" }}>▾</span>
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 999, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 8px 8px", maxHeight: 260, overflowY: "auto", boxShadow: "0 6px 18px rgba(0,0,0,0.13)", minWidth: "100%", width: "max-content", maxWidth: "min(700px, 90vw)" }}>
+          {/* Cabeçalho colunas */}
+          <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16, padding: "5px 10px", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)" }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Nome / Razão Social</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>CNPJ / CPF</span>
+          </div>
+          {/* Limpar */}
+          <div
+            style={{ padding: "6px 10px", fontSize: 12, color: "var(--text-muted)", cursor: "pointer", borderBottom: "0.5px solid #F0F0F0" }}
+            onMouseDown={() => { onChange(""); setOpen(false); setQuery(""); }}
+          >{placeholder}</div>
+          {filtered.length === 0 && (
+            <div style={{ padding: "8px 10px", fontSize: 12, color: "#bbb" }}>Nenhum fornecedor encontrado</div>
+          )}
+          {filtered.map(p => (
+            <div
+              key={p.id}
+              style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16, padding: "7px 10px", cursor: "pointer", background: p.id === value ? "#E8E8E8" : "var(--bg-card)" }}
+              onMouseDown={() => { onChange(p.id); setOpen(false); setQuery(""); }}
+              onMouseEnter={e => { if (p.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-page)"; }}
+              onMouseLeave={e => { if (p.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-card)"; }}
+            >
+              <span style={{ ...colNome, fontWeight: p.id === value ? 600 : 400, color: "var(--text-1)" }}>{p.nome}</span>
+              <span style={{ ...colDoc, color: p.cpf_cnpj ? "var(--text-2)" : "#ccc" }}>{p.cpf_cnpj || "—"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SearchableSelect({
   value, onChange, options, placeholder = "— Selecionar —", emptyMessage, style: extraStyle,
 }: {
@@ -1207,10 +1279,10 @@ export default function ComprasPage() {
                         </span>
                       )}
                     </label>
-                    <SearchableSelect
+                    <FornecedorSelect
                       value={f.fornecedor_id}
                       onChange={id => setF(p => ({ ...p, fornecedor_id: id, contato_fornecedor: "" }))}
-                      options={pessoas.map(p => ({ id: p.id, label: p.cpf_cnpj ? `${p.cpf_cnpj}  —  ${p.nome}` : p.nome }))}
+                      pessoas={pessoas}
                       placeholder={pessoas.length === 0 ? "Nenhum fornecedor cadastrado" : "— Selecionar —"}
                     />
                   </div>

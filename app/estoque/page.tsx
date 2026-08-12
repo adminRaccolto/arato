@@ -276,7 +276,8 @@ export default function Estoque() {
   const [kardexFim, setKardexFim]       = useState(() => new Date().toISOString().slice(0,10));
   const [kardexCat, setKardexCat]       = useState<"todos" | Insumo["categoria"]>("todos");
   const [kardexInsumoId, setKardexInsumoId] = useState("");
-  const [kardexMovs, setKardexMovs]     = useState<MovimentacaoEstoque[]>([]);
+  const [kardexMovs, setKardexMovs]         = useState<MovimentacaoEstoque[]>([]);
+  const [kardexMovsAntes, setKardexMovsAntes] = useState<MovimentacaoEstoque[]>([]); // movs antes do período → saldo inicial real
   const [kardexBuscando, setKardexBuscando] = useState(false);
 
   // modal NF Entrada — passo 1: dados da NF / passo 2: itens
@@ -378,8 +379,15 @@ export default function Estoque() {
     if (!fazendaId) return;
     setKardexBuscando(true);
     try {
-      const movs = await listarMovimentacoes(fazendaId, kardexInsumoId || undefined, kardexInicio, kardexFim);
+      // Busca em paralelo: movimentações do período + movimentações anteriores ao período (para saldo inicial real)
+      const diaAntes = new Date(kardexInicio);
+      diaAntes.setDate(diaAntes.getDate() - 1);
+      const [movs, movsAntes] = await Promise.all([
+        listarMovimentacoes(fazendaId, kardexInsumoId || undefined, kardexInicio, kardexFim),
+        listarMovimentacoes(fazendaId, kardexInsumoId || undefined, undefined, diaAntes.toISOString().slice(0, 10)),
+      ]);
       setKardexMovs(movs);
+      setKardexMovsAntes(movsAntes);
     } catch { /* ignore */ }
     setKardexBuscando(false);
   };
@@ -1074,25 +1082,23 @@ export default function Estoque() {
                 const grupos: KardexRow[] = insumosFiltrados
                   .map(ins => {
                     const mIns = movsFiltr.filter(m => m.insumo_id === ins.id).slice().reverse(); // cronológico
-                    let saldoFinalCalc = ins.estoque;
-                    const totalE = movsFiltr.filter(m => m.insumo_id === ins.id && m.tipo === "entrada").reduce((s, m) => s + m.quantidade, 0);
-                    const totalS = movsFiltr.filter(m => m.insumo_id === ins.id && m.tipo === "saida").reduce((s, m) => s + m.quantidade, 0);
-                    // ajustes são registados como delta absoluto; precisamos do net para calcular saldo inicial
-                    // ajuste armazena delta assinado (positivo=aumento, negativo=redução)
-                    const totalAjNeto = movsFiltr.filter(m => m.insumo_id === ins.id && m.tipo === "ajuste").reduce((s, m) => s + m.quantidade, 0);
-                    // saldo inicial = saldo atual - entradas - ajustes + saidas
-                    const saldoInicialCalc = saldoFinalCalc - totalE - totalAjNeto + totalS;
+
+                    // Saldo inicial real: soma das movimentações ANTES do período (não usa ins.estoque que pode estar dessincronizado)
+                    const antesIns = kardexMovsAntes.filter(m => m.insumo_id === ins.id);
+                    const preE  = antesIns.filter(m => m.tipo === "entrada").reduce((s, m) => s + m.quantidade, 0);
+                    const preS  = antesIns.filter(m => m.tipo === "saida").reduce((s, m) => s + m.quantidade, 0);
+                    const preAj = antesIns.filter(m => m.tipo === "ajuste").reduce((s, m) => s + m.quantidade, 0);
+                    const saldoInicialCalc = preE - preS + preAj;
+
+                    const totalE     = mIns.filter(m => m.tipo === "entrada").reduce((s, m) => s + m.quantidade, 0);
+                    const totalS     = mIns.filter(m => m.tipo === "saida").reduce((s, m) => s + m.quantidade, 0);
+
                     let running = saldoInicialCalc;
                     const rows = mIns.map(m => {
-                      if (m.tipo === "ajuste") {
-                        running += m.quantidade; // delta assinado
-                      } else {
-                        running += m.tipo === "entrada" ? m.quantidade : -m.quantidade;
-                      }
+                      running += m.tipo === "ajuste" ? m.quantidade : m.tipo === "entrada" ? m.quantidade : -m.quantidade;
                       return { ...m, saldo: running };
                     });
-                    saldoFinalCalc = running;
-                    return { insumo: ins, movs: rows, totalE, totalS, saldoFinal: saldoFinalCalc, saldoInicial: saldoInicialCalc };
+                    return { insumo: ins, movs: rows, totalE, totalS, saldoFinal: running, saldoInicial: saldoInicialCalc };
                   })
                   .filter(g => g.movs.length > 0); // só produtos com movimento no período
 

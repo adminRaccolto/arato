@@ -628,6 +628,23 @@ function CtePageInner() {
       observacao:         c.observacao  ?? undefined,
     };
 
+    // Validação local: endereço do remetente obrigatório antes de transmitir
+    const camposRemetente: Record<string, string | undefined> = {
+      logradouro:     payload.remetente?.logradouro,
+      numero:         payload.remetente?.numero,
+      bairro:         payload.remetente?.bairro,
+      municipio_ibge: payload.remetente?.municipio_ibge,
+      municipio_nome: payload.remetente?.municipio_nome,
+      uf:             payload.remetente?.uf,
+    };
+    const faltantes = Object.entries(camposRemetente)
+      .filter(([, valor]) => !String(valor ?? "").trim())
+      .map(([campo]) => campo);
+    if (faltantes.length) {
+      alert(`Endereço do remetente incompleto.\n\nCampos ausentes: ${faltantes.join(", ")}\n\nEdite o cadastro do remetente em Cadastros → Pessoas e preencha o endereço completo antes de transmitir.`);
+      return;
+    }
+
     try {
       const res  = await fetch("/api/fiscal/emitir-cte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; xmlUrl?: string };
@@ -1037,7 +1054,7 @@ function CtePageInner() {
               <div style={divider}>Vínculo</div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Chave de Acesso da NF-e Referenciada (opcional)</label>
-                <input value={form.nfe_chave} onChange={e => setForm(f => ({ ...f, nfe_chave: e.target.value }))} style={inp} placeholder="44 dígitos da chave da NF-e" maxLength={44} />
+                <input value={form.nfe_chave} onChange={e => setForm(f => ({ ...f, nfe_chave: e.target.value }))} style={inp} placeholder="44 dígitos da chave da NF-e (espaços são ignorados)" maxLength={60} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Observação</label>

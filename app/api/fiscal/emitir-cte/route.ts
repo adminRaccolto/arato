@@ -49,6 +49,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ erro: "Campos obrigatórios ausentes" }, { status: 400 });
     }
 
+    // Validação endereço do remetente (obrigatório no schema CT-e 4.00)
+    const camposRemetente: Record<string, string | undefined> = {
+      logradouro:     body.remetente?.logradouro,
+      numero:         body.remetente?.numero,
+      bairro:         body.remetente?.bairro,
+      municipio_ibge: body.remetente?.municipio_ibge,
+      municipio_nome: body.remetente?.municipio_nome,
+      uf:             body.remetente?.uf,
+    };
+    const faltantesRem = Object.entries(camposRemetente)
+      .filter(([, valor]) => !String(valor ?? "").trim())
+      .map(([campo]) => campo);
+    if (faltantesRem.length) {
+      return NextResponse.json({
+        sucesso: false,
+        cStat: "VALIDACAO_LOCAL",
+        xMotivo: `Endereço do remetente incompleto: ${faltantesRem.join(", ")}`,
+      }, { status: 422 });
+    }
+
     const input: Omit<CTeInput, "emitente"> = {
       remetente:          body.remetente,
       destinatario:       body.destinatario,
