@@ -1198,9 +1198,17 @@ export default function ComprasPage() {
                     <SearchableSelect
                       value={f.fornecedor_id}
                       onChange={id => setF(p => ({ ...p, fornecedor_id: id, contato_fornecedor: "" }))}
-                      options={pessoas.map(p => ({ id: p.id, label: p.nome }))}
+                      options={pessoas.map(p => ({ id: p.id, label: p.cpf_cnpj ? `${p.cpf_cnpj}  —  ${p.nome}` : p.nome }))}
                       placeholder={pessoas.length === 0 ? "Nenhum fornecedor cadastrado" : "— Selecionar —"}
                     />
+                    {f.fornecedor_id && (() => {
+                      const cnpj = pessoas.find(p => p.id === f.fornecedor_id)?.cpf_cnpj;
+                      return cnpj ? (
+                        <div style={{ marginTop: 4, padding: "4px 8px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, fontFamily: "monospace", color: "var(--text-2)", letterSpacing: "0.03em" }}>
+                          {cnpj}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   <div>
                     <label style={lbl}>Nr. Pedido Fornecedor</label>

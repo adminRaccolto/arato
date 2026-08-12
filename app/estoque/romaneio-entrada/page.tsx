@@ -8,9 +8,10 @@ import {
   listarRomaneiosEntradaDaConta, criarRomaneioEntrada, atualizarRomaneioEntrada,
   excluirRomaneioEntrada, confirmarRomaneioEntrada,
   listarDepositos, listarPessoasDaConta, listarAnosSafra, listarTodosCiclos, listarInsumos,
-  listarContratosDaConta, listarFazendas, listarTalhoes,
+  listarContratosDaConta, listarFazendas, listarTalhoes, listarProdutoresDaConta,
 } from "../../../lib/db";
-import type { RomaneioEntrada, Deposito, Pessoa, AnoSafra, Ciclo, Insumo, Contrato, Talhao } from "../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
+import type { RomaneioEntrada, Deposito, Pessoa, AnoSafra, Ciclo, Insumo, Contrato, Talhao, Produtor, ProdutorIE } from "../../../lib/supabase";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const fmt   = (n?: number | null, d = 2) => (n ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -50,6 +51,8 @@ type FormRom = {
   ticket_interno: string;
   // para terceiro:
   pessoa_id: string; emitido_por: string; ticket_terceiro: string;
+  // fiscal / SPED:
+  produtor_id: string; ie_produtor: string; ie_municipio: string;
   obs: string;
 };
 
@@ -63,7 +66,9 @@ const FORM_VAZIO: FormRom = {
   esverdeados: "", quebrados: "", carunchados: "", outros_avariados: "",
   avariados_manual: "", usar_sub: false,
   ph: "", deposito_id: "", ticket_interno: "",
-  pessoa_id: "", emitido_por: "", ticket_terceiro: "", obs: "",
+  pessoa_id: "", emitido_por: "", ticket_terceiro: "",
+  produtor_id: "", ie_produtor: "", ie_municipio: "",
+  obs: "",
 };
 
 // ── Estilos ──────────────────────────────────────────────────────────────────
@@ -98,6 +103,8 @@ export default function RomaneioEntradaPage() {
   const [romaneios,  setRomaneios]  = useState<RomaneioEntrada[]>([]);
   const [depositos,  setDepositos]  = useState<Deposito[]>([]);
   const [pessoas,    setPessoas]    = useState<Pessoa[]>([]);
+  const [produtores, setProdutores] = useState<Produtor[]>([]);
+  const [iesModal,   setIesModal]   = useState<ProdutorIE[]>([]);
   const [anos,       setAnos]       = useState<AnoSafra[]>([]);
   const [ciclos,     setCiclos]     = useState<Ciclo[]>([]);
   const [talhoes,    setTalhoes]    = useState<Talhao[]>([]);
@@ -135,7 +142,8 @@ export default function RomaneioEntradaPage() {
       listarInsumos(fid),
       listarContratosDaConta(contaId ?? "", fid, fazendaIds?.length ? fazendaIds : undefined),
       listarTalhoes(fid),
-    ]).then(([r, d, p, a, c, i, ct, t]) => {
+      listarProdutoresDaConta(contaId ?? "", fid),
+    ]).then(([r, d, p, a, c, i, ct, t, prods]) => {
       setRomaneios(r);
       setDepositos(d.filter(x => x.ativo));
       setPessoas(p);
@@ -144,6 +152,7 @@ export default function RomaneioEntradaPage() {
       setInsumos(i.filter(x => x.categoria === "produto_agricola"));
       setContratos(ct);
       setTalhoes(t);
+      setProdutores(prods);
     }).catch(console.error).finally(() => setLoading(false));
   }, [fazendaId, contaId]);
 
@@ -211,8 +220,18 @@ export default function RomaneioEntradaPage() {
       ph: String(r.ph_hl ?? ""),
       deposito_id: r.deposito_id ?? "", ticket_interno: r.ticket_numero ?? "",
       pessoa_id: r.pessoa_id ?? "", emitido_por: r.emitido_por ?? "",
-      ticket_terceiro: r.ticket_terceiro ?? "", obs: r.obs ?? "",
+      ticket_terceiro: r.ticket_terceiro ?? "",
+      produtor_id: r.produtor_id ?? "", ie_produtor: r.ie_produtor ?? "",
+      ie_municipio: (r as RomaneioEntrada & { ie_municipio?: string }).ie_municipio ?? "",
+      obs: r.obs ?? "",
     });
+    // carregar IEs se há produtor vinculado
+    if (r.produtor_id) {
+      supabase.from("produtores_ie").select("*").eq("produtor_id", r.produtor_id).eq("ativa", true)
+        .then(({ data }) => setIesModal(data ?? []));
+    } else {
+      setIesModal([]);
+    }
     setModal(true);
   };
 
@@ -268,6 +287,9 @@ export default function RomaneioEntradaPage() {
         pessoa_id:            form.tipo === "terceiro" ? form.pessoa_id || null : null,
         emitido_por:          form.tipo === "terceiro" ? form.emitido_por || null : null,
         ticket_terceiro:      form.tipo === "terceiro" ? form.ticket_terceiro || null : null,
+        produtor_id:          form.produtor_id || null,
+        ie_produtor:          form.ie_produtor || null,
+        ie_municipio:         form.ie_municipio || null,
         obs:                  form.obs || null,
         status:               confirmar ? "confirmado" : "rascunho",
         entrada_estoque:      false,
@@ -675,6 +697,89 @@ export default function RomaneioEntradaPage() {
                   .map(t => <option key={t.id} value={t.id}>{t.nome} {t.area_ha ? `(${t.area_ha} ha)` : ""}</option>)}
               </select>
             </div>
+          </div>
+
+          {/* Produtor Responsável / IE Fiscal */}
+          <div style={{ background: "#F2F7FF", borderRadius: 8, border: "0.5px solid #B8D4F0", padding: "12px 14px", marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>
+              Produtor Responsável
+              <span style={{ fontSize: 11, fontWeight: 400, color: "#555", marginLeft: 6 }}>— vincula o estoque ao CPF/CNPJ para SPED e IR</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {/* Linha 1: Produtor | Seletor de IE */}
+              <div>
+                <label style={lbl}>Produtor</label>
+                <select style={inp} value={form.produtor_id} disabled={editRom?.status === "confirmado"}
+                  onChange={e => {
+                    const pid = e.target.value;
+                    const prod = produtores.find(p => p.id === pid);
+                    setForm(p => ({ ...p, produtor_id: pid, ie_produtor: prod?.inscricao_est ?? "", ie_municipio: "" }));
+                    if (pid) {
+                      supabase.from("produtores_ie").select("*").eq("produtor_id", pid).eq("ativa", true)
+                        .then(({ data }) => {
+                          const ies = (data ?? []) as ProdutorIE[];
+                          setIesModal(ies);
+                          if (ies.length === 1) {
+                            setForm(p => ({ ...p, ie_produtor: ies[0].inscricao_estadual, ie_municipio: ies[0].municipio ?? "" }));
+                          }
+                        });
+                    } else {
+                      setIesModal([]);
+                    }
+                  }}>
+                  <option value="">— selecione —</option>
+                  {produtores.map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Selecionar IE</label>
+                {iesModal.length > 0 ? (
+                  <select style={inp} value={form.ie_produtor}
+                    disabled={editRom?.status === "confirmado" || !form.produtor_id}
+                    onChange={e => {
+                      const ieVal = e.target.value;
+                      const ieObj = iesModal.find(ie => ie.inscricao_estadual === ieVal);
+                      setForm(p => ({ ...p, ie_produtor: ieVal, ie_municipio: ieObj?.municipio ?? "" }));
+                    }}>
+                    <option value="">— selecione —</option>
+                    {iesModal.map(ie => (
+                      <option key={ie.id} value={ie.inscricao_estadual}>{ie.inscricao_estadual} — {ie.estado}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input style={inp} placeholder="Ex: 13.476.345-0" value={form.ie_produtor}
+                    onChange={e => setForm(p => ({ ...p, ie_produtor: e.target.value }))}
+                    disabled={editRom?.status === "confirmado" || !form.produtor_id} />
+                )}
+              </div>
+
+              {/* Linha 2: IE fixada (readonly) | Município / UF (readonly) */}
+              <div>
+                <label style={lbl}>IE Selecionada</label>
+                <div style={{ ...inp, background: form.ie_produtor ? "#EBF3FF" : "var(--bg-page)", color: form.ie_produtor ? "#0B2D50" : "var(--text-3)", fontFamily: "monospace", fontWeight: form.ie_produtor ? 600 : 400, letterSpacing: "0.04em", minHeight: 34, display: "flex", alignItems: "center" }}>
+                  {form.ie_produtor || "—"}
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Município / UF da IE</label>
+                {iesModal.length > 0 ? (
+                  <div style={{ ...inp, background: form.ie_municipio ? "#EBF3FF" : "var(--bg-page)", color: form.ie_municipio ? "#0B2D50" : "var(--text-3)", fontWeight: form.ie_municipio ? 600 : 400, minHeight: 34, display: "flex", alignItems: "center" }}>
+                    {form.ie_municipio
+                      ? `${form.ie_municipio}${iesModal.find(ie => ie.inscricao_estadual === form.ie_produtor)?.estado ? " — " + iesModal.find(ie => ie.inscricao_estadual === form.ie_produtor)?.estado : ""}`
+                      : "—"}
+                  </div>
+                ) : (
+                  <input style={inp} placeholder="Ex: Nova Mutum — MT" value={form.ie_municipio}
+                    onChange={e => setForm(p => ({ ...p, ie_municipio: e.target.value }))}
+                    disabled={editRom?.status === "confirmado"} />
+                )}
+              </div>
+            </div>
+            {form.produtor_id && !form.ie_produtor && (
+              <div style={{ fontSize: 11, color: "#C9921B", marginTop: 8 }}>Selecione ou informe a IE para que conste no SPED/LCDPR.</div>
+            )}
           </div>
 
           {/* Transporte */}

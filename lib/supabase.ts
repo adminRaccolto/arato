@@ -536,6 +536,9 @@ export type RomaneioEntrada = {
   peso_classificado_kg?: number | null;
   sacas?: number | null;
   deposito_id?: string | null;
+  produtor_id?: string | null;
+  ie_produtor?: string | null;
+  ie_municipio?: string | null;
   status: "rascunho" | "confirmado";
   entrada_estoque?: boolean | null;
   obs?: string | null;

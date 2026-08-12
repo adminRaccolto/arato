@@ -234,7 +234,7 @@ type AbaLista = "contratos" | "expedicao" | "posicao";
 // ═══════════════════════════════════════════════════════════════════
 // ── normaliza produto da IA para os nomes do sistema ─────────────────────────
 function normalizarProdutoIA(prod?: string): string {
-  if (!prod) return "Soja";
+  if (!prod || typeof prod !== "string") return "Soja";
   const p = prod.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   if (p.includes("soja")) return "Soja";
   if (p.includes("milho") && (p.includes("2") || p.includes("safrinha"))) return "Milho 2ª (Safrinha)";
@@ -247,7 +247,7 @@ function normalizarProdutoIA(prod?: string): string {
 }
 // ── normaliza frete da IA → opções do formulário ──────────────────────────────
 function normalizarFreteIA(frete?: string): string {
-  if (!frete) return "destinatario";
+  if (!frete || typeof frete !== "string") return "destinatario";
   const f = frete.toUpperCase();
   if (f === "FOB") return "fob";
   if (f === "CIF") return "cif";

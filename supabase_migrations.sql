@@ -9426,3 +9426,12 @@ CREATE POLICY "fazenda_historico_conciliacao" ON historico_conciliacao
   ));
 
 CREATE INDEX IF NOT EXISTS idx_hist_conc_fazenda ON historico_conciliacao (fazenda_id, created_at DESC);
+
+-- =============================================================================
+-- Seção 90+ — produtor_id e ie_produtor em romaneios_entrada
+-- =============================================================================
+ALTER TABLE romaneios_entrada ADD COLUMN IF NOT EXISTS produtor_id   uuid REFERENCES produtores(id);
+ALTER TABLE romaneios_entrada ADD COLUMN IF NOT EXISTS ie_produtor   text;
+
+CREATE INDEX IF NOT EXISTS idx_rom_entrada_produtor ON romaneios_entrada (produtor_id);
+ALTER TABLE romaneios_entrada ADD COLUMN IF NOT EXISTS ie_municipio  text;
