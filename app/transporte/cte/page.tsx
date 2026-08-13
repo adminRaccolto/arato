@@ -280,6 +280,60 @@ function CtePageInner() {
   const [pessoas,        setPessoas]        = useState<PessoaMin[]>([]);
   const [empresasTransp, setEmpresasTransp] = useState<EmpresaTransp[]>([]);
 
+  // ── Aba ─────────────────────────────────────────────────────
+  const [aba, setAba] = useState<"emitidos" | "recebidos">("emitidos");
+
+  // ── CT-e Recebidos ──────────────────────────────────────────
+  interface CteRecebido {
+    id: string; nsu: string; schema_sefaz?: string;
+    chave_acesso?: string; numero_cte?: number; serie?: number;
+    data_emissao?: string;
+    emitente_cnpj?: string; emitente_nome?: string;
+    remetente_cnpj?: string; remetente_nome?: string;
+    destinatario_cnpj?: string; destinatario_nome?: string;
+    municipio_origem?: string; uf_origem?: string;
+    municipio_destino?: string; uf_destino?: string;
+    valor_frete?: number; produto_descricao?: string;
+    lido?: boolean; ambiente?: string; created_at?: string;
+  }
+  const [recebidos,     setRecebidos]     = useState<CteRecebido[]>([]);
+  const [syncando,      setSyncando]      = useState(false);
+  const [syncMsg,       setSyncMsg]       = useState("");
+  const [buscaRec,      setBuscaRec]      = useState("");
+
+  async function carregarRecebidos() {
+    if (!fazendaId) return;
+    const { data } = await supabase
+      .from("cte_recebidos")
+      .select("id,nsu,schema_sefaz,chave_acesso,numero_cte,serie,data_emissao,emitente_cnpj,emitente_nome,remetente_cnpj,remetente_nome,destinatario_cnpj,destinatario_nome,municipio_origem,uf_origem,municipio_destino,uf_destino,valor_frete,produto_descricao,lido,ambiente,created_at")
+      .eq("fazenda_id", fazendaId)
+      .order("nsu", { ascending: false })
+      .limit(200);
+    setRecebidos(data ?? []);
+  }
+
+  async function sincronizarRecebidos(forcarZero = false) {
+    if (!fazendaId || syncando) return;
+    setSyncando(true);
+    setSyncMsg("Consultando SEFAZ...");
+    try {
+      const r = await fetch("/api/cte/distribuicao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, forcar_zero: forcarZero }),
+      });
+      const j = await r.json() as { ok?: boolean; totalDocs?: number; ultNSU?: string; aviso?: string; erro?: string; ambiente?: string };
+      if (j.erro) { setSyncMsg(`Erro: ${j.erro}`); return; }
+      if (j.aviso) { setSyncMsg(j.aviso); return; }
+      setSyncMsg(`${j.totalDocs ?? 0} CT-e recebido(s) · NSU ${j.ultNSU ?? "—"} · ${j.ambiente ?? ""}`);
+      await carregarRecebidos();
+    } catch (e: unknown) {
+      setSyncMsg(`Falha: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSyncando(false);
+    }
+  }
+
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState("");
   const [busca, setBusca] = useState("");
@@ -341,6 +395,7 @@ function CtePageInner() {
   }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { if (aba === "recebidos") carregarRecebidos(); }, [aba, fazendaId]);
 
   // ── Prefill a partir de NF-e (botão "CT-e / MDF-e" na página Fiscal) ────────
   useEffect(() => {
@@ -746,6 +801,102 @@ function CtePageInner() {
           ))}
         </div>
 
+        {/* Tab bar */}
+        <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: "0.5px solid var(--bg-tag)" }}>
+          {([["emitidos", "CT-e Emitidos"], ["recebidos", "CT-e Recebidos da SEFAZ"]] as const).map(([id, lbl]) => (
+            <button key={id} onClick={() => setAba(id)} style={{ padding: "8px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === id ? 700 : 400, color: aba === id ? "#1A4870" : "var(--text-2)", borderBottom: aba === id ? "2px solid #1A4870" : "2px solid transparent", marginBottom: -1, borderRadius: 0 }}>
+              {lbl}
+              {id === "recebidos" && recebidos.length > 0 && <span style={{ marginLeft: 6, background: "#1A4870", color: "#fff", borderRadius: 10, fontSize: 10, padding: "1px 6px" }}>{recebidos.length}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* ── ABA: CT-e Recebidos ─────────────────────────────── */}
+        {aba === "recebidos" && (
+          <>
+            <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <input value={buscaRec} onChange={e => setBuscaRec(e.target.value)} placeholder="Buscar por emitente, remetente, destinatário, chave…" style={{ ...inp, flex: 1, minWidth: 200 }} />
+              <button onClick={() => sincronizarRecebidos(false)} disabled={syncando} style={{ ...btnV, background: syncando ? "#888" : "#1A4870" }}>
+                {syncando ? "Consultando SEFAZ…" : "↻ Sincronizar"}
+              </button>
+              <button onClick={() => sincronizarRecebidos(true)} disabled={syncando} title="Reconsultar do NSU zero" style={{ ...btnR, fontSize: 12 }}>
+                ↺ Desde o início
+              </button>
+            </div>
+            {syncMsg && (
+              <div style={{ background: syncMsg.startsWith("Erro") || syncMsg.startsWith("Falha") ? "#FCEBEB" : "#E8F5E9", border: `0.5px solid ${syncMsg.startsWith("Erro") || syncMsg.startsWith("Falha") ? "#F5C6C6" : "#B2DFDB"}`, borderRadius: 8, padding: "8px 14px", fontSize: 12, color: syncMsg.startsWith("Erro") || syncMsg.startsWith("Falha") ? "#791F1F" : "#1A6B3C", marginBottom: 12 }}>
+                {syncMsg}
+              </div>
+            )}
+            {recebidos.length === 0 ? (
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                Nenhum CT-e recebido. Clique em <strong>↻ Sincronizar</strong> para consultar a SEFAZ.
+              </div>
+            ) : (
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-card)" }}>
+                      {["NSU","Data","Emitente","Remetente → Destinatário","Percurso","Valor Frete","Tipo"].map(h => (
+                        <th key={h} style={{ padding: "10px 12px", textAlign: h === "Valor Frete" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recebidos.filter(r => {
+                      if (!buscaRec) return true;
+                      const q = buscaRec.toLowerCase();
+                      return (r.emitente_nome ?? "").toLowerCase().includes(q)
+                        || (r.remetente_nome ?? "").toLowerCase().includes(q)
+                        || (r.destinatario_nome ?? "").toLowerCase().includes(q)
+                        || (r.chave_acesso ?? "").includes(q)
+                        || (r.nsu ?? "").includes(q);
+                    }).map(r => (
+                      <tr key={r.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", opacity: r.lido ? 0.7 : 1 }}>
+                        <td style={{ padding: "10px 12px", fontWeight: 600, color: "#111", fontVariantNumeric: "tabular-nums" }}>
+                          {r.nsu?.replace(/^0+/, "")}
+                          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>
+                            {r.numero_cte ? `Nº ${r.numero_cte}/${r.serie ?? 1}` : "—"}
+                          </div>
+                        </td>
+                        <td style={{ padding: "10px 12px" }}>{fmtData(r.data_emissao)}</td>
+                        <td style={{ padding: "10px 12px" }}>
+                          <div style={{ fontSize: 12 }}>{r.emitente_nome ?? "—"}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-3)" }}>{r.emitente_cnpj ?? ""}</div>
+                        </td>
+                        <td style={{ padding: "10px 12px" }}>
+                          <div style={{ fontSize: 12 }}>{r.remetente_nome ?? "—"}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)" }}>→ {r.destinatario_nome ?? "—"}</div>
+                        </td>
+                        <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                          <div>{r.municipio_origem ?? "—"}/{r.uf_origem ?? ""}</div>
+                          <div style={{ color: "var(--text-3)" }}>→ {r.municipio_destino ?? "—"}/{r.uf_destino ?? ""}</div>
+                        </td>
+                        <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600 }}>
+                          {r.valor_frete != null ? fmtBRL(r.valor_frete) : "—"}
+                        </td>
+                        <td style={{ padding: "10px 12px" }}>
+                          {badge(
+                            (r.schema_sefaz ?? "").startsWith("procCTe") || (r.schema_sefaz ?? "").startsWith("cteProc") ? "CT-e" :
+                            (r.schema_sefaz ?? "").startsWith("procEventoCTe") ? "Evento" : (r.schema_sefaz ?? "—").split("_")[0],
+                            "#D5E8F5", "#0B2D50"
+                          )}
+                          {r.ambiente === "homologacao" && (
+                            <span style={{ marginLeft: 4, fontSize: 10, color: "#C9921B", fontWeight: 600 }}>HML</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── ABA: CT-e Emitidos ──────────────────────────────── */}
+        {aba === "emitidos" && <>
+
         {/* Filtros + botão */}
         <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
           <div style={{ flex: "0 0 150px" }}>
@@ -831,6 +982,8 @@ function CtePageInner() {
             </table>
           </div>
         )}
+        </>}
+
       </main>
 
       {/* ══════════════════════════════════════════════════════

@@ -9545,3 +9545,51 @@ WHERE status NOT IN ('cancelado')
 -- FROM contratos
 -- WHERE status != 'cancelado'
 -- ORDER BY numero;
+
+-- ══════════════════════════════════════════════════════════════════
+-- Seção 94 — CT-e Recebidos (NT 2015.002 — CTeDistribuicaoDFe)
+-- ══════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS cte_recebidos (
+  id                 UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id         UUID        NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nsu                TEXT        NOT NULL,                     -- NSU da SEFAZ (15 dígitos)
+  schema_sefaz       TEXT,                                    -- ex: procCTe_v4.00.xsd
+  chave_acesso       TEXT,                                    -- 44 dígitos
+  numero_cte         INTEGER,
+  serie              INTEGER,
+  data_emissao       DATE,
+  emitente_cnpj      TEXT,
+  emitente_nome      TEXT,
+  remetente_cnpj     TEXT,
+  remetente_nome     TEXT,
+  destinatario_cnpj  TEXT,
+  destinatario_nome  TEXT,
+  municipio_origem   TEXT,
+  uf_origem          TEXT,
+  municipio_destino  TEXT,
+  uf_destino         TEXT,
+  valor_frete        NUMERIC(14,2),
+  valor_mercadoria   NUMERIC(14,2),
+  produto_descricao  TEXT,
+  xml_raw            TEXT,                                    -- XML completo do procCTe
+  ambiente           TEXT        NOT NULL DEFAULT 'homologacao',
+  lido               BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (fazenda_id, nsu)
+);
+
+ALTER TABLE cte_recebidos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "fazenda_cte_recebidos" ON cte_recebidos
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+CREATE INDEX IF NOT EXISTS idx_cte_recebidos_fazenda      ON cte_recebidos (fazenda_id, data_emissao DESC);
+CREATE INDEX IF NOT EXISTS idx_cte_recebidos_chave        ON cte_recebidos (chave_acesso);
+CREATE INDEX IF NOT EXISTS idx_cte_recebidos_emitente     ON cte_recebidos (emitente_cnpj);
+CREATE INDEX IF NOT EXISTS idx_cte_recebidos_remetente    ON cte_recebidos (remetente_cnpj);
+CREATE INDEX IF NOT EXISTS idx_cte_recebidos_destinatario ON cte_recebidos (destinatario_cnpj);
