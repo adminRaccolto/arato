@@ -9652,3 +9652,45 @@ CREATE POLICY "parcelas_consorcio_by_conta" ON parcelas_consorcio
 -- Link lancamentos → consorcio (para geração e reclassificação de CPs)
 ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS consorcio_id UUID REFERENCES consorcios(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_lancamentos_consorcio ON lancamentos(consorcio_id);
+
+-- ─── Migration 97 — RLS policies para tabelas sem policy (Sessão 18) ──────────
+-- mutuos (Tesouraria > Mútuo entre Empresas)
+CREATE POLICY "mutuos_by_conta" ON mutuos
+  FOR ALL USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
+
+-- pagamentos_mutuo (via mutuo → fazenda)
+CREATE POLICY "pagamentos_mutuo_by_conta" ON pagamentos_mutuo
+  FOR ALL USING (
+    mutuo_id IN (
+      SELECT m.id FROM mutuos m
+      JOIN fazendas f ON f.id = m.fazenda_id
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
+
+-- taxas_bancarias (Tesouraria > Taxas Bancárias)
+CREATE POLICY "taxas_bancarias_by_conta" ON taxas_bancarias
+  FOR ALL USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
+
+-- config_contabilidade (Configurações > Contabilidade / SPED ECD)
+CREATE POLICY "config_contabilidade_by_conta" ON config_contabilidade
+  FOR ALL USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );

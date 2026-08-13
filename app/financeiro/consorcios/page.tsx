@@ -735,7 +735,6 @@ export default function ConsorciosPage() {
               <button onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px" }}>
-              {cErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 14 }}>{cErr}</div>}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={lbl}>Administradora</label>
@@ -791,11 +790,14 @@ export default function ConsorciosPage() {
                 </div>
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
-              <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
-                {cSaving ? "Salvando…" : "Salvar"}
-              </button>
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
+              {cErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{cErr}</div>}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
+                <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
+                  {cSaving ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
