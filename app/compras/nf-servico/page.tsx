@@ -133,6 +133,13 @@ export default function NfServicoPage() {
   const [busca,        setBusca]        = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
 
+  // ── SIEG ────────────────────────────────────────────────────
+  const [siegDtInicio,      setSiegDtInicio]      = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
+  const [siegDtFim,         setSiegDtFim]         = useState(() => new Date().toISOString().slice(0,10));
+  const [siegForceReimport, setSiegForceReimport] = useState(false);
+  const [siegSyncing,       setSiegSyncing]       = useState(false);
+  const [siegSyncMsg,       setSiegSyncMsg]       = useState("");
+
   const [wizard,  setWizard]  = useState(false);
   const [etapa,   setEtapa]   = useState<Etapa>("prestador");
   const [saving,  setSaving]  = useState(false);
@@ -334,6 +341,29 @@ export default function NfServicoPage() {
     await carregar();
   }
 
+  // ── SIEG — sincronização NFSe ───────────────────────────────
+  async function sincronizarSiegNfse() {
+    if (!fazendaId) return;
+    setSiegSyncing(true); setSiegSyncMsg("");
+    try {
+      const res = await fetch("/api/integracoes/sieg-sync-nfse", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim, force_reimport: siegForceReimport }),
+      });
+      const d = await res.json() as Record<string, unknown>;
+      if (d.erro) {
+        setSiegSyncMsg(`✗ ${d.erro}`);
+      } else {
+        const imp = Number(d.importadas ?? 0);
+        const dup = Number(d.duplicadas ?? 0);
+        const dupTxt = dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : "";
+        setSiegSyncMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dupTxt}`);
+        await carregar();
+      }
+    } catch (e) { setSiegSyncMsg(`✗ Erro de rede: ${e}`); }
+    finally { setSiegSyncing(false); }
+  }
+
   // ── Lista filtrada ───────────────────────────────────────────
   const nfsFilt = nfs.filter(nf => {
     if (filtroStatus && nf.status !== filtroStatus) return false;
@@ -360,6 +390,37 @@ export default function NfServicoPage() {
             </div>
           </div>
           <button style={btnV} onClick={abrirNovo}>+ Nova NF de Serviço</button>
+        </div>
+
+        {/* ── Painel SIEG ── */}
+        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 18px", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginRight: 4 }}>⟳ Sincronizar SIEG — NFS-e</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, color: "var(--text-2)" }}>De:</span>
+              <input type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
+                style={{ padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }} />
+              <span style={{ fontSize: 11, color: "var(--text-2)" }}>Até:</span>
+              <input type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
+                style={{ padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }} />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer", userSelect: "none" }}>
+              <input type="checkbox" checked={siegForceReimport} onChange={e => setSiegForceReimport(e.target.checked)} style={{ cursor: "pointer" }} />
+              Forçar re-importação
+            </label>
+            <button onClick={sincronizarSiegNfse} disabled={siegSyncing}
+              style={{ padding: "6px 18px", background: siegSyncing ? "var(--border-table)" : "#111111", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
+              {siegSyncing ? "Sincronizando…" : "Sincronizar"}
+            </button>
+            {siegSyncMsg && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: siegSyncMsg.startsWith("✗") ? "#E24B4A" : "#16A34A" }}>{siegSyncMsg}</span>
+            )}
+          </div>
+          {siegSyncMsg && !siegSyncMsg.startsWith("✗") && (
+            <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 6 }}>
+              NFSe importadas com status <strong>Pendente</strong> — abra cada uma para classificar operação gerencial e centro de custo antes de processar.
+            </div>
+          )}
         </div>
 
         {/* Cards */}
