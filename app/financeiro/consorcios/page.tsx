@@ -148,23 +148,13 @@ export default function ConsorciosPage() {
   // ── Carregar ───────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const { data: cd } = await supabase
-      .from("consorcios")
-      .select("*")
-      .in("fazenda_id", fazendaIds)
-      .order("data_inicio", { ascending: false });
-    setConsorcios(cd ?? []);
-
-    if (cd && cd.length > 0) {
-      const ids = cd.map((c: Consorcio) => c.id);
-      const { data: pd } = await supabase
-        .from("parcelas_consorcio")
-        .select("*")
-        .in("consorcio_id", ids)
-        .order("numero_parcela");
-      setParcelas(pd ?? []);
-    }
-  }, [fazendaId]);
+    const ids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
+    const res = await fetch(`/api/financeiro/consorcios?fazenda_ids=${ids.join(",")}`);
+    if (!res.ok) return;
+    const d = await res.json() as { consorcios: Consorcio[]; parcelas: ParcelaConsorcio[] };
+    setConsorcios(d.consorcios ?? []);
+    setParcelas(d.parcelas ?? []);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
