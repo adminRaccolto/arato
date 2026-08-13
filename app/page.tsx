@@ -711,7 +711,7 @@ export default function Dashboard() {
                 onFocus={() => setBuscaAberta(true)}
                 style={{ width:"100%",boxSizing:"border-box",padding:"6px 10px 6px 30px",
                   border:"0.5px solid rgba(255,255,255,0.12)",borderRadius:8,fontSize:12,
-                  background:"rgba(255,255,255,0.06)",outline:"none",color:"var(--text-1)" }}
+                  background:"rgba(255,255,255,0.06)",outline:"none",color:"rgba(255,255,255,0.85)" }}
               />
               {buscaGlobal && !buscandoGlobal && (
                 <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</button>
@@ -762,8 +762,8 @@ export default function Dashboard() {
               ].map((m,i) => (
                 <div key={i} style={{ display:"flex",alignItems:"center",gap:7,flexShrink:0 }}>
                   <span style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:".06em" }}>{m.nome}</span>
-                  <span style={{ fontSize:13,fontWeight:700,color:"var(--text-1)",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
-                  {m.brl && <span style={{ fontSize:11,color:"rgba(255,255,255,0.4)" }}>{m.brl}</span>}
+                  <span style={{ fontSize:13,fontWeight:700,color:"#ffffff",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
+                  {m.brl && <span style={{ fontSize:11,color:"rgba(255,255,255,0.55)" }}>{m.brl}</span>}
                   {m.d !== 0 && <span style={{ fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:4,
                     background:m.d>0?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",
                     color:m.d>0?"#22C55E":"#EF4444" }}>{fmtPct(m.d)}</span>}
