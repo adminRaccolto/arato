@@ -2543,7 +2543,7 @@ export default function NfCompraPage() {
                       gap: 0, background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)"
                     }}>
                       {(tipo === "insumos"
-                        ? ["Descrição NF", "Insumo / Centro Custo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Conversão de Unidade", ""]
+                        ? ["Descrição NF", ccMode === "global" ? "Centro de Custo" : "Insumo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Conversão de Unidade", ""]
                         : tipo === "custo_direto"
                         ? ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro de Custo", ""]
                         : ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro Custo", "Apropriação", ""]
@@ -2593,37 +2593,64 @@ export default function NfCompraPage() {
                               )}
                             </div>
 
-                            {/* Col 2 — Insumo / C. Custo */}
+                            {/* Col 2 — CC (global) ou Insumo / CC (por produto) */}
                             <div style={{ padding: "7px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
-                              {/* Botões Estoque/CC — só aparecem no modo "por produto" */}
-                              {ccMode === "por_produto" && (
-                                <div style={{ display: "flex", gap: 2 }}>
-                                  <button
-                                    onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
-                                    style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "var(--border-table)" : "#111111"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#E8E8E8", color: it.tipo_apropiacao === "direto" ? "var(--text-3)" : "#111111", cursor: "pointer", fontWeight: 600 }}
-                                  >📦 Estoque</button>
-                                  <button
-                                    onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "" })}
-                                    style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--border-table)"}`, background: it.tipo_apropiacao === "direto" ? "#E8F5E9" : "var(--bg-card)", color: it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--text-3)", cursor: "pointer", fontWeight: 600 }}
-                                  >💸 C. Custo</button>
-                                </div>
-                              )}
-                              {(ccMode === "por_produto" && it.tipo_apropiacao === "direto") ? (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                  <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
-                                    <option value="">— selecionar CC —</option>
-                                    {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
-                                      <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>
-                                    ))}
-                                  </select>
-                                  {ccManutencao(it.centro_custo_id) && (
-                                    <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
-                                      <option value="">🔧 Máquina (opcional)</option>
-                                      {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                                    </select>
+                              {ccMode === "global" ? (
+                                /* Global: mostra o CC herdado (read-only) */
+                                <div style={{ padding: "5px 8px", background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 8, fontSize: 12 }}>
+                                  {cab.centro_custo_id
+                                    ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{ccOpts.find(c => c.id === cab.centro_custo_id)?.nome ?? "—"}</span>
+                                    : <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>← definir CC acima</span>}
+                                  {ccManutencao(cab.centro_custo_id) && ccGlobalMaquinaId && (
+                                    <div style={{ fontSize: 10, color: "#7A5A12", marginTop: 2 }}>
+                                      🔧 {maquinas.find(m => m.id === ccGlobalMaquinaId)?.nome ?? "máquina"}
+                                    </div>
                                   )}
                                 </div>
+                              ) : (ccMode === "por_produto") ? (
+                                /* Por produto: toggle Estoque / C. Custo + campo correspondente */
+                                <>
+                                  <div style={{ display: "flex", gap: 2 }}>
+                                    <button
+                                      onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
+                                      style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "var(--border-table)" : "#111111"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#E8E8E8", color: it.tipo_apropiacao === "direto" ? "var(--text-3)" : "#111111", cursor: "pointer", fontWeight: 600 }}
+                                    >📦 Estoque</button>
+                                    <button
+                                      onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "" })}
+                                      style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--border-table)"}`, background: it.tipo_apropiacao === "direto" ? "#E8F5E9" : "var(--bg-card)", color: it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--text-3)", cursor: "pointer", fontWeight: 600 }}
+                                    >💸 C. Custo</button>
+                                  </div>
+                                  {it.tipo_apropiacao === "direto" ? (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                      <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                                        <option value="">— selecionar CC —</option>
+                                        {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
+                                          <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>
+                                        ))}
+                                      </select>
+                                      {ccManutencao(it.centro_custo_id) && (
+                                        <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
+                                          <option value="">🔧 Máquina (opcional)</option>
+                                          {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                                        </select>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                      <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", flex: 1 }}>
+                                        <option value="">— não associado —</option>
+                                        {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                                      </select>
+                                      <button
+                                        onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
+                                        title="Cadastrar novo produto"
+                                        style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0, fontWeight: 700 }}
+                                      >+</button>
+                                    </div>
+                                  )}
+                                </>
                               ) : (
+                                /* Sem CC (nenhum): só insumo do catálogo */
                                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                                   <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", flex: 1 }}>
                                     <option value="">— não associado —</option>
