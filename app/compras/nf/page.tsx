@@ -46,6 +46,34 @@ const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
+const CFOP_NATUREZA: Record<string, string> = {
+  "1101": "Compra para industrialização",
+  "1102": "Compra para comercialização",
+  "1113": "Compra de material para uso ou consumo",
+  "1116": "Compra para industrialização originada de encomenda",
+  "1201": "Devolução de venda de produção do estabelecimento",
+  "1202": "Devolução de venda de mercadoria adquirida ou recebida de terceiros",
+  "1551": "Compra de bem para o ativo imobilizado",
+  "1556": "Compra de bem para o ativo imobilizado",
+  "1652": "Compra de combustível e lubrificantes por consumidor ou usuário final",
+  "1653": "Compra de combustível e lubrificantes para uso em processo de industrialização",
+  "1654": "Compra de combustível para uso em transporte rodoviário de carga",
+  "2101": "Compra para industrialização",
+  "2102": "Compra para comercialização",
+  "2113": "Compra de material para uso ou consumo",
+  "2116": "Compra para industrialização originada de encomenda",
+  "2551": "Compra de bem para o ativo imobilizado",
+  "2556": "Compra de bem para o ativo imobilizado",
+  "2652": "Compra de combustível e lubrificantes por consumidor ou usuário final",
+  "2653": "Compra de combustível e lubrificantes para uso em processo de industrialização",
+  "3101": "Compra para industrialização",
+  "3102": "Compra para comercialização",
+  "5101": "Venda de produção do estabelecimento",
+  "5102": "Venda de mercadoria adquirida ou recebida de terceiros",
+  "6101": "Venda de produção do estabelecimento",
+  "6102": "Venda de mercadoria adquirida ou recebida de terceiros",
+};
+
 function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{texto}</span>;
 }
@@ -2069,7 +2097,17 @@ export default function NfCompraPage() {
                     </div>
                     <div>
                       <label style={lbl}>CFOP</label>
-                      <input value={cab.cfop} onChange={e => setCab(p=>({...p,cfop:e.target.value}))} placeholder="1101, 2101…" style={inp} />
+                      <input
+                        value={cab.cfop}
+                        onChange={e => setCab(p=>({...p,cfop:e.target.value}))}
+                        onBlur={e => {
+                          const cfop = e.target.value.trim();
+                          const nat = CFOP_NATUREZA[cfop];
+                          if (nat && !cab.natureza) setCab(p => ({ ...p, natureza: nat }));
+                        }}
+                        placeholder="1101, 2101…"
+                        style={inp}
+                      />
                     </div>
                   </div>
 
@@ -2133,6 +2171,7 @@ export default function NfCompraPage() {
                             </div>
                             <div style={{ maxHeight: 240, overflowY: "auto" }}>
                               <div
+                                onMouseDown={e => e.preventDefault()}
                                 onClick={() => { onPessoaChange(""); setPessoaDropOpen(false); setPessoaBusca(""); }}
                                 style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 0, padding: "7px 10px", cursor: "pointer", fontSize: 12, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)" }}
                               >
@@ -2152,6 +2191,7 @@ export default function NfCompraPage() {
                                 .map(p => (
                                   <div
                                     key={p.id}
+                                    onMouseDown={e => e.preventDefault()}
                                     onClick={() => { onPessoaChange(p.id); setPessoaDropOpen(false); setPessoaBusca(""); }}
                                     style={{ display: "grid", gridTemplateColumns: "1fr 160px", padding: "7px 10px", cursor: "pointer", fontSize: 12, borderBottom: "0.5px solid var(--bg-page)", background: p.id === cab.pessoa_id ? "var(--bg-tag)" : undefined }}
                                   >
