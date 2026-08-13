@@ -192,11 +192,12 @@ const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4";
 // o padrão XML assume UTF-8 — incluí-la causaria a rejeição 402.
 
 function compactarCTeBase64(xmlAssinado: string): string {
-  // Remove BOM e declaração XML — ambos externos à raiz assinada <CTe>.
-  // Não altera o digest de <infCte>.
-  const xmlAreaDados = xmlAssinado
+  // Remove BOM e declaração existente, depois reinsere declaração UTF-8 explícita.
+  const raizCTe = xmlAssinado
     .replace(/^﻿/, "")
     .replace(/^<\?xml[^?]*\?>\s*/i, "");
+
+  const xmlAreaDados = `<?xml version="1.0" encoding="UTF-8"?>${raizCTe}`;
 
   const bytesUtf8  = Buffer.from(xmlAreaDados, "utf8");
   const compactado = gzipSync(bytesUtf8, { level: 9 });
@@ -210,12 +211,15 @@ function compactarCTeBase64(xmlAssinado: string): string {
   // Valida que os bytes são UTF-8 válido (modo fatal = lança em sequência inválida).
   new TextDecoder("utf-8", { fatal: true }).decode(descompactado);
 
+  const inicioAscii = descompactado.subarray(0, 60).toString("ascii");
+
   console.log("[CT-e UTF8 check]", {
     utf8Valid:           true,
     possuiBom:           descompactado.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])),
-    possuiDeclaracaoXml: descompactado.subarray(0, 20).toString("ascii").includes("<?xml"),
+    possuiDeclaracaoXml: inicioAscii.startsWith("<?xml"),
+    declaraUtf8:         inicioAscii.includes('encoding="UTF-8"'),
     primeirosBytesHex:   descompactado.subarray(0, 12).toString("hex"),
-    comecaComCTe:        descompactado.subarray(0, 4).toString("utf8") === "<CTe",
+    contemRaizCTe:       inicioAscii.includes("<CTe"),
   });
 
   return compactado.toString("base64");
