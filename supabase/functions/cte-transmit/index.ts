@@ -144,8 +144,7 @@ async function soapPost(
       client,
       method: "POST",
       headers: {
-        // Axis2/CXF legado: charset maiúsculo + SOAPAction separado obrigatório mesmo em SOAP 1.2
-        "Content-Type": `application/soap+xml;charset=UTF-8;action="${soapAction}"`,
+        "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
         "SOAPAction":   `"${soapAction}"`,
       },
       body,

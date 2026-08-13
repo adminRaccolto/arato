@@ -224,12 +224,22 @@ function compactarCTeBase64(xmlAssinado: string): string {
 function envelopeCTe(xmlAssinado: string): string {
   const dadosBase64 = compactarCTeBase64(xmlAssinado);
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  const envelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
   <soap12:Body>
     <cteDadosMsg xmlns="${SOAP_NS}">${dadosBase64}</cteDadosMsg>
   </soap12:Body>
 </soap12:Envelope>`;
+
+  console.log("[CT-e SOAP check]", {
+    hasCteCabecMsg: envelope.includes("cteCabecMsg"),
+    hasSoapHeader:  envelope.includes("soap12:Header"),
+  });
+
+  return envelope;
 }
 
 // ─── Relay via Supabase Edge Function (IP brasileiro) ────────────────────────
@@ -298,7 +308,7 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
     const req = https.request({
       hostname: u.hostname, port: 443, path: u.pathname + u.search, method: "POST",
       headers: {
-        "Content-Type": `application/soap+xml;charset=UTF-8;action="${SOAP_ACTION}"`,
+        "Content-Type": `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
         "SOAPAction":   `"${SOAP_ACTION}"`,
         "Content-Length": Buffer.byteLength(body, "utf8"),
       },
