@@ -374,66 +374,30 @@ export default function ConsorciosPage() {
   }
 
   // ── Gerar parcelas + CPs no financeiro ───────────────────
+  // Usa API route (service_role_key) — imune a JWT expirado e RLS.
   async function gerarParcelas(c: Consorcio) {
     if (!fazendaId) return;
     const existem = parcelas.filter(p => p.consorcio_id === c.id);
     if (existem.length > 0) {
       if (!confirm(`Este consórcio já tem ${existem.length} parcelas. Deseja apagar e regenerar?`)) return;
-      await supabase.from("parcelas_consorcio").delete().eq("consorcio_id", c.id);
-      // Remove também CPs geradas anteriormente para este consórcio
-      await supabase.from("lancamentos").delete().eq("consorcio_id", c.id).neq("status", "pago");
     }
-
-    // OG correta conforme status atual
-    const ogId = c.status === "contemplado"
-      ? (ogContemplado  ?? await buscarOgId(fazendaId, "2.03.01.007"))
-      : (ogNaoContemplado ?? await buscarOgId(fazendaId, "2.03.01.006"));
-
-    const novasParc: Omit<ParcelaConsorcio, "id" | "created_at">[] = [];
-    const novasCPs: object[] = [];
-    const base = new Date(c.data_inicio + "T12:00:00");
-    const descBase = `Consórcio ${c.administradora} — Cota ${c.numero_cota}`;
-
-    for (let i = 1; i <= c.total_parcelas; i++) {
-      const d = new Date(base);
-      d.setMonth(d.getMonth() + i - 1);
-      const dataVenc = d.toISOString().split("T")[0];
-      const pago = i <= c.parcelas_pagas;
-
-      novasParc.push({
-        consorcio_id: c.id,
-        numero_parcela: i,
-        data_vencimento: dataVenc,
-        data_pagamento: null,
-        valor: c.valor_parcela_mensal,
-        pago,
-        tipo_parcela: "mensalidade",
-        observacao: undefined,
-      } as Omit<ParcelaConsorcio, "id" | "created_at">);
-
-      // CP apenas para parcelas futuras (não pagas)
-      if (!pago && c.valor_parcela_mensal > 0) {
-        novasCPs.push({
-          fazenda_id: fazendaId,
-          tipo: "pagar",
-          descricao: `${descBase} — Parcela ${i}/${c.total_parcelas}`,
-          valor: c.valor_parcela_mensal,
-          data_lancamento: dataVenc,
-          data_vencimento: dataVenc,
-          status: "aberto",
-          consorcio_id: c.id,
-          numero_documento: String(i),
-          origem_lancamento: "consorcio",
-          ...(ogId ? { operacao_gerencial_id: ogId } : {}),
-        });
-      }
-    }
-
-    if (novasParc.length > 0) await supabase.from("parcelas_consorcio").insert(novasParc);
-    // Inserir CPs em lotes de 100 para evitar limite de payload
-    for (let k = 0; k < novasCPs.length; k += 100) {
-      await supabase.from("lancamentos").insert(novasCPs.slice(k, k + 100));
-    }
+    const res = await fetch("/api/financeiro/consorcios", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        consorcio_id:        c.id,
+        fazenda_id:          fazendaId,
+        administradora:      c.administradora,
+        numero_cota:         c.numero_cota,
+        valor_parcela_mensal: c.valor_parcela_mensal,
+        total_parcelas:      c.total_parcelas,
+        parcelas_pagas:      c.parcelas_pagas,
+        data_inicio:         c.data_inicio,
+        status:              c.status,
+      }),
+    });
+    const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; error?: string };
+    if (!res.ok) { alert(json.error ?? "Erro ao gerar parcelas."); return; }
     await carregar();
   }
 
