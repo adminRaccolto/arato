@@ -97,8 +97,6 @@ function Modal({ titulo, onClose, children, width = 800 }: { titulo: string; onC
 export default function RomaneioEntradaPage() {
   const { fazendaId, fazendaIds, contaId } = useAuth();
 
-  const [fazendas,      setFazendas]      = useState<{ id: string; nome: string }[]>([]);
-  const [fazendaFiltro, setFazendaFiltro] = useState("");
 
   const [romaneios,  setRomaneios]  = useState<RomaneioEntrada[]>([]);
   const [depositos,  setDepositos]  = useState<Deposito[]>([]);
@@ -132,7 +130,6 @@ export default function RomaneioEntradaPage() {
   useEffect(() => {
     if (!fazendaId) return;
     const fid = fazendaId;
-    listarFazendas(fid).then(f => setFazendas(f as { id: string; nome: string }[])).catch(() => {});
     Promise.all([
       listarRomaneiosEntradaDaConta(fid),
       listarDepositos(fid),
@@ -335,7 +332,6 @@ export default function RomaneioEntradaPage() {
 
   // ── Filtros lista ────────────────────────────────────────────────────────
   const filtrados = useMemo(() => romaneios.filter(r => {
-    if (fazendaFiltro && r.fazenda_id !== fazendaFiltro) return false;
     if (fTipo   && r.tipo !== fTipo)     return false;
     if (fStatus && r.status !== fStatus) return false;
     if (fDe     && r.data < fDe)         return false;
@@ -351,7 +347,7 @@ export default function RomaneioEntradaPage() {
       if (!match) return false;
     }
     return true;
-  }), [romaneios, fazendaFiltro, fTipo, fStatus, fDe, fAte, fBusca]);
+  }), [romaneios, fTipo, fStatus, fDe, fAte, fBusca]);
 
   // ── KPIs ────────────────────────────────────────────────────────────────
   const sacasTotal    = filtrados.reduce((s, r) => s + (r.sacas ?? 0), 0);
@@ -377,13 +373,6 @@ export default function RomaneioEntradaPage() {
           <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Recebimento de grãos — pesagem própria ou ticket de terceiros</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {fazendas.length > 1 && (
-            <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
-              style={{ padding: "8px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
-              <option value="">Todas as fazendas</option>
-              {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-            </select>
-          )}
           <button style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
         </div>
       </div>
@@ -545,18 +534,6 @@ export default function RomaneioEntradaPage() {
       {modal && (
         <Modal titulo={editRom ? "Editar Romaneio de Entrada" : "Novo Romaneio de Entrada"} onClose={() => setModal(false)} width={860}>
 
-          {/* Fazenda — seletor explícito */}
-          {fazendas.length > 1 && (
-            <div style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Este romaneio pertence a</div>
-              <select style={{ width:"100%", padding:"7px 10px", borderRadius:6, border:"0.5px solid var(--border)", fontSize:13, background:"var(--bg-card)" }}
-                value={form.fazenda_id || fazendaId || ""}
-                onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}>
-                <option value="">— Selecionar fazenda —</option>
-                {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-              </select>
-            </div>
-          )}
 
           {/* Toggle tipo */}
           <div style={{ display: "flex", gap: 0, marginBottom: 12, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>

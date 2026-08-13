@@ -45,8 +45,6 @@ export default function CorrecaoSoloPage() {
   const [talhoes, setTalhoes]       = useState<Talhao[]>([]);
   const [insumos, setInsumos]       = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra]   = useState<AnoSafra[]>([]);
-  const [fazendas, setFazendas]     = useState<Fazenda[]>([]);
-  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erro, setErro]           = useState<string | null>(null);
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
@@ -59,18 +57,14 @@ export default function CorrecaoSoloPage() {
   const [itens, setItens] = useState<ItemForm[]>([{ insumo_id: "", produto_nome: "", dose_ton_ha: "" }]);
 
   useEffect(() => {
-    listarFazendas(fazendaId ?? undefined).then(setFazendas).catch(() => {});
-  }, [fazendaId]);
-
-  useEffect(() => {
     if (!fazendaId) return;
     setErro(null);
     listarCorrecoesDaConta(fazendaId)
-      .then(data => setRegistros(fazendaFiltro ? data.filter(r => r.fazenda_id === fazendaFiltro) : data))
+      .then(data => setRegistros(data.filter(r => r.fazenda_id === fazendaId)))
       .catch(e => setErro((e as { message?: string })?.message || JSON.stringify(e)));
     listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId]);
 
   useEffect(() => {
     if (!fid) return;
@@ -161,12 +155,6 @@ export default function CorrecaoSoloPage() {
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Calcário, gesso agrícola, micronutrientes e corretivos orgânicos</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {fazendas.length > 1 && (
-              <select style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
-                <option value="">Todas as fazendas</option>
-                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
-            )}
             <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
           </div>
         </header>

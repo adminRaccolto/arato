@@ -315,7 +315,6 @@ export default function ComprasPage() {
   const [produtores,      setProdutores]      = useState<Produtor[]>([]);
   const [ieOpcoes,        setIeOpcoes]        = useState<ProdutorIE[]>([]);
   const [ieMap,           setIeMap]           = useState<Record<string, string>>({});
-  const [fazendaFiltro,   setFazendaFiltro]   = useState("");
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
   const [erro,          setErro]          = useState<string | null>(null);
@@ -362,7 +361,7 @@ export default function ComprasPage() {
         listarFazendas(fazendaId),
         listarProdutoresDaConta(contaId ?? "", fazendaId),
       ]);
-      setPedidos(fazendaFiltro ? allPed.filter(p => p.fazenda_id === fazendaFiltro) : allPed);
+      setPedidos(allPed);
       setPessoas(pes);
       setInsumos(ins);
       setCiclos(cic);
@@ -387,7 +386,7 @@ export default function ComprasPage() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -980,15 +979,8 @@ export default function ComprasPage() {
               <option value="USD">US$ (Dólar)</option>
               <option value="barter">Barter</option>
             </select>
-            {fazendas.length > 1 && (
-              <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
-                style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
-                <option value="">Todas as fazendas</option>
-                {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-              </select>
-            )}
-            {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda || fazendaFiltro) && (
-              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); setFazendaFiltro(""); }}
+            {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda) && (
+              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); }}
                 style={{ padding: "7px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)" }}>
                 Limpar filtros
               </button>

@@ -159,8 +159,28 @@ function gerarCCT(): string {
 const p2 = (n: number) => n.toFixed(2);
 // qCarga usa TDec_1204 (4 casas decimais obrigatórias no schema CT-e 4.00)
 const p4 = (n: number) => n.toFixed(4);
-const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function limparTextoSefaz(valor: string): string {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // remove diacriticos: ã→a, é→e, ç→c
+    .replace(/ /g, " ")          // espaco nao-separavel
+    .replace(/[–—]/g, "-")
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/[º°]/g, "o")
+    .replace(/ª/g, "a")
+    .replace(/[^\x20-\x7E]/g, " ")   // somente ASCII imprimivel
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const esc = (valor: string): string =>
+  limparTextoSefaz(valor)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 
 function xmlEndereco(tag: string, p: ParticipanteCTe): string {
   // enderReme/enderDest são obrigatórios no schema CT-e 4.00 — nunca omitir.

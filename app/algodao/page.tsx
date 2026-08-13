@@ -2,14 +2,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
-import { listarFazendas } from "../../lib/db";
 import TopNav from "../../components/TopNav";
 import PlanoGate from "../../components/PlanoGate";
 import type { PrecosData } from "../api/precos/route";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-interface Fazenda   { id: string; nome: string; municipio?: string; estado?: string }
 interface Ciclo     { id: string; descricao: string; cultura: string; fazenda_id?: string; ano_safra_id?: string; area_ha?: number; data_inicio?: string; data_fim?: string }
 interface Talhao    { id: string; nome: string; area_ha?: number }
 interface Pessoa    { id: string; nome: string }
@@ -142,8 +140,6 @@ export default function AlgodaoPage() {
   const { fazendaId, contaId, fazendaIds, userRole, podeAcessarPlano, modulosCarregados } = useAuth();
 
   // ── Seletores globais ──
-  const [fazendas,    setFazendas]    = useState<Fazenda[]>([]);
-  const [fazTrabalho, setFazTrabalho] = useState("");
   const [ciclos,      setCiclos]      = useState<Ciclo[]>([]);
   const [cicloSel,    setCicloSel]    = useState("");
   const [talhoes,     setTalhoes]     = useState<Talhao[]>([]);
@@ -172,36 +168,12 @@ export default function AlgodaoPage() {
   const [salvando,   setSalvando]   = useState(false);
   const [msg,        setMsg]        = useState<string | null>(null);
 
-  // ─── Carrega fazendas no mount ────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!fazendaId && !contaId) return;
-    const load = async () => {
-      if (userRole === "raccotlo" && (contaId || fazendaId)) {
-        const r = await fetch("/api/fazenda/da-conta", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conta_id: contaId, fazenda_id: fazendaId }),
-        });
-        const j = await r.json();
-        if (j.ok) {
-          setFazendas(j.fazendas ?? []);
-          setFazTrabalho(prev => prev || fazendaId || j.fazendas?.[0]?.id || "");
-        }
-      } else {
-        const fzs = await listarFazendas();
-        setFazendas(fzs);
-        setFazTrabalho(prev => prev || fazendaId || fzs[0]?.id || "");
-      }
-    };
-    load();
-  }, [fazendaId, contaId, userRole]);
-
   // ─── Carrega talhões e ciclos quando fazenda muda ─────────────────────────
 
   useEffect(() => {
-    if (!fazTrabalho) return;
+    if (!fazendaId) return;
     // talhões e pessoas — têm fazenda_id direto
-    supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazTrabalho).order("nome")
+    supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome")
       .then(({ data }) => setTalhoes((data ?? []) as Talhao[]));
     supabase.from("pessoas").select("id, nome").order("nome")
       .then(({ data }) => setPessoas(((data ?? []) as Pessoa[]).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }))));
@@ -211,7 +183,7 @@ export default function AlgodaoPage() {
       const { data: direto, error: errDireto } = await supabase
         .from("ciclos")
         .select("*")
-        .eq("fazenda_id", fazTrabalho)
+        .eq("fazenda_id", fazendaId)
         .order("descricao", { ascending: false });
 
       if (!errDireto && direto && direto.length > 0) {
@@ -223,7 +195,7 @@ export default function AlgodaoPage() {
 
       // caminho 2: via anos_safra (fallback caso fazenda_id em ciclos esteja NULL)
       const { data: anos } = await supabase
-        .from("anos_safra").select("id").eq("fazenda_id", fazTrabalho);
+        .from("anos_safra").select("id").eq("fazenda_id", fazendaId);
       const anoIds = (anos ?? []).map((a: { id: string }) => a.id);
       if (anoIds.length === 0) { setCiclos([]); setCicloSel(""); return; }
       const { data } = await supabase
@@ -235,14 +207,14 @@ export default function AlgodaoPage() {
       setCicloSel(prev => prev || alg?.id || todos[0]?.id || "");
     };
     loadCiclos();
-  }, [fazTrabalho]);
+  }, [fazendaId]);
 
   // ─── Carrega dados quando ciclo muda ─────────────────────────────────────
 
   const carregarDados = useCallback(async () => {
-    if (!fazTrabalho || !cicloSel) return;
+    if (!fazendaId || !cicloSel) return;
     setCarregando(true);
-    const fid = fazTrabalho;
+    const fid = fazendaId;
 
     const [opRes, armRes, modRes, benefRes, hvRes] = await Promise.allSettled([
       supabase.from("algodao_operacoes_especiais").select("*, talhoes(nome)").eq("fazenda_id", fid).eq("ciclo_id", cicloSel).order("data_aplicacao", { ascending: false }),
@@ -295,9 +267,9 @@ export default function AlgodaoPage() {
       })) as LaudoHVI[]);
     }
     setCarregando(false);
-  }, [fazTrabalho, cicloSel, beneficiamentos.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaId, cicloSel, beneficiamentos.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { carregarDados(); }, [fazTrabalho, cicloSel]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregarDados(); }, [fazendaId, cicloSel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Preços ao vivo ───────────────────────────────────────────────────────
 
@@ -316,10 +288,10 @@ export default function AlgodaoPage() {
   // ─── Salvar operação especial ─────────────────────────────────────────────
 
   async function salvarOperacao() {
-    if (!modalOp || !fazTrabalho || !cicloSel) return;
+    if (!modalOp || !fazendaId || !cicloSel) return;
     if (!modalOp.tipo || !modalOp.data_aplicacao) { setMsg("Tipo e data são obrigatórios."); return; }
     setSalvando(true); setMsg(null);
-    const payload = { ...modalOp, fazenda_id: fazTrabalho, ciclo_id: cicloSel };
+    const payload = { ...modalOp, fazenda_id: fazendaId, ciclo_id: cicloSel };
     const { error } = modalOp.id
       ? await supabase.from("algodao_operacoes_especiais").update(payload).eq("id", modalOp.id)
       : await supabase.from("algodao_operacoes_especiais").insert(payload);
@@ -331,10 +303,10 @@ export default function AlgodaoPage() {
   // ─── Salvar armadilha ────────────────────────────────────────────────────
 
   async function salvarArmadilha() {
-    if (!modalArm || !fazTrabalho || !cicloSel) return;
+    if (!modalArm || !fazendaId || !cicloSel) return;
     if (!modalArm.nome) { setMsg("Nome é obrigatório."); return; }
     setSalvando(true); setMsg(null);
-    const payload = { ...modalArm, fazenda_id: fazTrabalho, ciclo_id: cicloSel, ativa: true };
+    const payload = { ...modalArm, fazenda_id: fazendaId, ciclo_id: cicloSel, ativa: true };
     const { error } = modalArm.id
       ? await supabase.from("bicudo_armadilhas").update(payload).eq("id", modalArm.id)
       : await supabase.from("bicudo_armadilhas").insert(payload);
@@ -357,10 +329,10 @@ export default function AlgodaoPage() {
   // ─── Salvar módulo ───────────────────────────────────────────────────────
 
   async function salvarModulo() {
-    if (!modalMod || !fazTrabalho || !cicloSel) return;
+    if (!modalMod || !fazendaId || !cicloSel) return;
     if (!modalMod.numero) { setMsg("Número do módulo é obrigatório."); return; }
     setSalvando(true); setMsg(null);
-    const payload = { ...modalMod, fazenda_id: fazTrabalho, ciclo_id: cicloSel, status: modalMod.status ?? "campo" };
+    const payload = { ...modalMod, fazenda_id: fazendaId, ciclo_id: cicloSel, status: modalMod.status ?? "campo" };
     const { error } = modalMod.id
       ? await supabase.from("algodao_modulos").update(payload).eq("id", modalMod.id)
       : await supabase.from("algodao_modulos").insert(payload);
@@ -372,9 +344,9 @@ export default function AlgodaoPage() {
   // ─── Salvar beneficiamento ───────────────────────────────────────────────
 
   async function salvarBeneficiamento() {
-    if (!modalBenef || !fazTrabalho || !cicloSel) return;
+    if (!modalBenef || !fazendaId || !cicloSel) return;
     setSalvando(true); setMsg(null);
-    const payload = { ...modalBenef, fazenda_id: fazTrabalho, ciclo_id: cicloSel, status: modalBenef.status ?? "em_processamento" };
+    const payload = { ...modalBenef, fazenda_id: fazendaId, ciclo_id: cicloSel, status: modalBenef.status ?? "em_processamento" };
     const { error } = modalBenef.id
       ? await supabase.from("algodao_beneficiamentos").update(payload).eq("id", modalBenef.id)
       : await supabase.from("algodao_beneficiamentos").insert(payload);
@@ -447,23 +419,15 @@ export default function AlgodaoPage() {
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>Lavoura · Bicudo · Módulos · Algodoeira · HVI · Posição</p>
         </div>
-        {/* Seletores: Fazenda + Ciclo */}
+        {/* Seletor de Ciclo */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <div>
-            <label style={{ ...lbl, marginBottom: 2 }}>Fazenda *</label>
-            <select value={fazTrabalho} onChange={e => { setFazTrabalho(e.target.value); setCicloSel(""); }} style={{ ...inp, width: 200, fontWeight: 600, color: "#111111" }}>
-              <option value="">— selecionar —</option>
-              {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-            </select>
-          </div>
-          <div>
             <label style={{ ...lbl, marginBottom: 2 }}>Ciclo de Algodão *</label>
-            <select value={cicloSel} onChange={e => setCicloSel(e.target.value)} style={{ ...inp, width: 240, fontWeight: 600 }} disabled={!fazTrabalho}>
+            <select value={cicloSel} onChange={e => setCicloSel(e.target.value)} style={{ ...inp, width: 240, fontWeight: 600 }}>
               <option value="">— selecionar ciclo —</option>
               {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}{c.cultura && ` — ${c.cultura}`}</option>)}
             </select>
           </div>
-          {!fazTrabalho && <span style={{ fontSize: 11, color: "#E24B4A", alignSelf: "flex-end", paddingBottom: 6 }}>Selecione a fazenda</span>}
         </div>
       </div>
 
@@ -525,7 +489,7 @@ export default function AlgodaoPage() {
         ))}
       </div>
 
-      {!fazTrabalho || !cicloSel ? (
+      {!fazendaId || !cicloSel ? (
         <div style={{ ...card, textAlign: "center", padding: "60px 0", color: "var(--text-3)" }}>
           Selecione a fazenda e o ciclo de algodão para visualizar os dados.
         </div>

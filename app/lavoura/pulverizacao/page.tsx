@@ -50,8 +50,6 @@ export default function PulverizacaoPage() {
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra] = useState<AnoSafra[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
-  const [fazendas, setFazendas]   = useState<Fazenda[]>([]);
-  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
@@ -67,18 +65,14 @@ export default function PulverizacaoPage() {
   const [itens, setItens] = useState<ItemForm[]>([{ insumo_id: "", dose_ha: "", unidade: "L" }]);
 
   useEffect(() => {
-    listarFazendas(fazendaId ?? undefined).then(setFazendas).catch(() => {});
-  }, [fazendaId]);
-
-  useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
     listarPulverizacoesDaConta(fazendaId)
-      .then(data => setPulverizacoes(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
+      .then(data => setPulverizacoes(data.filter(p => p.fazenda_id === fazendaId)))
       .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
     listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId]);
 
   useEffect(() => {
     if (!fid) return;
@@ -162,12 +156,6 @@ export default function PulverizacaoPage() {
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {fazendas.length > 1 && (
-              <select style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
-                <option value="">Todas as fazendas</option>
-                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
-            )}
             <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
           </div>
         </header>
@@ -196,7 +184,6 @@ export default function PulverizacaoPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {fazendas.length > 1 && <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Fazenda</th>}
                     <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Safra / Talhão</th>
                     <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Tipo</th>
                     <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Estádio</th>
@@ -212,13 +199,6 @@ export default function PulverizacaoPage() {
                     const tm = TIPOS[p.tipo];
                     return (
                       <tr key={p.id} style={{ borderBottom: i < pulverizacoes.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                        {fazendas.length > 1 && (
-                          <td style={{ padding: "10px 14px" }}>
-                            <span style={{ fontSize: 11, background: "#F2F2F2", color: "#111111", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
-                              {fazendas.find(f => f.id === p.fazenda_id)?.nome ?? "—"}
-                            </span>
-                          </td>
-                        )}
                         <td style={{ padding: "10px 14px" }}>
                           <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{cicloLabel(p.ciclo_id ?? "")}</div>
                           {p.talhao_id && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{talhoes.find(t => t.id === p.talhao_id)?.nome ?? "—"}</div>}

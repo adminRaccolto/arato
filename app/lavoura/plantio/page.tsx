@@ -32,8 +32,6 @@ export default function PlantioPage() {
   const [sementes, setSementes]       = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra]     = useState<AnoSafra[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
-  const [fazendas, setFazendas]       = useState<Fazenda[]>([]);
-  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [salvando, setSalvando]       = useState(false);
   const [modal, setModal]             = useState(false);
@@ -45,21 +43,16 @@ export default function PlantioPage() {
     observacao: "",
   });
 
-  // Carrega fazendas da conta para filtro
-  useEffect(() => {
-    listarFazendas(fazendaId ?? undefined).then(setFazendas).catch(() => {});
-  }, [fazendaId]);
-
-  // Lista de todas as fazendas da conta, com filtro opcional
+  // Dados da fazenda ativa
   useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
     listarPlantiosDaConta(fazendaId)
-      .then(data => setPlantios(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
+      .then(data => setPlantios(data.filter(p => p.fazenda_id === fazendaId)))
       .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
     listarInsumos(fazendaId).then(ins => setSementes(ins.filter(i => i.categoria === "semente"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId]);
 
   // Ciclos e talhões recarregam quando fazenda do formulário muda
   useEffect(() => {
@@ -144,12 +137,6 @@ export default function PlantioPage() {
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Registro de plantio por talhão — semente, dose, datas e projeção de colheita</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {fazendas.length > 1 && (
-              <select style={{ ...inp, width: 200 }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
-                <option value="">Todas as fazendas</option>
-                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
-            )}
             <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
           </div>
         </header>
@@ -180,7 +167,6 @@ export default function PlantioPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {fazendas.length > 1 && <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Fazenda</th>}
                     <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Safra / Talhão</th>
                     <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Semente / Cultivar</th>
                     <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Área</th>
@@ -196,13 +182,6 @@ export default function PlantioPage() {
                 <tbody>
                   {plantios.map((p, i) => (
                     <tr key={p.id} style={{ borderBottom: i < plantios.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                      {fazendas.length > 1 && (
-                        <td style={{ padding: "10px 12px" }}>
-                          <span style={{ fontSize: 11, background: "#F2F2F2", color: "#111111", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
-                            {fazendas.find(f => f.id === p.fazenda_id)?.nome ?? "—"}
-                          </span>
-                        </td>
-                      )}
                       <td style={{ padding: "10px 12px" }}>
                         <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{cicloLabel(p.ciclo_id)}</div>
                         <div style={{ fontSize: 11, color: "var(--text-2)" }}>{talhaoLabel(p.talhao_id)}</div>

@@ -192,27 +192,33 @@ const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4";
 // o padrão XML assume UTF-8 — incluí-la causaria a rejeição 402.
 
 function compactarCTeBase64(xmlAssinado: string): string {
-  const xmlAreaDados = xmlAssinado
+  const raizCTe = xmlAssinado
     .replace(/^﻿/, "")
     .replace(/^<\?xml[^?]*\?>\s*/i, "")
     .trim();
 
-  if (!xmlAreaDados.startsWith("<CTe")) {
+  if (!raizCTe.startsWith("<CTe")) {
     throw new Error(
-      `XML inválido antes da compactação: começa com ${JSON.stringify(xmlAreaDados.slice(0, 40))}`
+      `XML inválido antes da compactação: começa com ${JSON.stringify(raizCTe.slice(0, 40))}`
     );
   }
 
+  // MOC CT-e 4.00 exige declaração XML com encoding UTF-8 na área de dados compactada.
+  const xmlAreaDados = `<?xml version="1.0" encoding="UTF-8"?>${raizCTe}`;
+
+  const naoAscii = [...new Set(
+    Array.from(xmlAreaDados).filter(c => (c.codePointAt(0) ?? 0) > 127)
+  )];
+
+  if (naoAscii.length > 0) {
+    console.warn("[CT-e caracteres não ASCII]", naoAscii.map(c => ({
+      caractere: c,
+      codigo: `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}`,
+    })));
+  }
+
   const bytesUtf8 = Buffer.from(xmlAreaDados, "utf8");
-
   new TextDecoder("utf-8", { fatal: true }).decode(bytesUtf8);
-
-  console.log("[CT-e UTF8 check]", {
-    possuiBom:           false,
-    possuiDeclaracaoXml: false,
-    primeirosBytesHex:   bytesUtf8.subarray(0, 4).toString("hex"), // 3c435465 = <CTe
-    comecaComCTe:        true,
-  });
 
   return gzipSync(bytesUtf8, { level: 9 }).toString("base64");
 }
