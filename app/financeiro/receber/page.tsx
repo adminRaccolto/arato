@@ -334,7 +334,10 @@ function ContasReceberInner() {
       const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "receber", fazendaId);
       setLancamentos(dados);
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao carregar");
+      const msg = e instanceof Error ? e.message
+        : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message)
+        : String(e);
+      setErro(msg || "Erro ao carregar");
     } finally {
       setLoading(false);
     }

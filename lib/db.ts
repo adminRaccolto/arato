@@ -481,27 +481,43 @@ export async function listarLancamentosContaPeriodo(
   }
   if (!fazendaIds.length) return [];
 
-  // 2. Busca lancamentos filtrando pelas fazendas da conta
-  const PAGE = 1000;
-  let all: Lancamento[] = [];
-  let from = 0;
-  while (true) {
-    let q = supabase
-      .from("lancamentos")
-      .select("*")
-      .in("fazenda_id", fazendaIds)
-      .gte("data_vencimento", dataInicio)
-      .lte("data_vencimento", dataFim)
-      .order("data_vencimento")
-      .range(from, from + PAGE - 1);
-    if (tipo) q = q.eq("tipo", tipo);
-    const { data, error } = await q;
-    if (error) throw error;
-    all = all.concat(data ?? []);
-    if (!data || data.length < PAGE) break;
-    from += PAGE;
+  // 2. Busca lancamentos via API route (service_role_key — imune a JWT expirado e RLS)
+  try {
+    const res = await fetch("/api/financeiro/lancamentos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fazenda_ids: fazendaIds, data_inicio: dataInicio, data_fim: dataFim, tipo }),
+    });
+    if (res.ok) {
+      const json = await res.json() as { ok: boolean; lancamentos?: Lancamento[]; error?: string };
+      if (json.ok) return json.lancamentos ?? [];
+      throw new Error(json.error ?? "Erro ao carregar lançamentos");
+    }
+    throw new Error(`HTTP ${res.status}`);
+  } catch (e) {
+    // Fallback: tenta direto via supabase client (SSR ou API inacessível)
+    const PAGE = 1000;
+    let all: Lancamento[] = [];
+    let from = 0;
+    while (true) {
+      let q = supabase
+        .from("lancamentos")
+        .select("*")
+        .in("fazenda_id", fazendaIds)
+        .gte("data_vencimento", dataInicio)
+        .lte("data_vencimento", dataFim)
+        .order("data_vencimento")
+        .range(from, from + PAGE - 1);
+      if (tipo) q = q.eq("tipo", tipo);
+      const { data, error } = await q;
+      if (error) throw error;
+      all = all.concat(data ?? []);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    console.warn("[listarLancamentosContaPeriodo] usando fallback client-side:", String(e));
+    return all;
   }
-  return all;
 }
 
 // Soma líquida de todos os lançamentos baixados ANTES de dataInicio (saldo anterior ao período)
