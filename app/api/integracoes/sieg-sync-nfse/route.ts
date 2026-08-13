@@ -5,7 +5,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
-import { baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { baixarXmlsSieg, baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
 export const runtime    = "nodejs";
 export const maxDuration = 300; // 5 min — necessário para downloads grandes do SIEG
@@ -158,6 +160,9 @@ export async function POST(req: NextRequest) {
     // ── Buscar XMLs no SIEG ───────────────────────────────────────────────────
     // Tenta primeiro com CnpjTom; se vier 0 XMLs, tenta sem filtro e filtra client-side
     const xmlsList: Array<{ xml: string; cnpj: string }> = [];
+    let importadas = 0;
+    let duplicadas = 0;
+    const erros: string[] = [];
 
     for (const cnpj of cnpjs) {
       let docs: string[] = [];
@@ -174,16 +179,38 @@ export async function POST(req: NextRequest) {
       if (docs.length > 0) {
         for (const xml of docs) xmlsList.push({ xml, cnpj });
       } else {
-        console.log(`[nfse] CnpjTom=${cnpj}: 0 XMLs no período — nenhum documento a importar`);
+        // CnpjTom retornou 0 — conta SIEG pode não indexar por tomador.
+        // Fallback: download geral + filtro client-side pelo CNPJ no XML.
+        // Limitado a ≤55 dias (uma página de resultados, sem chunking) para não acumular 429s.
+        const diffDias = (new Date(fimStr).getTime() - new Date(iniStr).getTime()) / 86_400_000;
+        if (diffDias > 55) {
+          console.warn(`[nfse] CnpjTom=${cnpj}: 0 XMLs e período ${Math.ceil(diffDias)}d > 55d. Reduza o intervalo.`);
+          erros.push(`CNPJ ${cnpj}: filtro CnpjTom não suportado e período > 55 dias. Selecione no máximo 55 dias e tente novamente.`);
+        } else {
+          console.log(`[nfse] CnpjTom=${cnpj}: fallback geral (período ${Math.ceil(diffDias)}d)`);
+          await sleep(2000); // deixa o rate limit do SIEG recuperar antes do próximo call
+          try {
+            const all = await baixarXmlsSieg(siegCreds, {
+              TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr,
+            });
+            console.log(`[nfse] fallback: ${all.length} XMLs total`);
+            for (const xml of all) {
+              const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador");
+              const tId  = blk(tBlk || xml, "IdentificacaoTomador", "CpfCnpjTomador");
+              const cTom = tv(tId || tBlk || xml, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "");
+              if (cTom === cnpj) xmlsList.push({ xml, cnpj });
+            }
+            console.log(`[nfse] fallback após filtro: ${xmlsList.filter(x => x.cnpj === cnpj).length} XMLs do CNPJ ${cnpj}`);
+          } catch (e2) {
+            console.warn(`[nfse] fallback falhou: ${e2}`);
+          }
+        }
       }
     }
 
     console.log(`[nfse] total XMLs: ${xmlsList.length}`);
 
     // ── Processar XMLs ────────────────────────────────────────────────────────
-    let importadas = 0;
-    let duplicadas = 0;
-    const erros: string[] = [];
 
     for (const { xml, cnpj } of xmlsList) {
       const nfse = parseNfse(xml);
