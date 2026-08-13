@@ -1864,6 +1864,21 @@ export async function processarNfEntrada(
       });
       await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id, item.deposito_id ?? null);
     }
+
+    // ── Compra de Combustível → credita bomba/tanque ─────────────
+    if (item.bomba_id) {
+      const { data: bomba } = await supabase
+        .from("bombas_combustivel")
+        .select("estoque_atual_l")
+        .eq("id", item.bomba_id)
+        .maybeSingle();
+      if (bomba) {
+        const novoEstoque = (bomba.estoque_atual_l ?? 0) + item.quantidade;
+        await supabase.from("bombas_combustivel")
+          .update({ estoque_atual_l: novoEstoque })
+          .eq("id", item.bomba_id);
+      }
+    }
   }
 
   // ── Pessoa: lookup por CNPJ ou auto-cria fornecedor ──────────────────────

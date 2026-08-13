@@ -2106,7 +2106,7 @@ function CadastrosInner() {
             </p>
           </div>
           {/* Seletor de fazenda — obrigatório, usado em todos os modais desta página */}
-          {fazendas.length > 0 && aba !== "empresas" && aba !== "fazendas" && (
+          {fazendas.length > 0 && aba !== "empresas" && aba !== "fazendas" && aba !== "combustivel" && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Fazenda:</span>
               <select

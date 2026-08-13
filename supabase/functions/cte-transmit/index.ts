@@ -129,10 +129,9 @@ async function soapPost(
   soapAction: string,
   caCerts: string[],
 ): Promise<{ status: number; body: string }> {
-  // Monta a cadeia do cliente: folha (do PFX) + intermediários ICP-Brasil
-  // Necessário pois a maioria dos PFX de e-CPF/e-CNPJ contém apenas o cert folha.
-  const leafCerts = splitCerts(certPem);
-  const fullClientChain = [...leafCerts, ...CLIENT_CHAIN_CERTS].join("\n");
+  // Usa apenas o certificado e sua cadeia conforme veio do PFX — sem misturar
+  // intermediários de outras ACs (SAFEWEB, etc.) que confundem o servidor SEFAZ.
+  const fullClientChain = splitCerts(certPem).join("\n");
 
   // @ts-expect-error — Deno.createHttpClient: única API que aceita caCerts no Supabase Edge
   // http1:true / http2:false — SEFAZ-MT usa TLS 1.2 com serviços legados sem HTTP/2

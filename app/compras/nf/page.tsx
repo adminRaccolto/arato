@@ -20,13 +20,14 @@ import {
   verificarExclusaoNf,
   excluirNfEntrada,
   listarMaquinas,
+  listarBombas,
   resolverNomeComercial,
   listarAnosSafra,
   listarCiclos,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import type { NfEntrada, NfEntradaItem, Insumo, Deposito, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo } from "../../../lib/supabase";
+import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
@@ -153,6 +154,7 @@ interface ItemRascunho {
   // Apropriação
   tipo_apropiacao: NfEntradaItem["tipo_apropiacao"];
   deposito_id: string;
+  bomba_id: string;
   maquina_id: string;
   centro_custo_id: string;
 }
@@ -167,7 +169,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   quantidade: 0, valor_unitario: 0, fator_conversao: 1,
   insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
   tipo_apropiacao: "estoque",
-  deposito_id: "", maquina_id: "", centro_custo_id: "",
+  deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
 });
 
 type Etapa = "origem" | "cabecalho" | "itens";
@@ -199,6 +201,7 @@ export default function NfCompraPage() {
   // Dados do wizard — recarregados para a fazenda específica de cada NF
   const [wCentros,    setWCentros]    = useState<CentroCusto[]>([]);
   const [wDepositos,  setWDepositos]  = useState<Deposito[]>([]);
+  const [wBombas,     setWBombas]     = useState<BombaCombustivel[]>([]);
   const [wPedidos,    setWPedidos]    = useState<PedidoMin[]>([]);
   const [wProdutores, setWProdutores] = useState<Array<{id: string; nome: string; cpf_cnpj?: string}>>([]);
   const [sugestaoNome, setSugestaoNome] = useState<string | null>(null); // nome da regra aplicada
@@ -302,6 +305,7 @@ export default function NfCompraPage() {
     centro_custo_id: "",
     data_vencimento_cp: "",
     deposito_destino_id: "",    // remessa
+    bomba_destino_id: "",       // combustível
     observacao: "",
     // Safra e ciclo
     ano_safra_id: "",
@@ -418,12 +422,14 @@ export default function NfCompraPage() {
   // ── Helper: carrega dados do wizard para uma fazenda específica ──
   async function carregarWizardData(fId: string) {
     const allFazIds = fazendaIds.length > 1 ? fazendaIds : (fId ? [fId] : []);
-    const [ccData, depData] = await Promise.all([
+    const [ccData, depData, bombaData] = await Promise.all([
       listarCentrosCustoGeralDaConta(fId).catch(() => [] as CentroCusto[]),
       listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
+      listarBombas(fId).catch(() => [] as BombaCombustivel[]),
     ]);
     setWCentros(ccData);
     setWDepositos(depData);
+    setWBombas(bombaData);
     // Produtores para o select de Produtor da NF
     try {
       const prodsQ = contaId
@@ -576,6 +582,7 @@ export default function NfCompraPage() {
       centro_custo_id: "",
       data_vencimento_cp: "",
       deposito_destino_id: "",
+      bomba_destino_id: "",
       observacao: "",
       ano_safra_id: "",
       ciclo_id: "",
@@ -617,6 +624,7 @@ export default function NfCompraPage() {
       centro_custo_id: nf.centro_custo_id ?? "",
       data_vencimento_cp: nf.data_vencimento_cp ?? "",
       deposito_destino_id: nf.deposito_destino_id ?? "",
+      bomba_destino_id: "",
       observacao: nf.observacao ?? "",
       ano_safra_id: nf.ano_safra_id ?? "",
       ciclo_id: nf.ciclo_id ?? "",
@@ -658,6 +666,7 @@ export default function NfCompraPage() {
             nome_comercial_ref: i.nome_comercial_ref  ?? "",
             tipo_apropiacao:    i.tipo_apropiacao,
             deposito_id:        i.deposito_id         ?? "",
+            bomba_id:           i.bomba_id            ?? "",
             maquina_id:         i.maquina_id          ?? "",
             centro_custo_id:    i.centro_custo_id     ?? "",
             pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
@@ -785,7 +794,7 @@ export default function NfCompraPage() {
             fator_conversao: fatorDeriv,
             insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
-            deposito_id: "", maquina_id: "",
+            deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
           };
         }));
@@ -885,6 +894,13 @@ export default function NfCompraPage() {
       alert("Esta NF já foi processada. Para reprocessar, clique em 'Estornar' primeiro para reverter o estoque e o lançamento financeiro.");
       return;
     }
+    // Guard: operação gerencial é obrigatória.
+    // Exceção: NF com classificação automática aplicada (sugestaoNome != null) —
+    // a regra já carrega a informação gerencial e o bloqueio seria redundante.
+    if (!cab.operacao_gerencial_id && !sugestaoNome) {
+      setErr("Selecione uma Operação Gerencial antes de processar a NF.");
+      return;
+    }
     setSaving(true);
     setErr("");
     try {
@@ -910,6 +926,13 @@ export default function NfCompraPage() {
           it.centro_custo_id = "";
           it.maquina_id      = "";
         }
+        // Combustível: bomba vem do cabeçalho; deposito_id não se aplica
+        const opSel = reclassOps.find(o => o.id === cab.operacao_gerencial_id);
+        const isCombustivel = /combustiv/i.test(opSel?.descricao ?? "");
+        if (isCombustivel && cab.bomba_destino_id) {
+          it.bomba_id    = cab.bomba_destino_id;
+          it.deposito_id = "";
+        }
 
         const isPAItem = !!it.principio_ativo_id;
         const itemPayload: Omit<NfEntradaItem, "id" | "created_at"> = {
@@ -919,6 +942,7 @@ export default function NfCompraPage() {
           principio_ativo_id:  it.principio_ativo_id  || undefined,
           nome_comercial_ref:  it.nome_comercial_ref  || undefined,
           deposito_id:         it.deposito_id         || undefined,
+          bomba_id:            it.bomba_id             || undefined,
           maquina_id:          it.maquina_id          || undefined,
           descricao_produto:   isPAItem ? it.pa_nome! : (it.insumo_id ? nomeInsumo(it.insumo_id) : it.descricao_nf),
           descricao_nf:        it.descricao_nf,
@@ -1373,6 +1397,9 @@ export default function NfCompraPage() {
   // ─────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────
+  const opSelecionada = reclassOps.find(o => o.id === cab.operacao_gerencial_id);
+  const isCombustivelWiz = /combustiv/i.test(opSelecionada?.descricao ?? "");
+
   if (!podeAcessarPlano("nf_entrada")) return <PlanoGate modulo="nf_entrada" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }} onClick={() => { setManDropdown(null); setAcaoDropdown(null); }}>
@@ -2802,8 +2829,34 @@ export default function NfCompraPage() {
                     )}
                   </div>
 
+                  {/* Combustível: selecionar bomba que receberá o crédito de estoque */}
+                  {isCombustivelWiz && (
+                    <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5800", marginBottom: 8 }}>
+                        Bomba / Tanque destino (crédito de estoque)
+                      </div>
+                      <select
+                        value={cab.bomba_destino_id}
+                        onChange={e => setCab(p => ({ ...p, bomba_destino_id: e.target.value }))}
+                        style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}
+                      >
+                        <option value="">Selecione a bomba ou tanque…</option>
+                        {wBombas.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.nome}{b.insumo_id ? "" : ""} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
+                          </option>
+                        ))}
+                      </select>
+                      {wBombas.length === 0 && (
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+                          Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis &amp; Bombas.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Depósito padrão para itens sem depósito (somente insumos que vão para estoque) */}
-                  {tipo === "insumos" && itens.some(i => i.tipo_apropiacao !== "direto") && (
+                  {tipo === "insumos" && !isCombustivelWiz && itens.some(i => i.tipo_apropiacao !== "direto") && (
                     <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Depósito padrão para itens sem depósito individual</div>

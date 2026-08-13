@@ -301,19 +301,27 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
 function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
+    const bodyBuffer = Buffer.from(body, "utf8");
+
     const req = https.request({
-      hostname: u.hostname, port: 443, path: u.pathname + u.search, method: "POST",
+      hostname: u.hostname,
+      port:     443,
+      path:     u.pathname + u.search,
+      method:   "POST",
       headers: {
-        "Content-Type": `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
-        "SOAPAction":   `"${SOAP_ACTION}"`,
-        "Content-Length": Buffer.byteLength(body, "utf8"),
+        "Content-Type":   `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
+        "SOAPAction":     `"${SOAP_ACTION}"`,
+        "Content-Length": bodyBuffer.length,
       },
       cert: pem.certChain ?? pem.cert,
       key:  pem.key,
       ca:   ICP_BRASIL_CA_BUNDLE,
+      rejectUnauthorized: true,
     }, (res) => {
       const status = res.statusCode ?? 0;
       let data = "";
+
+      res.setEncoding("utf8");
       res.on("data", (c) => { data += c; });
       res.on("end", () => {
         console.log(`[CT-e SOAP] ${u.hostname} → HTTP ${status}`);
@@ -321,9 +329,9 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
         resolve(status !== 200 ? `__HTTP_${status}__${data.slice(0, 300)}` : data);
       });
     });
+
     req.on("error", (err: NodeJS.ErrnoException) => reject(new Error(String(err))));
-    req.write(body);
-    req.end();
+    req.end(bodyBuffer);
   });
 }
 
@@ -411,7 +419,7 @@ export async function transmitirCTe(
   const ep       = endpoint(uf, ambiente);
   const soapBody = envelopeCTe(cteXmlAssinado);
 
-  const resp = await soapPostViaEdge(ep, soapBody, pem);
+  const resp = await soapPost(ep, soapBody, pem);
 
   return parseResposta(resp);
 }
