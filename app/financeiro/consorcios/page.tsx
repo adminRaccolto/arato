@@ -216,8 +216,8 @@ export default function ConsorciosPage() {
       setConsorEdit(null);
       setCForm({
         administradora:      d.administradora      ?? "",
-        numero_cota:         d.numero_cota         ?? "",
-        grupo:               d.grupo               ?? "",
+        numero_cota:         d.numero_cota != null ? String(d.numero_cota) : "",
+        grupo:               d.grupo        != null ? String(d.grupo)        : "",
         tipo_bem:            (d.tipo_bem as TipoBem) ?? "outro",
         descricao_bem:       d.descricao_bem       ?? "",
         valor_credito:       d.valor_credito_atual  ?? 0,
