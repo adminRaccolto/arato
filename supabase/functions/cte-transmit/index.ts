@@ -138,6 +138,8 @@ async function soapPost(
   // http1:true / http2:false — SEFAZ-MT usa TLS 1.2 com serviços legados sem HTTP/2
   const client = Deno.createHttpClient({ cert: fullClientChain, key: keyPem, caCerts, http1: true, http2: false });
 
+  const bodyBytes = new TextEncoder().encode(body);
+
   try {
     const resp = await fetch(url, {
       // @ts-expect-error — extensão Deno: client não existe no RequestInit padrão
@@ -147,7 +149,7 @@ async function soapPost(
         "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
         "SOAPAction":   `"${soapAction}"`,
       },
-      body,
+      body: bodyBytes,
       signal: AbortSignal.timeout(45_000),
     });
     // Lê o body ANTES de fechar o cliente

@@ -192,37 +192,29 @@ const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4";
 // o padrão XML assume UTF-8 — incluí-la causaria a rejeição 402.
 
 function compactarCTeBase64(xmlAssinado: string): string {
-  // Remove BOM e declaração existente, depois reinsere declaração UTF-8 explícita.
-  const raizCTe = xmlAssinado
+  const xmlAreaDados = xmlAssinado
     .replace(/^﻿/, "")
-    .replace(/^<\?xml[^?]*\?>\s*/i, "");
+    .replace(/^<\?xml[^?]*\?>\s*/i, "")
+    .trim();
 
-  const xmlAreaDados = `<?xml version="1.0" encoding="UTF-8"?>${raizCTe}`;
-
-  const bytesUtf8  = Buffer.from(xmlAreaDados, "utf8");
-  const compactado = gzipSync(bytesUtf8, { level: 9 });
-
-  // Valida que o GZip não alterou nenhum byte.
-  const descompactado = gunzipSync(compactado);
-  if (!descompactado.equals(bytesUtf8)) {
-    throw new Error("GZip alterou os bytes do XML");
+  if (!xmlAreaDados.startsWith("<CTe")) {
+    throw new Error(
+      `XML inválido antes da compactação: começa com ${JSON.stringify(xmlAreaDados.slice(0, 40))}`
+    );
   }
 
-  // Valida que os bytes são UTF-8 válido (modo fatal = lança em sequência inválida).
-  new TextDecoder("utf-8", { fatal: true }).decode(descompactado);
+  const bytesUtf8 = Buffer.from(xmlAreaDados, "utf8");
 
-  const inicioAscii = descompactado.subarray(0, 60).toString("ascii");
+  new TextDecoder("utf-8", { fatal: true }).decode(bytesUtf8);
 
   console.log("[CT-e UTF8 check]", {
-    utf8Valid:           true,
-    possuiBom:           descompactado.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])),
-    possuiDeclaracaoXml: inicioAscii.startsWith("<?xml"),
-    declaraUtf8:         inicioAscii.includes('encoding="UTF-8"'),
-    primeirosBytesHex:   descompactado.subarray(0, 12).toString("hex"),
-    contemRaizCTe:       inicioAscii.includes("<CTe"),
+    possuiBom:           false,
+    possuiDeclaracaoXml: false,
+    primeirosBytesHex:   bytesUtf8.subarray(0, 4).toString("hex"), // 3c435465 = <CTe
+    comecaComCTe:        true,
   });
 
-  return compactado.toString("base64");
+  return gzipSync(bytesUtf8, { level: 9 }).toString("base64");
 }
 
 function envelopeCTe(xmlAssinado: string): string {
@@ -419,10 +411,7 @@ export async function transmitirCTe(
   const ep       = endpoint(uf, ambiente);
   const soapBody = envelopeCTe(cteXmlAssinado);
 
-  // SOAP direto (Node.js https.request com CA bundle ICP-Brasil).
-  // A API route emitir-cte usa preferredRegion: ["gru1"] (São Paulo) para garantir
-  // que o request parta de IP brasileiro aceito pelo firewall da SEFAZ.
-  const resp = await soapPost(ep, soapBody, pem);
+  const resp = await soapPostViaEdge(ep, soapBody, pem);
 
   return parseResposta(resp);
 }
