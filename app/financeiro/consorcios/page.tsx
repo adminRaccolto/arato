@@ -436,6 +436,7 @@ export default function ConsorciosPage() {
     const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; error?: string };
     if (!res.ok) { alert(json.error ?? "Erro ao gerar parcelas."); return; }
     await carregar();
+    alert(`✅ ${json.parcelas ?? 0} parcelas criadas — ${json.cps ?? 0} CPs lançadas no financeiro.\n\nPara ver as CPs vencidas, clique na aba "Vencidos" em Contas a Pagar.`);
   }
 
   // ── Parcelas visíveis ─────────────────────────────────────

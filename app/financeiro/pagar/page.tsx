@@ -1022,7 +1022,20 @@ function ContasPagarInner() {
                   { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#444444", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
                   { key: "todos",               label: "Todos",               count: lancamentos.length,                                                                                                    cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
-                  <button key={f.key} className="cp-tab" onClick={() => setFiltro(f.key)}
+                  <button key={f.key} className="cp-tab" onClick={() => {
+                    setFiltro(f.key);
+                    // Vencidos: busca 2 anos atrás para capturar CPs de consórcio e outras CPs antigas
+                    if (f.key === "vencido") {
+                      const d2a = new Date(); d2a.setFullYear(d2a.getFullYear() - 2);
+                      setPeriodoInicio(d2a.toISOString().split("T")[0]);
+                      setPeriodoFim(new Date().toISOString().split("T")[0]);
+                    } else if (filtro === "vencido") {
+                      // Voltou de Vencidos → restaura janela padrão
+                      setPeriodoInicio(new Date().toISOString().split("T")[0]);
+                      const df = new Date(); df.setMonth(df.getMonth() + 3); df.setDate(0);
+                      setPeriodoFim(df.toISOString().split("T")[0]);
+                    }
+                  }}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${filtro === f.key ? f.activeBorder : "var(--border)"}`, background: filtro === f.key ? f.activeBg : "transparent", color: filtro === f.key ? f.cor : "var(--text-3)", fontWeight: filtro === f.key ? 700 : 400, fontSize: 12, cursor: "pointer" }}>
                     {f.label}
                     <span style={{ marginLeft: 6, fontSize: 10, background: filtro === f.key ? f.cor : "var(--border)", color: filtro === f.key ? "#000" : "var(--text-3)", padding: "1px 5px", borderRadius: 8, fontWeight: 700 }}>
