@@ -185,80 +185,51 @@ function endpoint(ufEmitente: string, ambiente: Ambiente): string {
 const SOAP_ACTION = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao";
 const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4";
 
-const CUF_MAP: Record<string, string> = {
-  AC:"12",AL:"27",AM:"13",AP:"16",BA:"29",CE:"23",DF:"53",ES:"32",
-  GO:"52",MA:"21",MG:"31",MS:"50",MT:"51",PA:"15",PB:"25",PE:"26",
-  PI:"22",PR:"41",RJ:"33",RN:"24",RO:"11",RR:"14",RS:"43",SC:"42",
-  SE:"28",SP:"35",TO:"17",
-};
 
-// CT-e 4.00: XML compactado em GZip/Base64 dentro de cteDadosMsg.
-// SEFAZ rejeita (cStat 599) qualquer whitespace entre tags ou ao redor do payload —
-// o envelope MUST ser compacto (sem newlines, sem indentação).
+// ─── Compactação e envelope CT-e 4.00 ────────────────────────────────────────
+// cteDadosMsg = GZip/Base64 da área de dados (sem BOM, sem declaração <?xml?>).
+// A regra D03 do MOC CT-e exige UTF-8 nos bytes internos; sem declaração,
+// o padrão XML assume UTF-8 — incluí-la causaria a rejeição 402.
 
 function compactarCTeBase64(xmlAssinado: string): string {
-  // Converte a string JavaScript explicitamente para bytes UTF-8
-  const xmlUtf8 = Buffer.from(xmlAssinado, "utf8");
+  // Remove BOM e declaração XML — ambos externos à raiz assinada <CTe>.
+  // Não altera o digest de <infCte>.
+  const xmlAreaDados = xmlAssinado
+    .replace(/^﻿/, "")
+    .replace(/^<\?xml[^?]*\?>\s*/i, "");
 
-  // Compacta os bytes UTF-8
-  const gzip = gzipSync(xmlUtf8, { level: 9 });
+  const bytesUtf8  = Buffer.from(xmlAreaDados, "utf8");
+  const compactado = gzipSync(bytesUtf8, { level: 9 });
 
-  // Validação local: falha antes de transmitir se não for UTF-8 válido
-  const descompactado = gunzipSync(gzip);
-  const xmlValidado = new TextDecoder("utf-8", { fatal: true }).decode(descompactado);
-  if (xmlValidado !== xmlAssinado) {
-    throw new Error("Falha interna: XML alterado durante conversão UTF-8/GZip");
+  // Valida que o GZip não alterou nenhum byte.
+  const descompactado = gunzipSync(compactado);
+  if (!descompactado.equals(bytesUtf8)) {
+    throw new Error("GZip alterou os bytes do XML");
   }
 
-  return gzip.toString("base64");
-}
+  // Valida que os bytes são UTF-8 válido (modo fatal = lança em sequência inválida).
+  new TextDecoder("utf-8", { fatal: true }).decode(descompactado);
 
-function envelopeCTe(xmlAssinado: string, cuf: string): string {
-  // xml-crypto remove a declaração XML ao assinar — reinsere antes de compactar
-  const xmlComDecl = xmlAssinado.startsWith("<?xml")
-    ? xmlAssinado
-    : '<?xml version="1.0" encoding="UTF-8"?>' + xmlAssinado;
-  const cteGzipBase64 = compactarCTeBase64(xmlComDecl);
-  return (
-    `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">` +
-    `<soap12:Header>` +
-    `<cteCabecMsg xmlns="${SOAP_NS}">` +
-    `<cUF>${cuf}</cUF>` +
-    `<versaoDados>4.00</versaoDados>` +
-    `</cteCabecMsg>` +
-    `</soap12:Header>` +
-    `<soap12:Body>` +
-    `<cteDadosMsg xmlns="${SOAP_NS}">${cteGzipBase64}</cteDadosMsg>` +
-    `</soap12:Body>` +
-    `</soap12:Envelope>`
-  );
-}
-
-// ─── Diagnóstico do envelope ──────────────────────────────────────────────────
-function inspectSoapEnvelope(soapBody: string): void {
-  const match   = soapBody.match(/<cteDadosMsg[^>]*>([\s\S]*?)<\/cteDadosMsg>/);
-  const payload = match?.[1].trim() ?? "";
-
-  let cteVersion: string | null = null;
-  let gzipValid = false;
-
-  try {
-    const cteXml = gunzipSync(Buffer.from(payload, "base64")).toString("utf8");
-    gzipValid    = true;
-    cteVersion   = cteXml.match(/<infCte[^>]*versao="([^"]+)"/)?.[1] ?? null;
-  } catch {
-    // payload não é gzip — mantido no diagnóstico para evidenciar envelope inválido.
-  }
-
-  console.log("[CT-e SOAP check]", {
-    soap12:            soapBody.includes("http://www.w3.org/2003/05/soap-envelope"),
-    hasCteCabecMsg:    soapBody.includes("<cteCabecMsg"),
-    containsRawCte:    payload.includes("<CTe"),
-    payloadLength:     payload.length,
-    gzipValid,
-    cteVersion,
+  console.log("[CT-e UTF8 check]", {
+    utf8Valid:           true,
+    possuiBom:           descompactado.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])),
+    possuiDeclaracaoXml: descompactado.subarray(0, 20).toString("ascii").includes("<?xml"),
+    primeirosBytesHex:   descompactado.subarray(0, 12).toString("hex"),
+    comecaComCTe:        descompactado.subarray(0, 4).toString("utf8") === "<CTe",
   });
+
+  return compactado.toString("base64");
+}
+
+function envelopeCTe(xmlAssinado: string): string {
+  const dadosBase64 = compactarCTeBase64(xmlAssinado);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <cteDadosMsg xmlns="${SOAP_NS}">${dadosBase64}</cteDadosMsg>
+  </soap12:Body>
+</soap12:Envelope>`;
 }
 
 // ─── Relay via Supabase Edge Function (IP brasileiro) ────────────────────────
@@ -431,11 +402,8 @@ export async function transmitirCTe(
   uf:             string,
   ambiente:       Ambiente,
 ): Promise<RespostaCTe> {
-  const ep  = endpoint(uf, ambiente);
-  const cuf = CUF_MAP[uf.toUpperCase()] ?? "51";
-  const soapBody = envelopeCTe(cteXmlAssinado, cuf);
-
-  inspectSoapEnvelope(soapBody);
+  const ep       = endpoint(uf, ambiente);
+  const soapBody = envelopeCTe(cteXmlAssinado);
 
   // SOAP direto (Node.js https.request com CA bundle ICP-Brasil).
   // A API route emitir-cte usa preferredRegion: ["gru1"] (São Paulo) para garantir
