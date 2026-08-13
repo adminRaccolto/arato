@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import type { PrecosData } from "../api/precos/route";
 import { listarAlertasController, reconhecerAlerta, resolverAlerta, upsertAlertaController, listarContratosFinanceirosDaConta } from "../../lib/db";
 import type { ControllerAlerta } from "../../lib/supabase";
+import { HedgePainel } from "../comercial/hedge/page";
+import { AuditoriaClassificacaoPainel } from "../auditoria/classificacao/page";
 
 // ── Tipos ─────────────────────────────────────────────────────
 interface Fazenda    { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number; raccolto_acesso?: boolean }
@@ -282,7 +284,7 @@ function BarraHorizontal({ value, max, color, label, sub }: { value: number; max
   );
 }
 
-type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "evolucao" | "controller";
+type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "evolucao" | "controller" | "hedge" | "auditoria_classif";
 
 // ── Controller: constantes ────────────────────────────────────
 type Severidade = ControllerAlerta["severidade"];
@@ -1036,6 +1038,8 @@ export default function BI() {
     { key: "evolucao",        label: "Evolução de Endividamento" },
     { key: "sensibilidade",   label: "Sensibilidade" },
     { key: "controller",      label: "Auditoria", badge: alertasCriticos > 0 ? alertasCriticos : (alertasAtivos > 0 ? alertasAtivos : undefined) },
+    { key: "hedge",           label: "Proteção de Margem" },
+    { key: "auditoria_classif", label: "Auditoria de Classificação" },
   ];
 
   const inputSt: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
@@ -5311,6 +5315,12 @@ export default function BI() {
             </div>
           );
         })()}
+
+        {/* ── ABA PROTEÇÃO DE MARGEM ─────────────────────────── */}
+        {aba === "hedge" && <HedgePainel embedded />}
+
+        {/* ── ABA AUDITORIA DE CLASSIFICAÇÃO ────────────────── */}
+        {aba === "auditoria_classif" && <AuditoriaClassificacaoPainel embedded />}
 
       </div>
 

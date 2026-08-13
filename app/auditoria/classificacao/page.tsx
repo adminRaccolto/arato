@@ -50,7 +50,7 @@ const TIPO_META: Record<string, { label: string; bg: string; cor: string }> = {
   sem_og_direto:   { label: "OG não informada",  bg: "#F1F5F9", cor: "#475569" },
 };
 
-export default function AuditoriaClassificacaoPage() {
+export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: boolean }) {
   const { fazendaId, fazendaIds, contaId } = useAuth();
   const [inconsistencias, setInconsistencias] = useState<InconsistenciaItem[]>([]);
   const [loading,  setLoading]  = useState(false);
@@ -194,8 +194,8 @@ export default function AuditoriaClassificacaoPage() {
 
   return (
     <>
-      <TopNav />
-      <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
+      {!embedded && <TopNav />}
+      <main style={{ padding: embedded ? "0" : "24px 28px", background: "var(--bg-page)", minHeight: embedded ? undefined : "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
@@ -356,4 +356,8 @@ export default function AuditoriaClassificacaoPage() {
       </main>
     </>
   );
+}
+
+export default function AuditoriaClassificacaoPage() {
+  return <AuditoriaClassificacaoPainel />;
 }

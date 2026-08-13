@@ -77,7 +77,7 @@ function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onC
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function HedgePage() {
+export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { fazendaId, userRole, raccotloGestor, fazTrabalho, podeAcessarPlano, modulosCarregados } = useAuth() as any;
   const router = useRouter();
@@ -457,7 +457,7 @@ export default function HedgePage() {
   if (modulosCarregados && !podeAcessarPlano("protecao_margem")) return <PlanoGate modulo="protecao_margem" />;
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 1400, margin: "0 auto", background: "var(--bg-page,#F4F6FA)", minHeight: "100vh" }}>
+    <div style={{ padding: embedded ? "0" : "24px 28px", maxWidth: 1400, margin: "0 auto", background: "var(--bg-page,#F4F6FA)", minHeight: embedded ? undefined : "100vh" }}>
 
       {/* Cabeçalho */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -1306,4 +1306,8 @@ export default function HedgePage() {
 
     </div>
   );
+}
+
+export default function HedgePage() {
+  return <HedgePainel />;
 }
