@@ -203,11 +203,13 @@ function compactarCTeBase64(xmlAssinado: string): string {
     );
   }
 
-  // MOC CT-e 4.00 exige declaração XML com encoding UTF-8 na área de dados compactada.
-  const xmlAreaDados = `<?xml version="1.0" encoding="UTF-8"?>${raizCTe}`;
+  // Área de dados deve conter APENAS o elemento <CTe>, SEM declaração <?xml?>.
+  // SEFAZ-MT rejeita com cStat 402 quando há declaração XML dentro do GZip.
+  // O padrão XML assume UTF-8 quando não há declaração de encoding.
+  console.log("[CT-e GZip raiz]", raizCTe.slice(0, 80));
 
   const naoAscii = [...new Set(
-    Array.from(xmlAreaDados).filter(c => (c.codePointAt(0) ?? 0) > 127)
+    Array.from(raizCTe).filter(c => (c.codePointAt(0) ?? 0) > 127)
   )];
 
   if (naoAscii.length > 0) {
@@ -217,7 +219,7 @@ function compactarCTeBase64(xmlAssinado: string): string {
     })));
   }
 
-  const bytesUtf8 = Buffer.from(xmlAreaDados, "utf8");
+  const bytesUtf8 = Buffer.from(raizCTe, "utf8");
   new TextDecoder("utf-8", { fatal: true }).decode(bytesUtf8);
 
   return gzipSync(bytesUtf8, { level: 9 }).toString("base64");
