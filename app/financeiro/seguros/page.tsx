@@ -219,11 +219,13 @@ export default function SegurosPage() {
         corretor_contato: aForm.corretor_contato || null,
         observacao: aForm.observacao || null,
       };
+      let saveError;
       if (apoliceEdit) {
-        await supabase.from("apolices_seguro").update(payload).eq("id", apoliceEdit.id);
+        ({ error: saveError } = await supabase.from("apolices_seguro").update(payload).eq("id", apoliceEdit.id));
       } else {
-        await supabase.from("apolices_seguro").insert(payload);
+        ({ error: saveError } = await supabase.from("apolices_seguro").insert(payload));
       }
+      if (saveError) throw new Error(saveError.message);
       await carregar();
       setModalApolice(false);
     } catch (e: unknown) {
@@ -271,11 +273,13 @@ export default function SegurosPage() {
         numero_protocolo: sForm.numero_protocolo || null,
         observacao: sForm.observacao || null,
       };
+      let saveError;
       if (sinistroEdit) {
-        await supabase.from("sinistros_seguro").update(payload).eq("id", sinistroEdit.id);
+        ({ error: saveError } = await supabase.from("sinistros_seguro").update(payload).eq("id", sinistroEdit.id));
       } else {
-        await supabase.from("sinistros_seguro").insert(payload);
+        ({ error: saveError } = await supabase.from("sinistros_seguro").insert(payload));
       }
+      if (saveError) throw new Error(saveError.message);
       await carregar();
       setModalSinistro(null);
     } catch (e: unknown) {
@@ -290,9 +294,12 @@ export default function SegurosPage() {
     if (!modalPremio) return;
     setPremioSaving(true);
     try {
-      await supabase.from("pagamentos_premio_seguro").update({ pago: true, data_pagamento: premioData }).eq("id", modalPremio.id);
+      const { error } = await supabase.from("pagamentos_premio_seguro").update({ pago: true, data_pagamento: premioData }).eq("id", modalPremio.id);
+      if (error) throw new Error(error.message);
       await carregar();
       setModalPremio(null);
+    } catch (e) {
+      console.error("[pagarPremio]", e);
     } finally {
       setPremioSaving(false);
     }

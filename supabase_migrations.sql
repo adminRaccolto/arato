@@ -9593,3 +9593,36 @@ CREATE INDEX IF NOT EXISTS idx_cte_recebidos_chave        ON cte_recebidos (chav
 CREATE INDEX IF NOT EXISTS idx_cte_recebidos_emitente     ON cte_recebidos (emitente_cnpj);
 CREATE INDEX IF NOT EXISTS idx_cte_recebidos_remetente    ON cte_recebidos (remetente_cnpj);
 CREATE INDEX IF NOT EXISTS idx_cte_recebidos_destinatario ON cte_recebidos (destinatario_cnpj);
+
+-- ─── Migration 95 — RLS policies para seguros (estava sem policy → bloqueio total) ─
+-- apolices_seguro: acesso direto por fazenda_id
+CREATE POLICY "apolices_seguro_by_conta" ON apolices_seguro
+  FOR ALL USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
+
+-- pagamentos_premio_seguro: acesso via apolice → fazenda
+CREATE POLICY "pagamentos_premio_by_conta" ON pagamentos_premio_seguro
+  FOR ALL USING (
+    apolice_id IN (
+      SELECT a.id FROM apolices_seguro a
+      JOIN fazendas f ON f.id = a.fazenda_id
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
+
+-- sinistros_seguro: acesso via apolice → fazenda
+CREATE POLICY "sinistros_seguro_by_conta" ON sinistros_seguro
+  FOR ALL USING (
+    apolice_id IN (
+      SELECT a.id FROM apolices_seguro a
+      JOIN fazendas f ON f.id = a.fazenda_id
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
