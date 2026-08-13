@@ -81,11 +81,28 @@ const TIPO_BEM_META: Record<TipoBem, { label: string; bg: string; cl: string }> 
 };
 
 // ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+async function buscarOgId(fazendaId: string, classificacao: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("operacoes_gerenciais")
+    .select("id")
+    .eq("fazenda_id", fazendaId)
+    .eq("classificacao", classificacao)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+// ─────────────────────────────────────────────────────────────
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function ConsorciosPage() {
   const { fazendaId, fazendaIds, podeAcessarPlano, contaModulosOverrides } = useAuth();
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
+
+  // IDs das operações gerenciais de consórcio
+  const [ogNaoContemplado, setOgNaoContemplado] = useState<string | null>(null);
+  const [ogContemplado,    setOgContemplado]    = useState<string | null>(null);
 
   // ── IA Extração de Extrato ──────────────────────────────────
   const [iaCarregando, setIaCarregando] = useState(false);
@@ -150,6 +167,18 @@ export default function ConsorciosPage() {
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Carrega OG IDs de consórcio quando a fazenda está disponível
+  useEffect(() => {
+    if (!fazendaId) return;
+    Promise.all([
+      buscarOgId(fazendaId, "2.03.01.006"),
+      buscarOgId(fazendaId, "2.03.01.007"),
+    ]).then(([nc, co]) => {
+      setOgNaoContemplado(nc);
+      setOgContemplado(co);
+    });
+  }, [fazendaId]);
 
   // ── KPIs ──────────────────────────────────────────────────
   const aContemplar = consorcios.filter(c => c.status === "a_contemplar");
@@ -257,11 +286,13 @@ export default function ConsorciosPage() {
         status: cForm.status,
         observacao: cForm.observacao || null,
       };
+      let saveError;
       if (consorEdit) {
-        await supabase.from("consorcios").update(payload).eq("id", consorEdit.id);
+        ({ error: saveError } = await supabase.from("consorcios").update(payload).eq("id", consorEdit.id));
       } else {
-        await supabase.from("consorcios").insert(payload);
+        ({ error: saveError } = await supabase.from("consorcios").insert(payload));
       }
+      if (saveError) throw new Error(saveError.message);
       await carregar();
       setModalConsor(false);
     } catch (e: unknown) {
@@ -282,30 +313,34 @@ export default function ConsorciosPage() {
   }
 
   async function confirmarContemplacao() {
-    if (!modalContempl) return;
+    if (!modalContempl || !fazendaId) return;
     if (!contemplForm.data_contemplacao) { setContemplErr("Informe a data de contemplação."); return; }
     setContemplSaving(true); setContemplErr("");
     try {
-      const updates: Partial<Consorcio> = {
+      // 1. Atualiza status do consórcio
+      const { error: updErr } = await supabase.from("consorcios").update({
         status: "contemplado",
         data_contemplacao: contemplForm.data_contemplacao,
         valor_lance: contemplForm.valor_lance || null,
         bem_adquirido: contemplForm.bem_adquirido || null,
-      };
-      await supabase.from("consorcios").update(updates).eq("id", modalContempl.id);
+      }).eq("id", modalContempl.id);
+      if (updErr) throw new Error(updErr.message);
 
-      // Se migrar para financiamento, inserimos um registro básico
-      if (contemplForm.migrar_financiamento) {
-        await supabase.from("financiamentos").insert({
-          fazenda_id: modalContempl.fazenda_id,
-          descricao: `Consórcio contemplado — ${modalContempl.descricao_bem || modalContempl.numero_cota}`,
-          valor_financiado: modalContempl.valor_credito,
-          saldo_devedor: modalContempl.valor_credito - (contemplForm.valor_lance || 0),
-          data_contratacao: contemplForm.data_contemplacao,
-          status: "ativo",
-          origem: "consorcio",
-          consorcio_id: modalContempl.id,
-        }).select().single().then(() => {}); // best-effort — tabela pode não existir ainda
+      // 2. Reclassifica CPs abertas: OG "Não Contemplado" → "Contemplado"
+      const ogAlvo = ogContemplado ?? await buscarOgId(fazendaId, "2.03.01.007");
+      if (ogAlvo) {
+        const { data: cpAbertas } = await supabase
+          .from("lancamentos")
+          .select("id")
+          .eq("consorcio_id", modalContempl.id)
+          .eq("tipo", "pagar")
+          .neq("status", "pago");
+        if (cpAbertas && cpAbertas.length > 0) {
+          await supabase
+            .from("lancamentos")
+            .update({ operacao_gerencial_id: ogAlvo })
+            .in("id", cpAbertas.map((l: { id: string }) => l.id));
+        }
       }
 
       await carregar();
@@ -323,6 +358,12 @@ export default function ConsorciosPage() {
     setParcelaSaving(true);
     try {
       await supabase.from("parcelas_consorcio").update({ pago: true, data_pagamento: parcelaData }).eq("id", modalParcela.id);
+      // Marca o lancamento (CP) vinculado como pago
+      await supabase.from("lancamentos").update({ status: "pago", data_baixa: parcelaData, valor_pago: modalParcela.valor })
+        .eq("consorcio_id", modalParcela.consorcio_id)
+        .eq("numero_documento", String(modalParcela.numero_parcela))
+        .eq("tipo", "pagar")
+        .neq("status", "pago");
       // Incrementa parcelas_pagas no consórcio
       const c = consorcios.find(c => c.id === modalParcela.consorcio_id);
       if (c) await supabase.from("consorcios").update({ parcelas_pagas: c.parcelas_pagas + 1 }).eq("id", c.id);
@@ -333,30 +374,67 @@ export default function ConsorciosPage() {
     }
   }
 
-  // ── Gerar parcelas ────────────────────────────────────────
+  // ── Gerar parcelas + CPs no financeiro ───────────────────
   async function gerarParcelas(c: Consorcio) {
+    if (!fazendaId) return;
     const existem = parcelas.filter(p => p.consorcio_id === c.id);
     if (existem.length > 0) {
       if (!confirm(`Este consórcio já tem ${existem.length} parcelas. Deseja apagar e regenerar?`)) return;
       await supabase.from("parcelas_consorcio").delete().eq("consorcio_id", c.id);
+      // Remove também CPs geradas anteriormente para este consórcio
+      await supabase.from("lancamentos").delete().eq("consorcio_id", c.id).neq("status", "pago");
     }
-    const novas: Omit<ParcelaConsorcio, "id" | "created_at">[] = [];
+
+    // OG correta conforme status atual
+    const ogId = c.status === "contemplado"
+      ? (ogContemplado  ?? await buscarOgId(fazendaId, "2.03.01.007"))
+      : (ogNaoContemplado ?? await buscarOgId(fazendaId, "2.03.01.006"));
+
+    const novasParc: Omit<ParcelaConsorcio, "id" | "created_at">[] = [];
+    const novasCPs: object[] = [];
     const base = new Date(c.data_inicio + "T12:00:00");
+    const descBase = `Consórcio ${c.administradora} — Cota ${c.numero_cota}`;
+
     for (let i = 1; i <= c.total_parcelas; i++) {
       const d = new Date(base);
       d.setMonth(d.getMonth() + i - 1);
-      novas.push({
+      const dataVenc = d.toISOString().split("T")[0];
+      const pago = i <= c.parcelas_pagas;
+
+      novasParc.push({
         consorcio_id: c.id,
         numero_parcela: i,
-        data_vencimento: d.toISOString().split("T")[0],
+        data_vencimento: dataVenc,
         data_pagamento: null,
         valor: c.valor_parcela_mensal,
-        pago: i <= c.parcelas_pagas,
+        pago,
         tipo_parcela: "mensalidade",
         observacao: undefined,
       } as Omit<ParcelaConsorcio, "id" | "created_at">);
+
+      // CP apenas para parcelas futuras (não pagas)
+      if (!pago && c.valor_parcela_mensal > 0) {
+        novasCPs.push({
+          fazenda_id: fazendaId,
+          tipo: "pagar",
+          descricao: `${descBase} — Parcela ${i}/${c.total_parcelas}`,
+          valor: c.valor_parcela_mensal,
+          data_lancamento: dataVenc,
+          data_vencimento: dataVenc,
+          status: "aberto",
+          consorcio_id: c.id,
+          numero_documento: String(i),
+          origem_lancamento: "consorcio",
+          ...(ogId ? { operacao_gerencial_id: ogId } : {}),
+        });
+      }
     }
-    if (novas.length > 0) await supabase.from("parcelas_consorcio").insert(novas);
+
+    if (novasParc.length > 0) await supabase.from("parcelas_consorcio").insert(novasParc);
+    // Inserir CPs em lotes de 100 para evitar limite de payload
+    for (let k = 0; k < novasCPs.length; k += 100) {
+      await supabase.from("lancamentos").insert(novasCPs.slice(k, k + 100));
+    }
     await carregar();
   }
 

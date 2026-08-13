@@ -9626,3 +9626,29 @@ CREATE POLICY "sinistros_seguro_by_conta" ON sinistros_seguro
       WHERE p.user_id = auth.uid()
     )
   );
+
+-- ─── Migration 96 — RLS consorcios + consorcio_id em lancamentos ──────────────
+-- RLS consorcios (estava sem policy → bloqueio total)
+CREATE POLICY "consorcios_by_conta" ON consorcios
+  FOR ALL USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
+
+-- RLS parcelas_consorcio (via consorcio → fazenda)
+CREATE POLICY "parcelas_consorcio_by_conta" ON parcelas_consorcio
+  FOR ALL USING (
+    consorcio_id IN (
+      SELECT c.id FROM consorcios c
+      JOIN fazendas f ON f.id = c.fazenda_id
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+  );
+
+-- Link lancamentos → consorcio (para geração e reclassificação de CPs)
+ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS consorcio_id UUID REFERENCES consorcios(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_lancamentos_consorcio ON lancamentos(consorcio_id);
