@@ -9721,3 +9721,13 @@ ALTER TABLE nf_entradas
   ADD COLUMN IF NOT EXISTS forma_pagamento TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 159 — produtor_id em consorcios (agricultor consorciado)
+-- =============================================================================
+ALTER TABLE consorcios
+  ADD COLUMN IF NOT EXISTS produtor_id UUID REFERENCES produtores(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_consorcios_produtor_id ON consorcios(produtor_id);
+
+NOTIFY pgrst, 'reload schema';

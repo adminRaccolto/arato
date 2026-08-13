@@ -37,7 +37,7 @@ interface Consorcio {
   grupo: string;
   tipo_bem: TipoBem;
   descricao_bem: string;
-  valor_credito: number;           // valor da carta de crédito
+  valor_credito: number;
   valor_parcela_mensal: number;
   total_parcelas: number;
   parcelas_pagas: number;
@@ -45,12 +45,18 @@ interface Consorcio {
   data_contemplacao?: string | null;
   data_encerramento?: string | null;
   status: StatusConsorcio;
-  // Após contemplação
-  financiamento_id?: string | null; // FK para tabela de financiamentos (se virar financiamento)
-  valor_lance?: number | null;      // lance pago na contemplação
-  bem_adquirido?: string | null;    // descrição do bem efetivamente comprado
+  produtor_id?: string | null;
+  financiamento_id?: string | null;
+  valor_lance?: number | null;
+  bem_adquirido?: string | null;
   observacao?: string;
   created_at?: string;
+}
+
+interface ProdutorSimples {
+  id: string;
+  nome: string;
+  cpf_cnpj?: string | null;
 }
 
 interface ParcelaConsorcio {
@@ -97,7 +103,7 @@ async function buscarOgId(fazendaId: string, classificacao: string): Promise<str
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function ConsorciosPage() {
-  const { fazendaId, fazendaIds, podeAcessarPlano, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
 
   // IDs das operações gerenciais de consórcio
@@ -113,6 +119,7 @@ export default function ConsorciosPage() {
   const [consorcios, setConsorcios] = useState<Consorcio[]>([]);
   const [parcelas,   setParcelas]   = useState<ParcelaConsorcio[]>([]);
   const [expandido,  setExpandido]  = useState<string | null>(null);
+  const [produtores, setProdutores] = useState<ProdutorSimples[]>([]);
 
   // Modal consórcio
   const [modalConsor,  setModalConsor]  = useState(false);
@@ -123,7 +130,7 @@ export default function ConsorciosPage() {
     valor_credito: 0, valor_parcela_mensal: 0,
     total_parcelas: "60", parcelas_pagas: "0",
     data_inicio: hoje(), status: "a_contemplar" as StatusConsorcio,
-    observacao: "",
+    observacao: "", produtor_id: "",
   });
   const [cForm,   setCForm]   = useState(CONSOR_VAZIO());
   const [cSaving, setCSaving] = useState(false);
@@ -147,16 +154,25 @@ export default function ConsorciosPage() {
 
   // ── Carregar ───────────────────────────────────────────────
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
-    const ids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
-    const res = await fetch(`/api/financeiro/consorcios?fazenda_ids=${ids.join(",")}`);
+    if (!contaId && !fazendaId) return;
+    const param = contaId && !contaId.startsWith("sem_conta_")
+      ? `conta_id=${contaId}`
+      : `fazenda_ids=${(fazendaIds.length > 0 ? fazendaIds : [fazendaId]).join(",")}`;
+    const res = await fetch(`/api/financeiro/consorcios?${param}`);
     if (!res.ok) return;
     const d = await res.json() as { consorcios: Consorcio[]; parcelas: ParcelaConsorcio[] };
     setConsorcios(d.consorcios ?? []);
     setParcelas(d.parcelas ?? []);
-  }, [fazendaId, fazendaIds]);
+  }, [contaId, fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Carrega produtores da conta
+  useEffect(() => {
+    if (!contaId) return;
+    supabase.from("produtores").select("id, nome, cpf_cnpj").eq("conta_id", contaId).order("nome")
+      .then(({ data }) => setProdutores((data ?? []) as ProdutorSimples[]));
+  }, [contaId]);
 
   // Carrega OG IDs de consórcio quando a fazenda está disponível
   useEffect(() => {
@@ -195,6 +211,7 @@ export default function ConsorciosPage() {
 
       const d = dados as {
         administradora?: string | null; consorciado_nome?: string | null;
+        consorciado_cpf?: string | null;
         grupo?: string | null; numero_cota?: string | null;
         valor_credito_atual?: number | null; valor_parcela_atual?: number | null;
         parcelas_pagas?: number | null; total_parcelas?: number | null;
@@ -202,6 +219,20 @@ export default function ConsorciosPage() {
         tipo_bem?: string | null; descricao_bem?: string | null;
         confianca?: string;
       };
+
+      // Tenta encontrar o produtor pelo CPF/CNPJ ou nome extraídos do PDF
+      const normCpf = (s?: string | null) => (s ?? "").replace(/\D/g, "");
+      const cpfIa = normCpf(d.consorciado_cpf);
+      let produtorIdIa = "";
+      if (cpfIa) {
+        const match = produtores.find(p => normCpf(p.cpf_cnpj) === cpfIa);
+        if (match) produtorIdIa = match.id;
+      }
+      if (!produtorIdIa && d.consorciado_nome) {
+        const nomeIa = d.consorciado_nome.toLowerCase().trim();
+        const match = produtores.find(p => p.nome.toLowerCase().trim() === nomeIa);
+        if (match) produtorIdIa = match.id;
+      }
 
       setConsorEdit(null);
       setCForm({
@@ -216,15 +247,17 @@ export default function ConsorciosPage() {
         parcelas_pagas:      d.parcelas_pagas ? String(d.parcelas_pagas) : "0",
         data_inicio:         d.data_primeira_parcela || hoje(),
         status:              "a_contemplar" as StatusConsorcio,
-        observacao:          d.consorciado_nome ? `Consorciado: ${d.consorciado_nome}` : "",
+        observacao:          "",
+        produtor_id:         produtorIdIa,
       });
       // garantir que data_inicio é YYYY-MM-DD (IA pode retornar "" em vez de null)
       setCForm(f => ({ ...f, data_inicio: f.data_inicio || hoje() }));
       setCErr("");
       setModalConsor(true);
+      const prodMatch = produtorIdIa ? produtores.find(p => p.id === produtorIdIa)?.nome : null;
       setIaMensagem(
         d.confianca === "alta"
-          ? `✅ Extrato lido com alta confiança — ${d.administradora ?? ""} Grupo ${d.grupo ?? "—"} Cota ${d.numero_cota ?? "—"}`
+          ? `✅ Extrato lido com alta confiança — ${d.administradora ?? ""} Grupo ${d.grupo ?? "—"} Cota ${d.numero_cota ?? "—"}${prodMatch ? ` · Agricultor: ${prodMatch}` : ""}`
           : d.confianca === "media"
           ? `⚠️ Alguns campos podem precisar de revisão — verifique antes de salvar.`
           : `⚠️ Confiança baixa — revise todos os dados antes de salvar.`,
@@ -248,6 +281,7 @@ export default function ConsorciosPage() {
         parcelas_pagas: String(c.parcelas_pagas),
         data_inicio: c.data_inicio, status: c.status,
         observacao: c.observacao ?? "",
+        produtor_id: c.produtor_id ?? "",
       });
     } else {
       setConsorEdit(null);
@@ -281,6 +315,7 @@ export default function ConsorciosPage() {
         data_inicio: cForm.data_inicio,
         status: cForm.status,
         observacao: cForm.observacao || null,
+        produtor_id: cForm.produtor_id || null,
       };
       if (consorEdit) payload.id = consorEdit.id;
 
@@ -376,7 +411,9 @@ export default function ConsorciosPage() {
   // ── Gerar parcelas + CPs no financeiro ───────────────────
   // Usa API route (service_role_key) — imune a JWT expirado e RLS.
   async function gerarParcelas(c: Consorcio) {
-    if (!fazendaId) return;
+    // Usa o fazenda_id do próprio consórcio — funciona mesmo sem fazenda ativa no contexto
+    const fId = c.fazenda_id || fazendaId;
+    if (!fId) return;
     const existem = parcelas.filter(p => p.consorcio_id === c.id);
     if (existem.length > 0) {
       if (!confirm(`Este consórcio já tem ${existem.length} parcelas. Deseja apagar e regenerar?`)) return;
@@ -386,7 +423,7 @@ export default function ConsorciosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         consorcio_id:        c.id,
-        fazenda_id:          fazendaId,
+        fazenda_id:          fId,
         administradora:      c.administradora,
         numero_cota:         c.numero_cota,
         valor_parcela_mensal: c.valor_parcela_mensal,
@@ -522,6 +559,10 @@ export default function ConsorciosPage() {
                           <div style={{ fontSize: 12, color: "#666", marginTop: 3 }}>
                             {c.descricao_bem || "Bem não especificado"} {c.grupo ? `· Grupo ${c.grupo}` : ""}
                           </div>
+                          {c.produtor_id && (() => {
+                            const prod = produtores.find(p => p.id === c.produtor_id);
+                            return prod ? <div style={{ fontSize: 11, color: "#1A4870", marginTop: 2 }}>Agricultor: {prod.nome}</div> : null;
+                          })()}
                           {c.status === "contemplado" && c.bem_adquirido && (
                             <div style={{ fontSize: 11, color: "#1A6B3C", marginTop: 2 }}>Bem adquirido: {c.bem_adquirido}</div>
                           )}
@@ -745,6 +786,13 @@ export default function ConsorciosPage() {
                   <label style={lbl}>Status</label>
                   <select value={cForm.status} onChange={e => setCForm(f => ({ ...f, status: e.target.value as StatusConsorcio }))} style={inp}>
                     {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={lbl}>Agricultor / Consorciado</label>
+                  <select value={cForm.produtor_id} onChange={e => setCForm(f => ({ ...f, produtor_id: e.target.value }))} style={inp}>
+                    <option value="">— Selecione —</option>
+                    {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
                   </select>
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>

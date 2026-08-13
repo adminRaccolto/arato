@@ -7,14 +7,28 @@ const admin = () =>
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-// GET /api/financeiro/consorcios?fazenda_ids=id1,id2
+// GET /api/financeiro/consorcios?conta_id=xxx
+//  ou GET /api/financeiro/consorcios?fazenda_ids=id1,id2  (legado)
 // Retorna consórcios + parcelas usando service_role_key (imune a JWT expirado).
 export async function GET(req: NextRequest) {
   try {
-    const ids = req.nextUrl.searchParams.get("fazenda_ids")?.split(",").filter(Boolean) ?? [];
+    const sb = admin();
+
+    // Resolve fazenda_ids a partir do conta_id (preferencial) ou do parâmetro legado
+    let ids: string[] = req.nextUrl.searchParams.get("fazenda_ids")?.split(",").filter(Boolean) ?? [];
+    const contaId = req.nextUrl.searchParams.get("conta_id");
+
+    if (contaId && !contaId.startsWith("sem_conta_")) {
+      const { data: fazs } = await sb
+        .from("fazendas")
+        .select("id")
+        .eq("conta_id", contaId);
+      const fromConta = (fazs ?? []).map((f: { id: string }) => f.id).filter(Boolean);
+      if (fromConta.length > 0) ids = fromConta;
+    }
+
     if (ids.length === 0) return NextResponse.json({ consorcios: [], parcelas: [] });
 
-    const sb = admin();
     const { data: cd, error: ce } = await sb
       .from("consorcios")
       .select("*")
@@ -149,6 +163,7 @@ export async function POST(req: NextRequest) {
       data_inicio: string;
       status: string;
       observacao?: string | null;
+      produtor_id?: string | null;
     };
 
     if (!body.fazenda_id) {
