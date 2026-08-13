@@ -354,11 +354,17 @@ export default function NfServicoPage() {
       if (d.erro) {
         setSiegSyncMsg(`✗ ${d.erro}`);
       } else {
-        const imp = Number(d.importadas ?? 0);
-        const dup = Number(d.duplicadas ?? 0);
-        const dupTxt = dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : "";
-        setSiegSyncMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dupTxt}`);
-        await carregar();
+        const imp  = Number(d.importadas  ?? 0);
+        const dup  = Number(d.duplicadas  ?? 0);
+        const tot  = Number(d.total_xmls  ?? 0);
+        const errs = Array.isArray(d.erros) ? (d.erros as string[]) : [];
+        let msg = `✓ ${imp} importada${imp !== 1 ? "s" : ""}`;
+        if (tot > 0) msg += ` de ${tot} XML${tot !== 1 ? "s" : ""} SIEG`;
+        if (dup > 0) msg += ` · ${dup} já existia${dup !== 1 ? "m" : ""}`;
+        if (tot === 0) msg += ` · 0 XMLs encontrados no SIEG`;
+        if (errs.length > 0) msg += ` · ${errs.length} erro${errs.length !== 1 ? "s" : ""}: ${errs[0].slice(0, 80)}`;
+        setSiegSyncMsg(msg);
+        if (imp > 0) await carregar();
       }
     } catch (e) { setSiegSyncMsg(`✗ Erro de rede: ${e}`); }
     finally { setSiegSyncing(false); }
