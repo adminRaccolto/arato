@@ -7,7 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
 import { baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
-export const runtime = "nodejs";
+export const runtime    = "nodejs";
+export const maxDuration = 300; // 5 min — necessário para downloads grandes do SIEG
 
 function sb() {
   return createClient(
@@ -173,22 +174,7 @@ export async function POST(req: NextRequest) {
       if (docs.length > 0) {
         for (const xml of docs) xmlsList.push({ xml, cnpj });
       } else {
-        // fallback: busca sem filtro de CNPJ, filtra client-side pelo tomador no XML
-        try {
-          const all = await baixarXmlsSiegChunked(siegCreds, {
-            TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr,
-          });
-          console.log(`[nfse] sem CnpjTom: ${all.length} XMLs total`);
-          for (const xml of all) {
-            const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador");
-            const tId  = blk(tBlk || xml, "IdentificacaoTomador", "CpfCnpjTomador");
-            const cTom = tv(tId || tBlk || xml, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "");
-            if (cTom === cnpj) xmlsList.push({ xml, cnpj });
-          }
-          console.log(`[nfse] após filtro client-side: ${xmlsList.length}`);
-        } catch (e2) {
-          console.warn(`[nfse] fallback sem CNPJ falhou: ${e2}`);
-        }
+        console.log(`[nfse] CnpjTom=${cnpj}: 0 XMLs no período — nenhum documento a importar`);
       }
     }
 

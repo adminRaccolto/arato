@@ -350,7 +350,13 @@ export default function NfServicoPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim, force_reimport: siegForceReimport }),
       });
-      const d = await res.json() as Record<string, unknown>;
+      let d: Record<string, unknown>;
+      try {
+        d = await res.json() as Record<string, unknown>;
+      } catch {
+        setSiegSyncMsg("✗ A sincronização demorou muito — tente um período menor (ex: últimos 30 dias)");
+        return;
+      }
       if (d.erro) {
         setSiegSyncMsg(`✗ ${d.erro}`);
       } else {
