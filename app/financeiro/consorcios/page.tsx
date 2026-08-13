@@ -84,8 +84,13 @@ const TIPO_BEM_META: Record<TipoBem, { label: string; bg: string; cl: string }> 
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function ConsorciosPage() {
-  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano, contaModulosOverrides } = useAuth();
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
+
+  // ── IA Extração de Extrato ──────────────────────────────────
+  const [iaCarregando, setIaCarregando] = useState(false);
+  const [iaMensagem,   setIaMensagem]   = useState("");
+  const [iaNome,       setIaNome]       = useState("");
 
   // Dados
   const [consorcios, setConsorcios] = useState<Consorcio[]>([]);
@@ -158,6 +163,58 @@ export default function ConsorciosPage() {
   );
 
   // ── CRUD Consórcio ────────────────────────────────────────
+  async function extrairPdfConsorcio(file: File) {
+    setIaCarregando(true);
+    setIaMensagem("Analisando extrato com IA…");
+    setIaNome(file.name);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/ai/extrair-consorcio", { method: "POST", body: fd });
+      const dados = await res.json() as Record<string, unknown> & { error?: string };
+      if (!res.ok || dados.error) { setIaMensagem(`Erro: ${dados.error ?? "Falha ao processar PDF."}`); return; }
+
+      const d = dados as {
+        administradora?: string | null; consorciado_nome?: string | null;
+        grupo?: string | null; numero_cota?: string | null;
+        valor_credito_atual?: number | null; valor_parcela_atual?: number | null;
+        parcelas_pagas?: number | null; total_parcelas?: number | null;
+        data_primeira_parcela?: string | null;
+        tipo_bem?: string | null; descricao_bem?: string | null;
+        confianca?: string;
+      };
+
+      setConsorEdit(null);
+      setCForm({
+        administradora:      d.administradora      ?? "",
+        numero_cota:         d.numero_cota         ?? "",
+        grupo:               d.grupo               ?? "",
+        tipo_bem:            (d.tipo_bem as TipoBem) ?? "outro",
+        descricao_bem:       d.descricao_bem       ?? "",
+        valor_credito:       d.valor_credito_atual  ?? 0,
+        valor_parcela_mensal:d.valor_parcela_atual  ?? 0,
+        total_parcelas:      d.total_parcelas ? String(d.total_parcelas) : "0",
+        parcelas_pagas:      d.parcelas_pagas ? String(d.parcelas_pagas) : "0",
+        data_inicio:         d.data_primeira_parcela ?? hoje(),
+        status:              "a_contemplar" as StatusConsorcio,
+        observacao:          d.consorciado_nome ? `Consorciado: ${d.consorciado_nome}` : "",
+      });
+      setCErr("");
+      setModalConsor(true);
+      setIaMensagem(
+        d.confianca === "alta"
+          ? `✅ Extrato lido com alta confiança — ${d.administradora ?? ""} Grupo ${d.grupo ?? "—"} Cota ${d.numero_cota ?? "—"}`
+          : d.confianca === "media"
+          ? `⚠️ Alguns campos podem precisar de revisão — verifique antes de salvar.`
+          : `⚠️ Confiança baixa — revise todos os dados antes de salvar.`,
+      );
+    } catch (e: unknown) {
+      setIaMensagem(`Erro: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setIaCarregando(false);
+    }
+  }
+
   function abrirConsorcio(c?: Consorcio) {
     if (c) {
       setConsorEdit(c);
@@ -338,6 +395,31 @@ export default function ConsorciosPage() {
             </div>
           ))}
         </div>
+
+        {/* Banner IA Extrato Consórcio */}
+        {contaModulosOverrides["ia_consorcio"] === true && (
+          <div style={{ background: "linear-gradient(135deg,#E8F0FE,#F0F4FF)", border: "0.5px solid #B8CCF8", borderRadius: 12, padding: "14px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 2 }}>
+                🤖 Importar Extrato de Consórcio com IA
+              </div>
+              <div style={{ fontSize: 12, color: "#0B2D50" }}>
+                Envie o extrato analítico em PDF — o Arato preenche os campos automaticamente.
+              </div>
+              {iaMensagem && (
+                <div style={{ marginTop: 6, fontSize: 12, color: iaMensagem.startsWith("✅") ? "#1A6B3C" : iaMensagem.startsWith("Erro") ? "#791F1F" : "#7B4A00", fontWeight: iaMensagem.startsWith("✅") ? 600 : 400 }}>
+                  {iaMensagem}{iaNome ? ` · ${iaNome}` : ""}
+                </div>
+              )}
+            </div>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, background: iaCarregando ? "#888" : "#1A4870", color: "#fff", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: iaCarregando ? "not-allowed" : "pointer" }}>
+              {iaCarregando ? "Analisando…" : "📄 Enviar PDF"}
+              <input type="file" accept="application/pdf" style={{ display: "none" }} disabled={iaCarregando}
+                onChange={e => { const f = e.target.files?.[0]; if (f) extrairPdfConsorcio(f); e.target.value = ""; }}
+              />
+            </label>
+          </div>
+        )}
 
         {/* Alerta parcelas atrasadas */}
         {parcelasAtrasadas.length > 0 && (
