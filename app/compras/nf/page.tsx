@@ -76,12 +76,12 @@ const MAN_CFG = [
   { tipo: 3, label: "Não Realizada", cor: "#E24B4A", bg: "#FFF0F0", status: "nao_realizada",   justObrig: true  },
 ] as const;
 type ManStatus = "pendente"|"ciencia"|"confirmada"|"desconhecimento"|"nao_realizada";
-const MAN_ST: Record<ManStatus, { label: string; cor: string; bg: string }> = {
-  pendente:        { label: "Pendente",        cor: "var(--text-3)",    bg: "#F3F4F6" },
-  ciencia:         { label: "Ciência",         cor: "#444444", bg: "#F2F2F2" },
-  confirmada:      { label: "Confirmada",      cor: "#16A34A", bg: "#DCFCE7" },
-  desconhecimento: { label: "Desconhecimento", cor: "#C9921B", bg: "#FBF3E0" },
-  nao_realizada:   { label: "Não Realizada",   cor: "#E24B4A", bg: "#FFF0F0" },
+const MAN_ST: Record<ManStatus, { label: string; short: string; cor: string; bg: string }> = {
+  pendente:        { label: "Pendente",        short: "Pend.", cor: "var(--text-3)",    bg: "#F3F4F6" },
+  ciencia:         { label: "Ciência",         short: "Ci.",   cor: "#444444", bg: "#F2F2F2" },
+  confirmada:      { label: "Confirmada",      short: "Conf.", cor: "#16A34A", bg: "#DCFCE7" },
+  desconhecimento: { label: "Desconhecimento", short: "Desc.", cor: "#C9921B", bg: "#FBF3E0" },
+  nao_realizada:   { label: "Não Realizada",   short: "N.R.",  cor: "#E24B4A", bg: "#FFF0F0" },
 };
 const fmtDoc = (s: string) => s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 
@@ -1613,8 +1613,8 @@ export default function NfCompraPage() {
                               <button
                                 disabled={isBusy}
                                 onClick={e => { e.stopPropagation(); setManDropdown(aberto ? null : nf.id); }}
-                                style={{ padding: "3px 8px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 11, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
-                                {isBusy ? "⏳…" : stCfg.label} {!isBusy && "▾"}
+                                style={{ padding: "3px 7px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 11, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+                                {isBusy ? "⏳" : stCfg.short} {!isBusy && "▾"}
                               </button>
                               {aberto && (
                                 <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 200, minWidth: 150, overflow: "hidden" }}>
@@ -1658,16 +1658,17 @@ export default function NfCompraPage() {
 
                           {/* Processar (pendente) */}
                           {nf.status === "pendente" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A5C38", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
-                              Processar
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 9px", border: "none", borderRadius: 6, background: "#1A5C38", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
+                              Proc
                             </button>
                           )}
 
                           {/* Re-import. (sieg pendente) */}
                           {nf.origem === "sieg" && nf.status === "pendente" && (
                             <button onClick={() => reimportarNf(nf)} disabled={siegReimporting[nf.id]}
-                              style={{ padding: "4px 10px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 11, color: "#111111", fontWeight: 600, opacity: siegReimporting[nf.id] ? 0.5 : 1, whiteSpace: "nowrap" }}>
-                              {siegReimporting[nf.id] ? "…" : "↻ Re-import."}
+                              title="Re-importar do SIEG"
+                              style={{ padding: "4px 8px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 14, color: "#111111", fontWeight: 400, opacity: siegReimporting[nf.id] ? 0.5 : 1, lineHeight: 1 }}>
+                              {siegReimporting[nf.id] ? "⏳" : "↻"}
                             </button>
                           )}
 
@@ -1706,8 +1707,9 @@ export default function NfCompraPage() {
 
                           {/* Excluir */}
                           {nf.status !== "cancelada" && (
-                            <button onClick={() => iniciarExclusaoNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", whiteSpace: "nowrap" }}>
-                              Excluir
+                            <button onClick={() => iniciarExclusaoNf(nf)} title="Excluir NF"
+                              style={{ padding: "4px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 14, color: "#791F1F", lineHeight: 1 }}>
+                              🗑
                             </button>
                           )}
                         </div>
