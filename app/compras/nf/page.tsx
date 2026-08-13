@@ -956,7 +956,7 @@ export default function NfCompraPage() {
         }
         // Combustível: bomba vem do cabeçalho; deposito_id não se aplica
         const opSel = reclassOps.find(o => o.id === cab.operacao_gerencial_id);
-        const isCombustivel = /combustiv/i.test(opSel?.descricao ?? "");
+        const isCombustivel = (opSel?.classificacao ?? "").startsWith("2.01.01.02");
         if (isCombustivel && cab.bomba_destino_id) {
           it.bomba_id    = cab.bomba_destino_id;
           it.deposito_id = "";
@@ -1426,7 +1426,7 @@ export default function NfCompraPage() {
   // Render
   // ─────────────────────────────────────────────────────────
   const opSelecionada = reclassOps.find(o => o.id === cab.operacao_gerencial_id);
-  const isCombustivelWiz = /combustiv/i.test(opSelecionada?.descricao ?? "");
+  const isCombustivelWiz = (opSelecionada?.classificacao ?? "").startsWith("2.01.01.02");
 
   if (!podeAcessarPlano("nf_entrada")) return <PlanoGate modulo="nf_entrada" />;
   return (
