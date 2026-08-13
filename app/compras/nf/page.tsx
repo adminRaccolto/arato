@@ -88,6 +88,7 @@ const TIPO_META: Record<string, { bg: string; cl: string; label: string }> = {
   consumo:          { bg: "#F3E8FF", cl: "#6B21A8", label: "Consumo"      },
   insumos:          { bg: "#E8E8E8", cl: "#0D0D0D", label: "Insumos"      },
   combustivel:      { bg: "#FFF0E0", cl: "#7C3A00", label: "Combustível"  },
+  pecas:            { bg: "#E0F0FF", cl: "#0A4B8C", label: "Peças / Manut." },
   custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Aprop. Direta" },
   vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"           },
   remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"       },
@@ -203,13 +204,14 @@ const ITEM_VAZIO = (): ItemRascunho => ({
 
 type Etapa = "origem" | "cabecalho" | "itens";
 type OrigEscolha = "manual" | "xml" | "sieg";
-type TipoEntrada = "insumos" | "vef" | "remessa" | "custo_direto";
+type TipoEntrada = "insumos" | "pecas" | "vef" | "remessa" | "custo_direto";
 
 const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: string }> = {
-  insumos:      { label: "Insumos / Estoque",    desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo.",                                      cor: "#E8E8E8" },
-  custo_direto: { label: "Apropriação Direta",   desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).", cor: "#E8F5E9" },
-  vef:          { label: "Entrega Futura (VEF)", desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                      cor: "#FAEEDA" },
-  remessa:      { label: "Remessa / Entrega",    desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                   cor: "#E6F1FB" },
+  insumos:      { label: "Insumos / Estoque",       desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo de insumos.",                                   cor: "#E8E8E8" },
+  pecas:        { label: "Peças / Manutenção",       desc: "Compra de peças, pneus ou serviços de manutenção. Cada item é vinculado à maquinário do cadastro.",                    cor: "#E0F0FF" },
+  custo_direto: { label: "Apropriação Direta",       desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).",       cor: "#E8F5E9" },
+  vef:          { label: "Entrega Futura (VEF)",     desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                            cor: "#FAEEDA" },
+  remessa:      { label: "Remessa / Entrega",        desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                         cor: "#E6F1FB" },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -333,6 +335,7 @@ export default function NfCompraPage() {
     operacao_gerencial_id: "",
     centro_custo_id: "",
     data_vencimento_cp: "",
+    forma_pagamento: "",        // à vista, prazo, boleto, pix, cheque, barter…
     deposito_destino_id: "",    // remessa
     bomba_destino_id: "",       // combustível
     e_combustivel: false,       // checkbox manual — habilita seletor de bomba
@@ -611,6 +614,7 @@ export default function NfCompraPage() {
       operacao_gerencial_id: "",
       centro_custo_id: "",
       data_vencimento_cp: "",
+      forma_pagamento: "",
       deposito_destino_id: "",
       bomba_destino_id: "",
       e_combustivel: false,
@@ -637,6 +641,7 @@ export default function NfCompraPage() {
     setOrig((nf.origem ?? "manual") as OrigEscolha);
     // "combustivel" não é um TipoEntrada base — mapeia para "insumos" + e_combustivel=true
     setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : (nf.tipo_entrada ?? "insumos")) as TipoEntrada);
+    // "pecas" é um TipoEntrada válido — não remapeia
     setCab({
       numero: nf.numero,
       serie: nf.serie,
@@ -655,6 +660,7 @@ export default function NfCompraPage() {
       operacao_gerencial_id: nf.operacao_gerencial_id ?? "",
       centro_custo_id: nf.centro_custo_id ?? "",
       data_vencimento_cp: nf.data_vencimento_cp ?? "",
+      forma_pagamento: (nf as Record<string,unknown>).forma_pagamento as string ?? "",
       deposito_destino_id: nf.deposito_destino_id ?? "",
       bomba_destino_id: "",
       e_combustivel: nf.tipo_entrada === "combustivel",
@@ -887,6 +893,7 @@ export default function NfCompraPage() {
       operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
       centro_custo_id:       cab.centro_custo_id     || undefined,
       data_vencimento_cp:    cab.data_vencimento_cp  || undefined,
+      forma_pagamento:       cab.forma_pagamento      || undefined,
       deposito_destino_id:   cab.deposito_destino_id || undefined,
       observacao:            cab.observacao           || undefined,
       ano_safra_id:          cab.ano_safra_id         || undefined,
@@ -947,6 +954,7 @@ export default function NfCompraPage() {
           id:                    nfEdit.id,
           fazenda_id:            fazendaId,
           data_vencimento_cp:    cab.data_vencimento_cp    || null,
+          forma_pagamento:       cab.forma_pagamento       || null,
           tipo_entrada:          cab.e_combustivel ? "combustivel" : tipo,
           produtor_id:           cab.produtor_id           || null,
           operacao_gerencial_id: cab.operacao_gerencial_id || null,
@@ -1028,6 +1036,7 @@ export default function NfCompraPage() {
         {
           nfeNumero:           nfEdit.numero,
           dataVencimentoCp:    nfEdit.data_vencimento_cp,
+          formaPagamento:      (nfEdit as Record<string,unknown>).forma_pagamento as string | undefined,
           tipoEntrada:         nfEdit.tipo_entrada,
           anoSafraId:          nfEdit.ano_safra_id,
           cicloId:             nfEdit.ciclo_id,
@@ -1433,7 +1442,11 @@ export default function NfCompraPage() {
 
   // ── Auto-fill tipo_apropiacao por tipo de entrada ─────────
   const tipoAprpDefault = (t: TipoEntrada): NfEntradaItem["tipo_apropiacao"] =>
-    t === "vef" ? "vef" : t === "remessa" ? "remessa" : t === "custo_direto" ? "direto" : "estoque";
+    t === "vef"          ? "vef"        :
+    t === "remessa"      ? "remessa"    :
+    t === "custo_direto" ? "direto"     :
+    t === "pecas"        ? "maquinario" :
+    "estoque";
 
   // ── Totais ─────────────────────────────────────────────────
   const totalItens = itens.reduce((s, i) => s + i.valor_total, 0);
@@ -2346,8 +2359,22 @@ export default function NfCompraPage() {
                   </div>
 
                   <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Vencimento e Classificação</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Pagamento e Classificação</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div>
+                        <label style={lbl}>Forma de Pagamento</label>
+                        <select value={cab.forma_pagamento} onChange={e => setCab(p => ({ ...p, forma_pagamento: e.target.value }))} style={inp}>
+                          <option value="">— selecionar —</option>
+                          <option value="a_vista">À Vista</option>
+                          <option value="prazo_boleto">A Prazo — Boleto</option>
+                          <option value="prazo_pix">A Prazo — PIX</option>
+                          <option value="prazo_debito">A Prazo — Débito em Conta</option>
+                          <option value="prazo_cheque">A Prazo — Cheque</option>
+                          <option value="barter">Barter (troca por grãos)</option>
+                          <option value="financiamento">Financiamento</option>
+                          <option value="outros">Outros</option>
+                        </select>
+                      </div>
                       <div>
                         <label style={lbl}>Vencimento da CP</label>
                         <input type="date" value={cab.data_vencimento_cp} onChange={e => setCab(p=>({...p,data_vencimento_cp:e.target.value}))} style={inp} />
@@ -2915,6 +2942,7 @@ export default function NfCompraPage() {
                       {[
                         { label: "Tipo",              value: TIPO_LABELS[tipo]?.label },
                         { label: "Emitente",          value: cab.emitente_nome || "—" },
+                        { label: "Forma de pagamento",value: cab.forma_pagamento ? { a_vista: "À Vista", prazo_boleto: "A Prazo — Boleto", prazo_pix: "A Prazo — PIX", prazo_debito: "A Prazo — Débito", prazo_cheque: "A Prazo — Cheque", barter: "Barter", financiamento: "Financiamento", outros: "Outros" }[cab.forma_pagamento] ?? cab.forma_pagamento : "Não informado" },
                         { label: "Vencimento CP",     value: cab.data_vencimento_cp ? fmtData(cab.data_vencimento_cp) : "Não informado" },
                         { label: "Pedido vinculado",  value: cab.pedido_compra_id ? (pedidos.find(p=>p.id===cab.pedido_compra_id)?.nr_pedido ?? "Sim") : "Não" },
                         { label: "Itens",             value: `${itens.filter(i=>i.descricao_nf.trim()).length} item(s)` },

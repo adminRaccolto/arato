@@ -9706,3 +9706,18 @@ ALTER TABLE nf_entradas
   CHECK (tipo_entrada IN ('consumo','insumos','combustivel','vef','remessa','devolucao_compra','custo_direto'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: adiciona 'pecas' ao check de tipo_entrada + coluna forma_pagamento ───
+-- Permite registrar NFs de peças/manutenção com tipo_entrada = 'pecas'.
+-- Adiciona forma_pagamento para registrar a condição de pagamento da NF.
+ALTER TABLE nf_entradas
+  DROP CONSTRAINT IF EXISTS nf_entradas_tipo_entrada_check;
+
+ALTER TABLE nf_entradas
+  ADD CONSTRAINT nf_entradas_tipo_entrada_check
+  CHECK (tipo_entrada IN ('consumo','insumos','combustivel','pecas','vef','remessa','devolucao_compra','custo_direto'));
+
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS forma_pagamento TEXT;
+
+NOTIFY pgrst, 'reload schema';

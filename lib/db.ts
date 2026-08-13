@@ -1701,6 +1701,7 @@ export async function processarNfEntrada(
   opts?: {
     nfeNumero?: string;
     dataVencimentoCp?: string;
+    formaPagamento?: string;
     tipoEntrada?: string;
     anoSafraId?: string;
     cicloId?: string;
@@ -1910,6 +1911,7 @@ export async function processarNfEntrada(
   const nfUpdates: Record<string, unknown> = { status: "processada", data_entrada: dataEntrada };
   if (pessoaId) nfUpdates.pessoa_id = pessoaId;
   if (opts?.dataVencimentoCp) nfUpdates.data_vencimento_cp = opts.dataVencimentoCp;
+  if (opts?.formaPagamento)   nfUpdates.forma_pagamento    = opts.formaPagamento;
   if (opts?.produtorId)       nfUpdates.produtor_id        = opts.produtorId;
 
   if (!temRemessa || temOutros || temVef) {
@@ -1951,6 +1953,7 @@ export async function processarNfEntrada(
         opts?.tipoEntrada === "vef"          ? "Insumos — Sementes"      :
         opts?.tipoEntrada === "custo_direto" ? "Serviços Agrícolas"      :
         opts?.tipoEntrada === "combustivel"  ? "Combustível"             :
+        opts?.tipoEntrada === "pecas"        ? "Peças / Manutenção"      :
         opts?.tipoEntrada === "insumos"      ? "Insumos — Fertilizantes" :
         "Outros";
 

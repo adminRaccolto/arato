@@ -1125,7 +1125,8 @@ export type NfEntrada = {
   observacao?: string;
   // Campos da v2
   origem?: "manual" | "xml" | "sieg";
-  tipo_entrada?: "consumo" | "insumos" | "combustivel" | "custo_direto" | "vef" | "remessa" | "devolucao_compra";
+  tipo_entrada?: "consumo" | "insumos" | "combustivel" | "pecas" | "custo_direto" | "vef" | "remessa" | "devolucao_compra";
+  forma_pagamento?: string;
   nf_origem_id?: string;           // NF que está sendo devolvida (devolucao_compra)
   pedido_compra_id?: string;
   operacao_gerencial_id?: string; // para consumo direto

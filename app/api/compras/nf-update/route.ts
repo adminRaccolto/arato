@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
       id: string;
       fazenda_id: string;
       data_vencimento_cp?: string | null;
+      forma_pagamento?: string | null;
       tipo_entrada?: string;
       produtor_id?: string | null;
       operacao_gerencial_id?: string | null;
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
 
     const update: Record<string, unknown> = {};
     if (body.data_vencimento_cp !== undefined) update.data_vencimento_cp = body.data_vencimento_cp || null;
+    if (body.forma_pagamento    !== undefined) update.forma_pagamento    = body.forma_pagamento    || null;
     if (body.tipo_entrada !== undefined) update.tipo_entrada = body.tipo_entrada;
     if (body.produtor_id !== undefined) update.produtor_id = body.produtor_id || null;
     if (body.operacao_gerencial_id !== undefined) update.operacao_gerencial_id = body.operacao_gerencial_id || null;
