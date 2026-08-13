@@ -87,6 +87,7 @@ const STATUS_META: Record<string, { bg: string; cl: string; label: string }> = {
 const TIPO_META: Record<string, { bg: string; cl: string; label: string }> = {
   consumo:          { bg: "#F3E8FF", cl: "#6B21A8", label: "Consumo"      },
   insumos:          { bg: "#E8E8E8", cl: "#0D0D0D", label: "Insumos"      },
+  combustivel:      { bg: "#FFF0E0", cl: "#7C3A00", label: "Combustível"  },
   custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Aprop. Direta" },
   vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"           },
   remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"       },
@@ -634,7 +635,8 @@ export default function NfCompraPage() {
   async function abrirEditar(nf: NfEntrada) {
     setNfEdit(nf);
     setOrig((nf.origem ?? "manual") as OrigEscolha);
-    setTipo((nf.tipo_entrada ?? "insumos") as TipoEntrada);
+    // "combustivel" não é um TipoEntrada base — mapeia para "insumos" + e_combustivel=true
+    setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : (nf.tipo_entrada ?? "insumos")) as TipoEntrada);
     setCab({
       numero: nf.numero,
       serie: nf.serie,
@@ -655,11 +657,11 @@ export default function NfCompraPage() {
       data_vencimento_cp: nf.data_vencimento_cp ?? "",
       deposito_destino_id: nf.deposito_destino_id ?? "",
       bomba_destino_id: "",
-      e_combustivel: false,
+      e_combustivel: nf.tipo_entrada === "combustivel",
       observacao: nf.observacao ?? "",
       ano_safra_id: nf.ano_safra_id ?? "",
       ciclo_id: nf.ciclo_id ?? "",
-      produtor_id: nf.produtor_id ?? "",
+      produtor_id: nf.produtor_id ?? produtorPorCnpj(nf.emitente_cnpj ?? ""),
       vinculo_atividade: (nf.vinculo_atividade ?? "rural") as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
       entidade_contabil: (nf.entidade_contabil ?? "pf") as "pf" | "pj",
       valor_ipi:      String((nf as Record<string,unknown>).valor_ipi      ?? ""),
@@ -880,7 +882,7 @@ export default function NfCompraPage() {
       natureza:              cab.natureza     || undefined,
       status:                "pendente",
       origem:                orig,
-      tipo_entrada:          tipo,
+      tipo_entrada:          cab.e_combustivel ? "combustivel" : tipo,
       pedido_compra_id:      cab.pedido_compra_id    || undefined,
       operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
       centro_custo_id:       cab.centro_custo_id     || undefined,
@@ -935,6 +937,27 @@ export default function NfCompraPage() {
     setSaving(true);
     setErr("");
     try {
+      // 0. Persistir metadados críticos via API (service_role_key — imune a JWT expirado)
+      //    Garante que data_vencimento_cp, produtor_id e tipo_entrada estejam no DB
+      //    mesmo que salvarRascunho tenha falhado silenciosamente por JWT expirado.
+      await fetch("/api/compras/nf-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id:                    nfEdit.id,
+          fazenda_id:            fazendaId,
+          data_vencimento_cp:    cab.data_vencimento_cp    || null,
+          tipo_entrada:          cab.e_combustivel ? "combustivel" : tipo,
+          produtor_id:           cab.produtor_id           || null,
+          operacao_gerencial_id: cab.operacao_gerencial_id || null,
+          centro_custo_id:       cab.centro_custo_id       || null,
+          ano_safra_id:          cab.ano_safra_id          || null,
+          ciclo_id:              cab.ciclo_id              || null,
+          pedido_compra_id:      cab.pedido_compra_id      || null,
+          observacao:            cab.observacao             || null,
+        }),
+      });
+
       // 1. Limpar itens existentes (evita duplicação se houve falha parcial anterior)
       await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfEdit.id);
 
@@ -1292,6 +1315,12 @@ export default function NfCompraPage() {
     if (!cnpj) return "";
     const norm = cnpj.replace(/\D/g, "");
     return pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm)?.id ?? "";
+  }
+
+  function produtorPorCnpj(cnpj: string): string {
+    if (!cnpj) return "";
+    const norm = cnpj.replace(/\D/g, "");
+    return wProdutores.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm)?.id ?? "";
   }
 
   // ── Auto-fill emitente quando pessoa selecionada ─────────
@@ -2523,10 +2552,47 @@ export default function NfCompraPage() {
                     </button>
                   </div>
 
-                  {/* Painel de CC por produto — só visível no modo "por_produto" */}
-                  {ccMode === "por_produto" && (
-                    <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 11, color: "var(--text-2)" }}>
-                      Atribua o centro de custo em cada produto individualmente — use os botões <strong>📦 Estoque</strong> / <strong>💸 C. Custo</strong> abaixo.
+                  {/* Painel CC Global — visível para tipo insumos */}
+                  {tipo === "insumos" && (
+                    <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Centro de Custo:</span>
+                        {/* Modo toggles */}
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {([["nenhum", "Sem CC"], ["global", "Global"], ["por_produto", "Por item"]] as const).map(([m, label]) => (
+                            <button key={m} onClick={() => { setCcMode(m); if (m !== "global") setCab(p=>({...p,centro_custo_id:""})); }}
+                              style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: `0.5px solid ${ccMode === m ? "#1A4870" : "var(--border-table)"}`, background: ccMode === m ? "#1A4870" : "var(--bg-card)", color: ccMode === m ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        {/* CC selector — visível no modo global */}
+                        {ccMode === "global" && (
+                          <>
+                            <select value={cab.centro_custo_id}
+                              onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); setCcGlobalMaquinaId(""); }}
+                              style={{ ...inp, fontSize: 12, padding: "4px 10px", minWidth: 200, flex: 1 }}>
+                              <option value="">— selecionar CC —</option>
+                              {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
+                                <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                              ))}
+                            </select>
+                            {ccManutencao(cab.centro_custo_id) && (
+                              <select value={ccGlobalMaquinaId} onChange={e => setCcGlobalMaquinaId(e.target.value)}
+                                style={{ ...inp, fontSize: 12, padding: "4px 10px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
+                                <option value="">🔧 Máquina (opcional)</option>
+                                {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                              </select>
+                            )}
+                          </>
+                        )}
+                        {ccMode === "por_produto" && (
+                          <span style={{ fontSize: 11, color: "var(--text-2)" }}>Use <strong>📦 Estoque</strong> / <strong>💸 C. Custo</strong> em cada item abaixo.</span>
+                        )}
+                        {ccMode === "nenhum" && sugestaoNome && (
+                          <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -2536,14 +2602,14 @@ export default function NfCompraPage() {
                     <div style={{
                       display: "grid",
                       gridTemplateColumns: tipo === "insumos"
-                        ? "2fr 1.6fr 68px 90px 90px 110px 180px 28px"
+                        ? "3fr 68px 90px 90px 110px 180px 28px"
                         : tipo === "custo_direto"
                         ? "2fr 80px 90px 100px 110px 1.5fr 32px"
                         : "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
                       gap: 0, background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)"
                     }}>
                       {(tipo === "insumos"
-                        ? ["Descrição NF", ccMode === "global" ? "Centro de Custo" : "Insumo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Conversão de Unidade", ""]
+                        ? ["Descrição NF / Catálogo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Conversão de Unidade", ""]
                         : tipo === "custo_direto"
                         ? ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro de Custo", ""]
                         : ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro Custo", "Apropriação", ""]
@@ -2567,7 +2633,7 @@ export default function NfCompraPage() {
                         <div style={{
                           display: "grid",
                           gridTemplateColumns: tipo === "insumos"
-                            ? "2fr 1.6fr 68px 90px 90px 110px 180px 28px"
+                            ? "3fr 68px 90px 90px 110px 180px 28px"
                             : tipo === "custo_direto"
                             ? "2fr 80px 90px 100px 110px 1.5fr 32px"
                             : "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
@@ -2575,8 +2641,8 @@ export default function NfCompraPage() {
                         }}>
                         {tipo === "insumos" ? (
                           <>
-                            {/* Col 1 — Descrição NF */}
-                            <div style={{ padding: "7px 8px" }}>
+                            {/* Col 1 — Descrição NF + seletor de catálogo/CC integrado */}
+                            <div style={{ padding: "7px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
                               <input
                                 value={it.descricao_nf}
                                 onChange={e => setItem(it.key, { descricao_nf: e.target.value, pa_nome: undefined, pa_auto: false, principio_ativo_id: "", nome_comercial_ref: "" })}
@@ -2584,27 +2650,22 @@ export default function NfCompraPage() {
                                 placeholder="Descrição na NF"
                                 style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
                               />
-                              {it.pa_auto && it.pa_nome && (
-                                <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 4, color: "#111111" }}>
+                              {it.pa_auto && it.pa_nome ? (
+                                <div style={{ fontSize: 10, display: "flex", alignItems: "center", gap: 4, color: "#111111" }}>
                                   <span style={{ background: "#E8E8E8", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>PA</span>
                                   <strong>{it.pa_nome}</strong>
                                   <span style={{ color: "#666" }}>← {it.nome_comercial_ref}</span>
                                 </div>
-                              )}
-                            </div>
-
-                            {/* Col 2 — CC (global) ou Insumo / CC (por produto) */}
-                            <div style={{ padding: "7px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
-                              {ccMode === "global" ? (
+                              ) : ccMode === "global" ? (
                                 /* Global: mostra o CC herdado (read-only) */
-                                <div style={{ padding: "5px 8px", background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 8, fontSize: 12 }}>
+                                <div style={{ padding: "3px 8px", background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 6, fontSize: 11 }}>
                                   {cab.centro_custo_id
                                     ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{ccOpts.find(c => c.id === cab.centro_custo_id)?.nome ?? "—"}</span>
                                     : <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>← definir CC acima</span>}
                                   {ccManutencao(cab.centro_custo_id) && ccGlobalMaquinaId && (
-                                    <div style={{ fontSize: 10, color: "#7A5A12", marginTop: 2 }}>
+                                    <span style={{ fontSize: 10, color: "#7A5A12", marginLeft: 6 }}>
                                       🔧 {maquinas.find(m => m.id === ccGlobalMaquinaId)?.nome ?? "máquina"}
-                                    </div>
+                                    </span>
                                   )}
                                 </div>
                               ) : (ccMode === "por_produto") ? (
@@ -2622,7 +2683,7 @@ export default function NfCompraPage() {
                                   </div>
                                   {it.tipo_apropiacao === "direto" ? (
                                     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                      <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                                      <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 11, padding: "4px 8px" }}>
                                         <option value="">— selecionar CC —</option>
                                         {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
                                           <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>
@@ -2637,14 +2698,14 @@ export default function NfCompraPage() {
                                     </div>
                                   ) : (
                                     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                      <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", flex: 1 }}>
-                                        <option value="">— não associado —</option>
+                                      <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
+                                        <option value="">— catálogo —</option>
                                         {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                                       </select>
                                       <button
                                         onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
                                         title="Cadastrar novo produto"
-                                        style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0, fontWeight: 700 }}
+                                        style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
                                       >+</button>
                                     </div>
                                   )}
@@ -2652,20 +2713,20 @@ export default function NfCompraPage() {
                               ) : (
                                 /* Sem CC (nenhum): só insumo do catálogo */
                                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                  <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", flex: 1 }}>
-                                    <option value="">— não associado —</option>
+                                  <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
+                                    <option value="">— catálogo —</option>
                                     {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                                   </select>
                                   <button
                                     onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
                                     title="Cadastrar novo produto"
-                                    style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0, fontWeight: 700 }}
+                                    style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
                                   >+</button>
                                 </div>
                               )}
                             </div>
 
-                            {/* Col 3 — Un. NF (somente leitura quando há conversão) */}
+                            {/* Col 2 — Un. NF (somente leitura quando há conversão) */}
                             <div style={{ padding: "7px 6px" }}>
                               <input
                                 value={it.unidade_nf}

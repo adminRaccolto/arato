@@ -1909,6 +1909,8 @@ export async function processarNfEntrada(
 
   const nfUpdates: Record<string, unknown> = { status: "processada", data_entrada: dataEntrada };
   if (pessoaId) nfUpdates.pessoa_id = pessoaId;
+  if (opts?.dataVencimentoCp) nfUpdates.data_vencimento_cp = opts.dataVencimentoCp;
+  if (opts?.produtorId)       nfUpdates.produtor_id        = opts.produtorId;
 
   if (!temRemessa || temOutros || temVef) {
     // Se NF está vinculada a um pedido que já tem lançamento → atualiza em vez de duplicar
@@ -1946,8 +1948,9 @@ export async function processarNfEntrada(
       nfUpdates.lancamento_id = lancamentoIdPedido;
     } else {
       const categoriaCP =
-        opts?.tipoEntrada === "vef"          ? "Insumos — Sementes" :
-        opts?.tipoEntrada === "custo_direto" ? "Serviços Agrícolas" :
+        opts?.tipoEntrada === "vef"          ? "Insumos — Sementes"      :
+        opts?.tipoEntrada === "custo_direto" ? "Serviços Agrícolas"      :
+        opts?.tipoEntrada === "combustivel"  ? "Combustível"             :
         opts?.tipoEntrada === "insumos"      ? "Insumos — Fertilizantes" :
         "Outros";
 

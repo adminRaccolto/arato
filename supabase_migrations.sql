@@ -9694,3 +9694,15 @@ CREATE POLICY "config_contabilidade_by_conta" ON config_contabilidade
       WHERE p.user_id = auth.uid()
     )
   );
+
+-- ─── Migration: adiciona 'combustivel' ao check de tipo_entrada em nf_entradas ───
+-- Permite registrar NFs de combustível com tipo_entrada = 'combustivel',
+-- separando-as visualmente de 'insumos' na lista de NFs.
+ALTER TABLE nf_entradas
+  DROP CONSTRAINT IF EXISTS nf_entradas_tipo_entrada_check;
+
+ALTER TABLE nf_entradas
+  ADD CONSTRAINT nf_entradas_tipo_entrada_check
+  CHECK (tipo_entrada IN ('consumo','insumos','combustivel','vef','remessa','devolucao_compra','custo_direto'));
+
+NOTIFY pgrst, 'reload schema';
