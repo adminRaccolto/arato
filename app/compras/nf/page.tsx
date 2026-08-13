@@ -334,6 +334,7 @@ export default function NfCompraPage() {
     data_vencimento_cp: "",
     deposito_destino_id: "",    // remessa
     bomba_destino_id: "",       // combustível
+    e_combustivel: false,       // checkbox manual — habilita seletor de bomba
     observacao: "",
     // Safra e ciclo
     ano_safra_id: "",
@@ -611,6 +612,7 @@ export default function NfCompraPage() {
       data_vencimento_cp: "",
       deposito_destino_id: "",
       bomba_destino_id: "",
+      e_combustivel: false,
       observacao: "",
       ano_safra_id: "",
       ciclo_id: "",
@@ -653,6 +655,7 @@ export default function NfCompraPage() {
       data_vencimento_cp: nf.data_vencimento_cp ?? "",
       deposito_destino_id: nf.deposito_destino_id ?? "",
       bomba_destino_id: "",
+      e_combustivel: false,
       observacao: nf.observacao ?? "",
       ano_safra_id: nf.ano_safra_id ?? "",
       ciclo_id: nf.ciclo_id ?? "",
@@ -955,9 +958,7 @@ export default function NfCompraPage() {
           it.maquina_id      = "";
         }
         // Combustível: bomba vem do cabeçalho; deposito_id não se aplica
-        const opSel = reclassOps.find(o => o.id === cab.operacao_gerencial_id);
-        const isCombustivel = (opSel?.classificacao ?? "").startsWith("2.01.01.02");
-        if (isCombustivel && cab.bomba_destino_id) {
+        if (cab.e_combustivel && cab.bomba_destino_id) {
           it.bomba_id    = cab.bomba_destino_id;
           it.deposito_id = "";
         }
@@ -1426,7 +1427,6 @@ export default function NfCompraPage() {
   // Render
   // ─────────────────────────────────────────────────────────
   const opSelecionada = reclassOps.find(o => o.id === cab.operacao_gerencial_id);
-  const isCombustivelWiz = (opSelecionada?.classificacao ?? "").startsWith("2.01.01.02");
 
   if (!podeAcessarPlano("nf_entrada")) return <PlanoGate modulo="nf_entrada" />;
   return (
@@ -2284,7 +2284,7 @@ export default function NfCompraPage() {
                       ] as [string, keyof typeof cab, string][]).map(([label, field, tooltip]) => (
                         <div key={field} title={tooltip}>
                           <label style={{ ...lbl, color: "#92400E" }}>{label}</label>
-                          <input value={(cab as Record<string, string>)[field]} onChange={e => setCab(p=>({...p,[field]:e.target.value}))} placeholder="0,00" style={{ ...inp, borderColor: "#FCD34D" }} />
+                          <input value={String((cab as Record<string, unknown>)[field] ?? "")} onChange={e => setCab(p=>({...p,[field]:e.target.value}))} placeholder="0,00" style={{ ...inp, borderColor: "#FCD34D" }} />
                         </div>
                       ))}
                     </div>
@@ -2896,34 +2896,54 @@ export default function NfCompraPage() {
                     )}
                   </div>
 
-                  {/* Combustível: selecionar bomba que receberá o crédito de estoque */}
-                  {isCombustivelWiz && (
-                    <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5800", marginBottom: 8 }}>
-                        Bomba / Tanque destino (crédito de estoque)
-                      </div>
-                      <select
-                        value={cab.bomba_destino_id}
-                        onChange={e => setCab(p => ({ ...p, bomba_destino_id: e.target.value }))}
-                        style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}
-                      >
-                        <option value="">Selecione a bomba ou tanque…</option>
-                        {wBombas.map(b => (
-                          <option key={b.id} value={b.id}>
-                            {b.nome}{b.insumo_id ? "" : ""} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
-                          </option>
-                        ))}
-                      </select>
-                      {wBombas.length === 0 && (
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-                          Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis &amp; Bombas.
+                  {/* Checkbox É Combustível + seletores condicionais */}
+                  {tipo === "insumos" && (
+                    <div style={{ marginBottom: 16 }}>
+                      {/* Checkbox */}
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none", marginBottom: 12 }}>
+                        <input
+                          type="checkbox"
+                          checked={cab.e_combustivel}
+                          onChange={e => setCab(p => ({
+                            ...p,
+                            e_combustivel: e.target.checked,
+                            bomba_destino_id:   e.target.checked ? p.bomba_destino_id : "",
+                            deposito_destino_id: e.target.checked ? "" : p.deposito_destino_id,
+                          }))}
+                          style={{ width: 15, height: 15, accentColor: "#C9921B" }}
+                        />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>É Combustível</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>credita saldo na bomba / tanque</span>
+                      </label>
+
+                      {/* Seletor Bomba — visível quando É Combustível */}
+                      {cab.e_combustivel && (
+                        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5800", marginBottom: 8 }}>
+                            Bomba / Tanque destino (crédito de estoque)
+                          </div>
+                          <select
+                            value={cab.bomba_destino_id}
+                            onChange={e => setCab(p => ({ ...p, bomba_destino_id: e.target.value }))}
+                            style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}
+                          >
+                            <option value="">Selecione a bomba ou tanque…</option>
+                            {wBombas.map(b => (
+                              <option key={b.id} value={b.id}>
+                                {b.nome} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
+                              </option>
+                            ))}
+                          </select>
+                          {wBombas.length === 0 && (
+                            <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+                              Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis &amp; Bombas.
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  {/* Depósito padrão para itens sem depósito (somente insumos que vão para estoque) */}
-                  {tipo === "insumos" && !isCombustivelWiz && itens.some(i => i.tipo_apropiacao !== "direto") && (
+                      {/* Seletor Depósito — visível quando NÃO é combustível */}
+                      {!cab.e_combustivel && itens.some(i => i.tipo_apropiacao !== "direto") && (
                     <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Depósito padrão para itens sem depósito individual</div>
@@ -2954,6 +2974,8 @@ export default function NfCompraPage() {
                             <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
                           ))}
                       </select>
+                    </div>
+                  )}
                     </div>
                   )}
 

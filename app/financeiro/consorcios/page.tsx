@@ -268,13 +268,13 @@ export default function ConsorciosPage() {
   }
 
   async function salvarConsorcio() {
-    if (!fazendaId) return;
+    if (!fazendaId) { setCErr("Nenhuma fazenda ativa. Selecione uma fazenda."); return; }
     if (!cForm.administradora.trim()) { setCErr("Informe a administradora."); return; }
     if (!cForm.numero_cota.trim())    { setCErr("Informe o número da cota."); return; }
     if (!cForm.data_inicio)           { setCErr("Informe a data de início."); return; }
     setCSaving(true); setCErr("");
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         fazenda_id: fazendaId,
         administradora: cForm.administradora.trim(),
         numero_cota: cForm.numero_cota.trim(),
@@ -289,13 +289,16 @@ export default function ConsorciosPage() {
         status: cForm.status,
         observacao: cForm.observacao || null,
       };
-      let saveError;
-      if (consorEdit) {
-        ({ error: saveError } = await supabase.from("consorcios").update(payload).eq("id", consorEdit.id));
-      } else {
-        ({ error: saveError } = await supabase.from("consorcios").insert(payload));
-      }
-      if (saveError) throw new Error(saveError.message);
+      if (consorEdit) payload.id = consorEdit.id;
+
+      const res = await fetch("/api/financeiro/consorcios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Erro ao salvar.");
+
       await carregar();
       setModalConsor(false);
     } catch (e: unknown) {
