@@ -9506,3 +9506,42 @@ CREATE POLICY "acerto_itens_via_acerto" ON acerto_frete_itens
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_acertos_frete_fazenda ON acertos_frete (fazenda_id, periodo_ano, periodo_mes);
 CREATE INDEX IF NOT EXISTS idx_acerto_itens_acerto   ON acerto_frete_itens (acerto_id);
+
+-- ══════════════════════════════════════════════════════════════════
+-- CORREÇÃO: Recalcula entregue_sc de contratos com romaneios excluídos
+-- Rodar no Supabase SQL Editor quando houver discrepância de saldo
+-- ══════════════════════════════════════════════════════════════════
+
+-- 1. Contratos que ainda têm romaneios: ajusta soma real de sacas
+UPDATE contratos c
+SET
+  entregue_sc = rom.total_sacas,
+  status = CASE
+    WHEN c.status = 'cancelado' THEN 'cancelado'
+    WHEN rom.total_sacas = 0    THEN 'aberto'
+    WHEN rom.total_sacas >= c.quantidade_sc THEN 'encerrado'
+    ELSE 'parcial'
+  END
+FROM (
+  SELECT contrato_id, SUM(COALESCE(sacas, 0)) AS total_sacas
+  FROM   romaneios
+  GROUP  BY contrato_id
+) rom
+WHERE c.id = rom.contrato_id
+  AND c.entregue_sc IS DISTINCT FROM rom.total_sacas;
+
+-- 2. Contratos cujos romaneios foram TODOS excluídos: zera entregue_sc
+UPDATE contratos
+SET
+  entregue_sc = 0,
+  status      = CASE WHEN status = 'cancelado' THEN 'cancelado' ELSE 'aberto' END
+WHERE status NOT IN ('cancelado')
+  AND entregue_sc > 0
+  AND id NOT IN (SELECT DISTINCT contrato_id FROM romaneios);
+
+-- Verificação (rode depois para confirmar)
+-- SELECT id, numero, quantidade_sc, entregue_sc, status,
+--        (SELECT SUM(COALESCE(sacas,0)) FROM romaneios r WHERE r.contrato_id = contratos.id) AS sacas_romaneios
+-- FROM contratos
+-- WHERE status != 'cancelado'
+-- ORDER BY numero;
