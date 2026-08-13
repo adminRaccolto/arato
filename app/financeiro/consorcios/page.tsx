@@ -268,24 +268,27 @@ export default function ConsorciosPage() {
   }
 
   async function salvarConsorcio() {
-    if (!fazendaId) { setCErr("Nenhuma fazenda ativa. Selecione uma fazenda."); return; }
-    if (!cForm.administradora.trim()) { setCErr("Informe a administradora."); return; }
-    if (!cForm.numero_cota.trim())    { setCErr("Informe o número da cota."); return; }
-    if (!cForm.data_inicio)           { setCErr("Informe a data de início."); return; }
-    setCSaving(true); setCErr("");
+    // setCSaving(true) PRIMEIRO — garante feedback visual imediato em qualquer cenário
+    setCSaving(true);
+    setCErr("");
     try {
+      if (!fazendaId)                   throw new Error("Nenhuma fazenda ativa. Selecione uma fazenda no topo da página.");
+      if (!cForm.administradora?.trim()) throw new Error("Informe a administradora.");
+      if (!cForm.numero_cota?.trim())    throw new Error("Informe o número da cota.");
+      if (!cForm.data_inicio)            throw new Error("Informe a data de início.");
+
       const payload: Record<string, unknown> = {
         fazenda_id: fazendaId,
         administradora: cForm.administradora.trim(),
         numero_cota: cForm.numero_cota.trim(),
-        grupo: cForm.grupo,
+        grupo: cForm.grupo ?? "",
         tipo_bem: cForm.tipo_bem,
-        descricao_bem: cForm.descricao_bem,
-        valor_credito: cForm.valor_credito || 0,
-        valor_parcela_mensal: cForm.valor_parcela_mensal || 0,
-        total_parcelas: parseInt(cForm.total_parcelas) || 0,
-        parcelas_pagas: parseInt(cForm.parcelas_pagas) || 0,
-        data_inicio: cForm.data_inicio || hoje(),
+        descricao_bem: cForm.descricao_bem ?? "",
+        valor_credito: Number(cForm.valor_credito) || 0,
+        valor_parcela_mensal: Number(cForm.valor_parcela_mensal) || 0,
+        total_parcelas: parseInt(String(cForm.total_parcelas)) || 0,
+        parcelas_pagas: parseInt(String(cForm.parcelas_pagas)) || 0,
+        data_inicio: cForm.data_inicio,
         status: cForm.status,
         observacao: cForm.observacao || null,
       };
@@ -302,7 +305,7 @@ export default function ConsorciosPage() {
       await carregar();
       setModalConsor(false);
     } catch (e: unknown) {
-      setCErr(e instanceof Error ? e.message : "Erro ao salvar.");
+      setCErr(e instanceof Error ? e.message : String(e));
     } finally {
       setCSaving(false);
     }
