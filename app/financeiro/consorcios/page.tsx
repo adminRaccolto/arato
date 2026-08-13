@@ -224,10 +224,12 @@ export default function ConsorciosPage() {
         valor_parcela_mensal:d.valor_parcela_atual  ?? 0,
         total_parcelas:      d.total_parcelas ? String(d.total_parcelas) : "0",
         parcelas_pagas:      d.parcelas_pagas ? String(d.parcelas_pagas) : "0",
-        data_inicio:         d.data_primeira_parcela ?? hoje(),
+        data_inicio:         d.data_primeira_parcela || hoje(),
         status:              "a_contemplar" as StatusConsorcio,
         observacao:          d.consorciado_nome ? `Consorciado: ${d.consorciado_nome}` : "",
       });
+      // garantir que data_inicio é YYYY-MM-DD (IA pode retornar "" em vez de null)
+      setCForm(f => ({ ...f, data_inicio: f.data_inicio || hoje() }));
       setCErr("");
       setModalConsor(true);
       setIaMensagem(
@@ -269,6 +271,7 @@ export default function ConsorciosPage() {
     if (!fazendaId) return;
     if (!cForm.administradora.trim()) { setCErr("Informe a administradora."); return; }
     if (!cForm.numero_cota.trim())    { setCErr("Informe o número da cota."); return; }
+    if (!cForm.data_inicio)           { setCErr("Informe a data de início."); return; }
     setCSaving(true); setCErr("");
     try {
       const payload = {
@@ -282,7 +285,7 @@ export default function ConsorciosPage() {
         valor_parcela_mensal: cForm.valor_parcela_mensal || 0,
         total_parcelas: parseInt(cForm.total_parcelas) || 0,
         parcelas_pagas: parseInt(cForm.parcelas_pagas) || 0,
-        data_inicio: cForm.data_inicio,
+        data_inicio: cForm.data_inicio || hoje(),
         status: cForm.status,
         observacao: cForm.observacao || null,
       };
