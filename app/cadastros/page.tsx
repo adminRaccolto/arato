@@ -2387,6 +2387,7 @@ function CadastrosInner() {
               "Mercado / Supermercado",
               "Fornecedor de Insumos",
               "Fornecedor de Combustíveis",
+              "Adm Consórcios",
             ];
             // Coletar todas as subcategorias existentes (padrão + custom) para o filtro
             const todasSubcats = Array.from(new Set([
@@ -7980,6 +7981,7 @@ function CadastrosInner() {
                 "Mercado / Supermercado",
                 "Fornecedor de Insumos",
                 "Fornecedor de Combustíveis",
+                "Adm Consórcios",
               ];
               const toggle = (v: string) => setFPes(p => ({
                 ...p,

@@ -33,6 +33,7 @@ interface Consorcio {
   id: string;
   fazenda_id: string;
   administradora: string;
+  administradora_pessoa_id?: string | null;
   numero_cota: string;
   grupo: string;
   tipo_bem: TipoBem;
@@ -51,6 +52,12 @@ interface Consorcio {
   bem_adquirido?: string | null;
   observacao?: string;
   created_at?: string;
+}
+
+interface PessoaAdm {
+  id: string;
+  nome: string;
+  cpf_cnpj?: string | null;
 }
 
 interface ProdutorSimples {
@@ -120,13 +127,15 @@ export default function ConsorciosPage() {
   const [parcelas,   setParcelas]   = useState<ParcelaConsorcio[]>([]);
   const [expandido,  setExpandido]  = useState<string | null>(null);
   const [produtores, setProdutores] = useState<ProdutorSimples[]>([]);
+  const [pessoasAdm, setPessoasAdm] = useState<PessoaAdm[]>([]);
   const [busca,      setBusca]      = useState("");
 
   // Modal consórcio
   const [modalConsor,  setModalConsor]  = useState(false);
   const [consorEdit,   setConsorEdit]   = useState<Consorcio | null>(null);
   const CONSOR_VAZIO = () => ({
-    administradora: "", numero_cota: "", grupo: "",
+    administradora: "", administradora_pessoa_id: "" as string,
+    numero_cota: "", grupo: "",
     tipo_bem: "maquina" as TipoBem, descricao_bem: "",
     valor_credito: 0, valor_parcela_mensal: 0,
     total_parcelas: "60", parcelas_pagas: "0",
@@ -184,6 +193,17 @@ export default function ConsorciosPage() {
     supabase.from("produtores").select("id, nome, cpf_cnpj").eq("conta_id", contaId).order("nome")
       .then(({ data }) => setProdutores((data ?? []) as ProdutorSimples[]));
   }, [contaId]);
+
+  // Carrega pessoas com subcategoria "Adm Consórcios"
+  useEffect(() => {
+    if (!fazendaId) return;
+    supabase.from("pessoas")
+      .select("id, nome, cpf_cnpj")
+      .eq("fazenda_id", fazendaId)
+      .contains("subcategorias", ["Adm Consórcios"])
+      .order("nome")
+      .then(({ data }) => setPessoasAdm((data ?? []) as PessoaAdm[]));
+  }, [fazendaId]);
 
   // Carrega OG IDs de consórcio quando a fazenda está disponível
   useEffect(() => {
@@ -271,30 +291,38 @@ export default function ConsorciosPage() {
         if (match) produtorIdIa = match.id;
       }
 
+      // Tenta encontrar a administradora no cadastro de Pessoas ("Adm Consórcios")
+      const nomeAdmIa = (d.administradora ?? "").toLowerCase().trim();
+      const pessoaAdmMatch = nomeAdmIa
+        ? pessoasAdm.find(p => p.nome.toLowerCase().trim().includes(nomeAdmIa) || nomeAdmIa.includes(p.nome.toLowerCase().trim()))
+        : null;
+
       setConsorEdit(null);
       setCForm({
-        administradora:      d.administradora      ?? "",
-        numero_cota:         d.numero_cota != null ? String(d.numero_cota) : "",
-        grupo:               d.grupo        != null ? String(d.grupo)        : "",
-        tipo_bem:            (d.tipo_bem as TipoBem) ?? "outro",
-        descricao_bem:       d.descricao_bem       ?? "",
-        valor_credito:       d.valor_credito_atual  ?? 0,
-        valor_parcela_mensal:d.valor_parcela_atual  ?? 0,
-        total_parcelas:      d.total_parcelas ? String(d.total_parcelas) : "0",
-        parcelas_pagas:      d.parcelas_pagas ? String(d.parcelas_pagas) : "0",
-        data_inicio:         d.data_primeira_parcela || hoje(),
-        status:              "a_contemplar" as StatusConsorcio,
-        observacao:          "",
-        produtor_id:         produtorIdIa,
+        administradora:           d.administradora      ?? "",
+        administradora_pessoa_id: pessoaAdmMatch?.id    ?? "",
+        numero_cota:              d.numero_cota != null ? String(d.numero_cota) : "",
+        grupo:                    d.grupo        != null ? String(d.grupo)        : "",
+        tipo_bem:                 (d.tipo_bem as TipoBem) ?? "outro",
+        descricao_bem:            d.descricao_bem       ?? "",
+        valor_credito:            d.valor_credito_atual  ?? 0,
+        valor_parcela_mensal:     d.valor_parcela_atual  ?? 0,
+        total_parcelas:           d.total_parcelas ? String(d.total_parcelas) : "0",
+        parcelas_pagas:           d.parcelas_pagas ? String(d.parcelas_pagas) : "0",
+        data_inicio:              d.data_primeira_parcela || hoje(),
+        status:                   "a_contemplar" as StatusConsorcio,
+        observacao:               "",
+        produtor_id:              produtorIdIa,
       });
       // garantir que data_inicio é YYYY-MM-DD (IA pode retornar "" em vez de null)
       setCForm(f => ({ ...f, data_inicio: f.data_inicio || hoje() }));
       setCErr("");
       setModalConsor(true);
       const prodMatch = produtorIdIa ? produtores.find(p => p.id === produtorIdIa)?.nome : null;
+      const admMatch = pessoaAdmMatch?.nome ?? null;
       setIaMensagem(
         d.confianca === "alta"
-          ? `✅ Extrato lido com alta confiança — ${d.administradora ?? ""} Grupo ${d.grupo ?? "—"} Cota ${d.numero_cota ?? "—"}${prodMatch ? ` · Agricultor: ${prodMatch}` : ""}`
+          ? `✅ Extrato lido com alta confiança — ${d.administradora ?? ""} Grupo ${d.grupo ?? "—"} Cota ${d.numero_cota ?? "—"}${prodMatch ? ` · Agricultor: ${prodMatch}` : ""}${admMatch ? ` · Fornecedor: ${admMatch}` : ""}`
           : d.confianca === "media"
           ? `⚠️ Alguns campos podem precisar de revisão — verifique antes de salvar.`
           : `⚠️ Confiança baixa — revise todos os dados antes de salvar.`,
@@ -310,7 +338,9 @@ export default function ConsorciosPage() {
     if (c) {
       setConsorEdit(c);
       setCForm({
-        administradora: c.administradora, numero_cota: c.numero_cota,
+        administradora: c.administradora,
+        administradora_pessoa_id: c.administradora_pessoa_id ?? "",
+        numero_cota: c.numero_cota,
         grupo: c.grupo, tipo_bem: c.tipo_bem, descricao_bem: c.descricao_bem,
         valor_credito: c.valor_credito ?? 0,
         valor_parcela_mensal: c.valor_parcela_mensal ?? 0,
@@ -345,6 +375,7 @@ export default function ConsorciosPage() {
       const payload: Record<string, unknown> = {
         fazenda_id: fazendaId,
         administradora: cForm.administradora.trim(),
+        administradora_pessoa_id: cForm.administradora_pessoa_id || null,
         numero_cota: cForm.numero_cota.trim(),
         grupo: cForm.grupo ?? "",
         tipo_bem: cForm.tipo_bem,
@@ -493,15 +524,16 @@ export default function ConsorciosPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        consorcio_id:        c.id,
-        fazenda_id:          fId,
-        administradora:      c.administradora,
-        numero_cota:         c.numero_cota,
-        valor_parcela_mensal: c.valor_parcela_mensal,
-        total_parcelas:      c.total_parcelas,
-        parcelas_pagas:      c.parcelas_pagas,
-        data_inicio:         c.data_inicio,
-        status:              c.status,
+        consorcio_id:              c.id,
+        fazenda_id:                fId,
+        administradora:            c.administradora,
+        administradora_pessoa_id:  c.administradora_pessoa_id ?? null,
+        numero_cota:               c.numero_cota,
+        valor_parcela_mensal:      c.valor_parcela_mensal,
+        total_parcelas:            c.total_parcelas,
+        parcelas_pagas:            c.parcelas_pagas,
+        data_inicio:               c.data_inicio,
+        status:                    c.status,
       }),
     });
     const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; error?: string };
@@ -863,9 +895,34 @@ export default function ConsorciosPage() {
             {tabConsor === "dados" && (
             <div style={{ padding: "20px 22px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                {/* Row 1 — Administradora (fornecedor) | Cota | Grupo */}
                 <div>
-                  <label style={lbl}>Administradora</label>
-                  <input value={cForm.administradora} onChange={e => setCForm(f => ({ ...f, administradora: e.target.value }))} style={inp} placeholder="Ex.: Porto Seguro" />
+                  <label style={lbl}>
+                    Administradora (fornecedor)
+                    {pessoasAdm.length === 0 && (
+                      <span style={{ color: "#C9921B", marginLeft: 6, fontStyle: "italic" }}>
+                        — cadastre em Pessoas com subcategoria "Adm Consórcios"
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={cForm.administradora_pessoa_id}
+                    onChange={e => {
+                      const pesId = e.target.value;
+                      const pes = pessoasAdm.find(p => p.id === pesId);
+                      setCForm(f => ({
+                        ...f,
+                        administradora_pessoa_id: pesId,
+                        administradora: pes ? pes.nome : f.administradora,
+                      }));
+                    }}
+                    style={inp}
+                  >
+                    <option value="">— Não vinculada —</option>
+                    {pessoasAdm.map(p => (
+                      <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label style={lbl}>Número da Cota</label>
@@ -875,13 +932,18 @@ export default function ConsorciosPage() {
                   <label style={lbl}>Grupo</label>
                   <input value={cForm.grupo} onChange={e => setCForm(f => ({ ...f, grupo: e.target.value }))} style={inp} placeholder="Ex.: 0042" />
                 </div>
+                {/* Row 2 — Nome da Administradora (text) | Tipo | Descrição */}
+                <div>
+                  <label style={lbl}>Nome da Administradora</label>
+                  <input value={cForm.administradora} onChange={e => setCForm(f => ({ ...f, administradora: e.target.value }))} style={inp} placeholder="Ex.: BB Consórcios, Porto Seguro…" />
+                </div>
                 <div>
                   <label style={lbl}>Tipo de Bem</label>
                   <select value={cForm.tipo_bem} onChange={e => setCForm(f => ({ ...f, tipo_bem: e.target.value as TipoBem }))} style={inp}>
                     {Object.entries(TIPO_BEM_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </div>
-                <div style={{ gridColumn: "2 / -1" }}>
+                <div>
                   <label style={lbl}>Descrição do Bem</label>
                   <input value={cForm.descricao_bem} onChange={e => setCForm(f => ({ ...f, descricao_bem: e.target.value }))} style={inp} placeholder="Ex.: John Deere 5075E ou Caminhão VUC" />
                 </div>

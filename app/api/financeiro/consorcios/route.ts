@@ -67,6 +67,7 @@ export async function PATCH(req: NextRequest) {
       parcelas_pagas: number;
       data_inicio: string;
       status: string;
+      administradora_pessoa_id?: string | null;
     };
 
     if (!body.consorcio_id || !body.fazenda_id) {
@@ -142,6 +143,7 @@ export async function PATCH(req: NextRequest) {
               ciclo_id:          r.ciclo_id,
               numero_documento:  String(i),
               origem_lancamento: "consorcio",
+              ...(body.administradora_pessoa_id ? { pessoa_id: body.administradora_pessoa_id } : {}),
               ...(ogId ? { operacao_gerencial_id: ogId } : {}),
             });
           }
@@ -159,6 +161,7 @@ export async function PATCH(req: NextRequest) {
             consorcio_id:      body.consorcio_id,
             numero_documento:  String(i),
             origem_lancamento: "consorcio",
+            ...(body.administradora_pessoa_id ? { pessoa_id: body.administradora_pessoa_id } : {}),
             ...(ogId ? { operacao_gerencial_id: ogId } : {}),
           });
         }
@@ -192,6 +195,7 @@ export async function POST(req: NextRequest) {
       id?: string;
       fazenda_id: string;
       administradora: string;
+      administradora_pessoa_id?: string | null;
       numero_cota: string;
       grupo?: string;
       tipo_bem: string;
@@ -275,6 +279,7 @@ export async function POST(req: NextRequest) {
             consorcio_id:      consorId,
             numero_documento:  String(i),
             origem_lancamento: "consorcio",
+            ...(body.administradora_pessoa_id ? { pessoa_id: body.administradora_pessoa_id } : {}),
             ...(ogId ? { operacao_gerencial_id: ogId } : {}),
           });
         }

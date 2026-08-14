@@ -9777,3 +9777,8 @@ ALTER TABLE consorcio_rateios ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_all_consorcio_rateios" ON consorcio_rateios FOR ALL USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 164 — Administradora vinculada como fornecedor em consórcios
+ALTER TABLE consorcios ADD COLUMN IF NOT EXISTS administradora_pessoa_id UUID REFERENCES pessoas(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';
