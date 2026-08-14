@@ -5,10 +5,13 @@ import Anthropic from "@anthropic-ai/sdk";
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export interface PedidoCompraExtraido {
-  // Fornecedor
+  // Fornecedor (quem VENDE — destinatário do pedido)
   fornecedor_nome: string | null;
   fornecedor_cnpj: string | null;
   fornecedor_ie: string | null;
+  // Produtor / Comprador (quem EMITE o pedido)
+  produtor_nome: string | null;
+  produtor_cpf: string | null;
   // Identificação do documento
   tipo_documento: "orcamento" | "cotacao" | "pedido" | "proposta" | "nota_fiscal" | "outros" | null;
   numero_documento: string | null;         // nº do orçamento/pedido/cotação do fornecedor
@@ -48,40 +51,55 @@ REGRAS OBRIGATÓRIAS:
 - Quantidades e preços: use ponto como separador decimal (ex: 1500.50).
 - Sempre extraia TODOS os itens do documento.
 
+ENTENDENDO O DOCUMENTO:
+- Um "Pedido de Compra" ou "Ordem de Compra" é emitido pelo COMPRADOR (produtor/fazenda) para o FORNECEDOR (empresa que vende).
+- Um "Orçamento" ou "Cotação" é emitido pelo FORNECEDOR (empresa que vende) para o COMPRADOR.
+- O campo "Fornecedor" no sistema = quem VENDE os produtos (empresa).
+- O campo "Produtor" no sistema = quem COMPRA (produtor rural / fazenda).
+
 CAMPOS A EXTRAIR:
 
-1. fornecedor_nome: Razão social COMPLETA de quem emitiu o documento (vendedor/fornecedor).
-   Procure em cabeçalho, rodapé, campos "Emitente", "Fornecedor", "Empresa".
+1. fornecedor_nome: Razão social COMPLETA de quem VENDE os produtos (empresa fornecedora/vendedora).
+   - Em orçamentos/cotações: é quem emitiu o documento (emitente/empresa).
+   - Em pedidos de compra: é o DESTINATÁRIO do pedido (para quem o pedido é enviado).
+   - Procure nos campos: "Fornecedor", "Vendedor", "Empresa", "Emitente" (em orçamentos), "Para:", "Destinatário" (em pedidos).
 
-2. fornecedor_cnpj: CNPJ do emitente, exatamente como escrito (ex: "00.360.305/0001-04").
+2. fornecedor_cnpj: CNPJ do FORNECEDOR (vendedor). Exatamente como escrito (ex: "00.360.305/0001-04").
 
-3. fornecedor_ie: Inscrição Estadual do emitente, se informada. null se não encontrar.
+3. fornecedor_ie: Inscrição Estadual do FORNECEDOR, se informada. null se não encontrar.
 
-4. tipo_documento: "orcamento" | "cotacao" | "pedido" | "proposta" | "nota_fiscal" | "outros"
+4. produtor_nome: Nome/Razão Social de quem COMPRA (produtor rural, fazenda, empresa compradora).
+   - Em pedidos de compra: é quem EMITIU o pedido (campo "Emitente", "Comprador", "Cliente", "De:").
+   - Em orçamentos: é o DESTINATÁRIO (campo "Para:", "Comprador", "Cliente").
+   - null se não identificar claramente.
+
+5. produtor_cpf: CPF ou CNPJ do PRODUTOR/COMPRADOR. Exatamente como escrito. null se não encontrar.
+
+6. tipo_documento: "orcamento" | "cotacao" | "pedido" | "proposta" | "nota_fiscal" | "outros"
    Identifique pelo título ou cabeçalho do documento.
 
-5. numero_documento: Número do documento. Procure em "Nº", "Orçamento nº", "Pedido nº", "Cotação nº", número da NF, etc.
+7. numero_documento: Número do documento. Procure em "Nº", "Orçamento nº", "Pedido nº", "Cotação nº", número da NF, etc.
 
-6. data_emissao: Data de emissão/geração do documento (YYYY-MM-DD).
+8. data_emissao: Data de emissão/geração do documento (YYYY-MM-DD).
 
-7. data_validade: Validade do orçamento/cotação, se informada (YYYY-MM-DD). null se não informado.
+9. data_validade: Validade do orçamento/cotação, se informada (YYYY-MM-DD). null se não informado.
 
-8. data_entrega: Data prevista de entrega dos produtos, se informada (YYYY-MM-DD). null se não informado.
+10. data_entrega: Data prevista de entrega dos produtos, se informada (YYYY-MM-DD). null se não informado.
 
-9. condicao_pagamento: Texto exato da condição de pagamento conforme o documento.
-   Exemplos: "30 DDL", "À vista", "28 DDL", "30/60 DDL", "7/28/42 ddl".
-   null se não informado.
+11. condicao_pagamento: Texto exato da condição de pagamento conforme o documento.
+    Exemplos: "30 DDL", "À vista", "28 DDL", "30/60 DDL", "7/28/42 ddl".
+    null se não informado.
 
-10. prazo_pagamento_dias: Número de dias para o primeiro vencimento a partir da data de emissão.
+12. prazo_pagamento_dias: Número de dias para o primeiro vencimento a partir da data de emissão.
     Exemplos: "30 DDL" → 30, "À vista" → 0, "7/28/42 ddl" → 7 (primeiro prazo), "28 ddl" → 28.
     null se não determinável.
 
-11. frete_valor: Valor do frete em R$. 0 se frete grátis/incluso. null se não mencionado.
+13. frete_valor: Valor do frete em R$. 0 se frete grátis/incluso. null se não mencionado.
 
-12. frete_tipo: "CIF" (incluso, entregue), "FOB" (por conta do comprador), "Incluso", "Pago", "A pagar", "Grátis".
+14. frete_tipo: "CIF" (incluso, entregue), "FOB" (por conta do comprador), "Incluso", "Pago", "A pagar", "Grátis".
     null se não mencionado.
 
-13. itens: Array com TODOS os itens do documento.
+15. itens: Array com TODOS os itens do documento.
     Para cada item extraia:
     - descricao: nome/descrição completa do produto ou serviço
     - ncm: código NCM se informado (string, ex: "31021010"), null se não informado
@@ -93,14 +111,14 @@ CAMPOS A EXTRAIR:
     IMPORTANTE: extraia TODOS os itens, mesmo que sejam muitos.
     Se o documento listar serviços (aplicação, transporte, etc.), inclua-os também.
 
-14. valor_produtos: Subtotal dos produtos antes de frete/descontos. null se não encontrado.
+16. valor_produtos: Subtotal dos produtos antes de frete/descontos. null se não encontrado.
 
-15. valor_total: Valor total geral do documento. null se não encontrado.
+17. valor_total: Valor total geral do documento. null se não encontrado.
 
-16. observacao: Observações relevantes — condições especiais, garantias, especificações técnicas, validade, ANVISA, etc.
+18. observacao: Observações relevantes — condições especiais, garantias, especificações técnicas, validade, ANVISA, etc.
     null se não houver.
 
-17. confianca:
+19. confianca:
     "alta" = extraiu fornecedor_nome + valor_total + pelo menos 1 item completo
     "media" = extraiu 2 desses critérios
     "baixa" = extraiu menos de 2
@@ -110,6 +128,8 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
   "fornecedor_nome": null,
   "fornecedor_cnpj": null,
   "fornecedor_ie": null,
+  "produtor_nome": null,
+  "produtor_cpf": null,
   "tipo_documento": null,
   "numero_documento": null,
   "data_emissao": null,

@@ -102,14 +102,16 @@ function FornecedorSelect({
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen]   = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref      = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selected = pessoas.find(p => p.id === value);
-  const filtered = query.trim() === ""
+  const q = query.trim();
+  const filtered = q === ""
     ? pessoas
     : pessoas.filter(p =>
-        p.nome.toLowerCase().includes(query.toLowerCase()) ||
-        (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(query.replace(/\D/g, "")) ||
-        (p.cpf_cnpj ?? "").toLowerCase().includes(query.toLowerCase())
+        p.nome.toLowerCase().includes(q.toLowerCase()) ||
+        (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
+        (p.cpf_cnpj ?? "").toLowerCase().includes(q.toLowerCase())
       );
 
   useEffect(() => {
@@ -126,10 +128,17 @@ function FornecedorSelect({
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <input
+        ref={inputRef}
         style={{ ...inp, paddingRight: 26 }}
         value={open ? query : (selected?.nome ?? "")}
-        placeholder={placeholder}
-        onFocus={() => { setOpen(true); setQuery(""); }}
+        placeholder={open ? "Buscar fornecedor ou CNPJ…" : placeholder}
+        onFocus={() => {
+          const nome = selected?.nome ?? "";
+          setOpen(true);
+          setQuery(nome);
+          // Seleciona todo o texto para o usuário poder substituir digitando
+          setTimeout(() => inputRef.current?.select(), 0);
+        }}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
         autoComplete="off"
       />
@@ -512,14 +521,39 @@ export default function ComprasPage() {
       const d = await res.json();
       setIaConfianca(d.confianca ?? "baixa");
 
-      // Tenta match do fornecedor pelo CNPJ
-      const fornecedorMatch = d.fornecedor_cnpj
+      // Tenta match do fornecedor: 1º por CNPJ exato, 2º por nome normalizado
+      const normDoc = (s: string) => (s ?? "").replace(/\D/g, "");
+      const normNome = (s: string) => (s ?? "").toLowerCase().trim().replace(/\s+/g, " ");
+      const fornecedorMatchCnpj = d.fornecedor_cnpj
         ? pessoas.find(p => {
-            const cnpjP = (p.cpf_cnpj ?? "").replace(/\D/g, "");
-            const cnpjIA = (d.fornecedor_cnpj ?? "").replace(/\D/g, "");
+            const cnpjP  = normDoc(p.cpf_cnpj ?? "");
+            const cnpjIA = normDoc(d.fornecedor_cnpj ?? "");
             return cnpjP.length > 0 && cnpjIA.length > 0 && cnpjP === cnpjIA;
           })
         : null;
+      // Fallback: procura pelo nome (primeiros 10 chars — suficiente para descarta homônimos)
+      const fornecedorMatchNome = !fornecedorMatchCnpj && d.fornecedor_nome
+        ? pessoas.find(p => {
+            const nP  = normNome(p.nome);
+            const nIA = normNome(d.fornecedor_nome ?? "");
+            return nIA.length >= 5 && (nP.includes(nIA.slice(0, 12)) || nIA.includes(nP.slice(0, 12)));
+          })
+        : null;
+      const fornecedorMatch = fornecedorMatchCnpj ?? fornecedorMatchNome ?? null;
+
+      // Tenta match do produtor pelo CPF/CNPJ
+      const produtorMatchDoc = d.produtor_cpf
+        ? produtores.find(p => normDoc(p.cpf_cnpj ?? "") === normDoc(d.produtor_cpf ?? "") && normDoc(d.produtor_cpf ?? "").length >= 11)
+        : null;
+      // Fallback: por nome
+      const produtorMatchNome = !produtorMatchDoc && d.produtor_nome
+        ? produtores.find(p => {
+            const nP  = normNome(p.nome);
+            const nIA = normNome(d.produtor_nome ?? "");
+            return nIA.length >= 5 && (nP.includes(nIA.slice(0, 12)) || nIA.includes(nP.slice(0, 12)));
+          })
+        : null;
+      const produtorMatch = produtorMatchDoc ?? produtorMatchNome ?? null;
 
       // Calcula data de vencimento a partir do prazo
       let dataVenc = "";
@@ -532,6 +566,7 @@ export default function ComprasPage() {
       setF(prev => ({
         ...prev,
         fornecedor_id:         fornecedorMatch?.id              ?? prev.fornecedor_id,
+        produtor_id:           produtorMatch?.id                ?? prev.produtor_id,
         nr_pedido_fornecedor:  d.numero_documento               ?? prev.nr_pedido_fornecedor,
         frete_total:           d.frete_valor != null ? String(d.frete_valor) : prev.frete_total,
         frete_tipo:            d.frete_tipo                     ?? prev.frete_tipo,
