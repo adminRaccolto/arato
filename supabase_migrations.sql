@@ -9731,3 +9731,18 @@ ALTER TABLE consorcios
 CREATE INDEX IF NOT EXISTS idx_consorcios_produtor_id ON consorcios(produtor_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 160 — adiciona 'consorcio' ao check de origem_lancamento
+-- =============================================================================
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_origem_lancamento_check
+  CHECK (origem_lancamento IN (
+    'nf_entrada','nf_saida','pedido_compra','arrendamento',
+    'tesouraria','plantio','contrato_financeiro','consorcio','manual'
+  ));
+
+NOTIFY pgrst, 'reload schema';
