@@ -83,6 +83,7 @@ export async function PATCH(req: NextRequest) {
 
     // OG correta conforme status
     const classif = body.status === "contemplado" ? "2.03.01.007" : "2.03.01.006";
+    const categoria = body.status === "contemplado" ? "Consórcio — Contemplado" : "Consórcio — A Contemplar";
     const { data: ogRow } = await sb
       .from("operacoes_gerenciais")
       .select("id")
@@ -116,6 +117,7 @@ export async function PATCH(req: NextRequest) {
         novasCPs.push({
           fazenda_id:        body.fazenda_id,
           tipo:              "pagar",
+          categoria,
           descricao:         `${descBase} — Parcela ${i}/${body.total_parcelas}`,
           valor:             body.valor_parcela_mensal,
           data_lancamento:   dataVenc,
@@ -230,6 +232,7 @@ export async function POST(req: NextRequest) {
           novasCPs.push({
             fazenda_id:        body.fazenda_id,
             tipo:              "pagar",
+            categoria:         body.status === "contemplado" ? "Consórcio — Contemplado" : "Consórcio — A Contemplar",
             descricao:         `${descBase} — Parcela ${i}/${body.total_parcelas}`,
             valor:             body.valor_parcela_mensal,
             data_lancamento:   dataVenc,
