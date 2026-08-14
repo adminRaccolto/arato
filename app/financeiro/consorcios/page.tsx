@@ -536,7 +536,7 @@ export default function ConsorciosPage() {
         status:                    c.status,
       }),
     });
-    const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; error?: string };
+    const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; rateio?: boolean; ciclos?: number; error?: string };
     if (!res.ok) { alert(json.error ?? "Erro ao gerar parcelas."); return; }
     await carregar();
     // Aguarda um frame para o React pintar as parcelas novas antes do alert bloquear o thread
