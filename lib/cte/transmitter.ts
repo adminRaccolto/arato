@@ -187,31 +187,36 @@ const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4";
 
 
 // ─── Compactação e envelope CT-e 4.00 ────────────────────────────────────────
-// cteDadosMsg = GZip/Base64 da área de dados (sem BOM, sem declaração <?xml?>).
-// A regra D03 do MOC CT-e exige UTF-8 nos bytes internos; sem declaração,
-// o padrão XML assume UTF-8 — incluí-la causaria a rejeição 402.
+// cteDadosMsg = GZip/Base64 da área de dados.
+// A SEFAZ-MT (cStat 402) exige que a declaração <?xml version="1.0" encoding="UTF-8"?>
+// esteja PRESENTE dentro do GZip — sem ela, o parser detecta encoding incorreto.
 
 function compactarCTeBase64(xmlAssinado: string): string {
-  const raizCTe = xmlAssinado
-    .replace(/^﻿/, "")
-    .replace(/^<\?xml[^?]*\?>\s*/i, "")
-    .trim();
+  // Remove apenas BOM com escape Unicode explícito (mais robusto que literal no source)
+  const semBom = xmlAssinado.replace(/^﻿/, "");
 
-  if (!raizCTe.startsWith("<CTe")) {
+  // Normaliza (ou adiciona) a declaração XML com encoding="UTF-8".
+  // xml-crypto serializa sem declaração; o SEFAZ-MT exige que ela esteja no GZip.
+  let raizCom: string;
+  if (/^<\?xml/i.test(semBom)) {
+    // Já tem declaração — garante encoding="UTF-8" (maiúsculo, padrão SEFAZ)
+    raizCom = semBom.replace(/^<\?xml[^?]*\?>/, '<?xml version="1.0" encoding="UTF-8"?>');
+  } else {
+    // Signer retornou sem declaração — insere antes de <CTe>
+    raizCom = '<?xml version="1.0" encoding="UTF-8"?>\n' + semBom;
+  }
+
+  if (!raizCom.includes("<CTe")) {
     throw new Error(
-      `XML inválido antes da compactação: começa com ${JSON.stringify(raizCTe.slice(0, 40))}`
+      `XML inválido antes da compactação: ${JSON.stringify(raizCom.slice(0, 80))}`
     );
   }
 
-  // Área de dados deve conter APENAS o elemento <CTe>, SEM declaração <?xml?>.
-  // SEFAZ-MT rejeita com cStat 402 quando há declaração XML dentro do GZip.
-  // O padrão XML assume UTF-8 quando não há declaração de encoding.
-  console.log("[CT-e GZip raiz]", raizCTe.slice(0, 80));
+  console.log("[CT-e GZip raiz]", raizCom.slice(0, 100));
 
   const naoAscii = [...new Set(
-    Array.from(raizCTe).filter(c => (c.codePointAt(0) ?? 0) > 127)
+    Array.from(raizCom).filter(c => (c.codePointAt(0) ?? 0) > 127)
   )];
-
   if (naoAscii.length > 0) {
     console.warn("[CT-e caracteres não ASCII]", naoAscii.map(c => ({
       caractere: c,
@@ -219,7 +224,7 @@ function compactarCTeBase64(xmlAssinado: string): string {
     })));
   }
 
-  const bytesUtf8 = Buffer.from(raizCTe, "utf8");
+  const bytesUtf8 = Buffer.from(raizCom, "utf8");
   new TextDecoder("utf-8", { fatal: true }).decode(bytesUtf8);
 
   return gzipSync(bytesUtf8, { level: 9 }).toString("base64");
@@ -228,11 +233,21 @@ function compactarCTeBase64(xmlAssinado: string): string {
 function envelopeCTe(xmlAssinado: string): string {
   const dadosBase64 = compactarCTeBase64(xmlAssinado);
 
+  // Extrai cUF do XML para o cabeçalho SOAP (obrigatório na SEFAZ-MT CT-e 4.00)
+  const cUFMatch = xmlAssinado.match(/<cUF>(\d+)<\/cUF>/);
+  const cUF      = cUFMatch ? cUFMatch[1] : "51"; // fallback MT
+
   const envelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Header>
+    <cteCabecMsg xmlns="${SOAP_NS}">
+      <cUF>${cUF}</cUF>
+      <versaoDados>4.00</versaoDados>
+    </cteCabecMsg>
+  </soap12:Header>
   <soap12:Body>
     <cteDadosMsg xmlns="${SOAP_NS}">${dadosBase64}</cteDadosMsg>
   </soap12:Body>
@@ -241,6 +256,7 @@ function envelopeCTe(xmlAssinado: string): string {
   console.log("[CT-e SOAP check]", {
     hasCteCabecMsg: envelope.includes("cteCabecMsg"),
     hasSoapHeader:  envelope.includes("soap12:Header"),
+    cUF,
   });
 
   return envelope;
