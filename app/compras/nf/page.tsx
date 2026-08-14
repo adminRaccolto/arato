@@ -286,8 +286,16 @@ export default function NfCompraPage() {
   const [selectedNfs,  setSelectedNfs]  = useState<Set<string>>(new Set());
   const [batchModal,   setBatchModal]   = useState(false);
   const [batchSaving,  setBatchSaving]  = useState(false);
-  const [batchSettings, setBatchSettings] = useState({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "" });
+  const [batchSettings, setBatchSettings] = useState({
+    pedido_compra_id: "", data_vencimento_cp: "",
+    deposito_destino_id: "", centro_custo_id: "",
+    ano_safra_id: "", ciclo_id: "",
+    operacao_gerencial_id: "",
+    tipo_destino: "" as "" | "estoque" | "direto",
+  });
   const [batchFazendaId, setBatchFazendaId] = useState<string>("");
+  const [batchOps,    setBatchOps]    = useState<OperacaoGerencial[]>([]);
+  const [batchCiclos, setBatchCiclos] = useState<Ciclo[]>([]);
 
   // Visualizador de NF (read-only)
   const [nfViewer, setNfViewer] = useState<{ nf: NfEntrada; itens: NfEntradaItem[] } | null>(null);
@@ -519,6 +527,19 @@ export default function NfCompraPage() {
     if (!cab.ano_safra_id) { setCiclosNF([]); return; }
     listarCiclos(cab.ano_safra_id, fazendaId).then(setCiclosNF).catch(() => setCiclosNF([]));
   }, [cab.ano_safra_id, fazendaId]);
+
+  // Carrega OGs ao abrir o modal de lote
+  useEffect(() => {
+    if (!batchModal || !fazendaId) return;
+    listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" })
+      .then(setBatchOps).catch(() => setBatchOps([]));
+  }, [batchModal, fazendaId]);
+
+  // Carrega ciclos do lote quando ano safra do lote muda
+  useEffect(() => {
+    if (!batchSettings.ano_safra_id) { setBatchCiclos([]); return; }
+    listarCiclos(batchSettings.ano_safra_id, fazendaId).then(setBatchCiclos).catch(() => setBatchCiclos([]));
+  }, [batchSettings.ano_safra_id, fazendaId]);
 
   // ── SIEG — sincronização ────────────────────────────────────
   async function sincronizarSieg() {
@@ -1171,22 +1192,42 @@ export default function NfCompraPage() {
     if (!nfsSel.length) return;
     setBatchSaving(true);
     const erros: string[] = [];
+    const tipoDest = batchSettings.tipo_destino;
+
     for (const nf of nfsSel) {
       try {
-        const ccId = batchSettings.centro_custo_id || nf.centro_custo_id;
-        const depId = batchSettings.deposito_destino_id || (nf as Record<string,unknown>).deposito_destino_id as string;
+        const ccId  = batchSettings.centro_custo_id || nf.centro_custo_id;
+        const ogId  = batchSettings.operacao_gerencial_id || nf.operacao_gerencial_id;
+        const cicId = batchSettings.ciclo_id || nf.ciclo_id;
+
+        // 1. Persistir campos de cabeçalho na NF
         const upd: Partial<NfEntrada> = {};
-        if (batchSettings.data_vencimento_cp) upd.data_vencimento_cp = batchSettings.data_vencimento_cp;
-        if (batchSettings.pedido_compra_id)   upd.pedido_compra_id   = batchSettings.pedido_compra_id;
-        if (batchSettings.deposito_destino_id) (upd as Record<string,unknown>).deposito_destino_id = batchSettings.deposito_destino_id;
-        if (batchSettings.centro_custo_id)    upd.centro_custo_id    = batchSettings.centro_custo_id;
-        if (batchSettings.ano_safra_id)        upd.ano_safra_id       = batchSettings.ano_safra_id;
+        if (batchSettings.data_vencimento_cp)    upd.data_vencimento_cp    = batchSettings.data_vencimento_cp;
+        if (batchSettings.pedido_compra_id)       upd.pedido_compra_id      = batchSettings.pedido_compra_id;
+        if (batchSettings.centro_custo_id)        upd.centro_custo_id       = batchSettings.centro_custo_id;
+        if (batchSettings.operacao_gerencial_id)  upd.operacao_gerencial_id = batchSettings.operacao_gerencial_id;
+        if (batchSettings.ano_safra_id)           upd.ano_safra_id          = batchSettings.ano_safra_id;
+        if (batchSettings.ciclo_id)               upd.ciclo_id              = batchSettings.ciclo_id;
+        if (tipoDest === "direto") {
+          upd.tipo_entrada = "custo_direto";
+        } else if (tipoDest === "estoque") {
+          if (batchSettings.deposito_destino_id) (upd as Record<string,unknown>).deposito_destino_id = batchSettings.deposito_destino_id;
+          upd.tipo_entrada = "insumos";
+        } else {
+          // sem alteração de tipo — só deposito se informado
+          if (batchSettings.deposito_destino_id) (upd as Record<string,unknown>).deposito_destino_id = batchSettings.deposito_destino_id;
+        }
         if (Object.keys(upd).length) await atualizarNfEntrada(nf.id, upd);
-        // Se custo_direto e tem CC definido: processa automaticamente
-        const tipoNf = nf.tipo_entrada ?? "custo_direto";
-        if (tipoNf === "custo_direto" && ccId) {
+
+        // 2. Decidir se processa agora ou deixa pendente para entrada individual
+        const tipoEfetivo = tipoDest === "direto" ? "custo_direto"
+          : tipoDest === "estoque" ? "insumos"
+          : (nf.tipo_entrada ?? "custo_direto");
+
+        if (tipoEfetivo === "custo_direto" && ccId) {
+          // Apropriação Direta: processa todos os itens como "direto"
           const itensNf = await listarNfEntradaItens(nf.id);
-          const itensCc = itensNf.map(it => ({
+          const itensDireto = itensNf.map(it => ({
             ...it,
             tipo_apropiacao: "direto" as NfEntradaItem["tipo_apropiacao"],
             centro_custo_id: ccId,
@@ -1194,21 +1235,24 @@ export default function NfCompraPage() {
           await processarNfEntrada(
             nf.id,
             nf.fazenda_id ?? batchFazendaId,
-            itensCc,
+            itensDireto,
             nf.valor_total,
             nf.emitente_nome,
             nf.data_entrada ?? new Date().toISOString().split("T")[0],
             nf.emitente_cnpj ?? undefined,
             {
-              nfeNumero:        nf.numero,
-              dataVencimentoCp: batchSettings.data_vencimento_cp || nf.data_vencimento_cp || undefined,
-              tipoEntrada:      "custo_direto",
-              anoSafraId:       batchSettings.ano_safra_id       || nf.ano_safra_id        || undefined,
-              centroCustoId:    ccId,
-              pedidoCompraId:   batchSettings.pedido_compra_id   || nf.pedido_compra_id    || undefined,
+              nfeNumero:             nf.numero,
+              dataVencimentoCp:      batchSettings.data_vencimento_cp || nf.data_vencimento_cp || undefined,
+              tipoEntrada:           "custo_direto",
+              anoSafraId:            batchSettings.ano_safra_id || nf.ano_safra_id || undefined,
+              cicloId:               cicId || undefined,
+              operacaoGerencialId:   ogId  || undefined,
+              centroCustoId:         ccId,
+              pedidoCompraId:        batchSettings.pedido_compra_id || nf.pedido_compra_id || undefined,
             },
           );
         }
+        // Estoque: campos salvos, NF permanece pendente para mapeamento de itens
       } catch (e) {
         erros.push(`NF ${nf.numero}: ${e instanceof Error ? e.message : "Erro"}`);
       }
@@ -1604,7 +1648,7 @@ export default function NfCompraPage() {
                   setWDepositos([...depositos]);
                   setWPedidos([...pedidos]);
                 }
-                setBatchSettings({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "" });
+                setBatchSettings({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "", ciclo_id: "", operacao_gerencial_id: "", tipo_destino: "" });
                 setBatchModal(true);
               }}
               style={{ padding: "6px 16px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
@@ -3463,61 +3507,115 @@ export default function NfCompraPage() {
       {batchModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}
           onClick={e => { if (e.target === e.currentTarget) setBatchModal(false); }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "94vw" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 620, maxWidth: "96vw" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>
               ⚡ Processar em Lote
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>
               {nfsFiltradas.filter(n => selectedNfs.has(n.id) && n.status === "pendente").length} NF(s) pendente(s) selecionada(s).
-              As configurações abaixo serão aplicadas a todas. Deixe em branco para manter o valor individual de cada NF.
+              Deixe em branco para manter o valor individual de cada NF.
+            </div>
+
+            {/* ── Tipo de Destino ── */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={lbl}>Tipo de Processamento</label>
+              <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: "0.5px solid var(--border-ui)" }}>
+                {([
+                  { v: "" as const,        label: "— não alterar —",     desc: "Mantém o tipo de cada NF" },
+                  { v: "estoque" as const,  label: "Estoque / Insumos",   desc: "Salva depósito; itens mapeados individualmente" },
+                  { v: "direto" as const,   label: "Apropriação Direta",  desc: "Processa sem entrada em estoque" },
+                ] as const).map(opt => (
+                  <button key={opt.v} onClick={() => setBatchSettings(p => ({ ...p, tipo_destino: opt.v }))}
+                    title={opt.desc}
+                    style={{
+                      flex: 1, padding: "8px 6px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+                      background: batchSettings.tipo_destino === opt.v
+                        ? (opt.v === "direto" ? "#166534" : opt.v === "estoque" ? "#1A4870" : "#374151")
+                        : "var(--bg-input)",
+                      color: batchSettings.tipo_destino === opt.v ? "#fff" : "var(--text-2)",
+                      borderRight: opt.v !== "direto" ? "0.5px solid var(--border-ui)" : "none",
+                    }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+              {/* ── Campos comuns ── */}
               <div>
                 <label style={lbl}>Vencimento da CP</label>
                 <input type="date" value={batchSettings.data_vencimento_cp} onChange={e => setBatchSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Ano Safra</label>
-                <select value={batchSettings.ano_safra_id} onChange={e => setBatchSettings(p => ({ ...p, ano_safra_id: e.target.value }))} style={inp}>
+                <select value={batchSettings.ano_safra_id} onChange={e => setBatchSettings(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))} style={inp}>
                   <option value="">— manter individual —</option>
                   {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                 </select>
               </div>
-              <div>
-                <label style={lbl}>Centro de Custo (padrão)</label>
-                <select value={batchSettings.centro_custo_id} onChange={e => setBatchSettings(p => ({ ...p, centro_custo_id: e.target.value }))} style={inp}>
-                  <option value="">— manter individual —</option>
-                  {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
-                    <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
-                  <label style={{ ...lbl, marginBottom: 0 }}>Depósito de Entrada</label>
-                  <div style={{ display: "flex", gap: 3, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
-                    {(["proprio", "terceiro"] as const).map(t => (
-                      <button key={t} onClick={() => setDepFiltro(t)}
-                        style={{ fontSize: 9, fontWeight: 600, padding: "1px 8px", borderRadius: 4, border: "none", cursor: "pointer",
-                          background: depFiltro === t ? "#111111" : "transparent",
-                          color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
-                        {t === "proprio" ? "Próprio" : "Terceiro"}
-                      </button>
-                    ))}
-                  </div>
+
+              {/* Ciclo — só quando há ano safra */}
+              {batchSettings.ano_safra_id && (
+                <div>
+                  <label style={lbl}>Ciclo</label>
+                  <select value={batchSettings.ciclo_id} onChange={e => setBatchSettings(p => ({ ...p, ciclo_id: e.target.value }))} style={inp}>
+                    <option value="">— manter individual —</option>
+                    {batchCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+                  </select>
                 </div>
-                <select value={batchSettings.deposito_destino_id} onChange={e => setBatchSettings(p => ({ ...p, deposito_destino_id: e.target.value }))} style={inp}>
-                  <option value="">— manter individual —</option>
-                  {wDepositos
-                    .filter(d => depFiltro === "terceiro"
-                      ? ["terceiro","armazem_terceiro"].includes(d.tipo)
-                      : !["terceiro","armazem_terceiro"].includes(d.tipo))
-                    .map(d => (
-                      <option key={d.id} value={d.id}>{d.nome}</option>
-                    ))}
-                </select>
-              </div>
+              )}
+
+              {/* ── Campos específicos de Apropriação Direta ── */}
+              {(batchSettings.tipo_destino === "direto" || batchSettings.tipo_destino === "") && (
+                <>
+                  <div>
+                    <label style={lbl}>Centro de Custo</label>
+                    <select value={batchSettings.centro_custo_id} onChange={e => setBatchSettings(p => ({ ...p, centro_custo_id: e.target.value }))} style={inp}>
+                      <option value="">— manter individual —</option>
+                      {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
+                        <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>OG — Operação Gerencial</label>
+                    <select value={batchSettings.operacao_gerencial_id} onChange={e => setBatchSettings(p => ({ ...p, operacao_gerencial_id: e.target.value }))} style={inp}>
+                      <option value="">— manter individual —</option>
+                      {batchOps.map(o => <option key={o.id} value={o.id}>{o.classificacao ? `${o.classificacao} — ` : ""}{o.descricao}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* ── Campos específicos de Estoque ── */}
+              {(batchSettings.tipo_destino === "estoque" || batchSettings.tipo_destino === "") && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+                    <label style={{ ...lbl, marginBottom: 0 }}>Depósito de Entrada</label>
+                    <div style={{ display: "flex", gap: 3, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
+                      {(["proprio", "terceiro"] as const).map(t => (
+                        <button key={t} onClick={() => setDepFiltro(t)}
+                          style={{ fontSize: 9, fontWeight: 600, padding: "1px 8px", borderRadius: 4, border: "none", cursor: "pointer",
+                            background: depFiltro === t ? "#111111" : "transparent",
+                            color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
+                          {t === "proprio" ? "Próprio" : "Terceiro"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <select value={batchSettings.deposito_destino_id} onChange={e => setBatchSettings(p => ({ ...p, deposito_destino_id: e.target.value }))} style={inp}>
+                    <option value="">— manter individual —</option>
+                    {wDepositos
+                      .filter(d => depFiltro === "terceiro"
+                        ? ["terceiro","armazem_terceiro"].includes(d.tipo)
+                        : !["terceiro","armazem_terceiro"].includes(d.tipo))
+                      .map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* ── Pedido de Compra (sempre visível) ── */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Vincular a Pedido de Compra</label>
                 <select value={batchSettings.pedido_compra_id} onChange={e => setBatchSettings(p => ({ ...p, pedido_compra_id: e.target.value }))} style={inp}>
@@ -3531,9 +3629,25 @@ export default function NfCompraPage() {
               </div>
             </div>
 
-            {batchSettings.centro_custo_id && (
+            {/* ── Avisos contextuais ── */}
+            {batchSettings.tipo_destino === "direto" && batchSettings.centro_custo_id && (
               <div style={{ background: "#E8F5E9", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#15803D", marginBottom: 16 }}>
-                ✓ NFs do tipo <strong>Custo Direto</strong> serão processadas automaticamente com o CC selecionado. As demais NFs terão apenas as configurações salvas.
+                ✓ <strong>Apropriação Direta</strong>: todas as NFs serão processadas agora — os itens saem sem dar entrada em estoque. CC e OG serão aplicados.
+              </div>
+            )}
+            {batchSettings.tipo_destino === "direto" && !batchSettings.centro_custo_id && (
+              <div style={{ background: "#FFF8E1", border: "0.5px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E", marginBottom: 16 }}>
+                ⚠ Informe o Centro de Custo para processar as NFs como Apropriação Direta.
+              </div>
+            )}
+            {batchSettings.tipo_destino === "estoque" && (
+              <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1D4ED8", marginBottom: 16 }}>
+                ℹ <strong>Estoque / Insumos</strong>: o depósito e as configurações serão salvas. As NFs permanecem <em>Pendentes</em> — abra cada uma para mapear os itens ao catálogo e processar.
+              </div>
+            )}
+            {batchSettings.tipo_destino === "" && batchSettings.centro_custo_id && (
+              <div style={{ background: "#E8F5E9", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#15803D", marginBottom: 16 }}>
+                ✓ NFs já marcadas como <strong>Custo Direto</strong> serão processadas automaticamente com o CC selecionado.
               </div>
             )}
 
@@ -3541,8 +3655,8 @@ export default function NfCompraPage() {
               <button style={btnR} onClick={() => setBatchModal(false)} disabled={batchSaving}>Cancelar</button>
               <button
                 onClick={processarEmLote}
-                disabled={batchSaving}
-                style={{ ...btnV, opacity: batchSaving ? 0.6 : 1, cursor: batchSaving ? "default" : "pointer" }}
+                disabled={batchSaving || (batchSettings.tipo_destino === "direto" && !batchSettings.centro_custo_id)}
+                style={{ ...btnV, opacity: (batchSaving || (batchSettings.tipo_destino === "direto" && !batchSettings.centro_custo_id)) ? 0.5 : 1, cursor: batchSaving ? "default" : "pointer" }}
               >
                 {batchSaving ? "Processando…" : "Aplicar e Processar"}
               </button>
