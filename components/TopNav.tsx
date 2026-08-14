@@ -499,7 +499,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (child.type !== "divider") {
       const mid = (child as NavLink | NavSubgroup).moduleId;
       if (mid && !podeAcessar(mid)) return null;
-      if (mid && !isRaccotloStaff && !podeAcessarPlano(mid)) return null;
+      if (mid && !podeAcessarPlano(mid)) return null;
     }
 
     // Divider
@@ -554,7 +554,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
               </div>
-              {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || isRaccotloStaff || podeAcessarPlano(gc.moduleId))).map(gc => {
+              {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || podeAcessarPlano(gc.moduleId))).map(gc => {
                 const ativoGc = isAtivo(gc.path);
                 return (
                   <Link
@@ -770,7 +770,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           const navId  = item.type === "group" ? item.id : (item as NavLink).id;
           const modulos = NAV_MODULE_MAP[navId];
           if (!isRaccotloStaff && modulos && !modulos.some(m => podeAcessar(m))) return null;
-          if (!isRaccotloStaff && modulos && !modulos.some(m => podeAcessarPlano(m))) return null;
+          if (modulos && !modulos.some(m => podeAcessarPlano(m))) return null;
 
           const isLocked = onboardingAtivo && (item.minStep ?? 0) > stepsCompletos;
           if (isLocked) {
