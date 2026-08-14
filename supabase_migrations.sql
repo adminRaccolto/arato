@@ -9695,62 +9695,65 @@ CREATE POLICY "config_contabilidade_by_conta" ON config_contabilidade
     )
   );
 
--- ─── Migration: adiciona 'combustivel' ao check de tipo_entrada em nf_entradas ───
--- Permite registrar NFs de combustível com tipo_entrada = 'combustivel',
--- separando-as visualmente de 'insumos' na lista de NFs.
-ALTER TABLE nf_entradas
-  DROP CONSTRAINT IF EXISTS nf_entradas_tipo_entrada_check;
+  -- ─── Migration: adiciona 'combustivel' ao check de tipo_entrada em nf_entradas ───
+  -- Permite registrar NFs de combustível com tipo_entrada = 'combustivel',
+  -- separando-as visualmente de 'insumos' na lista de NFs.
+  ALTER TABLE nf_entradas
+    DROP CONSTRAINT IF EXISTS nf_entradas_tipo_entrada_check;
 
-ALTER TABLE nf_entradas
-  ADD CONSTRAINT nf_entradas_tipo_entrada_check
-  CHECK (tipo_entrada IN ('consumo','insumos','combustivel','vef','remessa','devolucao_compra','custo_direto'));
+  ALTER TABLE nf_entradas
+    ADD CONSTRAINT nf_entradas_tipo_entrada_check
+    CHECK (tipo_entrada IN ('consumo','insumos','combustivel','vef','remessa','devolucao_compra','custo_direto'));
 
-NOTIFY pgrst, 'reload schema';
-
--- ─── Migration: adiciona 'pecas' ao check de tipo_entrada + coluna forma_pagamento ───
--- Permite registrar NFs de peças/manutenção com tipo_entrada = 'pecas'.
--- Adiciona forma_pagamento para registrar a condição de pagamento da NF.
-ALTER TABLE nf_entradas
-  DROP CONSTRAINT IF EXISTS nf_entradas_tipo_entrada_check;
-
-ALTER TABLE nf_entradas
-  ADD CONSTRAINT nf_entradas_tipo_entrada_check
-  CHECK (tipo_entrada IN ('consumo','insumos','combustivel','pecas','vef','remessa','devolucao_compra','custo_direto'));
-
-ALTER TABLE nf_entradas
-  ADD COLUMN IF NOT EXISTS forma_pagamento TEXT;
-
-NOTIFY pgrst, 'reload schema';
+  NOTIFY pgrst, 'reload schema';
 
 -- =============================================================================
--- Seção 159 — produtor_id em consorcios (agricultor consorciado)
+-- Seção 162 — Tabela bens (patrimônio alienado a consórcios)
 -- =============================================================================
-ALTER TABLE consorcios
-  ADD COLUMN IF NOT EXISTS produtor_id UUID REFERENCES produtores(id) ON DELETE SET NULL;
+CREATE TABLE IF NOT EXISTS bens (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id         UUID REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id       UUID REFERENCES fazendas(id) ON DELETE SET NULL,
+  tipo             TEXT NOT NULL CHECK (tipo IN ('maquina_agricola','veiculo_leve','veiculo_pesado','imovel_rural','imovel_urbano','equipamento','outro')),
+  descricao        TEXT NOT NULL,
+  marca            TEXT,
+  modelo           TEXT,
+  ano_fabricacao   INT,
+  placa            TEXT,
+  numero_serie     TEXT,
+  chassi           TEXT,
+  matricula_imovel TEXT,
+  cartorio         TEXT,
+  municipio        TEXT,
+  estado           TEXT,
+  area_ha          NUMERIC(12,4),
+  valor_aquisicao  NUMERIC(14,2),
+  data_aquisicao   DATE,
+  valor_mercado    NUMERIC(14,2),
+  maquina_id       UUID REFERENCES maquinas(id) ON DELETE SET NULL,
+  observacao       TEXT,
+  ativo            BOOLEAN DEFAULT TRUE,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE INDEX IF NOT EXISTS idx_consorcios_produtor_id ON consorcios(produtor_id);
+CREATE INDEX IF NOT EXISTS idx_bens_conta_id   ON bens(conta_id);
+CREATE INDEX IF NOT EXISTS idx_bens_fazenda_id ON bens(fazenda_id);
 
-NOTIFY pgrst, 'reload schema';
+ALTER TABLE bens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_bens" ON bens FOR ALL USING (true) WITH CHECK (true);
 
--- =============================================================================
--- Seção 160 — adiciona 'consorcio' ao check de origem_lancamento
--- =============================================================================
-ALTER TABLE lancamentos
-  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+-- Vínculo N:N entre bens e consórcios (um bem pode ser alienado a várias cotas)
+CREATE TABLE IF NOT EXISTS bem_consorcios (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bem_id        UUID NOT NULL REFERENCES bens(id) ON DELETE CASCADE,
+  consorcio_id  UUID NOT NULL REFERENCES consorcios(id) ON DELETE CASCADE,
+  UNIQUE(bem_id, consorcio_id)
+);
 
-ALTER TABLE lancamentos
-  ADD CONSTRAINT lancamentos_origem_lancamento_check
-  CHECK (origem_lancamento IN (
-    'nf_entrada','nf_saida','pedido_compra','arrendamento',
-    'tesouraria','plantio','contrato_financeiro','consorcio','manual'
-  ));
+CREATE INDEX IF NOT EXISTS idx_bem_consorcios_bem_id       ON bem_consorcios(bem_id);
+CREATE INDEX IF NOT EXISTS idx_bem_consorcios_consorcio_id ON bem_consorcios(consorcio_id);
 
-NOTIFY pgrst, 'reload schema';
-
--- =============================================================================
--- Seção 161 — adiciona coluna valor em centros_custo_contrato
--- =============================================================================
-ALTER TABLE centros_custo_contrato
-  ADD COLUMN IF NOT EXISTS valor NUMERIC(14,2);
+ALTER TABLE bem_consorcios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_bem_consorcios" ON bem_consorcios FOR ALL USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';

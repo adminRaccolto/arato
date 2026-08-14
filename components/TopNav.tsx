@@ -63,6 +63,7 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Patrimônio" },
       { id: "cad-maquinas",       label: "Máquinas e Veículos", path: "/cadastros?tab=maquinas"       },
       { id: "cad-benfeitorias",   label: "Benfeitorias",        path: "/cadastros?tab=benfeitorias"   },
+      { id: "cad-bens",           label: "Bens (Alienação)",    path: "/cadastros?tab=bens"           },
       { type: "divider", label: "Financeiro" },
       { id: "cad-contas-bancarias", label: "Contas Bancárias",        path: "/cadastros?tab=contas_bancarias"      },
     ],

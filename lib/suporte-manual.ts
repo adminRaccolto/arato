@@ -862,11 +862,11 @@ Gerencia cotas de consórcio de máquinas, imóveis e outros bens. Controla parc
 3. Clique em **Salvar**. O sistema gera automaticamente as parcelas e as Contas a Pagar (CP) para todas as parcelas ainda não pagas
 
 ### Campos automáticos ao salvar
-- Parcelas futuras (depois das `parcelas_pagas`) → criadas em `parcelas_consorcio`
-- Contas a Pagar → criadas em `lancamentos` com:
+- Parcelas futuras (depois das parcelas_pagas) → criadas em parcelas_consorcio
+- Contas a Pagar → criadas em lancamentos com:
   - Categoria: "Consórcio — A Contemplar" ou "Consórcio — Contemplado"
-  - Status: `em_aberto`
-  - Origem: `consorcio`
+  - Status: em_aberto
+  - Origem: consorcio
   - Vencimento = data de cada parcela
 
 ### Editar um consórcio existente
@@ -885,7 +885,7 @@ Botão disponível dentro do modal de edição (aparecer somente no modo ediçã
 
 **Quando usar:** sempre que alterar valor da parcela, total de parcelas, parcelas pagas ou data de início.
 
-Após a conclusão, um alerta exibe: `✅ N parcelas criadas — N CPs lançadas no financeiro.`
+Após a conclusão, um alerta exibe: "✅ N parcelas criadas — N CPs lançadas no financeiro."
 
 **Atenção:** para ver as CPs vencidas (passadas), clique na aba **Vencidos** em **Contas a Pagar**. O sistema busca automaticamente 2 anos para trás ao entrar nessa aba.
 
@@ -2318,7 +2318,7 @@ O cadastro de consórcios agora tem o campo **Agricultor / Consorciado** — um 
 ### Regenerar Parcelas e CPs
 Botão **Regenerar Parcelas e CPs** disponível ao editar um consórcio. Apaga e recria todo o cronograma de parcelas e CPs em aberto.
 
-**Retorno visual:** após concluir, o sistema exibe: `✅ N parcelas criadas — N CPs lançadas no financeiro.`
+**Retorno visual:** após concluir, o sistema exibe: "✅ N parcelas criadas — N CPs lançadas no financeiro."
 
 **Importante:** se as CPs geradas tiverem datas no **passado** (parcelas vencidas anteriores a hoje), elas aparecem na aba **Vencidos** de Contas a Pagar — não na aba padrão "Em Aberto". Ao clicar na aba Vencidos, o sistema amplia automaticamente o período de busca para **2 anos atrás**, garantindo que todas as CPs vencidas do consórcio apareçam.
 

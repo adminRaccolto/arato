@@ -2481,3 +2481,52 @@ export type TaxaVariavelHistorico = {
   created_at?: string;
   updated_at?: string;
 };
+
+export type TipoBem = "maquina_agricola" | "veiculo_leve" | "veiculo_pesado" | "imovel_rural" | "imovel_urbano" | "equipamento" | "outro";
+
+export type Bem = {
+  id: string;
+  conta_id?: string | null;
+  fazenda_id?: string | null;
+  tipo: TipoBem;
+  descricao: string;
+  marca?: string | null;
+  modelo?: string | null;
+  ano_fabricacao?: number | null;
+  placa?: string | null;
+  numero_serie?: string | null;
+  chassi?: string | null;
+  matricula_imovel?: string | null;
+  cartorio?: string | null;
+  municipio?: string | null;
+  estado?: string | null;
+  area_ha?: number | null;
+  valor_aquisicao?: number | null;
+  data_aquisicao?: string | null;
+  valor_mercado?: number | null;
+  maquina_id?: string | null;
+  observacao?: string | null;
+  ativo: boolean;
+  created_at?: string;
+  // computed (joins)
+  consorcios_vinculados?: BemConsorcioVinculo[];
+};
+
+export type BemConsorcioVinculo = {
+  id: string;
+  bem_id: string;
+  consorcio_id: string;
+  // join data
+  consorcio?: {
+    id: string;
+    administradora: string;
+    numero_cota: string;
+    grupo?: string;
+    tipo_bem: string;
+    valor_credito: number;
+    valor_parcela_mensal: number;
+    total_parcelas: number;
+    parcelas_pagas: number;
+    status: string;
+  };
+};

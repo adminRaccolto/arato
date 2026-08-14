@@ -1544,6 +1544,73 @@ export async function excluirBenfeitoria(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ── Bens (patrimônio alienado a consórcios) ──────────────────
+import type { Bem, BemConsorcioVinculo } from "./supabase";
+
+export async function listarBens(conta_id: string): Promise<Bem[]> {
+  const { data, error } = await supabase
+    .from("bens")
+    .select("*, bem_consorcios(id, consorcio_id, consorcio:consorcios(id,administradora,numero_cota,grupo,tipo_bem,valor_credito,valor_parcela_mensal,total_parcelas,parcelas_pagas,status))")
+    .eq("conta_id", conta_id)
+    .order("tipo")
+    .order("descricao");
+  if (error) throw error;
+  return (data ?? []).map((b: Record<string, unknown>) => ({
+    ...(b as Bem),
+    consorcios_vinculados: (b.bem_consorcios as BemConsorcioVinculo[]) ?? [],
+  }));
+}
+
+export async function criarBem(b: Omit<Bem, "id" | "created_at" | "consorcios_vinculados">): Promise<Bem> {
+  const { data, error } = await supabase.from("bens").insert(b).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarBem(id: string, b: Partial<Omit<Bem, "consorcios_vinculados">>): Promise<void> {
+  const { error } = await supabase.from("bens").update(b).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirBem(id: string): Promise<void> {
+  const { error } = await supabase.from("bens").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function vincularConsorciosBem(bem_id: string, consorcio_ids: string[]): Promise<void> {
+  await supabase.from("bem_consorcios").delete().eq("bem_id", bem_id);
+  if (consorcio_ids.length > 0) {
+    const { error } = await supabase.from("bem_consorcios").insert(
+      consorcio_ids.map(consorcio_id => ({ bem_id, consorcio_id }))
+    );
+    if (error) throw error;
+  }
+}
+
+export async function listarConsorciosContemplados(conta_id: string): Promise<{ id: string; administradora: string; numero_cota: string; grupo: string; tipo_bem: string; valor_credito: number; total_parcelas: number; parcelas_pagas: number; fazenda_id: string }[]> {
+  // busca fazendas da conta
+  const { data: fazs } = await supabase.from("fazendas").select("id").eq("conta_id", conta_id);
+  const ids = (fazs ?? []).map((f: { id: string }) => f.id);
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("consorcios")
+    .select("id, administradora, numero_cota, grupo, tipo_bem, valor_credito, total_parcelas, parcelas_pagas, fazenda_id")
+    .in("fazenda_id", ids)
+    .eq("status", "contemplado")
+    .order("administradora");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarBensPorConsorcio(consorcio_id: string): Promise<Bem[]> {
+  const { data, error } = await supabase
+    .from("bem_consorcios")
+    .select("bem:bens(*)")
+    .eq("consorcio_id", consorcio_id);
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => r.bem as Bem);
+}
+
 export async function listarDepositos(fazenda_id: string): Promise<Deposito[]> {
   const { data, error } = await supabase.from("depositos").select("*").eq("fazenda_id", fazenda_id).order("nome");
   if (error) throw error;

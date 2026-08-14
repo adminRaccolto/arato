@@ -23,6 +23,7 @@ import {
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   listarDepositos, criarDeposito, atualizarDeposito, excluirDeposito,
   listarBenfeitorias, criarBenfeitoria, atualizarBenfeitoria, excluirBenfeitoria,
+  listarBens, criarBem, atualizarBem, excluirBem, vincularConsorciosBem, listarConsorciosContemplados,
   listarGruposInsumo, listarGruposInsumoDaConta, criarGrupoInsumo, atualizarGrupoInsumo, excluirGrupoInsumo,
   listarSubgruposInsumo, listarSubgruposInsumoDaConta, criarSubgrupoInsumo, atualizarSubgrupoInsumo, excluirSubgrupoInsumo,
   seederGruposInsumo,
@@ -57,7 +58,7 @@ import type {
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria, Banco,
   PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida, Cultura as CulturaItem,
-  ImovelUrbano, Benfeitoria,
+  ImovelUrbano, Benfeitoria, Bem, TipoBem,
 } from "../../lib/supabase";
 
 // ── Local types for inline editing ──────────────────────────
@@ -95,7 +96,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "benfeitorias" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas" | "imoveis_urbanos";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "benfeitorias" | "bens" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas" | "imoveis_urbanos";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -124,6 +125,7 @@ const TAB_GROUPS: TabGroup[] = [
   { group: "Patrimônio", tabs: [
     { key: "maquinas",     label: "Máquinas e Veículos" },
     { key: "benfeitorias", label: "Benfeitorias"        },
+    { key: "bens",         label: "Bens (Alienação)"   },
   ]},
   { group: "Financeiro", tabs: [
     { key: "centros_custo",        label: "Centros de Custo"     },
@@ -385,6 +387,15 @@ function CadastrosInner() {
   const [modalBenf, setModalBenf]       = useState(false);
   const [editBenf, setEditBenf]         = useState<Benfeitoria | null>(null);
   const [fBenf, setFBenf]               = useState({ fazenda_id: "", nome: "", tipo: "barracao" as Benfeitoria["tipo"], area_m2: "", ano_construcao: "", valor_aquisicao: "", valor_atual: "", vida_util_anos: "25", descricao: "", localizacao: "", ativa: true });
+
+  // ── Bens (Alienação Fiduciária) ──
+  const [bens, setBens]                         = useState<Bem[]>([]);
+  const [modalBem, setModalBem]                 = useState(false);
+  const [editBem, setEditBem]                   = useState<Bem | null>(null);
+  const [tabBem, setTabBem]                     = useState<"identificacao" | "alienacao">("identificacao");
+  const [fBem, setFBem]                         = useState<{ tipo: TipoBem; descricao: string; fazenda_id: string; marca: string; modelo: string; ano_fabricacao: string; placa: string; numero_serie: string; chassi: string; matricula_imovel: string; cartorio: string; municipio: string; estado: string; area_ha: string; valor_aquisicao: string; data_aquisicao: string; valor_mercado: string; observacao: string; ativo: boolean }>({ tipo: "maquina_agricola", descricao: "", fazenda_id: "", marca: "", modelo: "", ano_fabricacao: "", placa: "", numero_serie: "", chassi: "", matricula_imovel: "", cartorio: "", municipio: "", estado: "MT", area_ha: "", valor_aquisicao: "", data_aquisicao: "", valor_mercado: "", observacao: "", ativo: true });
+  const [bemConsorciosSel, setBemConsorciosSel] = useState<Set<string>>(new Set());
+  const [consorciosContemplados, setConsorciosContemplados] = useState<{ id: string; administradora: string; numero_cota: string; grupo: string; tipo_bem: string; valor_credito: number; total_parcelas: number; parcelas_pagas: number; fazenda_id: string }[]>([]);
 
   // ── Bombas ──
   const [bombas, setBombas]             = useState<BombaCombustivel[]>([]);
@@ -680,6 +691,10 @@ function CadastrosInner() {
       listarContratosFinanceiros(fazendaId).then(setContratsFinanc).catch(() => {});
     }
     if (aba === "benfeitorias") listarBenfeitorias(fazendaId).then(setBenfeitorias).catch(e => setErro(e.message));
+    if (aba === "bens" && contaId) {
+      listarBens(contaId).then(setBens).catch(e => setErro(e.message));
+      listarConsorciosContemplados(contaId).then(setConsorciosContemplados).catch(() => {});
+    }
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
       listarInsumos(fazendaId).then(async lista => {
@@ -2865,6 +2880,299 @@ function CadastrosInner() {
                     <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
                       <button style={btnR} onClick={() => setModalBenf(false)}>Cancelar</button>
                       <button style={btnV} onClick={salvarBenf}>{editBenf ? "Salvar" : "Cadastrar"}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            );
+          })()}
+
+          {/* ══ BENS (ALIENAÇÃO FIDUCIÁRIA) ══ */}
+          {aba === "bens" && (() => {
+            const TIPO_BEM_LABEL: Record<TipoBem, string> = {
+              maquina_agricola: "Máquina Agrícola",
+              veiculo_leve:     "Veículo Leve",
+              veiculo_pesado:   "Veículo Pesado",
+              imovel_rural:     "Imóvel Rural",
+              imovel_urbano:    "Imóvel Urbano",
+              equipamento:      "Equipamento",
+              outro:            "Outro",
+            };
+            const TIPO_BEM_COR: Record<TipoBem, [string,string]> = {
+              maquina_agricola: ["#E6F1FB","#0C447C"],
+              veiculo_leve:     ["#FBF3E0","#C9921B"],
+              veiculo_pesado:   ["#E8E8E8","#0D0D0D"],
+              imovel_rural:     ["#E8F5E9","#16A34A"],
+              imovel_urbano:    ["#F3E8FF","#7C3AED"],
+              equipamento:      ["#FFF3E0","#E65100"],
+              outro:            ["#F5F5F5","#666"],
+            };
+            const ehVeiculo = (t: TipoBem) => ["maquina_agricola","veiculo_leve","veiculo_pesado","equipamento"].includes(t);
+            const ehImovel  = (t: TipoBem) => ["imovel_rural","imovel_urbano"].includes(t);
+            const fmtBRL = (v?: number | null) => v != null ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—";
+            const fld = (label: string, children: React.ReactNode, span?: number) => (
+              <div style={{ gridColumn: span ? `span ${span}` : undefined, display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>{label}</label>
+                {children}
+              </div>
+            );
+            const inp = { border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 13, width: "100%", background: "var(--bg-page)", color: "var(--text-1)", boxSizing: "border-box" as const };
+
+            const abrirBem = (b?: Bem) => {
+              setEditBem(b ?? null);
+              setTabBem("identificacao");
+              if (b) {
+                setFBem({
+                  tipo: b.tipo, descricao: b.descricao,
+                  fazenda_id: b.fazenda_id ?? "", marca: b.marca ?? "", modelo: b.modelo ?? "",
+                  ano_fabricacao: b.ano_fabricacao != null ? String(b.ano_fabricacao) : "",
+                  placa: b.placa ?? "", numero_serie: b.numero_serie ?? "", chassi: b.chassi ?? "",
+                  matricula_imovel: b.matricula_imovel ?? "", cartorio: b.cartorio ?? "",
+                  municipio: b.municipio ?? "", estado: b.estado ?? "MT", area_ha: b.area_ha != null ? String(b.area_ha) : "",
+                  valor_aquisicao: b.valor_aquisicao != null ? String(b.valor_aquisicao) : "",
+                  data_aquisicao: b.data_aquisicao ?? "", valor_mercado: b.valor_mercado != null ? String(b.valor_mercado) : "",
+                  observacao: b.observacao ?? "", ativo: b.ativo,
+                });
+                setBemConsorciosSel(new Set((b.consorcios_vinculados ?? []).map(v => v.consorcio_id)));
+              } else {
+                setFBem({ tipo: "maquina_agricola", descricao: "", fazenda_id: fazendaId ?? "", marca: "", modelo: "", ano_fabricacao: "", placa: "", numero_serie: "", chassi: "", matricula_imovel: "", cartorio: "", municipio: "", estado: "MT", area_ha: "", valor_aquisicao: "", data_aquisicao: "", valor_mercado: "", observacao: "", ativo: true });
+                setBemConsorciosSel(new Set());
+              }
+              setModalBem(true);
+            };
+
+            const salvarBem = async () => {
+              if (!fBem.descricao.trim()) return alert("Descrição obrigatória");
+              if (!contaId) return alert("Conta não identificada");
+              const payload: Omit<Bem, "id" | "created_at" | "consorcios_vinculados"> = {
+                conta_id: contaId,
+                fazenda_id: fBem.fazenda_id || null,
+                tipo: fBem.tipo,
+                descricao: fBem.descricao.trim(),
+                marca: fBem.marca || null,
+                modelo: fBem.modelo || null,
+                ano_fabricacao: fBem.ano_fabricacao ? parseInt(fBem.ano_fabricacao) : null,
+                placa: fBem.placa || null,
+                numero_serie: fBem.numero_serie || null,
+                chassi: fBem.chassi || null,
+                matricula_imovel: fBem.matricula_imovel || null,
+                cartorio: fBem.cartorio || null,
+                municipio: fBem.municipio || null,
+                estado: fBem.estado || null,
+                area_ha: fBem.area_ha ? parseFloat(fBem.area_ha.replace(",",".")) : null,
+                valor_aquisicao: fBem.valor_aquisicao ? parseFloat(fBem.valor_aquisicao.replace(/[^0-9,.]/g,"").replace(",",".")) : null,
+                data_aquisicao: fBem.data_aquisicao || null,
+                valor_mercado: fBem.valor_mercado ? parseFloat(fBem.valor_mercado.replace(/[^0-9,.]/g,"").replace(",",".")) : null,
+                observacao: fBem.observacao || null,
+                ativo: fBem.ativo,
+              };
+              let bemId: string;
+              if (editBem) {
+                await atualizarBem(editBem.id, payload);
+                bemId = editBem.id;
+              } else {
+                const novo = await criarBem(payload);
+                bemId = novo.id;
+              }
+              await vincularConsorciosBem(bemId, Array.from(bemConsorciosSel));
+              await listarBens(contaId).then(setBens);
+              setModalBem(false);
+            };
+
+            // Valor total alienado por bem
+            const saldoBem = (b: Bem) => {
+              const vins = b.consorcios_vinculados ?? [];
+              return vins.reduce((s, v) => {
+                const c = v.consorcio;
+                if (!c) return s;
+                const restantes = c.total_parcelas - c.parcelas_pagas;
+                return s + restantes * c.valor_parcela_mensal;
+              }, 0);
+            };
+
+            const totalBens = bens.length;
+            const totalValor = bens.reduce((s, b) => s + (b.valor_aquisicao ?? 0), 0);
+            const totalAlienados = bens.filter(b => (b.consorcios_vinculados ?? []).length > 0).length;
+            const totalSaldoAlienacao = bens.reduce((s, b) => s + saldoBem(b), 0);
+
+            return (
+            <div>
+              {/* KPI */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
+                {[
+                  { label: "Total de bens",        value: totalBens,                                                               unit: "bens" },
+                  { label: "Valor de aquisição",   value: fmtBRL(totalValor),                                                     unit: "" },
+                  { label: "Com alienação ativa",  value: totalAlienados,                                                         unit: "bens" },
+                  { label: "Saldo alienado total", value: fmtBRL(totalSaldoAlienacao),                                            unit: "" },
+                ].map((k, i) => (
+                  <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{k.value} <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-2)" }}>{k.unit}</span></div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Bens com Alienação Fiduciária <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({totalBens} cadastrados)</span></div>
+                    <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Máquinas, veículos e imóveis vinculados a cotas de consórcio contempladas</div>
+                  </div>
+                  <button style={btnV} onClick={() => abrirBem()}>+ Novo Bem</button>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <TH cols={["Tipo", "Descrição", "Marca / Modelo", "Ano", "Valor Aquisição", "Cartas Alienadas", "Saldo Alienado", ""]} />
+                  <tbody>
+                    {bens.length === 0 && (
+                      <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#888" }}>
+                        Nenhum bem cadastrado.<br/>
+                        <span style={{ fontSize: 11, color: "#aaa" }}>Cadastre os bens adquiridos com cartas de crédito de consórcios contemplados.</span>
+                      </td></tr>
+                    )}
+                    {bens.map((b, i) => {
+                      const [bg, cl] = TIPO_BEM_COR[b.tipo] ?? ["#F5F5F5","#666"];
+                      const vins = b.consorcios_vinculados ?? [];
+                      const saldo = saldoBem(b);
+                      return (
+                        <tr key={b.id} style={{ borderBottom: i < bens.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(TIPO_BEM_LABEL[b.tipo], bg, cl)}</td>
+                          <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{b.descricao}</td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{[b.marca, b.modelo].filter(Boolean).join(" ") || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{b.ano_fabricacao ?? "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13 }}>{fmtBRL(b.valor_aquisicao)}</td>
+                          <td style={{ padding: "10px 14px" }}>
+                            {vins.length === 0 ? <span style={{ color: "#aaa", fontSize: 11 }}>Sem alienação</span> :
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                {vins.map(v => v.consorcio && (
+                                  <span key={v.id} style={{ background: "#E6F1FB", color: "#0C447C", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
+                                    {v.consorcio.administradora} #{v.consorcio.numero_cota}
+                                  </span>
+                                ))}
+                              </div>
+                            }
+                          </td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13, color: saldo > 0 ? "#E24B4A" : "var(--text-2)" }}>{saldo > 0 ? fmtBRL(saldo) : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              <button style={btnE} onClick={() => abrirBem(b)}>Editar</button>
+                              <button style={btnX} onClick={() => { if (confirm(`Excluir "${b.descricao}"?`)) excluirBem(b.id).then(() => setBens(x => x.filter(r => r.id !== b.id))); }}>✕</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── Modal Bem ── */}
+              {modalBem && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                  <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 760, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,.22)" }}>
+                    <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>{editBem ? "Editar Bem" : "Novo Bem"}</div>
+                      <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }} onClick={() => setModalBem(false)}>✕</button>
+                    </div>
+
+                    {/* Abas do modal */}
+                    <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", padding: "0 24px" }}>
+                      {(["identificacao","alienacao"] as const).map(t => (
+                        <button key={t} onClick={() => setTabBem(t)} style={{ background: "none", border: "none", borderBottom: tabBem === t ? "2px solid #1A4870" : "2px solid transparent", padding: "10px 16px", fontWeight: tabBem === t ? 700 : 400, color: tabBem === t ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
+                          {t === "identificacao" ? "Identificação" : `Alienação Fiduciária${bemConsorciosSel.size > 0 ? ` (${bemConsorciosSel.size})` : ""}`}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ padding: "20px 24px" }}>
+                      {tabBem === "identificacao" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
+                            {fld("Tipo *", <select style={inp} value={fBem.tipo} onChange={e => setFBem(p => ({ ...p, tipo: e.target.value as TipoBem }))}>
+                              {(Object.keys(TIPO_BEM_LABEL) as TipoBem[]).map(t => <option key={t} value={t}>{TIPO_BEM_LABEL[t]}</option>)}
+                            </select>)}
+                            {fld("Descrição *", <input style={inp} value={fBem.descricao} onChange={e => setFBem(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: John Deere 6M 165cv — nº série 123456" />)}
+                          </div>
+
+                          {ehVeiculo(fBem.tipo) && (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 1fr 1fr", gap: 12 }}>
+                              {fld("Marca", <input style={inp} value={fBem.marca} onChange={e => setFBem(p => ({ ...p, marca: e.target.value }))} placeholder="Ex: John Deere" />)}
+                              {fld("Modelo", <input style={inp} value={fBem.modelo} onChange={e => setFBem(p => ({ ...p, modelo: e.target.value }))} placeholder="Ex: 6M 165cv" />)}
+                              {fld("Ano", <input style={inp} type="number" value={fBem.ano_fabricacao} onChange={e => setFBem(p => ({ ...p, ano_fabricacao: e.target.value }))} placeholder="2024" />)}
+                              {fld("Placa", <input style={inp} value={fBem.placa} onChange={e => setFBem(p => ({ ...p, placa: e.target.value.toUpperCase() }))} placeholder="ABC1D23" />)}
+                              {fld("Nº Série / Chassi", <input style={inp} value={fBem.numero_serie} onChange={e => setFBem(p => ({ ...p, numero_serie: e.target.value }))} />)}
+                            </div>
+                          )}
+
+                          {ehImovel(fBem.tipo) && (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 80px 120px", gap: 12 }}>
+                              {fld("Matrícula", <input style={inp} value={fBem.matricula_imovel} onChange={e => setFBem(p => ({ ...p, matricula_imovel: e.target.value }))} />)}
+                              {fld("Cartório", <input style={inp} value={fBem.cartorio} onChange={e => setFBem(p => ({ ...p, cartorio: e.target.value }))} />)}
+                              {fld("Município", <input style={inp} value={fBem.municipio} onChange={e => setFBem(p => ({ ...p, municipio: e.target.value }))} />)}
+                              {fld("UF", <input style={inp} value={fBem.estado} onChange={e => setFBem(p => ({ ...p, estado: e.target.value.toUpperCase().slice(0,2) }))} maxLength={2} />)}
+                              {fld("Área (ha)", <input style={inp} type="number" value={fBem.area_ha} onChange={e => setFBem(p => ({ ...p, area_ha: e.target.value }))} />)}
+                            </div>
+                          )}
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                            {fld("Valor de Aquisição (R$)", <InputMonetario style={inp} value={fBem.valor_aquisicao ? parseFloat(fBem.valor_aquisicao.replace(/[^0-9,.]/g,"").replace(",",".")) || 0 : 0} onChange={v => setFBem(p => ({ ...p, valor_aquisicao: String(v) }))} />)}
+                            {fld("Data de Aquisição", <input style={inp} type="date" value={fBem.data_aquisicao} onChange={e => setFBem(p => ({ ...p, data_aquisicao: e.target.value }))} />)}
+                            {fld("Valor de Mercado Estimado (R$)", <InputMonetario style={inp} value={fBem.valor_mercado ? parseFloat(fBem.valor_mercado.replace(/[^0-9,.]/g,"").replace(",",".")) || 0 : 0} onChange={v => setFBem(p => ({ ...p, valor_mercado: String(v) }))} />)}
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            {fld("Fazenda vinculada", <select style={inp} value={fBem.fazenda_id} onChange={e => setFBem(p => ({ ...p, fazenda_id: e.target.value }))}>
+                              <option value="">— Selecione —</option>
+                              {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                            </select>)}
+                            {fld("Observações", <input style={inp} value={fBem.observacao} onChange={e => setFBem(p => ({ ...p, observacao: e.target.value }))} />)}
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <input type="checkbox" id="bem-ativo" checked={fBem.ativo} onChange={e => setFBem(p => ({ ...p, ativo: e.target.checked }))} />
+                            <label htmlFor="bem-ativo" style={{ fontSize: 13, cursor: "pointer" }}>Bem ativo</label>
+                          </div>
+                        </div>
+                      )}
+
+                      {tabBem === "alienacao" && (
+                        <div>
+                          <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>
+                            Selecione as cotas de consórcio <strong>contempladas</strong> que têm este bem como garantia (alienação fiduciária). Um bem pode estar alienado a mais de uma cota.
+                          </div>
+                          {consorciosContemplados.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: 32, color: "#aaa", fontSize: 13 }}>
+                              Nenhum consórcio contemplado encontrado na conta.<br/>
+                              <span style={{ fontSize: 11 }}>Registre a contemplação em Financeiro → Consórcios primeiro.</span>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              {consorciosContemplados.map(c => {
+                                const sel = bemConsorciosSel.has(c.id);
+                                const faz = fazendas.find(f => f.id === c.fazenda_id);
+                                const saldo = (c.total_parcelas - c.parcelas_pagas) * (consorciosContemplados.find(x => x.id === c.id) as typeof c)?.valor_credito / c.total_parcelas;
+                                return (
+                                  <label key={c.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`, background: sel ? "#D5E8F5" : "var(--bg-page)", cursor: "pointer" }}>
+                                    <input type="checkbox" checked={sel} onChange={() => setBemConsorciosSel(prev => { const s = new Set(prev); sel ? s.delete(c.id) : s.add(c.id); return s; })} style={{ marginTop: 2 }} />
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{c.administradora} — Cota {c.numero_cota}{c.grupo ? ` / Grupo ${c.grupo}` : ""}</div>
+                                      <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
+                                        {faz?.nome ?? "—"} · {c.tipo_bem} · Crédito: {c.valor_credito.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · {c.parcelas_pagas}/{c.total_parcelas} pagas
+                                      </div>
+                                    </div>
+                                    {sel && <span style={{ background: "#1A4870", color: "#fff", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>Alienado</span>}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <button style={btnR} onClick={() => setModalBem(false)}>Cancelar</button>
+                      <button style={btnV} onClick={salvarBem}>Salvar Bem</button>
                     </div>
                   </div>
                 </div>
