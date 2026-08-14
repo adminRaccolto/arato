@@ -169,7 +169,7 @@ export default function ConsorciosPage() {
     const param = contaId && !contaId.startsWith("sem_conta_")
       ? `conta_id=${contaId}`
       : `fazenda_ids=${(fazendaIds.length > 0 ? fazendaIds : [fazendaId]).join(",")}`;
-    const res = await fetch(`/api/financeiro/consorcios?${param}`);
+    const res = await fetch(`/api/financeiro/consorcios?${param}`, { cache: "no-store" });
     if (!res.ok) return;
     const d = await res.json() as { consorcios: Consorcio[]; parcelas: ParcelaConsorcio[] };
     setConsorcios(d.consorcios ?? []);
@@ -507,6 +507,8 @@ export default function ConsorciosPage() {
     const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; error?: string };
     if (!res.ok) { alert(json.error ?? "Erro ao gerar parcelas."); return; }
     await carregar();
+    // Aguarda um frame para o React pintar as parcelas novas antes do alert bloquear o thread
+    await new Promise(r => setTimeout(r, 50));
     alert(`✅ ${json.parcelas ?? 0} parcelas criadas — ${json.cps ?? 0} CPs lançadas no financeiro.${json.rateio ? `\nRateio ativo: ${json.ciclos ?? 0} ciclo(s) — uma CP por ciclo por parcela.` : ""}\n\nPara ver as CPs vencidas, clique na aba "Vencidos" em Contas a Pagar.`);
   }
 
