@@ -839,17 +839,75 @@ Na apólice, clique em **+ Sinistro**. Informe: data da ocorrência, descrição
 **Caminho:** Menu superior → **Financeiro** → **Consórcios**
 
 ### O que faz
-Gerencia cotas de consórcio de máquinas, imóveis e outros bens. Controla parcelas mensais, contemplação e migração para financiamento.
+Gerencia cotas de consórcio de máquinas, imóveis e outros bens. Controla parcelas mensais, contemplação e migração para financiamento. Parcelas não pagas geram Contas a Pagar automaticamente no Financeiro.
+
+> **Escopo:** Consórcios são carregados por **conta** (não por fazenda ativa). Todos os consórcios de todas as fazendas da conta aparecem na mesma lista.
 
 ### Como cadastrar um consórcio
 1. Clique em **+ Novo Consórcio**
-2. Preencha: administradora, bem objeto, valor do crédito, número de parcelas, valor da parcela, data de início
-3. Salve
+2. Preencha os campos obrigatórios:
+   - **Administradora*** — texto livre (ex: Porto Seguro, Embracon)
+   - **Número da Cota*** — código da cota
+   - **Grupo** — número do grupo do consórcio
+   - **Tipo de Bem*** — select: máquina agrícola, veículo leve, veículo pesado, imóvel rural, imóvel urbano, outros
+   - **Bem (descrição)** — texto livre (ex: "Tratores 120cv x3")
+   - **Valor do Crédito (R$)***
+   - **Valor da Parcela Mensal (R$)***
+   - **Total de Parcelas*** e **Parcelas já Pagas***
+   - **Data de Início*** — data da primeira parcela
+   - **Status*** — A Contemplar ou Contemplado
+   - **Agricultor / Consorciado** — select dos produtores cadastrados. Vincula o produtor à cota (útil para LCDPR e controle por CPF)
+   - **Fazenda** — qual fazenda da conta recebe o bem
+   - **Observações** — texto livre
+3. Clique em **Salvar**. O sistema gera automaticamente as parcelas e as Contas a Pagar (CP) para todas as parcelas ainda não pagas
+
+### Campos automáticos ao salvar
+- Parcelas futuras (depois das `parcelas_pagas`) → criadas em `parcelas_consorcio`
+- Contas a Pagar → criadas em `lancamentos` com:
+  - Categoria: "Consórcio — A Contemplar" ou "Consórcio — Contemplado"
+  - Status: `em_aberto`
+  - Origem: `consorcio`
+  - Vencimento = data de cada parcela
+
+### Editar um consórcio existente
+1. Clique em **Abrir** na linha do consórcio (abre em modo visualização)
+2. Clique em **✏ Editar** dentro do modal para habilitar os campos
+3. Ajuste os dados e salve — apenas os dados cadastrais são atualizados; as parcelas existentes **não são regeneradas automaticamente**
+4. Para recalcular as parcelas e CPs após editar dados (ex: novo valor de parcela), use o botão **Regenerar Parcelas e CPs** (ver abaixo)
+
+### Regenerar Parcelas e CPs
+Botão disponível dentro do modal de edição (aparecer somente no modo edição). Recalcula todo o cronograma do consórcio.
+
+**O que faz:**
+- Remove todas as parcelas existentes do banco
+- Remove todas as CPs em aberto vinculadas ao consórcio (não remove as já pagas)
+- Gera novo conjunto de parcelas (total_parcelas) e CPs para as parcelas futuras
+
+**Quando usar:** sempre que alterar valor da parcela, total de parcelas, parcelas pagas ou data de início.
+
+Após a conclusão, um alerta exibe: `✅ N parcelas criadas — N CPs lançadas no financeiro.`
+
+**Atenção:** para ver as CPs vencidas (passadas), clique na aba **Vencidos** em **Contas a Pagar**. O sistema busca automaticamente 2 anos para trás ao entrar nessa aba.
+
+### Extração por IA (PDF da cédula / contrato)
+Se a administradora fornece o contrato em PDF, é possível extrair os dados automaticamente:
+1. Dentro do modal de novo consórcio, clique no botão de upload de PDF
+2. O sistema envia o PDF para a IA (Claude) que extrai os campos
+3. Campos preenchidos automaticamente: administradora, número da cota, grupo, tipo de bem, valor do crédito, valor da parcela, total de parcelas, data de início
+4. **Agricultor**: se o PDF contém o CPF do tomador e este CPF corresponde a um produtor cadastrado, o campo Agricultor é preenchido automaticamente
+5. Confira os dados extraídos antes de salvar — a IA pode errar em documentos com formatação não padrão
 
 ### Contemplação
-Quando a cota for contemplada, clique em **Registrar Contemplação**.
-- Informe: data, tipo (sorteio ou lance), valor da carta de crédito
-- O sistema migra automaticamente para "Consórcio Contemplado" e pode gerar um contrato financeiro equivalente
+Quando a cota for contemplada, edite o consórcio e mude o status para **Contemplado**.
+- O sistema atualiza a categoria das CPs para "Consórcio — Contemplado"
+- Use **Regenerar Parcelas e CPs** para atualizar todo o cronograma
+- Para registrar formalmente: anote a data e tipo de contemplação no campo Observações
+
+### Erros comuns
+- **"CPs não aparecem em Contas a Pagar"**: Verifique a data de vencimento das parcelas. Se são antigas (passadas), clique na aba **Vencidos** em Contas a Pagar — o sistema busca 2 anos para trás nessa aba.
+- **"Regenerar não faz nada"**: O modal precisa estar em modo **Edição** (clique em ✏ Editar primeiro).
+- **"Parcelas geradas mas sem CP"**: O valor da parcela mensal pode estar zerado — verifique e ajuste; depois Regenerar.
+- **"Agricultor não preenche automaticamente pela IA"**: O CPF do tomador não foi encontrado nos produtores cadastrados. Selecione manualmente o agricultor no select após a extração.
 
 ---
 
@@ -1895,6 +1953,15 @@ R: Classifica se o lançamento pertence à atividade rural (PF produtor rural), 
 **P: Como configurar um novo cliente no sistema?**
 R: O administrador (raccotlo) cria o usuário via painel admin. O novo cliente deve então: (1) fazer login, (2) ir em **Cadastros → Fazendas** e criar sua fazenda, (3) preencher **Parâmetros do Sistema** com dados fiscais e certificado A1, (4) criar os Ciclos e Talhões, (5) começar a operar.
 
+**P: Regenerei as parcelas do consórcio mas as CPs não aparecem em Contas a Pagar.**
+R: CPs com datas no passado (parcelas vencidas) aparecem na aba **Vencidos** de Contas a Pagar, não na aba padrão. Clique na aba Vencidos — o sistema busca automaticamente 2 anos atrás para cobrir essas parcelas. CPs futuras aparecem em Em Aberto dentro do período padrão.
+
+**P: O campo Agricultor no consórcio não é obrigatório?**
+R: Não — é opcional. Serve para vincular o produtor titular da cota, útil quando o consórcio está no nome de um produtor PF específico (para LCDPR ou controle por CPF). Se a conta tem apenas um produtor, pode deixar vazio.
+
+**P: Posso ter consórcios de fazendas diferentes na mesma tela?**
+R: Sim. A tela de Consórcios carrega todos os consórcios da **conta** (não apenas da fazenda ativa). Todos aparecem na lista, independente de qual fazenda está selecionada no TopNav.
+
 ---
 
 ## MÓDULO: MODO CAMPO (MOBILE)
@@ -2236,4 +2303,36 @@ Os módulos **Algodão**, **BI Raccotlo**, **Proteção de Margem** e outros add
 **Agora:** a página exibe a tela de upgrade/bloqueio se o módulo não estiver habilitado.
 
 **Para o admin (Raccotlo):** para ativar ou desativar um add-on para um cliente, acesse **Gestão Arato → Módulos**, selecione a conta, marque/desmarque o módulo e clique em **Salvar Alterações**. A mudança entra em vigor imediatamente (sem precisar o cliente recarregar a página, graças à sincronização em tempo real via Realtime).
+
+---
+
+## ATUALIZAÇÃO — Consórcios: Campo Agricultor e Regenerar CPs
+
+### Novo campo: Agricultor / Consorciado
+O cadastro de consórcios agora tem o campo **Agricultor / Consorciado** — um select dos produtores cadastrados na conta. Permite vincular quem é o titular da cota (ex: em casos de consórcios no nome de um produtor PF específico dentro de um grupo com várias fazendas).
+
+**Uso no LCDPR:** quando o agricultor PF é vinculado ao consórcio, o custo das parcelas pode ser classificado corretamente por entidade contábil.
+
+**Extração automática por IA:** ao carregar um PDF do contrato de adesão, a IA tenta encontrar o CPF do tomador e o cruza com os produtores cadastrados. Se encontrar, preenche o campo Agricultor automaticamente.
+
+### Regenerar Parcelas e CPs
+Botão **Regenerar Parcelas e CPs** disponível ao editar um consórcio. Apaga e recria todo o cronograma de parcelas e CPs em aberto.
+
+**Retorno visual:** após concluir, o sistema exibe: `✅ N parcelas criadas — N CPs lançadas no financeiro.`
+
+**Importante:** se as CPs geradas tiverem datas no **passado** (parcelas vencidas anteriores a hoje), elas aparecem na aba **Vencidos** de Contas a Pagar — não na aba padrão "Em Aberto". Ao clicar na aba Vencidos, o sistema amplia automaticamente o período de busca para **2 anos atrás**, garantindo que todas as CPs vencidas do consórcio apareçam.
+
+---
+
+## ATUALIZAÇÃO — Contas a Pagar: Aba Vencidos busca 2 anos atrás
+
+**Caminho:** Financeiro → Contas a Pagar → aba **Vencidos**
+
+Ao clicar na aba **Vencidos**, o filtro de período é automaticamente ajustado para:
+- Início: hoje − 2 anos
+- Fim: hoje
+
+Isso garante que CPs antigas (como parcelas de consórcio lançadas retroativamente após um Regenerar) apareçam na lista. Ao sair da aba Vencidos, o período volta ao padrão (hoje → +3 meses).
+
+**Pergunta frequente:** "Regenerei as parcelas do consórcio mas as CPs não aparecem em nenhuma aba." → Clique na aba **Vencidos** para ver as parcelas passadas; as futuras aparecem em Em Aberto dentro do período padrão.
 `;
