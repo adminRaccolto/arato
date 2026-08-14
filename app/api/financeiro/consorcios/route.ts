@@ -120,7 +120,7 @@ export async function PATCH(req: NextRequest) {
           valor:             body.valor_parcela_mensal,
           data_lancamento:   dataVenc,
           data_vencimento:   dataVenc,
-          status:            "aberto",
+          status:            "em_aberto",
           consorcio_id:      body.consorcio_id,
           numero_documento:  String(i),
           origem_lancamento: "consorcio",
@@ -130,13 +130,17 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (novasParc.length > 0) {
-      await sb.from("parcelas_consorcio").insert(novasParc);
+      const { error: parcErr } = await sb.from("parcelas_consorcio").insert(novasParc);
+      if (parcErr) return NextResponse.json({ error: `Erro ao inserir parcelas: ${parcErr.message}` }, { status: 400 });
     }
+    let cpsInseridas = 0;
     for (let k = 0; k < novasCPs.length; k += 100) {
-      await sb.from("lancamentos").insert(novasCPs.slice(k, k + 100));
+      const { error: cpErr } = await sb.from("lancamentos").insert(novasCPs.slice(k, k + 100));
+      if (cpErr) return NextResponse.json({ error: `Erro ao inserir CPs: ${cpErr.message}` }, { status: 400 });
+      cpsInseridas += novasCPs.slice(k, k + 100).length;
     }
 
-    return NextResponse.json({ ok: true, parcelas: novasParc.length, cps: novasCPs.length });
+    return NextResponse.json({ ok: true, parcelas: novasParc.length, cps: cpsInseridas });
   } catch (e) {
     console.error("[api/financeiro/consorcios PATCH]", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -230,7 +234,7 @@ export async function POST(req: NextRequest) {
             valor:             body.valor_parcela_mensal,
             data_lancamento:   dataVenc,
             data_vencimento:   dataVenc,
-            status:            "aberto",
+            status:            "em_aberto",
             consorcio_id:      consorId,
             numero_documento:  String(i),
             origem_lancamento: "consorcio",
@@ -240,10 +244,12 @@ export async function POST(req: NextRequest) {
       }
 
       if (novasParc.length > 0) {
-        await sb.from("parcelas_consorcio").insert(novasParc);
+        const { error: parcErr } = await sb.from("parcelas_consorcio").insert(novasParc);
+        if (parcErr) console.error("[consorcios POST parcelas]", parcErr.message);
       }
       for (let k = 0; k < novasCPs.length; k += 100) {
-        await sb.from("lancamentos").insert(novasCPs.slice(k, k + 100));
+        const { error: cpErr } = await sb.from("lancamentos").insert(novasCPs.slice(k, k + 100));
+        if (cpErr) console.error("[consorcios POST CPs]", cpErr.message);
       }
     }
 
