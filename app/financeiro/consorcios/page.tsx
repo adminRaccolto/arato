@@ -120,6 +120,7 @@ export default function ConsorciosPage() {
   const [parcelas,   setParcelas]   = useState<ParcelaConsorcio[]>([]);
   const [expandido,  setExpandido]  = useState<string | null>(null);
   const [produtores, setProdutores] = useState<ProdutorSimples[]>([]);
+  const [busca,      setBusca]      = useState("");
 
   // Modal consórcio
   const [modalConsor,  setModalConsor]  = useState(false);
@@ -526,17 +527,43 @@ export default function ConsorciosPage() {
         {/* ── ABA LISTA ──────────────────────────────────────── */}
         {aba === "lista" && (
           <div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 14 }}>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 14, alignItems: "center" }}>
+              <div style={{ position: "relative", flex: 1, maxWidth: 340 }}>
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 14, pointerEvents: "none" }}>🔍</span>
+                <input
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Filtrar por grupo ou número da cota…"
+                  style={{ width: "100%", padding: "8px 10px 8px 32px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-page)", color: "var(--text-1)", boxSizing: "border-box" }}
+                />
+                {busca && <button onClick={() => setBusca("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 14 }}>✕</button>}
+              </div>
               <button onClick={() => abrirConsorcio()} style={btnV}>+ Novo Consórcio</button>
             </div>
 
-            {consorcios.length === 0 ? (
+            {(() => {
+              const termo = busca.trim().toLowerCase();
+              const filtrados = termo
+                ? consorcios.filter(c =>
+                    c.numero_cota.toLowerCase().includes(termo) ||
+                    (c.grupo ?? "").toLowerCase().includes(termo) ||
+                    c.administradora.toLowerCase().includes(termo)
+                  )
+                : consorcios;
+
+              if (consorcios.length === 0) return (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum consórcio cadastrado.
               </div>
-            ) : (
+              );
+              if (filtrados.length === 0) return (
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                Nenhum consórcio encontrado para <strong>"{busca}"</strong>.
+              </div>
+              );
+              return (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {consorcios.map(c => {
+                {filtrados.map(c => {
                   const sm = STATUS_META[c.status];
                   const tb = TIPO_BEM_META[c.tipo_bem];
                   const progresso = c.total_parcelas > 0 ? (c.parcelas_pagas / c.total_parcelas) * 100 : 0;
@@ -664,7 +691,8 @@ export default function ConsorciosPage() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
           </div>
         )}
 
