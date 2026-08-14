@@ -153,6 +153,16 @@ export default function ConsorciosPage() {
   const [parcelaData, setParcelaData] = useState(hoje());
   const [parcelaSaving, setParcelaSaving] = useState(false);
 
+  // Rateio por ciclo
+  const [tabConsor,       setTabConsor]       = useState<"dados" | "rateio">("dados");
+  const [rateioLinhas,    setRateioLinhas]    = useState<{ ciclo_id: string; percentual: string }[]>([]);
+  const [rateioSaving,    setRateioSaving]    = useState(false);
+  const [rateioErr,       setRateioErr]       = useState("");
+  const [rateioOk,        setRateioOk]        = useState(false);
+  const [anoSafraFiltroR, setAnoSafraFiltroR] = useState("");
+  const [anosRat,         setAnosRat]         = useState<{ id: string; descricao: string }[]>([]);
+  const [ciclosRat,       setCiclosRat]       = useState<{ id: string; descricao: string; cultura: string | null; ano_safra_id: string }[]>([]);
+
   // ── Carregar ───────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!contaId && !fazendaId) return;
@@ -186,6 +196,32 @@ export default function ConsorciosPage() {
       setOgContemplado(co);
     });
   }, [fazendaId]);
+
+  // Carrega anos/ciclos quando o modal de consórcio abre
+  useEffect(() => {
+    if (!modalConsor || !fazendaId) return;
+    Promise.all([
+      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
+      supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("descricao"),
+    ]).then(([{ data: anos }, { data: cics }]) => {
+      setAnosRat((anos ?? []) as { id: string; descricao: string }[]);
+      setCiclosRat((cics ?? []) as { id: string; descricao: string; cultura: string | null; ano_safra_id: string }[]);
+    });
+  }, [modalConsor, fazendaId]);
+
+  // Carrega rateio existente ao editar um consórcio
+  useEffect(() => {
+    if (!modalConsor || !consorEdit) { setRateioLinhas([]); return; }
+    supabase.from("consorcio_rateios")
+      .select("ciclo_id, percentual")
+      .eq("consorcio_id", consorEdit.id)
+      .then(({ data }) => {
+        setRateioLinhas((data ?? []).map((r: { ciclo_id: string | null; percentual: number }) => ({
+          ciclo_id: r.ciclo_id ?? "",
+          percentual: String(r.percentual),
+        })));
+      });
+  }, [modalConsor, consorEdit]);
 
   // ── KPIs ──────────────────────────────────────────────────
   const aContemplar = consorcios.filter(c => c.status === "a_contemplar");
@@ -289,6 +325,10 @@ export default function ConsorciosPage() {
       setCForm(CONSOR_VAZIO());
     }
     setCErr("");
+    setTabConsor("dados");
+    setRateioErr("");
+    setRateioOk(false);
+    setAnoSafraFiltroR("");
     setModalConsor(true);
   }
 
@@ -409,6 +449,36 @@ export default function ConsorciosPage() {
     }
   }
 
+  // ── Salvar rateio por ciclo ───────────────────────────────
+  async function salvarRateio() {
+    if (!consorEdit) return;
+    setRateioSaving(true);
+    setRateioErr("");
+    setRateioOk(false);
+    try {
+      const linhasValidas = rateioLinhas.filter(l => l.ciclo_id && Number(l.percentual) > 0);
+      const total = linhasValidas.reduce((s, l) => s + (Number(l.percentual) || 0), 0);
+      if (linhasValidas.length > 0 && Math.abs(total - 100) >= 0.01) {
+        throw new Error(`Total ${total.toFixed(2)}% — o rateio deve somar exatamente 100%.`);
+      }
+      const res = await fetch("/api/financeiro/consorcios", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consorcio_id: consorEdit.id,
+          rateios: linhasValidas.map(l => ({ ciclo_id: l.ciclo_id, percentual: Number(l.percentual) })),
+        }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Erro ao salvar rateio.");
+      setRateioOk(true);
+    } catch (e: unknown) {
+      setRateioErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRateioSaving(false);
+    }
+  }
+
   // ── Gerar parcelas + CPs no financeiro ───────────────────
   // Usa API route (service_role_key) — imune a JWT expirado e RLS.
   async function gerarParcelas(c: Consorcio) {
@@ -437,7 +507,7 @@ export default function ConsorciosPage() {
     const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; error?: string };
     if (!res.ok) { alert(json.error ?? "Erro ao gerar parcelas."); return; }
     await carregar();
-    alert(`✅ ${json.parcelas ?? 0} parcelas criadas — ${json.cps ?? 0} CPs lançadas no financeiro.\n\nPara ver as CPs vencidas, clique na aba "Vencidos" em Contas a Pagar.`);
+    alert(`✅ ${json.parcelas ?? 0} parcelas criadas — ${json.cps ?? 0} CPs lançadas no financeiro.${json.rateio ? `\nRateio ativo: ${json.ciclos ?? 0} ciclo(s) — uma CP por ciclo por parcela.` : ""}\n\nPara ver as CPs vencidas, clique na aba "Vencidos" em Contas a Pagar.`);
   }
 
   // ── Parcelas visíveis ─────────────────────────────────────
@@ -763,10 +833,32 @@ export default function ConsorciosPage() {
       {modalConsor && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            {/* Cabeçalho */}
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{consorEdit ? "Editar Consórcio" : "Novo Consórcio"}</div>
               <button onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
+
+            {/* Tab bar */}
+            <div style={{ display: "flex", borderBottom: "0.5px solid var(--bg-tag)" }}>
+              {(["dados", "rateio"] as const).map(t => {
+                const nCiclos = rateioLinhas.filter(l => l.ciclo_id).length;
+                const label = t === "dados" ? "Dados" : nCiclos > 0 ? `Rateio (${nCiclos})` : "Rateio";
+                return (
+                  <button key={t} onClick={() => { setTabConsor(t); setRateioErr(""); setRateioOk(false); }}
+                    style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
+                      fontWeight: tabConsor === t ? 700 : 400,
+                      color: tabConsor === t ? "#111111" : "#666",
+                      borderBottom: tabConsor === t ? "2.5px solid #111111" : "2.5px solid transparent",
+                      marginBottom: -1 }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* TAB: DADOS */}
+            {tabConsor === "dados" && (
             <div style={{ padding: "20px 22px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div>
@@ -830,13 +922,122 @@ export default function ConsorciosPage() {
                 </div>
               </div>
             </div>
+            )}
+
+            {/* TAB: RATEIO */}
+            {tabConsor === "rateio" && (
+            <div style={{ padding: "20px 22px" }}>
+              <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7B4A00", marginBottom: 16 }}>
+                Após salvar o rateio, clique em <strong>Regenerar</strong> no card do consórcio para aplicar às CPs do financeiro.
+              </div>
+              {!consorEdit ? (
+                <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "16px", fontSize: 13, color: "var(--text-2)", textAlign: "center" }}>
+                  Salve o consórcio primeiro para configurar o rateio.
+                </div>
+              ) : (
+              <>
+                {/* Filtro por Ano Safra */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={lbl}>Filtrar ciclos por Ano Safra</label>
+                  <select value={anoSafraFiltroR} onChange={e => setAnoSafraFiltroR(e.target.value)} style={{ ...inp, maxWidth: 280 }}>
+                    <option value="">— Todos os anos —</option>
+                    {anosRat.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                  </select>
+                </div>
+
+                {/* Linhas de rateio */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                  {rateioLinhas.map((linha, idx) => {
+                    const opsCiclos = ciclosRat.filter(c => !anoSafraFiltroR || c.ano_safra_id === anoSafraFiltroR);
+                    return (
+                      <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 130px 36px", gap: 8, alignItems: "center" }}>
+                        <select
+                          value={linha.ciclo_id}
+                          onChange={e => setRateioLinhas(ls => ls.map((l, i) => i === idx ? { ...l, ciclo_id: e.target.value } : l))}
+                          style={inp}
+                        >
+                          <option value="">— Selecione o ciclo —</option>
+                          {opsCiclos.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.cultura ? `${c.cultura} · ` : ""}{c.descricao}
+                            </option>
+                          ))}
+                        </select>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <input
+                            type="number" min="0" max="100" step="0.01"
+                            value={linha.percentual}
+                            onChange={e => setRateioLinhas(ls => ls.map((l, i) => i === idx ? { ...l, percentual: e.target.value } : l))}
+                            style={{ ...inp, textAlign: "right", width: "100%" }}
+                            placeholder="0,00"
+                          />
+                          <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>%</span>
+                        </div>
+                        <button
+                          onClick={() => setRateioLinhas(ls => ls.filter((_, i) => i !== idx))}
+                          style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, cursor: "pointer", fontSize: 16, color: "#791F1F" }}
+                        >×</button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setRateioLinhas(ls => [...ls, { ciclo_id: "", percentual: "" }])}
+                  style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", cursor: "pointer", fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}
+                >+ Adicionar Ciclo</button>
+
+                {/* Barra de total */}
+                {rateioLinhas.length > 0 && (() => {
+                  const total = rateioLinhas.reduce((s, l) => s + (Number(l.percentual) || 0), 0);
+                  const ok100 = Math.abs(total - 100) < 0.01;
+                  return (
+                    <div style={{ marginBottom: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, fontWeight: 600, color: ok100 ? "#1A6B3C" : total > 100 ? "#791F1F" : "#7B4A00" }}>
+                        <span>Total rateio</span>
+                        <span>{total.toFixed(2)}%</span>
+                      </div>
+                      <div style={{ height: 8, background: "var(--bg-tag)", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(100, total)}%`, background: ok100 ? "#16A34A" : total > 100 ? "#E24B4A" : "#C9921B", borderRadius: 4, transition: "width 0.2s, background 0.2s" }} />
+                      </div>
+                      {!ok100 && total > 0 && (
+                        <div style={{ fontSize: 11, color: "#7B4A00", marginTop: 4 }}>
+                          {total < 100 ? `Faltam ${(100 - total).toFixed(2)}% para completar 100%` : `Excesso de ${(total - 100).toFixed(2)}%`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </>
+              )}
+            </div>
+            )}
+
+            {/* Rodapé */}
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
-              {cErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{cErr}</div>}
+              {tabConsor === "dados" && cErr && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{cErr}</div>
+              )}
+              {tabConsor === "rateio" && rateioErr && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{rateioErr}</div>
+              )}
+              {tabConsor === "rateio" && rateioOk && (
+                <div style={{ background: "#E8F5E9", border: "0.5px solid #16A34A40", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#1A6B3C", marginBottom: 12 }}>
+                  ✅ Rateio salvo. Use &quot;Regenerar&quot; para aplicar às CPs existentes.
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
-                <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
-                  {cSaving ? "Salvando…" : "Salvar"}
-                </button>
+                {tabConsor === "dados" && (
+                  <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
+                    {cSaving ? "Salvando…" : "Salvar"}
+                  </button>
+                )}
+                {tabConsor === "rateio" && (
+                  <button onClick={salvarRateio} disabled={rateioSaving || !consorEdit} style={{ ...btnV, background: rateioSaving || !consorEdit ? "var(--text-muted)" : "#111111", cursor: rateioSaving || !consorEdit ? "default" : "pointer" }}>
+                    {rateioSaving ? "Salvando…" : "Salvar Rateio"}
+                  </button>
+                )}
               </div>
             </div>
           </div>

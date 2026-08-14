@@ -2482,6 +2482,17 @@ export type TaxaVariavelHistorico = {
   updated_at?: string;
 };
 
+export type ConsorciRateio = {
+  id?: string;
+  consorcio_id: string;
+  ciclo_id?: string | null;
+  centro_custo_id?: string | null;
+  percentual: number;
+  created_at?: string;
+  // join
+  ciclo?: { id: string; descricao: string; cultura?: string | null };
+};
+
 export type TipoBem = "maquina_agricola" | "veiculo_leve" | "veiculo_pesado" | "imovel_rural" | "imovel_urbano" | "equipamento" | "outro";
 
 export type Bem = {

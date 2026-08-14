@@ -92,6 +92,15 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle();
     const ogId: string | null = ogRow?.id ?? null;
 
+    // Busca rateio por ciclo (se configurado)
+    const { data: rateios } = await sb
+      .from("consorcio_rateios")
+      .select("ciclo_id, percentual, ciclo:ciclos(descricao, cultura)")
+      .eq("consorcio_id", body.consorcio_id);
+    const rateioAtivo = (rateios ?? []).filter((r: { ciclo_id: string | null; percentual: number }) => r.ciclo_id && r.percentual > 0);
+    const totalPct = rateioAtivo.reduce((s: number, r: { percentual: number }) => s + r.percentual, 0);
+    const usarRateio = rateioAtivo.length > 0 && Math.abs(totalPct - 100) < 0.01;
+
     const novasParc: object[] = [];
     const novasCPs: object[] = [];
     const base = new Date(body.data_inicio + "T12:00:00");
@@ -114,20 +123,45 @@ export async function PATCH(req: NextRequest) {
       });
 
       if (!pago && body.valor_parcela_mensal > 0) {
-        novasCPs.push({
-          fazenda_id:        body.fazenda_id,
-          tipo:              "pagar",
-          categoria,
-          descricao:         `${descBase} — Parcela ${i}/${body.total_parcelas}`,
-          valor:             body.valor_parcela_mensal,
-          data_lancamento:   dataVenc,
-          data_vencimento:   dataVenc,
-          status:            "em_aberto",
-          consorcio_id:      body.consorcio_id,
-          numero_documento:  String(i),
-          origem_lancamento: "consorcio",
-          ...(ogId ? { operacao_gerencial_id: ogId } : {}),
-        });
+        if (usarRateio) {
+          // Gera uma CP por ciclo, proporcional ao %
+          for (const r of rateioAtivo as { ciclo_id: string; percentual: number; ciclo?: { descricao?: string; cultura?: string } }[]) {
+            const valor = Math.round(body.valor_parcela_mensal * (r.percentual / 100) * 100) / 100;
+            if (valor <= 0) continue;
+            const cicloLabel = [r.ciclo?.cultura, r.ciclo?.descricao].filter(Boolean).join(" ") || r.ciclo_id;
+            novasCPs.push({
+              fazenda_id:        body.fazenda_id,
+              tipo:              "pagar",
+              categoria,
+              descricao:         `${descBase} — Parcela ${i}/${body.total_parcelas} — ${cicloLabel} (${r.percentual}%)`,
+              valor,
+              data_lancamento:   dataVenc,
+              data_vencimento:   dataVenc,
+              status:            "em_aberto",
+              consorcio_id:      body.consorcio_id,
+              ciclo_id:          r.ciclo_id,
+              numero_documento:  String(i),
+              origem_lancamento: "consorcio",
+              ...(ogId ? { operacao_gerencial_id: ogId } : {}),
+            });
+          }
+        } else {
+          // Sem rateio: uma CP única por parcela
+          novasCPs.push({
+            fazenda_id:        body.fazenda_id,
+            tipo:              "pagar",
+            categoria,
+            descricao:         `${descBase} — Parcela ${i}/${body.total_parcelas}`,
+            valor:             body.valor_parcela_mensal,
+            data_lancamento:   dataVenc,
+            data_vencimento:   dataVenc,
+            status:            "em_aberto",
+            consorcio_id:      body.consorcio_id,
+            numero_documento:  String(i),
+            origem_lancamento: "consorcio",
+            ...(ogId ? { operacao_gerencial_id: ogId } : {}),
+          });
+        }
       }
     }
 
@@ -142,7 +176,7 @@ export async function PATCH(req: NextRequest) {
       cpsInseridas += novasCPs.slice(k, k + 100).length;
     }
 
-    return NextResponse.json({ ok: true, parcelas: novasParc.length, cps: cpsInseridas });
+    return NextResponse.json({ ok: true, parcelas: novasParc.length, cps: cpsInseridas, rateio: usarRateio, ciclos: usarRateio ? rateioAtivo.length : 0 });
   } catch (e) {
     console.error("[api/financeiro/consorcios PATCH]", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -259,6 +293,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id: consorId });
   } catch (e) {
     console.error("[api/financeiro/consorcios]", e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+// PUT /api/financeiro/consorcios
+// Substitui o rateio por ciclo de um consórcio.
+// { consorcio_id, rateios: [{ciclo_id, percentual}] }
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json() as {
+      consorcio_id: string;
+      rateios: { ciclo_id: string; percentual: number }[];
+    };
+    if (!body.consorcio_id) {
+      return NextResponse.json({ error: "consorcio_id obrigatório" }, { status: 400 });
+    }
+    const sb = admin();
+    await sb.from("consorcio_rateios").delete().eq("consorcio_id", body.consorcio_id);
+    if (body.rateios?.length > 0) {
+      const rows = body.rateios.map(r => ({
+        consorcio_id: body.consorcio_id,
+        ciclo_id: r.ciclo_id,
+        percentual: r.percentual,
+      }));
+      const { error } = await sb.from("consorcio_rateios").insert(rows);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, count: body.rateios?.length ?? 0 });
+  } catch (e) {
+    console.error("[api/financeiro/consorcios PUT]", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

@@ -9757,3 +9757,23 @@ ALTER TABLE bem_consorcios ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_all_bem_consorcios" ON bem_consorcios FOR ALL USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 163 — Rateio por ciclo em consórcios
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS consorcio_rateios (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  consorcio_id     UUID NOT NULL REFERENCES consorcios(id) ON DELETE CASCADE,
+  ciclo_id         UUID REFERENCES ciclos(id) ON DELETE SET NULL,
+  centro_custo_id  UUID REFERENCES centros_custo(id) ON DELETE SET NULL,
+  percentual       NUMERIC(6,2) NOT NULL,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(consorcio_id, ciclo_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_consorcio_rateios_consorcio_id ON consorcio_rateios(consorcio_id);
+
+ALTER TABLE consorcio_rateios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_consorcio_rateios" ON consorcio_rateios FOR ALL USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';
