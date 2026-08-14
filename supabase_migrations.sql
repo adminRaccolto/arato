@@ -9746,3 +9746,11 @@ ALTER TABLE lancamentos
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 161 — adiciona coluna valor em centros_custo_contrato
+-- =============================================================================
+ALTER TABLE centros_custo_contrato
+  ADD COLUMN IF NOT EXISTS valor NUMERIC(14,2);
+
+NOTIFY pgrst, 'reload schema';
