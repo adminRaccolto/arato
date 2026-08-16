@@ -286,6 +286,7 @@ function CadastrosInner() {
   // ── Estado global ──
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro]         = useState<string | null>(null);
+  const [erroModal, setErroModal] = useState("");
 
   // ── Produtores ──
   const [produtores, setProdutores]   = useState<Produtor[]>([]);
@@ -959,7 +960,10 @@ function CadastrosInner() {
     finally { setBuscandoCep(false); }
   };
   const salvarProd = () => salvar(async () => {
-    if (!fProd.nome.trim()) return;
+    const erros: string[] = [];
+    if (!fProd.nome.trim()) erros.push("Nome");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     // Resolve fazenda_id — obrigatório no DB
     let fazIdProd = fazendaId;
     if (!fazIdProd) {
@@ -1184,7 +1188,11 @@ function CadastrosInner() {
   };
 
   const salvarFaz = () => salvar(async () => {
-    if (!fFaz.nome.trim() || !fFaz.area) return;
+    const erros: string[] = [];
+    if (!fFaz.nome.trim()) erros.push("Nome da Fazenda");
+    if (!fFaz.area) erros.push("Área (ha)");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     const { data: { user } } = await supabase.auth.getUser();
 
     // Campos de formulário — nunca incluem owner_user_id/conta_id (imutáveis)
@@ -1413,7 +1421,12 @@ function CadastrosInner() {
     });
   };
   const salvarTalhao = () => salvar(async () => {
-    if (!modalTalhao || !fTalhao.nome.trim() || !fTalhao.area) return;
+    if (!modalTalhao) return;
+    const erros: string[] = [];
+    if (!fTalhao.nome.trim()) erros.push("Nome do Talhão");
+    if (!fTalhao.area) erros.push("Área (ha)");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     const novaArea = Number(fTalhao.area);
     const faz = fazendas.find(f => f.id === modalTalhao);
     const talsExist = talhoes[modalTalhao] ?? [];
@@ -1454,7 +1467,11 @@ function CadastrosInner() {
     setFMat(m ? { produtor_id: m.produtor_id ?? "", numero: m.numero, cartorio: m.cartorio ?? "", area_ha: String(m.area_ha ?? ""), descricao: m.descricao ?? "", em_garantia: m.em_garantia, garantia_banco: m.garantia_banco ?? "", garantia_valor: String(m.garantia_valor ?? ""), garantia_vencimento: m.garantia_vencimento ?? "" } : { produtor_id: "", numero: "", cartorio: "", area_ha: "", descricao: "", em_garantia: false, garantia_banco: "", garantia_valor: "", garantia_vencimento: "" });
   };
   const salvarMatricula = () => salvar(async () => {
-    if (!modalMatricula || !fMat.numero.trim()) return;
+    if (!modalMatricula) return;
+    const erros: string[] = [];
+    if (!fMat.numero.trim()) erros.push("Número da Matrícula");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     const payload: Omit<MatriculaImovel, "id"|"created_at"> = { fazenda_id: modalMatricula, produtor_id: fMat.produtor_id, numero: fMat.numero.trim(), cartorio: fMat.cartorio || undefined, area_ha: fMat.area_ha ? Number(fMat.area_ha) : undefined, descricao: fMat.descricao || undefined, em_garantia: fMat.em_garantia, garantia_banco: fMat.em_garantia ? fMat.garantia_banco || undefined : undefined, garantia_valor: fMat.em_garantia && fMat.garantia_valor ? Number(fMat.garantia_valor) : undefined, garantia_vencimento: fMat.em_garantia ? fMat.garantia_vencimento || undefined : undefined };
     if (editMatricula) {
       await atualizarMatricula(editMatricula.id, payload);
@@ -1499,7 +1516,8 @@ function CadastrosInner() {
     } catch { /* silencioso */ }
   };
   const salvarEmp = () => salvar(async () => {
-    if (!fEmp.nome.trim() && !fEmp.razao_social.trim()) return;
+    if (!fEmp.nome.trim() && !fEmp.razao_social.trim()) { setErroModal("Preencha: Razão Social ou Nome"); return; }
+    setErroModal("");
     const fazId = (fazIdEff)!;
     const payload: Omit<Empresa, "id"|"created_at"> = {
       fazenda_id: fazId,
@@ -1565,7 +1583,8 @@ function CadastrosInner() {
     setModalPes(true);
   };
   const salvarPes = () => salvar(async () => {
-    if (!fPes.nome.trim()) return;
+    if (!fPes.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+    setErroModal("");
     // Não salvar o campo de controle de UI no banco
     const { criar_deposito_terceiro, ...pesPayload } = fPes;
     if (editPes) {
@@ -1665,7 +1684,12 @@ function CadastrosInner() {
     setModalAno(true);
   };
   const salvarAno = () => salvar(async () => {
-    if (!fAno.descricao.trim() || !fAno.data_inicio || !fAno.data_fim) return;
+    const erros: string[] = [];
+    if (!fAno.descricao.trim()) erros.push("Descrição");
+    if (!fAno.data_inicio) erros.push("Data Início");
+    if (!fAno.data_fim) erros.push("Data Fim");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     if (editAno) { await atualizarAnoSafra(editAno.id, fAno); setAnosSafra(p => p.map(x => x.id === editAno.id ? { ...x, ...fAno } : x)); }
     else { const n = await criarAnoSafra({ ...fAno, fazenda_id: (fazIdEff)! }); setAnosSafra(p => [...p, n]); }
     setModalAno(false);
@@ -1750,13 +1774,13 @@ function CadastrosInner() {
     setModalCiclo(true);
   };
   const salvarCiclo = () => salvar(async () => {
-    const faltando = [
-      !anoSel                   && "Ano Safra não selecionado",
-      !fCiclo.descricao.trim()  && "Descrição obrigatória",
-      !fCiclo.data_inicio       && "Data de Início obrigatória",
-      !fCiclo.data_fim          && "Data de Fim obrigatória",
-    ].filter(Boolean) as string[];
-    if (faltando.length > 0) { alert("Campos obrigatórios:\n• " + faltando.join("\n• ")); return; }
+    const erros: string[] = [];
+    if (!cicloFazendaId) erros.push("Fazenda");
+    if (!fCiclo.descricao.trim()) erros.push("Descrição");
+    if (!fCiclo.data_inicio) erros.push("Data Início");
+    if (!fCiclo.data_fim) erros.push("Data Fim");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     // Validar travas de área
     const todosTalhoes = Object.values(talhoes).flat();
     const errosArea: string[] = [];
@@ -1833,7 +1857,8 @@ function CadastrosInner() {
     setModalMaq(true);
   };
   const salvarMaq = () => salvar(async () => {
-    if (!fMaq.nome.trim()) return;
+    if (!fMaq.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+    setErroModal("");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payload: any = {
       fazenda_id: (fazIdEff)!, nome: fMaq.nome.trim(), tipo: fMaq.tipo,
@@ -1874,7 +1899,8 @@ function CadastrosInner() {
     setModalBomba(true);
   };
   const salvarBomba = () => salvar(async () => {
-    if (!fBomba.nome.trim()) return;
+    if (!fBomba.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+    setErroModal("");
     const payload = { fazenda_id: (fazIdEff)!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, insumo_id: fBomba.insumo_id || undefined, ativa: true };
     if (editBomba) { await atualizarBomba(editBomba.id, payload); setBombas(p => p.map(x => x.id === editBomba.id ? { ...x, ...payload } : x)); }
     else { const n = await criarBomba(payload); setBombas(p => [...p, n]); }
@@ -1890,7 +1916,11 @@ function CadastrosInner() {
     setModalDep(true);
   };
   const salvarDep = () => salvar(async () => {
-    if (!fDep.nome.trim()) return;
+    const erros: string[] = [];
+    if (!fDep.nome.trim()) erros.push("Nome");
+    if (!fDep.fazenda_id) erros.push("Fazenda");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     const fazDepId = fDep.fazenda_id || fazIdEff;
     if (!fazDepId) return;
     const isTerceiro = fDep.tipo === "armazem_terceiro" || fDep.tipo === "terceiro";
@@ -1941,7 +1971,8 @@ function CadastrosInner() {
   };
 
   const salvarFunc = () => salvar(async () => {
-    if (!fFunc.nome.trim()) return;
+    if (!fFunc.nome.trim()) { setErroModal("Preencha: Nome do Funcionário"); return; }
+    setErroModal("");
     const payload: Omit<Funcionario, "id" | "created_at"> = {
       fazenda_id: (fazIdEff)!, nome: fFunc.nome.trim(), cpf: fFunc.cpf || undefined,
       rg: fFunc.rg || undefined, data_nascimento: fFunc.data_nascimento || undefined,
@@ -1983,7 +2014,12 @@ function CadastrosInner() {
   });
 
   const salvarPremiacao = () => salvar(async () => {
-    if (!editFunc || !fPremiacao.descricao || !fPremiacao.valor) return;
+    if (!editFunc) return;
+    const erros: string[] = [];
+    if (!fPremiacao.descricao) erros.push("Descrição");
+    if (!fPremiacao.valor) erros.push("Valor");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     const p = await criarPremiacao({
       funcionario_id: editFunc.id, fazenda_id: (fazIdEff)!,
       mes_referencia: fPremiacao.mes_referencia,
@@ -2031,7 +2067,8 @@ function CadastrosInner() {
     setModalGrupo(true);
   };
   const salvarGrupo = () => salvar(async () => {
-    if (!fGrupo.nome.trim()) return;
+    if (!fGrupo.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+    setErroModal("");
     if (editGrupo) { await atualizarGrupo(editGrupo.id, fGrupo); setGrupos(p => p.map(x => x.id === editGrupo.id ? { ...x, ...fGrupo } : x)); }
     else { const n = await criarGrupo(fGrupo); setGrupos(p => [...p, n]); }
     setModalGrupo(false);
@@ -2047,7 +2084,12 @@ function CadastrosInner() {
     setModalUser(true);
   };
   const salvarUser = () => salvar(async () => {
-    if (!fUser.nome.trim() || !fUser.email.trim()) return;
+    const erros: string[] = [];
+    if (!fUser.nome.trim()) erros.push("Nome");
+    if (!fUser.email.trim()) erros.push("Email");
+    if (!editUser && fUser.tipo_acesso === "campo" && !fUser.senha_campo.trim()) erros.push("Senha de Campo");
+    if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+    setErroModal("");
     const fazId = fazIdEff;
     if (!fazId) throw new Error("Selecione uma fazenda antes de cadastrar usuários.");
     const whatsapp = fUser.whatsapp.trim() || undefined;
@@ -2714,7 +2756,8 @@ function CadastrosInner() {
               setModalBenf(true);
             };
             const salvarBenf = async () => {
-              if (!fBenf.nome.trim()) return alert("Nome obrigatório");
+              if (!fBenf.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              setErroModal("");
               const payload: Omit<Benfeitoria, "id" | "created_at"> = {
                 fazenda_id: fBenf.fazenda_id || fazendaId || "",
                 nome: fBenf.nome.trim(),
@@ -2879,7 +2922,8 @@ function CadastrosInner() {
                       </div>
                     </div>
                     <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                      <button style={btnR} onClick={() => setModalBenf(false)}>Cancelar</button>
+                      <button style={btnR} onClick={() => { setModalBenf(false); setErroModal(""); }}>Cancelar</button>
+                      {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
                       <button style={btnV} onClick={salvarBenf}>{editBenf ? "Salvar" : "Cadastrar"}</button>
                     </div>
                   </div>
@@ -2944,8 +2988,9 @@ function CadastrosInner() {
             };
 
             const salvarBem = async () => {
-              if (!fBem.descricao.trim()) return alert("Descrição obrigatória");
-              if (!contaId) return alert("Conta não identificada");
+              if (!fBem.descricao.trim()) { setErroModal("Preencha: Descrição"); return; }
+              if (!contaId) { setErroModal("Conta não identificada"); return; }
+              setErroModal("");
               const payload: Omit<Bem, "id" | "created_at" | "consorcios_vinculados"> = {
                 conta_id: contaId,
                 fazenda_id: fBem.fazenda_id || null,
@@ -3172,7 +3217,8 @@ function CadastrosInner() {
                     </div>
 
                     <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                      <button style={btnR} onClick={() => setModalBem(false)}>Cancelar</button>
+                      <button style={btnR} onClick={() => { setModalBem(false); setErroModal(""); }}>Cancelar</button>
+                      {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
                       <button style={btnV} onClick={salvarBem}>Salvar Bem</button>
                     </div>
                   </div>
@@ -3212,8 +3258,9 @@ function CadastrosInner() {
             };
 
             const salvarCombLubri = async () => {
-              if (!fIns.nome.trim()) { setErro("Informe o nome do item."); return; }
-              setSalvando(true); setErro("");
+              if (!fIns.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              setErroModal("");
+              setSalvando(true);
               try {
                 const payload: Omit<Insumo,"id"|"created_at"> = {
                   fazenda_id:     (fazIdEff)!,
@@ -3473,8 +3520,9 @@ function CadastrosInner() {
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-                        <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarCombLubri}>
+                        <button style={btnR} onClick={() => { setModalIns(false); setErroModal(""); }}>Cancelar</button>
+                        {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+                        <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCombLubri}>
                           {salvando ? "Salvando…" : "Salvar"}
                         </button>
                       </div>
@@ -4325,14 +4373,10 @@ function CadastrosInner() {
             const salvarIns = async () => {
               // Apenas defensivo e fertilizante exigem Princípio Ativo
               const isPA = ["defensivo","fertilizante"].includes(fIns.categoria);
-              if (isPA && !fIns.principio_ativo_id) {
-                setErro("Selecione o princípio ativo antes de salvar."); return;
-              }
-              if (!isPA && !fIns.nome.trim()) {
-                setErro("Informe o nome do insumo."); return;
-              }
+              if (isPA && !fIns.principio_ativo_id) { setErroModal("Preencha: Princípio Ativo"); return; }
+              if (!isPA && !fIns.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              setErroModal("");
               setSalvando(true);
-              setErro("");
               try {
                 const isComb = fIns.categoria === "combustivel";
                 const payload: Omit<Insumo, "id" | "created_at"> = {
@@ -4679,8 +4723,9 @@ function CadastrosInner() {
                     )}
 
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-                      <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                      <button style={{ ...btnV, opacity: salvando || (fIns.categoria === "defensivo" ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (fIns.categoria === "defensivo" ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
+                      <button style={btnR} onClick={() => { setModalIns(false); setErroModal(""); }}>Cancelar</button>
+                      {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+                      <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarIns}>
                         {salvando ? "Salvando…" : "Salvar"}
                       </button>
                     </div>
@@ -4750,8 +4795,12 @@ function CadastrosInner() {
             };
 
             const salvarProd = async () => {
-              if (!fIns.nome.trim()) { setErro("Informe o nome do produto."); return; }
-              setSalvando(true); setErro("");
+              const erros: string[] = [];
+              if (!fIns.nome.trim()) erros.push("Nome");
+              if (!fIns.cultura_id) erros.push("Cultura");
+              if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+              setErroModal("");
+              setSalvando(true);
               try {
                 const cultSel = culturasList.find(c => c.id === fIns.cultura_id);
                 const payload: Omit<Insumo, "id" | "created_at"> = {
@@ -4968,9 +5017,10 @@ function CadastrosInner() {
                         </div>
                       )}
                       <div style={{ gridColumn: "1/-1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                        <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() || !fIns.cultura_id ? 0.5 : 1 }}
-                          disabled={salvando || !fIns.nome.trim() || !fIns.cultura_id} onClick={salvarProd}>
+                        <button style={btnR} onClick={() => { setModalIns(false); setErroModal(""); }}>Cancelar</button>
+                        {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6, gridColumn: "1/-1" }}>{erroModal}</div>}
+                        <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }}
+                          disabled={salvando} onClick={salvarProd}>
                           {salvando ? "Salvando…" : "Salvar"}
                         </button>
                       </div>
@@ -5023,8 +5073,9 @@ function CadastrosInner() {
             };
 
             const salvarIt = async () => {
-              if (!fIns.nome.trim()) { setErro("Informe o nome do item."); return; }
-              setSalvando(true); setErro("");
+              if (!fIns.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              setErroModal("");
+              setSalvando(true);
               try {
                 const payload: Omit<Insumo, "id" | "created_at"> = {
                   fazenda_id: (fazIdEff)!, nome: fIns.nome.trim(),
@@ -5196,8 +5247,9 @@ function CadastrosInner() {
                         </div>
                       )}
                       <div style={{ gridColumn: "1/-1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                        <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarIt}>
+                        <button style={btnR} onClick={() => { setModalIns(false); setErroModal(""); }}>Cancelar</button>
+                        {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+                        <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarIt}>
                           {salvando ? "Salvando…" : "Salvar"}
                         </button>
                       </div>
@@ -5373,6 +5425,8 @@ function CadastrosInner() {
 
             const salvarPCls = async () => {
               await salvar(async () => {
+                if (!fPCls.nome_padrao.trim()) { setErroModal("Preencha: Nome do Padrão"); return; }
+                setErroModal("");
                 const payload = {
                   fazenda_id: (fazIdEff)!,
                   commodity: fPCls.commodity,
@@ -5615,8 +5669,9 @@ function CadastrosInner() {
                         Padrão ativo
                       </label>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button style={btnR} onClick={() => setModalPCls(false)}>Cancelar</button>
-                        <button style={{ ...btnV, opacity: !fPCls.nome_padrao.trim() || salvando ? 0.5 : 1 }} disabled={!fPCls.nome_padrao.trim() || salvando} onClick={salvarPCls}>
+                        <button style={btnR} onClick={() => { setModalPCls(false); setErroModal(""); }}>Cancelar</button>
+                        {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+                        <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarPCls}>
                           {salvando ? "Salvando…" : "Salvar Padrão"}
                         </button>
                       </div>
@@ -5902,9 +5957,11 @@ function CadastrosInner() {
                     </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-                    <button style={btnR} onClick={() => setModalIU(false)}>Cancelar</button>
+                    <button style={btnR} onClick={() => { setModalIU(false); setErroModal(""); }}>Cancelar</button>
+                    {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
                     <button style={btnV} onClick={async () => {
-                      if (!fIU.descricao.trim()) { alert("Informe a descrição do imóvel."); return; }
+                      if (!fIU.descricao.trim()) { setErroModal("Preencha: Descrição"); return; }
+                      setErroModal("");
                       const payload = { fazenda_id: fazendaId!, matricula: fIU.matricula || undefined, tipo: fIU.tipo, descricao: fIU.descricao.trim(), logradouro: fIU.logradouro || undefined, numero_end: fIU.numero_end || undefined, complemento: fIU.complemento || undefined, bairro: fIU.bairro || undefined, cep: fIU.cep || undefined, municipio: fIU.municipio || undefined, estado: fIU.estado, area_m2: fIU.area_m2 ? Number(fIU.area_m2) : undefined, valor_avaliacao: fIU.valor_avaliacao ? Number(fIU.valor_avaliacao) : undefined, observacao: fIU.observacao || undefined };
                       if (editIU) {
                         await atualizarImovelUrbano(editIU.id, payload);
@@ -6331,7 +6388,8 @@ function CadastrosInner() {
             };
 
             const salvar = async () => {
-              if (!fCultura.nome.trim()) { alert("Nome obrigatório"); return; }
+              if (!fCultura.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              setErroModal("");
               setSalvandoCultura(true);
               const payload = {
                 fazenda_id:          fazendaId,
@@ -6474,7 +6532,8 @@ function CadastrosInner() {
                       </div>
 
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-                        <button style={btnR} onClick={() => setModalCultura(false)}>Cancelar</button>
+                        <button style={btnR} onClick={() => { setModalCultura(false); setErroModal(""); }}>Cancelar</button>
+                        {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
                         <button style={{ ...btnV, background: "#111111", opacity: salvandoCultura ? 0.6 : 1 }} onClick={salvar} disabled={salvandoCultura}>
                           {salvandoCultura ? "Salvando…" : editCultura ? "Salvar alterações" : "Criar cultura"}
                         </button>
@@ -6727,9 +6786,14 @@ function CadastrosInner() {
             Código COMPE e CNPJ são usados automaticamente em <strong>CNAB/Borderô</strong>, <strong>OFX/Conciliação</strong>, <strong>LCDPR</strong> e <strong>SPED ECD</strong>.
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-            <button style={btnR} onClick={() => setModalConta(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fConta.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fConta.nome.trim()}
+            <button style={btnR} onClick={() => { setModalConta(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando}
               onClick={async () => {
+                const erros: string[] = [];
+                if (!fConta.nome.trim()) erros.push("Nome");
+                if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+                setErroModal("");
                 if (!fazendaId) return;
                 setSalvando(true);
                 try {
@@ -6956,8 +7020,9 @@ function CadastrosInner() {
           </>)}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalProd(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fProd.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fProd.nome.trim()} onClick={salvarProd}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalProd(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarProd}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -7603,8 +7668,9 @@ function CadastrosInner() {
             )}
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24, paddingTop: 16, borderTop: "0.5px solid var(--border-table)" }}>
-              <button style={btnR} onClick={() => setModalFaz(false)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvando || !fFaz.nome.trim() || !fFaz.area ? 0.5 : 1 }} disabled={salvando || !fFaz.nome.trim() || !fFaz.area} onClick={salvarFaz}>{salvando ? "Salvando…" : "Salvar Fazenda"}</button>
+              <button style={btnR} onClick={() => { setModalFaz(false); setErroModal(""); }}>Cancelar</button>
+              {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+              <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarFaz}>{salvando ? "Salvando…" : "Salvar Fazenda"}</button>
             </div>
           </Modal>
         );
@@ -7830,8 +7896,9 @@ function CadastrosInner() {
           </div>
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalTalhao(null)}>Cancelar</button>
-            <button style={{ ...btnV, background: "#C9921B", opacity: salvando || !fTalhao.nome.trim() || !fTalhao.area ? 0.5 : 1 }} disabled={salvando || !fTalhao.nome.trim() || !fTalhao.area} onClick={salvarTalhao}>{salvando ? "Salvando…" : "Salvar Talhão"}</button>
+            <button style={btnR} onClick={() => { setModalTalhao(null); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, background: "#C9921B", opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarTalhao}>{salvando ? "Salvando…" : "Salvar Talhão"}</button>
           </div>
         </Modal>
       )}
@@ -7869,8 +7936,9 @@ function CadastrosInner() {
             )}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalMatricula(null)}>Cancelar</button>
-            <button style={{ ...btnV, background: "#C9921B", opacity: salvando || !fMat.numero.trim() ? 0.5 : 1 }} disabled={salvando || !fMat.numero.trim()} onClick={salvarMatricula}>{salvando ? "Salvando…" : "Salvar Matrícula"}</button>
+            <button style={btnR} onClick={() => { setModalMatricula(null); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, background: "#C9921B", opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarMatricula}>{salvando ? "Salvando…" : "Salvar Matrícula"}</button>
           </div>
         </Modal>
       )}
@@ -8072,8 +8140,9 @@ function CadastrosInner() {
           </div>
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-            <button style={btnR} onClick={() => setModalPes(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fPes.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fPes.nome.trim()} onClick={salvarPes}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalPes(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarPes}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -8090,8 +8159,9 @@ function CadastrosInner() {
             <div style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", padding: "8px 10px", borderRadius: 6 }}>Ex: Ano Safra 2026/2027 → início 01/08/2026, fim 31/07/2027</div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalAno(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fAno.descricao.trim() || !fAno.data_inicio || !fAno.data_fim ? 0.5 : 1 }} disabled={salvando || !fAno.descricao.trim() || !fAno.data_inicio || !fAno.data_fim} onClick={salvarAno}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalAno(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarAno}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -8356,21 +8426,10 @@ function CadastrosInner() {
             })()}
           </div>
 
-          {/* Mensagem inline sobre o que falta para salvar */}
-          {(!cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim) && (
-            <div style={{ background: "#FFF5F5", border: "0.5px solid #E24B4A", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 11, color: "#E24B4A" }}>
-              ⚠ Preencha os campos obrigatórios antes de salvar:{" "}
-              {[
-                !cicloFazendaId       && "Fazenda",
-                !fCiclo.descricao.trim() && "Descrição",
-                !fCiclo.data_inicio   && "Data de Início",
-                !fCiclo.data_fim      && "Data de Fim",
-              ].filter(Boolean).join(", ")}
-            </div>
-          )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button style={btnR} onClick={() => setModalCiclo(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim ? 0.5 : 1 }} disabled={salvando || !cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim} onClick={salvarCiclo}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalCiclo(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCiclo}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -8504,8 +8563,9 @@ function CadastrosInner() {
           )}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalMaq(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fMaq.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fMaq.nome.trim()} onClick={salvarMaq}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalMaq(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarMaq}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -8554,8 +8614,9 @@ function CadastrosInner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalBomba(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fBomba.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fBomba.nome.trim()} onClick={salvarBomba}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalBomba(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarBomba}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -8574,9 +8635,12 @@ function CadastrosInner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalGrupoIns(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fGrupoIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupoIns.nome.trim()}
+            <button style={btnR} onClick={() => { setModalGrupoIns(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando}
               onClick={async () => {
+                if (!fGrupoIns.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+                setErroModal("");
                 setSalvando(true);
                 try {
                   if (editGrupoIns) {
@@ -8610,10 +8674,16 @@ function CadastrosInner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalSubgIns(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fSubgIns.nome.trim() || !fSubgIns.grupo_id ? 0.5 : 1 }}
-              disabled={salvando || !fSubgIns.nome.trim() || !fSubgIns.grupo_id}
+            <button style={btnR} onClick={() => { setModalSubgIns(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }}
+              disabled={salvando}
               onClick={async () => {
+                const erros: string[] = [];
+                if (!fSubgIns.nome.trim()) erros.push("Nome");
+                if (!fSubgIns.grupo_id) erros.push("Grupo");
+                if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+                setErroModal("");
                 setSalvando(true);
                 try {
                   if (editSubgIns) {
@@ -8641,9 +8711,12 @@ function CadastrosInner() {
             <div><label style={lbl}>Descrição</label><input style={inp} placeholder="Ex: Revendas agrícolas e distribuidores" value={fTipoPes.descricao} onChange={e => setFTipoPes(p => ({ ...p, descricao: e.target.value }))} /></div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalTipoPes(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fTipoPes.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fTipoPes.nome.trim()}
+            <button style={btnR} onClick={() => { setModalTipoPes(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando}
               onClick={async () => {
+                if (!fTipoPes.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+                setErroModal("");
                 setSalvando(true);
                 try {
                   if (editTipoPes) {
@@ -8710,9 +8783,15 @@ function CadastrosInner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalCC(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fCC.nome.trim() || !fCC.fazenda_id ? 0.5 : 1 }} disabled={salvando || !fCC.nome.trim() || !fCC.fazenda_id}
+            <button style={btnR} onClick={() => { setModalCC(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando}
               onClick={async () => {
+                const erros: string[] = [];
+                if (!fCC.nome.trim()) erros.push("Nome");
+                if (!fCC.fazenda_id) erros.push("Fazenda");
+                if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+                setErroModal("");
                 setSalvando(true);
                 try {
                   const payload = { fazenda_id: fCC.fazenda_id || (fazIdEff)!, codigo: fCC.codigo || undefined, nome: fCC.nome, tipo: fCC.tipo, parent_id: fCC.parent_id || undefined, manutencao_maquinas: fCC.manutencao_maquinas };
@@ -8748,9 +8827,12 @@ function CadastrosInner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalCatLanc(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fCatLanc.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fCatLanc.nome.trim()}
+            <button style={btnR} onClick={() => { setModalCatLanc(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando}
               onClick={async () => {
+                if (!fCatLanc.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+                setErroModal("");
                 setSalvando(true);
                 try {
                   if (editCatLanc) {
@@ -9229,9 +9311,12 @@ function CadastrosInner() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button style={btnR} onClick={() => setModalCfop(false)}>Cancelar</button>
-                  <button style={btnV} disabled={!fCfop.cfop} onClick={async () => {
-                    if (!fCfop.cfop || !fazendaId) return;
+                  <button style={btnR} onClick={() => { setModalCfop(false); setErroModal(""); }}>Cancelar</button>
+                  {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+                  <button style={btnV} disabled={false} onClick={async () => {
+                    if (!fCfop.cfop) { setErroModal("Preencha: CFOP"); return; }
+                    setErroModal("");
+                    if (!fazendaId) return;
                     const novo = await import("../../lib/db").then(m => m.salvarCfopFiscal({
                       operacao_gerencial_id: editOpGer.id,
                       fazenda_id: fazendaId,
@@ -9260,9 +9345,15 @@ function CadastrosInner() {
             </div>
           )}
           <div style={{ marginTop: 20, paddingTop: 14, borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button style={btnR} onClick={() => { setModalOpGer(false); setErroOpGer(null); }}>Cancelar</button>
-            <button style={btnV} disabled={!fOG.classificacao.trim() || !fOG.descricao.trim() || salvando || !fazendaId}
+            <button style={btnR} onClick={() => { setModalOpGer(false); setErroOpGer(null); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={btnV} disabled={salvando}
               onClick={async () => {
+                const erros: string[] = [];
+                if (!fOG.classificacao.trim()) erros.push("Classificação");
+                if (!fOG.descricao.trim()) erros.push("Descrição");
+                if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+                setErroModal("");
                 setErroOpGer(null);
                 await salvar(async () => {
                   const payload: Omit<OperacaoGerencial, "id" | "created_at"> = {
@@ -9341,7 +9432,10 @@ function CadastrosInner() {
               <label style={lbl}>Descrição</label>
               <input style={inp} value={fFP.descricao} onChange={e => setFFP(p => ({ ...p, descricao: e.target.value }))} />
             </div>
-            <button style={{ ...btnV, gridColumn: "1/-1" }} disabled={!fFP.nome.trim() || salvando} onClick={async () => {
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6, gridColumn: "1/-1" }}>{erroModal}</div>}
+            <button style={{ ...btnV, gridColumn: "1/-1" }} disabled={salvando} onClick={async () => {
+              if (!fFP.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              setErroModal("");
               await salvar(async () => {
                 const payload = {
                   nome: fFP.nome, descricao: fFP.descricao || undefined,
@@ -9413,8 +9507,9 @@ function CadastrosInner() {
             {!fDep.ativo && <div style={{ fontSize: 11, color: "#888", marginTop: 4, marginLeft: 26 }}>Depósitos inativos não aparecem para seleção em Estoque, Insumos e outras telas, mas o histórico é preservado.</div>}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalDep(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fDep.nome.trim() || !fDep.fazenda_id ? 0.5 : 1 }} disabled={salvando || !fDep.nome.trim() || !fDep.fazenda_id} onClick={salvarDep}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalDep(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarDep}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -9671,8 +9766,9 @@ function CadastrosInner() {
             )}
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20, borderTop: "0.5px solid var(--bg-tag)", paddingTop: 16 }}>
-              <button style={btnR} onClick={() => setModalFunc(false)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvando || !fFunc.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fFunc.nome.trim()} onClick={salvarFunc}>{salvando ? "Salvando…" : "Salvar Funcionário"}</button>
+              <button style={btnR} onClick={() => { setModalFunc(false); setErroModal(""); }}>Cancelar</button>
+              {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+              <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarFunc}>{salvando ? "Salvando…" : "Salvar Funcionário"}</button>
             </div>
           </Modal>
         );
@@ -9688,8 +9784,9 @@ function CadastrosInner() {
             <div><label style={lbl}>Data de pagamento</label><input style={inp} type="date" value={fPremiacao.data_pagamento} onChange={e => setFPremiacao(p => ({ ...p, data_pagamento: e.target.value }))} /></div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalPremiacao(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fPremiacao.descricao || !fPremiacao.valor ? 0.5 : 1 }} disabled={salvando || !fPremiacao.descricao || !fPremiacao.valor} onClick={salvarPremiacao}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalPremiacao(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarPremiacao}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -9712,7 +9809,7 @@ function CadastrosInner() {
             )}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalGozo(null)}>Cancelar</button>
+            <button style={btnR} onClick={() => { setModalGozo(null); setErroModal(""); }}>Cancelar</button>
             <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarGozo}>{salvando ? "Salvando…" : "Confirmar"}</button>
           </div>
         </Modal>
@@ -9798,8 +9895,9 @@ function CadastrosInner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalGrupo(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fGrupo.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupo.nome.trim()} onClick={salvarGrupo}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => { setModalGrupo(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarGrupo}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
@@ -9854,10 +9952,11 @@ function CadastrosInner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
+            <button style={btnR} onClick={() => { setModalUser(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
             <button
-              style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && fUser.tipo_acesso === "campo" && !fUser.senha_campo.trim()) ? 0.5 : 1 }}
-              disabled={salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && fUser.tipo_acesso === "campo" && !fUser.senha_campo.trim())}
+              style={{ ...btnV, opacity: salvando ? 0.5 : 1 }}
+              disabled={salvando}
               onClick={salvarUser}
             >{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
@@ -9915,8 +10014,11 @@ function CadastrosInner() {
             <strong>Não cadastrar sementes aqui.</strong> Cada variedade de semente (TMG 3770, Brasmax Lança, etc.) é um produto distinto no estoque — use a aba Insumos.
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalPA(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: !fPA.nome.trim() ? 0.5 : 1 }} disabled={!fPA.nome.trim()} onClick={async () => {
+            <button style={btnR} onClick={() => { setModalPA(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+            <button style={{ ...btnV, opacity: salvandobotPA ? 0.5 : 1 }} disabled={salvandobotPA} onClick={async () => {
+              if (!fPA.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              setErroModal("");
               setSalvandoPA(true);
               try {
                 if (editPA) {
@@ -9952,8 +10054,11 @@ function CadastrosInner() {
                   Digite exatamente como o agricultor costuma escrever. Pode adicionar um por vez. A busca é case-insensitive.
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-                  <button style={btnR} onClick={() => { setModalNC(null); setFNC({ nome_comercial: "" }); }}>Fechar</button>
-                  <button style={{ ...btnV, opacity: !fNC.nome_comercial.trim() ? 0.5 : 1 }} disabled={!fNC.nome_comercial.trim()} onClick={async () => {
+                  <button style={btnR} onClick={() => { setModalNC(null); setFNC({ nome_comercial: "" }); setErroModal(""); }}>Fechar</button>
+                  {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+                  <button style={{ ...btnV, opacity: false ? 0.5 : 1 }} disabled={false} onClick={async () => {
+                    if (!fNC.nome_comercial.trim()) { setErroModal("Preencha: Nome Comercial"); return; }
+                    setErroModal("");
                     if (!modalNC) return;
                     try {
                       const novo = await salvarNomeComercial({ nome_comercial: fNC.nome_comercial.trim(), principio_ativo_id: modalNC, confirmado: true });
@@ -10025,11 +10130,17 @@ function CadastrosInner() {
             </label>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button style={btnR} onClick={() => setModalUM(false)}>Cancelar</button>
+            <button style={btnR} onClick={() => { setModalUM(false); setErroModal(""); }}>Cancelar</button>
+            {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
             <button
-              style={{ ...btnV, opacity: (!fUM.sigla.trim() || !fUM.nome.trim() || salvandoUM) ? 0.5 : 1 }}
-              disabled={!fUM.sigla.trim() || !fUM.nome.trim() || salvandoUM}
+              style={{ ...btnV, opacity: salvandoUM ? 0.5 : 1 }}
+              disabled={salvandoUM}
               onClick={async () => {
+                const erros: string[] = [];
+                if (!fUM.sigla.trim()) erros.push("Sigla");
+                if (!fUM.nome.trim()) erros.push("Nome");
+                if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
+                setErroModal("");
                 setSalvandoUM(true);
                 try {
                   const payload = {
@@ -10300,8 +10411,9 @@ function CadastrosInner() {
             )}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24, paddingTop: 16, borderTop: "0.5px solid var(--border-table)" }}>
-              <button style={btnR} onClick={() => setModalEmp(false)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: !fEmp.razao_social.trim() && !fEmp.nome.trim() ? 0.5 : 1 }} disabled={!fEmp.razao_social.trim() && !fEmp.nome.trim()} onClick={salvarEmp}>Salvar empresa</button>
+              <button style={btnR} onClick={() => { setModalEmp(false); setErroModal(""); }}>Cancelar</button>
+              {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 6 }}>{erroModal}</div>}
+              <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarEmp}>Salvar empresa</button>
             </div>
           </Modal>
         );
