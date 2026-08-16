@@ -75,7 +75,9 @@ function buildQrCodeCTe(
 }
 
 function inserirInfCTeSupl(xmlAssinado: string, qrUrl: string): string {
-  const supl = `<infCTeSupl><qrCodCTe>${qrUrl}</qrCodCTe></infCTeSupl>`;
+  // & na URL deve ser &amp; no XML — sem isso o parser SEFAZ encontra entidades inválidas (ex: &tpAmb;)
+  const qrUrlXml = qrUrl.replace(/&/g, "&amp;");
+  const supl = `<infCTeSupl><qrCodCTe>${qrUrlXml}</qrCodCTe></infCTeSupl>`;
   // Insere entre </infCte> e <Signature> (ordem exigida pelo schema CT-e 4.00)
   if (xmlAssinado.includes("</infCte><Signature")) {
     return xmlAssinado.replace("</infCte><Signature", `</infCte>${supl}<Signature`);
