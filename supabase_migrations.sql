@@ -9782,3 +9782,47 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE consorcios ADD COLUMN IF NOT EXISTS administradora_pessoa_id UUID REFERENCES pessoas(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 165 — Corrige FKs centro_custo_id sem ON DELETE SET NULL
+-- Problema: exclusão de fazenda apaga centros_custo (cascade), mas as FKs abaixo
+-- não tinham SET NULL, bloqueando a exclusão com constraint violation.
+-- =============================================================================
+
+-- nf_entradas
+ALTER TABLE nf_entradas
+  DROP CONSTRAINT IF EXISTS nf_entradas_centro_custo_id_fkey;
+ALTER TABLE nf_entradas
+  ADD CONSTRAINT nf_entradas_centro_custo_id_fkey
+  FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
+
+-- nf_entrada_itens
+ALTER TABLE nf_entrada_itens
+  DROP CONSTRAINT IF EXISTS nf_entrada_itens_centro_custo_id_fkey;
+ALTER TABLE nf_entrada_itens
+  ADD CONSTRAINT nf_entrada_itens_centro_custo_id_fkey
+  FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
+
+-- nf_servicos
+ALTER TABLE nf_servicos
+  DROP CONSTRAINT IF EXISTS nf_servicos_centro_custo_id_fkey;
+ALTER TABLE nf_servicos
+  ADD CONSTRAINT nf_servicos_centro_custo_id_fkey
+  FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
+
+-- regras_rateio
+ALTER TABLE regras_rateio
+  DROP CONSTRAINT IF EXISTS regras_rateio_centro_custo_id_fkey;
+ALTER TABLE regras_rateio
+  ADD CONSTRAINT regras_rateio_centro_custo_id_fkey
+  FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
+
+-- regras_classificacao
+ALTER TABLE regras_classificacao
+  DROP CONSTRAINT IF EXISTS regras_classificacao_centro_custo_id_fkey;
+ALTER TABLE regras_classificacao
+  ADD CONSTRAINT regras_classificacao_centro_custo_id_fkey
+  FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';
+
