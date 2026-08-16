@@ -9827,5 +9827,89 @@ DO $$ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Seção 166 — Corrigir TODOS os FKs sem ON DELETE SET NULL que bloqueiam
+--             a exclusão de uma fazenda (erro ao cascade-deletar tabelas filhas
+--             como operacoes_gerenciais, anos_safra, ciclos, depositos, etc.)
+--
+-- Estratégia: consulta dinâmica ao pg_constraint — sem necessidade de listar
+-- cada FK manualmente. Encontra FK com confdeltype='a' (NO ACTION) apontando
+-- para qualquer tabela que cascade-deleta da fazenda, e troca para SET NULL.
+-- ─────────────────────────────────────────────────────────────────────────────
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT
+      c.conname  AS constraint_name,
+      t.relname  AS table_name,
+      a.attname  AS column_name,
+      ft.relname AS foreign_table
+    FROM pg_constraint c
+    JOIN pg_class     t  ON t.oid  = c.conrelid
+    JOIN pg_class     ft ON ft.oid = c.confrelid
+    JOIN pg_attribute a  ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+    WHERE c.contype      = 'f'
+      AND c.confdeltype  = 'a'
+      AND array_length(c.conkey, 1) = 1
+      AND ft.relname = ANY(ARRAY[
+            'operacoes_gerenciais',
+            'centros_custo',
+            'anos_safra',
+            'ciclos',
+            'talhoes',
+            'depositos',
+            'pedidos_compra',
+            'maquinas',
+            'funcionarios',
+            'bombas_combustivel',
+            'empresas',
+            'grupos_insumos',
+            'subgrupos_insumos',
+            'grupos_insumo',
+            'subgrupos_insumo',
+            'categorias_lancamento',
+            'tipos_pessoa',
+            'grupos_usuarios',
+            'usuarios',
+            'plantios',
+            'pulverizacoes',
+            'pulverizacao_itens',
+            'colheitas',
+            'colheita_romaneios',
+            'correcoes_solo',
+            'correcoes_solo_itens',
+            'arrendamentos',
+            'arrendamento_matriculas',
+            'contratos_financeiros',
+            'parcelas_liberacao',
+            'parcelas_pagamento',
+            'contrato_itens',
+            'planejamento_tarefas',
+            'recomendacoes_tecnicas',
+            'adubacoes_base',
+            'adubacoes_base_itens'
+          ])
+    ORDER BY ft.relname, t.relname
+  LOOP
+    RAISE NOTICE 'Fixing FK [%] on %.% → %',
+      r.constraint_name, r.table_name, r.column_name, r.foreign_table;
+    BEGIN
+      EXECUTE format(
+        'ALTER TABLE %I DROP CONSTRAINT IF EXISTS %I',
+        r.table_name, r.constraint_name
+      );
+      EXECUTE format(
+        'ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES %I(id) ON DELETE SET NULL',
+        r.table_name, r.constraint_name, r.column_name, r.foreign_table
+      );
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Nao foi possivel corrigir %: %', r.constraint_name, SQLERRM;
+    END;
+  END LOOP;
+  RAISE NOTICE 'Secao 166 concluida.';
+END $$;
+
 NOTIFY pgrst, 'reload schema';
 

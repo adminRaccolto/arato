@@ -1663,6 +1663,279 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     conta_debito: "3.2", conta_credito: "1.1.1.2",
     ref_id: 924,
   }),
+
+  // ═══════════════════════════════════════════════════════════
+  // OPERAÇÕES FISCAIS COMPLEMENTARES
+  // Operações necessárias para zerar ignorados no seed de CFOPs.
+  // Cobrem CFOPs menos frequentes mas obrigatórios para emissão
+  // de NF-e em operações específicas do agronegócio.
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Receitas complementares de venda ──────────────────────
+  grp("1.01.01.01.CF",  "RECEITAS COMPLEMENTARES",          "receita"),
+
+  rec("1.01.01.01.CF.001", "COMPLEMENTO DE VENDA DE GRÃOS", {
+    // NF-e de complemento de preço após fixação — CFOPs 5101/5105
+    permite_notas_fiscais: true, tipo_lcdpr: "1",
+    impostos: ["funrural", "senar"],
+    obs_legal: "COMPLEMENTO DE VENDA — DIFERENÇA DE PREÇO APÓS FIXAÇÃO",
+    conta_debito: "1.1.2.1", conta_credito: "4.1.1",
+    ref_id: 699,
+  }),
+  rec("1.01.01.01.CF.002", "VENDA DE PRODUÇÃO — CFOP 6101/5101", {
+    // Venda de produção própria com CFOP 6101 (interestadual) ou 5101 (intraestadual)
+    permite_notas_fiscais: true, permite_pedidos_venda: true,
+    operacao_estoque: "saida", tipo_custo_estoque: "contrato",
+    tipo_lcdpr: "1",
+    impostos: ["funrural", "senar"],
+    obs_legal: "ICMS DIFERIDO CONFORME ART. 1º DO ANEXO V DO RICMS/MT",
+    conta_debito: "1.1.2.1", conta_credito: "4.1.1",
+    ref_id: 702,
+  }),
+  rec("1.01.01.01.CF.003", "COMPLEMENTO VALOR DE VENDA BOVINO P.O.", {
+    // Complemento de preço — bovinos registrados / puro de origem
+    permite_notas_fiscais: true, tipo_lcdpr: "1",
+    impostos: ["funrural", "senar"],
+    conta_debito: "1.1.2.3", conta_credito: "4.4.1",
+    ref_id: 713,
+  }),
+  rec("1.01.01.01.CF.004", "COMPLEMENTO VALOR DE VENDA", {
+    // Complemento genérico de preço para qualquer commodity — CFOPs 5101/6101
+    permite_notas_fiscais: true, tipo_lcdpr: "1",
+    impostos: ["funrural", "senar"],
+    conta_debito: "1.1.2.1", conta_credito: "4.1.1",
+    ref_id: 918,
+  }),
+  rec("1.01.01.01.CF.005", "VENDA DE PRODUÇÃO ENTREGUE P/ CONTA E ORDEM", {
+    // Entrega por conta do adquirente — CFOPs 5118/6118
+    permite_notas_fiscais: true, tipo_lcdpr: "1",
+    impostos: ["funrural", "senar"],
+    obs_legal: "ENTREGA DE PRODUÇÃO POR CONTA E ORDEM DO ADQUIRENTE",
+    conta_debito: "1.1.2.1", conta_credito: "4.1.1",
+    ref_id: 916,
+  }),
+
+  // ── Venda imobilizado complementar ────────────────────────
+  rec("1.02.01.02.CF.001", "VENDA DO ATIVO IMOBILIZADO", {
+    // CFOPs 5551 (intraest.) e 6551 (interest.) — ativos em geral
+    permite_notas_fiscais: true, tipo_lcdpr: "2",
+    conta_debito: "1.1.1.2", conta_credito: "4.3.5",
+    ref_id: 899,
+  }),
+
+  // ── Compras para produção rural (genéricas) ───────────────
+  desp("2.01.01.01.CF.001", "COMPRA PARA PRODUÇÃO RURAL — A", {
+    // CFOPs 1101/2101 — compra de produto rural destinado à própria produção
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "5", conta_credito: "2.1.1.1",
+    ref_id: 667,
+  }),
+  desp("2.01.01.01.CF.002", "COMPRA PARA PRODUÇÃO RURAL — B", {
+    // CFOPs 1101/2101 — variante para diferentes emitentes ou CFOPs estaduais
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "5", conta_credito: "2.1.1.1",
+    ref_id: 815,
+  }),
+  desp("2.01.01.01.CF.003", "COMPRA PARA PRODUÇÃO RURAL — C", {
+    // CFOPs 1101/2101 — terceira variante (PJ, regime específico ou terceiro)
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "5", conta_credito: "2.1.1.1",
+    ref_id: 919,
+  }),
+  desp("2.01.01.01.CF.004", "FATURAMENTO COMPRA P/ RECEBIMENTO FUTURO", {
+    // CFOPs 1922/2922 — compra antecipada, mercadoria não recebida ainda
+    permite_notas_fiscais: true,
+    tipo_lcdpr: "1", custo_absorcao: true,
+    conta_debito: "1.1.2.2", conta_credito: "2.1.1.1",
+    ref_id: 855,
+  }),
+
+  // ── Compra de combustível — consumidor final ───────────────
+  desp("2.01.01.02.CF.001", "COMPRA COMBUST./LUBRIFICANTE CONS. FINAL", {
+    // CFOP 1653 — aquisição de combustível ou lubrificante por consumidor/usuário final
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "5.5", conta_credito: "2.1.1.1",
+    ref_id: 857,
+  }),
+
+  // ── Materiais de uso e consumo (DGA) ──────────────────────
+  desp("2.01.02.01.01.CF.001", "AQUISIÇÃO DE SERVIÇO", {
+    // CFOPs 1933/2933 — aquisição de serviço por produtor rural
+    permite_notas_fiscais: true,
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.2",
+    ref_id: 413,
+  }),
+  desp("2.01.02.01.01.CF.002", "COMPRA MAT. USO/CONSUMO SUBST. TRIB. — A", {
+    // CFOPs 1407/2407 — substituição tributária, material para uso ou consumo
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 423,
+  }),
+  desp("2.01.02.01.01.CF.003", "COMPRA MAT. USO/CONSUMO — A", {
+    // CFOPs 1556/2556 ou 2306 — material de uso ou consumo (sem subst. tributária)
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 425,
+  }),
+  desp("2.01.02.01.01.CF.004", "COMPRA MAT. USO/CONSUMO SUBST. TRIB. — B", {
+    // CFOPs 1407/2407 — variante B (regime ou emitente diferente de 423)
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 758,
+  }),
+  desp("2.01.02.01.01.CF.005", "OUTRA ENTRADA DE MERC. OU SERVIÇO", {
+    // CFOPs 1949/2949 — entrada não especificada em outro código
+    permite_notas_fiscais: true,
+    tipo_lcdpr: "5", custo_absorcao: true, informa_complemento: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 760,
+  }),
+  desp("2.01.02.01.01.CF.006", "COMPRA MAT. USO/CONSUMO — B", {
+    // CFOPs 1556/2556 — variante B
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 784,
+  }),
+  desp("2.01.02.01.01.CF.007", "COMPRA MAT. USO/CONSUMO — C", {
+    // CFOPs 1556/2556 — variante C
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 853,
+  }),
+  desp("2.01.02.01.01.CF.008", "COMPRA MAT. USO/CONSUMO SUBST. TRIB. — C", {
+    // CFOPs 1407/2407 — variante C
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 858,
+  }),
+  desp("2.01.02.01.01.CF.009", "COMPRA MAT. USO/CONSUMO — D", {
+    // CFOPs 1556/2556 — variante D
+    permite_notas_fiscais: true, permite_estoque: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
+    conta_debito: "6.4", conta_credito: "2.1.1.1",
+    ref_id: 864,
+  }),
+
+  // ── Remessas e transferências especiais ───────────────────
+  rec("1.02.01.04.CF.001", "REMESSA MERC. POR CONTA E ORDEM — A", {
+    // CFOPs 5923/6923 — remessa por conta e ordem de terceiros
+    permite_notas_fiscais: true,
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.4",
+    ref_id: 785,
+  }),
+  rec("1.02.01.04.CF.002", "REMESSA MERC. POR CONTA E ORDEM — B", {
+    // CFOPs 5923/6923 — variante B (emitente ou rota diferente)
+    permite_notas_fiscais: true,
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.4",
+    ref_id: 917,
+  }),
+  rec("1.02.01.04.CF.003", "TRANSFERÊNCIA DE PRODUÇÃO PRÓPRIA", {
+    // CFOP 5151 — transferência de produção entre estabelecimentos do mesmo titular
+    permite_notas_fiscais: true,
+    operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.1",
+    ref_id: 786,
+  }),
+  rec("1.02.01.04.CF.004", "ENTRADA MERC. PARA DEMONSTRAÇÃO", {
+    // CFOPs 1912/2912 — produto recebido para demonstração (não gera CP)
+    permite_notas_fiscais: true,
+    operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
+    gerar_financeiro: false,
+    conta_debito: "1.1.3.4", conta_credito: "2.1.1.1",
+    ref_id: 788,
+  }),
+  rec("1.02.01.04.CF.005", "RETORNO MERC. APÓS DEMONSTRAÇÃO", {
+    // CFOPs 5913/6913 — retorno ao fornecedor após demonstração
+    permite_notas_fiscais: true,
+    operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
+    gerar_financeiro: false,
+    conta_debito: "2.1.1.1", conta_credito: "1.1.3.4",
+    ref_id: 789,
+  }),
+  rec("1.02.01.04.CF.006", "DEVOLUÇÃO DE BEM DE TERCEIRO", {
+    // CFOPs 5555/6555 — devolução de bem de terceiro que estava no estabelecimento
+    permite_notas_fiscais: true,
+    gerar_financeiro: false,
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.4",
+    ref_id: 772,
+  }),
+  rec("1.02.01.04.CF.007", "ANULAÇÃO VALOR SERVIÇO DE TRANSPORTE", {
+    // CFOPs 5206/6206 — anulação de valor relativo à aquisição de frete
+    permite_notas_fiscais: true,
+    gerar_financeiro: false,
+    conta_debito: "5.5.4", conta_credito: "2.1.1.2",
+    ref_id: 797,
+  }),
+  rec("1.02.01.04.CF.008", "TRANSFERÊNCIA DE BENS DO ATIVO IMOBILIZADO", {
+    // CFOP 5552 — transferência de maquinário ou equipamento entre fazendas
+    permite_notas_fiscais: true,
+    gerar_financeiro: false,
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.4",
+    ref_id: 805,
+  }),
+  rec("1.02.01.04.CF.009", "TRANSFERÊNCIA DE MERC. ADQUIRIDA DE TERCEIROS", {
+    // CFOP 5152 — transferência de mercadoria comprada de terceiros
+    permite_notas_fiscais: true,
+    operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
+    gerar_financeiro: false,
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.1",
+    ref_id: 807,
+  }),
+  rec("1.02.01.04.CF.010", "OUTRA SAÍDA DE MERC. OU SERVIÇO", {
+    // CFOP 5949 — saída não classificada em outro código
+    permite_notas_fiscais: true, informa_complemento: true,
+    gerar_financeiro: false,
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.4",
+    ref_id: 814,
+  }),
+  rec("1.02.01.04.CF.011", "REMESSA DE VASILHAME OU SACARIA", {
+    // CFOPs 5920/6920 — remessa de embalagens retornáveis (sacarias, big bags)
+    permite_notas_fiscais: true,
+    gerar_financeiro: false,
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.4",
+    ref_id: 822,
+  }),
+  rec("1.02.01.04.CF.012", "REMESSA P/ INDUSTRIALIZAÇÃO DE GRÃOS", {
+    // CFOP 5901 — remessa de soja/milho para industrialização (ex: esmagamento)
+    permite_notas_fiscais: true,
+    operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
+    gerar_financeiro: false,
+    obs_legal: "REMESSA PARA INDUSTRIALIZAÇÃO — RETORNO PREVISTO APÓS PROCESSO",
+    conta_debito: "1.1.3.4", conta_credito: "1.1.3.1",
+    ref_id: 887,
+  }),
+
+  // ── Remuneração produtor (integração/parceria rural) ──────
+  rec("1.01.01.02.CF.001", "SAÍDA REF. REMUNERAÇÃO PRODUTOR — INTEGRAÇÃO", {
+    // CFOPs 5456/5151 — sistema de integração pecuária ou parceria rural
+    permite_notas_fiscais: true,
+    operacao_estoque: "saida", tipo_custo_estoque: "contrato",
+    tipo_lcdpr: "1", impostos: ["funrural", "senar"],
+    conta_debito: "1.1.2.3", conta_credito: "4.4.1",
+    ref_id: 808,
+  }),
 ];
 
 // ── Seeder para fazenda específica ───────────────────────────────────────────
