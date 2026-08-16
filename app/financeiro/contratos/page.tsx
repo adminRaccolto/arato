@@ -541,9 +541,16 @@ export default function ContratosFinanceiros() {
   // ── Salvar contrato (Principal) ──
   const salvarContrato = () => salvar(async () => {
     if (!fazendaId) { alert("Fazenda não identificada. Recarregue a página."); return; }
-    if (!fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado) return;
     const credorNome = fC.pessoa_id ? (pessoas.find(p => p.id === fC.pessoa_id)?.nome ?? fC.credor) : fC.credor.trim();
-    if (!credorNome) { alert("Informe o credor."); return; }
+    const erros: string[] = [];
+    if (!fC.descricao.trim()) erros.push("Descrição");
+    if (!fC.data_contrato) erros.push("Data do Contrato");
+    if (!fC.valor_financiado) erros.push("Valor Financiado");
+    if (!credorNome) erros.push("Credor");
+    if (!fC.numero_documento.trim()) erros.push("Nº Documento");
+    if (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am)) erros.push("Taxa de Juros");
+    if (erros.length) { setErroModal(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
+    setErroModal(null);
     const vf = parseFloat(fC.valor_financiado.replace(",", ".")) || 0;
     const vc = fC.valor_cotacao ? parseFloat(fC.valor_cotacao.replace(",", ".")) : undefined;
     const fidCf = fC.fazenda_id || fazendaId!;
@@ -604,7 +611,12 @@ export default function ContratosFinanceiros() {
 
   // ── Liberação ──
   const salvarLiberacao = () => salvar(async () => {
-    if (!contratoModal || !fLib.data_liberacao || !fLib.valor_liberado) return;
+    if (!contratoModal) return;
+    const errosLib: string[] = [];
+    if (!fLib.data_liberacao) errosLib.push("Data Liberação");
+    if (!fLib.valor_liberado) errosLib.push("Valor Liberado");
+    if (errosLib.length) { setErroModal(`Preencha antes de salvar: ${errosLib.join(", ")}`); return; }
+    setErroModal(null);
     const vl = parseFloat(fLib.valor_liberado.replace(",", ".")) || 0;
     const nParcelas = Math.max(1, Number(fLib.parcelas_liberacao) || 1);
     for (let i = 1; i <= nParcelas; i++) {
@@ -624,7 +636,9 @@ export default function ContratosFinanceiros() {
 
   // ── Calcular parcelas ──
   const calcularParcelas = () => salvar(async () => {
-    if (!contratoModal || !fCalc.dataPrimeiro) return;
+    if (!contratoModal) return;
+    if (!fCalc.dataPrimeiro) { setErroModal("Preencha antes de salvar: Data 1º Pagamento"); return; }
+    setErroModal(null);
     // Usa fC (formulário atual) para parâmetros de cálculo — não exige salvar antes
     const valorBase = parseFloat(String(fC.valor_financiado).replace(",", ".")) || contratoModal.valor_financiado;
     const tipoCalc = fC.tipo_calculo || contratoModal.tipo_calculo;
@@ -783,7 +797,12 @@ export default function ContratosFinanceiros() {
 
   // ── Aditivo ──
   const salvarAditivo = () => salvar(async () => {
-    if (!contratoModal || !fAdit.data_aditivo || !fAdit.descricao.trim()) return;
+    if (!contratoModal) return;
+    const errosAdit: string[] = [];
+    if (!fAdit.data_aditivo) errosAdit.push("Data do Aditivo");
+    if (!fAdit.descricao.trim()) errosAdit.push("Descrição");
+    if (errosAdit.length) { setErroModal(`Preencha antes de salvar: ${errosAdit.join(", ")}`); return; }
+    setErroModal(null);
     const nova = await criarAditivo({
       contrato_id: contratoModal.id, fazenda_id: fazendaId!,
       data_aditivo: fAdit.data_aditivo, tipo: fAdit.tipo, descricao: fAdit.descricao.trim(),
@@ -1449,11 +1468,14 @@ export default function ContratosFinanceiros() {
                     <input style={inp} value={fC.observacao} onChange={e => setFC(p => ({ ...p, observacao: e.target.value }))} />
                   </div>
 
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-                    <button style={btnR} onClick={fecharModal}>Fechar</button>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", marginTop: 22 }}>
+                    {erroModal && (
+                      <span style={{ fontSize: 12, color: "#E24B4A", maxWidth: 360, lineHeight: 1.4 }}>{erroModal}</span>
+                    )}
+                    <button style={btnR} onClick={() => { fecharModal(); setErroModal(null); }}>Fechar</button>
                     <button
-                      style={{ ...btnV, background: "#111111", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am)) ? 0.5 : 1 }}
-                      disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (fC.taxa_tipo === "variavel" ? !fC.indexador : (!fC.taxa_juros_aa && !fC.taxa_juros_am))}
+                      style={{ ...btnV, background: "#111111" }}
+                      disabled={salvando}
                       onClick={salvarContrato}
                     >{salvando ? "Salvando…" : contratoModal ? "Salvar alterações" : "Salvar e continuar"}</button>
                   </div>
@@ -1470,7 +1492,7 @@ export default function ContratosFinanceiros() {
                     <div><label style={lbl}>Data Liberação</label><input style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
                     <div><label style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fLib.valor_liberado} onChange={v => setFLib(p => ({ ...p, valor_liberado: String(v) }))} /></div>
                     <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fLib.parcelas_liberacao} onChange={v => setFLib(p => ({ ...p, parcelas_liberacao: v }))} /></div>
-                    <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando || !fLib.data_liberacao || !fLib.valor_liberado}>+ Adicionar</button>
+                    <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando}>+ Adicionar</button>
                   </div>
                   {parcelasLiberacao.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma parcela de liberação registrada</div>
@@ -1544,7 +1566,7 @@ export default function ContratosFinanceiros() {
                           📄 Usar cronograma do PDF ({parcelasIAPdf.length} parcelas)
                         </button>
                       )}
-                      <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando || !fCalc.dataPrimeiro}>{salvando ? "Calculando…" : "⟳ Calcular e Salvar Parcelas"}</button>
+                      <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando}>{salvando ? "Calculando…" : "⟳ Calcular e Salvar Parcelas"}</button>
                     </div>
                   </div>
                   {parcelasIAPdf && parcelasIAPdf.length > 0 && parcelasPagamento.length === 0 && (
@@ -1881,7 +1903,7 @@ export default function ContratosFinanceiros() {
                       <div style={{ marginBottom: 12 }}><label style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 52, resize: "vertical" } as React.CSSProperties} value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>
                         <button style={{ ...btnR, marginRight: 8 }} onClick={() => setFAdit({ ...FA_VAZIO })}>Limpar</button>
-                        <button style={{ ...btnV, opacity: salvando || !fAdit.data_aditivo || !fAdit.descricao.trim() ? 0.5 : 1 }} disabled={salvando || !fAdit.data_aditivo || !fAdit.descricao.trim()} onClick={salvarAditivo}>Registrar Aditivo</button>
+                        <button style={{ ...btnV }} disabled={salvando} onClick={salvarAditivo}>Registrar Aditivo</button>
                       </div>
                     </div>
                     {aditivos.length === 0 ? (

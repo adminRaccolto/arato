@@ -160,6 +160,7 @@ export default function ApoioFinanceiroPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [formApoio, setFormApoio] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
+  const [erroModal, setErroModal] = useState("");
 
   // ── Modal baixar (com conta bancária) ─────────────────────────────────────
   const [modalBaixar, setModalBaixar] = useState<Lancamento | null>(null);
@@ -285,6 +286,8 @@ export default function ApoioFinanceiroPage() {
   // ── Confirmar baixa com conta bancária ────────────────────────────────────
   async function confirmarBaixa() {
     if (!fazendaId || !modalBaixar) return;
+    if (!baixarForm.data_baixa) { setErroModal("Preencha antes de salvar: Data da Baixa"); return; }
+    setErroModal("");
     setSalvandoBaixa(true);
     const payload: Record<string, unknown> = {
       fazenda_id: fazendaId,
@@ -329,7 +332,12 @@ export default function ApoioFinanceiroPage() {
 
   // ── Salvar novo lançamento exclusivo ──────────────────────────────────────
   async function salvarApoioLanc() {
-    if (!fazendaId || !formApoio.descricao || !formApoio.data_vencimento) return;
+    if (!fazendaId) return;
+    const erros: string[] = [];
+    if (!formApoio.descricao) erros.push("Descrição");
+    if (!formApoio.data_vencimento) erros.push("Data de Vencimento");
+    if (erros.length) { setErroModal(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
+    setErroModal("");
     const valor = parseFloat(formApoio.valorMask.replace(/\./g, "").replace(",", ".")) || 0;
     setSalvando(true);
 
@@ -384,7 +392,9 @@ export default function ApoioFinanceiroPage() {
 
   // ── Baixa em lote (exclusivo) — via API para bypassar RLS multi-fazenda ──
   async function baixarEmLote() {
-    if (!selecionados.size || !baixaLoteData) return;
+    if (!selecionados.size) return;
+    if (!baixaLoteData) { setErroModal("Preencha antes de salvar: Data da Baixa"); return; }
+    setErroModal("");
     setSalvandoLote(true);
     const ids = Array.from(selecionados);
     const resp = await fetch("/api/apoio-bulk", {
@@ -1036,13 +1046,14 @@ export default function ApoioFinanceiroPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-                <button onClick={() => setModalBaixar(null)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
+                {erroModal && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erroModal}</span>}
+                <button onClick={() => { setModalBaixar(null); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                   Cancelar
                 </button>
                 <button
                   onClick={confirmarBaixa}
-                  disabled={salvandoBaixa || !baixarForm.data_baixa}
+                  disabled={salvandoBaixa}
                   style={btn("#C9921B")}
                 >
                   {salvandoBaixa ? "Salvando…" : "Confirmar Baixa"}
@@ -1079,13 +1090,14 @@ export default function ApoioFinanceiroPage() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-                <button onClick={() => setModalBaixaLote(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
+                {erroModal && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erroModal}</span>}
+                <button onClick={() => { setModalBaixaLote(false); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                   Cancelar
                 </button>
                 <button
                   onClick={baixarEmLote}
-                  disabled={salvandoLote || !baixaLoteData}
+                  disabled={salvandoLote}
                   style={btn("#C9921B")}
                 >
                   {salvandoLote ? "Baixando…" : `Confirmar Baixa (${selecionados.size})`}
@@ -1243,13 +1255,14 @@ export default function ApoioFinanceiroPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-                <button onClick={() => setModalAberto(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
+                {erroModal && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erroModal}</span>}
+                <button onClick={() => { setModalAberto(false); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                   Cancelar
                 </button>
                 <button
                   onClick={salvarApoioLanc}
-                  disabled={salvando || !formApoio.descricao || !formApoio.data_vencimento}
+                  disabled={salvando}
                   style={btn("#111111")}
                 >
                   {salvando ? "Salvando…" : "Salvar"}

@@ -374,6 +374,12 @@ export default function AdminUsuarios() {
   });
 
   async function criarNovoCliente() {
+    const erros: string[] = [];
+    if (!fCliente.nome.trim()) erros.push("Nome");
+    if (!fCliente.fazenda_nome.trim()) erros.push("Nome da Fazenda");
+    if (!fCliente.user_email.trim()) erros.push("E-mail do usuário");
+    if (!fCliente.user_senha.trim()) erros.push("Senha do usuário");
+    if (erros.length) { setResultCliente({ ok: false, erro: `Preencha antes de salvar: ${erros.join(", ")}` }); return; }
     setCriandoCliente(true); setResultCliente(null);
     try {
       const res = await fetch("/api/admin/criar-cliente-interno", {
@@ -433,7 +439,12 @@ export default function AdminUsuarios() {
 
   // ── Usuário — salvar (equipe Raccotlo — sem fazenda_id obrigatório) ──
   const salvarUser = async () => {
-    if (!fUser.nome.trim() || !fUser.email.trim()) return;
+    const erros: string[] = [];
+    if (!fUser.nome.trim()) erros.push("Nome");
+    if (!fUser.email.trim()) erros.push("E-mail");
+    if (!editUser && !fUser.senha.trim()) erros.push("Senha");
+    if (erros.length) { setErro(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
+    setErro(null);
     setSalvando(true);
     setResultadoCriacao(null);
 
@@ -836,11 +847,12 @@ export default function AdminUsuarios() {
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-                <button style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center", marginTop: 20 }}>
+                {erro && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erro}</span>}
+                <button style={btnR} onClick={() => { setModalUser(false); setErro(null); }}>Cancelar</button>
                 <button
-                  style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim()) ? 0.5 : 1 }}
-                  disabled={salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim())}
+                  style={{ ...btnV }}
+                  disabled={salvando}
                   onClick={salvarUser}
                 >
                   {salvando ? "Criando…" : editUser ? "Salvar" : "Criar Usuário"}
@@ -965,10 +977,10 @@ export default function AdminUsuarios() {
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 4 }}>
-                <button style={btnR} onClick={() => setModalNovoCliente(false)}>Cancelar</button>
+                <button style={btnR} onClick={() => { setModalNovoCliente(false); setResultCliente(null); }}>Cancelar</button>
                 <button
-                  style={{ ...btnV, background: "#16A34A", opacity: criandoCliente || !fCliente.nome.trim() || !fCliente.fazenda_nome.trim() || !fCliente.user_email.trim() || !fCliente.user_senha.trim() ? 0.5 : 1 }}
-                  disabled={criandoCliente || !fCliente.nome.trim() || !fCliente.fazenda_nome.trim() || !fCliente.user_email.trim() || !fCliente.user_senha.trim()}
+                  style={{ ...btnV, background: "#16A34A" }}
+                  disabled={criandoCliente}
                   onClick={criarNovoCliente}
                 >
                   {criandoCliente ? "Criando..." : "Criar Cliente"}

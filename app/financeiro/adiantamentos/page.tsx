@@ -123,7 +123,12 @@ export default function AdiantamentosPage() {
 
   // ── Salvar novo ───────────────────────────────────────────────
   const salvarNovo = async () => {
-    if (!fazendaId || !form.descricao.trim() || !form.data_emissao || !form.valor) return;
+    if (!fazendaId) return;
+    const erros: string[] = [];
+    if (!form.descricao.trim()) erros.push("Descrição");
+    if (!form.data_emissao) erros.push("Data de Emissão");
+    if (!form.valor) erros.push("Valor");
+    if (erros.length) { setErro(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
     setSalvando(true); setErro("");
     try {
       const novo = await criarAdiantamento({
@@ -150,7 +155,12 @@ export default function AdiantamentosPage() {
 
   // ── Aplicar ───────────────────────────────────────────────────
   const salvarApliq = async () => {
-    if (!modalApliq || !fApliq.valor_aplicado || !fApliq.data_aplicacao || !fApliq.descricao.trim()) return;
+    if (!modalApliq) return;
+    const errosAp: string[] = [];
+    if (!fApliq.valor_aplicado) errosAp.push("Valor a Aplicar");
+    if (!fApliq.data_aplicacao) errosAp.push("Data de Aplicação");
+    if (!fApliq.descricao.trim()) errosAp.push("Descrição");
+    if (errosAp.length) { setErro(`Preencha antes de salvar: ${errosAp.join(", ")}`); return; }
     const val = Number(fApliq.valor_aplicado);
     const saldo = modalApliq.valor - (modalApliq.valor_aplicado ?? 0);
     if (val > saldo + 0.01) { setErro(`Valor maior que o saldo disponível (${fmtBRL(saldo)})`); return; }
@@ -390,9 +400,9 @@ export default function AdiantamentosPage() {
 
           {erro && <div style={{ marginTop: 12, background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", color: "#791F1F", fontSize: 12 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalNovo(false)}>Cancelar</button>
-            <button style={{ ...btnAzul, opacity: salvando || !form.descricao.trim() || !form.data_emissao || !form.valor ? 0.5 : 1 }}
-              disabled={salvando || !form.descricao.trim() || !form.data_emissao || !form.valor}
+            <button style={btnR} onClick={() => { setModalNovo(false); setErro(""); }}>Cancelar</button>
+            <button style={{ ...btnAzul }}
+              disabled={salvando}
               onClick={salvarNovo}>{salvando ? "Salvando…" : "Salvar Adiantamento"}</button>
           </div>
         </Modal>
@@ -437,8 +447,8 @@ export default function AdiantamentosPage() {
           {erro && <div style={{ marginTop: 12, background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", color: "#791F1F", fontSize: 12 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => { setModalApliq(null); setErro(""); }}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fApliq.valor_aplicado || !fApliq.data_aplicacao || !fApliq.descricao.trim() ? 0.5 : 1 }}
-              disabled={salvando || !fApliq.valor_aplicado || !fApliq.data_aplicacao || !fApliq.descricao.trim()}
+            <button style={{ ...btnV }}
+              disabled={salvando}
               onClick={salvarApliq}>{salvando ? "Salvando…" : "Confirmar Aplicação"}</button>
           </div>
         </Modal>
