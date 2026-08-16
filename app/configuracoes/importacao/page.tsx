@@ -7,7 +7,7 @@ import { listarFazendasDaConta } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type Aba = "pessoas" | "cp" | "cr" | "apoio" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos" | "contratos_venda" | "produtores_imp" | "fazendas_imp" | "talhoes_imp" | "funcionarios";
+type Aba = "pessoas" | "cp" | "cr" | "apoio" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos" | "contratos_venda" | "produtores_imp" | "fazendas_imp" | "matriculas_imp" | "talhoes_imp" | "funcionarios" | "propriedades_pkg";
 
 type PessoaRow = {
   nome: string; tipo: string; cpf_cnpj: string; cliente: string; fornecedor: string;
@@ -99,11 +99,23 @@ type ProdutorImpRow = {
 };
 type FazendaImpRow = {
   nome: string; municipio: string; estado: string; area_total_ha: string;
-  cep: string; logradouro: string; car: string; nirf: string; itr_area_ha: string;
+  produtor_cpf_cnpj: string;
+  cep: string; logradouro: string;
+  car: string; car_vencimento: string;
+  nirf: string;
+  itr_area_ha: string; itr_vencimento: string;
+  ccir: string; ccir_vencimento: string;
+  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
+};
+type MatriculaImpRow = {
+  fazenda_nome: string; numero: string; cartorio: string;
+  area_ha: string; municipio: string; uf: string;
+  produtor_cpf_cnpj: string; em_garantia: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type TalhaoImpRow = {
   nome: string; fazenda_nome: string; area_ha: string;
+  area_plantada_ha: string; tipo_posse: string;
   cultura_predominante: string; tipo_solo: string;
   latitude: string; longitude: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
@@ -212,18 +224,25 @@ const TEMPLATE_PRODUTORES_IMP = [
 ];
 
 const TEMPLATE_FAZENDAS_IMP = [
-  ["nome*", "municipio*", "estado*", "area_total_ha*", "cep", "logradouro", "car", "nirf", "itr_area_ha"],
-  ["Rancho Alegre", "Nova Mutum", "MT", "2500.00", "78450-000", "Estrada Municipal KM 25", "MT-5003420-5D8ECA1F2BA34BC7A5ED1FC3EBC89000", "7654321", "2500.00"],
-  ["Fazenda Rio Bonito", "Sorriso", "MT", "1800.50", "78890-000", "Rodovia BR-163 KM 702", "", "", ""],
-  ["Sítio Esperança", "Lucas do Rio Verde", "MT", "450.00", "", "", "", "", ""],
+  ["nome*", "municipio*", "estado*", "area_total_ha*", "produtor_cpf_cnpj", "cep", "logradouro", "car", "car_vencimento", "nirf", "itr_area_ha", "itr_vencimento", "ccir", "ccir_vencimento"],
+  ["Rancho Alegre", "Nova Mutum", "MT", "2500.00", "012.345.678-90", "78450-000", "Estrada Municipal KM 25", "MT-5003420-5D8ECA1F2BA34BC7A5ED1FC3EBC89000", "2032-12-31", "7654321", "2500.00", "2027-03-31", "12345678901", "2028-06-30"],
+  ["Fazenda Rio Bonito", "Sorriso", "MT", "1800.50", "", "78890-000", "Rodovia BR-163 KM 702", "", "", "", "", "", "", ""],
+  ["Sítio Esperança", "Lucas do Rio Verde", "MT", "450.00", "", "", "", "", "", "", "", "", "", ""],
+];
+
+const TEMPLATE_MATRICULAS_IMP = [
+  ["fazenda_nome*", "numero*", "cartorio*", "area_ha*", "municipio*", "uf*", "produtor_cpf_cnpj", "em_garantia"],
+  ["Rancho Alegre", "12345", "1° Cartório de Nova Mutum", "2500.00", "Nova Mutum", "MT", "012.345.678-90", "nao"],
+  ["Rancho Alegre", "67890", "1° Cartório de Nova Mutum", "800.00", "Nova Mutum", "MT", "", "sim"],
+  ["Fazenda Rio Bonito", "11111", "Cartório de Sorriso", "1800.50", "Sorriso", "MT", "", "nao"],
 ];
 
 const TEMPLATE_TALHOES_IMP = [
-  ["nome*", "fazenda_nome*", "area_ha*", "cultura_predominante", "tipo_solo", "latitude", "longitude"],
-  ["Talhão 1 Norte", "Rancho Alegre", "320.5", "Soja", "Latossolo Vermelho", "-13.825000", "-56.091000"],
-  ["Talhão 2 Sul", "Rancho Alegre", "280.0", "Milho", "Latossolo Vermelho-Amarelo", "-13.850000", "-56.095000"],
-  ["Área Central", "Fazenda Rio Bonito", "450.0", "Soja", "Latossolo Amarelo", "-12.540000", "-55.720000"],
-  ["Gleba Leste", "Sítio Esperança", "200.0", "Soja/Milho", "Latossolo Vermelho", "-13.100000", "-55.980000"],
+  ["nome*", "fazenda_nome*", "area_ha*", "area_plantada_ha", "tipo_posse", "cultura_predominante", "tipo_solo", "latitude", "longitude"],
+  ["Talhão 1 Norte", "Rancho Alegre", "320.5", "318.0", "proprio", "Soja", "Latossolo Vermelho", "-13.825000", "-56.091000"],
+  ["Talhão 2 Sul", "Rancho Alegre", "280.0", "278.5", "arrendado", "Milho", "Latossolo Vermelho-Amarelo", "-13.850000", "-56.095000"],
+  ["Área Central", "Fazenda Rio Bonito", "450.0", "440.0", "proprio", "Soja", "Latossolo Amarelo", "-12.540000", "-55.720000"],
+  ["Gleba Leste", "Sítio Esperança", "200.0", "", "proprio", "Soja/Milho", "Latossolo Vermelho", "-13.100000", "-55.980000"],
 ];
 
 const INSTRUCOES_CONTRATOS_VENDA = [
@@ -296,17 +315,44 @@ const INSTRUCOES_FAZENDAS_IMP = [
   ["• municipio: município sede da fazenda"],
   ["• estado: sigla UF (ex: MT)"],
   ["• area_total_ha: área total em hectares (ex: 2500.00)"],
+  ["• produtor_cpf_cnpj: CPF/CNPJ do produtor principal da fazenda (vincula produtor_id)"],
+  ["  O produtor deve estar cadastrado em Produtores. Deixe em branco para vincular depois."],
   ["• cep: CEP da sede (opcional, formato 00000-000)"],
   ["• logradouro: endereço da sede (opcional)"],
   ["• car: Código do Cadastro Ambiental Rural (52 caracteres alfanuméricos)"],
   ["  Formato: UF-IBGE-HASH (ex: MT-5003420-5D8ECA1F2BA34BC7A5ED1FC3EBC89000)"],
+  ["• car_vencimento: data de vencimento do CAR no formato AAAA-MM-DD (ex: 2032-12-31)"],
   ["• nirf: Número do Imóvel na Receita Federal (até 8 dígitos)"],
   ["• itr_area_ha: área declarada no ITR (pode diferir da área total)"],
+  ["• itr_vencimento: vencimento do ITR no formato AAAA-MM-DD"],
+  ["• ccir: número do CCIR (Certificado de Cadastro de Imóvel Rural)"],
+  ["• ccir_vencimento: vencimento do CCIR no formato AAAA-MM-DD"],
   [""],
   ["Efeitos da importação:"],
   ["  → Fazenda criada e vinculada à conta do usuário"],
   ["  → Talhões podem ser importados depois referenciando o nome da fazenda"],
-  ["  → Matrículas de imóvel podem ser adicionadas em Cadastros → Fazendas → Matrículas"],
+  ["  → Matrículas: use a aba Matrículas ou o pacote Propriedades para importar em lote"],
+];
+
+const INSTRUCOES_MATRICULAS_IMP = [
+  ["INSTRUÇÕES — IMPORTAÇÃO DE MATRÍCULAS DE IMÓVEL"],
+  [""],
+  ["• Campos com * são obrigatórios"],
+  ["• Não altere os nomes das colunas (linha 1)"],
+  ["• fazenda_nome: nome EXATO da fazenda conforme cadastrada no sistema"],
+  ["  O nome deve coincidir exatamente (maiúsculas, acentos, espaços)"],
+  ["• numero: número da matrícula no cartório (ex: 12345)"],
+  ["• cartorio: nome do cartório de registro (ex: 1° Cartório de Nova Mutum)"],
+  ["• area_ha: área registrada na matrícula em hectares (ex: 2500.00)"],
+  ["• municipio: município onde o imóvel está registrado"],
+  ["• uf: sigla do estado (ex: MT)"],
+  ["• produtor_cpf_cnpj: CPF/CNPJ do proprietário da matrícula (opcional, vincula produtor_id)"],
+  ["• em_garantia: sim ou nao — matrícula em garantia bancária (padrão: nao)"],
+  [""],
+  ["Efeitos da importação:"],
+  ["  → Matrícula criada e vinculada à fazenda"],
+  ["  → Aparece em Cadastros → Fazendas → aba Matrículas"],
+  ["  → A combinação (fazenda_id + numero) é única — duplicatas são ignoradas"],
 ];
 
 const INSTRUCOES_TALHOES_IMP = [
@@ -318,7 +364,10 @@ const INSTRUCOES_TALHOES_IMP = [
   ["  Deve ser único dentro da fazenda informada"],
   ["• fazenda_nome: nome exato da fazenda cadastrada no sistema"],
   ["  O nome deve coincidir exatamente com o cadastrado (maiúsculas, acentos)"],
-  ["• area_ha: área do talhão em hectares (ex: 320.5)"],
+  ["• area_ha: área total do talhão em hectares (ex: 320.5)"],
+  ["• area_plantada_ha: área efetivamente plantada (pode ser menor que area_ha)"],
+  ["  Deixe em branco se igual à área total"],
+  ["• tipo_posse: proprio ou arrendado (padrão: proprio)"],
   ["• cultura_predominante: cultura principal do talhão (informativo, ex: Soja)"],
   ["  Este campo não é armazenado no banco — serve apenas de referência na importação"],
   ["• tipo_solo: tipo de solo predominante (ex: Latossolo Vermelho)"],
@@ -572,6 +621,22 @@ function addMonths(dateStr: string, months: number): string {
 function downloadTemplate(aba: Aba) {
   import("xlsx").then(({ utils, writeFile }) => {
     const wb = utils.book_new();
+
+    // Pacote Propriedades: 3 sheets num único arquivo
+    if (aba === "propriedades_pkg") {
+      for (const [nome, tpl] of [
+        ["Fazendas",  TEMPLATE_FAZENDAS_IMP],
+        ["Matrículas", TEMPLATE_MATRICULAS_IMP],
+        ["Talhões",   TEMPLATE_TALHOES_IMP],
+      ] as [string, (string | number)[][]][]) {
+        const ws = utils.aoa_to_sheet(tpl);
+        ws["!cols"] = tpl[0].map(() => ({ wch: 26 }));
+        utils.book_append_sheet(wb, ws, nome);
+      }
+      writeFile(wb, "template_propriedades_pacote.xlsx");
+      return;
+    }
+
     const templates: Record<Aba, (string | number)[][]> = {
       pessoas:          TEMPLATE_PESSOAS,
       cp:               TEMPLATE_CP,
@@ -585,8 +650,10 @@ function downloadTemplate(aba: Aba) {
       contratos_venda:  TEMPLATE_CONTRATOS_VENDA,
       produtores_imp:   TEMPLATE_PRODUTORES_IMP,
       fazendas_imp:     TEMPLATE_FAZENDAS_IMP,
+      matriculas_imp:   TEMPLATE_MATRICULAS_IMP,
       talhoes_imp:      TEMPLATE_TALHOES_IMP,
       funcionarios:     TEMPLATE_FUNCIONARIOS,
+      propriedades_pkg: TEMPLATE_FAZENDAS_IMP,
     };
     const ws = utils.aoa_to_sheet(templates[aba]);
     ws["!cols"] = templates[aba][0].map(() => ({ wch: 26 }));
@@ -643,8 +710,10 @@ function downloadTemplate(aba: Aba) {
       contratos_venda:  INSTRUCOES_CONTRATOS_VENDA,
       produtores_imp:   INSTRUCOES_PRODUTORES_IMP,
       fazendas_imp:     INSTRUCOES_FAZENDAS_IMP,
+      matriculas_imp:   INSTRUCOES_MATRICULAS_IMP,
       talhoes_imp:      INSTRUCOES_TALHOES_IMP,
       funcionarios:     INSTRUCOES_FUNCIONARIOS,
+      propriedades_pkg: INSTRUCOES_FAZENDAS_IMP,
     };
     const instrucoes = utils.aoa_to_sheet(instrMap[aba]);
     utils.book_append_sheet(wb, instrucoes, "Instruções");
@@ -662,8 +731,10 @@ function downloadTemplate(aba: Aba) {
       contratos_venda:  "template_contratos_venda.xlsx",
       produtores_imp:   "template_produtores.xlsx",
       fazendas_imp:     "template_fazendas.xlsx",
+      matriculas_imp:   "template_matriculas.xlsx",
       talhoes_imp:      "template_talhoes.xlsx",
       funcionarios:     "template_funcionarios.xlsx",
+      propriedades_pkg: "template_propriedades_pacote.xlsx",
     };
     writeFile(wb, nomes[aba]);
   });
@@ -689,6 +760,29 @@ async function parseXlsx(file: File): Promise<Record<string, string>[]> {
     }
     return cleaned;
   });
+}
+
+// Retorna todas as sheets de um arquivo XLSX — usado pelo Pacote Propriedades
+async function parseXlsxAllSheets(file: File): Promise<Record<string, Record<string, string>[]>> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/parse-xlsx?allSheets=true", { method: "POST", body: form });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Erro no servidor ao ler o arquivo" }));
+    throw new Error(err.error ?? "Erro ao processar arquivo");
+  }
+  const { sheets: rawSheets } = await res.json() as { sheets: Record<string, Record<string, unknown>[]> };
+  const result: Record<string, Record<string, string>[]> = {};
+  for (const [sheetName, rows] of Object.entries(rawSheets)) {
+    result[sheetName] = rows.map(row => {
+      const cleaned: Record<string, string> = {};
+      for (const [k, v] of Object.entries(row)) {
+        cleaned[k.replace(/\*/g, "").trim()] = String(v ?? "");
+      }
+      return cleaned;
+    });
+  }
+  return result;
 }
 
 // ─── Validações ───────────────────────────────────────────────
@@ -954,7 +1048,27 @@ function validarFazendaImp(r: Record<string, string>): FazendaImpRow {
     return { ...row, _status: "erro", _msg: "estado deve ser sigla UF (ex: MT)" };
   const area = parseFloat(String(row.area_total_ha).replace(",", "."));
   if (isNaN(area) || area <= 0) return { ...row, _status: "erro", _msg: "area_total_ha inválida" };
+  // Validar datas opcionais
+  for (const campo of ["car_vencimento", "itr_vencimento", "ccir_vencimento"] as const) {
+    if (row[campo]?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row[campo].trim()))
+      return { ...row, _status: "erro", _msg: `${campo} deve ser AAAA-MM-DD` };
+  }
   return { ...row, estado: row.estado.trim().toUpperCase(), _status: "ok", _msg: "" };
+}
+
+function validarMatriculaImp(r: Record<string, string>): MatriculaImpRow {
+  const row = r as unknown as MatriculaImpRow;
+  if (!row.fazenda_nome?.trim()) return { ...row, _status: "erro", _msg: "fazenda_nome obrigatório" };
+  if (!row.numero?.trim())       return { ...row, _status: "erro", _msg: "numero obrigatório" };
+  if (!row.cartorio?.trim())     return { ...row, _status: "erro", _msg: "cartorio obrigatório" };
+  if (!row.municipio?.trim())    return { ...row, _status: "erro", _msg: "municipio obrigatório" };
+  if (!row.uf?.trim() || !ESTADOS_BR.includes(row.uf.trim().toUpperCase()))
+    return { ...row, _status: "erro", _msg: "uf deve ser sigla UF (ex: MT)" };
+  const area = parseFloat(String(row.area_ha).replace(",", "."));
+  if (isNaN(area) || area <= 0) return { ...row, _status: "erro", _msg: "area_ha inválida" };
+  const emGar = (row.em_garantia || "nao").trim().toLowerCase();
+  if (!["sim", "nao"].includes(emGar)) return { ...row, _status: "erro", _msg: "em_garantia deve ser sim ou nao" };
+  return { ...row, uf: row.uf.trim().toUpperCase(), em_garantia: emGar, _status: "ok", _msg: "" };
 }
 
 function validarTalhaoImp(r: Record<string, string>): TalhaoImpRow {
@@ -963,11 +1077,18 @@ function validarTalhaoImp(r: Record<string, string>): TalhaoImpRow {
   if (!row.fazenda_nome?.trim()) return { ...row, _status: "erro", _msg: "fazenda_nome obrigatório" };
   const area = parseFloat(String(row.area_ha).replace(",", "."));
   if (isNaN(area) || area <= 0) return { ...row, _status: "erro", _msg: "area_ha inválida" };
+  if (row.area_plantada_ha?.trim()) {
+    const ap = parseFloat(String(row.area_plantada_ha).replace(",", "."));
+    if (isNaN(ap) || ap < 0) return { ...row, _status: "erro", _msg: "area_plantada_ha inválida" };
+  }
+  const tipoPosse = (row.tipo_posse || "proprio").trim().toLowerCase();
+  if (row.tipo_posse?.trim() && !["proprio", "arrendado"].includes(tipoPosse))
+    return { ...row, _status: "erro", _msg: "tipo_posse deve ser proprio ou arrendado" };
   if (row.latitude?.trim() && isNaN(parseFloat(row.latitude)))
     return { ...row, _status: "erro", _msg: "latitude inválida (graus decimais, ex: -13.825)" };
   if (row.longitude?.trim() && isNaN(parseFloat(row.longitude)))
     return { ...row, _status: "erro", _msg: "longitude inválida (graus decimais, ex: -56.091)" };
-  return { ...row, _status: "ok", _msg: "" };
+  return { ...row, tipo_posse: tipoPosse, _status: "ok", _msg: "" };
 }
 
 // Tipos aceitos pelo banco — mapeamento de aliases comuns do Excel
@@ -1217,8 +1338,14 @@ function ImportacaoInner() {
   const [contratoVendaRows,  setContratoVendaRows]  = useState<ContratoVendaRow[]>([]);
   const [produtoresImpRows,  setProdutoresImpRows]  = useState<ProdutorImpRow[]>([]);
   const [fazendasImpRows,    setFazendasImpRows]    = useState<FazendaImpRow[]>([]);
+  const [matriculasImpRows,  setMatriculasImpRows]  = useState<MatriculaImpRow[]>([]);
   const [talhoesImpRows,     setTalhoesImpRows]     = useState<TalhaoImpRow[]>([]);
   const [funcionariosRows,   setFuncionariosRows]   = useState<FuncionarioRow[]>([]);
+  // Pacote Propriedades: 3 abas num único upload
+  const [pkgFazendasRows,    setPkgFazendasRows]    = useState<FazendaImpRow[]>([]);
+  const [pkgMatriculasRows,  setPkgMatriculasRows]  = useState<MatriculaImpRow[]>([]);
+  const [pkgTalhoesRows,     setPkgTalhoesRows]     = useState<TalhaoImpRow[]>([]);
+  const [pkgArquivo,         setPkgArquivo]         = useState<string>("");
 
   const [loadingPessoas,     setLoadingPessoas]     = useState(false);
   const [loadingCp,          setLoadingCp]          = useState(false);
@@ -1246,8 +1373,10 @@ function ImportacaoInner() {
   const [loadingContratoVenda,  setLoadingContratoVenda]  = useState(false);
   const [loadingProdutoresImp,  setLoadingProdutoresImp]  = useState(false);
   const [loadingFazendasImp,    setLoadingFazendasImp]    = useState(false);
+  const [loadingMatriculasImp,  setLoadingMatriculasImp]  = useState(false);
   const [loadingTalhoesImp,     setLoadingTalhoesImp]     = useState(false);
   const [loadingFuncionarios,   setLoadingFuncionarios]   = useState(false);
+  const [loadingPacote,         setLoadingPacote]         = useState(false);
 
   type Resultado = { ok: number; erros: number; duplicados: number; atualizados?: number };
   type ResultadoApoio = Resultado & {
@@ -1269,8 +1398,10 @@ function ImportacaoInner() {
   const [resultContratoVenda,  setResultContratoVenda]  = useState<Resultado | null>(null);
   const [resultProdutoresImp,  setResultProdutoresImp]  = useState<Resultado | null>(null);
   const [resultFazendasImp,    setResultFazendasImp]    = useState<Resultado | null>(null);
+  const [resultMatriculasImp,  setResultMatriculasImp]  = useState<Resultado | null>(null);
   const [resultTalhoesImp,     setResultTalhoesImp]     = useState<Resultado | null>(null);
   const [resultFuncionarios,   setResultFuncionarios]   = useState<Resultado | null>(null);
+  const [resultPacote,         setResultPacote]         = useState<{ fazendas: Resultado; matriculas: Resultado; talhoes: Resultado } | null>(null);
 
   // ─── Acesso restrito ──────────────────────────────────────
   if (userRole !== "raccotlo") {
@@ -2489,6 +2620,31 @@ function ImportacaoInner() {
     setLoadingProdutoresImp(false);
   }
 
+  // ─── Utilidade: mapa fazenda_nome → fazenda_id ───────────────
+  async function buildFazendaMap(): Promise<Record<string, string>> {
+    const { data: fazendasDB } = contaId
+      ? await supabase.from("fazendas").select("id, nome").eq("conta_id", contaId)
+      : fazendaId
+        ? await supabase.from("fazendas").select("id, nome").eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+        : { data: [] };
+    const map: Record<string, string> = {};
+    (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
+      map[f.nome.trim().toLowerCase()] = f.id;
+    });
+    return map;
+  }
+
+  // ─── Utilidade: mapa produtor_cpf_cnpj → produtor_id ─────────
+  async function buildProdutorMap(): Promise<Record<string, string>> {
+    if (!contaId) return {};
+    const { data } = await supabase.from("produtores").select("id, cpf_cnpj").eq("conta_id", contaId);
+    const map: Record<string, string> = {};
+    (data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
+      if (p.cpf_cnpj) map[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+    });
+    return map;
+  }
+
   // ─── Fazendas ─────────────────────────────────────────────
   async function handleFileFazendasImp(file: File) {
     const raw = await parseXlsx(file);
@@ -2513,30 +2669,39 @@ function ImportacaoInner() {
     setFazendasImpRows(rows); setResultFazendasImp(null);
   }
 
-  async function importarFazendasImp() {
-    if (!fazendasImpRows.length) return;
-    setLoadingFazendasImp(true);
+  async function importarFazendasImp(rows?: FazendaImpRow[]): Promise<{ ok: number; erros: number; duplicados: number }> {
+    const source = rows ?? fazendasImpRows;
+    if (!source.length) return { ok: 0, erros: 0, duplicados: 0 };
+    if (!rows) setLoadingFazendasImp(true);
     let ok = 0, erros = 0, duplicados = 0;
     try {
       const { data: authData } = await supabase.auth.getUser();
       const ownerUserId = authData?.user?.id ?? null;
-      for (const r of fazendasImpRows) {
+      const produtorMap = await buildProdutorMap();
+      for (const r of source) {
         if (r._status === "duplicado") { duplicados++; continue; }
         if (r._status === "erro")      { erros++;      continue; }
-        const area = parseFloat(String(r.area_total_ha).replace(",", "."));
+        const area    = parseFloat(String(r.area_total_ha).replace(",", "."));
         const itrArea = r.itr_area_ha?.trim() ? parseFloat(String(r.itr_area_ha).replace(",", ".")) : null;
+        const cpfCnpjProd = r.produtor_cpf_cnpj?.replace(/\D/g, "") || "";
+        const prodId = cpfCnpjProd ? (produtorMap[cpfCnpjProd] ?? null) : null;
         const { error } = await supabase.from("fazendas").insert({
-          conta_id:      contaId ?? null,
-          owner_user_id: ownerUserId,
-          nome:          r.nome.trim(),
-          municipio:     r.municipio.trim(),
-          estado:        r.estado.trim(),
-          area_total_ha: area,
-          cep:           r.cep?.trim() || null,
-          logradouro:    r.logradouro?.trim() || null,
-          car:           r.car?.trim() || null,
-          nirf:          r.nirf?.trim() || null,
-          itr:           itrArea ? String(itrArea) : null,
+          conta_id:        contaId ?? null,
+          owner_user_id:   ownerUserId,
+          nome:            r.nome.trim(),
+          municipio:       r.municipio.trim(),
+          estado:          r.estado.trim(),
+          area_total_ha:   area,
+          produtor_id:     prodId,
+          cep:             r.cep?.trim() || null,
+          logradouro:      r.logradouro?.trim() || null,
+          car:             r.car?.trim() || null,
+          car_vencimento:  r.car_vencimento?.trim() || null,
+          nirf:            r.nirf?.trim() || null,
+          itr:             itrArea ? String(itrArea) : null,
+          itr_vencimento:  r.itr_vencimento?.trim() || null,
+          ccir:            r.ccir?.trim() || null,
+          ccir_vencimento: r.ccir_vencimento?.trim() || null,
         });
         if (error) {
           r._status = "erro";
@@ -2549,10 +2714,65 @@ function ImportacaoInner() {
     } catch (e) {
       alert("Erro inesperado ao importar: " + (e instanceof Error ? e.message : String(e)));
     } finally {
-      setFazendasImpRows([...fazendasImpRows]);
-      setResultFazendasImp({ ok, erros, duplicados });
-      setLoadingFazendasImp(false);
+      if (!rows) {
+        setFazendasImpRows([...source]);
+        setResultFazendasImp({ ok, erros, duplicados });
+        setLoadingFazendasImp(false);
+      }
     }
+    return { ok, erros, duplicados };
+  }
+
+  // ─── Matrículas ───────────────────────────────────────────
+  async function handleFileMatriculasImp(file: File) {
+    const raw = await parseXlsx(file);
+    const rows = raw.map(r => validarMatriculaImp(r));
+    setMatriculasImpRows(rows); setResultMatriculasImp(null);
+  }
+
+  async function importarMatriculasImp(rows?: MatriculaImpRow[]): Promise<{ ok: number; erros: number; duplicados: number }> {
+    const source = rows ?? matriculasImpRows;
+    if (!source.length) return { ok: 0, erros: 0, duplicados: 0 };
+    if (!rows) setLoadingMatriculasImp(true);
+    let ok = 0, erros = 0, duplicados = 0;
+    try {
+      const fazendaMap  = await buildFazendaMap();
+      const produtorMap = await buildProdutorMap();
+      // Matrículas já existentes
+      const { data: matDB } = await supabase.from("matriculas_imoveis").select("fazenda_id, numero");
+      const matSet = new Set((matDB ?? []).map((m: { fazenda_id: string; numero: string }) => `${m.fazenda_id}::${m.numero}`));
+      for (const r of source) {
+        if (r._status === "duplicado") { duplicados++; continue; }
+        if (r._status === "erro")      { erros++;      continue; }
+        const fId = fazendaMap[r.fazenda_nome.trim().toLowerCase()];
+        if (!fId) { r._status = "erro"; r._msg = `fazenda "${r.fazenda_nome}" não encontrada`; erros++; continue; }
+        const key = `${fId}::${r.numero.trim()}`;
+        if (matSet.has(key)) { r._status = "duplicado"; r._msg = "matrícula já existe nesta fazenda"; duplicados++; continue; }
+        const cpfCnpjProd = r.produtor_cpf_cnpj?.replace(/\D/g, "") || "";
+        const prodId = cpfCnpjProd ? (produtorMap[cpfCnpjProd] ?? null) : null;
+        const { error } = await supabase.from("matriculas_imoveis").insert({
+          fazenda_id:  fId,
+          produtor_id: prodId,
+          numero:      r.numero.trim(),
+          cartorio:    r.cartorio.trim(),
+          area_ha:     parseFloat(String(r.area_ha).replace(",", ".")),
+          municipio:   r.municipio.trim(),
+          uf:          r.uf.trim().toUpperCase(),
+          em_garantia: r.em_garantia === "sim",
+        });
+        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+        else { matSet.add(key); ok++; }
+      }
+    } catch (e) {
+      alert("Erro inesperado ao importar matrículas: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      if (!rows) {
+        setMatriculasImpRows([...source]);
+        setResultMatriculasImp({ ok, erros, duplicados });
+        setLoadingMatriculasImp(false);
+      }
+    }
+    return { ok, erros, duplicados };
   }
 
   // ─── Talhões ──────────────────────────────────────────────
@@ -2562,52 +2782,118 @@ function ImportacaoInner() {
     setTalhoesImpRows(rows); setResultTalhoesImp(null);
   }
 
-  async function importarTalhoesImp() {
-    if (!fazendaId || !talhoesImpRows.length) return;
-    setLoadingTalhoesImp(true);
+  async function importarTalhoesImp(rows?: TalhaoImpRow[]): Promise<{ ok: number; erros: number; duplicados: number }> {
+    const source = rows ?? talhoesImpRows;
+    if (!source.length) return { ok: 0, erros: 0, duplicados: 0 };
+    if (!rows) setLoadingTalhoesImp(true);
     let ok = 0, erros = 0, duplicados = 0;
 
-    // Mapa de fazendas da conta pelo nome (usa conta_id se disponível, senão owner_user_id)
-    const { data: fazendasDB } = contaId
-      ? await supabase.from("fazendas").select("id, nome").eq("conta_id", contaId)
-      : fazendaId
-        ? await supabase.from("fazendas").select("id, nome").eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
-        : { data: [] };
-    const fazendaMap: Record<string, string> = {};
-    (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
-      fazendaMap[f.nome.trim().toLowerCase()] = f.id;
-    });
+    try {
+      const fazendaMap = await buildFazendaMap();
+      const { data: talhoesDB } = await supabase.from("talhoes").select("fazenda_id, nome");
+      const talhaoSet = new Set((talhoesDB ?? []).map((t: { fazenda_id: string; nome: string }) => `${t.fazenda_id}::${t.nome.toLowerCase().trim()}`));
 
-    // Talhões já existentes por fazenda
-    const { data: talhoesDB } = await supabase.from("talhoes").select("fazenda_id, nome");
-    const talhaoSet = new Set((talhoesDB ?? []).map((t: { fazenda_id: string; nome: string }) => `${t.fazenda_id}::${t.nome.toLowerCase().trim()}`));
-
-    for (const r of talhoesImpRows) {
-      if (r._status === "duplicado") { duplicados++; continue; }
-      if (r._status === "erro")      { erros++;      continue; }
-
-      const fId = fazendaMap[r.fazenda_nome.trim().toLowerCase()];
-      if (!fId) { r._status = "erro"; r._msg = `fazenda "${r.fazenda_nome}" não encontrada`; erros++; continue; }
-
-      const key = `${fId}::${r.nome.trim().toLowerCase()}`;
-      if (talhaoSet.has(key)) { r._status = "duplicado"; r._msg = "talhão já existe nesta fazenda"; duplicados++; continue; }
-
-      const lat = r.latitude?.trim() ? parseFloat(r.latitude) : null;
-      const lng = r.longitude?.trim() ? parseFloat(r.longitude) : null;
-      const { error } = await supabase.from("talhoes").insert({
-        fazenda_id: fId,
-        nome:       r.nome.trim(),
-        area_ha:    parseFloat(String(r.area_ha).replace(",", ".")),
-        tipo_solo:  r.tipo_solo?.trim() || null,
-        lat,
-        lng,
-      });
-      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-      else { talhaoSet.add(key); ok++; }
+      for (const r of source) {
+        if (r._status === "duplicado") { duplicados++; continue; }
+        if (r._status === "erro")      { erros++;      continue; }
+        const fId = fazendaMap[r.fazenda_nome.trim().toLowerCase()];
+        if (!fId) { r._status = "erro"; r._msg = `fazenda "${r.fazenda_nome}" não encontrada`; erros++; continue; }
+        const key = `${fId}::${r.nome.trim().toLowerCase()}`;
+        if (talhaoSet.has(key)) { r._status = "duplicado"; r._msg = "talhão já existe nesta fazenda"; duplicados++; continue; }
+        const lat        = r.latitude?.trim() ? parseFloat(r.latitude) : null;
+        const lng        = r.longitude?.trim() ? parseFloat(r.longitude) : null;
+        const areaPlant  = r.area_plantada_ha?.trim() ? parseFloat(String(r.area_plantada_ha).replace(",", ".")) : null;
+        const tipoPosse  = r.tipo_posse?.trim() || "proprio";
+        const { error } = await supabase.from("talhoes").insert({
+          fazenda_id:       fId,
+          nome:             r.nome.trim(),
+          area_ha:          parseFloat(String(r.area_ha).replace(",", ".")),
+          area_plantada_ha: areaPlant,
+          tipo_posse:       tipoPosse,
+          tipo_solo:        r.tipo_solo?.trim() || null,
+          lat,
+          lng,
+        });
+        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+        else { talhaoSet.add(key); ok++; }
+      }
+    } catch (e) {
+      alert("Erro inesperado ao importar talhões: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      if (!rows) {
+        setTalhoesImpRows([...source]);
+        setResultTalhoesImp({ ok, erros, duplicados });
+        setLoadingTalhoesImp(false);
+      }
     }
-    setTalhoesImpRows([...talhoesImpRows]);
-    setResultTalhoesImp({ ok, erros, duplicados });
-    setLoadingTalhoesImp(false);
+    return { ok, erros, duplicados };
+  }
+
+  // ─── Pacote Propriedades ──────────────────────────────────
+  async function handleFilePacote(file: File) {
+    setPkgArquivo(file.name);
+    setPkgFazendasRows([]); setPkgMatriculasRows([]); setPkgTalhoesRows([]);
+    setResultPacote(null);
+    const sheets = await parseXlsxAllSheets(file);
+
+    // Procura sheets pelos nomes sem distinção de maiúscula/acento
+    function findSheet(keys: string[]) {
+      for (const key of keys) {
+        for (const name of Object.keys(sheets)) {
+          if (name.trim().toLowerCase() === key.toLowerCase()) return sheets[name];
+        }
+      }
+      return [] as Record<string, string>[];
+    }
+
+    const rawFaz = findSheet(["Fazendas", "fazendas"]);
+    const rawMat = findSheet(["Matrículas", "Matriculas", "matriculas", "Matr"]);
+    const rawTal = findSheet(["Talhões", "Talhoes", "talhoes"]);
+
+    const nomesVisto = new Set<string>();
+    const fazRows = rawFaz.map(r => {
+      const row = validarFazendaImp(r);
+      if (row._status === "ok" && row.nome) {
+        const n = row.nome.trim().toLowerCase();
+        if (nomesVisto.has(n)) { row._status = "duplicado"; row._msg = "nome duplicado no arquivo"; }
+        else nomesVisto.add(n);
+      }
+      return row;
+    });
+    const matRows = rawMat.map(r => validarMatriculaImp(r));
+    const talRows = rawTal.map(r => validarTalhaoImp(r));
+
+    // Dedup fazendas contra o banco
+    if (contaId) {
+      const { data: exist } = await supabase.from("fazendas").select("nome").eq("conta_id", contaId);
+      const existSet = new Set((exist ?? []).map((f: { nome: string }) => f.nome.trim().toLowerCase()));
+      fazRows.forEach(r => {
+        if (r._status === "ok" && r.nome && existSet.has(r.nome.trim().toLowerCase()))
+          { r._status = "duplicado"; r._msg = "fazenda já cadastrada na conta"; }
+      });
+    }
+
+    setPkgFazendasRows(fazRows);
+    setPkgMatriculasRows(matRows);
+    setPkgTalhoesRows(talRows);
+  }
+
+  async function importarPacote() {
+    setLoadingPacote(true);
+    setResultPacote(null);
+    try {
+      const rFaz = await importarFazendasImp(pkgFazendasRows);
+      const rMat = await importarMatriculasImp(pkgMatriculasRows);
+      const rTal = await importarTalhoesImp(pkgTalhoesRows);
+      setPkgFazendasRows([...pkgFazendasRows]);
+      setPkgMatriculasRows([...pkgMatriculasRows]);
+      setPkgTalhoesRows([...pkgTalhoesRows]);
+      setResultPacote({ fazendas: rFaz, matriculas: rMat, talhoes: rTal });
+    } catch (e) {
+      alert("Erro no pacote: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setLoadingPacote(false);
+    }
   }
 
   async function handleFileFuncionarios(file: File) {
@@ -2803,23 +3089,33 @@ function ImportacaoInner() {
     },
     fazendas_imp: {
       label: "Fazendas", icon: "🏡",
-      desc: "Importe propriedades rurais. Cada fazenda é vinculada automaticamente à sua conta. Importe antes dos talhões.",
-      cols: ["nome", "municipio", "estado", "area_total_ha", "car", "nirf"],
+      desc: "Importe propriedades rurais com dados completos (CAR, CCIR, ITR, produtor vinculado). Importe antes dos talhões e matrículas.",
+      cols: ["nome", "municipio", "estado", "area_total_ha", "produtor_cpf_cnpj", "car", "car_vencimento", "nirf", "ccir", "ccir_vencimento"],
       rows: fazendasImpRows as Record<string, unknown>[],
       loading: loadingFazendasImp,
       result: resultFazendasImp,
       onFile: handleFileFazendasImp,
-      onImport: importarFazendasImp,
+      onImport: () => importarFazendasImp(),
+    },
+    matriculas_imp: {
+      label: "Matrículas", icon: "📜",
+      desc: "Importe matrículas de imóvel rural vinculadas às fazendas cadastradas. A fazenda deve existir antes de importar as matrículas.",
+      cols: ["fazenda_nome", "numero", "cartorio", "area_ha", "municipio", "uf", "em_garantia"],
+      rows: matriculasImpRows as Record<string, unknown>[],
+      loading: loadingMatriculasImp,
+      result: resultMatriculasImp,
+      onFile: handleFileMatriculasImp,
+      onImport: () => importarMatriculasImp(),
     },
     talhoes_imp: {
       label: "Talhões", icon: "🗺️",
-      desc: "Importe talhões referenciando o nome da fazenda. O sistema resolve o fazenda_id automaticamente pelo nome.",
-      cols: ["nome", "fazenda_nome", "area_ha", "tipo_solo", "latitude", "longitude"],
+      desc: "Importe talhões com área plantada e tipo de posse. O sistema resolve o fazenda_id automaticamente pelo nome da fazenda.",
+      cols: ["nome", "fazenda_nome", "area_ha", "area_plantada_ha", "tipo_posse", "tipo_solo", "latitude", "longitude"],
       rows: talhoesImpRows as Record<string, unknown>[],
       loading: loadingTalhoesImp,
       result: resultTalhoesImp,
       onFile: handleFileTalhoesImp,
-      onImport: importarTalhoesImp,
+      onImport: () => importarTalhoesImp(),
     },
     funcionarios: {
       label: "Funcionários", icon: "👷",
@@ -2830,6 +3126,16 @@ function ImportacaoInner() {
       result: resultFuncionarios,
       onFile: handleFileFuncionarios,
       onImport: importarFuncionarios,
+    },
+    propriedades_pkg: {
+      label: "Propriedades (Pacote)", icon: "📦",
+      desc: "Importe Fazendas + Matrículas + Talhões de uma só vez. Use um arquivo XLSX com 3 sheets: Fazendas, Matrículas e Talhões.",
+      cols: [],
+      rows: [],
+      loading: loadingPacote,
+      result: null,
+      onFile: handleFilePacote,
+      onImport: importarPacote,
     },
   };
 
@@ -2853,10 +3159,12 @@ function ImportacaoInner() {
     if (aba === "contratos_fin")  { setContratoFinRows([]);      setResultContratoFin(null); }
     if (aba === "arrendamentos")  { setArrendamentosRows([]);    setResultArrendamentos(null); }
     if (aba === "contratos_venda"){ setContratoVendaRows([]);    setResultContratoVenda(null); }
-    if (aba === "produtores_imp") { setProdutoresImpRows([]);    setResultProdutoresImp(null); }
-    if (aba === "fazendas_imp")   { setFazendasImpRows([]);      setResultFazendasImp(null); }
-    if (aba === "talhoes_imp")    { setTalhoesImpRows([]);       setResultTalhoesImp(null); }
-    if (aba === "funcionarios")   { setFuncionariosRows([]);      setResultFuncionarios(null); }
+    if (aba === "produtores_imp")   { setProdutoresImpRows([]);    setResultProdutoresImp(null); }
+    if (aba === "fazendas_imp")    { setFazendasImpRows([]);      setResultFazendasImp(null); }
+    if (aba === "matriculas_imp")  { setMatriculasImpRows([]);    setResultMatriculasImp(null); }
+    if (aba === "talhoes_imp")     { setTalhoesImpRows([]);       setResultTalhoesImp(null); }
+    if (aba === "funcionarios")    { setFuncionariosRows([]);      setResultFuncionarios(null); }
+    if (aba === "propriedades_pkg"){ setPkgFazendasRows([]); setPkgMatriculasRows([]); setPkgTalhoesRows([]); setPkgArquivo(""); setResultPacote(null); }
   }
 
   return (
@@ -2879,7 +3187,7 @@ function ImportacaoInner() {
         {/* Sidebar de abas */}
         <div style={{ width: 200, flexShrink: 0 }}>
           <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-            {(["pessoas", "cp", "cr", "apoio", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "talhoes_imp", "funcionarios"] as Aba[]).map(a => {
+            {(["pessoas", "cp", "cr", "apoio", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "matriculas_imp", "talhoes_imp", "funcionarios", "propriedades_pkg"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
                 <button
@@ -2991,8 +3299,94 @@ function ImportacaoInner() {
             {/* Upload */}
             <UploadZone onFile={cfg.onFile} />
 
-            {/* Prévia */}
-            {totalRows > 0 && (
+            {/* ─── Pacote Propriedades: 3 tabelas após upload ─────────── */}
+            {aba === "propriedades_pkg" && pkgArquivo && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ marginBottom: 12, padding: "10px 14px", background: "#F0F9F4", border: "0.5px solid #16A34A", borderRadius: 8, fontSize: 13, color: "#14532D" }}>
+                  <strong>📎 {pkgArquivo}</strong> — {pkgFazendasRows.length} fazenda{pkgFazendasRows.length !== 1 ? "s" : ""} · {pkgMatriculasRows.length} matrículas · {pkgTalhoesRows.length} talhão/talhões detectados
+                </div>
+
+                {/* Fazendas */}
+                {pkgFazendasRows.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                      🏡 Fazendas
+                      <span style={{ fontWeight: 400, fontSize: 12, color: "#16A34A" }}>{pkgFazendasRows.filter(r => r._status === "ok").length} prontas</span>
+                      {pkgFazendasRows.filter(r => r._status === "duplicado").length > 0 && <span style={{ fontWeight: 400, fontSize: 12, color: "#C9921B" }}>{pkgFazendasRows.filter(r => r._status === "duplicado").length} duplicadas</span>}
+                      {pkgFazendasRows.filter(r => r._status === "erro").length > 0 && <span style={{ fontWeight: 400, fontSize: 12, color: "#E24B4A" }}>{pkgFazendasRows.filter(r => r._status === "erro").length} com erro</span>}
+                    </div>
+                    <PreviewTable rows={pkgFazendasRows as Record<string, unknown>[]} colunas={["nome", "municipio", "estado", "area_total_ha", "produtor_cpf_cnpj", "car", "ccir", "nirf"]} />
+                  </div>
+                )}
+
+                {/* Matrículas */}
+                {pkgMatriculasRows.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                      📜 Matrículas
+                      <span style={{ fontWeight: 400, fontSize: 12, color: "#16A34A" }}>{pkgMatriculasRows.filter(r => r._status === "ok").length} prontas</span>
+                      {pkgMatriculasRows.filter(r => r._status === "duplicado").length > 0 && <span style={{ fontWeight: 400, fontSize: 12, color: "#C9921B" }}>{pkgMatriculasRows.filter(r => r._status === "duplicado").length} duplicadas</span>}
+                      {pkgMatriculasRows.filter(r => r._status === "erro").length > 0 && <span style={{ fontWeight: 400, fontSize: 12, color: "#E24B4A" }}>{pkgMatriculasRows.filter(r => r._status === "erro").length} com erro</span>}
+                    </div>
+                    <PreviewTable rows={pkgMatriculasRows as Record<string, unknown>[]} colunas={["fazenda_nome", "numero", "cartorio", "area_ha", "municipio", "uf", "em_garantia"]} />
+                  </div>
+                )}
+
+                {/* Talhões */}
+                {pkgTalhoesRows.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                      🗺️ Talhões
+                      <span style={{ fontWeight: 400, fontSize: 12, color: "#16A34A" }}>{pkgTalhoesRows.filter(r => r._status === "ok").length} prontos</span>
+                      {pkgTalhoesRows.filter(r => r._status === "duplicado").length > 0 && <span style={{ fontWeight: 400, fontSize: 12, color: "#C9921B" }}>{pkgTalhoesRows.filter(r => r._status === "duplicado").length} duplicados</span>}
+                      {pkgTalhoesRows.filter(r => r._status === "erro").length > 0 && <span style={{ fontWeight: 400, fontSize: 12, color: "#E24B4A" }}>{pkgTalhoesRows.filter(r => r._status === "erro").length} com erro</span>}
+                    </div>
+                    <PreviewTable rows={pkgTalhoesRows as Record<string, unknown>[]} colunas={["nome", "fazenda_nome", "area_ha", "area_plantada_ha", "tipo_posse", "tipo_solo", "latitude", "longitude"]} />
+                  </div>
+                )}
+
+                {/* Botões */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                  <button onClick={limpar} style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
+                    Limpar
+                  </button>
+                  <button
+                    onClick={importarPacote}
+                    disabled={loadingPacote || (pkgFazendasRows.filter(r => r._status === "ok").length + pkgMatriculasRows.filter(r => r._status === "ok").length + pkgTalhoesRows.filter(r => r._status === "ok").length) === 0}
+                    style={{
+                      padding: "7px 20px",
+                      background: "#111111", border: "none", borderRadius: 8,
+                      color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    {loadingPacote ? "⏳ Importando..." : "⬆ Importar Tudo"}
+                  </button>
+                </div>
+
+                {/* Resultado do pacote */}
+                {resultPacote && (
+                  <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    {(["fazendas", "matriculas", "talhoes"] as const).map(key => {
+                      const r = resultPacote[key];
+                      const label = key === "fazendas" ? "🏡 Fazendas" : key === "matriculas" ? "📜 Matrículas" : "🗺️ Talhões";
+                      return (
+                        <div key={key} style={{ padding: "12px 14px", background: "#F4F6FA", borderRadius: 10, border: "0.5px solid var(--border)" }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "var(--text-1)" }}>{label}</div>
+                          <div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 3 }}>
+                            <span style={{ color: "#16A34A" }}>✓ {r.ok} importado{r.ok !== 1 ? "s" : ""}</span>
+                            {r.duplicados > 0 && <span style={{ color: "#C9921B" }}>⚠ {r.duplicados} duplicado{r.duplicados !== 1 ? "s" : ""}</span>}
+                            {r.erros > 0 && <span style={{ color: "#E24B4A" }}>✗ {r.erros} com erro</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Prévia (abas genéricas) */}
+            {aba !== "propriedades_pkg" && totalRows > 0 && (
               <>
                 {aba === "insumos" && dupRows > 0 && (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#FFFBE0", border: "0.5px solid #C9921B", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
@@ -3249,7 +3643,7 @@ function ImportacaoInner() {
             )}
 
             {/* Empty state */}
-            {totalRows === 0 && !cfg.result && (
+            {totalRows === 0 && !cfg.result && !(aba === "propriedades_pkg" && pkgArquivo) && (
               <div style={{ marginTop: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 13, padding: "16px 0" }}>
                 Faça o upload de um arquivo XLSX para visualizar os dados antes de importar.
               </div>

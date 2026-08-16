@@ -62,24 +62,39 @@ export async function POST(req: NextRequest) {
       }, { status: 422 });
     }
 
+    const url = new URL(req.url);
+    const allSheets = url.searchParams.get("allSheets") === "true";
+
+    function normalizeRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+      return rows.map(row => {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(row)) {
+          if (v instanceof Date && !isNaN(v.getTime())) {
+            const y = v.getFullYear();
+            const m = String(v.getMonth() + 1).padStart(2, "0");
+            const d = String(v.getDate()).padStart(2, "0");
+            out[k] = `${y}-${m}-${d}`;
+          } else {
+            out[k] = v;
+          }
+        }
+        return out;
+      });
+    }
+
+    if (allSheets) {
+      const sheets: Record<string, Record<string, unknown>[]> = {};
+      for (const name of wb.SheetNames) {
+        const ws = wb.Sheets[name];
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+        sheets[name] = normalizeRows(rawRows);
+      }
+      return NextResponse.json({ sheets, sheetNames: wb.SheetNames });
+    }
+
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
-
-    // Converte objetos Date (gerados por cellDates:true) para AAAA-MM-DD
-    const normalizedRows = rows.map(row => {
-      const out: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(row)) {
-        if (v instanceof Date && !isNaN(v.getTime())) {
-          const y = v.getFullYear();
-          const m = String(v.getMonth() + 1).padStart(2, "0");
-          const d = String(v.getDate()).padStart(2, "0");
-          out[k] = `${y}-${m}-${d}`;
-        } else {
-          out[k] = v;
-        }
-      }
-      return out;
-    });
+    const normalizedRows = normalizeRows(rows);
 
     return NextResponse.json({ rows: normalizedRows, sheetName: wb.SheetNames[0] });
   } catch (err) {
