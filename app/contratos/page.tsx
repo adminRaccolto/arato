@@ -274,6 +274,7 @@ export default function Contratos() {
   const [loading, setLoading]         = useState(true);
   const [erro, setErro]               = useState<string|null>(null);
   const [salvando, setSalvando]       = useState(false);
+  const [errosContrato, setErrosContrato] = useState<string[]>([]);
 
   // ── filtros da lista de contratos ────────────────────────────
   const [filtroAno,     setFiltroAno]     = useState("");
@@ -857,8 +858,16 @@ export default function Contratos() {
 
   // ── salvar contrato ───────────────────────────────────────────
   const salvarContrato = async () => {
-    if (!fC.data_entrega) return alert("Informe o prazo de entrega.");
-    if (itens.every(i => !i.produto || i.quantidade <= 0)) return alert("Adicione pelo menos um item com quantidade.");
+    // Coleta todos os erros antes de mostrar — nunca um alert pontual
+    const erros: string[] = [];
+    if (!fC.data_entrega) erros.push("Prazo de Entrega");
+    if (itens.every(i => !i.produto || i.quantidade <= 0)) erros.push("pelo menos um Item com produto e quantidade");
+    if (iesProdutor.length > 1 && !fC.ie_id) erros.push("Inscrição Estadual (IE) do Produtor");
+    if (erros.length > 0) {
+      setErrosContrato(erros);
+      return;
+    }
+    setErrosContrato([]);
     // Bloqueia criação de contrato em safra encerrada
     if (!editContrato) {
       const safraEnc = anosSafra.find(a => a.id === fC.ano_safra_id && a.status === "encerrada");
@@ -2290,7 +2299,7 @@ export default function Contratos() {
                     </div>
                     <div>
                       <label style={lbl}>Prazo de Entrega *</label>
-                      <input style={inp} type="date" value={fC.data_entrega} onChange={e => setFC(p=>({...p,data_entrega:e.target.value}))} />
+                      <input style={inp} type="date" value={fC.data_entrega} onChange={e => { setFC(p=>({...p,data_entrega:e.target.value})); setErrosContrato([]); }} />
                     </div>
                     <div>
                       <label style={lbl}>Data de Pagamento</label>
@@ -2400,7 +2409,7 @@ export default function Contratos() {
                     <div style={{ padding:"8px 14px", background:"var(--bg-page)", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens do Contrato</span>
                       <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }}
-                        onClick={() => setItens(p => [...p, itemVazio()])}>+ Item</button>
+                        onClick={() => { setItens(p => [...p, itemVazio()]); setErrosContrato([]); }}>+ Item</button>
                     </div>
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
@@ -2731,10 +2740,15 @@ export default function Contratos() {
                   return <>Valor Financeiro: <strong>{fv(valorFinanceiro)}</strong><span style={{ marginLeft:20 }}>Valor Total: <strong style={{ color:"#111111" }}>{fv(valorTotal)}</strong></span></>;
                 })()}
               </div>
-              <div style={{ display:"flex", gap:8 }}>
-                <button style={btnR} onClick={() => setModalContrato(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                {!viewOnly && errosContrato.length > 0 && (
+                  <div style={{ fontSize:12, color:"#E24B4A", maxWidth:360, lineHeight:1.4 }}>
+                    Preencha antes de salvar: <strong>{errosContrato.join(", ")}</strong>
+                  </div>
+                )}
+                <button style={btnR} onClick={() => { setModalContrato(false); setErrosContrato([]); }}>{viewOnly ? "Fechar" : "Cancelar"}</button>
                 {!viewOnly && (
-                  <button style={{ ...btnV, opacity: salvando||!fC.data_entrega?0.5:1 }} disabled={salvando||!fC.data_entrega} onClick={salvarContrato}>
+                  <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarContrato}>
                     {salvando ? "Salvando…" : editContrato ? "Salvar Alterações" : "Salvar Contrato"}
                   </button>
                 )}
