@@ -9817,12 +9817,15 @@ ALTER TABLE regras_rateio
   ADD CONSTRAINT regras_rateio_centro_custo_id_fkey
   FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
 
--- regras_classificacao
-ALTER TABLE regras_classificacao
-  DROP CONSTRAINT IF EXISTS regras_classificacao_centro_custo_id_fkey;
-ALTER TABLE regras_classificacao
-  ADD CONSTRAINT regras_classificacao_centro_custo_id_fkey
-  FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
+-- regras_classificacao (pode não existir em todos os ambientes)
+DO $$ BEGIN
+  ALTER TABLE regras_classificacao
+    DROP CONSTRAINT IF EXISTS regras_classificacao_centro_custo_id_fkey;
+  ALTER TABLE regras_classificacao
+    ADD CONSTRAINT regras_classificacao_centro_custo_id_fkey
+    FOREIGN KEY (centro_custo_id) REFERENCES centros_custo(id) ON DELETE SET NULL;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 NOTIFY pgrst, 'reload schema';
 
