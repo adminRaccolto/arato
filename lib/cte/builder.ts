@@ -182,6 +182,17 @@ const esc = (valor: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 
+// escLimite: aplica limpeza ANTES de fatiar (evita contar chars que serão removidos)
+function escLimite(valor: string, limite: number): string {
+  return limparTextoSefaz(valor)
+    .slice(0, limite)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 function xmlEndereco(tag: string, p: ParticipanteCTe): string {
   // enderReme/enderDest são obrigatórios no schema CT-e 4.00 — nunca omitir.
   // Usar fallbacks quando o cadastro estiver incompleto.
@@ -191,9 +202,9 @@ function xmlEndereco(tag: string, p: ParticipanteCTe): string {
   // xMun deve ser o NOME da cidade — nunca usar o código IBGE como nome
   const xMun = p.municipio_nome || "Nova Mutum";
   return `<${tag}>
-    <xLgr>${esc(lgr)}</xLgr>
+    <xLgr>${escLimite(lgr, 60)}</xLgr>
     <nro>${esc(p.numero || "S/N")}</nro>
-    <xBairro>${esc(p.bairro || "Centro")}</xBairro>
+    <xBairro>${escLimite(p.bairro || "Centro", 60)}</xBairro>
     <cMun>${cMun}</cMun>
     <xMun>${esc(xMun)}</xMun>
     ${p.cep ? `<CEP>${p.cep.replace(/\D/g, "").padEnd(8, "0").slice(0, 8)}</CEP>` : ""}
@@ -212,7 +223,7 @@ function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string, homolo
   return `<${tag}>
     ${cpfcnpj ? `<${docTag}>${cpfcnpj}</${docTag}>` : "<CNPJ/>"}
     ${p.ie   ? `<IE>${esc(p.ie)}</IE>` : ""}
-    <xNome>${esc(xNome)}</xNome>
+    <xNome>${escLimite(xNome, 60)}</xNome>
     ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
     ${xmlEndereco(endTag, p)}
   </${tag}>`;
@@ -281,8 +292,18 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   const baseCalc  = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
-  const naturezaOp = input.natureza.trim().slice(0, 60);
+  const naturezaOp = limparTextoSefaz(input.natureza).slice(0, 60);
   if (!naturezaOp) throw new Error("Natureza da operação não pode ser vazia");
+
+  console.log("[CT-e limites schema]", {
+    natureza:      limparTextoSefaz(input.natureza),
+    naturezaLength: limparTextoSefaz(input.natureza).length,
+    produtoLength:  limparTextoSefaz(input.produto_descricao).length,
+    componentes:   input.componentes.map(c => ({
+      nome:    limparTextoSefaz(c.nome),
+      tamanho: limparTextoSefaz(c.nome).length,
+    })),
+  });
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <CTe xmlns="http://www.portalfiscal.inf.br/cte">
@@ -291,7 +312,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <cUF>${cuf}</cUF>
       <cCT>${cCT}</cCT>
       <CFOP>${input.cfop.replace(/\D/g, "")}</CFOP>
-      <natOp>${esc(naturezaOp)}</natOp>
+      <natOp>${escLimite(input.natureza, 60)}</natOp>
       <mod>57</mod>
       <serie>${serieXml}</serie>
       <nCT>${nCTXml}</nCT>
@@ -324,11 +345,11 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     <emit>
       <${docTagE}>${cpfcnpjE}</${docTagE}>
       ${e.ie ? `<IE>${esc(e.ie)}</IE>` : "<IE>ISENTO</IE>"}
-      <xNome>${esc(e.razao_social)}</xNome>
+      <xNome>${escLimite(e.razao_social, 60)}</xNome>
       <enderEmit>
-        <xLgr>${esc(e.logradouro || "Não informado")}</xLgr>
+        <xLgr>${escLimite(e.logradouro || "Nao informado", 60)}</xLgr>
         <nro>${esc(e.numero || "S/N")}</nro>
-        <xBairro>${esc(e.bairro || "Centro")}</xBairro>
+        <xBairro>${escLimite(e.bairro || "Centro", 60)}</xBairro>
         <cMun>${e.municipio_ibge || "5106224"}</cMun>
         <xMun>${esc(e.municipio_nome || "Nova Mutum")}</xMun>
         <CEP>${(e.cep || "78450000").replace(/\D/g, "").padEnd(8, "0").slice(0, 8)}</CEP>
@@ -342,7 +363,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     <vPrest>
       <vTPrest>${p2(input.valor_prestacao)}</vTPrest>
       <vRec>${p2(input.valor_receber)}</vRec>
-      ${input.componentes.map(c => `<Comp><xNome>${esc(c.nome.slice(0, 15))}</xNome><vComp>${p2(c.valor)}</vComp></Comp>`).join("\n      ")}
+      ${input.componentes.map(c => `<Comp><xNome>${escLimite(c.nome, 15)}</xNome><vComp>${p2(c.valor)}</vComp></Comp>`).join("\n      ")}
     </vPrest>
     <imp>
       <ICMS>
@@ -358,7 +379,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     <infCTeNorm>
       <infCarga>
         <vCarga>${p2(input.valor_mercadoria)}</vCarga>
-        <proPred>${esc((input.produto_descricao || "CARGA AGRICOLA").trim().slice(0, 60) || "CARGA AGRICOLA")}</proPred>
+        <proPred>${escLimite(input.produto_descricao || "CARGA AGRICOLA", 60) || "CARGA AGRICOLA"}</proPred>
         ${input.ncm ? `<xOutCat>${input.ncm}</xOutCat>` : ""}
         <infQ>
           <cUnid>01</cUnid>
