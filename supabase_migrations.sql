@@ -9943,3 +9943,9 @@ DO $$ DECLARE r RECORD; BEGIN
   END LOOP;
   RAISE NOTICE 'Secao 167 concluida — fazenda_id nunca mais apaga dados em cascata.';
 END $$;
+
+-- ============================================================
+-- Seção 168 — ie_produtor em nf_entradas
+-- Coluna adicionada ao código mas nunca ao banco.
+-- ============================================================
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS ie_produtor text;
