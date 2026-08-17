@@ -540,12 +540,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   // raccotlo tem acesso irrestrito a tudo; clientes verificam add-on + permissão de grupo
   const podeAcessarPlano = useCallback((modulo: string) => {
-    // Override explícito false tem precedência absoluta — inclusive sobre raccotlo staff.
-    // Quando o add-on está DESABILITADO para a conta o menu some para todos.
-    if (contaModulosOverrides[modulo] === false) return false;
-
-    // Raccotlo tem acesso irrestrito a módulos não explicitamente desabilitados
+    // Raccotlo staff tem acesso irrestrito — inclusive ao visualizar contexto de cliente
     if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") return true;
+
+    // Override explícito false bloqueia o cliente (mas não raccotlo, já tratado acima)
+    if (contaModulosOverrides[modulo] === false) return false;
     // Override explícito true (add-on habilitado para a conta)
     if (modulo in contaModulosOverrides) {
       return contaModulosOverrides[modulo];
