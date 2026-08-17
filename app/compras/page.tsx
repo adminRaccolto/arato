@@ -373,7 +373,8 @@ export default function ComprasPage() {
       ]);
       setPedidos(allPed);
       setPessoas(pes);
-      setInsumos(ins);
+      // produto_agricola = o que a fazenda PRODUZ (soja, milho…) — não deve aparecer no Pedido de Compra
+      setInsumos(ins.filter((i: { categoria: string }) => i.categoria !== "produto_agricola"));
       setCiclos(cic);
       setAnosSafra(anos);
       setCentrosCusto(cc);
