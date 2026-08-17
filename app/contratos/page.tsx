@@ -975,7 +975,10 @@ export default function Contratos() {
         await salvarCessaoDebitos(salvo.id, fidContrato, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
       }
       // num_lancamento + CR via API route (service_role_key bypassa RLS / JWT expirado)
-      const valorTotal = itensCalc.reduce((s, i) => s + i.valor_total, 0);
+      // valorTotal: preferência itensCalc; fallback para preco×quantidade_sc do cabeçalho
+      const valorItens = itensCalc.reduce((s, i) => s + i.valor_total, 0);
+      const qScHeader  = itensCalc[0]?._qSc ?? fC.quantidade_sc ?? 0;
+      const valorTotal = valorItens > 0 ? valorItens : (fC.preco > 0 ? fC.preco * qScHeader : 0);
       if (fC.confirmado) {
         const compradorNome = pessoas.find(p=>p.id===fC.pessoa_id)?.nome ?? payload.comprador ?? "";
         const resp = await fetch("/api/contratos/confirmar", {
@@ -999,7 +1002,7 @@ export default function Contratos() {
         const json = await resp.json();
         if (json.num_lancamento) salvo = { ...salvo, num_lancamento: json.num_lancamento };
         if (json.lancamento_cr_id) salvo = { ...salvo, lancamento_cr_id: json.lancamento_cr_id };
-        if (json.error) console.warn("⚠️ confirmar CR:", json.error);
+        if (json.error) alert(`⚠️ CR não gerado: ${json.error}\n\nO contrato foi salvo. Verifique o erro e salve novamente para criar o CR.`);
       }
       if (editContrato) {
         setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i._qKg>0) as unknown as ContratoItem[] } : c));
