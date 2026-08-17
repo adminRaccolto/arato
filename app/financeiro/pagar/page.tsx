@@ -483,8 +483,11 @@ function ContasPagarInner() {
   // ── Métricas ───────────────────────────────────────────────
 
   const lancOper     = lancamentos.filter(l => l.moeda !== "barter" && (l.natureza ?? "real") === "real");
-  const totalAberto  = lancOper.filter(l => statusEfetivo(l) !== "baixado").reduce((a, l) => a + paraBRL(l), 0);
-  const qAberto      = lancOper.filter(l => statusEfetivo(l) !== "baixado").length;
+  // "Em aberto" KPI — apenas itens DENTRO do período selecionado (>= periodoInicio)
+  const lancOperPeriodo = lancOper.filter(l => (l.data_vencimento ?? periodoInicio) >= periodoInicio);
+  const totalAberto  = lancOperPeriodo.filter(l => statusEfetivo(l) !== "baixado").reduce((a, l) => a + paraBRL(l), 0);
+  const qAberto      = lancOperPeriodo.filter(l => statusEfetivo(l) !== "baixado").length;
+  // Vencidos — itens antes de hoje, não pagos (inclui extras pré-período carregados pela API)
   const qVencido     = lancamentos.filter(l => statusEfetivo(l) === "vencido").length;
   const qVencendo    = lancamentos.filter(l => statusEfetivo(l) === "vencendo").length;
   const mesAtual     = TODAY.slice(0, 7);
@@ -500,7 +503,8 @@ function ContasPagarInner() {
     let arr = lancamentos.filter(l => {
       const isReal = (l.natureza ?? "real") === "real";
       const sEfet  = statusEfetivo(l);
-      if (filtro === "aberto")   return (isReal || l.natureza === "previsao") && sEfet !== "baixado" && l.moeda !== "barter";
+      // "Em aberto": só itens dentro do período (>= periodoInicio). Extras vencidos pré-período ficam em "Vencidos".
+      if (filtro === "aberto")   return (isReal || l.natureza === "previsao") && sEfet !== "baixado" && l.moeda !== "barter" && (l.data_vencimento ?? periodoInicio) >= periodoInicio;
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
       if (filtro === "vencendo") return isReal && sEfet === "vencendo";
       if (filtro === "baixado")  return isReal && sEfet === "baixado";
@@ -513,7 +517,7 @@ function ContasPagarInner() {
     arr = arr.sort((a, b) => (a.data_vencimento ?? "") < (b.data_vencimento ?? "") ? -1 : 1);
     return arr;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lancamentos, filtro, TODAY]);
+  }, [lancamentos, filtro, TODAY, periodoInicio]);
 
   const filtrados = useMemo(() => {
     return filtradosBase.filter(l => {
@@ -1018,7 +1022,7 @@ function ContasPagarInner() {
               {/* Tabs de status */}
               <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", background: "var(--bg-nav)" }}>
                 {([
-                  { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => statusEfetivo(l) !== "baixado" && l.moeda !== "barter").length, cor: "#60A5FA", activeBg: "rgba(59,130,246,0.15)",  activeBorder: "rgba(59,130,246,0.4)"  },
+                  { key: "aberto",   label: "Em aberto",  count: lancOperPeriodo.filter(l => statusEfetivo(l) !== "baixado" && l.moeda !== "barter").length, cor: "#60A5FA", activeBg: "rgba(59,130,246,0.15)",  activeBorder: "rgba(59,130,246,0.4)"  },
                   { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                 cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",   activeBorder: "rgba(239,68,68,0.4)"   },
                   { key: "baixado",  label: "Baixados",   count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#555555", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
