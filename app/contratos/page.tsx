@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import BalancaSerial from "../../components/BalancaSerial";
 import {
@@ -221,6 +221,80 @@ const btnV: React.CSSProperties = { padding:"8px 18px", background:"#2A2A2A", co
 const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(--border-table)", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13, color:"var(--text-1)" };
 const btnX: React.CSSProperties = { padding:"3px 8px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" };
 const badge = (t: string, bg="#E8E8E8", c="#0D0D0D") => <span style={{ fontSize:10, background:bg, color:c, padding:"2px 7px", borderRadius:8, fontWeight:600 }}>{t}</span>;
+
+// ── Seletor de Pessoa com busca por digitação ─────────────────────
+function SelectPessoa({ value, onChange, pessoas, borderColor }: {
+  value: string; onChange: (id: string) => void; pessoas: Pessoa[]; borderColor?: string;
+}) {
+  const [busca, setBusca] = useState("");
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selecionada = pessoas.find(p => p.id === value);
+  const filtradas = busca.trim()
+    ? pessoas.filter(p =>
+        p.nome.toLowerCase().includes(busca.toLowerCase()) ||
+        (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(busca.replace(/\D/g, ""))
+      )
+    : pessoas;
+  useEffect(() => {
+    if (!aberto) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setAberto(false); setBusca(""); }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [aberto]);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <div
+        style={{ ...inp, display:"flex", alignItems:"center", padding:0, borderColor: borderColor ?? undefined, cursor:"pointer" }}
+        onClick={() => setAberto(v => !v)}
+      >
+        {aberto ? (
+          <input autoFocus
+            style={{ flex:1, border:"none", background:"transparent", outline:"none", fontSize:12, padding:"7px 9px", color:"var(--text-1)" }}
+            placeholder="Digite para buscar..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            onClick={e => e.stopPropagation()}
+            onKeyDown={e => {
+              if (e.key === "Escape") { setAberto(false); setBusca(""); }
+              if (e.key === "Enter" && filtradas.length === 1) { onChange(filtradas[0].id); setAberto(false); setBusca(""); }
+            }}
+          />
+        ) : (
+          <span style={{ flex:1, padding:"7px 9px", fontSize:12, color: selecionada ? "var(--text-1)" : "var(--text-3)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {selecionada ? `${selecionada.cpf_cnpj ? selecionada.cpf_cnpj + " — " : ""}${selecionada.nome}` : "— selecione —"}
+          </span>
+        )}
+        <span style={{ padding:"0 8px", color:"var(--text-3)", fontSize:9, flexShrink:0 }}>▾</span>
+      </div>
+      {aberto && (
+        <div style={{ position:"absolute", top:"calc(100% + 2px)", left:0, right:0, zIndex:9999, background:"var(--bg-card,#fff)", border:"0.5px solid var(--border)", borderRadius:8, boxShadow:"0 4px 20px rgba(0,0,0,0.18)", maxHeight:260, overflowY:"auto" }}>
+          <div onMouseDown={() => { onChange(""); setAberto(false); setBusca(""); }}
+            style={{ padding:"7px 12px", cursor:"pointer", fontSize:12, color:"var(--text-3)", borderBottom:"0.5px solid var(--border)" }}>
+            — selecione —
+          </div>
+          {filtradas.length === 0
+            ? <div style={{ padding:"8px 12px", fontSize:12, color:"var(--text-3)" }}>Nenhum resultado</div>
+            : filtradas.map(p => (
+              <div key={p.id}
+                onMouseDown={() => { onChange(p.id); setAberto(false); setBusca(""); }}
+                style={{ padding:"7px 12px", cursor:"pointer", fontSize:12, color: p.id === value ? "#1A5CB8" : "var(--text-1)", background: p.id === value ? "#EEF4FC" : "transparent", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:8 }}
+                onMouseEnter={e => { if (p.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-nav,#F4F6FA)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = p.id === value ? "#EEF4FC" : "transparent"; }}
+              >
+                {p.cpf_cnpj && <span style={{ fontSize:10, fontFamily:"monospace", color:"var(--text-3)", flexShrink:0 }}>{p.cpf_cnpj}</span>}
+                <span>{p.nome}</span>
+              </div>
+            ))
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ── item vazio ───────────────────────────────────────────────────
 // unidade padrão = "kg" — storage sempre em kg; display em sc nos grids
@@ -2256,10 +2330,7 @@ export default function Contratos() {
                           <input type="checkbox" checked={fC.is_triangulacao} readOnly style={{ cursor:"pointer" }} /> Triangulação
                         </span>
                       </label>
-                      <select style={inp} value={fC.pessoa_id} onChange={e => setFC(p=>({...p,pessoa_id:e.target.value}))}>
-                        <option value="">— selecione —</option>
-                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.cpf_cnpj ? `${p.cpf_cnpj}  —  ` : ""}{p.nome}</option>)}
-                      </select>
+                      <SelectPessoa value={fC.pessoa_id} onChange={id => setFC(p=>({...p,pessoa_id:id}))} pessoas={pessoas} />
                       {fC.pessoa_id && (() => { const cnpj = pessoas.find(p => p.id === fC.pessoa_id)?.cpf_cnpj; return cnpj ? (
                         <div style={{ marginTop:4, padding:"4px 8px", background:"var(--bg-page)", border:"0.5px solid var(--border-table)", borderRadius:6, fontSize:11, fontFamily:"monospace", color:"var(--text-2)", letterSpacing:"0.03em" }}>
                           {cnpj}
@@ -2269,10 +2340,7 @@ export default function Contratos() {
                     {fC.is_triangulacao && (
                       <div>
                         <label style={lbl}>Comprador Final (Trading / Destino do Grão)</label>
-                        <select style={{ ...inp, borderColor:"#C9921B" }} value={fC.comprador_final_id} onChange={e => setFC(p=>({...p,comprador_final_id:e.target.value}))}>
-                          <option value="">— selecione —</option>
-                          {pessoas.map(p => <option key={p.id} value={p.id}>{p.cpf_cnpj ? `${p.cpf_cnpj}  —  ` : ""}{p.nome}</option>)}
-                        </select>
+                        <SelectPessoa value={fC.comprador_final_id} onChange={id => setFC(p=>({...p,comprador_final_id:id}))} pessoas={pessoas} borderColor="#C9921B" />
                         {fC.comprador_final_id && (() => { const cnpj = pessoas.find(p => p.id === fC.comprador_final_id)?.cpf_cnpj; return cnpj ? (
                           <div style={{ marginTop:4, padding:"4px 8px", background:"var(--bg-page)", border:"0.5px solid var(--border-table)", borderRadius:6, fontSize:11, fontFamily:"monospace", color:"var(--text-2)", letterSpacing:"0.03em" }}>
                             {cnpj}
