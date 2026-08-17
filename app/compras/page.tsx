@@ -6,7 +6,7 @@ import {
   listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
-  listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
+  listarPessoasDaConta, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
   listarIEsDeMultiplosProdutores,
@@ -327,6 +327,7 @@ export default function ComprasPage() {
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
   const [erro,          setErro]          = useState<string | null>(null);
+  const [erroModal,     setErroModal]     = useState("");
   const [barterContratoNum, setBarterContratoNum] = useState<string | null>(null);
 
   // Modal novo pedido
@@ -361,7 +362,7 @@ export default function ComprasPage() {
     try {
       const [allPed, pes, ins, cic, anos, cc, ops, fzs, prods] = await Promise.all([
         listarPedidosCompraDaConta(fazendaId),
-        listarPessoas(fazendaId),
+        listarPessoasDaConta(fazendaId),
         listarInsumos(fazendaId),
         listarTodosCiclos(fazendaId),
         listarAnosSafra(fazendaId),
@@ -404,7 +405,7 @@ export default function ComprasPage() {
     if (!fazendaId) return;
     const onVisible = () => {
       if (!document.hidden) {
-        listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+        listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
       }
     };
     document.addEventListener("visibilitychange", onVisible);
@@ -621,8 +622,8 @@ export default function ComprasPage() {
 
   const salvar = async () => {
     if (!fazendaId) return;
-    if (!f.fornecedor_id && !f.contato_fornecedor.trim()) { setErro("Informe o fornecedor"); return; }
-    setSalvando(true); setErro(null);
+    if (!f.fornecedor_id && !f.contato_fornecedor.trim()) { setErroModal("Fornecedor"); return; }
+    setErroModal(""); setSalvando(true); setErro(null);
     let barterContratoGerado: string | null = null;
     try {
       const fidPedido = f.fazenda_id || fazendaId;
@@ -863,7 +864,9 @@ export default function ComprasPage() {
   };
 
   const salvarEntrega = async () => {
-    if (!fazendaId || !modalEntrega || !formEntrega.item_id || !formEntrega.quantidade_entregue) return;
+    if (!fazendaId || !modalEntrega || !formEntrega.item_id) return;
+    if (!formEntrega.quantidade_entregue) { setErroModal("Quantidade Entregue"); return; }
+    setErroModal("");
     setSalvando(true);
     try {
       const nova = await registrarEntrega({
@@ -1771,9 +1774,10 @@ export default function ComprasPage() {
                     <strong style={{ color: "#111111", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
                   </>}
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                  <button style={{ ...btnV, opacity: salvando || (!f.fornecedor_id && !f.contato_fornecedor.trim()) ? 0.5 : 1 }} disabled={salvando || (!f.fornecedor_id && !f.contato_fornecedor.trim())} onClick={salvar}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {erroModal && <span style={{ fontSize: 12, color: "#E24B4A" }}>Preencha: <strong>{erroModal}</strong></span>}
+                  <button style={btnR} onClick={() => { setModal(false); setErroModal(""); }}>Cancelar</button>
+                  <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvar}>
                     {salvando ? "Salvando…" : pedidoEdit ? "Salvar Alterações" : "Criar Pedido"}
                   </button>
                 </div>
@@ -1950,8 +1954,9 @@ export default function ComprasPage() {
                       <input style={inp} value={formEntrega.observacao} onChange={e => setFormEntrega(p => ({ ...p, observacao: e.target.value }))} placeholder="Ex: NF 1234" />
                     </div>
                   </div>
-                  <button style={{ ...btnV, marginTop: 12, opacity: salvando || !formEntrega.quantidade_entregue ? 0.5 : 1 }}
-                    disabled={salvando || !formEntrega.quantidade_entregue} onClick={salvarEntrega}>
+                  {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 8 }}>Preencha: <strong>{erroModal}</strong></div>}
+                  <button style={{ ...btnV, marginTop: 8, opacity: salvando ? 0.5 : 1 }}
+                    disabled={salvando} onClick={salvarEntrega}>
                     {salvando ? "Salvando…" : "Confirmar Entrega"}
                   </button>
 
