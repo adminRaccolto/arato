@@ -517,8 +517,12 @@ function ContasPagarInner() {
 
   const filtrados = useMemo(() => {
     return filtradosBase.filter(l => {
-      const prodLabel  = produtores.find(p => p.id === l.produtor_id)?.nome ?? "";
-      if (fFornecedor && !l.descricao.toLowerCase().includes(fFornecedor.toLowerCase()))       return false;
+      const prodLabel    = produtores.find(p => p.id === l.produtor_id)?.nome ?? "";
+      const pessoaNomeForn = l.pessoa_id ? (pessoas.find(p => p.id === l.pessoa_id)?.nome ?? "") : "";
+      if (fFornecedor) {
+        const haystack = [pessoaNomeForn, l.descricao].join(" ").toLowerCase();
+        if (!haystack.includes(fFornecedor.toLowerCase())) return false;
+      }
       const ogDesc = l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria ?? "") : (l.categoria ?? "");
       if (fOperacao   && !ogDesc.toLowerCase().includes(fOperacao.toLowerCase()))               return false;
       if (fSafra      && l.ano_safra_id !== fSafra)                                            return false;
@@ -531,7 +535,7 @@ function ContasPagarInner() {
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, anosSafra, produtores, ogMap]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, anosSafra, produtores, ogMap, pessoas, contas]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
