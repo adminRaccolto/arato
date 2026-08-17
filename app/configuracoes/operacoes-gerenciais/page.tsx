@@ -195,6 +195,12 @@ function OperacoesGerenciaisContent() {
       setErro("Classificação e Descrição são obrigatórios.");
       return;
     }
+    const nenhumaSela = !form.permite_notas_fiscais && !form.permite_cp_cr && !form.permite_adiantamentos &&
+      !form.permite_tesouraria && !form.permite_baixas && !form.permite_custo_produto &&
+      !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda && !form.permite_manutencao;
+    if (nenhumaSela) {
+      if (!confirm("⚠️ Esta operação não está habilitada para nenhuma tela.\n\nEla ficará invisível em todos os seletores do sistema (CP/CR, NF, Estoque, etc.).\n\nDeseja salvar assim mesmo?")) return;
+    }
     setSalvando(true); setErro(null);
     try {
       const payload: Partial<OperacaoGerencial> & { fazenda_id?: string } = {
@@ -597,6 +603,33 @@ function OperacoesGerenciaisContent() {
               </div>
             </div>
 
+            {/* Resumo de visibilidade — alerta quando OG não aparece em nenhum seletor */}
+            {(() => {
+              const telas: string[] = [];
+              if (form.permite_notas_fiscais) telas.push("NF Entrada");
+              if (form.permite_cp_cr) telas.push(form.tipo === "receita" ? "Contas a Receber" : "Contas a Pagar");
+              if (form.permite_adiantamentos) telas.push("Adiantamentos");
+              if (form.permite_tesouraria) telas.push("Tesouraria");
+              if (form.permite_baixas) telas.push("Baixas");
+              if (form.permite_estoque) telas.push("Estoque");
+              if (form.permite_contrato_financeiro) telas.push("Contratos Fin.");
+              if (form.permite_pedidos_venda) telas.push("Ped. Venda");
+              if (form.permite_manutencao) telas.push("Manutenção");
+              if (telas.length === 0) {
+                return (
+                  <div style={{ margin: "0 20px 12px", padding: "8px 12px", background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 8, fontSize: 12, color: "#991B1B" }}>
+                    ⚠️ <strong>Esta OG não aparecerá em nenhum seletor do sistema.</strong> Acesse a aba <em>Telas / Módulos</em> e habilite ao menos uma opção (ex: "Contas a Pagar / Receber").
+                  </div>
+                );
+              }
+              return (
+                <div style={{ margin: "0 20px 12px", padding: "6px 12px", background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontWeight: 600, color: "var(--text-1)" }}>Aparece em:</span>
+                  {telas.map(t => <span key={t} style={{ background: "#E6F1FB", color: "#0C447C", padding: "2px 7px", borderRadius: 4, fontWeight: 600 }}>{t}</span>)}
+                </div>
+              );
+            })()}
+
             {/* Abas */}
             <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0, background: "var(--bg-card)" }}>
               {([
@@ -605,18 +638,26 @@ function OperacoesGerenciaisContent() {
                 { key: "fiscal",        label: "Fiscal"             },
                 { key: "financeiro",    label: "Financeiro/Custos"  },
                 { key: "contabilidade", label: "Contabilidade"      },
-              ] as { key: AbaModal; label: string }[]).map(a => (
-                <button key={a.key} onClick={() => setAbaModal(a.key)} style={{
-                  padding: "9px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
-                  borderBottom: abaModal === a.key ? "2px solid #2A2A2A" : "2px solid transparent",
-                  color: abaModal === a.key ? "#2A2A2A" : "var(--text-2)",
-                  fontWeight: abaModal === a.key ? 600 : 400,
-                }}>
-                  {a.key === "contabilidade" && (form.conta_debito || form.conta_credito) ? (
-                    <span>{a.label} <span style={{ marginLeft: 4, fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>✓</span></span>
-                  ) : a.label}
-                </button>
-              ))}
+              ] as { key: AbaModal; label: string }[]).map(a => {
+                const nenhumaTela = a.key === "telas" &&
+                  !form.permite_notas_fiscais && !form.permite_cp_cr && !form.permite_adiantamentos &&
+                  !form.permite_tesouraria && !form.permite_baixas && !form.permite_custo_produto &&
+                  !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda && !form.permite_manutencao;
+                return (
+                  <button key={a.key} onClick={() => setAbaModal(a.key)} style={{
+                    padding: "9px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
+                    borderBottom: abaModal === a.key ? "2px solid #2A2A2A" : "2px solid transparent",
+                    color: abaModal === a.key ? "#2A2A2A" : "var(--text-2)",
+                    fontWeight: abaModal === a.key ? 600 : 400,
+                  }}>
+                    {nenhumaTela ? (
+                      <span>{a.label} <span style={{ marginLeft: 4, fontSize: 9, background: "#FEE2E2", color: "#991B1B", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>NENHUMA</span></span>
+                    ) : a.key === "contabilidade" && (form.conta_debito || form.conta_credito) ? (
+                      <span>{a.label} <span style={{ marginLeft: 4, fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>✓</span></span>
+                    ) : a.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Conteúdo das abas */}
