@@ -9913,3 +9913,33 @@ END $$;
 
 NOTIFY pgrst, 'reload schema';
 
+
+
+-- ============================================================
+-- Seção 167 — FK fazenda_id → fazendas: CASCADE → SET NULL
+-- Garante que excluir uma fazenda não apaga dados operacionais.
+-- O tenant raiz é conta_id, não fazenda_id.
+-- ============================================================
+DO $$ DECLARE r RECORD; BEGIN
+  FOR r IN
+    SELECT c.conname AS constraint_name, t.relname AS table_name,
+           a.attname AS column_name
+    FROM pg_constraint c
+    JOIN pg_class t  ON t.oid = c.conrelid
+    JOIN pg_class ft ON ft.oid = c.confrelid
+    JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+    WHERE c.contype = 'f'
+      AND ft.relname = 'fazendas'
+      AND a.attname  = 'fazenda_id'
+    ORDER BY t.relname
+  LOOP
+    BEGIN
+      EXECUTE format('ALTER TABLE %I DROP CONSTRAINT IF EXISTS %I', r.table_name, r.constraint_name);
+      EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (fazenda_id) REFERENCES fazendas(id) ON DELETE SET NULL', r.table_name, r.constraint_name);
+      RAISE NOTICE 'FK corrigida: %.fazenda_id → fazendas SET NULL', r.table_name;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Nao foi possivel corrigir % em %: %', r.constraint_name, r.table_name, SQLERRM;
+    END;
+  END LOOP;
+  RAISE NOTICE 'Secao 167 concluida — fazenda_id nunca mais apaga dados em cascata.';
+END $$;
