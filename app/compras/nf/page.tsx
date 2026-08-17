@@ -204,7 +204,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
 });
 
 type Etapa = "origem" | "cabecalho" | "itens";
-type OrigEscolha = "manual" | "xml" | "sieg";
+type OrigEscolha = "manual" | "xml" | "sieg" | "leitor";
 type TipoEntrada = "insumos" | "pecas" | "vef" | "remessa" | "custo_direto";
 
 const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: string }> = {
@@ -382,6 +382,12 @@ export default function NfCompraPage() {
   // Sieg
   const [siegChave, setSiegChave] = useState("");
   const [siegLoading, setSiegLoading] = useState(false);
+
+  // Leitor de chave (código de barras → SEFAZ)
+  const [leitorChave, setLeitorChave]     = useState("");
+  const [leitorLoading, setLeitorLoading] = useState(false);
+  const [leitorErro, setLeitorErro]       = useState<string | null>(null);
+  const leitorRef = useRef<HTMLInputElement>(null);
 
   // Modal: exclusão de NF com reversão
   const [modalExcluir, setModalExcluir] = useState<{
@@ -668,6 +674,8 @@ export default function NfCompraPage() {
     setItens([ITEM_VAZIO()]);
     setErr("");
     setSiegChave("");
+    setLeitorChave("");
+    setLeitorErro(null);
     // Carrega CC/depósitos frescos da fazenda ativa (evita race condition com centros ainda carregando)
     if (fazendaId) await carregarWizardData(fazendaId);
     setWizard(true);
@@ -2065,18 +2073,19 @@ export default function NfCompraPage() {
               {etapa === "origem" && (
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)", marginBottom: 16 }}>Como deseja lançar a nota fiscal?</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 24 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 24 }}>
                     {([
-                      { v: "manual", icon: "✏️", title: "Manual",      desc: "Digite os dados diretamente" },
-                      { v: "xml",    icon: "📄", title: "XML",         desc: "Importe o arquivo XML da NF-e" },
-                      { v: "sieg",   icon: "🔗", title: "Sieg / API",  desc: "Consulte pelo número de chave" },
+                      { v: "manual", icon: "✏️", title: "Manual",           desc: "Digite os dados diretamente" },
+                      { v: "xml",    icon: "📄", title: "XML",              desc: "Importe o arquivo XML da NF-e" },
+                      { v: "leitor", icon: "▌▌ ▌▌▌▌", title: "Leitor de Chave", desc: "Escaneie o código de barras do DANFE ou digite a chave de acesso" },
+                      { v: "sieg",   icon: "🔗", title: "Sieg / API",       desc: "Consulte pelo número de chave via integração Sieg" },
                     ] as { v: OrigEscolha; icon: string; title: string; desc: string }[]).map(({ v, icon, title, desc }) => (
                       <button
                         key={v}
-                        onClick={() => setOrig(v)}
+                        onClick={() => { setOrig(v); setLeitorChave(""); setLeitorErro(null); if (v === "leitor") setTimeout(() => leitorRef.current?.focus(), 50); }}
                         style={{ padding: "20px 16px", border: `2px solid ${orig === v ? "#1A5C38" : "var(--border-table)"}`, borderRadius: 12, background: orig === v ? "#E8F5E9" : "var(--bg-card)", cursor: "pointer", textAlign: "center" }}
                       >
-                        <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+                        <div style={{ fontSize: v === "leitor" ? 18 : 28, marginBottom: 8, fontFamily: v === "leitor" ? "monospace" : "inherit", letterSpacing: v === "leitor" ? 2 : 0 }}>{icon}</div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>{title}</div>
                         <div style={{ fontSize: 12, color: "#666" }}>{desc}</div>
                       </button>
@@ -2098,6 +2107,79 @@ export default function NfCompraPage() {
                         }}
                         style={{ display: "block", fontSize: 13 }}
                       />
+                    </div>
+                  )}
+
+                  {/* Leitor de Chave de Acesso (código de barras → SEFAZ) */}
+                  {orig === "leitor" && (
+                    <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                      <label style={lbl}>Chave de Acesso — 44 dígitos</label>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 10 }}>
+                        Aponte o leitor de código de barras para o DANFE. O sistema consulta a SEFAZ automaticamente ao completar os 44 dígitos.
+                      </div>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          ref={leitorRef}
+                          value={leitorChave.replace(/(\d{9})(?=\d)/g, "$1 ").replace(/(\d{8})\s(\d{9})(?=\d)/g, "$1 $2 ").trim()}
+                          onChange={e => {
+                            const digits = e.target.value.replace(/\D/g, "").substring(0, 44);
+                            setLeitorChave(digits);
+                            setLeitorErro(null);
+                            if (digits.length === 44) {
+                              setLeitorLoading(true);
+                              fetch("/api/nfe/xml-por-chave", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
+                              }).then(r => r.json()).then(json => {
+                                if (!json.ok || !json.xmlCompleto) { setLeitorErro(json.erro ?? "Não foi possível obter o XML da SEFAZ."); return; }
+                                parsearXml(json.xmlCompleto);
+                                setOrig("xml"); // após parsear, exibe feedback do modo XML
+                              }).catch(() => setLeitorErro("Erro de rede ao consultar a SEFAZ."))
+                                .finally(() => setLeitorLoading(false));
+                            }
+                          }}
+                          onPaste={e => {
+                            const digits = e.clipboardData.getData("text").replace(/\D/g, "").substring(0, 44);
+                            if (digits.length === 44) {
+                              e.preventDefault();
+                              setLeitorChave(digits);
+                              setLeitorErro(null);
+                              setLeitorLoading(true);
+                              fetch("/api/nfe/xml-por-chave", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
+                              }).then(r => r.json()).then(json => {
+                                if (!json.ok || !json.xmlCompleto) { setLeitorErro(json.erro ?? "Não foi possível obter o XML."); return; }
+                                parsearXml(json.xmlCompleto);
+                                setOrig("xml");
+                              }).catch(() => setLeitorErro("Erro de rede ao consultar a SEFAZ."))
+                                .finally(() => setLeitorLoading(false));
+                            }
+                          }}
+                          disabled={leitorLoading}
+                          placeholder="Posicione o cursor aqui e escaneie o código de barras…"
+                          style={{ ...inp, fontFamily: "monospace", fontSize: 14, letterSpacing: "0.06em", paddingRight: 110 }}
+                          autoComplete="off"
+                          autoFocus
+                        />
+                        <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: leitorChave.length === 44 ? "#16A34A" : "#888" }}>
+                          {leitorLoading ? "Consultando SEFAZ…" : `${leitorChave.length}/44`}
+                        </span>
+                      </div>
+                      {/* Barra de progresso */}
+                      <div style={{ marginTop: 6, height: 3, background: "#EEE", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${(leitorChave.length / 44) * 100}%`, background: leitorChave.length === 44 ? "#16A34A" : "#1A4870", transition: "width 0.1s" }} />
+                      </div>
+                      {leitorErro && (
+                        <div style={{ marginTop: 10, padding: "9px 12px", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, fontSize: 12, color: "#E24B4A" }}>
+                          {leitorErro}
+                          {leitorErro.includes("Certificado") && (
+                            <div style={{ marginTop: 4, color: "#555" }}>Configure o certificado A1 em <strong>Configurações → Parâmetros do Sistema → Fiscal</strong>.</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
