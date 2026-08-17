@@ -7,7 +7,7 @@ import {
   listarRomaneios, criarRomaneio, atualizarRomaneio, excluirRomaneio,
   listarItensContrato, salvarItensContrato,
   listarCessaoDebitos, salvarCessaoDebitos,
-  listarPessoas, listarProdutoresDaConta, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
+  listarPessoasDaConta, listarProdutoresDaConta, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
   encerrarAnoSafra, reabrirAnoSafra,
   baixarLancamento,
   listarIEsDoProdutor,
@@ -664,7 +664,7 @@ export default function Contratos() {
       const [cList, rList, pList, prodList, aList, dList, fList, cultRes, prodAgriRes, adiantRes] = await Promise.all([
         listarContratosDaConta(contaId, fazendaId, hintIds),
         listarRomaneios(fazendaId!),
-        listarPessoas(fazendaId!),
+        listarPessoasDaConta(fazendaId!),
         listarProdutoresDaConta(contaId ?? "", fazendaId ?? undefined),
         listarAnosSafra(fazendaId!),
         listarDepositos(fazendaId!),
