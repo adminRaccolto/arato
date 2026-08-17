@@ -3,10 +3,10 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
-import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores } from "../../../lib/db";
+import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarPessoasDaConta } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
-import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor } from "../../../lib/supabase";
+import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 
 type AbaFin = "fluxo" | "dfc" | "posicao" | "cpcr";
@@ -93,6 +93,7 @@ function FinanceiroRelatoriosInner() {
   const temApoio = contaModulosOverrides["apoio_financeiro"] === true;
 
   const [lancamentos,  setLancamentos]  = useState<Lancamento[]>([]);
+  const [pessoas,      setPessoas]      = useState<Pessoa[]>([]);
   const [empresas,     setEmpresas]     = useState<Empresa[]>([]);
   const [contas,       setContas]       = useState<ContaBancaria[]>([]);
   const [produtores,   setProdutores]   = useState<Produtor[]>([]);
@@ -195,6 +196,7 @@ function FinanceiroRelatoriosInner() {
     listarEmpresas(fazendaId).then(setEmpresas).catch(() => setEmpresas([]));
     listarContas(fazendaId).then(setContas).catch(() => setContas([]));
     listarProdutores(fazendaId).then(setProdutores).catch(() => setProdutores([]));
+    listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => setPessoas([]));
     fetch("/api/precos").then(r => r.json()).then(d => {
       const taxa = d?.usdPtax ?? d?.usdBrl;
       if (taxa && taxa > 0) setCotacaoUSD(taxa);
@@ -1486,23 +1488,30 @@ function FinanceiroRelatoriosInner() {
                   // Aba Lançamentos
                   // CR → positivo, CP → negativo (convenção de fluxo de caixa)
                   const sinal = (l: Lancamento) => l.tipo === "pagar" ? -1 : 1;
-                  const cabecalho = ["Tipo", "Vencimento", "Descrição", "Categoria", "Operação", "Conta Bancária", "Status", "Moeda", "Valor Original", "Valor BRL"];
+                  const pessoaMap = Object.fromEntries(pessoas.map(p => [p.id, p.nome]));
+                  const cabecalho = ["Tipo", "Emissão", "Vencimento", "Descrição", "Fornecedor / Pagador", "Categoria", "Operação", "Conta Bancária", "Forma Pgto", "Status", "Moeda", "Valor Original", "Valor BRL", "Observações"];
                   const linhas = lancsCPCR.map(l => {
-                    const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
-                    const opNome    = operacoesGer.find(o => o.id === l.operacao_id)?.descricao ?? (l.origem_lancamento ?? "");
+                    const contaNome   = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
+                    const opNome      = operacoesGer.find(o => o.id === l.operacao_id)?.descricao ?? (l.origem_lancamento ?? "");
+                    const fornecedor  = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "";
                     const brl = paraBRLRel(l, cotacaoUSD);
-                    const venc = l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "";
+                    const venc    = l.data_vencimento  ? new Date(l.data_vencimento  + "T12:00").toLocaleDateString("pt-BR") : "";
+                    const emissao = l.data_lancamento  ? new Date(l.data_lancamento  + "T12:00").toLocaleDateString("pt-BR") : "";
                     return [
                       tipoLabel[l.tipo] ?? l.tipo,
+                      emissao,
                       venc,
                       l.descricao ?? "",
+                      fornecedor,
                       l.categoria ?? "",
                       opNome,
                       contaNome,
+                      l.forma_pagamento ?? "",
                       statusLabel[l.status] ?? l.status,
                       l.moeda?.toUpperCase() ?? "BRL",
                       sinal(l) * l.valor,
                       sinal(l) * brl,
+                      l.observacao ?? "",
                     ];
                   });
 
@@ -1512,7 +1521,7 @@ function FinanceiroRelatoriosInner() {
                   XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
 
                   const wsLanc = XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]);
-                  wsLanc["!cols"] = [6,16,44,20,28,20,12,8,16,16].map(w => ({ wch: w }));
+                  wsLanc["!cols"] = [6,14,14,40,28,22,28,20,16,12,8,14,14,40].map(w => ({ wch: w }));
                   XLSX.utils.book_append_sheet(wb, wsLanc, "Lançamentos");
 
                   const hoje = new Date().toISOString().slice(0, 10);
