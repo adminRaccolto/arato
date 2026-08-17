@@ -60,6 +60,12 @@ interface PessoaAdm {
   cpf_cnpj?: string | null;
 }
 
+interface ContaBancariaSimples {
+  id: string;
+  nome: string;
+  banco?: string | null;
+}
+
 interface ProdutorSimples {
   id: string;
   nome: string;
@@ -129,6 +135,7 @@ export default function ConsorciosPage() {
   const [produtores, setProdutores] = useState<ProdutorSimples[]>([]);
   const [pessoasAdm, setPessoasAdm] = useState<PessoaAdm[]>([]);
   const [busca,      setBusca]      = useState("");
+  const [contasBancarias, setContasBancarias] = useState<ContaBancariaSimples[]>([]);
 
   // Modal consórcio
   const [modalConsor,  setModalConsor]  = useState(false);
@@ -153,6 +160,7 @@ export default function ConsorciosPage() {
     valor_lance: 0,
     bem_adquirido: "",
     migrar_financiamento: false,
+    conta_bancaria_id: "",
   });
   const [contemplSaving, setContemplSaving] = useState(false);
   const [contemplErr, setContemplErr] = useState("");
@@ -413,15 +421,23 @@ export default function ConsorciosPage() {
     setModalContempl(c);
     setContemplForm({
       data_contemplacao: hoje(), valor_lance: 0, bem_adquirido: "",
-      migrar_financiamento: false,
+      migrar_financiamento: false, conta_bancaria_id: "",
     });
     setContemplErr("");
+    const fId = c.fazenda_id || fazendaId;
+    if (fId) {
+      supabase.from("contas_bancarias").select("id, nome, banco")
+        .eq("fazenda_id", fId).eq("ativa", true).order("nome")
+        .then(({ data }) => setContasBancarias((data ?? []) as ContaBancariaSimples[]));
+    }
   }
 
   async function confirmarContemplacao() {
     if (!modalContempl || !fazendaId) return;
     if (!contemplForm.data_contemplacao) { setContemplErr("Informe a data de contemplação."); return; }
+    if (!contemplForm.conta_bancaria_id) { setContemplErr("Selecione a conta bancária para crédito do valor."); return; }
     setContemplSaving(true); setContemplErr("");
+    const fId = modalContempl.fazenda_id || fazendaId;
     try {
       // 1. Atualiza status do consórcio
       const { error: updErr } = await supabase.from("consorcios").update({
@@ -433,7 +449,7 @@ export default function ConsorciosPage() {
       if (updErr) throw new Error(updErr.message);
 
       // 2. Reclassifica CPs abertas: OG "Não Contemplado" → "Contemplado"
-      const ogAlvo = ogContemplado ?? await buscarOgId(fazendaId, "2.03.01.007");
+      const ogAlvo = ogContemplado ?? await buscarOgId(fId, "2.03.01.007");
       if (ogAlvo) {
         const { data: cpAbertas } = await supabase
           .from("lancamentos")
@@ -448,6 +464,28 @@ export default function ConsorciosPage() {
             .in("id", cpAbertas.map((l: { id: string }) => l.id));
         }
       }
+
+      // 3. Cria CR — crédito do valor do consórcio na conta selecionada
+      const descCR = `Crédito Contemplação — ${modalContempl.administradora} Cota ${modalContempl.numero_cota}`;
+      const { error: crErr } = await supabase.from("lancamentos").insert({
+        fazenda_id: fId,
+        tipo: "receber",
+        moeda: "BRL",
+        descricao: descCR,
+        categoria: "Contemplação de Consórcio",
+        data_lancamento: contemplForm.data_contemplacao,
+        data_vencimento: contemplForm.data_contemplacao,
+        data_baixa: contemplForm.data_contemplacao,
+        valor: modalContempl.valor_credito,
+        valor_pago: modalContempl.valor_credito,
+        status: "baixado",
+        auto: true,
+        conta_bancaria: contemplForm.conta_bancaria_id,
+        consorcio_id: modalContempl.id,
+        origem_lancamento: "consorcio",
+        operacao_gerencial_id: ogAlvo,
+      });
+      if (crErr) throw new Error(crErr.message);
 
       await carregar();
       setModalContempl(null);
@@ -1135,8 +1173,24 @@ export default function ConsorciosPage() {
                 <InputMonetario style={inp} value={contemplForm.valor_lance} onChange={v => setContemplForm(f => ({ ...f, valor_lance: v }))} placeholder="0,00 se contemplado por sorteio" />
               </div>
               <div>
-                <label style={lbl}>Bem Adquirido</label>
+                <label style={lbl}>Bem Adquirido / Alienação do Bem</label>
                 <input value={contemplForm.bem_adquirido} onChange={e => setContemplForm(f => ({ ...f, bem_adquirido: e.target.value }))} style={inp} placeholder="Ex.: John Deere 5075E, ano 2024" />
+              </div>
+              <div>
+                <label style={lbl}>Creditar na Conta Bancária *</label>
+                <select
+                  value={contemplForm.conta_bancaria_id}
+                  onChange={e => setContemplForm(f => ({ ...f, conta_bancaria_id: e.target.value }))}
+                  style={inp}
+                >
+                  <option value="">Selecione a conta…</option>
+                  {contasBancarias.map(cb => (
+                    <option key={cb.id} value={cb.id}>{cb.nome}{cb.banco ? ` — ${cb.banco}` : ""}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ background: "#E8F5E9", border: "0.5px solid #A7D7B5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1A6B3C" }}>
+                Será lançado um <strong>crédito de {fmtBRL(modalContempl.valor_credito)}</strong> (valor do crédito da cota) na conta selecionada como baixado.
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
                 <input
