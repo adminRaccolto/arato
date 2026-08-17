@@ -2542,3 +2542,59 @@ export type BemConsorcioVinculo = {
     status: string;
   };
 };
+
+export type ContratoCT = {
+  id: string;
+  fazenda_id: string;
+  conta_id?: string | null;
+  numero?: string | null;
+  status: "negociacao" | "assinado" | "escriturado" | "registrado" | "encerrado" | "cancelado";
+  // Imóvel
+  imovel_nome: string;
+  imovel_municipio?: string | null;
+  imovel_uf?: string | null;
+  imovel_area_total_ha?: number | null;
+  imovel_area_terra_nua_ha?: number | null;
+  imovel_matricula?: string | null;
+  imovel_car?: string | null;
+  imovel_nirf?: string | null;
+  // Partes
+  vendedor_id?: string | null;
+  comprador_produtor_id?: string | null;
+  corretor_id?: string | null;
+  comissao_corretor_pct?: number | null;
+  // Valor
+  valor_total: number;
+  valor_terra_nua?: number | null;
+  valor_benfeitorias?: number | null;
+  itbi_valor?: number | null;
+  itbi_pago?: boolean | null;
+  data_contrato?: string | null;
+  data_previsao_escritura?: string | null;
+  // Pagamento
+  forma_pagamento?: "a_vista" | "financiamento" | "parcelado_vendedor" | "misto" | null;
+  valor_entrada?: number | null;
+  data_entrada?: string | null;
+  contrato_financeiro_id?: string | null;
+  num_parcelas_vendedor?: number | null;
+  // Cartório
+  cartorio_nome?: string | null;
+  escritura_numero?: string | null;
+  escritura_data?: string | null;
+  registro_numero?: string | null;
+  registro_data?: string | null;
+  custo_cartorio?: number | null;
+  observacoes?: string | null;
+  created_at: string;
+};
+
+export type CctPagamento = {
+  id: string;
+  contrato_id: string;
+  fazenda_id: string;
+  data_vencimento: string;
+  valor: number;
+  status: "pendente" | "pago" | "atrasado";
+  data_pagamento?: string | null;
+  observacao?: string | null;
+};

@@ -4536,7 +4536,7 @@ CREATE TABLE IF NOT EXISTS conta_modulos (
   PRIMARY KEY (conta_id, modulo)
 );
 
--- RLS: só raccotlo pode editar; clientes não enxergam esta tabela diretamente
+-- RLS: raccotlo gerencia tudo; clientes leem apenas os módulos da própria conta
 ALTER TABLE conta_modulos ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "rls_conta_modulos_admin" ON conta_modulos;
@@ -4546,6 +4546,15 @@ CREATE POLICY "rls_conta_modulos_admin" ON conta_modulos
       SELECT 1 FROM perfis
       WHERE perfis.user_id = auth.uid()
         AND perfis.role IN ('raccotlo', 'raccotlo_gestor')
+    )
+  );
+
+DROP POLICY IF EXISTS "rls_conta_modulos_client_read" ON conta_modulos;
+CREATE POLICY "rls_conta_modulos_client_read" ON conta_modulos
+  FOR SELECT
+  USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis WHERE user_id = auth.uid()
     )
   );
 
@@ -9949,3 +9958,96 @@ END $$;
 -- Coluna adicionada ao código mas nunca ao banco.
 -- ============================================================
 ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS ie_produtor text;
+
+-- ============================================================
+-- Seção 169 — Contratos de Compra de Terra
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS contratos_compra_terra (
+  id                        uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id                uuid        REFERENCES fazendas(id) ON DELETE SET NULL,
+  conta_id                  uuid        REFERENCES contas(id)   ON DELETE SET NULL,
+  numero                    text,
+  status                    text        NOT NULL DEFAULT 'negociacao'
+                                        CHECK (status IN ('negociacao','assinado','escriturado','registrado','encerrado','cancelado')),
+  -- Imóvel
+  imovel_nome               text        NOT NULL,
+  imovel_municipio          text,
+  imovel_uf                 text,
+  imovel_area_total_ha      numeric(12,4),
+  imovel_area_terra_nua_ha  numeric(12,4),
+  imovel_matricula          text,
+  imovel_car                text,
+  imovel_nirf               text,
+  -- Partes
+  vendedor_id               uuid        REFERENCES pessoas(id)    ON DELETE SET NULL,
+  comprador_produtor_id     uuid        REFERENCES produtores(id) ON DELETE SET NULL,
+  corretor_id               uuid        REFERENCES pessoas(id)    ON DELETE SET NULL,
+  comissao_corretor_pct     numeric(6,4),
+  -- Valor
+  valor_total               numeric(15,2) NOT NULL,
+  valor_terra_nua           numeric(15,2),
+  valor_benfeitorias        numeric(15,2),
+  itbi_valor                numeric(15,2),
+  itbi_pago                 boolean     DEFAULT false,
+  data_contrato             date,
+  data_previsao_escritura   date,
+  -- Pagamento
+  forma_pagamento           text        CHECK (forma_pagamento IN ('a_vista','financiamento','parcelado_vendedor','misto')),
+  valor_entrada             numeric(15,2),
+  data_entrada              date,
+  contrato_financeiro_id    uuid        REFERENCES contratos_financeiros(id) ON DELETE SET NULL,
+  num_parcelas_vendedor     integer,
+  -- Cartório
+  cartorio_nome             text,
+  escritura_numero          text,
+  escritura_data            date,
+  registro_numero           text,
+  registro_data             date,
+  custo_cartorio            numeric(15,2),
+  -- Extra
+  observacoes               text,
+  created_at                timestamptz NOT NULL DEFAULT now(),
+  updated_at                timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS cct_pagamentos (
+  id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  contrato_id      uuid        NOT NULL REFERENCES contratos_compra_terra(id) ON DELETE CASCADE,
+  fazenda_id       uuid        REFERENCES fazendas(id) ON DELETE SET NULL,
+  data_vencimento  date        NOT NULL,
+  valor            numeric(15,2) NOT NULL,
+  status           text        NOT NULL DEFAULT 'pendente'
+                               CHECK (status IN ('pendente','pago','atrasado')),
+  data_pagamento   date,
+  observacao       text,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE contratos_compra_terra ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cct_pagamentos         ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "rls_cct_conta" ON contratos_compra_terra;
+CREATE POLICY "rls_cct_conta" ON contratos_compra_terra
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+  );
+
+DROP POLICY IF EXISTS "rls_cct_pg_conta" ON cct_pagamentos;
+CREATE POLICY "rls_cct_pg_conta" ON cct_pagamentos
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+  );
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_cct_fazenda  ON contratos_compra_terra(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_cct_conta    ON contratos_compra_terra(conta_id);
+CREATE INDEX IF NOT EXISTS idx_cct_pg_ct    ON cct_pagamentos(contrato_id);
+CREATE INDEX IF NOT EXISTS idx_cct_pg_fazenda ON cct_pagamentos(fazenda_id);
