@@ -788,7 +788,7 @@ COMPORTAMENTO GERAL:
 
   // Primeira chamada — Claude pode chamar ferramentas
   let response = await claude.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 2048,
     system: systemPrompt,
     tools: TOOLS,
@@ -840,7 +840,7 @@ COMPORTAMENTO GERAL:
 
     // Próxima chamada com os resultados das ferramentas
     response = await claude.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       system: systemPrompt,
       tools: TOOLS,

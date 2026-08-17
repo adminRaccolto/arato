@@ -189,7 +189,7 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
 export async function extrairCedula(pdfBase64: string): Promise<CedulaExtraida | null> {
   try {
     const response = await claude.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
       messages: [
         {
