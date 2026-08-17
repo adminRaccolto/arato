@@ -10,8 +10,9 @@ import {
   criarInsumo,
   listarDepositos,
   listarDepositosMulti,
-  listarPessoas,
+  listarPessoasDaConta,
   criarPessoa,
+  listarIEsDoProdutor,
   listarCentrosCustoGeral,
   listarCentrosCustoGeralDaConta,
   listarRegrasClassificacao,
@@ -27,7 +28,7 @@ import {
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo } from "../../../lib/supabase";
+import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
@@ -235,6 +236,7 @@ export default function NfCompraPage() {
   const [wBombas,     setWBombas]     = useState<BombaCombustivel[]>([]);
   const [wPedidos,    setWPedidos]    = useState<PedidoMin[]>([]);
   const [wProdutores, setWProdutores] = useState<Array<{id: string; nome: string; cpf_cnpj?: string}>>([]);
+  const [iesProdutor,  setIesProdutor]  = useState<ProdutorIE[]>([]);
   const [sugestaoNome, setSugestaoNome] = useState<string | null>(null); // nome da regra aplicada
   const [depFiltro, setDepFiltro] = useState<"proprio" | "terceiro">("proprio");
 
@@ -353,6 +355,7 @@ export default function NfCompraPage() {
     ciclo_id: "",
     // Produtor responsável pelo custo (propaga para o CP)
     produtor_id: "",
+    ie_produtor: "",
     // Contabilidade / LCDPR
     vinculo_atividade: "rural" as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
     entidade_contabil: "pf" as "pf" | "pj",
@@ -408,7 +411,7 @@ export default function NfCompraPage() {
       listarNfEntradasPorFazendas(idsParaNf),
       listarInsumos(fazendaId),
       listarDepositosMulti(idsParaNf),
-      listarPessoas(fazendaId),
+      listarPessoasDaConta(fazendaId),
     ]);
     setNfs(nfsData);
     setInsumos(insData);
@@ -528,6 +531,19 @@ export default function NfCompraPage() {
     listarCiclos(cab.ano_safra_id, fazendaId).then(setCiclosNF).catch(() => setCiclosNF([]));
   }, [cab.ano_safra_id, fazendaId]);
 
+  // Carrega IEs do produtor selecionado
+  useEffect(() => {
+    if (!cab.produtor_id) { setIesProdutor([]); setCab(p => ({ ...p, ie_produtor: "" })); return; }
+    listarIEsDoProdutor(cab.produtor_id)
+      .then(list => {
+        setIesProdutor(list.filter(ie => ie.ativa));
+        // Auto-preenche se só houver 1 IE
+        if (list.length === 1) setCab(p => ({ ...p, ie_produtor: list[0].inscricao_estadual }));
+      })
+      .catch(() => setIesProdutor([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cab.produtor_id]);
+
   // Carrega OGs ao abrir o modal de lote
   useEffect(() => {
     if (!batchModal || !fazendaId) return;
@@ -643,6 +659,7 @@ export default function NfCompraPage() {
       ano_safra_id: "",
       ciclo_id: "",
       produtor_id: "",
+      ie_produtor: "",
       vinculo_atividade: "rural" as const,
       entidade_contabil: "pf" as const,
       valor_ipi: "", valor_st: "", valor_fcp_st: "", valor_difal: "", valor_desconto: "",
@@ -689,6 +706,7 @@ export default function NfCompraPage() {
       ano_safra_id: nf.ano_safra_id ?? "",
       ciclo_id: nf.ciclo_id ?? "",
       produtor_id: nf.produtor_id ?? produtorPorCnpj(nf.emitente_cnpj ?? ""),
+      ie_produtor: (nf as Record<string,unknown>).ie_produtor as string ?? "",
       vinculo_atividade: (nf.vinculo_atividade ?? "rural") as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
       entidade_contabil: (nf.entidade_contabil ?? "pf") as "pf" | "pj",
       valor_ipi:      String((nf as Record<string,unknown>).valor_ipi      ?? ""),
@@ -920,6 +938,7 @@ export default function NfCompraPage() {
       ano_safra_id:          cab.ano_safra_id         || undefined,
       ciclo_id:              cab.ciclo_id             || undefined,
       produtor_id:           cab.produtor_id          || undefined,
+      ie_produtor:           cab.ie_produtor           || undefined,
       vinculo_atividade:     cab.vinculo_atividade,
       entidade_contabil:     cab.entidade_contabil,
       valor_produtos:        parseFloat(cab.valor_total) || 0,
@@ -978,6 +997,7 @@ export default function NfCompraPage() {
           forma_pagamento:       cab.forma_pagamento       || null,
           tipo_entrada:          cab.e_combustivel ? "combustivel" : tipo,
           produtor_id:           cab.produtor_id           || null,
+          ie_produtor:           cab.ie_produtor            || null,
           operacao_gerencial_id: cab.operacao_gerencial_id || null,
           centro_custo_id:       cab.centro_custo_id       || null,
           ano_safra_id:          cab.ano_safra_id          || null,
@@ -2498,10 +2518,27 @@ export default function NfCompraPage() {
                       {wProdutores.length > 0 && (
                         <div>
                           <label style={lbl}>Produtor *</label>
-                          <select value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value}))} style={inp}>
+                          <select value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value, ie_produtor: ""}))} style={inp}>
                             <option value="">— selecionar —</option>
                             {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
                           </select>
+                        </div>
+                      )}
+                      {cab.produtor_id && (
+                        <div>
+                          <label style={lbl}>I.E. do Produtor</label>
+                          {iesProdutor.length === 0 ? (
+                            <input value={cab.ie_produtor} onChange={e => setCab(p => ({ ...p, ie_produtor: e.target.value }))} style={inp} placeholder="Sem IE cadastrada — digite manualmente" />
+                          ) : (
+                            <select value={cab.ie_produtor} onChange={e => setCab(p => ({ ...p, ie_produtor: e.target.value }))} style={inp}>
+                              <option value="">— selecionar IE —</option>
+                              {iesProdutor.map(ie => (
+                                <option key={ie.id} value={ie.inscricao_estadual}>
+                                  {ie.inscricao_estadual}{ie.estado ? ` — ${ie.estado}` : ""}{ie.municipio ? ` / ${ie.municipio}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                       )}
                     </div>

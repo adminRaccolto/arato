@@ -1141,6 +1141,7 @@ export type NfEntrada = {
   nome_destinatario?: string;
   // Produtor vinculado (quem efetivamente incorreu no custo — propaga para o CP)
   produtor_id?: string;
+  ie_produtor?: string | null;    // I.E. do produtor na operação (para LCDPR e NF-e)
   // Manifestação do Destinatário (SEFAZ)
   manifestacao_tipo?: number | null;
   manifestacao_data?: string | null;

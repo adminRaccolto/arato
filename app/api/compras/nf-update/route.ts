@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       forma_pagamento?: string | null;
       tipo_entrada?: string;
       produtor_id?: string | null;
+      ie_produtor?: string | null;
       operacao_gerencial_id?: string | null;
       centro_custo_id?: string | null;
       ano_safra_id?: string | null;
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
     if (body.forma_pagamento    !== undefined) update.forma_pagamento    = body.forma_pagamento    || null;
     if (body.tipo_entrada !== undefined) update.tipo_entrada = body.tipo_entrada;
     if (body.produtor_id !== undefined) update.produtor_id = body.produtor_id || null;
+    if (body.ie_produtor !== undefined) update.ie_produtor = body.ie_produtor || null;
     if (body.operacao_gerencial_id !== undefined) update.operacao_gerencial_id = body.operacao_gerencial_id || null;
     if (body.centro_custo_id !== undefined) update.centro_custo_id = body.centro_custo_id || null;
     if (body.ano_safra_id !== undefined) update.ano_safra_id = body.ano_safra_id || null;
