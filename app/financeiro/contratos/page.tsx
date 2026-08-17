@@ -187,7 +187,7 @@ const FA_VAZIO = {
 
 
 export default function ContratosFinanceiros() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides, anoSafraVigenteId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides, anoSafraVigenteId, userRole } = useAuth();
   const [fazendas, setFazendas]         = useState<{ id: string; nome: string }[]>([]);
   const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
@@ -873,6 +873,11 @@ export default function ContratosFinanceiros() {
                   <option value="">Todas as fazendas</option>
                   {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
                 </select>
+              )}
+              {userRole === "raccotlo" && (
+                <a href="/configuracoes/importacao?aba=contratos_fin" style={{ ...btnR, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  📥 Importar XLSX
+                </a>
               )}
               <button style={{ ...btnV, background: "#111111", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
             </div>
