@@ -282,10 +282,14 @@ export default function Estoque() {
 
   // modal NF Entrada — passo 1: dados da NF / passo 2: itens
   const [modalNf, setModalNf] = useState<"off" | "passo1" | "passo2">("off");
-  const [nfMode, setNfMode]   = useState<"xml" | "manual">("manual");
+  const [nfMode, setNfMode]   = useState<"xml" | "manual" | "chave">("manual");
   const [fNf, setFNf] = useState({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "", centro_custo_id: "" });
   const [itensNf, setItensNf] = useState<ItemRascunho[]>([]);
   const [nfCriada, setNfCriada] = useState<NfEntrada | null>(null);
+  const [chaveInput, setChaveInput] = useState("");
+  const [chaveBuscando, setChaveBuscando] = useState(false);
+  const [chaveErro, setChaveErro] = useState<string | null>(null);
+  const chaveInputRef = useRef<HTMLInputElement>(null);
 
   // modal detalhes NF (ver itens de uma NF já salva)
   const [modalDetalheNf, setModalDetalheNf] = useState<NfEntrada | null>(null);
@@ -416,52 +420,86 @@ export default function Estoque() {
     setNfCriada(null);
     setNfMode("manual");
     setXmlFeedback(null);
+    setChaveInput("");
+    setChaveErro(null);
     setModalNf("passo1");
+  };
+
+  // Lógica compartilhada entre modo XML (arquivo) e modo Chave (SEFAZ)
+  const aplicarXmlTexto = (xml: string) => {
+    const parsed = parsearXmlNfe(xml);
+    if (!parsed) { alert("Não foi possível ler o XML da NF-e."); return false; }
+
+    const cnpjLimpo = parsed.cnpj.replace(/\D/g, "");
+    const pessoaExistente = pessoas.find(p =>
+      (p.cpf_cnpj ?? "").replace(/\D/g, "") === cnpjLimpo && cnpjLimpo.length > 0
+    );
+
+    let matched = 0;
+    const itensComMatch: ItemRascunho[] = parsed.itens.map(item => {
+      const insumoMatch = autoMatchInsumo(item.descricao_produto, insumos);
+      if (insumoMatch) matched++;
+      return {
+        ...item,
+        insumo_id: insumoMatch?.id ?? "",
+        deposito_id: "", bomba_id: "", maquina_id: "",
+        alerta_preco: false,
+      } as ItemRascunho;
+    });
+
+    setFNf({
+      numero: parsed.numero, serie: parsed.serie, chave_acesso: parsed.chave,
+      emitente_nome: parsed.emitente, emitente_cnpj: parsed.cnpj,
+      data_emissao: parsed.data, valor_total: Number(parsed.valor) || 0,
+      natureza: "", observacao: "", centro_custo_id: "",
+    });
+    setItensNf(itensComMatch);
+    setXmlFeedback({
+      fornecedor: pessoaExistente ? "encontrado" : (parsed.cnpj ? "novo" : null),
+      fornecedorNome: parsed.emitente,
+      itensMatched: matched,
+      itensTotal: parsed.itens.length,
+    });
+    return true;
   };
 
   const lerXml = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
-      const xml = ev.target?.result as string;
-      const parsed = parsearXmlNfe(xml);
-      if (!parsed) { alert("Não foi possível ler o XML da NF-e. Verifique o arquivo."); return; }
-
-      // ── Auto-link fornecedor por CNPJ ──────────────────
-      const cnpjLimpo = parsed.cnpj.replace(/\D/g, "");
-      const pessoaExistente = pessoas.find(p =>
-        (p.cpf_cnpj ?? "").replace(/\D/g, "") === cnpjLimpo && cnpjLimpo.length > 0
-      );
-
-      // ── Auto-match itens por descrição ──────────────────
-      let matched = 0;
-      const itensComMatch: ItemRascunho[] = parsed.itens.map(item => {
-        const insumoMatch = autoMatchInsumo(item.descricao_produto, insumos);
-        if (insumoMatch) matched++;
-        return {
-          ...item,                           // preserva tipo_apropiacao detectado pelo CFOP
-          insumo_id: insumoMatch?.id ?? "",
-          deposito_id: "", bomba_id: "", maquina_id: "",
-          alerta_preco: false,
-        } as ItemRascunho;
-      });
-
-      setFNf({
-        numero: parsed.numero, serie: parsed.serie, chave_acesso: parsed.chave,
-        emitente_nome: parsed.emitente, emitente_cnpj: parsed.cnpj,
-        data_emissao: parsed.data, valor_total: Number(parsed.valor) || 0,
-        natureza: "", observacao: "", centro_custo_id: "",
-      });
-      setItensNf(itensComMatch);
-      setXmlFeedback({
-        fornecedor: pessoaExistente ? "encontrado" : (parsed.cnpj ? "novo" : null),
-        fornecedorNome: parsed.emitente,
-        itensMatched: matched,
-        itensTotal: parsed.itens.length,
-      });
-    };
+    reader.onload = ev => aplicarXmlTexto(ev.target?.result as string);
     reader.readAsText(file, "UTF-8");
+  };
+
+  // Formata chave de acesso em grupos legíveis: 9-8-9-9-9 (totalizando 44 dígitos)
+  const formatarChave = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").substring(0, 44);
+    return digits.replace(/(\d{9})(?=\d)/g, "$1 ").replace(/(\d{8})\s(\d{9})(?=\d)/g, "$1 $2 ").trim();
+  };
+
+  const buscarPorChave = async (chave: string) => {
+    const digits = chave.replace(/\D/g, "");
+    if (digits.length !== 44) return;
+    setChaveBuscando(true);
+    setChaveErro(null);
+    try {
+      const res = await fetch("/api/nfe/xml-por-chave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
+      });
+      const json = await res.json();
+      if (!json.ok || !json.xmlCompleto) {
+        setChaveErro(json.erro ?? "Não foi possível obter o XML da SEFAZ.");
+        return;
+      }
+      const ok = aplicarXmlTexto(json.xmlCompleto);
+      if (ok) setNfMode("xml"); // reusa o painel de feedback do modo XML
+    } catch {
+      setChaveErro("Erro de rede ao consultar a SEFAZ.");
+    } finally {
+      setChaveBuscando(false);
+    }
   };
 
   const avancarPasso2 = () => salvar(async () => {
@@ -1641,10 +1679,10 @@ export default function Estoque() {
       {/* Modal NF Entrada — Passo 1 */}
       {modalNf === "passo1" && (
         <Modal titulo="Lançar NF de Entrada" subtitulo="Passo 1 de 2 — Identificação da NF" width={620} onClose={() => setModalNf("off")}>
-          {/* Toggle XML / Manual */}
+          {/* Toggle Manual / XML / Chave */}
           <div style={{ display: "flex", gap: 0, marginBottom: 18, background: "var(--bg-page)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
-            {([["manual","Manual"] as const, ["xml","Importar XML"] as const]).map(([k,l]) => (
-              <button key={k} onClick={() => setNfMode(k)} style={{ padding: "8px 18px", border: "none", background: nfMode === k ? "#111111" : "transparent", color: nfMode === k ? "#fff" : "#666", fontWeight: nfMode === k ? 600 : 400, cursor: "pointer", fontSize: 13 }}>{l}</button>
+            {([["manual","Manual"] as const, ["xml","Importar XML"] as const, ["chave","Leitor de Chave"] as const]).map(([k,l]) => (
+              <button key={k} onClick={() => { setNfMode(k); setChaveInput(""); setChaveErro(null); if (k === "chave") setTimeout(() => chaveInputRef.current?.focus(), 50); }} style={{ padding: "8px 18px", border: "none", background: nfMode === k ? "#111111" : "transparent", color: nfMode === k ? "#fff" : "#666", fontWeight: nfMode === k ? 600 : 400, cursor: "pointer", fontSize: 13 }}>{l}</button>
             ))}
           </div>
 
@@ -1694,6 +1732,77 @@ export default function Estoque() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Modo Leitor de Chave ── */}
+          {nfMode === "chave" && (
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 20 }}>
+                <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>
+                  Aponte o leitor de código de barras para o DANFE ou digite a chave de acesso (44 dígitos).
+                </div>
+                <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
+                  O leitor atua como teclado — após escanear, o sistema consulta a SEFAZ automaticamente.
+                </div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    ref={chaveInputRef}
+                    value={formatarChave(chaveInput)}
+                    onChange={e => {
+                      const digits = e.target.value.replace(/\D/g, "").substring(0, 44);
+                      setChaveInput(digits);
+                      setChaveErro(null);
+                      if (digits.length === 44) buscarPorChave(digits);
+                    }}
+                    onPaste={e => {
+                      // Suporte a colar diretamente a chave formatada
+                      const pasted = e.clipboardData.getData("text").replace(/\D/g, "").substring(0, 44);
+                      if (pasted.length === 44) {
+                        e.preventDefault();
+                        setChaveInput(pasted);
+                        setChaveErro(null);
+                        buscarPorChave(pasted);
+                      }
+                    }}
+                    placeholder="0000 00000 000000000 000000000 000000000 00000000 0"
+                    style={{ ...inp, fontFamily: "monospace", fontSize: 15, letterSpacing: "0.08em", paddingRight: 100 }}
+                    disabled={chaveBuscando}
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 6 }}>
+                    {chaveBuscando && <span style={{ fontSize: 12, color: "#1A4870" }}>Consultando…</span>}
+                    {!chaveBuscando && chaveInput.length > 0 && (
+                      <span style={{ fontSize: 11, color: chaveInput.length === 44 ? "#16A34A" : "#888" }}>
+                        {chaveInput.length}/44
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Barra de progresso dos 44 dígitos */}
+                <div style={{ marginTop: 8, height: 3, background: "#EEE", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${Math.min((chaveInput.length / 44) * 100, 100)}%`, background: chaveInput.length === 44 ? "#16A34A" : "#1A4870", transition: "width 0.15s" }} />
+                </div>
+
+                {chaveErro && (
+                  <div style={{ marginTop: 12, padding: "10px 14px", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, fontSize: 13, color: "#E24B4A" }}>
+                    <strong>Erro:</strong> {chaveErro}
+                    {chaveErro.includes("Certificado") && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "#555" }}>
+                        Configure o certificado A1 em <strong>Configurações → Parâmetros do Sistema → Fiscal</strong>.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {chaveBuscando && (
+                  <div style={{ marginTop: 12, padding: "10px 14px", background: "#EBF2FB", border: "0.5px solid #BDD5EE", borderRadius: 8, fontSize: 13, color: "#0C447C" }}>
+                    Consultando SEFAZ… aguarde.
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
