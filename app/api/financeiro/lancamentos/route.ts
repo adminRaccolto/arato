@@ -2,6 +2,9 @@
  * POST /api/financeiro/lancamentos
  * Retorna lançamentos (CP/CR) filtrados por fazendas, período e tipo.
  * Usa service_role_key — imune a JWT expirado e RLS.
+ *
+ * Para CP (tipo=pagar): inclui automaticamente itens vencidos não-pagos
+ * anteriores ao período, para que o badge "Vencidos" nunca mostre 0 incorreto.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -36,12 +39,20 @@ export async function POST(req: NextRequest) {
         .from("lancamentos")
         .select("*")
         .in("fazenda_id", body.fazenda_ids)
-        .gte("data_vencimento", body.data_inicio)
-        .lte("data_vencimento", body.data_fim)
         .order("data_vencimento")
         .range(from, from + PAGE - 1);
 
       if (body.tipo) q = q.eq("tipo", body.tipo);
+
+      // CP: inclui itens no período OU vencidos não-pagos fora do período.
+      // CR: mantém filtro estrito de período (sem carregar receitas antigas automaticamente).
+      if (body.tipo === "pagar") {
+        q = q.or(
+          `and(data_vencimento.gte.${body.data_inicio},data_vencimento.lte.${body.data_fim}),and(data_vencimento.lt.${body.data_inicio},status.neq.baixado)`
+        );
+      } else {
+        q = q.gte("data_vencimento", body.data_inicio).lte("data_vencimento", body.data_fim);
+      }
 
       const { data, error } = await q;
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
