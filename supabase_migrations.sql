@@ -10057,3 +10057,7 @@ ALTER TABLE contratos_compra_terra
   ADD COLUMN IF NOT EXISTS periodicidade text DEFAULT 'anual'
     CHECK (periodicidade IN ('anual', 'semestral')),
   ADD COLUMN IF NOT EXISTS data_primeira_parcela date;
+
+-- ─── Seção 171: ie_produtor em pedidos_compra ────────────────────────────────
+ALTER TABLE pedidos_compra
+  ADD COLUMN IF NOT EXISTS ie_produtor text;

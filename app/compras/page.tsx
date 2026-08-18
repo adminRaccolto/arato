@@ -9,7 +9,7 @@ import {
   listarPessoasDaConta, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
-  listarIEsDeMultiplosProdutores,
+  listarIEsDeMultiplosProdutores, criarEstoqueTerceiro,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -478,7 +478,7 @@ export default function ComprasPage() {
       data_vencimento: ped.data_vencimento ?? "",
       meio_pagamento: ped.meio_pagamento ?? "",
       barter_ano_safra_id: ped.barter_ano_safra_id ?? "", barter_ciclo_id: ped.barter_ciclo_id ?? "", barter_preco_saca: String(ped.barter_preco_saca ?? ""),
-      produtor_id: ped.produtor_id ?? "", ie_produtor: "",
+      produtor_id: ped.produtor_id ?? "", ie_produtor: ped.ie_produtor ?? "",
       aprovador: ped.aprovador ?? "", nr_pedido: ped.nr_pedido ?? "",
       nr_solicitacao: ped.nr_solicitacao ?? "",
       fornecedor_id: ped.fornecedor_id ?? "", nr_pedido_fornecedor: ped.nr_pedido_fornecedor ?? "",
@@ -641,6 +641,7 @@ export default function ComprasPage() {
         barter_ciclo_id: f.barter_ciclo_id || undefined,
         barter_preco_saca: f.barter_preco_saca ? parseFloat(f.barter_preco_saca) : undefined,
         produtor_id: f.produtor_id || undefined,
+        ie_produtor: f.ie_produtor || undefined,
         aprovador: f.aprovador || undefined, nr_pedido: f.nr_pedido || undefined,
         nr_solicitacao: f.nr_solicitacao || undefined,
         fornecedor_id: f.fornecedor_id || undefined,
@@ -678,18 +679,22 @@ export default function ComprasPage() {
         pedidoId = novo.id;
       }
       const itensSalvar: Omit<PedidoCompraItem, "id" | "created_at" | "valor_total">[] = itens
-        .filter(it => it.nome_item.trim())
-        .map(it => ({
-          pedido_id: pedidoId, fazenda_id: fidPedido,
-          tipo_item: it.tipo_item,
-          insumo_id: it.insumo_id || undefined,
-          nome_item: it.nome_item, unidade: it.unidade,
-          quantidade: parseFloat(it.quantidade) || 0,
-          valor_unitario: parseFloat(it.valor_unitario) || 0,
-          qtd_cancelada: parseFloat(it.qtd_cancelada) || 0,
-          qtd_entregue: it.qtd_entregue,
-          centro_custo_id: it.centro_custo_id || undefined,
-        }));
+        .filter(it => it.nome_item.trim() || it.insumo_id)
+        .map(it => {
+          const ins = insumos.find(i => i.id === it.insumo_id);
+          return {
+            pedido_id: pedidoId, fazenda_id: fidPedido,
+            tipo_item: it.tipo_item,
+            insumo_id: it.insumo_id || undefined,
+            nome_item: it.nome_item.trim() || ins?.nome || "",
+            unidade: it.unidade || ins?.unidade || "un",
+            quantidade: parseFloat(it.quantidade) || 0,
+            valor_unitario: parseFloat(it.valor_unitario) || 0,
+            qtd_cancelada: parseFloat(it.qtd_cancelada) || 0,
+            qtd_entregue: it.qtd_entregue,
+            centro_custo_id: it.centro_custo_id || undefined,
+          };
+        });
       await salvarPedidoCompraItens(pedidoId, fidPedido, itensSalvar);
 
       // Gera lançamento quando pedido é aprovado
@@ -825,6 +830,31 @@ export default function ComprasPage() {
             }),
           });
         } catch { /* não bloqueia o save */ }
+      }
+
+      // Gera saldo em Estoque de Terceiro quando pedido passa para "aprovado" pela 1ª vez
+      const statusAnterior = pedidoEdit ? pedidos.find(p => p.id === pedidoEdit)?.status : undefined;
+      const statusMudouParaAprovado = f.status === "aprovado" && statusAnterior !== "aprovado";
+      if (statusMudouParaAprovado && itensSalvar.length > 0 && !isBarter) {
+        const fornecedorNomeEt = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
+        const fornecedorCnpj   = pessoas.find(p => p.id === f.fornecedor_id)?.cpf_cnpj ?? undefined;
+        const anoSafraDesc     = anosSafra.find(a => a.id === f.ano_safra_id)?.descricao;
+        for (const it of itensSalvar) {
+          if (!it.insumo_id || it.quantidade <= 0) continue;
+          try {
+            await criarEstoqueTerceiro({
+              fazenda_id:          fidPedido,
+              insumo_id:           it.insumo_id,
+              descricao:           it.nome_item,
+              terceiro_nome:       fornecedorNomeEt,
+              terceiro_cnpj:       fornecedorCnpj,
+              safra:               anoSafraDesc,
+              quantidade_original: it.quantidade,
+              quantidade_saldo:    it.quantidade,
+              status:              "aberto",
+            });
+          } catch { /* não bloqueia o save */ }
+        }
       }
 
       setModal(false);
@@ -1218,13 +1248,8 @@ export default function ComprasPage() {
                         const autoNf = !!op?.permite_notas_fiscais;
                         setF(p => ({ ...p, operacao: id, operacao_nf: autoNf ? id : p.operacao_nf, operacao_nf_auto: autoNf }));
                       }}
-                      options={operacoes.filter(o => {
-                        const cls = o.classificacao ?? "";
-                        // Pedido de Compra: apenas compras reais de insumos/serviços (2.01.* e 2.02.*)
-                        // Exclui: baixas automáticas de estoque, deduções tributárias, financiamentos
-                        return !o.inativo && o.gerar_financeiro !== false &&
-                          cls.startsWith("2.01.");
-                      }).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
+                      options={operacoes.filter(o => !o.inativo && o.gerar_financeiro !== false)
+                        .map(o => ({ id: o.id, label: o.classificacao ? `${o.classificacao} — ${o.descricao}` : o.descricao }))}
                       placeholder="— Selecionar —"
                       emptyMessage="Configure em Cadastros → Operações Gerenciais"
                     />
@@ -1460,12 +1485,8 @@ export default function ComprasPage() {
                       <SearchableSelect
                         value={f.operacao_nf}
                         onChange={id => setF(p => ({ ...p, operacao_nf: id, operacao_nf_auto: false }))}
-                        options={operacoes.filter(o => {
-                          const cls = o.classificacao ?? "";
-                          // Operação NF em Pedido de Compra: mesma restrição + exige NF
-                          return !o.inativo && o.permite_notas_fiscais && o.gerar_financeiro !== false &&
-                            cls.startsWith("2.01.");
-                        }).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
+                        options={operacoes.filter(o => !o.inativo && o.permite_notas_fiscais !== false)
+                          .map(o => ({ id: o.id, label: o.classificacao ? `${o.classificacao} — ${o.descricao}` : o.descricao }))}
                         placeholder="— Selecionar —"
                         emptyMessage="Configure em Cadastros → Operações Gerenciais"
                       />

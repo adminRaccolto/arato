@@ -2306,6 +2306,12 @@ export async function listarEstoqueTerceiros(fazenda_id: string): Promise<Estoqu
   if (error) throw error;
   return data ?? [];
 }
+export async function criarEstoqueTerceiro(e: Omit<EstoqueTerceiro, "id" | "created_at">): Promise<EstoqueTerceiro> {
+  const { data, error } = await supabase.from("estoque_terceiros").insert(e).select().single();
+  if (error) throw error;
+  return data;
+}
+
 export async function atualizarEstoqueTerceiro(id: string, e: Partial<EstoqueTerceiro>): Promise<void> {
   const { error } = await supabase.from("estoque_terceiros").update(e).eq("id", id);
   if (error) throw error;

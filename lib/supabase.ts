@@ -1759,6 +1759,7 @@ export type PedidoCompra = {
   total_financeiro?: number;
   total_produtos_servicos?: number;
   produtor_id?: string;
+  ie_produtor?: string | null;
   lancamento_id?: string;
   created_at?: string;
 };
