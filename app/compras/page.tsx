@@ -330,6 +330,11 @@ export default function ComprasPage() {
   const [erroModal,     setErroModal]     = useState("");
   const [barterContratoNum, setBarterContratoNum] = useState<string | null>(null);
 
+  // Expansão inline de itens na lista
+  const [pedidoExpandido,    setPedidoExpandido]    = useState<string | null>(null);
+  const [itensExpandidos,    setItensExpandidos]    = useState<PedidoCompraItem[]>([]);
+  const [carregandoItensExp, setCarregandoItensExp] = useState(false);
+
   // Modal novo pedido
   const [modal,         setModal]         = useState(false);
   const [abaModal,      setAbaModal]      = useState<"principal"|"desconto"|"entrega"|"cobranca"|"observacao"|"documentos">("principal");
@@ -378,8 +383,8 @@ export default function ComprasPage() {
       ]);
       setPedidos(allPed);
       setPessoas(pes);
-      // produto_agricola = o que a fazenda PRODUZ (soja, milho…) — não deve aparecer no Pedido de Compra
-      setInsumos(ins);
+      // produto_agricola = o que a fazenda PRODUZ (soja, milho…) — NUNCA aparece no Pedido de Compra
+      setInsumos(ins.filter(i => i.categoria !== "produto_agricola"));
       setCiclos(cic);
       setAnosSafra(anos);
       setCentrosCusto(cc);
@@ -644,6 +649,21 @@ export default function ComprasPage() {
     } finally {
       setSalvandoInsumo(false);
     }
+  };
+
+  const toggleExpandirPedido = async (pedId: string) => {
+    if (pedidoExpandido === pedId) {
+      setPedidoExpandido(null);
+      setItensExpandidos([]);
+      return;
+    }
+    setPedidoExpandido(pedId);
+    setCarregandoItensExp(true);
+    try {
+      const itensDB = await listarPedidoCompraItens(pedId);
+      setItensExpandidos(itensDB);
+    } catch { setItensExpandidos([]); }
+    finally { setCarregandoItensExp(false); }
   };
 
   function extrairProdutoBarter(cultura?: string): string {
@@ -1103,16 +1123,24 @@ export default function ComprasPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Nº", "Nº Pedido", "Fornecedor", "Produtor", "Cidade", "IE", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "6px 10px", textAlign: i === 0 || i === 9 || i === 10 || i === 11 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                    {["", "Nº", "Nº Pedido", "Fornecedor", "Produtor", "Cidade", "IE", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "6px 10px", textAlign: i === 1 || i === 10 || i === 11 || i === 12 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {pedidosFiltrados.map((ped, i) => {
                     const st = STATUS_MAP[ped.status];
+                    const expandido = pedidoExpandido === ped.id;
                     return (
-                      <tr key={ped.id} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                      <>
+                      <tr key={ped.id} style={{ borderBottom: expandido ? "none" : (i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none") }}>
+                        <td style={{ padding: "6px 4px", textAlign: "center", width: 28 }}>
+                          <button
+                            onClick={() => toggleExpandirPedido(ped.id)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 12, padding: 2, lineHeight: 1, transition: "transform 0.15s" }}
+                          >{expandido ? "▼" : "▶"}</button>
+                        </td>
                         <td style={{ padding: "6px 6px", textAlign: "center", fontWeight: 400, color: "var(--text-3)", fontSize: 10 }}>#{ped.numero ?? "—"}</td>
                         <td style={{ padding: "6px 10px", fontSize: 11, color: ped.nr_pedido ? "var(--text-1)" : "#bbb", fontWeight: ped.nr_pedido ? 600 : 400, whiteSpace: "nowrap" }}>
                           {ped.nr_pedido || "—"}
@@ -1175,6 +1203,41 @@ export default function ComprasPage() {
                           </div>
                         </td>
                       </tr>
+                      {expandido && (
+                        <tr key={`${ped.id}-exp`} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <td colSpan={14} style={{ padding: 0, background: "#F8FAFD" }}>
+                            {carregandoItensExp ? (
+                              <div style={{ padding: "10px 20px", fontSize: 12, color: "var(--text-3)" }}>Carregando itens…</div>
+                            ) : itensExpandidos.length === 0 ? (
+                              <div style={{ padding: "10px 20px", fontSize: 12, color: "var(--text-3)" }}>Nenhum item cadastrado neste pedido.</div>
+                            ) : (
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <thead>
+                                  <tr style={{ background: "#EFF3FA" }}>
+                                    {["Item / Insumo","Un.","Quantidade","Valor Unit.","Valor Total"].map((h, hi) => (
+                                      <th key={hi} style={{ padding: "5px 14px 5px " + (hi === 0 ? "42px" : "10px"), textAlign: hi === 0 ? "left" : "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {itensExpandidos.map((it, ii) => (
+                                    <tr key={it.id ?? ii} style={{ borderTop: "0.5px solid #E4E8F0" }}>
+                                      <td style={{ padding: "5px 14px 5px 42px", fontSize: 12, color: "var(--text-1)", fontWeight: 500 }}>
+                                        {it.nome_item || insumos.find(ins => ins.id === it.insumo_id)?.nome || "—"}
+                                      </td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right", color: "var(--text-2)", fontSize: 11 }}>{it.unidade}</td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right", color: "var(--text-1)" }}>{(it.quantidade ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right", color: "var(--text-2)" }}>{fmtBRL(it.valor_unitario ?? 0)}</td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right", fontWeight: 600, color: "#111111" }}>{fmtBRL((it.quantidade ?? 0) * (it.valor_unitario ?? 0))}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </>
                     );
                   })}
                 </tbody>
@@ -1636,21 +1699,18 @@ export default function ComprasPage() {
                       return (<>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead><tr style={{ background: "var(--bg-page)" }}>
-                            {["Tipo Item","Item","Un.","Quantidade","Valor Unitário","Valor Total","Qtd. Cancel.",""].map((h, i) => (
-                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                            {["Item","Un.","Quantidade","Valor Unitário","Valor Total","Qtd. Cancel.",""].map((h, i) => (
+                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                             ))}
                           </tr></thead>
                           <tbody>
                             {lista.length === 0 && (
-                              <tr><td colSpan={8} style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
+                              <tr><td colSpan={7} style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
                             )}
                             {lista.map(it => {
                               const semVinculo = iaConfianca && !it.insumo_id;
                               return (
                               <tr key={it._idx} style={{ borderBottom: "0.5px solid var(--border-row)", background: semVinculo ? "#FFF5F5" : undefined }}>
-                                <td style={{ padding: "5px 6px", width: 90 }}>
-                                  <span style={{ fontSize: 10, background: it.tipo_item === "produto" ? "#E8E8E8" : "#FBF3E0", color: it.tipo_item === "produto" ? "#0D0D0D" : "#7A5200", padding: "2px 6px", borderRadius: 6, fontWeight: 600 }}>{it.tipo_item === "produto" ? "Produto" : "Serviço"}</span>
-                                </td>
                                 <td style={{ padding: "5px 6px" }}>
                                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                     <div style={{ flex: 1 }}>
@@ -1720,7 +1780,7 @@ export default function ComprasPage() {
                           </tbody>
                           <tfoot>
                             <tr style={{ background: "var(--bg-page)" }}>
-                              <td colSpan={5} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
+                              <td colSpan={4} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
                               <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{fmtMoeda(lista.reduce((s, it) => s + calcItem(it), 0), f.cotacao_moeda)}</td>
                               <td colSpan={2} />
                             </tr>
