@@ -242,6 +242,16 @@ export default function ContratosFinanceiros() {
   const [baixandoP,    setBaixandoP]    = useState(false);
   const [baixaPErro,   setBaixaPErro]   = useState("");
 
+  // resumo de pagamentos por contrato (para KPIs)
+  const [resumoParcelas, setResumoParcelas] = useState<Record<string, { pago: number; aberto: number }>>({});
+  const [kpiDetalhado, setKpiDetalhado]     = useState(false);
+  // filtros de coluna
+  const [colBusca,  setColBusca]  = useState("");
+  const [colTipo,   setColTipo]   = useState("");
+  const [colMoeda,  setColMoeda]  = useState("");
+  const [colCalc,   setColCalc]   = useState("");
+  const [colStatus, setColStatus] = useState("");
+
   // forms das abas
   const [fLib, setFLib]   = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
   const [fGar, setFGar]   = useState({ tipo_garantia: "alienacao_fiduciaria" as GarantiaContrato["tipo_garantia"], grau: "" as "" | "1_grau" | "2_grau" | "3_grau", tipo_bem: "imovel" as GarantiaContrato["tipo_bem"], matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
@@ -272,16 +282,23 @@ export default function ContratosFinanceiros() {
     return () => clearInterval(timer);
   }, [fazendaId, contaId]);
 
-  // ── Carrega contagem de parcelas por contrato para coluna Prazo ──
+  // ── Carrega parcelas por contrato (prazo + resumo pago/aberto) ──
   useEffect(() => {
-    if (contratos.length === 0) { setPrazoMap({}); return; }
+    if (contratos.length === 0) { setPrazoMap({}); setResumoParcelas({}); return; }
     const ids = contratos.map(c => c.id);
-    supabase.from("parcelas_pagamento").select("contrato_id").in("contrato_id", ids)
+    supabase.from("parcelas_pagamento").select("contrato_id, status, valor_parcela").in("contrato_id", ids)
       .then(({ data }) => {
         if (!data) return;
         const m: Record<string, number> = {};
-        for (const p of data) m[p.contrato_id] = (m[p.contrato_id] ?? 0) + 1;
+        const r: Record<string, { pago: number; aberto: number }> = {};
+        for (const p of data) {
+          m[p.contrato_id] = (m[p.contrato_id] ?? 0) + 1;
+          if (!r[p.contrato_id]) r[p.contrato_id] = { pago: 0, aberto: 0 };
+          if (p.status === "pago") r[p.contrato_id].pago += p.valor_parcela ?? 0;
+          else r[p.contrato_id].aberto += p.valor_parcela ?? 0;
+        }
         setPrazoMap(m);
+        setResumoParcelas(r);
       });
   }, [contratos]);
 
@@ -892,8 +909,22 @@ export default function ContratosFinanceiros() {
   });
 
   // ── Filtros + Totais ──
-  const contratosFiltrados = fazendaFiltro ? contratos.filter(c => c.fazenda_id === fazendaFiltro) : contratos;
-  const totalFinanciado = contratosFiltrados.filter(c => c.status === "ativo").reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
+  const contratosFiltrados = contratos.filter(c => {
+    if (fazendaFiltro && c.fazenda_id !== fazendaFiltro) return false;
+    if (colTipo && c.tipo !== colTipo) return false;
+    if (colMoeda && c.moeda !== colMoeda) return false;
+    if (colCalc && (c.tipo_calculo ?? "sac") !== colCalc) return false;
+    if (colStatus && c.status !== colStatus) return false;
+    if (colBusca) {
+      const q = colBusca.toLowerCase();
+      if (!(c.descricao?.toLowerCase().includes(q) || c.credor?.toLowerCase().includes(q) || c.numero_documento?.toLowerCase().includes(q) || c.linha_credito?.toLowerCase().includes(q))) return false;
+    }
+    return true;
+  });
+  const ativosKpi = contratosFiltrados.filter(c => c.status === "ativo");
+  const totalFinanciado = ativosKpi.reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
+  const totalPagoKpi    = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; return s + (r ? (c.moeda === "USD" ? r.pago * (ptax ?? 1) : r.pago) : 0); }, 0);
+  const totalAbertoKpi  = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; return s + (r ? (c.moeda === "USD" ? r.aberto * (ptax ?? 1) : r.aberto) : 0); }, 0);
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
 
 
@@ -959,19 +990,123 @@ export default function ContratosFinanceiros() {
 
           {/* KPI */}
           {contratosFiltrados.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
-              {[
-                { label: "Contratos Ativos",  valor: contratosFiltrados.filter(c => c.status === "ativo").length, fmt: (v: number) => String(v),        cor: "#111111", suf: "" },
-                { label: "Total Captado",     valor: totalFinanciado,                                      fmt: fmtBRL,                           cor: "#1A5C38", suf: ptax ? " (conv. PTAX)" : "" },
-                { label: "Quitados/Cancelados", valor: contratosFiltrados.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "var(--text-2)",    suf: "" },
-              ].map((k, i) => (
-                <div key={i} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
-                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{k.label}{k.suf}</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: k.cor }}>{k.fmt(k.valor)}</div>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 16, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr", borderBottom: kpiDetalhado ? "0.5px solid var(--border-table)" : "none" }}>
+                <div style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Contratos ativos</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#111111" }}>{ativosKpi.length}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{contratosFiltrados.filter(c => c.status !== "ativo").length} encerrados</div>
                 </div>
-              ))}
+                <div style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Total Captado{ptax ? " (conv. PTAX)" : ""}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#1A5C38" }}>{fmtBRL(totalFinanciado)}</div>
+                </div>
+                <div style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Valor Pago</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#378ADD" }}>{fmtBRL(totalPagoKpi)}</div>
+                  {totalFinanciado > 0 && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{Math.round((totalPagoKpi / totalFinanciado) * 100)}% do captado</div>}
+                </div>
+                <div style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Valor em Aberto</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: totalAbertoKpi > 0 ? "#E24B4A" : "var(--text-3)" }}>{fmtBRL(totalAbertoKpi)}</div>
+                    {totalFinanciado > 0 && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{Math.round((totalAbertoKpi / totalFinanciado) * 100)}% do captado</div>}
+                  </div>
+                  <button onClick={() => setKpiDetalhado(v => !v)}
+                    style={{ fontSize: 11, padding: "5px 11px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", marginTop: 4, whiteSpace: "nowrap" }}>
+                    {kpiDetalhado ? "▲ Recolher" : "▼ Por contrato"}
+                  </button>
+                </div>
+              </div>
+              {kpiDetalhado && (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg-page)" }}>
+                        {["Contrato / Credor", "Captado", "Pago", "Em Aberto", "% Pago"].map((h, i) => (
+                          <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ativosKpi.map((c, idx) => {
+                        const r = resumoParcelas[c.id] ?? { pago: 0, aberto: 0 };
+                        const fator = c.moeda === "USD" ? (ptax ?? 1) : 1;
+                        const captado = c.valor_financiado * fator;
+                        const pago = r.pago * fator;
+                        const aberto = r.aberto * fator;
+                        const pct = captado > 0 ? Math.round((pago / captado) * 100) : 0;
+                        return (
+                          <tr key={c.id} style={{ borderBottom: idx < ativosKpi.length - 1 ? "0.5px solid var(--bg-tag)" : "none", cursor: "pointer" }}
+                            onClick={() => abrirModal(c)}>
+                            <td style={{ padding: "8px 14px" }}>
+                              <div style={{ fontWeight: 500, fontSize: 12, color: "var(--text-1)" }}>{c.descricao}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
+                            </td>
+                            <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(captado)}</td>
+                            <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "#378ADD", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(pago)}</td>
+                            <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: aberto > 0 ? "#E24B4A" : "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(aberto)}</td>
+                            <td style={{ padding: "8px 14px", textAlign: "center" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                                <div style={{ width: 60, height: 5, background: "#E8EEFA", borderRadius: 3, overflow: "hidden" }}>
+                                  <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#378ADD", borderRadius: 3 }} />
+                                </div>
+                                <span style={{ fontSize: 11, color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
+
+          {/* Filtros de coluna */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <input placeholder="Buscar descrição, credor, nº operação..." value={colBusca} onChange={e => setColBusca(e.target.value)}
+              style={{ flex: "1 1 200px", padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)", outline: "none" }} />
+            <select value={colTipo} onChange={e => setColTipo(e.target.value)}
+              style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
+              <option value="">Tipo: Todos</option>
+              <option value="custeio">Custeio</option>
+              <option value="investimento">Investimento</option>
+              <option value="cpr">CPR</option>
+              <option value="egf">EGF</option>
+              <option value="securitizacao">Securitização</option>
+              <option value="outros">Outros</option>
+            </select>
+            <select value={colMoeda} onChange={e => setColMoeda(e.target.value)}
+              style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
+              <option value="">Moeda: Todas</option>
+              <option value="BRL">BRL</option>
+              <option value="USD">USD</option>
+            </select>
+            <select value={colCalc} onChange={e => setColCalc(e.target.value)}
+              style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
+              <option value="">Cálculo: Todos</option>
+              <option value="sac">SAC</option>
+              <option value="price">PRICE</option>
+              <option value="sac_crescente">SACRE</option>
+              <option value="outros">Outros</option>
+            </select>
+            <select value={colStatus} onChange={e => setColStatus(e.target.value)}
+              style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
+              <option value="">Status: Todos</option>
+              <option value="ativo">Ativo</option>
+              <option value="quitado">Quitado</option>
+              <option value="cancelado">Cancelado</option>
+              <option value="refinanciado">Refinanciado</option>
+            </select>
+            {(colBusca || colTipo || colMoeda || colCalc || colStatus) && (
+              <button onClick={() => { setColBusca(""); setColTipo(""); setColMoeda(""); setColCalc(""); setColStatus(""); }}
+                style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>
+                ✕ Limpar
+              </button>
+            )}
+          </div>
 
           {/* Tabela */}
           {erroCarregamento ? (
