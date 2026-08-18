@@ -106,11 +106,12 @@ function FornecedorSelect({
   const inputRef = useRef<HTMLInputElement>(null);
   const selected = pessoas.find(p => p.id === value);
   const q = query.trim();
+  const qDigits = q.replace(/\D/g, "");
   const filtered = q === ""
     ? pessoas
     : pessoas.filter(p =>
         p.nome.toLowerCase().includes(q.toLowerCase()) ||
-        (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
+        (qDigits.length > 0 && (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(qDigits)) ||
         (p.cpf_cnpj ?? "").toLowerCase().includes(q.toLowerCase())
       );
 
