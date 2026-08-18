@@ -243,7 +243,7 @@ export default function ContratosFinanceiros() {
   const [baixaPErro,   setBaixaPErro]   = useState("");
 
   // resumo de pagamentos por contrato (para KPIs)
-  const [resumoParcelas, setResumoParcelas] = useState<Record<string, { pago: number; aberto: number }>>({});
+  const [resumoParcelas, setResumoParcelas] = useState<Record<string, { pago: number; aberto: number; pagoAmort: number; pagoJuros: number; abertoAmort: number; abertoJuros: number }>>({});
   const [kpiDetalhado, setKpiDetalhado]     = useState(false);
   // filtros de coluna
   const [colBusca,  setColBusca]  = useState("");
@@ -286,16 +286,25 @@ export default function ContratosFinanceiros() {
   useEffect(() => {
     if (contratos.length === 0) { setPrazoMap({}); setResumoParcelas({}); return; }
     const ids = contratos.map(c => c.id);
-    supabase.from("parcelas_pagamento").select("contrato_id, status, valor_parcela").in("contrato_id", ids)
+    supabase.from("parcelas_pagamento").select("contrato_id, status, valor_parcela, amortizacao, juros").in("contrato_id", ids)
       .then(({ data }) => {
         if (!data) return;
         const m: Record<string, number> = {};
-        const r: Record<string, { pago: number; aberto: number }> = {};
+        const r: Record<string, { pago: number; aberto: number; pagoAmort: number; pagoJuros: number; abertoAmort: number; abertoJuros: number }> = {};
         for (const p of data) {
           m[p.contrato_id] = (m[p.contrato_id] ?? 0) + 1;
-          if (!r[p.contrato_id]) r[p.contrato_id] = { pago: 0, aberto: 0 };
-          if (p.status === "pago") r[p.contrato_id].pago += p.valor_parcela ?? 0;
-          else r[p.contrato_id].aberto += p.valor_parcela ?? 0;
+          if (!r[p.contrato_id]) r[p.contrato_id] = { pago: 0, aberto: 0, pagoAmort: 0, pagoJuros: 0, abertoAmort: 0, abertoJuros: 0 };
+          const amort = p.amortizacao ?? 0;
+          const juros = p.juros ?? 0;
+          if (p.status === "pago") {
+            r[p.contrato_id].pago      += p.valor_parcela ?? 0;
+            r[p.contrato_id].pagoAmort += amort;
+            r[p.contrato_id].pagoJuros += juros;
+          } else {
+            r[p.contrato_id].aberto      += p.valor_parcela ?? 0;
+            r[p.contrato_id].abertoAmort += amort;
+            r[p.contrato_id].abertoJuros += juros;
+          }
         }
         setPrazoMap(m);
         setResumoParcelas(r);
@@ -946,8 +955,12 @@ export default function ContratosFinanceiros() {
   });
   const ativosKpi = contratosFiltrados.filter(c => c.status === "ativo");
   const totalFinanciado = ativosKpi.reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
-  const totalPagoKpi    = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; return s + (r ? (c.moeda === "USD" ? r.pago * (ptax ?? 1) : r.pago) : 0); }, 0);
-  const totalAbertoKpi  = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; return s + (r ? (c.moeda === "USD" ? r.aberto * (ptax ?? 1) : r.aberto) : 0); }, 0);
+  const totalPagoKpi       = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; const f = c.moeda === "USD" ? (ptax ?? 1) : 1; return s + (r ? r.pago * f : 0); }, 0);
+  const totalPagoAmortKpi  = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; const f = c.moeda === "USD" ? (ptax ?? 1) : 1; return s + (r ? r.pagoAmort * f : 0); }, 0);
+  const totalPagoJurosKpi  = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; const f = c.moeda === "USD" ? (ptax ?? 1) : 1; return s + (r ? r.pagoJuros * f : 0); }, 0);
+  const totalAbertoKpi     = ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; const f = c.moeda === "USD" ? (ptax ?? 1) : 1; return s + (r ? r.aberto * f : 0); }, 0);
+  const totalAbertoAmortKpi= ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; const f = c.moeda === "USD" ? (ptax ?? 1) : 1; return s + (r ? r.abertoAmort * f : 0); }, 0);
+  const totalAbertoJurosKpi= ativosKpi.reduce((s, c) => { const r = resumoParcelas[c.id]; const f = c.moeda === "USD" ? (ptax ?? 1) : 1; return s + (r ? r.abertoJuros * f : 0); }, 0);
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
 
 
@@ -1025,15 +1038,33 @@ export default function ContratosFinanceiros() {
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#1A5C38" }}>{fmtBRL(totalFinanciado)}</div>
                 </div>
                 <div style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
-                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Valor Pago</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Valor Pago</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#378ADD" }}>{fmtBRL(totalPagoKpi)}</div>
-                  {totalFinanciado > 0 && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{Math.round((totalPagoKpi / totalFinanciado) * 100)}% do captado</div>}
+                  <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: "var(--text-3)" }}>Capital</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#378ADD" }}>{fmtBRL(totalPagoAmortKpi)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: "var(--text-3)" }}>Juros</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#C9921B" }}>{fmtBRL(totalPagoJurosKpi)}</div>
+                    </div>
+                  </div>
                 </div>
                 <div style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Valor em Aberto</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Valor em Aberto</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: totalAbertoKpi > 0 ? "#E24B4A" : "var(--text-3)" }}>{fmtBRL(totalAbertoKpi)}</div>
-                    {totalFinanciado > 0 && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{Math.round((totalAbertoKpi / totalFinanciado) * 100)}% do captado</div>}
+                    <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)" }}>Capital</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#E24B4A" }}>{fmtBRL(totalAbertoAmortKpi)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)" }}>Juros</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#C9921B" }}>{fmtBRL(totalAbertoJurosKpi)}</div>
+                      </div>
+                    </div>
                   </div>
                   <button onClick={() => setKpiDetalhado(v => !v)}
                     style={{ fontSize: 11, padding: "5px 11px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", marginTop: 4, whiteSpace: "nowrap" }}>
