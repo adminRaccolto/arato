@@ -27,6 +27,7 @@ interface Pagamento {
   status: "pendente" | "pago" | "atrasado";
   data_pagamento?: string | null;
   observacao?: string | null;
+  lancamento_id?: string | null;
 }
 
 interface ContratoCT {
@@ -238,7 +239,7 @@ export default function CompraTerrPage() {
           .in("fazenda_id", fazIds)
           .order("created_at", { ascending: false }),
         supabase.from("cct_pagamentos")
-          .select("*")
+          .select("*, lancamento_id")
           .in("fazenda_id", fazIds)
           .order("data_vencimento"),
         supabase.from("pessoas").select("id, nome").in("fazenda_id", fazIds).order("nome"),
@@ -306,7 +307,17 @@ export default function CompraTerrPage() {
     }
     setViewOnly(soLeitura);
     setAbaModal("imovel");
-    setParcelasCustom(null);
+    // Ao editar/visualizar: carrega parcelas reais do banco em vez de gerar preview
+    if (ct) {
+      const existentes = pagamentos
+        .filter(p => p.contrato_id === ct.id)
+        .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+      setParcelasCustom(existentes.length > 0
+        ? existentes.map((p, i) => ({ n: i + 1, data: p.data_vencimento, valor: p.valor.toFixed(2) }))
+        : null);
+    } else {
+      setParcelasCustom(null);
+    }
     setShowModal(true);
   };
 
@@ -372,12 +383,34 @@ export default function CompraTerrPage() {
         const fonte = parcelasCustom
           ? parcelasCustom.map(p => ({ data: p.data, valor: parseFloat(p.valor) || 0 }))
           : gerarPreviewParcelas(form);
-        const rows = fonte.map(p => ({
+
+        // Cria lançamentos em contas a pagar para cada parcela
+        const lancRows = fonte.map((p, i) => ({
+          fazenda_id: fazendaId,
+          tipo: "pagar" as const,
+          moeda: "BRL" as const,
+          descricao: `Parcela ${i + 1}/${fonte.length} — ${form.imovel_nome}`,
+          categoria: "compra_terra",
+          data_lancamento: TODAY,
+          data_vencimento: p.data,
+          valor: p.valor,
+          status: "em_aberto" as const,
+          auto: false,
+          numero_documento: contratoId,
+          produtor_id: form.comprador_produtor_id || null,
+          num_parcela: i + 1,
+          total_parcelas: fonte.length,
+        }));
+        const { data: lancCriados } = await supabase.from("lancamentos").insert(lancRows).select("id");
+
+        // Cria registros em cct_pagamentos vinculados aos lançamentos
+        const rows = fonte.map((p, i) => ({
           contrato_id: contratoId,
           fazenda_id: fazendaId,
           data_vencimento: p.data,
           valor: p.valor,
           status: "pendente" as const,
+          lancamento_id: lancCriados?.[i]?.id ?? null,
         }));
         await supabase.from("cct_pagamentos").insert(rows);
       }
@@ -414,13 +447,18 @@ export default function CompraTerrPage() {
     if (ids.length === 0) return;
     setSalvandoParcelas(true);
     try {
-      await Promise.all(ids.map(id => {
+      for (const id of ids) {
         const ed = parcelasEditadas[id];
+        const pg = pagamentos.find(p => p.id === id);
         const upd: Record<string, unknown> = {};
         if (ed.data_vencimento) upd.data_vencimento = ed.data_vencimento;
         if (ed.valor !== undefined) upd.valor = parseFloat(ed.valor) || 0;
-        return supabase.from("cct_pagamentos").update(upd).eq("id", id);
-      }));
+        if (!Object.keys(upd).length) continue;
+        await supabase.from("cct_pagamentos").update(upd).eq("id", id);
+        if (pg?.lancamento_id) {
+          await supabase.from("lancamentos").update(upd).eq("id", pg.lancamento_id);
+        }
+      }
       setParcelasEditadas({});
       carregar();
     } finally {
@@ -434,6 +472,13 @@ export default function CompraTerrPage() {
     if (!dataStr) return;
     setBaixando(pg.id);
     await supabase.from("cct_pagamentos").update({ status: "pago", data_pagamento: dataStr }).eq("id", pg.id);
+    if (pg.lancamento_id) {
+      await supabase.from("lancamentos").update({
+        status: "baixado",
+        data_baixa: dataStr,
+        valor_pago: pg.valor,
+      }).eq("id", pg.lancamento_id);
+    }
     setBaixando(null);
     carregar();
   };

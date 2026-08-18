@@ -10061,3 +10061,10 @@ ALTER TABLE contratos_compra_terra
 -- ─── Seção 171: ie_produtor em pedidos_compra ────────────────────────────────
 ALTER TABLE pedidos_compra
   ADD COLUMN IF NOT EXISTS ie_produtor text;
+
+-- ─── Seção 172: lancamento_id em cct_pagamentos ──────────────────────────────
+-- Vincula cada parcela de compra de terra ao seu lançamento em contas_pagar
+ALTER TABLE cct_pagamentos
+  ADD COLUMN IF NOT EXISTS lancamento_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_cct_pg_lancamento ON cct_pagamentos(lancamento_id);
