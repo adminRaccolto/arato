@@ -99,9 +99,20 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
     // Acesso por conta (não por usuário individual) — múltiplos usuários por conta, múltiplas fazendas por conta
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
-    const { data: perfil } = await supabase.from("perfis").select("conta_id").eq("user_id", user.id).maybeSingle();
+    const { data: perfil } = await supabase.from("perfis").select("conta_id, role").eq("user_id", user.id).maybeSingle();
     if (perfil?.conta_id) {
       q = q.eq("conta_id", perfil.conta_id);
+    } else if (perfil?.role === "raccotlo" || perfil?.role === "raccotlo_gestor") {
+      // Raccotlo: usa o conta_id do cliente ativo armazenado em localStorage
+      const clienteContaId = typeof window !== "undefined"
+        ? localStorage.getItem("raccotlo_cliente_conta_id")
+        : null;
+      if (clienteContaId && !clienteContaId.startsWith("sem_conta_")) {
+        q = q.eq("conta_id", clienteContaId);
+      } else {
+        // Sem cliente selecionado — retorna vazio para não vazar dados
+        return [];
+      }
     } else {
       // Fallback para contas legadas ainda sem conta_id: filtra por owner_user_id
       q = q.eq("owner_user_id", user.id);

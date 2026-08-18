@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
-import { listarFazendas } from "../../../lib/db";
+// listarFazendas removido — usa authFazendaIds do AuthProvider para isolamento de tenant
 import type { Fazenda } from "../../../lib/supabase";
 import { getDreGrupo } from "../../../lib/seedOperacoesGerenciais";
 
@@ -89,7 +89,7 @@ const CULT_LABELS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª",
 
 // ─── Página ───────────────────────────────────────────────────
 export default function DrePage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds: authFazendaIds } = useAuth();
 
   // Suporte multi-fazenda
   const [todasFazendas, setTodasFazendas] = useState<Fazenda[]>([]);
@@ -112,10 +112,13 @@ export default function DrePage() {
     return fid ? [fid] : [];
   })();
 
-  // ── Carregar fazendas disponíveis ──
+  // ── Carregar fazendas disponíveis (usa authFazendaIds para isolamento seguro de tenant) ──
   useEffect(() => {
-    listarFazendas().then(setTodasFazendas).catch(() => {});
-  }, []);
+    if (!authFazendaIds.length) return;
+    supabase.from("fazendas").select("*").in("id", authFazendaIds).order("nome")
+      .then(({ data }) => { if (data?.length) setTodasFazendas(data as Fazenda[]); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authFazendaIds.join(",")]);
 
   // ── Carregar anos safra (por labels únicos) ──
   useEffect(() => {

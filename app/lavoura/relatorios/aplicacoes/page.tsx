@@ -4,7 +4,7 @@ import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
 import {
-  listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, listarGruposInsumo, listarFazendas,
+  listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, listarGruposInsumo,
 } from "../../../../lib/db";
 import type { Talhao, Insumo, AnoSafra, Ciclo, GrupoInsumo, Fazenda } from "../../../../lib/supabase";
 
@@ -82,7 +82,7 @@ const AGRUP_LABELS: { key: Agrupamento; label: string }[] = [
 
 // ─── Componente principal ─────────────────────────────────────
 export default function RelAplicacoesPage() {
-  const { fazendaId, nomeUsuario } = useAuth();
+  const { fazendaId, nomeUsuario, fazendaIds: authFazendaIds } = useAuth();
 
   // Suporte multi-fazenda
   const [todasFazendas, setTodasFazendas] = useState<Fazenda[]>([]);
@@ -128,10 +128,12 @@ export default function RelAplicacoesPage() {
   })();
   const fid0 = fids[0] ?? fazendaId ?? "";
 
-  // ── Carregar fazendas disponíveis ──
+  // ── Carregar fazendas disponíveis (usa authFazendaIds para isolamento seguro de tenant) ──
   useEffect(() => {
-    listarFazendas().then(setTodasFazendas).catch(() => {});
-  }, []);
+    if (!authFazendaIds.length) return;
+    supabase.from("fazendas").select("*").in("id", authFazendaIds).order("nome")
+      .then(({ data }) => { if (data?.length) setTodasFazendas(data as Fazenda[]); });
+  }, [authFazendaIds.join(",")]);
 
   // ── Carrega referências ───────────────────────────────────
   useEffect(() => {

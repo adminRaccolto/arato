@@ -67,7 +67,15 @@ export async function POST(req: Request) {
     // mesmo que ainda não tenha conta_id atualizado no banco
     if (body.fazenda_id && !fazendas.find(f => f.id === body.fazenda_id)) {
       const { data: fzExtra } = await admin.from("fazendas").select("*").eq("id", body.fazenda_id).maybeSingle();
-      if (fzExtra) fazendas = [...fazendas, fzExtra];
+      if (fzExtra) {
+        // SEGURANÇA: se a fazenda âncora pertence a uma conta DIFERENTE da solicitada,
+        // não retornar dados da conta errada — retornar apenas a âncora isolada.
+        if (fzExtra.conta_id && fzExtra.conta_id !== contaId) {
+          console.error(`[da-conta] SEGURANÇA: fazenda ${body.fazenda_id} pertence à conta ${fzExtra.conta_id} mas foi solicitada com conta ${contaId}. Retornando apenas a fazenda âncora.`);
+          return NextResponse.json({ ok: true, fazendas: [fzExtra], conta_id: fzExtra.conta_id });
+        }
+        fazendas = [...fazendas, fzExtra];
+      }
     }
 
     return NextResponse.json({ ok: true, fazendas, conta_id: contaId });
