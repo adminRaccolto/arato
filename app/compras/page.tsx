@@ -6,7 +6,7 @@ import {
   listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
-  listarPessoasDaConta, listarInsumos, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
+  listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro,
@@ -373,7 +373,7 @@ export default function ComprasPage() {
       const [allPed, pes, ins, cic, anos, cc, ops, fzs, prods] = await Promise.all([
         listarPedidosCompraDaConta(fazendaId),
         listarPessoasDaConta(fazendaId),
-        listarInsumos(fazendaId),
+        listarInsumosParaConta(),           // catálogo de TODA a conta — não só da fazenda ativa
         listarTodosCiclos(fazendaId),
         listarAnosSafra(fazendaId),
         listarCentrosCustoGeral(fazendaId),
@@ -635,8 +635,8 @@ export default function ComprasPage() {
         estoque_minimo: 0,
         valor_unitario: 0,
       });
-      // Recarrega lista de insumos
-      const insAtualizado = await listarInsumos(fazendaId);
+      // Recarrega lista de insumos (toda a conta)
+      const insAtualizado = await listarInsumosParaConta();
       setInsumos(insAtualizado);
       // Vincula o novo insumo ao item
       const idx = modalNovoInsumo.itemIdx;

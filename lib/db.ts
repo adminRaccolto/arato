@@ -314,6 +314,26 @@ export async function listarInsumos(fazenda_id: string): Promise<Insumo[]> {
   return data ?? [];
 }
 
+// Busca insumos de TODAS as fazendas da conta do usuário logado — catálogo compartilhado
+export async function listarInsumosParaConta(): Promise<Insumo[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data: perfil } = await supabase.from("perfis").select("conta_id").eq("user_id", user.id).maybeSingle();
+  let q = supabase.from("insumos").select("*").order("nome");
+  if (perfil?.conta_id) {
+    // busca fazendas da conta, depois insumos dessas fazendas
+    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", perfil.conta_id);
+    const ids = (fzs ?? []).map((f: { id: string }) => f.id);
+    if (ids.length === 0) return [];
+    q = q.in("fazenda_id", ids);
+  } else {
+    q = q.eq("fazenda_id", user.id); // fallback improvável
+  }
+  const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise<Insumo> {
   const { data, error } = await supabase.from("insumos").insert(i).select().single();
   if (error) throw error;
