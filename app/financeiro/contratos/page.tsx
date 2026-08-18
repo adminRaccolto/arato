@@ -219,6 +219,7 @@ export default function ContratosFinanceiros() {
   // dados das abas
   const [parcelasLiberacao, setParcelasLiberacao] = useState<ParcelaLiberacao[]>([]);
   const [parcelasPagamento, setParcelasPagamento] = useState<ParcelaPagamento[]>([]);
+  const [parcelasEditadas,  setParcelasEditadas]  = useState<Record<string, { data_vencimento?: string; valor_parcela?: string }>>({});
   const [garantias, setGarantias]                 = useState<GarantiaContrato[]>([]);
   const [centrosCusto, setCentrosCusto]           = useState<CentroCustoContrato[]>([]);
   const [ccAnosSafra, setCcAnosSafra]             = useState<{ id: string; descricao: string }[]>([]);
@@ -317,7 +318,7 @@ export default function ContratosFinanceiros() {
     const id = contratoModal.id;
     if (abaModal === "liberacao")  listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
     if (abaModal === "pagamento") listarParcelasPagamento(id).then(p => {
-      setParcelasPagamento(p);
+      setParcelasPagamento(p); setParcelasEditadas({});
       // Auto-preenche calculadora a partir das parcelas existentes
       if (p.length > 0 && p[0].data_vencimento) {
         setFCalc(prev => ({
@@ -405,7 +406,7 @@ export default function ContratosFinanceiros() {
     setFAdit({ ...FA_VAZIO });
     setPdfUrl(c?.pdf_url ?? null); setPdfNome(c?.pdf_nome ?? null);
     if (c?.taxa_tipo === "variavel" && c.indexador) buscarTaxaVariavelRef(c.indexador);
-    setParcelasLiberacao([]); setParcelasPagamento([]); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
+    setParcelasLiberacao([]); setParcelasPagamento([]); setParcelasEditadas({}); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
     setCnpjBusca(""); setCnpjBuscaStatus("idle");
     setModalAberto(true);
   };
@@ -747,6 +748,38 @@ export default function ContratosFinanceiros() {
       setSalvando(false);
     }
   };
+
+  // ── Ajustes manuais de parcelas ──
+  const editarParcela = (id: string, campo: "data_vencimento" | "valor_parcela", valor: string) => {
+    setParcelasEditadas(prev => ({ ...prev, [id]: { ...prev[id], [campo]: valor } }));
+  };
+
+  const salvarAjustesManuais = () => salvar(async () => {
+    if (!contratoModal || !fazendaId) return;
+    const atualizadas = parcelasPagamento.map(p => {
+      const ed = parcelasEditadas[p.id];
+      if (!ed) return p;
+      const novaData = ed.data_vencimento ?? p.data_vencimento;
+      const novoValorStr = ed.valor_parcela;
+      if (!novoValorStr) return { ...p, data_vencimento: novaData };
+      const novoValor = parseFloat(novoValorStr.replace(/\./g, "").replace(",", "."));
+      if (isNaN(novoValor)) return { ...p, data_vencimento: novaData };
+      return {
+        ...p,
+        data_vencimento: novaData,
+        valor_parcela: novoValor,
+        amortizacao: novoValor,
+        juros: 0,
+        despesas_acessorios: 0,
+      };
+    });
+    const salvas = await salvarParcelasPagamento(
+      contratoModal.id, fazendaId,
+      atualizadas.map(p => ({ ...p, status: p.status ?? "em_aberto" as const }))
+    );
+    setParcelasPagamento(salvas);
+    setParcelasEditadas({});
+  });
 
   // ── Garantia ──
   const salvarGarantia = () => salvar(async () => {
@@ -1583,48 +1616,96 @@ export default function ContratosFinanceiros() {
                     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Preencha a calculadora acima para gerar a tabela de parcelas</div>
                   ) : parcelasPagamento.length === 0 ? null : (
                     <>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                        <thead><tr style={{ background: "var(--bg-page)" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
-                        <tbody>
-                          {parcelasPagamento.map((p, i) => {
-                            const corSt = p.status === "pago" ? "#111111" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
-                            const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v);
-                            return (
-                              <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
-                                <td style={{ padding: "7px 10px", textAlign: "center" }}>{p.num_parcela}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtData(p.data_vencimento)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(p.amortizacao)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(p.juros)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(p.despesas_acessorios)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtV(p.valor_parcela)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(p.saldo_devedor)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                                  <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                        <tfoot>
-                          <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
-                            {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); return (<>
-                              <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAIS</td>
-                              <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
-                              <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
-                              <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
-                              <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.valor_parcela, 0))}</td>
-                              <td colSpan={2} />
-                            </>); })()}
-                          </tr>
-                        </tfoot>
-                      </table>
-                      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 16 }}>
-                        {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); const totalJuros = parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0); const totalAmort = parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0); return (<>
-                          <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtV(totalJuros)}</strong></span>
-                          <span>CET estimado: <strong>{fmtNum(totalAmort > 0 ? (totalJuros / totalAmort) * 100 : 0, 2)}% a.p.</strong></span>
-                          <span>Pagas: <strong style={{ color: "#111111" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
-                        </>); })()}
-                      </div>
+                      {(() => {
+                        const temEdits = Object.keys(parcelasEditadas).length > 0;
+                        const inpCell: React.CSSProperties = { width: "100%", border: "0.5px solid var(--border)", borderRadius: 4, padding: "2px 5px", fontSize: 12, background: "transparent", color: "var(--text-1)", outline: "none", textAlign: "right" };
+                        const inpEditado: React.CSSProperties = { ...inpCell, background: "#FBF3E0", border: "0.5px solid #C9921B", fontWeight: 600 };
+                        return (
+                          <>
+                            {temEdits && (
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "8px 14px", marginBottom: 10 }}>
+                                <span style={{ fontSize: 12, color: "#7A4300" }}>✏ Há ajustes manuais não salvos. Clique em <strong>Salvar ajustes</strong> para confirmar.</span>
+                                <button style={{ ...btnV, background: "#C9921B", padding: "6px 16px", fontSize: 12 }} disabled={salvando} onClick={salvarAjustesManuais}>{salvando ? "Salvando…" : "Salvar ajustes"}</button>
+                              </div>
+                            )}
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead>
+                                <tr style={{ background: "var(--bg-page)" }}>
+                                  {["Nº", "Vencimento ✏", "Amortização", "Juros", "Encargos", "Valor Parcela ✏", "Saldo Devedor", "Status"].map((h, i) => (
+                                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: i === 1 || i === 5 ? "#C9921B" : "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {parcelasPagamento.map((p, i) => {
+                                  const corSt = p.status === "pago" ? "#111111" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
+                                  const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v);
+                                  const ed = parcelasEditadas[p.id];
+                                  const dataEditada = !!ed?.data_vencimento;
+                                  const valorEditado = ed?.valor_parcela !== undefined;
+                                  const valorExibir = valorEditado ? ed!.valor_parcela! : String(p.valor_parcela);
+                                  return (
+                                    <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
+                                      <td style={{ padding: "5px 10px", textAlign: "center" }}>{p.num_parcela}</td>
+                                      <td style={{ padding: "4px 8px" }}>
+                                        <input
+                                          type="date"
+                                          value={ed?.data_vencimento ?? p.data_vencimento}
+                                          onChange={e => editarParcela(p.id, "data_vencimento", e.target.value)}
+                                          style={dataEditada ? inpEditado : inpCell}
+                                        />
+                                      </td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.amortizacao)}</td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(p.juros)}</td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.despesas_acessorios)}</td>
+                                      <td style={{ padding: "4px 8px" }}>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          value={valorExibir}
+                                          onChange={e => editarParcela(p.id, "valor_parcela", e.target.value)}
+                                          style={valorEditado ? inpEditado : inpCell}
+                                        />
+                                      </td>
+                                      <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.saldo_devedor)}</td>
+                                      <td style={{ padding: "5px 10px", textAlign: "center" }}>
+                                        <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot>
+                                <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
+                                  {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); return (<>
+                                    <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAIS</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => {
+                                      const ed = parcelasEditadas[p.id];
+                                      const v = ed?.valor_parcela !== undefined ? parseFloat(ed.valor_parcela) || p.valor_parcela : p.valor_parcela;
+                                      return s + v;
+                                    }, 0))}</td>
+                                    <td colSpan={2} />
+                                  </>); })()}
+                                </tr>
+                              </tfoot>
+                            </table>
+                            <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                              {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); const totalJuros = parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0); const totalAmort = parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0); return (<>
+                                <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtV(totalJuros)}</strong></span>
+                                <span>CET estimado: <strong>{fmtNum(totalAmort > 0 ? (totalJuros / totalAmort) * 100 : 0, 2)}% a.p.</strong></span>
+                                <span>Pagas: <strong style={{ color: "#111111" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
+                              </>); })()}
+                              {temEdits && (
+                                <button style={{ ...btnV, background: "#C9921B", padding: "5px 14px", fontSize: 11, marginLeft: "auto" }} disabled={salvando} onClick={salvarAjustesManuais}>{salvando ? "Salvando…" : "Salvar ajustes"}</button>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </>
                   )}
                 </div>
