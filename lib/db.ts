@@ -314,22 +314,31 @@ export async function listarInsumos(fazenda_id: string): Promise<Insumo[]> {
   return data ?? [];
 }
 
-// Busca insumos de TODAS as fazendas da conta do usuário logado — catálogo compartilhado
-export async function listarInsumosParaConta(): Promise<Insumo[]> {
+// Busca insumos de TODAS as fazendas da conta — catálogo compartilhado
+// fazendaIdFallback: obrigatório para admins raccotlo (conta_id = NULL no perfil deles)
+export async function listarInsumosParaConta(fazendaIdFallback?: string): Promise<Insumo[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
+
+  let contaId: string | null = null;
+
+  // 1) Tenta via perfil do usuário logado
   const { data: perfil } = await supabase.from("perfis").select("conta_id").eq("user_id", user.id).maybeSingle();
-  let q = supabase.from("insumos").select("*").order("nome");
   if (perfil?.conta_id) {
-    // busca fazendas da conta, depois insumos dessas fazendas
-    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", perfil.conta_id);
-    const ids = (fzs ?? []).map((f: { id: string }) => f.id);
-    if (ids.length === 0) return [];
-    q = q.in("fazenda_id", ids);
-  } else {
-    q = q.eq("fazenda_id", user.id); // fallback improvável
+    contaId = perfil.conta_id;
+  } else if (fazendaIdFallback) {
+    // 2) Raccotlo admin (conta_id = NULL): resolve pelo conta_id da fazenda ativa
+    const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaIdFallback).maybeSingle();
+    contaId = faz?.conta_id ?? null;
   }
-  const { data, error } = await q;
+
+  if (!contaId) return [];
+
+  const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", contaId);
+  const ids = (fzs ?? []).map((f: { id: string }) => f.id);
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase.from("insumos").select("*").in("fazenda_id", ids).order("nome");
   if (error) throw error;
   return data ?? [];
 }

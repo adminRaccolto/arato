@@ -373,7 +373,7 @@ export default function ComprasPage() {
       const [allPed, pes, ins, cic, anos, cc, ops, fzs, prods] = await Promise.all([
         listarPedidosCompraDaConta(fazendaId),
         listarPessoasDaConta(fazendaId),
-        listarInsumosParaConta(),           // catálogo de TODA a conta — não só da fazenda ativa
+        listarInsumosParaConta(fazendaId),  // catálogo de TODA a conta — não só da fazenda ativa
         listarTodosCiclos(fazendaId),
         listarAnosSafra(fazendaId),
         listarCentrosCustoGeral(fazendaId),
@@ -636,7 +636,7 @@ export default function ComprasPage() {
         valor_unitario: 0,
       });
       // Recarrega lista de insumos (toda a conta)
-      const insAtualizado = await listarInsumosParaConta();
+      const insAtualizado = await listarInsumosParaConta(fazendaId);
       setInsumos(insAtualizado);
       // Vincula o novo insumo ao item
       const idx = modalNovoInsumo.itemIdx;
