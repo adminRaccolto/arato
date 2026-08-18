@@ -31,7 +31,7 @@ import {
   listarTiposPessoa, listarTiposPessoaDaConta, criarTipoPessoa, atualizarTipoPessoa, excluirTipoPessoa,
   listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, criarCentroCusto, atualizarCentroCusto, excluirCentroCusto,
   listarCategoriasLancamento, criarCategoriaLancamento, atualizarCategoriaLancamento, excluirCategoriaLancamento,
-  listarInsumos, criarInsumo, atualizarInsumo, excluirInsumo,
+  listarInsumosParaConta, criarInsumo, atualizarInsumo, excluirInsumo,
   listarFormasPagamento, listarFormasPagamentoDaConta, criarFormaPagamento, atualizarFormaPagamento, excluirFormaPagamento,
   listarOperacoesGerenciais, criarOperacaoGerencial, atualizarOperacaoGerencial, excluirOperacaoGerencial,
   listarBancos, listarContas, criarConta, atualizarContaBancaria, excluirConta,
@@ -698,13 +698,13 @@ function CadastrosInner() {
     }
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
-      listarInsumos(fazendaId).then(async lista => {
+      listarInsumosParaConta().then(async lista => {
         setInsumos(lista);
         // Auto-seed na primeira abertura da aba Produtos se não há nenhum produto agrícola
         if (aba === "produtos" && lista.filter(i => i.categoria === "produto_agricola").length === 0) {
           try {
             await seederProdutosAgricolas(fazendaId);
-            listarInsumos(fazendaId).then(setInsumos).catch(() => {});
+            listarInsumosParaConta().then(setInsumos).catch(() => {});
           } catch {}
         }
       }).catch(e => setErro(e.message));
@@ -4878,7 +4878,7 @@ function CadastrosInner() {
                       setSeedingProdutos(true);
                       try {
                         const n = await seederProdutosAgricolas(fazIdEff);
-                        const lista = await listarInsumos(fazIdEff);
+                        const lista = await listarInsumosParaConta();
                         setInsumos(lista);
                         if (n === 0) alert("Todos os produtos padrão já estão cadastrados.");
                         else alert(`${n} produto${n > 1 ? "s" : ""} adicionado${n > 1 ? "s" : ""} com sucesso.`);
