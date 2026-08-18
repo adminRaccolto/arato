@@ -40,6 +40,17 @@ export async function POST(req: NextRequest) {
 
     const db = sb();
 
+    // ── 0. Todas as fazendas da conta (para anti-duplicata cross-fazenda) ────
+    // Busca conta_id da fazenda recebida, depois lista todas as fazendas dessa conta
+    let fazendaIdsDaConta: string[] = [fazenda_id];
+    try {
+      const { data: fazRow } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+      if (fazRow?.conta_id) {
+        const { data: fazRows } = await db.from("fazendas").select("id").eq("conta_id", fazRow.conta_id);
+        if (fazRows && fazRows.length > 0) fazendaIdsDaConta = fazRows.map(f => f.id);
+      }
+    } catch { /* usa só fazenda_id como fallback */ }
+
     // ── 1. Config desta fazenda ──────────────────────────────────────────────
     const { data: row } = await db
       .from("configuracoes_modulo")
@@ -128,11 +139,11 @@ export async function POST(req: NextRequest) {
       // Filtro por chaves específicas (re-importação pontual)
       if (chavesAcesso && chavesAcesso.length > 0 && !chavesAcesso.includes(nfe.chave)) continue;
 
-      // Verificar duplicata pela chave de acesso
+      // Verificar duplicata pela chave de acesso em qualquer fazenda da conta
       const { data: dup } = await db
         .from("nf_entradas")
-        .select("id, status")
-        .eq("fazenda_id", fazenda_id)
+        .select("id, status, fazenda_id")
+        .in("fazenda_id", fazendaIdsDaConta)
         .eq("chave_acesso", nfe.chave)
         .maybeSingle();
 
