@@ -68,3 +68,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }
+
+// PATCH /api/financeiro/lancamentos — atualiza um lançamento (service_role, imune a JWT/RLS)
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json() as { id: string; patch: Record<string, unknown> };
+    if (!body.id || !body.patch) {
+      return NextResponse.json({ ok: false, error: "id e patch são obrigatórios" }, { status: 400 });
+    }
+    const sb = admin();
+    const { error, count } = await sb.from("lancamentos").update(body.patch, { count: "exact" }).eq("id", body.id);
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    if (!count) return NextResponse.json({ ok: false, error: "Lançamento não encontrado ou sem permissão" }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[api/financeiro/lancamentos PATCH]", e);
+    return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
+  }
+}

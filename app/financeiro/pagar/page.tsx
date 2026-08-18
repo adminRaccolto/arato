@@ -343,8 +343,8 @@ function ContasPagarInner() {
     veiculo_sel: "",  // "m:uuid" | "v:uuid" | ""
   });
 
-  // grid editável de parcelas (prazo)
-  type ParcelaGrid = { data: string; valorMask: string };
+  // grid editável de parcelas (prazo) — cada parcela tem safra/ciclo próprio para rateio
+  type ParcelaGrid = { data: string; valorMask: string; ano_safra_id?: string; ciclo_id?: string; };
   const [parcelas, setParcelas] = useState<ParcelaGrid[]>([]);
 
   // ── Filtros de coluna ─────────────────────────────────────
@@ -382,6 +382,8 @@ function ContasPagarInner() {
   const [fConta,      setFConta]      = useState("");
   const [fProdutor,   setFProdutor]   = useState("");
   const [fObs,        setFObs]        = useState("");
+  const [fValorMin,   setFValorMin]   = useState("");
+  const [fValorMax,   setFValorMax]   = useState("");
 
   // Gera/atualiza grid quando os parâmetros de prazo mudam
   const gerarParcelas = (vencimento: string, qtd: number, freqMeses: number, valorTotal: number) => {
@@ -537,9 +539,11 @@ function ContasPagarInner() {
       if (fConta      && !contaNomeRes.toLowerCase().includes(fConta.toLowerCase())) return false;
       if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))            return false;
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
+      if (fValorMin   && paraBRL(l) < desmascarar(fValorMin))                                  return false;
+      if (fValorMax   && paraBRL(l) > desmascarar(fValorMax))                                  return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, anosSafra, produtores, ogMap, pessoas, contas]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValorMin, fValorMax, anosSafra, produtores, ogMap, pessoas, contas]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
@@ -799,9 +803,13 @@ function ContasPagarInner() {
           maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : null,
           veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : null,
         };
-        const { error, count } = await supabase.from("lancamentos").update(patch, { count: "exact" }).eq("id", editandoId);
-        if (error) { alert("Erro ao salvar: " + error.message); return; }
-        if (!count) { alert("Sessão expirada — reconecte e tente novamente (0 linhas atualizadas)."); return; }
+        const res = await fetch("/api/financeiro/lancamentos", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editandoId, patch }),
+        });
+        const json = await res.json() as { ok: boolean; error?: string };
+        if (!json.ok) { alert("Erro ao salvar: " + (json.error ?? "Tente novamente")); return; }
         setLancamentos(prev => prev.map(x =>
           x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
         ));
@@ -868,11 +876,15 @@ function ContasPagarInner() {
         const total = parcelas.length;
         const arr: Lancamento[] = [];
         for (let i = 0; i < total; i++) {
+          const p = parcelas[i];
           const l = await criarLancamento({
             ...base,
-            data_vencimento: parcelas[i].data,
-            valor: desmascarar(parcelas[i].valorMask),
-            num_parcela: i + 1,
+            data_vencimento: p.data,
+            valor:           desmascarar(p.valorMask),
+            // Rateio por vencimento: safra/ciclo da parcela sobrepõe o do form (se informado)
+            ano_safra_id:    p.ano_safra_id ?? base.ano_safra_id,
+            ciclo_id:        p.ciclo_id    ?? base.ciclo_id,
+            num_parcela:  i + 1,
             total_parcelas: total,
             agrupador,
           });
@@ -1114,7 +1126,12 @@ function ContasPagarInner() {
                         {col("ciclo")      && <td></td>}
                         <td></td>
                         {col("venc_orig")  && <td></td>}
-                        <td></td>
+                        <td style={{ padding: "3px 6px" }}>
+                          <div style={{ display: "flex", gap: 2 }}>
+                            <input style={{ ...inpF, width: "50%" }} placeholder="De" value={fValorMin} onChange={e => setFValorMin(e.target.value.replace(/[^\d,]/g, ""))} title="Valor mínimo" />
+                            <input style={{ ...inpF, width: "50%" }} placeholder="Até" value={fValorMax} onChange={e => setFValorMax(e.target.value.replace(/[^\d,]/g, ""))} title="Valor máximo" />
+                          </div>
+                        </td>
                         {col("dt_pgto")    && <td></td>}
                         {col("valor_pago") && <td></td>}
                         {col("moeda")      && <td></td>}
@@ -1607,9 +1624,25 @@ function ContasPagarInner() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-                {/* ── Classificação ── */}
-                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação</div>
+                {/* ── Classificação — colapsada quando OG já está preenchida no CP ── */}
+                {(() => {
+                  const ogJaSet = !!modalBaixa.operacao_gerencial_id;
+                  const ogNome  = ogJaSet ? (opGerenciais.find(o => o.id === modalBaixa.operacao_gerencial_id)?.descricao ?? allOgs.find(o => o.id === modalBaixa.operacao_gerencial_id)?.descricao ?? "Operação vinculada") : "";
+                  return ogJaSet && baixa.operacao_gerencial_id ? (
+                    <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>CLASSIFICAÇÃO</span>
+                        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>{ogNome}</div>
+                      </div>
+                      <button onClick={() => setBaixa(p => ({ ...p, operacao_gerencial_id: "" }))}
+                        style={{ fontSize: 11, color: "#C9921B", background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap", padding: 0 }}>
+                        Alterar
+                      </button>
+                    </div>
+                  ) : null;
+                })()}
+                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px", display: modalBaixa.operacao_gerencial_id && baixa.operacao_gerencial_id ? "none" : undefined }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação{modalBaixa.operacao_gerencial_id ? " (alterar)" : ""}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
                       <label style={lbl}>Fornecedor / Credor</label>
@@ -2142,10 +2175,13 @@ function ContasPagarInner() {
                   )}
                   {form.condicao === "prazo" && parcelas.length > 0 && (
                     <div style={{ overflowX: "auto" }}>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
+                        Rateio por vencimento: cada parcela pode ter safra e ciclo diferentes.
+                      </div>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-stripe)" }}>
-                            {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
+                            {["#", "Vencimento", "Valor (R$)", "Safra", "Ciclo"].map((h, i) => (
                               <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                             ))}
                           </tr>
@@ -2153,14 +2189,30 @@ function ContasPagarInner() {
                         <tbody>
                           {parcelas.map((p, i) => (
                             <tr key={i} style={{ borderBottom: "0.5px solid var(--bg-input)" }}>
-                              <td style={{ padding: "4px 10px", textAlign: "center", color: "var(--text-3)", fontSize: 11, width: 50 }}>{i + 1}/{parcelas.length}</td>
-                              <td style={{ padding: "4px 10px" }}>
+                              <td style={{ padding: "4px 10px", textAlign: "center", color: "var(--text-3)", fontSize: 11, width: 40 }}>{i + 1}/{parcelas.length}</td>
+                              <td style={{ padding: "4px 8px" }}>
                                 <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
                                   onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
                               </td>
-                              <td style={{ padding: "4px 10px" }}>
+                              <td style={{ padding: "4px 8px" }}>
                                 <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
                                   onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
+                              </td>
+                              <td style={{ padding: "4px 8px" }}>
+                                <select style={{ ...inp, fontSize: 11 }}
+                                  value={p.ano_safra_id ?? form.ano_safra_id}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, ano_safra_id: e.target.value, ciclo_id: "" } : x))}>
+                                  <option value="">— Padrão —</option>
+                                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                                </select>
+                              </td>
+                              <td style={{ padding: "4px 8px" }}>
+                                <select style={{ ...inp, fontSize: 11 }}
+                                  value={p.ciclo_id ?? form.ciclo_id}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value } : x))}>
+                                  <option value="">— Padrão —</option>
+                                  {ciclos.filter(c => !p.ano_safra_id || c.ano_safra_id === p.ano_safra_id).map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                                </select>
                               </td>
                             </tr>
                           ))}
@@ -2171,6 +2223,7 @@ function ContasPagarInner() {
                             <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#60A5FA" }}>
                               {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
                             </td>
+                            <td colSpan={2}></td>
                           </tr>
                         </tfoot>
                       </table>
