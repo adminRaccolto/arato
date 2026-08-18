@@ -313,10 +313,10 @@ export default function Estoque() {
     listarInsumos(fazendaId).then(setInsumos).catch(e => setErro(e.message));
     listarFazendasDaConta(contaId, fazendaId)
       .then(fzs => {
-        const ids = fzs.length > 0 ? fzs.map(f => f.id!) : [fazendaId];
-        Promise.all(ids.map(id => listarDepositos(id!))).then(r => setDepositos(r.flat())).catch(() => {});
+        const ids = fzs.length > 0 ? fzs.map((f: { id?: string }) => f.id!) : [fazendaId];
+        Promise.all(ids.map((id: string) => listarDepositos(id!))).then(r => setDepositos(r.flat())).catch(() => {});
       }).catch(() => listarDepositos(fazendaId).then(setDepositos).catch(() => {}));
-    listarBombas(fazendaId).then(setBombas).catch(() => {});
+    listarBombas(fazendaId!).then(setBombas).catch(() => {});
     listarMaquinas(fazendaId).then(setMaquinas).catch(() => {});
     listarPessoas(fazendaId).then(setPessoas).catch(() => {});
     listarPASaldos(fazendaId).then(setPASaldos).catch(() => {});
@@ -324,7 +324,7 @@ export default function Estoque() {
     supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
       .or(`fazenda_id.eq.${fazendaId},fazenda_id.is.null`).eq("inativo", false).eq("tipo", "despesa").order("classificacao")
       .then(({ data }) => setOgsNf((data ?? []) as { id: string; descricao: string; classificacao: string }[]));
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   useEffect(() => {
     if (!fazendaId) return;

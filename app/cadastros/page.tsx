@@ -823,7 +823,7 @@ function CadastrosInner() {
           }));
         });
     }
-  }, [aba, fazendaId]);
+  }, [aba, fazendaId, contaId]);
 
   // Depósitos: useEffect separado que observa `fazendas` para evitar race condition
   // (aba=depositos pode estar ativa antes de fazendas terminar de carregar)

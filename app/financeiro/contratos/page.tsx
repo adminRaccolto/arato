@@ -261,7 +261,7 @@ export default function ContratosFinanceiros() {
     buscarPtax();
     const timer = setInterval(buscarPtax, 5 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   // ── Carrega contagem de parcelas por contrato para coluna Prazo ──
   useEffect(() => {

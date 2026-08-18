@@ -407,7 +407,7 @@ export default function ComprasPage() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
