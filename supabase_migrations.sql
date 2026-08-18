@@ -10068,3 +10068,22 @@ ALTER TABLE cct_pagamentos
   ADD COLUMN IF NOT EXISTS lancamento_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_cct_pg_lancamento ON cct_pagamentos(lancamento_id);
+
+-- ─── Seção 173: cct_pagamentos — sacas, rateio por vencimento ─────────────────
+-- Adiciona suporte a pagamento em grãos (sacas) e rateio por safra/ciclo
+ALTER TABLE cct_pagamentos
+  ADD COLUMN IF NOT EXISTS moeda_parcela    text DEFAULT 'BRL'
+    CHECK (moeda_parcela IN ('BRL','saca_soja','saca_milho','saca_algodao')),
+  ADD COLUMN IF NOT EXISTS quantidade_sacas numeric(14,4),
+  ADD COLUMN IF NOT EXISTS produto          text,           -- 'soja' | 'milho' | 'algodao'
+  ADD COLUMN IF NOT EXISTS preco_sc_ref     numeric(14,4),  -- R$/sc usado na conversão BRL
+  ADD COLUMN IF NOT EXISTS ano_safra_id     uuid REFERENCES anos_safra(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ciclo_id         uuid REFERENCES ciclos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_cct_pg_safra  ON cct_pagamentos(ano_safra_id);
+CREATE INDEX IF NOT EXISTS idx_cct_pg_ciclo  ON cct_pagamentos(ciclo_id);
+
+COMMENT ON COLUMN cct_pagamentos.moeda_parcela    IS 'BRL = reais; saca_soja/saca_milho/saca_algodao = pagamento em grãos';
+COMMENT ON COLUMN cct_pagamentos.quantidade_sacas IS 'Quantidade em sacas (60 kg) quando moeda_parcela != BRL';
+COMMENT ON COLUMN cct_pagamentos.preco_sc_ref     IS 'R$/sc usado para converter sacas em BRL no momento do lançamento';
+COMMENT ON COLUMN cct_pagamentos.ciclo_id         IS 'Ciclo vinculado (rateio por vencimento)';
