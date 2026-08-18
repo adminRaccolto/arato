@@ -4455,6 +4455,32 @@ function CadastrosInner() {
                       );
                     })}
                   </div>
+                  <button
+                    onClick={async () => {
+                      const XLSX = await import("xlsx");
+                      const dados = insFiltr.map(ins => ({
+                        "fazenda_nome":    fazendas.find(f => f.id === ins.fazenda_id)?.nome ?? "",
+                        "deposito_nome":   depositos.find(d => d.id === ins.deposito_id)?.nome ?? "",
+                        "nome":            ins.nome,
+                        "categoria":       ins.categoria,
+                        "unidade":         ins.unidade,
+                        "estoque":         ins.estoque,
+                        "estoque_minimo":  ins.estoque_minimo,
+                        "valor_unitario":  ins.valor_unitario,
+                        "fabricante":      ins.fabricante ?? "",
+                        "subgrupo":        ins.subgrupo ?? "",
+                      }));
+                      const ws = XLSX.utils.json_to_sheet(dados);
+                      ws["!cols"] = [
+                        { wch: 22 }, { wch: 20 }, { wch: 35 }, { wch: 14 }, { wch: 8 },
+                        { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 20 }, { wch: 18 },
+                      ];
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, "Insumos");
+                      XLSX.writeFile(wb, `insumos_export_${new Date().toISOString().split("T")[0]}.xlsx`);
+                    }}
+                    style={{ fontSize: 13, padding: "7px 14px", border: "0.5px solid #16A34A", borderRadius: 8, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}
+                  >⬇ Exportar XLSX</button>
                   <button style={btnV} onClick={() => { setFIns(p => ({ ...p, categoria: "defensivo" as Insumo["categoria"] })); abrirModalIns(); }}>+ Novo Insumo</button>
                 </div>
 
