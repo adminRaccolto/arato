@@ -1383,6 +1383,7 @@ export type ParcelaPagamento = {
   saldo_devedor: number;
   lancamento_id?: string;
   status: "em_aberto" | "pago" | "vencido";
+  data_pagamento?: string | null;   // preenchido ao baixar (data efetiva do pagamento)
   created_at?: string;
 };
 

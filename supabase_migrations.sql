@@ -10103,3 +10103,11 @@ ALTER TABLE pedidos_compra
 
 COMMENT ON COLUMN pedidos_compra.barter_volume_sc IS 'Sacas fixas acordadas no barter (campo principal). Preço/sc = total itens / volume.';
 COMMENT ON COLUMN pedidos_compra.barter_preco_saca IS 'R$/sc calculado automaticamente = total_itens / barter_volume_sc (mantido para referência).';
+
+-- ─── Seção 176: parcelas_pagamento — data_pagamento e sincronização CP ────────
+-- Adicionada ao registrar pagamentos retroativos de parcelas de contratos financeiros.
+-- A função baixarLancamento() agora sincroniza automaticamente esta coluna.
+ALTER TABLE parcelas_pagamento
+  ADD COLUMN IF NOT EXISTS data_pagamento date;
+
+COMMENT ON COLUMN parcelas_pagamento.data_pagamento IS 'Data efetiva do pagamento. Preenchida automaticamente ao baixar o lançamento CP vinculado.';

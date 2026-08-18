@@ -663,6 +663,16 @@ export async function baixarLancamento(
   if (extras?.observacao)            patch.observacao = extras.observacao;
   const { error } = await supabase.from("lancamentos").update(patch).eq("id", id);
   if (error) throw error;
+
+  // Sincroniza parcelas_pagamento quando o lançamento tem origem em contrato financeiro.
+  // Ignora silenciosamente se não houver parcela vinculada.
+  await supabase
+    .from("parcelas_pagamento")
+    .update({
+      status:         novoStatus === "baixado" ? "pago" : "parcial",
+      data_pagamento: data_baixa,
+    })
+    .eq("lancamento_id", id);
 }
 
 /**

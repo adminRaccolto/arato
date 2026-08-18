@@ -6,7 +6,7 @@ import InputNumerico from "../../../components/InputNumerico";
 import {
   listarContratosFinanceiros, listarContratosFinanceirosDaConta, criarContratoFinanceiro, atualizarContratoFinanceiro, excluirContratoFinanceiro,
   listarParcelasLiberacao, criarParcelaLiberacao, excluirParcelaLiberacao,
-  listarParcelasPagamento, salvarParcelasPagamento,
+  listarParcelasPagamento, salvarParcelasPagamento, baixarLancamento,
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
   listarAditivos, criarAditivo, excluirAditivo,
@@ -232,6 +232,15 @@ export default function ContratosFinanceiros() {
   const [maquinas, setMaquinas]                   = useState<Maquina[]>([]);
   const [imoveisUrbanos, setImoveisUrbanos]       = useState<ImovelUrbano[]>([]);
   const [prazoMap, setPrazoMap]                   = useState<Record<string, number>>({});
+
+  // modal de baixa de parcela
+  const TODAY_STR = new Date().toISOString().slice(0, 10);
+  const [modalBaixaParcela, setModalBaixaParcela] = useState<ParcelaPagamento | null>(null);
+  const [baixaPData,   setBaixaPData]   = useState(TODAY_STR);
+  const [baixaPValor,  setBaixaPValor]  = useState("");
+  const [baixaPConta,  setBaixaPConta]  = useState("");
+  const [baixandoP,    setBaixandoP]    = useState(false);
+  const [baixaPErro,   setBaixaPErro]   = useState("");
 
   // forms das abas
   const [fLib, setFLib]   = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
@@ -753,6 +762,38 @@ export default function ContratosFinanceiros() {
   const editarParcela = (id: string, campo: "data_vencimento" | "valor_parcela", valor: string) => {
     setParcelasEditadas(prev => ({ ...prev, [id]: { ...prev[id], [campo]: valor } }));
   };
+
+  async function confirmarBaixaParcela() {
+    if (!modalBaixaParcela) return;
+    if (!baixaPData) { setBaixaPErro("Informe a data do pagamento."); return; }
+    if (!baixaPConta) { setBaixaPErro("Selecione a conta bancária."); return; }
+    const valorNum = parseFloat(baixaPValor.replace(/\./g, "").replace(",", ".")) || 0;
+    if (valorNum <= 0) { setBaixaPErro("Informe o valor pago."); return; }
+    setBaixandoP(true);
+    setBaixaPErro("");
+    try {
+      if (modalBaixaParcela.lancamento_id) {
+        // Baixa via lançamento — atualiza lancamentos E parcelas_pagamento automaticamente
+        await baixarLancamento(modalBaixaParcela.lancamento_id, valorNum, baixaPData, baixaPConta);
+      } else {
+        // Parcela sem lançamento vinculado — atualiza só parcelas_pagamento
+        const { error } = await supabase
+          .from("parcelas_pagamento")
+          .update({ status: "pago", data_pagamento: baixaPData })
+          .eq("id", modalBaixaParcela.id);
+        if (error) throw error;
+      }
+      // Atualiza a lista local
+      setParcelasPagamento(prev => prev.map(p =>
+        p.id === modalBaixaParcela.id ? { ...p, status: "pago", data_pagamento: baixaPData } : p
+      ));
+      setModalBaixaParcela(null);
+    } catch (e) {
+      setBaixaPErro(e instanceof Error ? e.message : "Erro ao registrar pagamento.");
+    } finally {
+      setBaixandoP(false);
+    }
+  }
 
   const salvarAjustesManuais = () => salvar(async () => {
     if (!contratoModal || !fazendaId) return;
@@ -1631,8 +1672,8 @@ export default function ContratosFinanceiros() {
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
-                                  {["Nº", "Vencimento ✏", "Amortização", "Juros", "Encargos", "Valor Parcela ✏", "Saldo Devedor", "Status"].map((h, i) => (
-                                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: i === 1 || i === 5 ? "#C9921B" : "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                                  {["Nº", "Vencimento ✏", "Amortização", "Juros", "Encargos", "Valor Parcela ✏", "Saldo Devedor", "Status", ""].map((h, i) => (
+                                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 || i === 8 ? "center" : "right", fontSize: 11, fontWeight: 600, color: i === 1 || i === 5 ? "#C9921B" : "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -1672,6 +1713,20 @@ export default function ContratosFinanceiros() {
                                       <td style={{ padding: "5px 10px", textAlign: "center" }}>
                                         <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
                                       </td>
+                                      <td style={{ padding: "4px 8px", textAlign: "center" }}>
+                                        {p.status !== "pago" && (
+                                          <button
+                                            style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", color: "#1A4870", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                                            onClick={() => {
+                                              setModalBaixaParcela(p);
+                                              setBaixaPData(TODAY_STR);
+                                              setBaixaPValor(String(p.valor_parcela ?? ""));
+                                              setBaixaPConta(contas[0]?.id ?? "");
+                                              setBaixaPErro("");
+                                            }}
+                                          >Baixar</button>
+                                        )}
+                                      </td>
                                     </tr>
                                   );
                                 })}
@@ -1688,7 +1743,7 @@ export default function ContratosFinanceiros() {
                                       const v = ed?.valor_parcela !== undefined ? parseFloat(ed.valor_parcela) || p.valor_parcela : p.valor_parcela;
                                       return s + v;
                                     }, 0))}</td>
-                                    <td colSpan={2} />
+                                    <td colSpan={3} />
                                   </>); })()}
                                 </tr>
                               </tfoot>
@@ -2082,6 +2137,64 @@ export default function ContratosFinanceiros() {
                 );
               })())}
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Registrar Pagamento de Parcela ─────────────────────────────── */}
+      {modalBaixaParcela && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Registrar Pagamento</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>
+              Parcela {modalBaixaParcela.num_parcela} — vencimento {modalBaixaParcela.data_vencimento}
+            </div>
+
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Data do Pagamento *</label>
+                <input
+                  type="date"
+                  style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box" }}
+                  value={baixaPData}
+                  onChange={e => setBaixaPData(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Valor Pago (R$) *</label>
+                <InputMonetario
+                  style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box" }}
+                  value={baixaPValor}
+                  onChange={v => setBaixaPValor(String(v))}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Conta Bancária *</label>
+                <select
+                  style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box" }}
+                  value={baixaPConta}
+                  onChange={e => setBaixaPConta(e.target.value)}
+                >
+                  <option value="">— selecione —</option>
+                  {contas.map(c => <option key={c.id} value={c.id}>{c.nome} {c.banco ? `— ${c.banco}` : ""}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {baixaPErro && <div style={{ marginTop: 12, fontSize: 12, color: "#E24B4A", background: "#FCEBEB", padding: "8px 12px", borderRadius: 8 }}>{baixaPErro}</div>}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+              <button
+                style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "#fff", fontSize: 13, cursor: "pointer" }}
+                onClick={() => setModalBaixaParcela(null)}
+                disabled={baixandoP}
+              >Cancelar</button>
+              <button
+                style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                onClick={confirmarBaixaParcela}
+                disabled={baixandoP}
+              >{baixandoP ? "Registrando…" : "Confirmar Pagamento"}</button>
             </div>
           </div>
         </div>
