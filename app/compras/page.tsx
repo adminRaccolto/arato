@@ -1708,9 +1708,10 @@ export default function ComprasPage() {
                               <tr><td colSpan={7} style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
                             )}
                             {lista.map(it => {
-                              const semVinculo = iaConfianca && !it.insumo_id;
+                              const semVinculo = !it.insumo_id;           // sem insumo vinculado (qualquer origem)
+                              const iaExtract  = iaConfianca && semVinculo; // extraído pela IA e ainda sem vínculo
                               return (
-                              <tr key={it._idx} style={{ borderBottom: "0.5px solid var(--border-row)", background: semVinculo ? "#FFF5F5" : undefined }}>
+                              <tr key={it._idx} style={{ borderBottom: "0.5px solid var(--border-row)", background: iaExtract ? "#FFF5F5" : undefined }}>
                                 <td style={{ padding: "5px 6px" }}>
                                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                     <div style={{ flex: 1 }}>
@@ -1722,13 +1723,14 @@ export default function ComprasPage() {
                                         }}
                                         options={insumos.map(i => ({ id: i.id, label: `${i.nome} (${i.unidade})` }))}
                                         placeholder="— Selecionar insumo —"
+                                        emptyMessage="Nenhum insumo cadastrado. Use + Criar insumo →"
                                         style={{ fontSize: 12 }}
                                       />
                                     </div>
                                     {semVinculo && (
                                       <button
-                                        title="Criar novo insumo ou vincular ao cadastro"
-                                        style={{ flexShrink: 0, padding: "3px 8px", border: "0.5px solid #E24B4A80", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", whiteSpace: "nowrap" }}
+                                        title="Criar novo insumo no cadastro"
+                                        style={{ flexShrink: 0, padding: "3px 8px", border: "0.5px solid #1A487080", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", whiteSpace: "nowrap" }}
                                         onClick={() => {
                                           setNovoInsumoForm({ nome: it.nome_item, categoria: "outros", unidade: (it.unidade as Insumo["unidade"]) || "kg" });
                                           setModalNovoInsumo({ itemIdx: it._idx, nomePreenchido: it.nome_item });
@@ -1736,8 +1738,8 @@ export default function ComprasPage() {
                                       >+ Criar insumo</button>
                                     )}
                                   </div>
-                                  {semVinculo && it.nome_item && (
-                                    <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>"{it.nome_item}" — sem vínculo com cadastro</div>
+                                  {iaExtract && it.nome_item && (
+                                    <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>"{it.nome_item}" — extraído do PDF, sem vínculo</div>
                                   )}
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 60 }}>
@@ -2202,14 +2204,16 @@ export default function ComprasPage() {
         </div>
       )}
 
-      {/* ── Modal Criar Insumo (a partir de item extraído pela IA) ── */}
+      {/* ── Modal Criar Insumo ── */}
       {modalNovoInsumo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, width: 440, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Criar Insumo no Cadastro</div>
             <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 18 }}>
-              O item <strong>"{modalNovoInsumo.nomePreenchido}"</strong> extraído do PDF não foi encontrado no cadastro.<br/>
-              Preencha abaixo para cadastrá-lo e vinculá-lo automaticamente ao pedido.
+              {modalNovoInsumo.nomePreenchido
+                ? <>Item <strong>"{modalNovoInsumo.nomePreenchido}"</strong> sem correspondência. Preencha abaixo para cadastrá-lo e vinculá-lo ao pedido.</>
+                : <>Cadastre um novo insumo e ele será vinculado automaticamente a este item.</>
+              }
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={lbl}>Nome do Insumo *</label>
