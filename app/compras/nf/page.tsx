@@ -489,10 +489,12 @@ export default function NfCompraPage() {
       setWProdutores((prods ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>);
     } catch { setWProdutores([]); }
     try {
+      const allIds = fazendaIds.length > 0 ? fazendaIds : (fId ? [fId] : []);
+      if (!allIds.length) { setWPedidos([]); return; }
       const { data } = await supabase
         .from("pedidos_compra")
         .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
-        .eq("fazenda_id", fId)
+        .in("fazenda_id", allIds)
         .in("status", ["rascunho", "aprovado", "parcialmente_entregue", "entregue"])
         .order("created_at", { ascending: false });
       setWPedidos((data ?? []) as PedidoMin[]);
@@ -2246,17 +2248,13 @@ export default function NfCompraPage() {
                         style={{ ...inp, flex: 1, background: cab.pedido_compra_id ? "#F0FDF4" : "var(--bg-input)", fontWeight: cab.pedido_compra_id ? 600 : 400, color: cab.pedido_compra_id ? "#166534" : "var(--text-1)" }}
                       >
                         <option value="">— Sem pedido vinculado —</option>
-                        {wPedidos.filter(p => {
-                          // Filtra pedidos pelo CNPJ do emitente desta NF
-                          if (!cab.emitente_cnpj) return true;
-                          const cnpjNf = cab.emitente_cnpj.replace(/\D/g, "");
-                          if (!cnpjNf) return true;
-                          const fornCnpj = pessoas.find(x => x.id === p.fornecedor_id)?.cpf_cnpj?.replace(/\D/g, "") ?? "";
-                          return !fornCnpj || fornCnpj === cnpjNf;
-                        }).map(p => {
+                        {wPedidos.map(p => {
                           const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
                           const nr = p.nr_pedido ?? p.numero ?? p.id.substring(0, 8);
-                          return <option key={p.id} value={p.id}>{forn} — PC {nr} ({p.status})</option>;
+                          const cnpjNf = cab.emitente_cnpj?.replace(/\D/g, "") ?? "";
+                          const fornCnpj = pessoas.find(x => x.id === p.fornecedor_id)?.cpf_cnpj?.replace(/\D/g, "") ?? "";
+                          const match = cnpjNf && fornCnpj && fornCnpj === cnpjNf;
+                          return <option key={p.id} value={p.id}>{match ? "★ " : ""}{forn} — PC {nr} ({p.status})</option>;
                         })}
                       </select>
                       {cab.pedido_compra_id && (
