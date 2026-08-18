@@ -698,13 +698,13 @@ function CadastrosInner() {
     }
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
-      listarInsumosParaConta(fazendaId ?? undefined).then(async lista => {
+      listarInsumosParaConta(contaId, fazendaId ?? undefined).then(async lista => {
         setInsumos(lista);
         // Auto-seed na primeira abertura da aba Produtos se não há nenhum produto agrícola
         if (aba === "produtos" && lista.filter(i => i.categoria === "produto_agricola").length === 0) {
           try {
             await seederProdutosAgricolas(fazendaId);
-            listarInsumosParaConta(fazendaId ?? undefined).then(setInsumos).catch(() => {});
+            listarInsumosParaConta(contaId, fazendaId ?? undefined).then(setInsumos).catch(() => {});
           } catch {}
         }
       }).catch(e => setErro(e.message));
@@ -4878,7 +4878,7 @@ function CadastrosInner() {
                       setSeedingProdutos(true);
                       try {
                         const n = await seederProdutosAgricolas(fazIdEff);
-                        const lista = await listarInsumosParaConta(fazIdEff ?? undefined);
+                        const lista = await listarInsumosParaConta(contaId, fazIdEff ?? undefined);
                         setInsumos(lista);
                         if (n === 0) alert("Todos os produtos padrão já estão cadastrados.");
                         else alert(`${n} produto${n > 1 ? "s" : ""} adicionado${n > 1 ? "s" : ""} com sucesso.`);
