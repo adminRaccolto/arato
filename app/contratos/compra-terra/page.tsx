@@ -205,6 +205,8 @@ export default function CompraTerrPage() {
   const [expandido, setExpandido] = useState<string | null>(null);
   const [filtroStatus, setFiltroStatus] = useState<StatusCCT | "todos">("todos");
   const [baixando, setBaixando] = useState<string | null>(null);
+  const [parcelasEditadas, setParcelasEditadas] = useState<Record<string, { data_vencimento?: string; valor?: string }>>({});
+  const [salvandoParcelas, setSalvandoParcelas] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -375,6 +377,38 @@ export default function CompraTerrPage() {
     if (!prox) return;
     await supabase.from("contratos_compra_terra").update({ status: prox }).eq("id", ct.id);
     carregar();
+  };
+
+  const excluirContrato = async (ct: ContratoCT) => {
+    if (!confirm(`Excluir o contrato "${ct.imovel_nome}"?\n\nTodos os pagamentos vinculados serão excluídos. Essa ação não pode ser desfeita.`)) return;
+    await supabase.from("cct_pagamentos").delete().eq("contrato_id", ct.id);
+    await supabase.from("contratos_compra_terra").delete().eq("id", ct.id);
+    setContratos(p => p.filter(x => x.id !== ct.id));
+    setPagamentos(p => p.filter(x => x.contrato_id !== ct.id));
+    setExpandido(null);
+  };
+
+  const editarPagamento = (id: string, campo: "data_vencimento" | "valor", valor: string) => {
+    setParcelasEditadas(prev => ({ ...prev, [id]: { ...prev[id], [campo]: valor } }));
+  };
+
+  const salvarAjustesPagamentos = async () => {
+    const ids = Object.keys(parcelasEditadas);
+    if (ids.length === 0) return;
+    setSalvandoParcelas(true);
+    try {
+      await Promise.all(ids.map(id => {
+        const ed = parcelasEditadas[id];
+        const upd: Record<string, unknown> = {};
+        if (ed.data_vencimento) upd.data_vencimento = ed.data_vencimento;
+        if (ed.valor !== undefined) upd.valor = parseFloat(ed.valor) || 0;
+        return supabase.from("cct_pagamentos").update(upd).eq("id", id);
+      }));
+      setParcelasEditadas({});
+      carregar();
+    } finally {
+      setSalvandoParcelas(false);
+    }
   };
 
   const baixarPagamento = async (pg: Pagamento) => {
@@ -563,7 +597,7 @@ export default function CompraTerrPage() {
                           {ct.observacoes && <div style={{ fontSize: 12, color: "#666", marginBottom: 14, padding: "8px 12px", background: "#fff", borderRadius: 6, border: "0.5px solid #DDE2EE" }}>{ct.observacoes}</div>}
 
                           {/* Ações */}
-                          <div style={{ display: "flex", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                             <button onClick={() => abrir(ct, true)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 12, cursor: "pointer", color: "#555" }}>Abrir</button>
                             <button onClick={() => abrir(ct, false)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", fontSize: 12, cursor: "pointer", color: "#1A4870" }}>✏ Editar</button>
                             {podAvancar && ct.status !== "cancelado" && (
@@ -571,6 +605,8 @@ export default function CompraTerrPage() {
                                 Avançar para {STATUS_META[PIPELINE[pipeIdx + 1]].label} →
                               </button>
                             )}
+                            <div style={{ flex: 1 }} />
+                            <button onClick={() => excluirContrato(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #E24B4A", background: "#FCEBEB", fontSize: 12, cursor: "pointer", color: "#E24B4A", fontWeight: 600 }}>🗑 Excluir</button>
                           </div>
                         </div>
                       )}
@@ -585,8 +621,16 @@ export default function CompraTerrPage() {
         {/* ── ABA PAGAMENTOS ── */}
         {aba === "pagamentos" && (
           <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", fontSize: 13, fontWeight: 600, color: "#1A4870" }}>
-              Parcelas Diretas ao Vendedor
+            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1A4870" }}>Parcelas Diretas ao Vendedor</div>
+              {Object.keys(parcelasEditadas).length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, color: "#7A4300" }}>✏ Ajustes não salvos</span>
+                  <button onClick={salvarAjustesPagamentos} disabled={salvandoParcelas} style={{ padding: "5px 14px", borderRadius: 6, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {salvandoParcelas ? "Salvando…" : "Salvar ajustes"}
+                  </button>
+                </div>
+              )}
             </div>
             {pagamentos.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center", color: "#aaa" }}>Nenhuma parcela registrada</div>
@@ -594,8 +638,8 @@ export default function CompraTerrPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA" }}>
-                    {["Imóvel", "Vencimento", "Valor", "Status", "Pago em", ""].map(h => (
-                      <th key={h} style={{ padding: "9px 14px", fontWeight: 600, fontSize: 11, color: "#888", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
+                    {["Imóvel", "Vencimento ✏", "Valor ✏", "Status", "Pago em", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "9px 14px", fontWeight: 600, fontSize: 11, color: i === 1 || i === 2 ? "#C9921B" : "#888", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -606,16 +650,37 @@ export default function CompraTerrPage() {
                     const stBg = pg.status === "pago" ? "#E8F5EB" : atrasado ? "#FCEBEB" : "#FBF3E0";
                     const stCl = pg.status === "pago" ? "#16A34A" : atrasado ? "#E24B4A" : "#C9921B";
                     const stLabel = pg.status === "pago" ? "Pago" : atrasado ? "Atrasado" : "Pendente";
+                    const ed = parcelasEditadas[pg.id];
+                    const dataEditada = !!ed?.data_vencimento;
+                    const valorEditado = ed?.valor !== undefined;
+                    const inpBase: React.CSSProperties = { border: "0.5px solid #DDE2EE", borderRadius: 4, padding: "3px 6px", fontSize: 12, background: "transparent", width: "100%" };
+                    const inpEdit: React.CSSProperties = { ...inpBase, background: "#FBF3E0", border: "0.5px solid #C9921B", fontWeight: 600 };
                     return (
-                      <tr key={pg.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #DDE2EE" }}>
-                        <td style={{ padding: "9px 14px" }}>{ct?.imovel_nome ?? "—"}</td>
-                        <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums" }}>{new Date(pg.data_vencimento + "T00:00").toLocaleDateString("pt-BR")}</td>
-                        <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmt(pg.valor)}</td>
-                        <td style={{ padding: "9px 14px" }}>
+                      <tr key={pg.id} style={{ background: pg.status === "pago" ? "#F0FDF4" : i % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #DDE2EE" }}>
+                        <td style={{ padding: "7px 14px" }}>{ct?.imovel_nome ?? "—"}</td>
+                        <td style={{ padding: "4px 10px", minWidth: 140 }}>
+                          <input
+                            type="date"
+                            value={ed?.data_vencimento ?? pg.data_vencimento}
+                            onChange={e => editarPagamento(pg.id, "data_vencimento", e.target.value)}
+                            style={dataEditada ? inpEdit : inpBase}
+                          />
+                        </td>
+                        <td style={{ padding: "4px 10px", minWidth: 120 }}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={valorEditado ? ed!.valor! : pg.valor}
+                            onChange={e => editarPagamento(pg.id, "valor", e.target.value)}
+                            style={{ ...(valorEditado ? inpEdit : inpBase), textAlign: "right" }}
+                          />
+                        </td>
+                        <td style={{ padding: "7px 14px" }}>
                           <span style={{ padding: "2px 8px", borderRadius: 10, background: stBg, color: stCl, fontSize: 11, fontWeight: 600 }}>{stLabel}</span>
                         </td>
-                        <td style={{ padding: "9px 14px", color: "#888" }}>{pg.data_pagamento ? new Date(pg.data_pagamento + "T00:00").toLocaleDateString("pt-BR") : "—"}</td>
-                        <td style={{ padding: "9px 14px" }}>
+                        <td style={{ padding: "7px 14px", color: "#888", fontSize: 12 }}>{pg.data_pagamento ? new Date(pg.data_pagamento + "T00:00").toLocaleDateString("pt-BR") : "—"}</td>
+                        <td style={{ padding: "7px 14px" }}>
                           {pg.status !== "pago" && (
                             <button onClick={() => baixarPagamento(pg)} disabled={baixando === pg.id} style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #16A34A", background: "#fff", color: "#16A34A", fontSize: 12, cursor: "pointer" }}>
                               {baixando === pg.id ? "…" : "Baixar"}
