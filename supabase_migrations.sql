@@ -10051,3 +10051,9 @@ CREATE INDEX IF NOT EXISTS idx_cct_fazenda  ON contratos_compra_terra(fazenda_id
 CREATE INDEX IF NOT EXISTS idx_cct_conta    ON contratos_compra_terra(conta_id);
 CREATE INDEX IF NOT EXISTS idx_cct_pg_ct    ON cct_pagamentos(contrato_id);
 CREATE INDEX IF NOT EXISTS idx_cct_pg_fazenda ON cct_pagamentos(fazenda_id);
+
+-- ─── Seção 170: periodicidade em contratos_compra_terra ──────────────────────
+ALTER TABLE contratos_compra_terra
+  ADD COLUMN IF NOT EXISTS periodicidade text DEFAULT 'anual'
+    CHECK (periodicidade IN ('anual', 'semestral')),
+  ADD COLUMN IF NOT EXISTS data_primeira_parcela date;

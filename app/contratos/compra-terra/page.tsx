@@ -134,6 +134,8 @@ const FORM_VAZIO = {
   contrato_financeiro_id: "",
   num_parcelas_vendedor: "",
   dia_vencimento_parcela: "10",
+  periodicidade: "anual" as "anual" | "semestral",
+  data_primeira_parcela: "",
   cartorio_nome: "",
   escritura_numero: "",
   escritura_data: "",
@@ -142,6 +144,47 @@ const FORM_VAZIO = {
   custo_cartorio: "",
   observacoes: "",
 };
+
+// ── Gerador de preview de parcelas ────────────────────────────────────────────
+type FormParc = {
+  valor_total: string;
+  valor_entrada: string;
+  num_parcelas_vendedor: string;
+  periodicidade: "anual" | "semestral";
+  data_primeira_parcela: string;
+  data_contrato: string;
+};
+
+function gerarPreviewParcelas(form: FormParc): { n: number; data: string; valor: number }[] {
+  const n = +form.num_parcelas_vendedor;
+  if (!n || n < 1 || !form.valor_total) return [];
+
+  const saldo = +form.valor_total - (+form.valor_entrada || 0);
+  if (saldo <= 0) return [];
+
+  const mesesEntre = form.periodicidade === "anual" ? 12 : 6;
+  const valorBase = Math.floor((saldo / n) * 100) / 100; // trunca centavos
+  const resto = +(saldo - valorBase * (n - 1)).toFixed(2); // última parcela absorve diferença de arredondamento
+
+  // Data base: data_primeira_parcela ou data_contrato + 1 intervalo
+  let base: Date;
+  if (form.data_primeira_parcela) {
+    base = new Date(form.data_primeira_parcela + "T00:00");
+  } else {
+    base = form.data_contrato ? new Date(form.data_contrato + "T00:00") : new Date();
+    base.setMonth(base.getMonth() + mesesEntre);
+  }
+
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(base);
+    d.setMonth(d.getMonth() + i * mesesEntre);
+    return {
+      n: i + 1,
+      data: d.toISOString().split("T")[0],
+      valor: i === n - 1 ? resto : valorBase,
+    };
+  });
+}
 
 // ── Componente principal ────────────────────────────────────────────────────────
 export default function CompraTerrPage() {
@@ -231,6 +274,8 @@ export default function CompraTerrPage() {
         contrato_financeiro_id: ct.contrato_financeiro_id ?? "",
         num_parcelas_vendedor: ct.num_parcelas_vendedor?.toString() ?? "",
         dia_vencimento_parcela: "10",
+        periodicidade: "anual" as "anual" | "semestral",
+        data_primeira_parcela: "",
         cartorio_nome: ct.cartorio_nome ?? "",
         escritura_numero: ct.escritura_numero ?? "",
         escritura_data: ct.escritura_data ?? "",
@@ -308,24 +353,13 @@ export default function CompraTerrPage() {
         +form.num_parcelas_vendedor > 0;
 
       if (precisaParcelas && contratoId) {
-        const n = +form.num_parcelas_vendedor;
-        const valorFinanciado = +form.valor_total - (+form.valor_entrada || 0);
-        const valorParcela = valorFinanciado / n;
-        const dia = +form.dia_vencimento_parcela || 10;
-        const base = form.data_contrato ? new Date(form.data_contrato) : new Date();
-
-        const rows = Array.from({ length: n }, (_, i) => {
-          const d = new Date(base);
-          d.setMonth(d.getMonth() + i + 1);
-          d.setDate(dia);
-          return {
-            contrato_id: contratoId,
-            fazenda_id: fazendaId,
-            data_vencimento: d.toISOString().split("T")[0],
-            valor: +valorParcela.toFixed(2),
-            status: "pendente" as const,
-          };
-        });
+        const rows = gerarPreviewParcelas(form).map(p => ({
+          contrato_id: contratoId,
+          fazenda_id: fazendaId,
+          data_vencimento: p.data,
+          valor: p.valor,
+          status: "pendente" as const,
+        }));
         await supabase.from("cct_pagamentos").insert(rows);
       }
 
@@ -803,15 +837,96 @@ export default function CompraTerrPage() {
                     </div>
                   )}
 
-                  {(form.forma_pagamento === "parcelado_vendedor" || (form.forma_pagamento === "misto" && !form.contrato_financeiro_id)) && !editId && (
-                    <div style={g2}>
-                      <div>
-                        <label style={lbl}>Número de Parcelas ao Vendedor</label>
-                        <input style={inp} type="number" min="1" value={form.num_parcelas_vendedor} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, num_parcelas_vendedor: e.target.value }))} />
+                  {(form.forma_pagamento === "parcelado_vendedor" || (form.forma_pagamento === "misto" && !form.contrato_financeiro_id)) && (
+                    <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+                      {/* Cabeçalho da seção */}
+                      <div style={{ padding: "10px 14px", background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE", fontSize: 12, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        Cronograma de Parcelas ao Vendedor
                       </div>
-                      <div>
-                        <label style={lbl}>Dia de Vencimento</label>
-                        <input style={inp} type="number" min="1" max="28" value={form.dia_vencimento_parcela} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, dia_vencimento_parcela: e.target.value }))} />
+                      <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+
+                        {/* Periodicidade + Qtd + Data 1ª */}
+                        <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
+                          <div>
+                            <label style={lbl}>Periodicidade</label>
+                            <div style={{ display: "flex", gap: 0, borderRadius: 6, overflow: "hidden", border: "0.5px solid #DDE2EE" }}>
+                              {(["anual", "semestral"] as const).map(p => (
+                                <button key={p} type="button" disabled={viewOnly} onClick={() => setForm(f => ({ ...f, periodicidade: p }))}
+                                  style={{ padding: "7px 18px", border: "none", background: form.periodicidade === p ? "#1A4870" : "#fff", color: form.periodicidade === p ? "#fff" : "#555", fontSize: 13, fontWeight: form.periodicidade === p ? 600 : 400, cursor: viewOnly ? "default" : "pointer" }}>
+                                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label style={lbl}>Nº de Parcelas</label>
+                            <input style={{ ...inp, width: 80 }} type="number" min="1" max="30" value={form.num_parcelas_vendedor} disabled={viewOnly}
+                              onChange={e => setForm(p => ({ ...p, num_parcelas_vendedor: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Data da 1ª Parcela</label>
+                            <input style={inp} type="date" value={form.data_primeira_parcela} disabled={viewOnly}
+                              onChange={e => setForm(p => ({ ...p, data_primeira_parcela: e.target.value }))} />
+                          </div>
+                        </div>
+
+                        {/* Grid de preview */}
+                        {(() => {
+                          const parcelas = gerarPreviewParcelas(form);
+                          if (!parcelas.length) return (
+                            <div style={{ padding: "12px 0", fontSize: 12, color: "#aaa", textAlign: "center" }}>
+                              Preencha o valor total, entrada e número de parcelas para ver o cronograma.
+                            </div>
+                          );
+                          const saldo = +form.valor_total - (+form.valor_entrada || 0);
+                          return (
+                            <div>
+                              {/* Resumo acima do grid */}
+                              <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#555", marginBottom: 10, padding: "8px 12px", background: "#EBF2FB", borderRadius: 7, border: "0.5px solid #BDD5EE" }}>
+                                <span>Saldo a parcelar: <strong style={{ color: "#1A4870" }}>{fmt(saldo)}</strong></span>
+                                <span>÷ {parcelas.length} parcelas {form.periodicidade === "anual" ? "anuais" : "semestrais"}</span>
+                                <span>= <strong style={{ color: "#1A4870" }}>{fmt(parcelas[0]?.valor ?? 0)}/parcela</strong></span>
+                                {parcelas[parcelas.length - 1]?.valor !== parcelas[0]?.valor && (
+                                  <span style={{ color: "#888" }}>(última: {fmt(parcelas[parcelas.length - 1].valor)})</span>
+                                )}
+                              </div>
+
+                              {/* Tabela */}
+                              <div style={{ maxHeight: 260, overflowY: "auto", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                  <thead>
+                                    <tr style={{ background: "#F4F6FA", position: "sticky", top: 0 }}>
+                                      <th style={{ padding: "6px 12px", textAlign: "left", fontWeight: 600, color: "#888", fontSize: 11, textTransform: "uppercase" }}>Nº</th>
+                                      <th style={{ padding: "6px 12px", textAlign: "left", fontWeight: 600, color: "#888", fontSize: 11, textTransform: "uppercase" }}>Vencimento</th>
+                                      <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#888", fontSize: 11, textTransform: "uppercase" }}>Valor</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {parcelas.map((p, i) => (
+                                      <tr key={i} style={{ borderTop: "0.5px solid #DDE2EE", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                                        <td style={{ padding: "6px 12px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{p.n}</td>
+                                        <td style={{ padding: "6px 12px", fontVariantNumeric: "tabular-nums" }}>
+                                          {new Date(p.data + "T00:00").toLocaleDateString("pt-BR")}
+                                        </td>
+                                        <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                                          {fmt(p.valor)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                                      <td colSpan={2} style={{ padding: "6px 12px", fontWeight: 600, fontSize: 12 }}>Total parcelado</td>
+                                      <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>
+                                        {fmt(parcelas.reduce((s, p) => s + p.valor, 0))}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
