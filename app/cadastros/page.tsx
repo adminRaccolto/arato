@@ -354,7 +354,7 @@ function CadastrosInner() {
   const [editPes, setEditPes]         = useState<Pessoa | null>(null);
   const [fPes, setFPes]               = useState({ nome: "", tipo: "pj" as "pf"|"pj", cliente: true, fornecedor: false, cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", nome_contato: "", telefone_contato: "", banco_nome: "", banco_agencia: "", banco_conta: "", banco_tipo: "", pix_chave: "", pix_tipo: "", regime_tributario: "", cnae: "", situacao_cadastral: "", subcategorias: [] as string[], criar_deposito_terceiro: false });
   const [novaSubcat, setNovaSubcat]   = useState("");
-  const [filtroPes,  setFiltroPes]    = useState({ subcat: "", busca: "" });
+  const [filtroPes,  setFiltroPes]    = useState({ busca: "", subcat: "", cpf: "", municipio: "", tipo: "", papel: "" });
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
 
   // ── Safras ──
@@ -1584,6 +1584,18 @@ function CadastrosInner() {
   };
   const salvarPes = () => salvar(async () => {
     if (!fPes.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+    // Valida CPF/CNPJ duplicado
+    if (fPes.cpf_cnpj.trim()) {
+      const docNovo = fPes.cpf_cnpj.replace(/\D/g, "");
+      const duplicado = pessoas.find(p => {
+        if (editPes && p.id === editPes.id) return false; // ignora o próprio registro ao editar
+        return p.cpf_cnpj && p.cpf_cnpj.replace(/\D/g, "") === docNovo;
+      });
+      if (duplicado) {
+        setErroModal(`CPF/CNPJ já cadastrado para: ${duplicado.nome}`);
+        return;
+      }
+    }
     setErroModal("");
     // Não salvar o campo de controle de UI no banco
     const { criar_deposito_terceiro, ...pesPayload } = fPes;
@@ -2439,24 +2451,74 @@ function CadastrosInner() {
             const pessoasFilt = pessoas.filter(p => {
               if (filtroPes.busca && !p.nome.toLowerCase().includes(filtroPes.busca.toLowerCase())) return false;
               if (filtroPes.subcat && !(p.subcategorias ?? []).includes(filtroPes.subcat)) return false;
+              if (filtroPes.cpf) {
+                const q = filtroPes.cpf.replace(/\D/g, "");
+                const docDigits = (p.cpf_cnpj ?? "").replace(/\D/g, "");
+                if (q && !docDigits.includes(q)) return false;
+                if (!q && !(p.cpf_cnpj ?? "").toLowerCase().includes(filtroPes.cpf.toLowerCase())) return false;
+              }
+              if (filtroPes.municipio && !(p.municipio ?? "").toLowerCase().includes(filtroPes.municipio.toLowerCase())) return false;
+              if (filtroPes.tipo && p.tipo !== filtroPes.tipo) return false;
+              if (filtroPes.papel === "cliente" && !p.cliente) return false;
+              if (filtroPes.papel === "fornecedor" && !p.fornecedor) return false;
               return true;
             });
+            const temFiltro = !!(filtroPes.busca || filtroPes.subcat || filtroPes.cpf || filtroPes.municipio || filtroPes.tipo || filtroPes.papel);
+            const thFilt: React.CSSProperties = { padding: "4px 8px", borderBottom: "0.5px solid var(--border-row)", background: "#F8F9FC" };
+            const inpFilt: React.CSSProperties = { width: "100%", padding: "4px 7px", border: "0.5px solid var(--border-table)", borderRadius: 5, fontSize: 11, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" as const };
             return (
               <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 12, alignItems: "center" }}>
-                  <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14, flexShrink: 0 }}>Pessoas <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({pessoas.length})</span></div>
-                  <input style={{ ...inp, width: 200, padding: "6px 10px", fontSize: 12 }} placeholder="Buscar por nome…" value={filtroPes.busca} onChange={e => setFiltroPes(f => ({ ...f, busca: e.target.value }))} />
-                  <select style={{ ...inp, width: 240, padding: "6px 10px", fontSize: 12 }} value={filtroPes.subcat} onChange={e => setFiltroPes(f => ({ ...f, subcat: e.target.value }))}>
+                  <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14, flexShrink: 0 }}>
+                    Pessoas <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({pessoasFilt.length}{temFiltro ? `/${pessoas.length}` : ""})</span>
+                  </div>
+                  <select style={{ ...inp, width: 220, padding: "6px 10px", fontSize: 12 }} value={filtroPes.subcat} onChange={e => setFiltroPes(f => ({ ...f, subcat: e.target.value }))}>
                     <option value="">Todas as subcategorias</option>
                     {todasSubcats.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
-                  {(filtroPes.busca || filtroPes.subcat) && (
-                    <button style={{ ...btnE, fontSize: 11, whiteSpace: "nowrap" }} onClick={() => setFiltroPes({ subcat: "", busca: "" })}>✕ Limpar</button>
+                  {temFiltro && (
+                    <button style={{ ...btnE, fontSize: 11, whiteSpace: "nowrap" }} onClick={() => setFiltroPes({ busca: "", subcat: "", cpf: "", municipio: "", tipo: "", papel: "" })}>✕ Limpar filtros</button>
                   )}
                   <button style={{ ...btnV, marginLeft: "auto" }} onClick={() => abrirModalPes()}>+ Nova Pessoa</button>
                 </div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <TH cols={["Nome", "Subcategorias", "Tipo", "CPF / CNPJ", "Papel", "Município", "Contato", ""]} />
+                <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-page)" }}>
+                      {["Nome", "Subcategorias", "Tipo", "CPF / CNPJ", "Papel", "Município", "Contato", ""].map((h, i) => (
+                        <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                    {/* Linha de filtros por coluna */}
+                    <tr>
+                      <th style={thFilt}>
+                        <input style={inpFilt} placeholder="Filtrar nome…" value={filtroPes.busca} onChange={e => setFiltroPes(f => ({ ...f, busca: e.target.value }))} />
+                      </th>
+                      <th style={thFilt} />
+                      <th style={thFilt}>
+                        <select style={inpFilt} value={filtroPes.tipo} onChange={e => setFiltroPes(f => ({ ...f, tipo: e.target.value }))}>
+                          <option value="">Todos</option>
+                          <option value="pf">PF</option>
+                          <option value="pj">PJ</option>
+                        </select>
+                      </th>
+                      <th style={thFilt}>
+                        <input style={inpFilt} placeholder="Filtrar CPF/CNPJ…" value={filtroPes.cpf} onChange={e => setFiltroPes(f => ({ ...f, cpf: e.target.value }))} />
+                      </th>
+                      <th style={thFilt}>
+                        <select style={inpFilt} value={filtroPes.papel} onChange={e => setFiltroPes(f => ({ ...f, papel: e.target.value }))}>
+                          <option value="">Todos</option>
+                          <option value="cliente">Cliente</option>
+                          <option value="fornecedor">Fornecedor</option>
+                        </select>
+                      </th>
+                      <th style={thFilt}>
+                        <input style={inpFilt} placeholder="Filtrar município…" value={filtroPes.municipio} onChange={e => setFiltroPes(f => ({ ...f, municipio: e.target.value }))} />
+                      </th>
+                      <th style={thFilt} />
+                      <th style={thFilt} />
+                    </tr>
+                  </thead>
                   <tbody>
                     {pessoasFilt.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma pessoa encontrada</td></tr>}
                     {pessoasFilt.map((p, i) => (
@@ -2478,7 +2540,7 @@ function CadastrosInner() {
                           </div>
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(p.tipo.toUpperCase(), p.tipo === "pj" ? "#E6F1FB" : "#FBF0D8", p.tipo === "pj" ? "#0C447C" : "#7A5A12")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.cpf_cnpj || "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontFamily: "monospace", fontSize: 12 }}>{p.cpf_cnpj || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                             {p.cliente    && badge("Cliente", "#E8E8E8", "#0D0D0D")}
@@ -2497,6 +2559,7 @@ function CadastrosInner() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             );
           })()}
