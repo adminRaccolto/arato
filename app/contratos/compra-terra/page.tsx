@@ -105,6 +105,18 @@ const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curren
 const fmtHa = (v: number | null | undefined) => v ? v.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " ha" : "—";
 const TODAY = new Date().toISOString().split("T")[0];
 
+function displayBRL(stored: string): string {
+  if (!stored) return "";
+  const n = parseFloat(stored);
+  if (isNaN(n)) return stored;
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function parseBRLInput(typed: string): string {
+  const digits = typed.replace(/\D/g, "");
+  if (!digits) return "";
+  return (parseInt(digits, 10) / 100).toFixed(2);
+}
+
 // ── Formulário vazio ────────────────────────────────────────────────────────────
 const FORM_VAZIO = {
   numero: "",
@@ -207,6 +219,7 @@ export default function CompraTerrPage() {
   const [baixando, setBaixando] = useState<string | null>(null);
   const [parcelasEditadas, setParcelasEditadas] = useState<Record<string, { data_vencimento?: string; valor?: string }>>({});
   const [salvandoParcelas, setSalvandoParcelas] = useState(false);
+  const [parcelasCustom, setParcelasCustom] = useState<{ n: number; data: string; valor: string }[] | null>(null);
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -293,6 +306,7 @@ export default function CompraTerrPage() {
     }
     setViewOnly(soLeitura);
     setAbaModal("imovel");
+    setParcelasCustom(null);
     setShowModal(true);
   };
 
@@ -355,7 +369,10 @@ export default function CompraTerrPage() {
         +form.num_parcelas_vendedor > 0;
 
       if (precisaParcelas && contratoId) {
-        const rows = gerarPreviewParcelas(form).map(p => ({
+        const fonte = parcelasCustom
+          ? parcelasCustom.map(p => ({ data: p.data, valor: parseFloat(p.valor) || 0 }))
+          : gerarPreviewParcelas(form);
+        const rows = fonte.map(p => ({
           contrato_id: contratoId,
           fazenda_id: fazendaId,
           data_vencimento: p.data,
@@ -839,7 +856,7 @@ export default function CompraTerrPage() {
                   <div style={g3}>
                     <div>
                       <label style={lbl}>Valor Total do Imóvel (R$) *</label>
-                      <input style={inp} type="number" step="0.01" value={form.valor_total} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_total: e.target.value }))} />
+                      <input style={inp} type="text" inputMode="numeric" value={displayBRL(form.valor_total)} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_total: parseBRLInput(e.target.value) }))} />
                     </div>
                     <div>
                       <label style={lbl}>Valor Terra Nua (R$)</label>
@@ -883,7 +900,7 @@ export default function CompraTerrPage() {
                     <div style={g2}>
                       <div>
                         <label style={lbl}>Entrada / Sinal (R$)</label>
-                        <input style={inp} type="number" step="0.01" value={form.valor_entrada} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_entrada: e.target.value }))} />
+                        <input style={inp} type="text" inputMode="numeric" value={displayBRL(form.valor_entrada)} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_entrada: parseBRLInput(e.target.value) }))} />
                       </div>
                       <div>
                         <label style={lbl}>Data da Entrada</label>
@@ -935,24 +952,43 @@ export default function CompraTerrPage() {
                           </div>
                         </div>
 
-                        {/* Grid de preview */}
+                        {/* Grid de preview / edição de parcelas */}
                         {(() => {
-                          const parcelas = gerarPreviewParcelas(form);
-                          if (!parcelas.length) return (
+                          const autoParc = gerarPreviewParcelas(form);
+                          if (!autoParc.length) return (
                             <div style={{ padding: "12px 0", fontSize: 12, color: "#aaa", textAlign: "center" }}>
                               Preencha o valor total, entrada e número de parcelas para ver o cronograma.
                             </div>
                           );
+                          const isCustom = parcelasCustom !== null;
+                          const parcelas: Array<{ n: number; data: string; valor: number | string }> =
+                            isCustom ? parcelasCustom! : autoParc;
                           const saldo = +form.valor_total - (+form.valor_entrada || 0);
                           return (
                             <div>
-                              {/* Resumo acima do grid */}
-                              <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#555", marginBottom: 10, padding: "8px 12px", background: "#EBF2FB", borderRadius: 7, border: "0.5px solid #BDD5EE" }}>
+                              {/* Resumo + botão personalizar */}
+                              <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#555", marginBottom: 10, padding: "8px 12px", background: "#EBF2FB", borderRadius: 7, border: "0.5px solid #BDD5EE", alignItems: "center", flexWrap: "wrap" }}>
                                 <span>Saldo a parcelar: <strong style={{ color: "#1A4870" }}>{fmt(saldo)}</strong></span>
                                 <span>÷ {parcelas.length} parcelas {form.periodicidade === "anual" ? "anuais" : "semestrais"}</span>
-                                <span>= <strong style={{ color: "#1A4870" }}>{fmt(parcelas[0]?.valor ?? 0)}/parcela</strong></span>
-                                {parcelas[parcelas.length - 1]?.valor !== parcelas[0]?.valor && (
-                                  <span style={{ color: "#888" }}>(última: {fmt(parcelas[parcelas.length - 1].valor)})</span>
+                                {!isCustom && <span>= <strong style={{ color: "#1A4870" }}>{fmt(+(parcelas[0]?.valor || 0))}/parcela</strong></span>}
+                                {!isCustom && +parcelas[parcelas.length - 1]?.valor !== +parcelas[0]?.valor && (
+                                  <span style={{ color: "#888" }}>(última: {fmt(+parcelas[parcelas.length - 1].valor)})</span>
+                                )}
+                                {isCustom && <span style={{ color: "#C9921B", fontWeight: 600 }}>✏ Personalizado</span>}
+                                {!viewOnly && (
+                                  <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                                    {isCustom ? (
+                                      <button type="button" onClick={() => setParcelasCustom(null)}
+                                        style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "#fff", color: "#555", cursor: "pointer" }}>
+                                        ↺ Restaurar automático
+                                      </button>
+                                    ) : (
+                                      <button type="button" onClick={() => setParcelasCustom(autoParc.map(p => ({ n: p.n, data: p.data, valor: p.valor.toFixed(2) })))}
+                                        style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", color: "#7A5A12", cursor: "pointer" }}>
+                                        ✏ Personalizar datas/valores
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
                               </div>
 
@@ -963,18 +999,30 @@ export default function CompraTerrPage() {
                                     <tr style={{ background: "#F4F6FA", position: "sticky", top: 0 }}>
                                       <th style={{ padding: "6px 12px", textAlign: "left", fontWeight: 600, color: "#888", fontSize: 11, textTransform: "uppercase" }}>Nº</th>
                                       <th style={{ padding: "6px 12px", textAlign: "left", fontWeight: 600, color: "#888", fontSize: 11, textTransform: "uppercase" }}>Vencimento</th>
-                                      <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#888", fontSize: 11, textTransform: "uppercase" }}>Valor</th>
+                                      <th style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, color: "#888", fontSize: 11, textTransform: "uppercase" }}>Valor (R$)</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {parcelas.map((p, i) => (
                                       <tr key={i} style={{ borderTop: "0.5px solid #DDE2EE", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                                         <td style={{ padding: "6px 12px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{p.n}</td>
-                                        <td style={{ padding: "6px 12px", fontVariantNumeric: "tabular-nums" }}>
-                                          {new Date(p.data + "T00:00").toLocaleDateString("pt-BR")}
+                                        <td style={{ padding: "4px 8px", fontVariantNumeric: "tabular-nums" }}>
+                                          {isCustom && !viewOnly ? (
+                                            <input type="date" value={p.data}
+                                              onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
+                                              style={{ border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "3px 6px", fontSize: 12, background: "#FBF3E0", width: "100%" }} />
+                                          ) : (
+                                            new Date(p.data + "T00:00").toLocaleDateString("pt-BR")
+                                          )}
                                         </td>
-                                        <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                                          {fmt(p.valor)}
+                                        <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                                          {isCustom && !viewOnly ? (
+                                            <input type="text" inputMode="numeric" value={displayBRL(String(p.valor))}
+                                              onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, valor: parseBRLInput(e.target.value) } : x))}
+                                              style={{ border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "3px 6px", fontSize: 12, width: 120, textAlign: "right", background: "#FBF3E0" }} />
+                                          ) : (
+                                            fmt(+p.valor)
+                                          )}
                                         </td>
                                       </tr>
                                     ))}
@@ -983,7 +1031,7 @@ export default function CompraTerrPage() {
                                     <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
                                       <td colSpan={2} style={{ padding: "6px 12px", fontWeight: 600, fontSize: 12 }}>Total parcelado</td>
                                       <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>
-                                        {fmt(parcelas.reduce((s, p) => s + p.valor, 0))}
+                                        {fmt(parcelas.reduce((s, p) => s + +p.valor, 0))}
                                       </td>
                                     </tr>
                                   </tfoot>
