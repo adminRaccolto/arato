@@ -6,7 +6,7 @@ import {
   listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
-  listarPessoasDaConta, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
+  listarPessoasDaConta, listarInsumos, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro,
@@ -354,6 +354,11 @@ export default function ComprasPage() {
   const [iaConfianca, setIaConfianca] = useState<"alta" | "media" | "baixa" | null>(null);
   const [iaPdfNome,   setIaPdfNome]   = useState<string | null>(null);
 
+  // Modal de criação/associação de insumo a partir do item extraído pela IA
+  const [modalNovoInsumo, setModalNovoInsumo] = useState<{ itemIdx: number; nomePreenchido: string } | null>(null);
+  const [novoInsumoForm, setNovoInsumoForm] = useState({ nome: "", categoria: "outros" as Insumo["categoria"], unidade: "kg" as Insumo["unidade"] });
+  const [salvandoInsumo, setSalvandoInsumo] = useState(false);
+
   // ── Carregamento ─────────────────────────────────────────────
 
   const carregar = useCallback(async () => {
@@ -608,6 +613,36 @@ export default function ComprasPage() {
       setIaConfianca("baixa");
     } finally {
       setIaExtraindo(false);
+    }
+  };
+
+  const criarEVincularInsumo = async () => {
+    if (!modalNovoInsumo || !fazendaId) return;
+    setSalvandoInsumo(true);
+    try {
+      const novo = await criarInsumo({
+        fazenda_id: fazendaId,
+        nome: novoInsumoForm.nome.trim(),
+        categoria: novoInsumoForm.categoria,
+        unidade: novoInsumoForm.unidade,
+        tipo: "insumo",
+        estoque: 0,
+        estoque_minimo: 0,
+        valor_unitario: 0,
+      });
+      // Recarrega lista de insumos
+      const insAtualizado = await listarInsumos(fazendaId);
+      setInsumos(insAtualizado);
+      // Vincula o novo insumo ao item
+      const idx = modalNovoInsumo.itemIdx;
+      setItens(prev => prev.map((x, j) => j === idx
+        ? { ...x, insumo_id: novo.id, nome_item: novo.nome, unidade: novo.unidade }
+        : x));
+      setModalNovoInsumo(null);
+    } catch (e) {
+      alert("Erro ao criar insumo: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSalvandoInsumo(false);
     }
   };
 
@@ -1227,13 +1262,23 @@ export default function ComprasPage() {
                         </label>
                       </div>
                     </div>
-                    {iaConfianca && !iaExtraindo && (
-                      <div style={{ marginTop: 8, fontSize: 11, color: "#7A4300", borderTop: "0.5px solid #C9921B40", paddingTop: 7 }}>
-                        {iaPdfNome && <>📎 <strong>{iaPdfNome}</strong> — </>}
-                        Fornecedor, itens, quantidades e preços foram preenchidos automaticamente. Revise e ajuste antes de salvar.
-                        {iaConfianca === "alta" && <span style={{ marginLeft: 8, color: "#16A34A" }}>Itens da aba Itens foram preenchidos com os dados do PDF.</span>}
-                      </div>
-                    )}
+                    {iaConfianca && !iaExtraindo && (() => {
+                      const totalItensIa = itens.filter(it => it.tipo_item === "produto").length;
+                      const semVinculo   = itens.filter(it => it.tipo_item === "produto" && !it.insumo_id).length;
+                      const comVinculo   = totalItensIa - semVinculo;
+                      return (
+                        <div style={{ marginTop: 8, fontSize: 11, color: "#7A4300", borderTop: "0.5px solid #C9921B40", paddingTop: 7 }}>
+                          {iaPdfNome && <>📎 <strong>{iaPdfNome}</strong> — </>}
+                          Fornecedor, itens, quantidades e preços foram preenchidos automaticamente. Revise e ajuste antes de salvar.
+                          {totalItensIa > 0 && (
+                            <span style={{ marginLeft: 8 }}>
+                              <span style={{ color: "#16A34A", fontWeight: 600 }}>{comVinculo} vinculado{comVinculo !== 1 ? "s" : ""}</span>
+                              {semVinculo > 0 && <> · <span style={{ color: "#E24B4A", fontWeight: 600 }}>{semVinculo} sem insumo</span> — vá à aba <strong>Itens</strong> e crie ou vincule</>}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -1599,22 +1644,41 @@ export default function ComprasPage() {
                             {lista.length === 0 && (
                               <tr><td colSpan={8} style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
                             )}
-                            {lista.map(it => (
-                              <tr key={it._idx} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                            {lista.map(it => {
+                              const semVinculo = iaConfianca && !it.insumo_id;
+                              return (
+                              <tr key={it._idx} style={{ borderBottom: "0.5px solid var(--border-row)", background: semVinculo ? "#FFF5F5" : undefined }}>
                                 <td style={{ padding: "5px 6px", width: 90 }}>
                                   <span style={{ fontSize: 10, background: it.tipo_item === "produto" ? "#E8E8E8" : "#FBF3E0", color: it.tipo_item === "produto" ? "#0D0D0D" : "#7A5200", padding: "2px 6px", borderRadius: 6, fontWeight: 600 }}>{it.tipo_item === "produto" ? "Produto" : "Serviço"}</span>
                                 </td>
                                 <td style={{ padding: "5px 6px" }}>
-                                  <SearchableSelect
-                                    value={it.insumo_id}
-                                    onChange={id => {
-                                      const ins = insumos.find(i => i.id === id);
-                                      setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, insumo_id: id, nome_item: ins?.nome ?? x.nome_item, unidade: ins?.unidade ?? x.unidade } : x));
-                                    }}
-                                    options={insumos.map(i => ({ id: i.id, label: `${i.nome} (${i.unidade})` }))}
-                                    placeholder="— Selecionar insumo —"
-                                    style={{ fontSize: 12 }}
-                                  />
+                                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                    <div style={{ flex: 1 }}>
+                                      <SearchableSelect
+                                        value={it.insumo_id}
+                                        onChange={id => {
+                                          const ins = insumos.find(i => i.id === id);
+                                          setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, insumo_id: id, nome_item: ins?.nome ?? x.nome_item, unidade: ins?.unidade ?? x.unidade } : x));
+                                        }}
+                                        options={insumos.map(i => ({ id: i.id, label: `${i.nome} (${i.unidade})` }))}
+                                        placeholder="— Selecionar insumo —"
+                                        style={{ fontSize: 12 }}
+                                      />
+                                    </div>
+                                    {semVinculo && (
+                                      <button
+                                        title="Criar novo insumo ou vincular ao cadastro"
+                                        style={{ flexShrink: 0, padding: "3px 8px", border: "0.5px solid #E24B4A80", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", whiteSpace: "nowrap" }}
+                                        onClick={() => {
+                                          setNovoInsumoForm({ nome: it.nome_item, categoria: "outros", unidade: (it.unidade as Insumo["unidade"]) || "kg" });
+                                          setModalNovoInsumo({ itemIdx: it._idx, nomePreenchido: it.nome_item });
+                                        }}
+                                      >+ Criar insumo</button>
+                                    )}
+                                  </div>
+                                  {semVinculo && it.nome_item && (
+                                    <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>"{it.nome_item}" — sem vínculo com cadastro</div>
+                                  )}
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 60 }}>
                                   <select style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, unidade: e.target.value } : x))}>
@@ -1651,7 +1715,8 @@ export default function ComprasPage() {
                                   <button style={btnX} onClick={() => setItens(prev => prev.filter((_, j) => j !== it._idx))}>✕</button>
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                           <tfoot>
                             <tr style={{ background: "var(--bg-page)" }}>
@@ -2072,6 +2137,53 @@ export default function ComprasPage() {
                   </tbody>
                 </table>
               </>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Criar Insumo (a partir de item extraído pela IA) ── */}
+      {modalNovoInsumo && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, width: 440, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Criar Insumo no Cadastro</div>
+            <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 18 }}>
+              O item <strong>"{modalNovoInsumo.nomePreenchido}"</strong> extraído do PDF não foi encontrado no cadastro.<br/>
+              Preencha abaixo para cadastrá-lo e vinculá-lo automaticamente ao pedido.
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={lbl}>Nome do Insumo *</label>
+              <input style={inp} value={novoInsumoForm.nome} onChange={e => setNovoInsumoForm(p => ({ ...p, nome: e.target.value }))} autoFocus />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+              <div>
+                <label style={lbl}>Categoria *</label>
+                <select style={inp} value={novoInsumoForm.categoria} onChange={e => setNovoInsumoForm(p => ({ ...p, categoria: e.target.value as Insumo["categoria"] }))}>
+                  <option value="semente">Semente</option>
+                  <option value="fertilizante">Fertilizante</option>
+                  <option value="defensivo">Defensivo</option>
+                  <option value="corretivo">Corretivo de Solo</option>
+                  <option value="combustivel">Combustível</option>
+                  <option value="geral">Geral</option>
+                  <option value="outros">Outros</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Unidade *</label>
+                <select style={inp} value={novoInsumoForm.unidade} onChange={e => setNovoInsumoForm(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
+                  {(["kg","g","L","mL","sc","t","ton","un","m","m2","cx","pc","par","outros"] as Insumo["unidade"][]).map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button style={btnR} onClick={() => setModalNovoInsumo(null)} disabled={salvandoInsumo}>Cancelar</button>
+              <button
+                style={{ ...btnV, background: novoInsumoForm.nome.trim() ? "#1A4870" : "#ccc", cursor: novoInsumoForm.nome.trim() ? "pointer" : "default" }}
+                onClick={criarEVincularInsumo}
+                disabled={salvandoInsumo || !novoInsumoForm.nome.trim()}
+              >
+                {salvandoInsumo ? "Salvando…" : "Criar e Vincular"}
+              </button>
             </div>
           </div>
         </div>
