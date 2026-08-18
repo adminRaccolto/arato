@@ -259,6 +259,7 @@ type ItemForm = {
   unidade: string;
   quantidade: string;
   valor_unitario: string;
+  desconto_unitario: string;
   qtd_cancelada: string;
   qtd_entregue: number;
   centro_custo_id: string;
@@ -266,7 +267,7 @@ type ItemForm = {
 
 const ITEM_VAZIO: ItemForm = {
   tipo_item: "produto", insumo_id: "", nome_item: "", unidade: "kg",
-  quantidade: "", valor_unitario: "", qtd_cancelada: "0", qtd_entregue: 0, centro_custo_id: "",
+  quantidade: "", valor_unitario: "", desconto_unitario: "0", qtd_cancelada: "0", qtd_entregue: 0, centro_custo_id: "",
 };
 
 type FormPedido = {
@@ -450,7 +451,8 @@ export default function ComprasPage() {
   const calcItem = (it: ItemForm) => {
     const qty = parseFloat(it.quantidade) || 0;
     const vu  = parseFloat(it.valor_unitario) || 0;
-    return qty * vu;
+    const du  = parseFloat(it.desconto_unitario) || 0;
+    return qty * Math.max(0, vu - du);
   };
   const totalItens = itens.reduce((s, it) => s + calcItem(it), 0);
 
@@ -509,6 +511,7 @@ export default function ComprasPage() {
       id: it.id, tipo_item: it.tipo_item, insumo_id: it.insumo_id ?? "",
       nome_item: it.nome_item, unidade: it.unidade,
       quantidade: String(it.quantidade), valor_unitario: String(it.valor_unitario),
+      desconto_unitario: String(it.desconto_unitario ?? 0),
       qtd_cancelada: String(it.qtd_cancelada ?? 0), qtd_entregue: it.qtd_entregue ?? 0,
       centro_custo_id: it.centro_custo_id ?? "",
     })) : [{ ...ITEM_VAZIO }]);
@@ -607,6 +610,7 @@ export default function ComprasPage() {
             unidade: it.unidade || insumoMatch?.unidade || "UN",
             quantidade: String(it.quantidade ?? ""),
             valor_unitario: String(it.valor_unitario ?? ""),
+            desconto_unitario: "0",
             qtd_cancelada: "0",
             qtd_entregue: 0,
             centro_custo_id: "",
@@ -746,6 +750,7 @@ export default function ComprasPage() {
             unidade: it.unidade || ins?.unidade || "un",
             quantidade: parseFloat(it.quantidade) || 0,
             valor_unitario: parseFloat(it.valor_unitario) || 0,
+            desconto_unitario: parseFloat(it.desconto_unitario) || 0,
             qtd_cancelada: parseFloat(it.qtd_cancelada) || 0,
             qtd_entregue: it.qtd_entregue,
             centro_custo_id: it.centro_custo_id || undefined,
@@ -1700,13 +1705,13 @@ export default function ComprasPage() {
                       return (<>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead><tr style={{ background: "var(--bg-page)" }}>
-                            {["Item","Un.","Quantidade","Valor Unitário","Valor Total","Qtd. Cancel.",""].map((h, i) => (
-                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                            {["Item","Un.","Quantidade","Valor Unitário","Desc. Unitário","Valor Item","Qtd. Cancel.",""].map((h, i) => (
+                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: i === 4 ? "#C9921B" : "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                             ))}
                           </tr></thead>
                           <tbody>
                             {lista.length === 0 && (
-                              <tr><td colSpan={7} style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
+                              <tr><td colSpan={8} style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
                             )}
                             {lista.map(it => {
                               const semVinculo = !it.insumo_id;           // sem insumo vinculado (qualquer origem)
@@ -1761,15 +1766,16 @@ export default function ComprasPage() {
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 110 }}>
                                   <InputMonetario
-                                    style={{ ...inp, fontSize: 12, textAlign: "right", color: "#111111", fontWeight: 600 }}
-                                    value={calcItem(it)}
-                                    onChange={total => {
-                                      const qty = parseFloat(it.quantidade) || 0;
-                                      const vu = qty > 0 ? total / qty : 0;
-                                      setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: String(vu) } : x));
-                                    }}
+                                    style={{ ...inp, fontSize: 12, textAlign: "right", background: "#FBF3E0", color: "#7A5200" }}
+                                    value={it.desconto_unitario}
+                                    onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, desconto_unitario: String(v) } : x))}
                                     placeholder="0,00"
                                   />
+                                </td>
+                                <td style={{ padding: "5px 6px", width: 110 }}>
+                                  <div style={{ ...inp, fontSize: 12, textAlign: "right", color: "#111111", fontWeight: 600, background: "var(--bg-page)" }}>
+                                    {fmtMoeda(calcItem(it), f.cotacao_moeda)}
+                                  </div>
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 80 }}>
                                   <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.qtd_cancelada} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, qtd_cancelada: v } : x))} />
@@ -1783,7 +1789,7 @@ export default function ComprasPage() {
                           </tbody>
                           <tfoot>
                             <tr style={{ background: "var(--bg-page)" }}>
-                              <td colSpan={4} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
+                              <td colSpan={5} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
                               <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{fmtMoeda(lista.reduce((s, it) => s + calcItem(it), 0), f.cotacao_moeda)}</td>
                               <td colSpan={2} />
                             </tr>

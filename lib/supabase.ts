@@ -1774,6 +1774,7 @@ export type PedidoCompraItem = {
   unidade: string;
   quantidade: number;
   valor_unitario: number;
+  desconto_unitario?: number;
   valor_total?: number;
   qtd_cancelada?: number;
   qtd_entregue?: number;

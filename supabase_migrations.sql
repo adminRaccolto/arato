@@ -10087,3 +10087,9 @@ COMMENT ON COLUMN cct_pagamentos.moeda_parcela    IS 'BRL = reais; saca_soja/sac
 COMMENT ON COLUMN cct_pagamentos.quantidade_sacas IS 'Quantidade em sacas (60 kg) quando moeda_parcela != BRL';
 COMMENT ON COLUMN cct_pagamentos.preco_sc_ref     IS 'R$/sc usado para converter sacas em BRL no momento do lançamento';
 COMMENT ON COLUMN cct_pagamentos.ciclo_id         IS 'Ciclo vinculado (rateio por vencimento)';
+
+-- ─── Seção 174: pedidos_compra_itens — desconto unitário ─────────────────────
+ALTER TABLE pedidos_compra_itens
+  ADD COLUMN IF NOT EXISTS desconto_unitario numeric(14,4) NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN pedidos_compra_itens.desconto_unitario IS 'Desconto por unidade (R$). Valor Item = valor_unitario - desconto_unitario';
