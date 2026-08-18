@@ -20,7 +20,7 @@ interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha
 interface ArrPag     { id: string; arrendamento_id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface ArrBase    { id: string; fazenda_id: string; produto_agricola_id?: string | null; produto_agricola_id_milho?: string | null; produto_agricola_nome?: string | null; produto_agricola_nome_milho?: string | null }
 interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean }
-interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; data_entrega?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string }
+interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; data_entrega?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string; produtor_id?: string | null; produtor?: { nome: string } | null }
 interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
@@ -410,7 +410,7 @@ export default function BI() {
       supabase.from("arrendamento_pagamentos").select("id,arrendamento_id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
       supabase.from("arrendamentos").select("id,fazenda_id,produto_agricola_id,produto_agricola_id_milho").in("fazenda_id", fids),
       supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto").in("fazenda_id", fids),
-      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome").in("fazenda_id", fids),
+      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome,produtor_id,produtor:produtores(nome)").in("fazenda_id", fids),
       supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").in("fazenda_id", fids),
       fetch("/api/precos").then(r => r.json()),
       supabase.from("fazendas").select("id,nome").in("id", fids),
@@ -3159,7 +3159,7 @@ export default function BI() {
           type ProdRow = { nome: string; sc: number; valBRL: number; qtd: number };
           const prodMap = new Map<string, ProdRow>();
           for (const c of contratosVisiveis) {
-            const nome = c.produtor_nome || "Não informado";
+            const nome = c.produtor_nome || (c.produtor as { nome?: string } | null)?.nome || "Não informado";
             if (!prodMap.has(nome)) prodMap.set(nome, { nome, sc: 0, valBRL: 0, qtd: 0 });
             const e = prodMap.get(nome)!;
             const sc = recSc(c);
