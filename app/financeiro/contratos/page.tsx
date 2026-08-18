@@ -383,7 +383,30 @@ export default function ContratosFinanceiros() {
     }
     if (abaModal === "movimentacoes") {
       listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
-      listarParcelasPagamento(id).then(setParcelasPagamento).catch(() => {});
+      // Carrega parcelas e reconcilia status com lançamentos já baixados no CP
+      // (resolve dessincronização quando parcelas_pagamento.lancamento_id é NULL)
+      Promise.all([
+        listarParcelasPagamento(id),
+        supabase
+          .from("lancamentos")
+          .select("data_vencimento, status, data_baixa")
+          .eq("contrato_financeiro_id", id)
+          .in("status", ["baixado", "parcial"])
+          .then(r => r.data ?? []),
+      ]).then(([parcelas, lancsBaixados]) => {
+        if (lancsBaixados.length === 0) { setParcelasPagamento(parcelas); return; }
+        const datasBaixadas = new Map<string, string>();
+        for (const l of lancsBaixados) {
+          if (l.data_vencimento && !datasBaixadas.has(l.data_vencimento)) {
+            datasBaixadas.set(l.data_vencimento, l.data_baixa ?? "");
+          }
+        }
+        setParcelasPagamento(parcelas.map(p => {
+          if (p.status === "pago") return p;
+          const dataBaixa = datasBaixadas.get(p.data_vencimento);
+          return dataBaixa !== undefined ? { ...p, status: "pago" as const, data_pagamento: dataBaixa || undefined } : p;
+        }));
+      }).catch(() => {});
     }
   }, [contratoModal, abaModal, fazendaId]);
 

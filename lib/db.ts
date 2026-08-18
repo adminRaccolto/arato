@@ -641,10 +641,10 @@ export async function baixarLancamento(
     salvar_classificacao?: boolean;
   }
 ): Promise<void> {
-  // Lê valores atuais para calcular acumulado e decidir status
+  // Lê valores atuais + vínculo com contrato financeiro para sincronizar parcelas_pagamento
   const { data: atual } = await supabase
     .from("lancamentos")
-    .select("valor, cotacao_usd, moeda, valor_pago")
+    .select("valor, cotacao_usd, moeda, valor_pago, contrato_financeiro_id, data_vencimento")
     .eq("id", id)
     .single();
 
@@ -664,15 +664,21 @@ export async function baixarLancamento(
   const { error } = await supabase.from("lancamentos").update(patch).eq("id", id);
   if (error) throw error;
 
-  // Sincroniza parcelas_pagamento quando o lançamento tem origem em contrato financeiro.
-  // Ignora silenciosamente se não houver parcela vinculada.
-  await supabase
-    .from("parcelas_pagamento")
-    .update({
-      status:         novoStatus === "baixado" ? "pago" : "parcial",
-      data_pagamento: data_baixa,
-    })
-    .eq("lancamento_id", id);
+  const patchParcela = { status: novoStatus === "baixado" ? "pago" : "parcial", data_pagamento: data_baixa };
+
+  // Sincroniza via lancamento_id (vínculo direto)
+  await supabase.from("parcelas_pagamento").update(patchParcela).eq("lancamento_id", id);
+
+  // Fallback via contrato_financeiro_id + data_vencimento
+  // (cobre parcelas criadas sem lancamento_id, pagas via CP)
+  if (atual?.contrato_financeiro_id && atual?.data_vencimento) {
+    await supabase
+      .from("parcelas_pagamento")
+      .update(patchParcela)
+      .eq("contrato_id", atual.contrato_financeiro_id)
+      .eq("data_vencimento", atual.data_vencimento)
+      .neq("status", "pago");
+  }
 }
 
 /**
