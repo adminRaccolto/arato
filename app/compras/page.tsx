@@ -9,13 +9,23 @@ import {
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
-  listarIEsDeMultiplosProdutores, criarEstoqueTerceiro,
+  listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
 import AnexoDocumentos from "../../components/AnexoDocumentos";
+
+// ── Constantes ───────────────────────────────────────────────
+const ESTADOS_BR = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+const maskCpfCnpjPC = (v: string, tipo: "pf" | "pj") => {
+  const d = v.replace(/\D/g, "").slice(0, tipo === "pf" ? 11 : 14);
+  if (tipo === "pf") return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4").replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3").replace(/(\d{3})(\d{0,3})/, "$1.$2");
+  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5").replace(/(\d{2})(\d{3})(\d{3})(\d{0,4})/, "$1.$2.$3/$4").replace(/(\d{2})(\d{3})(\d{0,3})/, "$1.$2.$3").replace(/(\d{2})(\d{0,3})/, "$1.$2");
+};
+const maskCepPC  = (v: string) => v.replace(/\D/g, "").slice(0, 8).replace(/(\d{5})(\d{0,3})/, "$1-$2");
+const maskFonePC = (v: string) => { const d = v.replace(/\D/g, "").slice(0, 11); return d.length > 10 ? d.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3") : d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3"); };
 
 // ── Estilos base ─────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
@@ -365,6 +375,57 @@ export default function ComprasPage() {
   const [modalNovoInsumo, setModalNovoInsumo] = useState<{ itemIdx: number; nomePreenchido: string } | null>(null);
   const [novoInsumoForm, setNovoInsumoForm] = useState({ nome: "", categoria: "outros" as Insumo["categoria"], unidade: "kg" as Insumo["unidade"] });
   const [salvandoInsumo, setSalvandoInsumo] = useState(false);
+
+  // Mini-modal de cadastro rápido de Fornecedor (Pessoa)
+  const NOVO_FORN_VAZIO = { nome: "", tipo: "pj" as "pf"|"pj", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", municipio: "", municipio_ibge: "", estado: "MT" };
+  const [modalNovoForn, setModalNovoForn] = useState(false);
+  const [novoFornForm,  setNovoFornForm]  = useState(NOVO_FORN_VAZIO);
+  const [salvandoForn,  setSalvandoForn]  = useState(false);
+  const [errForn,       setErrForn]       = useState("");
+
+  async function buscarCepForn(cep: string) {
+    const digits = cep.replace(/\D/g, "");
+    if (digits.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const d = await r.json();
+      if (!d.erro) setNovoFornForm(p => ({ ...p, logradouro: d.logradouro || "", municipio: d.localidade || "", municipio_ibge: d.ibge || "", estado: d.uf || "MT" }));
+    } catch { /* silencioso */ }
+  }
+
+  async function salvarNovoForn() {
+    if (!novoFornForm.nome.trim()) { setErrForn("Preencha o Nome."); return; }
+    if (!fazendaId) return;
+    setSalvandoForn(true);
+    setErrForn("");
+    try {
+      const nova = await criarPessoa({
+        fazenda_id: fazendaId,
+        nome: novoFornForm.nome.trim(),
+        tipo: novoFornForm.tipo,
+        cpf_cnpj: novoFornForm.cpf_cnpj.replace(/\D/g, "") || undefined,
+        inscricao_est: novoFornForm.inscricao_est || undefined,
+        email: novoFornForm.email || undefined,
+        telefone: novoFornForm.telefone || undefined,
+        cep: novoFornForm.cep || undefined,
+        logradouro: novoFornForm.logradouro || undefined,
+        municipio: novoFornForm.municipio || undefined,
+        municipio_ibge: novoFornForm.municipio_ibge || undefined,
+        estado: novoFornForm.estado || "MT",
+        fornecedor: true,
+        cliente: false,
+        subcategorias: [],
+      } as Parameters<typeof criarPessoa>[0]);
+      setPessoas(p => [...p, nova]);
+      setF(p => ({ ...p, fornecedor_id: nova.id }));
+      setModalNovoForn(false);
+      setNovoFornForm(NOVO_FORN_VAZIO);
+    } catch (e) {
+      setErrForn(e instanceof Error ? e.message : "Erro ao salvar.");
+    } finally {
+      setSalvandoForn(false);
+    }
+  }
 
   // ── Carregamento ─────────────────────────────────────────────
 
@@ -1441,13 +1502,13 @@ export default function ComprasPage() {
                 {/* Linha 3: Fornecedor + Nr. Ped. Forn. + Contato + Variação Cambial */}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: f.fornecedor_id ? 6 : 12 }}>
                   <div>
-                    <label style={lbl}>
+                    <label style={{ ...lbl, display: "flex", alignItems: "center", gap: 8 }}>
                       Fornecedor *
-                      {pessoas.length === 0 && (
-                        <span style={{ marginLeft: 6, fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>
-                          — <a href="/cadastros?tab=pessoas" target="_blank" style={{ color: "#111111" }}>Cadastrar em Pessoas</a>
-                        </span>
-                      )}
+                      <button type="button"
+                        onClick={() => { setNovoFornForm(NOVO_FORN_VAZIO); setErrForn(""); setModalNovoForn(true); }}
+                        style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, border: "0.5px solid #1A487060", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, lineHeight: 1.4, whiteSpace: "nowrap" }}>
+                        + Cadastrar novo
+                      </button>
                     </label>
                     <FornecedorSelect
                       value={f.fornecedor_id}
@@ -2255,6 +2316,97 @@ export default function ComprasPage() {
               >
                 {salvandoInsumo ? "Salvando…" : "Criar e Vincular"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MINI-MODAL: Cadastro rápido de Fornecedor ── */}
+      {modalNovoForn && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 48px rgba(0,0,0,0.22)" }}>
+            <div style={{ padding: "18px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Cadastrar Fornecedor</div>
+              <button onClick={() => setModalNovoForn(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+            </div>
+            <div style={{ padding: "20px 22px" }}>
+              {/* Identificação */}
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Identificação</div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={lbl}>Nome / Razão Social *</label>
+                <input style={inp} value={novoFornForm.nome} autoFocus onChange={e => setNovoFornForm(p => ({ ...p, nome: e.target.value }))} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div>
+                  <label style={lbl}>Tipo</label>
+                  <select style={inp} value={novoFornForm.tipo} onChange={e => setNovoFornForm(p => ({ ...p, tipo: e.target.value as "pf"|"pj", cpf_cnpj: "" }))}>
+                    <option value="pj">Pessoa Jurídica (CNPJ)</option>
+                    <option value="pf">Pessoa Física (CPF)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>{novoFornForm.tipo === "pf" ? "CPF" : "CNPJ"}</label>
+                  <input style={inp} value={novoFornForm.cpf_cnpj}
+                    placeholder={novoFornForm.tipo === "pf" ? "000.000.000-00" : "00.000.000/0001-00"}
+                    onChange={e => setNovoFornForm(p => ({ ...p, cpf_cnpj: maskCpfCnpjPC(e.target.value, p.tipo) }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Inscrição Estadual</label>
+                  <input style={inp} value={novoFornForm.inscricao_est} onChange={e => setNovoFornForm(p => ({ ...p, inscricao_est: e.target.value }))} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+                <div>
+                  <label style={lbl}>E-mail</label>
+                  <input style={inp} type="email" value={novoFornForm.email} onChange={e => setNovoFornForm(p => ({ ...p, email: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Telefone</label>
+                  <input style={inp} value={novoFornForm.telefone} placeholder="(00) 00000-0000" onChange={e => setNovoFornForm(p => ({ ...p, telefone: maskFonePC(e.target.value) }))} />
+                </div>
+              </div>
+
+              {/* Endereço */}
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Endereço</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div>
+                  <label style={lbl}>CEP</label>
+                  <input style={inp} value={novoFornForm.cep} placeholder="00000-000"
+                    onChange={e => { const v = maskCepPC(e.target.value); setNovoFornForm(p => ({ ...p, cep: v })); buscarCepForn(v); }} />
+                </div>
+                <div>
+                  <label style={lbl}>Logradouro</label>
+                  <input style={inp} value={novoFornForm.logradouro} onChange={e => setNovoFornForm(p => ({ ...p, logradouro: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Estado</label>
+                  <select style={inp} value={novoFornForm.estado} onChange={e => setNovoFornForm(p => ({ ...p, estado: e.target.value }))}>
+                    {ESTADOS_BR.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 24 }}>
+                <div>
+                  <label style={lbl}>Município</label>
+                  <input style={inp} value={novoFornForm.municipio} onChange={e => setNovoFornForm(p => ({ ...p, municipio: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Cód. IBGE</label>
+                  <input style={{ ...inp, fontFamily: "monospace" }} value={novoFornForm.municipio_ibge} placeholder="0000000" onChange={e => setNovoFornForm(p => ({ ...p, municipio_ibge: e.target.value.replace(/\D/g, "") }))} />
+                </div>
+              </div>
+
+              {errForn && <div style={{ marginBottom: 12, color: "#E24B4A", fontSize: 12 }}>{errForn}</div>}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button style={btnR} onClick={() => setModalNovoForn(false)} disabled={salvandoForn}>Cancelar</button>
+                <button
+                  style={{ ...btnV, opacity: salvandoForn || !novoFornForm.nome.trim() ? 0.5 : 1 }}
+                  disabled={salvandoForn || !novoFornForm.nome.trim()}
+                  onClick={salvarNovoForn}
+                >
+                  {salvandoForn ? "Salvando…" : "Salvar e Usar no Pedido"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
