@@ -68,76 +68,71 @@ export interface ContratoVendaExtraido {
 const client = new Anthropic();
 
 export async function extrairContratoVenda(pdfBase64: string): Promise<{ extraido: ContratoVendaExtraido; rawText: string }> {
-  const prompt = `Você é um especialista em contratos de compra e venda de grãos agrícolas brasileiros.
-Analise o contrato em anexo e extraia TODOS os campos abaixo com máxima precisão.
-Responda APENAS com JSON válido, sem texto adicional.
+  const prompt = `Você é especialista em contratos brasileiros de compra e venda de grãos agrícolas.
+Analise o PDF em anexo e extraia os campos listados abaixo.
 
-INSTRUÇÕES POR CAMPO:
+REGRA MAIS IMPORTANTE: Retorne SOMENTE um objeto JSON plano (flat), sem seções aninhadas.
+Todos os campos devem estar diretamente na raiz do JSON. Nunca agrupe em subobjetos.
 
-IDENTIFICAÇÃO:
-- numero_contrato: número ou código do contrato (pode estar como "Contrato nº", "Nº", "Ref.", etc.)
-- data_contrato: data de assinatura/emissão — formato YYYY-MM-DD
+Campos a extrair (todos na raiz do JSON):
 
-COMPRADOR (quem COMPRA o grão — geralmente trading, cerealista, cooperativa):
-- comprador_nome: razão social completa
-- comprador_cnpj: CNPJ sem pontuação (apenas dígitos)
-- comprador_ie: Inscrição Estadual do comprador — buscar em "IE", "Insc. Estadual", "I.E." próximo ao CNPJ do comprador
+numero_contrato: número ou código do contrato (string; "Contrato nº", "Nº", "Ref.", "Nro", etc.)
+data_contrato: data de assinatura/emissão em YYYY-MM-DD
+comprador_nome: razão social completa de quem COMPRA o grão (trading, cerealista, cooperativa)
+comprador_cnpj: CNPJ do comprador, só dígitos, sem pontuação
+comprador_ie: Inscrição Estadual do comprador (próximo ao CNPJ do comprador)
+vendedor_nome: nome/razão social de quem VENDE o grão (produtor rural, fazenda)
+vendedor_cpf_cnpj: CPF ou CNPJ do vendedor, só dígitos, sem pontuação
+vendedor_ie: Inscrição Estadual do PRODUTOR (separada da IE do comprador)
+produto: padronizar como uma dessas opções: "soja", "milho", "algodao", "trigo", "sorgo", "feijao", "outro"
+safra: formato "AAAA/AAAA" (ex: "2025/2026") — inferir do contexto se não explícito
+tipo_produto: "grao", "semente", "farelo", "oleo", etc.
+moeda: "BRL" se R$/reais, "USD" se dólar/US$/USD
+preco_referencia: valor exatamente como aparece no documento (ex: "R$ 120,00/sc")
+preco_por_saca: número — valor por saca de 60kg (se estiver em toneladas, dividir por 16,667)
+preco_por_tonelada: número — valor por tonelada se informado assim
+modalidade: "FIXO" se preço definido, "A_FIXAR" se a fixar, "PREMIO" se baseado em prêmio, "SPOT" se pronto, "CPR" se cédula de produto rural
+volume_original: exatamente como aparece (ex: "1.500 toneladas", "25.000 sacas")
+unidade_original: "toneladas", "sacas", "kg" ou "arrobas"
+volume_toneladas: número — SEMPRE converter para toneladas (sacas×60/1000; kg/1000; arrobas×15/1000)
+volume_sacas: número — calcular: volume_toneladas × 1000 / 60 (arredondar 2 casas)
+data_entrega_inicio: data mais cedo para entrega em YYYY-MM-DD
+data_entrega_fim: data limite para entrega em YYYY-MM-DD
+local_entrega: porto, armazém ou cidade de destino
+frete: "FOB" (produtor entrega), "CIF" (comprador busca) ou descrição
+destino: "exportacao" se menciona porto/exportação/embarque, "mercado_interno" nos demais casos
+data_pagamento: data exata em YYYY-MM-DD quando especificada
+prazo_pagamento: prazo descritivo quando não há data exata (ex: "D+2 após entrega")
+forma_pagamento: TED, PIX, depósito, etc.
+retencoes: array de objetos {descricao, percentual, valor_fixo, base_calculo} para Funrural, SENAR, CESSR, armazenagem, corretagem — array vazio [] se não houver
+funrural_pct: número — % Funrural se citado (PF=1,5%; PJ=1,2%)
+senar_pct: número — % SENAR se citado (normalmente 0,2%)
+tem_retencao_imposto: true se há qualquer retenção de imposto mencionada
+bolsa_referencia: "CBOT", "B3", "Chicago", etc. — apenas para contratos A Fixar
+mes_referencia: mês de cotação para fixação (ex: "novembro/2025")
+observacoes: condições de qualidade, umidade, impureza, pH, penalidades, descontos
+clausulas_especiais: array de strings com outras cláusulas relevantes
 
-VENDEDOR/PRODUTOR (quem VENDE o grão — produtor rural, fazenda):
-- vendedor_nome: nome completo ou razão social
-- vendedor_cpf_cnpj: CPF ou CNPJ sem pontuação (apenas dígitos)
-- vendedor_ie: Inscrição Estadual do PRODUTOR — buscar separadamente da IE do comprador
+Exemplo de JSON correto (PLANO, sem seções):
+{
+  "numero_contrato": "12345",
+  "data_contrato": "2026-07-17",
+  "comprador_nome": "NOME DA TRADING LTDA",
+  "comprador_cnpj": "12345678000199",
+  "produto": "milho",
+  "safra": "2025/2026",
+  "moeda": "BRL",
+  "preco_por_saca": 44.50,
+  "volume_sacas": 5000,
+  "volume_toneladas": 300,
+  "data_entrega_fim": "2026-08-15",
+  "frete": "FOB",
+  "destino": "mercado_interno",
+  "retencoes": [],
+  "clausulas_especiais": []
+}
 
-PRODUTO:
-- produto: padronizar como: "soja", "milho", "algodao", "trigo", "sorgo", "feijao", "outro"
-- safra: formato "AAAA/AAAA" (ex: "2025/2026") — inferir do contexto se não explícito
-- tipo_produto: "grao", "semente", "farelo", "oleo", etc.
-
-PREÇO:
-- moeda: "BRL" se R$/reais, "USD" se dólar/US$/USD
-- preco_referencia: valor EXATAMENTE como aparece no documento (ex: "R$ 120,00/sc")
-- preco_por_saca: valor numérico por saca de 60kg (converter se necessário — se for por tonelada, dividir por 16,667)
-- preco_por_tonelada: valor por tonelada se informado assim
-- modalidade: "FIXO" se preço definido, "A_FIXAR" se a fixar/fixação pendente, "PREMIO" se baseado em prêmio sobre bolsa, "SPOT" se pronto, "CPR" se cédula de produto rural
-
-VOLUME — ATENÇÃO:
-- volume_original: exatamente como aparece no doc (ex: "1.500 toneladas", "25.000 sacas", "90.000 kg")
-- unidade_original: "toneladas", "sacas", "kg" ou "arrobas"
-- volume_toneladas: SEMPRE converter para toneladas:
-  * se sacas: sacas × 60 / 1000
-  * se kg: kg / 1000
-  * se arrobas: arrobas × 15 / 1000
-- volume_sacas: SEMPRE calcular: volume_toneladas × 1000 / 60 (arredondar para 2 casas)
-
-LOGÍSTICA:
-- data_entrega_inicio: data mais cedo para entrega — YYYY-MM-DD
-- data_entrega_fim: data limite para entrega — YYYY-MM-DD
-- local_entrega: porto, armazém, cidade de destino
-- frete: "FOB" (produtor entrega no local do comprador ou porto), "CIF" (comprador busca), ou descrever
-- destino: "exportacao" se menciona porto, exportação, FOB porto, embarque; "mercado_interno" nos demais casos
-
-PAGAMENTO:
-- data_pagamento: data exata em YYYY-MM-DD se especificada
-- prazo_pagamento: descrever prazo quando não há data exata (ex: "D+2 após entrega", "no ato da NF")
-- forma_pagamento: TED, PIX, depósito, etc.
-
-RETENÇÕES — CRÍTICO:
-- retencoes: array com TODAS as retenções mencionadas (Funrural, SENAR, CESSR, taxa armazenagem, corretagem, etc.)
-  Para cada uma: { descricao, percentual (se %), valor_fixo (se R$ fixo), base_calculo }
-- funrural_pct: % do Funrural se citado (PF = 1,5% + 0,1% RAT; PJ = 1,2% + 0,1% RAT)
-- senar_pct: % do SENAR se citado (normalmente 0,2%)
-- tem_retencao_imposto: true se há qualquer retenção de imposto mencionada
-
-REFERÊNCIA DE MERCADO:
-- bolsa_referencia: "CBOT", "B3", "Chicago", "CME" etc. se for A Fixar
-- mes_referencia: mês de cotação para fixação (ex: "novembro/2025")
-
-GERAL:
-- observacoes: condições de qualidade (umidade, impureza, PH mínimo), penalidades, descontos por qualidade
-- clausulas_especiais: array com outras cláusulas relevantes não capturadas acima
-
-Retorne JSON com a interface exata. Arrays vazios se não houver dados (nunca null para retencoes).
-Se um campo não for encontrado, omita-o do JSON (não inclua null).`;
+Omita campos não encontrados (não inclua null). Retorne apenas o JSON, sem texto adicional.`;
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -162,7 +157,7 @@ Se um campo não for encontrado, omita-o do JSON (não inclua null).`;
 
   const rawText = response.content.find(b => b.type === "text")?.text ?? "";
 
-  // Extrai JSON do texto — tenta o bloco entre ``` primeiro, depois busca { }
+  // Extrai JSON do texto — tenta bloco entre ``` primeiro, depois busca { }
   let jsonStr = "{}";
   const fenced = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenced) {
@@ -173,28 +168,47 @@ Se um campo não for encontrado, omita-o do JSON (não inclua null).`;
   }
 
   try {
-    // IA às vezes devolve JSON aninhado por seção (COMPRADOR: {...}, PREÇO: {...}) em vez de flat.
-    // Achatamos aqui para que o código do frontend funcione em ambos os casos.
-    const SECTION_KEYS = new Set([
-      "IDENTIFICAÇÃO","IDENTIFICACAO","COMPRADOR","VENDEDOR_PRODUTOR","VENDEDOR",
-      "PRODUTO","QUALIDADE","PREÇO","PRECO","VOLUME","LOGÍSTICA","LOGISTICA",
-      "PAGAMENTO","PAGAMENTOS","RETENÇÕES","RETENCOES","REFERÊNCIA DE MERCADO",
-      "REFERENCIA DE MERCADO","GERAL",
-    ]);
     const rawParsed = JSON.parse(jsonStr) as Record<string, unknown>;
-    const hasNested = Object.keys(rawParsed).some(k => SECTION_KEYS.has(k));
-    let flatParsed: Record<string, unknown> = rawParsed;
-    if (hasNested) {
-      flatParsed = {};
-      for (const [k, v] of Object.entries(rawParsed)) {
-        if (SECTION_KEYS.has(k) && typeof v === "object" && v !== null && !Array.isArray(v)) {
-          Object.assign(flatParsed, v);
-        } else {
-          flatParsed[k] = v;
+
+    // Fallback: se o modelo ainda retornou JSON aninhado por seção,
+    // achatamos tudo para que o frontend encontre os campos na raiz.
+    const knownFields = new Set([
+      "numero_contrato","data_contrato","comprador_nome","comprador_cnpj","comprador_ie",
+      "vendedor_nome","vendedor_cpf_cnpj","vendedor_ie","produto","safra","tipo_produto",
+      "moeda","preco_referencia","preco_por_saca","preco_por_tonelada","modalidade",
+      "volume_original","volume_toneladas","volume_sacas","unidade_original",
+      "data_entrega_inicio","data_entrega_fim","local_entrega","frete","destino",
+      "data_pagamento","prazo_pagamento","forma_pagamento",
+      "retencoes","funrural_pct","senar_pct","tem_retencao_imposto",
+      "bolsa_referencia","mes_referencia","observacoes","clausulas_especiais",
+    ]);
+
+    // Detecta se o root tem campos conhecidos ou apenas sub-objetos com campos conhecidos
+    const rootKeys = Object.keys(rawParsed);
+    const hasKnownAtRoot = rootKeys.some(k => knownFields.has(k));
+
+    if (!hasKnownAtRoot && rootKeys.length > 0) {
+      // Todos os valores são objetos (seções) — achatar
+      const flat: Record<string, unknown> = {};
+      for (const [, v] of Object.entries(rawParsed)) {
+        if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+          Object.assign(flat, v);
         }
       }
+      // Se ainda não encontrou campos conhecidos, tenta um nível mais fundo
+      const flatKeys = Object.keys(flat);
+      const hasKnownInFlat = flatKeys.some(k => knownFields.has(k));
+      if (!hasKnownInFlat) {
+        for (const [, v2] of Object.entries(flat)) {
+          if (typeof v2 === "object" && v2 !== null && !Array.isArray(v2)) {
+            Object.assign(flat, v2);
+          }
+        }
+      }
+      Object.assign(rawParsed, flat);
     }
-    const extraido = flatParsed as unknown as ContratoVendaExtraido;
+
+    const extraido = rawParsed as unknown as ContratoVendaExtraido;
     if (!Array.isArray(extraido.retencoes)) extraido.retencoes = [];
     if (extraido.comprador_cnpj) extraido.comprador_cnpj = String(extraido.comprador_cnpj).replace(/\D/g, "");
     if (extraido.vendedor_cpf_cnpj) extraido.vendedor_cpf_cnpj = String(extraido.vendedor_cpf_cnpj).replace(/\D/g, "");
