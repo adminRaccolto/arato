@@ -10093,3 +10093,13 @@ ALTER TABLE pedidos_compra_itens
   ADD COLUMN IF NOT EXISTS desconto_unitario numeric(14,4) NOT NULL DEFAULT 0;
 
 COMMENT ON COLUMN pedidos_compra_itens.desconto_unitario IS 'Desconto por unidade (R$). Valor Item = valor_unitario - desconto_unitario';
+
+-- ─── Seção 175: pedidos_compra — barter_volume_sc ────────────────────────────
+-- Antes: usuário digitava o preço/sc e o sistema calculava as sacas.
+-- Agora: usuário digita o volume fixo de sacas acordado; o preço/sc é calculado
+--        automaticamente como total_itens ÷ barter_volume_sc.
+ALTER TABLE pedidos_compra
+  ADD COLUMN IF NOT EXISTS barter_volume_sc numeric(14,4);
+
+COMMENT ON COLUMN pedidos_compra.barter_volume_sc IS 'Sacas fixas acordadas no barter (campo principal). Preço/sc = total itens / volume.';
+COMMENT ON COLUMN pedidos_compra.barter_preco_saca IS 'R$/sc calculado automaticamente = total_itens / barter_volume_sc (mantido para referência).';

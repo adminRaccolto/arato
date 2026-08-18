@@ -1752,7 +1752,8 @@ export type PedidoCompra = {
   meio_pagamento?: "barter" | "pix" | "transferencia" | "boleto";
   barter_ciclo_id?: string;
   barter_ano_safra_id?: string;
-  barter_preco_saca?: number;   // R$/sc negociado (se vazio, usa ciclo.preco_esperado_sc)
+  barter_volume_sc?: number;    // sacas fixas acordadas no barter (campo principal do usuário)
+  barter_preco_saca?: number;   // R$/sc calculado = total_itens / barter_volume_sc
   // Status
   status: "rascunho" | "aprovado" | "parcialmente_entregue" | "entregue" | "cancelado";
   observacao?: string;

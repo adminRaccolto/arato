@@ -291,7 +291,7 @@ type FormPedido = {
   operacao: string; operacao_nf: string; operacao_nf_auto: boolean;
   ano_safra_id: string; ciclo_id: string;
   data_vencimento: string;
-  meio_pagamento: string; barter_ano_safra_id: string; barter_ciclo_id: string; barter_preco_saca: string;
+  meio_pagamento: string; barter_ano_safra_id: string; barter_ciclo_id: string; barter_volume_sc: string;
   produtor_id: string;
   ie_produtor: string;
   aprovador: string; nr_pedido: string; nr_solicitacao: string;
@@ -312,7 +312,7 @@ const PEDIDO_VAZIO: FormPedido = {
   operacao: "", operacao_nf: "", operacao_nf_auto: true,
   ano_safra_id: "", ciclo_id: "",
   data_vencimento: "",
-  meio_pagamento: "", barter_ano_safra_id: "", barter_ciclo_id: "", barter_preco_saca: "",
+  meio_pagamento: "", barter_ano_safra_id: "", barter_ciclo_id: "", barter_volume_sc: "",
   produtor_id: "", ie_produtor: "",
   aprovador: "", nr_pedido: "", nr_solicitacao: "",
   fornecedor_id: "", nr_pedido_fornecedor: "", variacao_cambial: "",
@@ -551,7 +551,7 @@ export default function ComprasPage() {
       ano_safra_id: ped.ano_safra_id ?? "", ciclo_id: ped.ciclo_id ?? "",
       data_vencimento: ped.data_vencimento ?? "",
       meio_pagamento: ped.meio_pagamento ?? "",
-      barter_ano_safra_id: ped.barter_ano_safra_id ?? "", barter_ciclo_id: ped.barter_ciclo_id ?? "", barter_preco_saca: String(ped.barter_preco_saca ?? ""),
+      barter_ano_safra_id: ped.barter_ano_safra_id ?? "", barter_ciclo_id: ped.barter_ciclo_id ?? "", barter_volume_sc: String(ped.barter_volume_sc ?? ""),
       produtor_id: ped.produtor_id ?? "", ie_produtor: ped.ie_produtor ?? "",
       aprovador: ped.aprovador ?? "", nr_pedido: ped.nr_pedido ?? "",
       nr_solicitacao: ped.nr_solicitacao ?? "",
@@ -760,7 +760,11 @@ export default function ComprasPage() {
         meio_pagamento: (f.meio_pagamento as PedidoCompra["meio_pagamento"]) || undefined,
         barter_ano_safra_id: f.barter_ano_safra_id || undefined,
         barter_ciclo_id: f.barter_ciclo_id || undefined,
-        barter_preco_saca: f.barter_preco_saca ? parseFloat(f.barter_preco_saca) : undefined,
+        barter_volume_sc: f.barter_volume_sc ? parseFloat(f.barter_volume_sc) : undefined,
+        barter_preco_saca: (() => {
+          const vol = parseFloat(f.barter_volume_sc) || 0;
+          return vol > 0 && totalItens > 0 ? Math.round((totalItens / vol) * 100) / 100 : undefined;
+        })(),
         produtor_id: f.produtor_id || undefined,
         ie_produtor: f.ie_produtor || undefined,
         aprovador: f.aprovador || undefined, nr_pedido: f.nr_pedido || undefined,
@@ -842,8 +846,10 @@ export default function ComprasPage() {
             // valor = equivalente BRL (totalItens) para apropriação correta no DRE
             // sacas + preco_saca_barter armazenados para exibição em sacas na tela CP
             const cicloSelecionado = ciclos.find(c => c.id === f.barter_ciclo_id);
-            const precoBarter = parseFloat(f.barter_preco_saca) || cicloSelecionado?.preco_esperado_sc || 0;
-            const sacasComprometidas = precoBarter > 0 ? Math.ceil((totalItens / precoBarter) * 100) / 100 : 0;
+            const sacasComprometidas = parseFloat(f.barter_volume_sc) || 0;
+            const precoBarter = sacasComprometidas > 0 && totalItens > 0
+              ? Math.round((totalItens / sacasComprometidas) * 100) / 100
+              : (cicloSelecionado?.preco_esperado_sc || 0);
             const lanc = await criarLancamento({
               fazenda_id:        fidPedido,
               tipo:              "pagar",
@@ -1717,29 +1723,32 @@ export default function ComprasPage() {
                             </select>
                           </div>
                           <div>
-                            <label style={{ ...lbl, color: "#7A5200" }}>Preço negociado (R$/sc)</label>
-                            <InputMonetario
-                              style={inp} min="0"
-                              placeholder={(() => {
-                                const c = ciclos.find(x => x.id === f.barter_ciclo_id);
-                                return c?.preco_esperado_sc ? `Projeção: R$ ${c.preco_esperado_sc.toFixed(2)}` : "R$/sc";
-                              })()}
-                              value={f.barter_preco_saca}
-                              onChange={v => setF(p => ({ ...p, barter_preco_saca: String(v) }))}
+                            <label style={{ ...lbl, color: "#7A5200" }}>Volume acordado (sc) *</label>
+                            <InputNumerico
+                              style={inp} min="0" placeholder="Sacas fixas negociadas"
+                              value={f.barter_volume_sc}
+                              onChange={v => setF(p => ({ ...p, barter_volume_sc: String(v) }))}
                             />
                           </div>
                         </div>
-                        {/* Sacas estimadas */}
+                        {/* Preço calculado + resumo */}
                         {(() => {
-                          const cicloB = ciclos.find(c => c.id === f.barter_ciclo_id);
-                          const preco = parseFloat(f.barter_preco_saca) || cicloB?.preco_esperado_sc || 0;
-                          if (!preco || !totalItens) return null;
-                          const sacas = Math.ceil((totalItens / preco) * 100) / 100;
+                          const vol   = parseFloat(f.barter_volume_sc) || 0;
+                          const preco = vol > 0 && totalItens > 0 ? totalItens / vol : 0;
                           return (
-                            <div style={{ marginTop: 8, fontSize: 12, color: "#7A5200", fontWeight: 600 }}>
-                              ≈ {sacas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} sc comprometidas
-                              {!f.barter_preco_saca && cicloB?.preco_esperado_sc && (
-                                <span style={{ fontWeight: 400, marginLeft: 6 }}>(baseado na projeção do ciclo)</span>
+                            <div style={{ marginTop: 8, display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+                              {vol > 0 && (
+                                <span style={{ fontSize: 12, color: "#7A5200", fontWeight: 600 }}>
+                                  {vol.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} sc comprometidas
+                                </span>
+                              )}
+                              {preco > 0 && (
+                                <span style={{ fontSize: 12, color: "#555", background: "#fff", border: "0.5px solid #C9921B60", borderRadius: 6, padding: "2px 10px" }}>
+                                  Preço implícito: <strong style={{ color: "#7A5200" }}>R$ {preco.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/sc</strong>
+                                </span>
+                              )}
+                              {vol > 0 && !totalItens && (
+                                <span style={{ fontSize: 11, color: "#9A6200" }}>Lance os produtos para ver o preço/sc calculado</span>
                               )}
                             </div>
                           );
@@ -1972,17 +1981,18 @@ export default function ComprasPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, paddingTop: 14, borderTop: "0.5px solid var(--border-table)" }}>
                 <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                   {f.meio_pagamento === "barter" ? (() => {
-                    const cicloB = ciclos.find(c => c.id === f.barter_ciclo_id);
-                    const preco  = parseFloat(f.barter_preco_saca) || cicloB?.preco_esperado_sc || 0;
-                    const sacas  = preco > 0 ? Math.ceil((totalItens / preco) * 100) / 100 : null;
+                    const vol   = parseFloat(f.barter_volume_sc) || 0;
+                    const preco = vol > 0 && totalItens > 0 ? totalItens / vol : 0;
                     return <>
                       Compromisso Barter:{" "}
                       <strong style={{ color: "#C9921B", fontSize: 15 }}>
-                        {sacas != null ? `≈ ${fmtN(sacas, 2)} sc` : "— sc"}
+                        {vol > 0 ? `${fmtN(vol, 2)} sc` : "— sc"}
                       </strong>
-                      <span style={{ color: "var(--text-3)", fontSize: 12, marginLeft: 8 }}>
-                        (ref. {fmtBRL(totalItens)})
-                      </span>
+                      {preco > 0 && (
+                        <span style={{ color: "var(--text-3)", fontSize: 12, marginLeft: 8 }}>
+                          (R$ {preco.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/sc · ref. {fmtBRL(totalItens)})
+                        </span>
+                      )}
                     </>;
                   })() : <>
                     Total Financeiro:{" "}
