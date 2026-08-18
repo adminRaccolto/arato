@@ -107,6 +107,25 @@ const NATUREZAS_OPERACAO = [
     cfop: "7102", cst_icms: "090",
     obs: "Exportação direta de mercadoria de terceiros. Imune de ICMS, PIS, COFINS. Exige RE e DU-E.",
   },
+  // === Venda à Ordem ===
+  {
+    codigo: "VO-INTER", grupo: "Venda à Ordem",
+    descricao: "Venda à Ordem — Produção Própria / Interestadual",
+    cfop: "6118", cst_icms: "090",
+    obs: "Operação triangular: produtor emite NF de venda ao comprador final (CFOP 6.118); o armazém/depositário emite NF de remessa simbólica (CFOP 6.119) diretamente ao comprador final, por conta e ordem do produtor. ICMS Diferido MT. Funrural e Fundeinfra incidem normalmente.",
+  },
+  {
+    codigo: "VO-INTRA", grupo: "Venda à Ordem",
+    descricao: "Venda à Ordem — Produção Própria / Intraestadual",
+    cfop: "5118", cst_icms: "090",
+    obs: "Operação triangular dentro do MT: produtor emite NF de venda ao comprador final (CFOP 5.118); o armazém/depositário emite NF de remessa simbólica (CFOP 5.119) ao comprador final. ICMS Diferido. Funrural incide.",
+  },
+  {
+    codigo: "VO-TER-INTER", grupo: "Venda à Ordem",
+    descricao: "Venda à Ordem — Mercadoria de Terceiros / Interestadual",
+    cfop: "6118", cst_icms: "090",
+    obs: "Venda de grão adquirido de terceiros (não produção própria), entregue ao comprador final por conta e ordem. CFOP 6.118 na NF de venda; CFOP 6.119 na NF de remessa do depositário.",
+  },
   // === Remessas ===
   {
     codigo: "REF", grupo: "Remessas",
@@ -508,20 +527,29 @@ export default function Contratos() {
 
   useEffect(() => {
     if (!modalContrato) return;
+    if (naturezaSugerida === "__manual__") return; // contrato existente — não sobrescrever
+
     // Produto principal = primeiro item da grade
     const produtoPrincipal = itens[0]?.produto ?? fC.produto;
     const prod = produtores.find(p => p.id === fC.produtor_id);
     const tipo = tipoProdutorDeCpfCnpj(prod?.cpf_cnpj);
-    const sugestao = sugerirNatureza(produtoPrincipal, tipo, COMMODITIES_VFE_DIN);
-    // Só aplica se campo vazio ou ainda na sugestão anterior (não foi editado manualmente nem é contrato existente)
-    if (naturezaSugerida === "__manual__") return; // contrato existente — não sobrescrever
+
+    let sugestao: string;
+    if (fC.venda_a_ordem) {
+      // Venda à Ordem: usar CFOP 5.118 (intra) ou 6.118 (inter)
+      // Por padrão sugere interestadual; usuário pode trocar para intra no select
+      sugestao = "VO-INTER";
+    } else {
+      sugestao = sugerirNatureza(produtoPrincipal, tipo, COMMODITIES_VFE_DIN);
+    }
+
     if (!fC.natureza_codigo || fC.natureza_codigo === naturezaSugerida) {
       const nat = NATUREZAS_OPERACAO.find(n => n.codigo === sugestao);
       setFC(p => ({ ...p, natureza_codigo: sugestao, natureza_operacao: nat?.descricao ?? "", cfop: nat?.cfop ?? p.cfop }));
     }
     setNaturezaSugerida(sugestao);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itens[0]?.produto, fC.produtor_id, modalContrato]);
+  }, [itens[0]?.produto, fC.produtor_id, fC.venda_a_ordem, modalContrato]);
 
   // ── modal cessão ─────────────────────────────────────────────
   type LancItem = { id: string; descricao: string; data_vencimento: string; valor: number; status: string };
@@ -2271,7 +2299,10 @@ export default function Contratos() {
                       <input type="checkbox" checked={fC.a_fixar} onChange={e => setFC(p=>({...p,a_fixar:e.target.checked}))} /> Contrato à fixar
                     </label>
                     <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:12 }}>
-                      <input type="checkbox" checked={fC.venda_a_ordem} onChange={e => setFC(p=>({...p,venda_a_ordem:e.target.checked}))} /> Venda a Ordem
+                      <input type="checkbox" checked={fC.venda_a_ordem} onChange={e => {
+                        setFC(p=>({...p, venda_a_ordem: e.target.checked}));
+                        setNaturezaSugerida(""); // força reavaliação da natureza
+                      }} /> Venda a Ordem
                     </label>
                   </div>
 
@@ -2427,7 +2458,7 @@ export default function Contratos() {
                           }));
                         }}>
                         <option value="">— selecione a natureza —</option>
-                        {(["Vendas", "Exportação", "Remessas"] as const).map(grupo => (
+                        {(["Vendas", "Exportação", "Venda à Ordem", "Remessas"] as const).map(grupo => (
                           <optgroup key={grupo} label={grupo}>
                             {NATUREZAS_OPERACAO.filter(n => n.grupo === grupo).map(n => (
                               <option key={n.codigo} value={n.codigo}>{n.descricao} (CFOP {n.cfop})</option>
