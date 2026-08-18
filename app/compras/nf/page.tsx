@@ -460,7 +460,7 @@ export default function NfCompraPage() {
         .from("pedidos_compra")
         .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
         .in("fazenda_id", fazendaIds)
-        .in("status", ["rascunho", "aprovado", "entregue"])
+        .in("status", ["rascunho", "aprovado", "parcialmente_entregue", "entregue"])
         .order("created_at", { ascending: false });
       setPedidos((data ?? []) as PedidoMin[]);
     } catch {}
@@ -493,7 +493,7 @@ export default function NfCompraPage() {
         .from("pedidos_compra")
         .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
         .eq("fazenda_id", fId)
-        .in("status", ["rascunho", "aprovado", "entregue"])
+        .in("status", ["rascunho", "aprovado", "parcialmente_entregue", "entregue"])
         .order("created_at", { ascending: false });
       setWPedidos((data ?? []) as PedidoMin[]);
     } catch { setWPedidos([]); }
