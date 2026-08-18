@@ -19,6 +19,7 @@ interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; arrendamento_id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface ArrBase    { id: string; fazenda_id: string; produto_agricola_id?: string | null; produto_agricola_id_milho?: string | null; produto_agricola_nome?: string | null; produto_agricola_nome_milho?: string | null }
+interface CctGrain   { id: string; fazenda_id: string; moeda_parcela: string; quantidade_sacas: number; status: string; ciclo_id?: string | null; ano_safra_id?: string | null }
 interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean }
 interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; data_entrega?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string; produtor_id?: string | null; produtor?: { nome: string } | null }
 interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null }
@@ -306,6 +307,7 @@ export default function BI() {
   const [colheitas,   setColheitas]   = useState<Colheita[]>([]);
   const [arrPags,     setArrPags]     = useState<ArrPag[]>([]);
   const [arrBase,     setArrBase]     = useState<ArrBase[]>([]);
+  const [cctGrains,   setCctGrains]   = useState<CctGrain[]>([]);
   const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
   const [contratos,     setContratos]     = useState<Contrato[]>([]);
   const [cessaoDebitos, setCessaoDebitos] = useState<CessaoDebito[]>([]);
@@ -401,7 +403,7 @@ export default function BI() {
     setLoading(true);
     // Usa fazendaIds para cobrir todas as fazendas da conta (multi-fazenda)
     const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
-    const [fazR, safR, cicR, plaR, colR, arrR, arrBaseR, lanR, conR, cesR, precR, fazsR, talR] = await Promise.allSettled([
+    const [fazR, safR, cicR, plaR, colR, arrR, arrBaseR, lanR, conR, cesR, precR, fazsR, talR, cctR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").in("fazenda_id", fazendaIds).order("descricao"),
       supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha,produto_agricola_id").in("fazenda_id", fids),
@@ -415,6 +417,9 @@ export default function BI() {
       fetch("/api/precos").then(r => r.json()),
       supabase.from("fazendas").select("id,nome").in("id", fids),
       supabase.from("ciclo_talhoes").select("ciclo_id,talhao_id,area_plantada_ha,talhoes(nome)").in("fazenda_id", fids),
+      // Parcelas de compra terra pagas em grãos (comprometem produção)
+      supabase.from("cct_pagamentos").select("id,fazenda_id,moeda_parcela,quantidade_sacas,status,ciclo_id,ano_safra_id")
+        .in("fazenda_id", fids).in("moeda_parcela", ["saca_soja","saca_milho","saca_algodao"]).neq("status","pago"),
     ]);
     if (fazR.status === "fulfilled" && fazR.value.data) setFazenda(fazR.value.data as Fazenda);
     if (safR.status === "fulfilled") setAnosSafra((safR.value.data ?? []) as AnoSafra[]);
@@ -444,10 +449,12 @@ export default function BI() {
       produto_agricola_nome_milho: a.produto_agricola_id_milho ? (prodNomeMap[a.produto_agricola_id_milho] ?? null) : null,
     })));
     if (lanR.status === "fulfilled") setLancamentos((lanR.value.data ?? []) as Lancamento[]);
-    if (conR.status === "fulfilled") setContratos((conR.value.data ?? []) as Contrato[]);
+    if (conR.status === "fulfilled") setContratos((conR.value.data ?? []) as unknown as Contrato[]);
     if (cesR.status === "fulfilled") setCessaoDebitos((cesR.value.data ?? []) as CessaoDebito[]);
     if (precR.status === "fulfilled") setPrecos(precR.value as PrecosData);
     if (fazsR.status === "fulfilled") setFazendas((fazsR.value.data ?? []) as FazendaBI[]);
+    // Parcelas compra terra em grãos — sem erro fatal se coluna ainda não existir (migration pendente)
+    if (cctR.status === "fulfilled") setCctGrains((cctR.value.data ?? []) as CctGrain[]);
     if (talR.status === "fulfilled") setCicloTals(((talR.value.data ?? []) as Record<string, unknown>[]).map((r) => ({
       ciclo_id: r.ciclo_id as string, talhao_id: r.talhao_id as string,
       area_plantada_ha: r.area_plantada_ha as number,
@@ -1411,6 +1418,19 @@ export default function BI() {
             baseGroups.get(b)!.push(cs.comm);
           });
 
+          // Sacas comprometidas por parcelas de compra terra (moeda em grão, ainda não pagas)
+          const cctGrainAtivos = cctGrains.filter(p =>
+            (!filtroAnoSafraId || !p.ano_safra_id || p.ano_safra_id === filtroAnoSafraId) &&
+            (filtroCicloIds.size === 0 || !p.ciclo_id || filtroCicloIds.has(p.ciclo_id))
+          );
+          const getCctGrain = (base: string) =>
+            cctGrainAtivos.filter(p => {
+              if (p.moeda_parcela === "saca_soja"    && base === "Soja")    return true;
+              if (p.moeda_parcela === "saca_milho"   && base === "Milho")   return true;
+              if (p.moeda_parcela === "saca_algodao" && base === "Algodão") return true;
+              return false;
+            }).reduce((s, p) => s + (p.quantidade_sacas ?? 0), 0);
+
           const commSummary = commSummaryRaw.map(cs => {
             const base    = getBase(cs.comm);
             const variants = baseGroups.get(base) ?? [cs.comm];
@@ -1425,9 +1445,11 @@ export default function BI() {
             // Barter: proporcional por enquanto (sem vínculo de produto no lançamento)
             const totalBarterBase = fazIds.reduce((s, fid) => s + getBarterBase(fid, base), 0);
             const barter = Math.round(totalBarterBase * peso);
-            const comprTotal = arr + cs.venda + barter;
+            // Compra de Terra pagas em grãos (comprometem o grão como pagamento futuro)
+            const cctG = Math.round(getCctGrain(base) * peso);
+            const comprTotal = arr + cs.venda + barter + cctG;
             const disponivel = Math.max(0, cs.volPrev - comprTotal);
-            return { ...cs, arr, barter, comprTotal, disponivel };
+            return { ...cs, arr, barter, cctG, comprTotal, disponivel };
           }).filter(cs => cs.volPrev > 0 || cs.arr > 0 || cs.venda > 0);
 
           // KPIs totais
@@ -1436,7 +1458,8 @@ export default function BI() {
           const kpiArr     = commSummary.reduce((s, c) => s + c.arr,     0);
           const kpiVenda   = commSummary.reduce((s, c) => s + c.venda,   0);
           const kpiBarter  = commSummary.reduce((s, c) => s + c.barter,  0);
-          const kpiCompr   = kpiArr + kpiVenda + kpiBarter;
+          const kpiCctG    = commSummary.reduce((s, c) => s + (c.cctG ?? 0), 0);
+          const kpiCompr   = kpiArr + kpiVenda + kpiBarter + kpiCctG;
           const kpiDisp    = Math.max(0, kpiVolPrev - kpiCompr);
           const kpiColhido = pcRows.reduce((s, r) => s + r.colhido, 0);
 
@@ -1876,7 +1899,7 @@ export default function BI() {
                         <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Posição por Produto</span>
                           <div style={{ display: "flex", gap: 10, fontSize: 9 }}>
-                            {[{ cor: "#C9921B", lbl: "Arrendamento" }, { cor: "#111111", lbl: "Venda" }, { cor: "#7C3AED", lbl: "Barter" }, { cor: "#86EFAC", lbl: "Disponível" }].map(x => (
+                            {[{ cor: "#C9921B", lbl: "Arrendamento" }, { cor: "#111111", lbl: "Venda" }, { cor: "#7C3AED", lbl: "Barter" }, ...(kpiCctG > 0 ? [{ cor: "#E24B4A", lbl: "C. Terra" }] : []), { cor: "#86EFAC", lbl: "Disponível" }].map(x => (
                               <span key={x.lbl} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                 <div style={{ width: 8, height: 8, borderRadius: 2, background: x.cor }} />
                                 <span style={{ color: "var(--text-3)" }}>{x.lbl}</span>
@@ -1902,12 +1925,14 @@ export default function BI() {
                                   {cs.arr      > 0 && <div style={{ width: `${(cs.arr/tot)*100}%`,       background: "#C9921B" }} title={`Arrendamento: ${fmtVol(cs.arr)}`} />}
                                   {cs.venda    > 0 && <div style={{ width: `${(cs.venda/tot)*100}%`,     background: "#111111" }} title={`Venda: ${fmtVol(cs.venda)}`} />}
                                   {cs.barter   > 0 && <div style={{ width: `${(cs.barter/tot)*100}%`,   background: "#7C3AED" }} title={`Barter: ${fmtVol(cs.barter)}`} />}
+                                  {((cs as {cctG?:number}).cctG ?? 0) > 0 && <div style={{ width: `${(((cs as {cctG?:number}).cctG!)/tot)*100}%`, background: "#E24B4A" }} title={`Compra de Terra: ${fmtVol((cs as {cctG?:number}).cctG!)}`} />}
                                   {cs.disponivel>0 && <div style={{ width: `${(cs.disponivel/tot)*100}%`,background: "#86EFAC" }} title={`Disponível: ${fmtVol(cs.disponivel)}`} />}
                                 </div>
                                 <div style={{ display: "flex", gap: 14, marginTop: 3, fontSize: 9, color: "var(--text-3)" }}>
                                   {cs.arr     > 0 && <span style={{ color: "#C9921B" }}>Arr: {fmtVol(cs.arr)} ({fmtN((cs.arr/tot)*100,0)}%)</span>}
                                   {cs.venda   > 0 && <span style={{ color: "#111111" }}>Venda: {fmtVol(cs.venda)} ({fmtN((cs.venda/tot)*100,0)}%)</span>}
                                   {cs.barter  > 0 && <span style={{ color: "#7C3AED" }}>Barter: {fmtVol(cs.barter)} ({fmtN((cs.barter/tot)*100,0)}%)</span>}
+                                  {((cs as {cctG?:number}).cctG ?? 0) > 0 && <span style={{ color: "#E24B4A" }}>C. Terra: {fmtVol((cs as {cctG?:number}).cctG!)} ({fmtN(((cs as {cctG?:number}).cctG!/tot)*100,0)}%)</span>}
                                   {cs.disponivel>0 && <span style={{ color: "#16A34A" }}>Disp: {fmtVol(cs.disponivel)} ({fmtN((cs.disponivel/tot)*100,0)}%)</span>}
                                 </div>
                               </div>
@@ -2036,6 +2061,7 @@ export default function BI() {
                                 <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "#C9921B", textAlign: "right", whiteSpace: "nowrap" }}>Arrendamento</th>
                                 {sortTh("venda",   "Venda")}
                                 <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "#7C3AED", textAlign: "right" }}>Barter</th>
+                                {kpiCctG > 0 && <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "#E24B4A", textAlign: "right", whiteSpace: "nowrap" }}>C. Terra</th>}
                                 {sortTh("disp",    "Disponível")}
                                 {sortTh("colhido", "Colhido")}
                               </tr>
@@ -2047,7 +2073,8 @@ export default function BI() {
                                 const peso    = r.volPrev / baseVol;
                                 const rowArr  = commCS ? Math.round(commCS.arr    * peso) : 0;
                                 const rowBart = commCS ? Math.round(commCS.barter * peso) : 0;
-                                const disp    = Math.max(0, r.volPrev - r.venda - rowArr - rowBart);
+                                const rowCct  = commCS ? Math.round((commCS as {cctG?:number}).cctG ?? 0 * peso) : 0;
+                                const disp    = Math.max(0, r.volPrev - r.venda - rowArr - rowBart - rowCct);
                                 const dispPct = r.volPrev > 0 ? (disp / r.volPrev) * 100 : 0;
                                 return (
                                   <tr key={r.cId} style={{ borderTop: i>0?"0.5px solid var(--border-row)":"none" }}>
@@ -2072,6 +2099,9 @@ export default function BI() {
                                     <td style={{ padding: "7px 10px", textAlign: "right", color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>
                                       {rowBart > 0 ? <span>{fmtN(rowBart,0)} <span style={{ fontSize: 9, color: "var(--text-3)" }}>({fmtN(r.volPrev>0?(rowBart/r.volPrev)*100:0,0)}%)</span></span> : <span style={{ color: "var(--text-3)" }}>—</span>}
                                     </td>
+                                    {kpiCctG > 0 && <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
+                                      {rowCct > 0 ? <span>{fmtN(rowCct,0)} <span style={{ fontSize: 9, color: "var(--text-3)" }}>({fmtN(r.volPrev>0?(rowCct/r.volPrev)*100:0,0)}%)</span></span> : <span style={{ color: "var(--text-3)" }}>—</span>}
+                                    </td>}
                                     <td style={{ padding: "7px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                                       <span style={{ color: dispPct>30?"#16A34A":dispPct>10?"#C9921B":"#E24B4A", fontWeight: 600 }}>
                                         {fmtN(disp,0)} <span style={{ fontSize: 9, fontWeight: 400 }}>({fmtN(dispPct,0)}%)</span>
@@ -2093,6 +2123,7 @@ export default function BI() {
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiArr,0)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#111111", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiVenda,0)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiBarter,0)}</td>
+                                {kpiCctG > 0 && <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiCctG,0)}</td>}
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiDisp,0)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: kpiColhido>0?"#16A34A":"var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
                               </tr>
@@ -2108,6 +2139,7 @@ export default function BI() {
                           { label: "Arrendamento", sc: kpiArr,    cor: "#C9921B", bg: "#FBF3E0" },
                           { label: "Venda fixada",  sc: kpiVenda,  cor: "#111111", bg: "#E8E8E8" },
                           { label: "Barter",        sc: kpiBarter, cor: "#7C3AED", bg: "#F5F3FF" },
+                          ...(kpiCctG > 0 ? [{ label: "Compra de Terra (grãos)", sc: kpiCctG, cor: "#E24B4A", bg: "#FCEBEB" }] : []),
                           { label: "Total comprometido", sc: kpiCompr, cor: "#7A5200", bg: "#FBF3E0" },
                           { label: "Disponível",    sc: kpiDisp,   cor: "#16A34A", bg: "#ECFDF5" },
                           { label: "Previsto total",sc: kpiVolPrev,cor: "#111111", bg: "#EBF3FC" },
