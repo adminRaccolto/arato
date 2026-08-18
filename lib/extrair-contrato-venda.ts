@@ -173,10 +173,31 @@ Se um campo não for encontrado, omita-o do JSON (não inclua null).`;
   }
 
   try {
-    const extraido = JSON.parse(jsonStr) as ContratoVendaExtraido;
+    // IA às vezes devolve JSON aninhado por seção (COMPRADOR: {...}, PREÇO: {...}) em vez de flat.
+    // Achatamos aqui para que o código do frontend funcione em ambos os casos.
+    const SECTION_KEYS = new Set([
+      "IDENTIFICAÇÃO","IDENTIFICACAO","COMPRADOR","VENDEDOR_PRODUTOR","VENDEDOR",
+      "PRODUTO","QUALIDADE","PREÇO","PRECO","VOLUME","LOGÍSTICA","LOGISTICA",
+      "PAGAMENTO","PAGAMENTOS","RETENÇÕES","RETENCOES","REFERÊNCIA DE MERCADO",
+      "REFERENCIA DE MERCADO","GERAL",
+    ]);
+    const rawParsed = JSON.parse(jsonStr) as Record<string, unknown>;
+    const hasNested = Object.keys(rawParsed).some(k => SECTION_KEYS.has(k));
+    let flatParsed: Record<string, unknown> = rawParsed;
+    if (hasNested) {
+      flatParsed = {};
+      for (const [k, v] of Object.entries(rawParsed)) {
+        if (SECTION_KEYS.has(k) && typeof v === "object" && v !== null && !Array.isArray(v)) {
+          Object.assign(flatParsed, v);
+        } else {
+          flatParsed[k] = v;
+        }
+      }
+    }
+    const extraido = flatParsed as unknown as ContratoVendaExtraido;
     if (!Array.isArray(extraido.retencoes)) extraido.retencoes = [];
-    if (extraido.comprador_cnpj) extraido.comprador_cnpj = extraido.comprador_cnpj.replace(/\D/g, "");
-    if (extraido.vendedor_cpf_cnpj) extraido.vendedor_cpf_cnpj = extraido.vendedor_cpf_cnpj.replace(/\D/g, "");
+    if (extraido.comprador_cnpj) extraido.comprador_cnpj = String(extraido.comprador_cnpj).replace(/\D/g, "");
+    if (extraido.vendedor_cpf_cnpj) extraido.vendedor_cpf_cnpj = String(extraido.vendedor_cpf_cnpj).replace(/\D/g, "");
     return { extraido, rawText };
   } catch {
     return { extraido: { retencoes: [] } as ContratoVendaExtraido, rawText };
