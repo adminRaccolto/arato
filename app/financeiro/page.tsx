@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior } from "../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior, listarPessoasDaConta } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao } from "../../lib/supabase";
 
@@ -195,6 +195,7 @@ const conciliados: { data: string; descricao: string; valor: number; tipo: "cred
 export default function Financeiro() {
   const { fazendaId, contaId, nomeFazendaSelecionada } = useAuth();
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
+  const [pessoasMap,  setPessoasMap]  = useState<Record<string, string>>({}); // id → nome
   const [loading, setLoading]   = useState(true);
   const [erro, setErro]         = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -269,6 +270,11 @@ export default function Financeiro() {
       ]);
       setLancamentos(lans);
       listarSimulacoes(fazendaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
+      listarPessoasDaConta(fazendaId!).then(ps => {
+        const m: Record<string, string> = {};
+        for (const p of ps) m[p.id] = p.nome ?? "";
+        setPessoasMap(m);
+      }).catch(() => {});
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar lançamentos");
     } finally {
@@ -1465,9 +1471,13 @@ export default function Financeiro() {
                                   subMoeda?: string;
                                 };
 
+                                // Resolve nome do fornecedor/credor: pessoa cadastrada → fallback descricao
+                                const resolverForn = (l: Lancamento) =>
+                                  (l.pessoa_id && pessoasMap[l.pessoa_id]) ? pessoasMap[l.pessoa_id] : l.descricao;
+
                                 const linhas: ItemLinha[] = [
-                                  ...lDia.filter(l => l.tipo === "receber").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, crVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CR", bgBadge: "#E8E8E8", colorBadge: "#0D0D0D", extra: <span style={{ fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
-                                  ...lDia.filter(l => l.tipo === "pagar").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, cpVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CP", bgBadge: "#FCEBEB", colorBadge: "#791F1F", extra: <span style={{ fontSize: 9, background: "#FAEEDA", color: "#633806", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
+                                  ...lDia.filter(l => l.tipo === "receber").map(l => ({ key: l.id, label: resolverForn(l), sub: l.categoria, crVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CR", bgBadge: "#E8E8E8", colorBadge: "#0D0D0D", extra: <span style={{ fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
+                                  ...lDia.filter(l => l.tipo === "pagar").map(l => ({ key: l.id, label: resolverForn(l), sub: l.categoria, cpVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CP", bgBadge: "#FCEBEB", colorBadge: "#791F1F", extra: <span style={{ fontSize: 9, background: "#FAEEDA", color: "#633806", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
                                   ...pDia.filter(p => p.tipo === "receber").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, crVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
                                   ...pDia.filter(p => p.tipo === "pagar").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, cpVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
                                   ...sDia.map(s => ({ key: s.id, label: s.descricao, sub: "", simVal: s.tipo === "receber" ? s.valor : -s.valor, badge: "sim", bgBadge: "#C9921B", colorBadge: "#fff", extra: <><button onClick={() => handleToggleSim(s.id, false)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 5, cursor: "pointer" }}>pausar</button><button onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
