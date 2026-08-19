@@ -10118,3 +10118,53 @@ ALTER TABLE pedidos_compra_itens
   ALTER COLUMN desconto_unitario TYPE numeric(14,6);
 
 COMMENT ON COLUMN pedidos_compra_itens.desconto_unitario IS 'Desconto por unidade (R$) com 6 casas decimais. Valor Item = valor_unitario - desconto_unitario';
+
+-- ─── Seção 178: barter_compromissos ──────────────────────────────────────────
+-- Compromissos de entrega de grãos originados por barter (insumos × sacas).
+-- Compra de terra em sacas já usa cct_pagamentos (moeda_parcela).
+-- Arrendamentos em sacas já usam arrendamento_pagamentos (commodity).
+-- Barter é o único tipo sem tabela própria — criado aqui.
+CREATE TABLE IF NOT EXISTS barter_compromissos (
+  id                      uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id              uuid        NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  conta_id                uuid        REFERENCES contas(id) ON DELETE SET NULL,
+  fornecedor_id           uuid        REFERENCES pessoas(id) ON DELETE SET NULL,
+  descricao               text        NOT NULL,
+  commodity               text        NOT NULL CHECK (commodity IN ('soja','milho','algodao','trigo','sorgo')),
+  sacas_total             numeric(14,3) NOT NULL,
+  sacas_entregues         numeric(14,3) NOT NULL DEFAULT 0,
+  preco_sc_ref            numeric(14,4),    -- R$/sc acordado na época do barter
+  valor_insumos           numeric(15,2),    -- valor BRL dos insumos recebidos
+  ano_safra_id            uuid        REFERENCES anos_safra(id) ON DELETE SET NULL,
+  ciclo_id                uuid        REFERENCES ciclos(id)    ON DELETE SET NULL,
+  data_entrega            date        NOT NULL,
+  data_entrega_realizada  date,
+  status                  text        NOT NULL DEFAULT 'pendente'
+                          CHECK (status IN ('pendente','parcial','entregue','cancelado')),
+  observacao              text,
+  created_at              timestamptz NOT NULL DEFAULT now(),
+  updated_at              timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE barter_compromissos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "rls_barter_conta" ON barter_compromissos;
+CREATE POLICY "rls_barter_conta" ON barter_compromissos
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+  );
+
+CREATE INDEX IF NOT EXISTS idx_barter_fazenda    ON barter_compromissos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_barter_conta      ON barter_compromissos(conta_id);
+CREATE INDEX IF NOT EXISTS idx_barter_ano_safra  ON barter_compromissos(ano_safra_id);
+CREATE INDEX IF NOT EXISTS idx_barter_vencimento ON barter_compromissos(data_entrega);
+
+COMMENT ON TABLE barter_compromissos IS 'Compromissos de entrega de grãos por barter (insumos pagos em sacas na colheita)';
+COMMENT ON COLUMN barter_compromissos.preco_sc_ref IS 'R$/sc de referência no momento da assinatura do barter';
+COMMENT ON COLUMN barter_compromissos.valor_insumos IS 'BRL recebido em insumos (sementes, fertilizantes, defensivos)';
