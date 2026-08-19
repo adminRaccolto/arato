@@ -10146,7 +10146,7 @@ WHERE  tipo = 'barter'
 INSERT INTO contratos (
   fazenda_id, numero, tipo, modalidade, moeda,
   produto, quantidade_sc, entregue_sc, preco,
-  comprador,
+  comprador, safra,
   pessoa_id, produtor_id, ano_safra_id, ciclo_id,
   data_contrato, data_entrega, status, confirmado,
   is_compra_terra, cct_pagamento_id,
@@ -10169,6 +10169,7 @@ SELECT
        THEN cct.quantidade_sacas ELSE 0 END         AS entregue_sc,
   cct.preco_sc_ref                                  AS preco,
   COALESCE(p.nome, ct.imovel_nome)                  AS comprador,
+  COALESCE(asf.descricao, '')                       AS safra,
   ct.vendedor_id                                    AS pessoa_id,
   ct.comprador_produtor_id                          AS produtor_id,
   cct.ano_safra_id,
@@ -10184,7 +10185,8 @@ SELECT
     || ct.imovel_nome                               AS observacao
 FROM  cct_pagamentos cct
 JOIN  contratos_compra_terra ct ON ct.id = cct.contrato_id
-LEFT  JOIN pessoas p ON p.id = ct.vendedor_id
+LEFT  JOIN pessoas p   ON p.id   = ct.vendedor_id
+LEFT  JOIN anos_safra asf ON asf.id = cct.ano_safra_id
 WHERE cct.moeda_parcela IN ('saca_soja','saca_milho','saca_algodao')
   AND cct.quantidade_sacas > 0
   AND NOT EXISTS (

@@ -65,9 +65,22 @@ export async function POST(req: NextRequest) {
     // Busca dados do contrato de compra de terra para os contratos de grãos
     const { data: cctContrato } = await sb
       .from("contratos_compra_terra")
-      .select("vendedor_id, comprador_produtor_id, conta_id, imovel_nome, data_contrato")
+      .select("vendedor_id, comprador_produtor_id, imovel_nome, data_contrato")
       .eq("id", body.contrato_id)
       .maybeSingle();
+
+    // Pré-carrega descrições de anos_safra usados nas parcelas (para campo safra do contrato)
+    const anoSafraIds = [...new Set(body.parcelas.map(p => p.ano_safra_id).filter(Boolean) as string[])];
+    const safraDescMap: Record<string, string> = {};
+    if (anoSafraIds.length) {
+      const { data: safraRows } = await sb
+        .from("anos_safra")
+        .select("id, descricao")
+        .in("id", anoSafraIds);
+      (safraRows ?? []).forEach((r: { id: string; descricao: string }) => {
+        safraDescMap[r.id] = r.descricao;
+      });
+    }
 
     // Nome do vendedor (para campo comprador no contrato de grãos)
     let vendedorNome = body.imovel_nome;
@@ -152,6 +165,7 @@ export async function POST(req: NextRequest) {
         PRODUTO_MAP[p.moeda_parcela]
       ) {
         const numContrato = `CCT-${pg.id.slice(0, 8).toUpperCase()}`;
+        const safraDesc   = (p.ano_safra_id && safraDescMap[p.ano_safra_id]) ? safraDescMap[p.ano_safra_id] : "";
         await sb.from("contratos").insert({
           fazenda_id:      body.fazenda_id,
           numero:          numContrato,
@@ -163,11 +177,12 @@ export async function POST(req: NextRequest) {
           entregue_sc:     0,
           preco:           p.preco_sc_ref ?? 0,
           comprador:       vendedorNome,
-          pessoa_id:       cctContrato?.vendedor_id         ?? null,
-          produtor_id:     body.produtor_id                 ?? cctContrato?.comprador_produtor_id ?? null,
-          ano_safra_id:    p.ano_safra_id                   ?? null,
-          ciclo_id:        p.ciclo_id                       ?? null,
-          data_contrato:   cctContrato?.data_contrato        ?? TODAY,
+          safra:           safraDesc,
+          pessoa_id:       cctContrato?.vendedor_id               ?? null,
+          produtor_id:     body.produtor_id ?? cctContrato?.comprador_produtor_id ?? null,
+          ano_safra_id:    p.ano_safra_id                         ?? null,
+          ciclo_id:        p.ciclo_id                             ?? null,
+          data_contrato:   cctContrato?.data_contrato             ?? TODAY,
           data_entrega:    p.data_vencimento,
           status:          "aberto",
           confirmado:      true,

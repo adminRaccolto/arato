@@ -877,6 +877,7 @@ export default function ComprasPage() {
             if (sacasComprometidas > 0) {
               const produtoBarter  = extrairProdutoBarter(cicloSelecionado?.cultura);
               const numContratoBrt = `BRT-${new Date().getFullYear()}-${pedidoId.slice(-6).toUpperCase()}`;
+              const barterSafraDesc = anosSafra.find(a => a.id === (f.barter_ano_safra_id || f.ano_safra_id))?.descricao ?? "";
               const contBarter = await criarContrato({
                 fazenda_id:        fidPedido,
                 numero:            numContratoBrt,
@@ -888,6 +889,7 @@ export default function ComprasPage() {
                 quantidade_sc:     sacasComprometidas,
                 entregue_sc:       0,
                 comprador:         fornecedorNome,
+                safra:             barterSafraDesc,
                 pessoa_id:         f.fornecedor_id || undefined,
                 produtor_id:       f.produtor_id || undefined,
                 ano_safra_id:      f.barter_ano_safra_id || undefined,
