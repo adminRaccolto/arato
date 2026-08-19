@@ -49,15 +49,17 @@ interface ContratoEnriquecido extends ContratoFinanceiro {
   garantias: GarantiaContrato[];
   valorGarantias: number;
   parcelas: ParcelaPagamento[];
+  fatorCambio: number; // 1 para BRL, PTAX para USD
 }
 
 export default function RelatorioEndividamento() {
   const { fazendaId, fazendaIds, contaId, logoCliente, nomeFazendaSelecionada: fazendaNome } = useAuth();
 
-  const [contratos,  setContratos]  = useState<ContratoEnriquecido[]>([]);
-  const [produtores, setProdutores] = useState<Produtor[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [erro,       setErro]       = useState<string | null>(null);
+  const [contratos,   setContratos]   = useState<ContratoEnriquecido[]>([]);
+  const [produtores,  setProdutores]  = useState<Produtor[]>([]);
+  const [ptaxEndiv,   setPtaxEndiv]   = useState<number | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [erro,        setErro]        = useState<string | null>(null);
 
   // Filtros de dados
   const [filtroProd,   setFiltroProd]   = useState("");
@@ -83,10 +85,14 @@ export default function RelatorioEndividamento() {
     setErro(null);
     try {
       const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
-      const [ctsRaw, { data: prods }] = await Promise.all([
+      const [ctsRaw, { data: prods }, ptaxResult] = await Promise.all([
         listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds),
         supabase.from("produtores").select("id,nome_razao_social,cpf_cnpj").in("fazenda_id", fazendaIds).order("nome_razao_social"),
+        fetch("/api/precos").then(r => r.json()).then(d => d.usdPtax ?? d.usdBrl ?? null).catch(() => null),
       ]);
+
+      const ptax = typeof ptaxResult === "number" && ptaxResult > 1 ? ptaxResult : null;
+      if (ptax) setPtaxEndiv(ptax);
 
       if (!ctsRaw?.length) { setContratos([]); setProdutores((prods ?? []) as Produtor[]); return; }
       setProdutores((prods ?? []) as Produtor[]);
@@ -102,17 +108,20 @@ export default function RelatorioEndividamento() {
       ]);
 
       const enriched: ContratoEnriquecido[] = ctsRaw.map(c => {
-        const parcelas  = ((parcsAll ?? []) as ParcelaPagamento[]).filter(p => p.contrato_id === c.id);
-        const pagas     = parcelas.filter(p => p.status === "pago");
-        const emAberto  = parcelas.filter(p => p.status !== "pago").sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
-        const vencidas  = parcelas.filter(p => p.status === "vencido");
-        const garantias = ((garsAll ?? []) as GarantiaContrato[]).filter(g => g.contrato_id === c.id);
+        const parcelas   = ((parcsAll ?? []) as ParcelaPagamento[]).filter(p => p.contrato_id === c.id);
+        const pagas      = parcelas.filter(p => p.status === "pago");
+        const emAberto   = parcelas.filter(p => p.status !== "pago").sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+        const vencidas   = parcelas.filter(p => p.status === "vencido");
+        const garantias  = ((garsAll ?? []) as GarantiaContrato[]).filter(g => g.contrato_id === c.id);
         const ultimaPaga = pagas.sort((a, b) => b.num_parcela - a.num_parcela)[0];
+        // Contratos USD: valores de parcelas e saldo_devedor estão em USD — converter para BRL via PTAX
+        const fatorCambio = c.moeda === "USD" ? (ptax ?? 1) : 1;
         return {
           ...c,
-          saldoDevedor:      ultimaPaga?.saldo_devedor ?? c.valor_financiado,
-          totalPago:         pagas.reduce((s, p) => s + p.amortizacao, 0),
-          jurosAcumulados:   pagas.reduce((s, p) => s + p.juros, 0),
+          fatorCambio,
+          saldoDevedor:      (ultimaPaga?.saldo_devedor ?? c.valor_financiado) * fatorCambio,
+          totalPago:         pagas.reduce((s, p) => s + p.amortizacao * fatorCambio, 0),
+          jurosAcumulados:   pagas.reduce((s, p) => s + p.juros * fatorCambio, 0),
           proximoVencimento: emAberto[0]?.data_vencimento ?? null,
           totalParcelas:     parcelas.length,
           parcelasPagas:     pagas.length,
@@ -173,26 +182,27 @@ export default function RelatorioEndividamento() {
 
       for (const p of parcelasFiltradas(c)) {
         const a = p.data_vencimento.slice(0, 4);
+        const f = c.fatorCambio;
         // n2
         if (!n2.porAno[a]) n2.porAno[a] = { amort: 0, juros: 0, encargos: 0, total: 0 };
-        n2.porAno[a].amort    += p.amortizacao;
-        n2.porAno[a].juros    += p.juros;
-        n2.porAno[a].encargos += p.despesas_acessorios ?? 0;
-        n2.porAno[a].total    += p.valor_parcela;
+        n2.porAno[a].amort    += p.amortizacao * f;
+        n2.porAno[a].juros    += p.juros * f;
+        n2.porAno[a].encargos += (p.despesas_acessorios ?? 0) * f;
+        n2.porAno[a].total    += p.valor_parcela * f;
         // n1
         if (!n1.porAno[a]) n1.porAno[a] = { amort: 0, juros: 0, encargos: 0, total: 0 };
-        n1.porAno[a].amort    += p.amortizacao;
-        n1.porAno[a].juros    += p.juros;
-        n1.porAno[a].encargos += p.despesas_acessorios ?? 0;
-        n1.porAno[a].total    += p.valor_parcela;
+        n1.porAno[a].amort    += p.amortizacao * f;
+        n1.porAno[a].juros    += p.juros * f;
+        n1.porAno[a].encargos += (p.despesas_acessorios ?? 0) * f;
+        n1.porAno[a].total    += p.valor_parcela * f;
       }
     }
     return [...mapa.values()].sort((a, b) => a.credor.localeCompare(b.credor));
   })();
 
   // Totais globais de KPI (sempre de todos os contratos filtrados, não só dos anos visíveis)
-  const totalSaldo     = filtrados.reduce((s, c) => s + c.saldoDevedor,    0);
-  const totalCaptado   = filtrados.reduce((s, c) => s + c.valor_financiado, 0);
+  const totalSaldo     = filtrados.reduce((s, c) => s + c.saldoDevedor, 0);
+  const totalCaptado   = filtrados.reduce((s, c) => s + c.valor_financiado * c.fatorCambio, 0);
   const totalPago      = filtrados.reduce((s, c) => s + c.totalPago,        0);
   const totalJuros     = filtrados.reduce((s, c) => s + c.jurosAcumulados,  0);
   const totalGarantias = filtrados.reduce((s, c) => s + c.valorGarantias,   0);
@@ -308,6 +318,7 @@ export default function RelatorioEndividamento() {
     <div style="font-size:10px;color:#555;margin-top:3px">
       ${prodFiltrado ? `Produtor: ${prodFiltrado.nome_razao_social}${prodFiltrado.cpf_cnpj ? ` · ${prodFiltrado.cpf_cnpj}` : ""} · ` : ""}
       ${apenasEmAberto ? "Apenas parcelas em aberto · " : ""}
+      ${ptaxEndiv ? `PTAX: R$ ${ptaxEndiv.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} · ` : ""}
       Saldo Devedor Total: <strong style="color:#C0392B">${fmtBRL(totalSaldo)}</strong> ·
       A pagar no período: <strong>${fmtBRL(totalJanelaTotal)}</strong>
       (amort. ${fmtBRL(totalJanelaAmort)} + juros ${fmtBRL(totalJanelaJuros)})
@@ -373,9 +384,16 @@ export default function RelatorioEndividamento() {
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Relatório de Endividamento</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Relatório de Endividamento</h1>
+              {ptaxEndiv && (
+                <span style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "4px 10px" }}>
+                  PTAX: R$ {ptaxEndiv.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>
-              Capital de Terceiros — colunas = anos de vencimento das parcelas
+              Capital de Terceiros — colunas = anos de vencimento das parcelas{ptaxEndiv ? " · contratos USD convertidos pela PTAX do dia" : ""}
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -605,14 +623,18 @@ export default function RelatorioEndividamento() {
 
                               {/* N3: contratos individuais */}
                               {isExp2 && n2.contratos.map((c, ci) => {
+                                const f = c.fatorCambio;
                                 const cTotalPer = anos.reduce((s, a) => {
                                   const parcsAno = parcelasFiltradas(c).filter(p => p.data_vencimento.slice(0, 4) === a);
-                                  return s + parcsAno.reduce((ps, p) => ps + p.valor_parcela, 0);
+                                  return s + parcsAno.reduce((ps, p) => ps + p.valor_parcela * f, 0);
                                 }, 0);
                                 return (
                                   <tr key={c.id} style={{ background: ci % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #F0F0F0" }}>
                                     <td style={{ padding: "8px 16px 8px 48px", fontSize: 11, position: "sticky", left: 0, background: ci % 2 === 0 ? "#fff" : "#FAFBFC", zIndex: 1 }}>
-                                      <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao || c.credor}</div>
+                                      <div style={{ fontWeight: 600, color: "var(--text-1)" }}>
+                                        {c.descricao || c.credor}
+                                        {c.moeda === "USD" && <span style={{ marginLeft: 6, fontSize: 9, background: "#E8F4E8", color: "#166534", fontWeight: 700, padding: "1px 5px", borderRadius: 3 }}>USD</span>}
+                                      </div>
                                       <div style={{ color: "var(--text-3)", fontSize: 10 }}>
                                         contrato: {fmtData(c.data_contrato)}
                                         {c.linha_credito ? ` · ${c.linha_credito}` : ""}
@@ -625,9 +647,9 @@ export default function RelatorioEndividamento() {
                                     </td>
                                     {anos.map(a => {
                                       const parcsAno = parcelasFiltradas(c).filter(p => p.data_vencimento.slice(0, 4) === a);
-                                      const amA = parcsAno.reduce((s, p) => s + p.amortizacao, 0);
-                                      const juA = parcsAno.reduce((s, p) => s + p.juros, 0);
-                                      const totA = parcsAno.reduce((s, p) => s + p.valor_parcela, 0);
+                                      const amA  = parcsAno.reduce((s, p) => s + p.amortizacao * f, 0);
+                                      const juA  = parcsAno.reduce((s, p) => s + p.juros * f, 0);
+                                      const totA = parcsAno.reduce((s, p) => s + p.valor_parcela * f, 0);
                                       return (
                                         <React.Fragment key={a}>
                                           <td style={{ ...colV, fontSize: 11, borderLeft: "1.5px solid var(--bg-tag)" }}>
