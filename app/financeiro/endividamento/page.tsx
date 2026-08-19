@@ -11,6 +11,28 @@ const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
 
+// ─── Tipos para Compra de Imóveis Rurais ─────────────────────────────────────
+interface CctPagamento {
+  id:              string;
+  data_vencimento: string;
+  valor:           number;
+  status:          "pendente" | "pago" | "atrasado";
+  moeda_parcela?:  string;
+  quantidade_sacas?: number;
+  preco_sc_ref?:   number;
+  imovel_nome:     string;
+  vendedor_nome:   string;
+  contrato_id:     string;
+  valor_total:     number;
+}
+interface CctImovel {
+  imovel_nome:   string;
+  vendedor_nome: string;
+  valor_total:   number;
+  pagamentos:    CctPagamento[];
+  porAno:        Record<string, number>;
+}
+
 const TIPO_LABEL: Record<string, string> = {
   custeio:                   "Custeio",
   investimento:              "Investimento",
@@ -55,11 +77,12 @@ interface ContratoEnriquecido extends ContratoFinanceiro {
 export default function RelatorioEndividamento() {
   const { fazendaId, fazendaIds, contaId, logoCliente, nomeFazendaSelecionada: fazendaNome } = useAuth();
 
-  const [contratos,   setContratos]   = useState<ContratoEnriquecido[]>([]);
-  const [produtores,  setProdutores]  = useState<Produtor[]>([]);
-  const [ptaxEndiv,   setPtaxEndiv]   = useState<number | null>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [erro,        setErro]        = useState<string | null>(null);
+  const [contratos,    setContratos]   = useState<ContratoEnriquecido[]>([]);
+  const [produtores,   setProdutores]  = useState<Produtor[]>([]);
+  const [cctImoveis,   setCctImoveis]  = useState<CctImovel[]>([]);
+  const [ptaxEndiv,    setPtaxEndiv]   = useState<number | null>(null);
+  const [loading,      setLoading]     = useState(true);
+  const [erro,         setErro]        = useState<string | null>(null);
 
   // Filtros de dados
   const [filtroProd,   setFiltroProd]   = useState("");
@@ -85,10 +108,16 @@ export default function RelatorioEndividamento() {
     setErro(null);
     try {
       const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
-      const [ctsRaw, { data: prods }, ptaxResult] = await Promise.all([
+      const [ctsRaw, { data: prods }, ptaxResult, { data: cctRaw }] = await Promise.all([
         listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds),
         supabase.from("produtores").select("id,nome_razao_social,cpf_cnpj").in("fazenda_id", fazendaIds).order("nome_razao_social"),
         fetch("/api/precos").then(r => r.json()).then(d => d.usdPtax ?? d.usdBrl ?? null).catch(() => null),
+        supabase.from("cct_pagamentos")
+          .select(`id, data_vencimento, valor, status, moeda_parcela, quantidade_sacas, preco_sc_ref,
+                   contrato_id, contratos_compra_terra!inner(imovel_nome, valor_total, vendedor_id,
+                     pessoas!contratos_compra_terra_vendedor_id_fkey(nome_razao_social))`)
+          .in("fazenda_id", hintIds)
+          .order("data_vencimento"),
       ]);
 
       const ptax = typeof ptaxResult === "number" && ptaxResult > 1 ? ptaxResult : null;
@@ -133,6 +162,38 @@ export default function RelatorioEndividamento() {
       });
 
       setContratos(enriched);
+
+      // ── Processa dados de Compra de Imóveis Rurais ──────────────────────────
+      const cctRows = (cctRaw ?? []) as Record<string, unknown>[];
+      const cctMap = new Map<string, CctImovel>();
+      for (const row of cctRows) {
+        const ct  = row["contratos_compra_terra"] as Record<string, unknown> | null;
+        const ven = ct?.["pessoas!contratos_compra_terra_vendedor_id_fkey"] as Record<string, unknown> | null;
+        const imovel_nome   = (ct?.["imovel_nome"]  as string) ?? "Imóvel sem nome";
+        const vendedor_nome = (ven?.["nome_razao_social"] as string) ?? "Vendedor não informado";
+        const valor_total   = (ct?.["valor_total"]  as number) ?? 0;
+        const pg: CctPagamento = {
+          id:              row["id"] as string,
+          data_vencimento: row["data_vencimento"] as string,
+          valor:           Number(row["valor"] ?? 0),
+          status:          (row["status"] as CctPagamento["status"]) ?? "pendente",
+          moeda_parcela:   row["moeda_parcela"] as string | undefined,
+          quantidade_sacas: row["quantidade_sacas"] as number | undefined,
+          preco_sc_ref:    row["preco_sc_ref"] as number | undefined,
+          imovel_nome,
+          vendedor_nome,
+          contrato_id:     row["contrato_id"] as string,
+          valor_total,
+        };
+        if (!cctMap.has(imovel_nome)) {
+          cctMap.set(imovel_nome, { imovel_nome, vendedor_nome, valor_total, pagamentos: [], porAno: {} });
+        }
+        const im = cctMap.get(imovel_nome)!;
+        im.pagamentos.push(pg);
+        const ano = pg.data_vencimento.slice(0, 4);
+        im.porAno[ano] = (im.porAno[ano] ?? 0) + pg.valor;
+      }
+      setCctImoveis([...cctMap.values()].sort((a, b) => a.imovel_nome.localeCompare(b.imovel_nome)));
     } catch (e) {
       setErro(String(e));
     } finally {
@@ -154,11 +215,26 @@ export default function RelatorioEndividamento() {
   const parcelasFiltradas = (c: ContratoEnriquecido) =>
     apenasEmAberto ? c.parcelas.filter(p => p.status !== "pago") : c.parcelas;
 
-  // Anos disponíveis = anos com parcelas nos contratos filtrados
+  // Parcelas CCT filtradas (respeita "apenas em aberto")
+  const cctParcFiltradas = (im: CctImovel) =>
+    apenasEmAberto ? im.pagamentos.filter(p => p.status !== "pago") : im.pagamentos;
+
+  // Buckets CCT por ano (considerando filtro)
+  const cctImoveisView = cctImoveis.map(im => {
+    const porAnoFilt: Record<string, number> = {};
+    for (const p of cctParcFiltradas(im)) {
+      const a = p.data_vencimento.slice(0, 4);
+      porAnoFilt[a] = (porAnoFilt[a] ?? 0) + p.valor;
+    }
+    return { ...im, porAnoFilt };
+  });
+
+  // Anos disponíveis = anos com parcelas nos contratos filtrados + CCT
   // Colunas baseadas em data_vencimento das parcelas, NÃO em data_contrato
-  const todosAnosParc = [...new Set(
-    filtrados.flatMap(c => parcelasFiltradas(c).map(p => p.data_vencimento.slice(0, 4)))
-  )].sort();
+  const todosAnosParc = [...new Set([
+    ...filtrados.flatMap(c => parcelasFiltradas(c).map(p => p.data_vencimento.slice(0, 4))),
+    ...cctImoveisView.flatMap(im => Object.keys(im.porAnoFilt)),
+  ])].sort();
 
   // Aplica filtro de intervalo
   const anos = todosAnosParc.filter(a =>
@@ -201,13 +277,17 @@ export default function RelatorioEndividamento() {
   })();
 
   // Totais globais de KPI (sempre de todos os contratos filtrados, não só dos anos visíveis)
-  const totalSaldo     = filtrados.reduce((s, c) => s + c.saldoDevedor, 0);
+  const totalSaldoCF   = filtrados.reduce((s, c) => s + c.saldoDevedor, 0);
   const totalCaptado   = filtrados.reduce((s, c) => s + c.valor_financiado * c.fatorCambio, 0);
   const totalPago      = filtrados.reduce((s, c) => s + c.totalPago,        0);
   const totalJuros     = filtrados.reduce((s, c) => s + c.jurosAcumulados,  0);
   const totalGarantias = filtrados.reduce((s, c) => s + c.valorGarantias,   0);
 
-  // Totais por ano (para a linha de rodapé da tabela)
+  // Saldo CCT (parcelas pendentes/atrasadas)
+  const totalSaldoCCT  = cctImoveis.reduce((s, im) => s + im.pagamentos.filter(p => p.status !== "pago").reduce((ps, p) => ps + p.valor, 0), 0);
+  const totalSaldo     = totalSaldoCF + totalSaldoCCT;
+
+  // Totais por ano (para a linha de rodapé da tabela) — inclui CF + CCT
   const totalPorAno: Record<string, YearBucket> = {};
   for (const n1 of hierarquia) {
     for (const [a, b] of Object.entries(n1.porAno)) {
@@ -216,6 +296,13 @@ export default function RelatorioEndividamento() {
       totalPorAno[a].juros    += b.juros;
       totalPorAno[a].encargos += b.encargos;
       totalPorAno[a].total    += b.total;
+    }
+  }
+  for (const im of cctImoveisView) {
+    for (const [a, v] of Object.entries(im.porAnoFilt)) {
+      if (!totalPorAno[a]) totalPorAno[a] = { amort: 0, juros: 0, encargos: 0, total: 0 };
+      totalPorAno[a].amort += v; // parcela de compra de terra = amortização (sem juros separado)
+      totalPorAno[a].total += v;
     }
   }
 
@@ -268,14 +355,50 @@ export default function RelatorioEndividamento() {
       }
     }
     tbody += `<tr style="background:#111111">
-      <td colspan="2" style="padding:6px 7px;color:#fff;font-weight:700;font-size:10px">TOTAL</td>
-      ${anos.map(a => `
-        <td style="padding:6px 7px;text-align:right;font-size:9px;color:#fff;font-weight:700">${fmtBRL(totalPorAno[a]?.amort ?? 0)}</td>
-        <td style="padding:6px 7px;text-align:right;font-size:9px;color:#FDE9BB;font-weight:700">${fmtBRL(totalPorAno[a]?.juros ?? 0)}</td>
-        <td style="padding:6px 7px;text-align:right;font-size:9px;color:#fff;font-weight:700;border-right:2px solid rgba(255,255,255,.2)">${fmtBRL(totalPorAno[a]?.total ?? 0)}</td>
-      `).join("")}
-      <td style="padding:6px 7px;text-align:right;font-size:10px;color:#fff;font-weight:700">${fmtBRL(totalJanelaTotal)}</td>
+      <td colspan="2" style="padding:6px 7px;color:#fff;font-weight:700;font-size:10px">TOTAL FINANCIAMENTOS</td>
+      ${anos.map(a => {
+        const cfTotal = hierarquia.reduce((s, n1) => s + (n1.porAno[a]?.total ?? 0), 0);
+        const cfAmort = hierarquia.reduce((s, n1) => s + (n1.porAno[a]?.amort ?? 0), 0);
+        const cfJuros = hierarquia.reduce((s, n1) => s + (n1.porAno[a]?.juros ?? 0), 0);
+        return `
+          <td style="padding:6px 7px;text-align:right;font-size:9px;color:#fff;font-weight:700">${fmtBRL(cfAmort)}</td>
+          <td style="padding:6px 7px;text-align:right;font-size:9px;color:#FDE9BB;font-weight:700">${fmtBRL(cfJuros)}</td>
+          <td style="padding:6px 7px;text-align:right;font-size:9px;color:#fff;font-weight:700;border-right:2px solid rgba(255,255,255,.2)">${fmtBRL(cfTotal)}</td>
+        `;
+      }).join("")}
+      <td style="padding:6px 7px;text-align:right;font-size:10px;color:#fff;font-weight:700">${fmtBRL(hierarquia.reduce((s, n1) => s + anos.reduce((rs, a) => rs + (n1.porAno[a]?.total ?? 0), 0), 0))}</td>
     </tr>`;
+
+    // ── Bloco CCT no print ──────────────────────────────────────────────────
+    if (cctImoveisView.length > 0) {
+      tbody += `<tr><td colspan="${2 + anos.length * 3 + 1}" style="padding:6px 7px;background:#F5EEE6;font-size:10px;font-weight:700;color:#5D4E37;border-top:2px solid #5D4E37">
+        COMPRA DE IMÓVEIS RURAIS — Parcelas ao Vendedor
+      </td></tr>`;
+      for (const im of cctImoveisView) {
+        const imTotal = anos.reduce((s, a) => s + (im.porAnoFilt[a] ?? 0), 0);
+        if (imTotal === 0) continue;
+        tbody += `<tr style="background:#F9F5F0">
+          <td style="padding:5px 7px;font-weight:700;font-size:10px;color:#5D4E37">${im.imovel_nome}</td>
+          <td style="padding:5px 7px;font-size:9px;color:#888">${im.vendedor_nome}</td>
+          ${anos.map(a => `
+            <td colspan="3" style="padding:4px 7px;text-align:right;font-size:9px;font-weight:600;border-right:2px solid #E8E0D5">
+              ${(im.porAnoFilt[a] ?? 0) > 0 ? fmtBRL(im.porAnoFilt[a]) : "—"}
+            </td>
+          `).join("")}
+          <td style="padding:4px 7px;text-align:right;font-size:9px;font-weight:700;color:#5D4E37">${fmtBRL(imTotal)}</td>
+        </tr>`;
+      }
+      const cctTotal = cctImoveisView.reduce((s, im) => s + anos.reduce((rs, a) => rs + (im.porAnoFilt[a] ?? 0), 0), 0);
+      tbody += `<tr style="background:#5D4E37">
+        <td colspan="2" style="padding:6px 7px;color:#fff;font-weight:700;font-size:10px">TOTAL IMÓVEIS</td>
+        ${anos.map(a => `
+          <td colspan="3" style="padding:6px 7px;text-align:right;font-size:9px;color:#fff;font-weight:700;border-right:2px solid rgba(255,255,255,.2)">
+            ${fmtBRL(cctImoveisView.reduce((s, im) => s + (im.porAnoFilt[a] ?? 0), 0))}
+          </td>
+        `).join("")}
+        <td style="padding:6px 7px;text-align:right;font-size:10px;color:#fff;font-weight:700">${fmtBRL(cctTotal)}</td>
+      </tr>`;
+    }
 
     win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Endividamento — ${fazendaNome ?? "Fazenda"}</title>
@@ -356,7 +479,7 @@ export default function RelatorioEndividamento() {
     const rows: Record<string, string | number>[] = [];
     for (const n1 of hierarquia) {
       for (const n2 of n1.niveis2) {
-        const base: Record<string, string | number> = { Instituição: n1.credor, Tipo: TIPO_LABEL[n2.tipo] ?? n2.tipo };
+        const base: Record<string, string | number> = { Bloco: "Financiamentos", Instituição: n1.credor, Tipo: TIPO_LABEL[n2.tipo] ?? n2.tipo };
         for (const ano of anos) {
           base[`${ano} Amort.`]  = n2.porAno[ano]?.amort  ?? 0;
           base[`${ano} Juros`]   = n2.porAno[ano]?.juros  ?? 0;
@@ -365,6 +488,17 @@ export default function RelatorioEndividamento() {
         base["Total Período"] = anos.reduce((s, a) => s + (n2.porAno[a]?.total ?? 0), 0);
         rows.push(base);
       }
+    }
+    // Linhas CCT
+    for (const im of cctImoveisView) {
+      const base: Record<string, string | number> = { Bloco: "Compra de Imóveis", Instituição: im.vendedor_nome, Tipo: im.imovel_nome };
+      for (const ano of anos) {
+        base[`${ano} Amort.`]  = im.porAnoFilt[ano] ?? 0;
+        base[`${ano} Juros`]   = 0;
+        base[`${ano} Total`]   = im.porAnoFilt[ano] ?? 0;
+      }
+      base["Total Período"] = anos.reduce((s, a) => s + (im.porAnoFilt[a] ?? 0), 0);
+      rows.push(base);
     }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Cronograma");
@@ -701,6 +835,123 @@ export default function RelatorioEndividamento() {
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Bloco Compra de Imóveis Rurais ───────────────────────────────── */}
+        {cctImoveisView.length > 0 && (
+          <div style={{ marginTop: 28 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>
+                Compra de Imóveis Rurais
+              </h2>
+              <span style={{ fontSize: 11, background: "#FBF3E0", color: "#C9921B", fontWeight: 700, padding: "3px 10px", borderRadius: 20, border: "0.5px solid #FDDCAA" }}>
+                {cctImoveisView.length} imóvel{cctImoveisView.length !== 1 ? "is" : ""} · saldo {fmtBRL(totalSaldoCCT)}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>Parcelas ao vendedor — sem juros separado</span>
+            </div>
+
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 170 + 340 }}>
+                  <thead>
+                    <tr style={{ background: "#5D4E37" }}>
+                      <th style={{ ...thStyle, textAlign: "left", minWidth: 220, paddingLeft: 16, position: "sticky", left: 0, background: "#5D4E37", zIndex: 2 }}>
+                        Imóvel / Vendedor
+                      </th>
+                      {anos.map(a => (
+                        <th key={a} style={{ ...thStyle, borderLeft: "1.5px solid rgba(255,255,255,.12)", minWidth: 120 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700 }}>{a}</div>
+                          <div style={{ fontSize: 9, opacity: 0.6, fontWeight: 400 }}>Total</div>
+                        </th>
+                      ))}
+                      <th style={{ ...thStyle, borderLeft: "2px solid rgba(255,255,255,.25)" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700 }}>Total</div>
+                        <div style={{ fontSize: 9, opacity: 0.6, fontWeight: 400 }}>período</div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cctImoveisView.map((im, ii) => {
+                      const imTotal = anos.reduce((s, a) => s + (im.porAnoFilt[a] ?? 0), 0);
+                      const imSaldoPendente = im.pagamentos.filter(p => p.status !== "pago").reduce((s, p) => s + p.valor, 0);
+                      const rowKey = `cct-${ii}`;
+                      const isExp  = expandido.has(rowKey);
+                      return (
+                        <React.Fragment key={rowKey}>
+                          <tr onClick={() => toggle(rowKey)}
+                            style={{ background: "#F9F5F0", cursor: "pointer", borderBottom: "0.5px solid #E8E0D5" }}>
+                            <td style={{ padding: "10px 16px", position: "sticky", left: 0, background: "#F9F5F0", zIndex: 1 }}>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: "#0D0D0D", display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 10, color: "#5D4E37", opacity: 0.5, marginRight: 2 }}>{isExp ? "▼" : "▶"}</span>
+                                {im.imovel_nome}
+                              </div>
+                              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                                {im.vendedor_nome} · total contrato: {fmtBRL(im.valor_total)}
+                              </div>
+                              {imSaldoPendente > 0 && (
+                                <div style={{ fontSize: 10, color: "#C9921B", fontWeight: 600, marginTop: 2 }}>
+                                  Saldo pendente: {fmtBRL(imSaldoPendente)}
+                                </div>
+                              )}
+                            </td>
+                            {anos.map(a => (
+                              <td key={a} style={{ ...colV, fontWeight: 700, borderLeft: "1.5px solid #E8E0D5" }}>
+                                {(im.porAnoFilt[a] ?? 0) > 0 ? fmtBRL(im.porAnoFilt[a]) : <span style={{ color: "#ddd" }}>—</span>}
+                              </td>
+                            ))}
+                            <td style={{ ...colV, fontWeight: 700, color: "#5D4E37", borderLeft: "2px solid #C5B69A" }}>{fmtBRL(imTotal)}</td>
+                          </tr>
+
+                          {/* Detalhamento de parcelas ao expandir */}
+                          {isExp && cctParcFiltradas(im).map((p, pi) => {
+                            const parAno = p.data_vencimento.slice(0, 4);
+                            const pVenc  = p.data_vencimento <= hoje && p.status !== "pago";
+                            return (
+                              <tr key={p.id} style={{ background: pi % 2 === 0 ? "#fff" : "#FDFAF7", borderBottom: "0.5px solid #F0EBE3" }}>
+                                <td style={{ padding: "7px 16px 7px 32px", fontSize: 11, position: "sticky", left: 0, background: pi % 2 === 0 ? "#fff" : "#FDFAF7", zIndex: 1 }}>
+                                  <div style={{ fontWeight: 600, color: pVenc ? "#E24B4A" : "var(--text-1)" }}>
+                                    Venc. {fmtData(p.data_vencimento)}
+                                    {p.status === "pago" && <span style={{ marginLeft: 6, fontSize: 9, background: "#D1FAE5", color: "#065F46", fontWeight: 700, padding: "1px 5px", borderRadius: 3 }}>PAGO</span>}
+                                    {p.status === "atrasado" && <span style={{ marginLeft: 6, fontSize: 9, background: "#FEE2E2", color: "#991B1B", fontWeight: 700, padding: "1px 5px", borderRadius: 3 }}>ATRASADO</span>}
+                                    {p.moeda_parcela && p.moeda_parcela !== "BRL" && (
+                                      <span style={{ marginLeft: 6, fontSize: 9, background: "#EBF3FC", color: "#1A4870", fontWeight: 700, padding: "1px 5px", borderRadius: 3 }}>
+                                        {p.quantidade_sacas ? `${p.quantidade_sacas.toLocaleString("pt-BR")} sc` : p.moeda_parcela}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                {anos.map(a => (
+                                  <td key={a} style={{ ...colV, fontSize: 11, borderLeft: "1.5px solid var(--bg-tag)" }}>
+                                    {a === parAno ? fmtBRL(p.valor) : <span style={{ color: "#ddd" }}>—</span>}
+                                  </td>
+                                ))}
+                                <td style={{ ...colV, fontSize: 11, fontWeight: 600, borderLeft: "2px solid var(--bg-tag)" }}>{fmtBRL(p.valor)}</td>
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })}
+
+                    {/* Rodapé CCT */}
+                    <tr style={{ background: "#5D4E37", fontWeight: 700 }}>
+                      <td style={{ padding: "10px 16px", color: "#fff", fontSize: 12, position: "sticky", left: 0, background: "#5D4E37", zIndex: 1 }}>
+                        TOTAL IMÓVEIS
+                      </td>
+                      {anos.map(a => (
+                        <td key={a} style={{ ...colV, fontWeight: 700, color: "#fff", borderLeft: "1.5px solid rgba(255,255,255,.12)" }}>
+                          {fmtBRL(cctImoveisView.reduce((s, im) => s + (im.porAnoFilt[a] ?? 0), 0))}
+                        </td>
+                      ))}
+                      <td style={{ ...colV, fontWeight: 700, color: "#fff", borderLeft: "2px solid rgba(255,255,255,.25)" }}>
+                        {fmtBRL(cctImoveisView.reduce((s, im) => s + anos.reduce((rs, a) => rs + (im.porAnoFilt[a] ?? 0), 0), 0))}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
