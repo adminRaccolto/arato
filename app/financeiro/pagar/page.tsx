@@ -186,6 +186,7 @@ function ContasPagarInner() {
     return d.toISOString().split("T")[0];
   });
 
+  const [popover,     setPopover]     = useState<{ l: Lancamento; x: number; y: number } | null>(null);
   const [modalBaixa,  setModalBaixa]  = useState<Lancamento | null>(null);
   const [modalReprog, setModalReprog] = useState<Lancamento | null>(null);
   const [reprogForm,  setReprogForm]  = useState({ nova_data: "", novo_valor: "", obs: "" });
@@ -213,6 +214,13 @@ function ContasPagarInner() {
         setNfsVinculoLoading(false);
       });
   }, [alertaNF, fid]);
+
+  // Fechar popover com Escape
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setPopover(null); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, []);
 
   // ── Edição: reutiliza o modal de Nova CP com editandoId marcado ──
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -1194,7 +1202,12 @@ function ContasPagarInner() {
                         // progresso de parcelas
                         const parcPct = l.total_parcelas && l.total_parcelas > 1 ? Math.round(((l.num_parcela ?? 1) / l.total_parcelas) * 100) : null;
                         return (
-                          <tr key={l.id} className="cp-row" style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid rgba(255,255,255,0.04)" : "none", background: "transparent", borderLeft: `3px solid ${statusBorder}` }}>
+                          <tr key={l.id} className="cp-row"
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).closest('button,input,select,a')) return;
+                              setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
+                            }}
+                            style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid rgba(255,255,255,0.04)" : "none", background: "transparent", borderLeft: `3px solid ${statusBorder}`, cursor: "pointer" }}>
                             {/* Checkbox */}
                             <td style={{ padding: "8px 4px", textAlign: "center" }}>
                               <input type="checkbox" style={{ cursor: "pointer", accentColor: "#60A5FA" }}
@@ -1355,6 +1368,164 @@ function ContasPagarInner() {
           )}
         </div>
       </main>
+
+      {/* ── Popover de lançamento ─────────────────────────────────── */}
+      {popover && (() => {
+        const l = popover.l;
+        const sEfet     = statusEfetivo(l);
+        const dias      = diasAteVenc(l.data_vencimento);
+        const relativo  = labelRelativo(dias, sEfet);
+        const om        = origemMeta(l);
+        const pessoaNome = pessoas.find(p => p.id === l.pessoa_id)?.nome;
+        const fornNome   = pessoaNome ?? (l.descricao.includes(" - ") ? l.descricao.split(" - ")[0].trim() : l.descricao);
+        const fornDetalhe = pessoaNome
+          ? (l.descricao.toLowerCase().startsWith(pessoaNome.toLowerCase()) ? l.descricao.slice(pessoaNome.length).replace(/^\s*-\s*/, "").trim() : l.descricao)
+          : (l.descricao.includes(" - ") ? l.descricao.split(" - ").slice(1).join(" - ").trim() : "");
+        const safraDesc = anosSafra.find(a => a.id === l.ano_safra_id)?.descricao;
+        const cicloDesc = ciclos.find(c => c.id === l.ciclo_id)?.descricao;
+        const prodNome  = produtores.find(p => p.id === l.produtor_id)?.nome;
+        const ogNome    = l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria;
+        const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria;
+        const valorBRL  = paraBRL(l);
+        const parcPct   = l.total_parcelas && l.total_parcelas > 1 ? Math.round(((l.num_parcela ?? 1) / l.total_parcelas) * 100) : null;
+        const isPrevisao = l.natureza === "previsao";
+        const W = 388, H = 380;
+        const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+
+        const statusColors: Record<string, { bg: string; color: string; label: string }> = {
+          baixado:  { bg: "#DCFCE7", color: "#15803D", label: "Baixado" },
+          vencido:  { bg: "#FEE2E2", color: "#B91C1C", label: "Vencido" },
+          vencendo: { bg: "#FEF3C7", color: "#92400E", label: "Vencendo" },
+          aberto:   { bg: "#DBEAFE", color: "#1D4ED8", label: "Em aberto" },
+          previsao: { bg: "#EDE9FE", color: "#5B21B6", label: "Previsão" },
+          parcial:  { bg: "#FEF3C7", color: "#92400E", label: "Parcial" },
+        };
+        const sc = statusColors[isPrevisao ? "previsao" : sEfet] ?? statusColors.aberto;
+
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, background: "var(--bg-card)", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid var(--border)", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-nav)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fornNome}</div>
+                    {fornDetalhe && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fornDetalhe}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sc.bg, color: sc.color }}>{sc.label}</span>
+                    <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* Valor */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Valor</div>
+                    <div style={{ fontWeight: 700, fontSize: 18, color: l.moeda === "barter" ? "#8B5E14" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
+                      {l.moeda === "barter" ? `${(l.valor ?? 0).toLocaleString("pt-BR")} sc` : fmtBRL(valorBRL)}
+                    </div>
+                    {l.moeda === "USD" && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{(l.valor ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "USD" })} · cotação {l.cotacao_usd ? fmtBRL(l.cotacao_usd) : "não informada"}</div>}
+                  </div>
+                  {/* Parcela */}
+                  {parcPct !== null && (
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Parcela</div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#60A5FA" }}>{l.num_parcela}/{l.total_parcelas}</span>
+                      <div style={{ height: 4, borderRadius: 2, background: "var(--border-table)", marginTop: 3, width: 60 }}>
+                        <div style={{ height: 4, borderRadius: 2, background: "#3B82F6", width: `${parcPct}%` }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Valor pago (se parcial) */}
+                {l.status === "parcial" && l.valor_pago != null && (
+                  <div style={{ background: "var(--bg-input)", borderRadius: 6, padding: "6px 10px" }}>
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Valor pago</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{fmtBRL(l.valor_pago)} <span style={{ fontWeight: 400, color: "var(--text-3)", fontSize: 11 }}>de {fmtBRL(valorBRL)}</span></div>
+                    <div style={{ height: 4, borderRadius: 2, background: "var(--border-table)", marginTop: 4 }}>
+                      <div style={{ height: 4, borderRadius: 2, background: "#22C55E", width: `${Math.min(100, (l.valor_pago / valorBRL) * 100)}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Grid de detalhes */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 11 }}>
+                  <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Vencimento</div>
+                    <div style={{ fontWeight: 600, color: relativo ? relativo.cor : "var(--text-1)" }}>{fmtData(l.data_vencimento)}</div>
+                    {relativo && <div style={{ fontSize: 10, color: relativo.cor, fontWeight: 700 }}>{relativo.txt}</div>}
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Origem</div>
+                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, fontWeight: 600, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border-table)" }}>{om.label}</span>
+                  </div>
+                  {ogNome && <div style={{ gridColumn: "1/-1" }}>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Operação Gerencial</div>
+                    <div style={{ color: "var(--text-1)", fontWeight: 500 }}>{ogNome}</div>
+                  </div>}
+                  {safraDesc && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Safra</div>
+                    <div style={{ color: "var(--text-1)" }}>{safraDesc}</div>
+                  </div>}
+                  {cicloDesc && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Ciclo</div>
+                    <div style={{ color: "var(--text-1)" }}>{cicloDesc}</div>
+                  </div>}
+                  {prodNome && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Produtor</div>
+                    <div style={{ color: "var(--text-1)" }}>{prodNome}</div>
+                  </div>}
+                  {contaNome && l.status === "baixado" && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Conta bancária</div>
+                    <div style={{ color: "var(--text-1)" }}>{contaNome}</div>
+                  </div>}
+                  {l.data_baixa && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Pago em</div>
+                    <div style={{ color: "#15803D", fontWeight: 600 }}>{fmtData(l.data_baixa)}</div>
+                  </div>}
+                  {l.numero && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
+                    <div style={{ color: "var(--text-1)" }}>{l.numero}</div>
+                  </div>}
+                </div>
+
+                {/* Observação */}
+                {l.observacao && (
+                  <div style={{ background: "var(--bg-input)", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "var(--text-2)", borderLeft: "3px solid var(--border-table)" }}>
+                    {l.observacao}
+                  </div>
+                )}
+              </div>
+
+              {/* Ações rápidas */}
+              <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {!isPrevisao && l.moeda !== "barter" && l.status !== "baixado" && (
+                  <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#C9921B", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>↓ Baixar</button>
+                )}
+                {l.status === "baixado" && (
+                  <button onClick={() => { setPopover(null); reabrirUm(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↺ Reabrir</button>
+                )}
+                {isPrevisao && (
+                  <button onClick={() => { setPopover(null); confirmarPrevisao(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#2A2A2A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>✓ Confirmar</button>
+                )}
+                {l.status !== "baixado" && (
+                  <button onClick={() => { setPopover(null); abrirReprog(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↕ Reprogramar</button>
+                )}
+                {l.status !== "baixado" && (
+                  <button onClick={() => { setPopover(null); abrirEditar(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>✎ Editar</button>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* ── Vínculo de NF na baixa ──────────────────────────────── */}
       {alertaNF && (

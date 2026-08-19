@@ -214,6 +214,7 @@ export default function Financeiro() {
   const [periodoTemp, setPeriodoTemp] = useState({ inicio: "", fim: "" });
   const [saldoZero, setSaldoZero]   = useState(false);
   const [saldoAnterior, setSaldoAnterior] = useState(0);
+  const [popover,    setPopover]    = useState<{ l: Lancamento; x: number; y: number } | null>(null);
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo, setModalNovo]   = useState(false);
 
@@ -251,6 +252,13 @@ export default function Financeiro() {
     // Vínculos
     chave_xml: "", talhao: "", centro_custo: "",
   });
+
+  // Fechar popover com Escape
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setPopover(null); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, []);
 
   // ── carga ──────────────────────────────────────────────────
   useEffect(() => {
@@ -783,7 +791,12 @@ export default function Financeiro() {
                             const bm = badgeMoeda(l.moeda as Moeda);
                             const conv = exibirConversao(l);
                             return (
-                              <tr key={l.id} style={{ borderBottom: li < lancFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none", background: l.moeda === "barter" ? "#FEF8ED" : "transparent" }}>
+                              <tr key={l.id}
+                                onClick={(e) => {
+                                  if ((e.target as HTMLElement).closest('button,input,select,a')) return;
+                                  setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
+                                }}
+                                style={{ borderBottom: li < lancFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none", background: l.moeda === "barter" ? "#FEF8ED" : "transparent", cursor: "pointer" }}>
                                 <td style={{ padding: "10px 14px" }}>
                                   <span style={{ display: "inline-block", fontSize: 10, padding: "3px 8px", borderRadius: 8, fontWeight: 600, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F" }}>
                                     {l.tipo === "receber" ? "↓ CR" : "↑ CP"}
@@ -1659,6 +1672,86 @@ export default function Financeiro() {
           )}
         </div>
       </main>
+
+      {/* ── Popover de lançamento ─────────────────────────────────── */}
+      {popover && (() => {
+        const l  = popover.l;
+        const cs = corStatus(l.status ?? "em_aberto");
+        const conv = exibirConversao(l);
+        const pessoaNome = l.pessoa_id ? pessoasMap[l.pessoa_id] : undefined;
+        const W = 360, H = 320;
+        const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, background: "var(--bg-card)", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ padding: "11px 14px 9px", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-nav)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {pessoaNome ?? l.descricao}
+                  </div>
+                  {pessoaNome && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: cs.bg, color: cs.color }}>{cs.label}</span>
+                  <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                </div>
+              </div>
+              {/* Body */}
+              <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* Tipo + valor */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, fontWeight: 700, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", marginRight: 6 }}>
+                      {l.tipo === "receber" ? "↓ CR" : "↑ CP"}
+                    </span>
+                    <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 5, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", fontWeight: 600 }}>
+                      {l.auto ? "⟳ auto" : "◈ manual"}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: l.tipo === "pagar" ? "#E24B4A" : "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{exibirValor(l)}</div>
+                    {conv && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{conv}</div>}
+                  </div>
+                </div>
+                {/* Grid detalhes */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 11 }}>
+                  <div>
+                    <div style={{ color: "var(--text-3)", fontSize: 10, marginBottom: 1 }}>Vencimento</div>
+                    <div style={{ fontWeight: 600, color: l.status === "vencido" ? "#E24B4A" : l.status === "vencendo" ? "#EF9F27" : "var(--text-1)" }}>{fmtData(l.data_vencimento)}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--text-3)", fontSize: 10, marginBottom: 1 }}>Categoria</div>
+                    <div style={{ color: "var(--text-2)" }}>{l.categoria ?? "—"}</div>
+                  </div>
+                  {l.nfe_numero && <div style={{ gridColumn: "1/-1" }}>
+                    <div style={{ color: "var(--text-3)", fontSize: 10, marginBottom: 1 }}>NF-e</div>
+                    <div style={{ color: "var(--text-1)", fontWeight: 600 }}>Nº {l.nfe_numero}</div>
+                  </div>}
+                  {l.data_baixa && <div>
+                    <div style={{ color: "var(--text-3)", fontSize: 10, marginBottom: 1 }}>Baixado em</div>
+                    <div style={{ color: "#15803D", fontWeight: 600 }}>{fmtData(l.data_baixa)}</div>
+                  </div>}
+                  {l.conta_bancaria && l.status === "baixado" && <div>
+                    <div style={{ color: "var(--text-3)", fontSize: 10, marginBottom: 1 }}>Conta</div>
+                    <div style={{ color: "var(--text-1)" }}>{l.conta_bancaria}</div>
+                  </div>}
+                </div>
+              </div>
+              {/* Ação */}
+              {l.status !== "baixado" && (
+                <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border-table)" }}>
+                  <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", padding: "8px", borderRadius: 7, background: l.moeda === "barter" ? "#FBF3E0" : "#C9921B", color: l.moeda === "barter" ? "#8B5E14" : "#fff", border: l.moeda === "barter" ? "0.5px solid #8B5E14" : "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>
+                    {l.moeda === "barter" ? "⇄ Confirmar barter" : "◈ Baixar"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
       {/* ─── Modal Baixa ───────────────────────────────────────── */}
       {modalBaixa && (
