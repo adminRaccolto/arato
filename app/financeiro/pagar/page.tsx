@@ -318,6 +318,7 @@ function ContasPagarInner() {
     pessoa_id: "", operacao_gerencial_id: "", og_busca: "",
     salvar_class: false,
     ano_safra_id: "", ciclo_id: "",
+    nova_data_vencimento: "",   // reprogramação do saldo em pagamento parcial
   });
   const [form, setForm] = useState({
     moeda: "BRL" as Moeda,
@@ -569,6 +570,7 @@ function ContasPagarInner() {
       salvar_class: false,
       ano_safra_id: l.ano_safra_id ?? "",
       ciclo_id: l.ciclo_id ?? "",
+      nova_data_vencimento: "",
     });
   };
 
@@ -598,12 +600,23 @@ function ContasPagarInner() {
       const novoTotalPago = (modalBaixa.valor_pago ?? 0) + valorPago;
       const valorOriginal = paraBRL(modalBaixa);
       const novoStatus = novoTotalPago >= valorOriginal - 0.01 ? "baixado" : "parcial";
+
+      // Se parcial e nova data informada → reprograma vencimento do saldo restante
+      const novaDataVenc = novoStatus === "parcial" && baixa.nova_data_vencimento
+        ? baixa.nova_data_vencimento : null;
+      if (novaDataVenc) {
+        await supabase.from("lancamentos")
+          .update({ data_vencimento: novaDataVenc })
+          .eq("id", modalBaixa.id);
+      }
+
       setLancamentos(prev => prev.map(l =>
         l.id !== modalBaixa.id ? l : {
           ...l, status: novoStatus as Lancamento["status"], data_baixa: baixa.data,
           valor_pago: novoTotalPago, conta_bancaria: baixa.conta,
           pessoa_id: baixa.pessoa_id || l.pessoa_id,
           operacao_gerencial_id: baixa.operacao_gerencial_id || l.operacao_gerencial_id,
+          ...(novaDataVenc ? { data_vencimento: novaDataVenc } : {}),
         }
       ));
       setModalBaixa(null);
@@ -1450,6 +1463,7 @@ function ContasPagarInner() {
                   pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
                   og_busca: "", salvar_class: false,
                   ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
+                  nova_data_vencimento: "",
                 });
               }} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #888", background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
                 Baixar sem NF
@@ -1474,6 +1488,7 @@ function ContasPagarInner() {
                     pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
                     og_busca: "", salvar_class: false,
                     ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
+                    nova_data_vencimento: "",
                   });
                 }}
                 style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: nfVinculoSelecionada ? "#111111" : "#CCC", color: "#fff", cursor: nfVinculoSelecionada ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700 }}>
@@ -1742,7 +1757,7 @@ function ContasPagarInner() {
                         onChange={e => setBaixa(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
                       {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < valorOrig && (
                         <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 4 }}>
-                          Pagamento parcial — restante: {fmtBRL(valorOrig - desmascarar(baixa.valorMask))}
+                          Pagamento parcial — saldo restante: <strong>{fmtBRL(valorOrig - desmascarar(baixa.valorMask))}</strong>
                         </div>
                       )}
                     </div>
@@ -1766,6 +1781,30 @@ function ContasPagarInner() {
                       <input style={inp} placeholder="Opcional" value={baixa.obs} onChange={e => setBaixa(p => ({ ...p, obs: e.target.value }))} />
                     </div>
                   </div>
+
+                  {/* Nova data de vencimento — aparece somente em pagamento parcial */}
+                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < valorOrig && (
+                    <div style={{ marginTop: 12, padding: "12px 14px", background: "#FFF8EC", borderRadius: 8, border: "0.5px solid #F0C060" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#8B5E14", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+                        Reprogramação do saldo — {fmtBRL(valorOrig - desmascarar(baixa.valorMask))}
+                      </div>
+                      <label style={{ ...lbl, color: "#8B5E14" }}>
+                        Nova data de vencimento do saldo restante <span style={{ color: "#E24B4A" }}>*</span>
+                      </label>
+                      <input
+                        style={{ ...inp, borderColor: !baixa.nova_data_vencimento ? "#F0C060" : undefined, maxWidth: 200 }}
+                        type="date"
+                        value={baixa.nova_data_vencimento}
+                        min={baixa.data || TODAY}
+                        onChange={e => setBaixa(p => ({ ...p, nova_data_vencimento: e.target.value }))}
+                      />
+                      {!baixa.nova_data_vencimento && (
+                        <div style={{ fontSize: 10, color: "#C9921B", marginTop: 4 }}>
+                          Informe quando o saldo restante vence para reprogramar o título.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1775,11 +1814,19 @@ function ContasPagarInner() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
               <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={confirmarBaixa}
-                disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta))}
-                style={{ padding: "8px 18px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Salvando…" : "◈ Confirmar baixa"}
-              </button>
+              {(() => {
+                const vPago = desmascarar(baixa.valorMask);
+                const eParcial = modalBaixa.moeda !== "barter" && vPago > 0 && vPago < valorOrig;
+                const semNovaData = eParcial && !baixa.nova_data_vencimento;
+                return (
+                  <button onClick={confirmarBaixa}
+                    disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta)) || semNovaData}
+                    title={semNovaData ? "Informe a nova data de vencimento do saldo restante" : undefined}
+                    style={{ padding: "8px 18px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: semNovaData ? "not-allowed" : "pointer", fontSize: 13, opacity: semNovaData ? 0.6 : 1 }}>
+                    {salvando ? "Salvando…" : "◈ Confirmar baixa"}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
