@@ -551,6 +551,9 @@ Clique em **+ Simulação** para criar um lançamento hipotético e ver o impact
 ### FC Previsto — Apoio Financeiro
 Lançamentos em aberto (não baixados) do **Apoio Financeiro** (ferramenta Raccotlo) também aparecem na seção de FC Previsto, com badge laranja "Apoio Financeiro". Isso permite que o consultor veja o impacto projetado de suas estimativas no fluxo de caixa da fazenda, sem que esses valores sejam parte do sistema oficial. O badge de origem identifica a fonte de cada linha.
 
+### Grid Dia a Dia — Coluna Fornecedor/Credor
+No grid expandido por dia (aba Lançamentos, ao clicar em uma data), a coluna **Fornecedor/Credor** exibe o nome cadastrado da pessoa vinculada ao lançamento (campo `pessoa_id` → tabela `pessoas`). Se o lançamento não tiver pessoa vinculada, exibe a descrição do lançamento como fallback. Isso significa que o nome do fornecedor/credor vem do cadastro de Pessoas — não da descrição do lançamento em si.
+
 ---
 
 ## MÓDULO 14 — CONTAS A RECEBER
@@ -703,6 +706,17 @@ Quando a CP está em USD, o sistema exibe abaixo do valor em dólar a linha de c
 4. A linha de conversão passará a exibir o equivalente em reais
 
 > **Atenção:** o campo de cotação não é pré-preenchido automaticamente — ele ficará em branco até que seja informado e salvo. Ao abrir o modal sem digitar nada e fechar, a cotação **não** é salva.
+
+### Baixa Parcial
+Quando o valor pago é menor do que o valor total da CP, o sistema registra uma **baixa parcial**:
+1. Clique no ícone de baixa (✓) na linha da CP
+2. No campo **Valor Pago**, informe o valor efetivamente pago (menor que o total)
+3. O status muda para **"parcial"** (badge amarelo)
+4. O saldo restante permanece no mesmo registro com o valor original — o sistema calcula a diferença automaticamente
+5. Opcionalmente informe uma **Nova Data de Vencimento** para o saldo restante
+6. Para quitar o restante, clique novamente no ícone de baixa e informe o saldo
+
+> Baixas parciais ficam visíveis no grid com status "parcial". Não é criado um novo registro — o lançamento original é atualizado com o status e o campo de nova data de vencimento.
 
 ---
 
@@ -935,7 +949,21 @@ Visão consolidada do endividamento total da fazenda por credor, tipo e ano de v
 Custeio, Investimento, Securitização, CPR, EGF, Compra de Terra, Compra de Imóvel, Consórcio Contemplado, Consórcio Não Contemplado, Outros
 
 ### Impressão
-Botão **Imprimir** gera PDF multi-página com tabela completa.
+Botão **Imprimir** gera PDF multi-página com tabela completa. A impressão inclui tanto os financiamentos (tabela azul-escuro) quanto as parcelas de Compra de Imóveis Rurais (tabela marrom), mantendo a estrutura de colunas por ano.
+
+### XLSX
+Botão **XLSX** exporta todas as linhas em planilha com coluna extra **Bloco** (Financiamento / Compra de Imóvel) para diferenciar as origens.
+
+### Bloco Compra de Imóveis Rurais
+Abaixo da tabela principal de financiamentos, aparece automaticamente uma segunda tabela (cabeçalho em marrom) quando existem parcelas cadastradas em **Compras de Terra → Contratos de Compra de Terra**. Essa tabela exibe as obrigações de pagamento ao vendedor do imóvel, agrupadas por imóvel:
+
+- **Linha N1 (clicável)**: imóvel — nome do imóvel + vendedor + valor total da escritura
+- **Linha N2 (expande ao clicar N1)**: parcelas individuais com data de vencimento, valor e status (pendente / pago / atrasado)
+- As colunas por ano seguem o mesmo padrão da tabela de financiamentos
+- O saldo pendente das parcelas de compra de imóvel é **somado ao KPI "Saldo Devedor Total"** do cabeçalho
+- O filtro "Apenas em aberto" também filtra as parcelas de imóveis rurais (oculta pagas)
+
+> Se não houver nenhuma compra de terra cadastrada com parcelas a vencer, a tabela marrom simplesmente não aparece.
 
 ---
 
@@ -1433,8 +1461,21 @@ Emite Conhecimentos de Transporte Eletrônico (CT-e **4.00**) para frota própri
 rascunho → autorizado → cancelado
 
 ### DACTE (documento impresso)
-- Clique no ícone de impressora na linha do CT-e
+- Clique no ícone de impressora na linha do CT-e com status **autorizado**
 - Inclui: emitente, remetente, destinatário, percurso, valores, modal rodoviário, código de barras da chave de acesso
+
+### Ambiente de emissão — Homologação vs Produção
+O CT-e pode ser emitido em dois ambientes:
+- **Homologação** (`tpAmb = 2`): para testes — a SEFAZ aceita e valida o XML mas o documento **não tem validade fiscal**
+- **Produção** (`tpAmb = 1`): documentos com validade fiscal real — **use somente com certificado A1 válido e RNTRC habilitado**
+
+**Como trocar o ambiente:**
+1. Vá em **Configurações → Parâmetros do Sistema → aba CT-e**
+2. No campo **Ambiente**, selecione **Produção** (ou Homologação)
+3. Ao mudar para Produção pela primeira vez: recomenda-se resetar o **Próximo Número** para 1 e confirmar a **Série** (geralmente 001)
+4. Salve. Os próximos CT-es já saem no ambiente selecionado
+
+> Certificado A1 e RNTRC são validados pela SEFAZ em ambiente de Produção. Em Homologação, qualquer CNPJ fictício é aceito.
 
 ### Diagnóstico de conexão com a SEFAZ
 
@@ -1497,6 +1538,29 @@ O MDF-e "envelopa" um conjunto de CT-es (ou NF-es avulsas) em uma única viagem.
 3. Informe veículo, motorista, percurso
 4. Autorize o MDF-e antes de o caminhão partir
 5. Ao chegar no destino: encerre o MDF-e
+
+### DAMDFe (documento impresso)
+Para MDF-es com status **autorizado** ou **encerrado**, aparece o botão **Imprimir / DAMDFe** na linha da lista:
+- Clique no botão para abrir o documento em nova aba para impressão
+- O DAMDFe inclui: emitente, veículo, motorista, percurso (UF início → UF fim + UFs intermediárias), documentos vinculados (CT-es), número e chave de acesso do MDF-e, protocolo de autorização
+- Se o MDF-e tiver CIOT registrado, a seção CIOT aparece no documento com código e código verificador
+
+### CIOT — Código Identificador da Operação de Transporte
+O CIOT é exigido para fretes pagos acima de determinado valor. No Arato:
+- Informe o CIOT no campo correspondente ao criar ou editar o MDF-e
+- Ao autorizar o MDF-e com CIOT preenchido, o código é **salvo automaticamente no banco** (via API route com permissão de escrita segura)
+- Para re-gerar ou atualizar o CIOT de um MDF-e já autorizado: clique no botão **CIOT** na linha do manifesto — um modal permite atualizar o código sem reautorizar o documento
+- O CIOT fica disponível na impressão do DAMDFe
+
+### Editar MDF-e autorizado
+MDF-es com status **autorizado** exibem um botão **Editar** na linha da lista. Esse botão abre o modal de edição para:
+- Atualizar o CIOT (sem precisar cancelar e reemitir o MDF-e)
+- Corrigir campos de observação
+
+> Campos fiscais (percurso, veículo, CT-es vinculados) **não podem ser alterados** após autorização — para correções desse tipo é necessário cancelar o MDF-e e emitir um novo.
+
+### Ambiente de emissão — Homologação vs Produção
+O MDF-e segue o mesmo ambiente configurado em **Configurações → Parâmetros do Sistema → aba MDF-e**. Trocar de Homologação para Produção requer o mesmo cuidado do CT-e: certificado A1 válido e RNTRC habilitado na ANTT.
 
 ---
 
