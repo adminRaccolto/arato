@@ -1081,6 +1081,46 @@ Executar no Supabase SQL Editor (adiciona entidade_contabil em fazendas + trigge
 
 ---
 
+### Sessão agosto/2026 — Compromissos em Grãos + fix Endividamento PTAX
+
+#### Fix Endividamento — PTAX para contratos USD
+- `app/financeiro/endividamento/page.tsx` — contratos USD agora aplicam `fatorCambio = ptax` em saldoDevedor, totalPago, jurosAcumulados e nos buckets N1/N2/N3
+- Badge PTAX exibido no cabeçalho da página e no print
+
+#### Arquitetura definitiva — Compromissos em Grãos
+- **Barter não existe de forma autônoma** — sempre vinculado a pedido de compra, compra de terra ou arrendamento
+- **Um contrato de grãos por parcela** de compra de terra paga em sacas (moeda_parcela != 'BRL')
+- **Um contrato de grãos por pedido de compra** com pagamento barter
+- Tudo em `contratos` com flags: `is_arrendamento`, `is_compra_terra`, `is_barter`
+
+#### Migration Seção 178 (executada)
+- `ALTER TABLE contratos ADD COLUMN is_compra_terra boolean, cct_pagamento_id uuid, is_barter boolean, pedido_compra_id uuid`
+- Retroativo: INSERT em `contratos` para `cct_pagamentos` com moeda_parcela em sacas (`tipo='venda'`, `modalidade='fixo'`, `is_compra_terra=true`)
+- Retroativo: UPDATE `is_barter=true` em contratos `tipo='barter'` já existentes
+
+#### Arquivos alterados
+- `app/contratos/compromissos-graos/page.tsx` ✅ — reescrito como relatório read-only puro:
+  - Lê `contratos` WHERE `is_arrendamento OR is_compra_terra OR is_barter`
+  - KPI cards totais + KPI por commodity com barra de progresso e valor estimado do saldo
+  - Tabela com filtros (status, commodity, origem, safra, busca), total no rodapé, impressão
+  - Zero ações — sem botões de baixar, sem novo barter, sem nada
+- `app/api/contratos/compra-terra/parcelas/route.ts` — melhorias:
+  - OG 2.03.01.001 (COMPRA DE IMÓVEIS RURAIS) agora filtrada por `fazenda_id` — fix da amarração contábil
+  - `cct_pagamentos` inseridos individualmente (para capturar IDs)
+  - Para parcelas em sacas: gera contrato de grãos automaticamente (`is_compra_terra=true`, `cct_pagamento_id`)
+  - DELETE remove contratos de grãos vinculados antes de deletar cct_pagamentos
+- `app/compras/page.tsx` — barter: `criarContrato()` agora inclui `is_barter=true`, `pedido_compra_id` e `safra`
+- `lib/supabase.ts` — tipo `Contrato` atualizado com `is_compra_terra`, `cct_pagamento_id`, `is_barter`, `pedido_compra_id`
+
+#### Colunas NOT NULL em `contratos` (aprendido na migration)
+- `safra` — texto da descrição do ano safra (ex: "2025/2026") — obrigatório, usar `COALESCE(asf.descricao, '')`
+- `preco` — usar `COALESCE(cct.preco_sc_ref, 0)`
+- `modalidade` — CHECK IN ('fixo','a_fixar','barter') — nunca inserir 'compra_terra'
+- `tipo` — CHECK IN ('venda','compra','barter','troca') — nunca inserir 'compra_terra'
+- Para contratos de grãos originados de compra de terra: `tipo='venda'`, `modalidade='fixo'`
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.
