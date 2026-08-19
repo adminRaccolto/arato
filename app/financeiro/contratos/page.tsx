@@ -1265,7 +1265,7 @@ export default function ContratosFinanceiros() {
       {/* ══ Modal Unificado ══ */}
       {modalAberto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(1160px, 97vw)", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Cabeçalho do modal */}

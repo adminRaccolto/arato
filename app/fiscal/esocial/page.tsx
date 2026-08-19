@@ -565,7 +565,7 @@ export default function EsocialPage() {
       {/* ── Modal Evento Manual ── */}
       {modalEvt && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); } }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>Evento Manual</span>

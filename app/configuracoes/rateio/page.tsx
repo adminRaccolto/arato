@@ -482,7 +482,7 @@ export default function RateioPage() {
       ══════════════════════════════════════════════════════════ */}
       {modalN2 && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalN2(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 780, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
@@ -651,7 +651,7 @@ export default function RateioPage() {
       ══════════════════════════════════════════════════════════ */}
       {modalN1 && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalN1(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 820, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
               <div>

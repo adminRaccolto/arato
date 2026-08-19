@@ -1187,7 +1187,7 @@ function ContasReceberInner() {
         const temEncargo = multaV + jurosV + descV !== 0;
         return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 620, maxHeight: "93vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)", padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
@@ -1356,7 +1356,7 @@ function ContasReceberInner() {
       {/* ── Modal Recebimento em Lote ────────────────────────── */}
       {modalLote && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalLote(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
@@ -1432,7 +1432,7 @@ function ContasReceberInner() {
       {/* ── Modal Nova CR ──────────────────────────────────────── */}
       {modalNovo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)", display: "flex", flexDirection: "column" }}>
 
             {/* ── Cabeçalho ── */}

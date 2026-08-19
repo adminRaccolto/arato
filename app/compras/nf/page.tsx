@@ -3459,7 +3459,7 @@ export default function NfCompraPage() {
       {/* ——— Modal: Exclusão de NF ——— */}
       {modalExcluir && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget && !modalExcluir.excluindo) setModalExcluir(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
 
             {modalExcluir.verificando ? (
@@ -3525,7 +3525,7 @@ export default function NfCompraPage() {
       {/* ——— Modal: Cadastro Rápido de Insumo ——— */}
       {modalNovoInsumo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalNovoInsumo(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Cadastrar produto no catálogo</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>
@@ -3623,7 +3623,7 @@ export default function NfCompraPage() {
       {/* ── Modal: Processar em Lote ── */}
       {batchModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}
-          onClick={e => { if (e.target === e.currentTarget) setBatchModal(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 620, maxWidth: "96vw" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>
               ⚡ Processar em Lote
@@ -3787,7 +3787,7 @@ export default function NfCompraPage() {
         const m = MAN_CFG.find(x => x.tipo === siegJustModal.tipo)!;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-            onClick={e => { if (e.target === e.currentTarget) setSiegJustModal(null); }}>
+           >
             <div style={{ background: "white", borderRadius: 12, padding: 28, width: 480, maxWidth: "96vw" }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: m.cor, marginBottom: 4 }}>{m.label}</div>
               <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>NF {siegJustModal.nf.numero} · {siegJustModal.nf.emitente_nome}</div>

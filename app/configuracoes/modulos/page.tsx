@@ -2015,7 +2015,7 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Operação Fiscal ── */}
       {modalOp !== null && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalOp(null); }}>
+        <div style={modalStyle}>
           <div style={{ ...boxStyle, width: 780 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalOp.id ? "Editar Operação Fiscal" : "Nova Operação Fiscal"}</h3>
@@ -2078,7 +2078,7 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal NCM ── */}
       {modalNcm !== null && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalNcm(null); }}>
+        <div style={modalStyle}>
           <div style={{ ...boxStyle, width: 820 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalNcm.id ? "Editar Tributação NCM" : "Nova Tributação NCM"}</h3>
@@ -2145,7 +2145,7 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Transportadora ── */}
       {modalT !== null && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalT(null); }}>
+        <div style={modalStyle}>
           <div style={boxStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalT.id ? "Editar Transportadora" : "Nova Transportadora"}</h3>
@@ -2169,7 +2169,7 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Veículo ── */}
       {modalV !== null && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalV(null); }}>
+        <div style={modalStyle}>
           <div style={boxStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalV.id ? "Editar Veículo" : "Novo Veículo"}</h3>
@@ -2198,7 +2198,7 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Motorista ── */}
       {modalM !== null && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalM(null); }}>
+        <div style={modalStyle}>
           <div style={boxStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalM.id ? "Editar Motorista" : "Novo Motorista"}</h3>

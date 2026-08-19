@@ -2093,7 +2093,7 @@ function FiscalInner() {
       {/* ── MODAL: Ativar Contingência ── */}
       {modalContingencia && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalContingencia(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 500, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#92400E", marginBottom: 4 }}>⚡ Ativar Modo de Contingência</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16, lineHeight: 1.6 }}>
@@ -2129,7 +2129,7 @@ function FiscalInner() {
       {/* ── MODAL: Certificado A1 ── */}
       {modalCert && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) fecharCert(); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 460, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
@@ -2791,7 +2791,7 @@ function FiscalInner() {
       {/* ── MODAL: Nova NF-e de Devolução ── */}
       {modalDevolucao && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalDevolucao(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 780, maxWidth: "97vw", maxHeight: "95vh", overflowY: "auto" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Nova NF-e de Devolução</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>Emitida quando o comprador devolve mercadoria. Deve referenciar a NF-e original.</div>
@@ -2830,7 +2830,7 @@ function FiscalInner() {
       {/* ── MODAL: NF de Transferência ── */}
       {modalTransferencia && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalTransferencia(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 640, maxWidth: "97vw", maxHeight: "90vh", overflow: "auto" }}>
             <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
@@ -2959,7 +2959,7 @@ function FiscalInner() {
       {/* ── MODAL: Cancelamento ── */}
       {modalCancelamento && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalCancelamento(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 520, maxWidth: "97vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Cancelar NF-e</div>
             <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>

@@ -1323,7 +1323,7 @@ export default function ComprasPage() {
       {/* ── MODAL NOVO / EDITAR PEDIDO ── */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 1180, maxWidth: "98vw", maxHeight: "95vh", overflowY: "auto" }}>
 
             {/* Header modal */}
@@ -2040,7 +2040,7 @@ export default function ComprasPage() {
 
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-            onClick={e => { if (e.target === e.currentTarget) setModalEntrega(null); }}>
+           >
             <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 820, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
               <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
                 <div>
@@ -2219,7 +2219,7 @@ export default function ComprasPage() {
       {/* ── MODAL RELATÓRIO ── */}
       {modalRelatorio && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalRelatorio(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 700, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
               <div>

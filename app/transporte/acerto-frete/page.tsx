@@ -286,7 +286,7 @@ export default function AcertoFretePage() {
     };
 
     return (
-      <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalData(null); }}>
+      <div style={modalStyle}>
         <div style={boxStyle}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>

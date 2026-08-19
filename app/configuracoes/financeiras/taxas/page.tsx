@@ -227,7 +227,7 @@ export default function TaxasVariaveisPage() {
       {/* Modal lançamento manual */}
       {modalManual && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalManual(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "min(480px, 95vw)", padding: "24px" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 18 }}>Lançar Taxa Manualmente</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>

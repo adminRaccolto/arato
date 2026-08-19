@@ -586,7 +586,7 @@ export default function ClientesPage() {
       {/* Modal upgrade / downgrade de plano */}
       {modalPlano && (
         <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => { if (e.target === e.currentTarget) setModalPlano(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 560, padding: "24px", boxShadow: "0 12px 48px #0004" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>

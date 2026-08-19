@@ -1653,7 +1653,7 @@ export default function Financeiro() {
       {/* ─── Modal Baixa ───────────────────────────────────────── */}
       {modalBaixa && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 440, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>
               {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : modalBaixa.tipo === "receber" ? "Registrar recebimento" : "Registrar pagamento"}
@@ -1741,7 +1741,7 @@ export default function Financeiro() {
 
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-            onClick={e => { if (e.target === e.currentTarget) setModalNovo(false); }}>
+           >
             <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
               <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 2 }}>Novo Lançamento</div>
               <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>Lançamentos de vendas são criados automaticamente a partir de NF-e autorizadas.</div>
@@ -1911,7 +1911,7 @@ export default function Financeiro() {
       {/* ─── Modal Previsão de Gastos ───────────────────────────── */}
       {modalPrevisao && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalPrevisao(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 520, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
@@ -2008,7 +2008,7 @@ export default function Financeiro() {
       {/* ─── Modal Converter Previsão → CP ─────────────────────── */}
       {modalConverterPrev && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalConverterPrev(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 420, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: 4 }}>Converter previsão em CP</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>Esta ação cria um lançamento real a partir da previsão e a remove da lista.</div>
@@ -2032,7 +2032,7 @@ export default function Financeiro() {
       {/* ─── Modal Gerenciar Simulações ─────────────────────────── */}
       {modalGerenciarSim && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalGerenciarSim(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
@@ -2093,7 +2093,7 @@ export default function Financeiro() {
       {/* ─── Modal Simulação ────────────────────────────────────── */}
       {modalSimDia && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalSimDia(null); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 400, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: 4 }}>Nova Simulação</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>Aparece em roxo no fluxo · apenas hipotética, não afeta lançamentos reais</div>

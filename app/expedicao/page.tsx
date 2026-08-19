@@ -680,7 +680,7 @@ export default function Expedicao() {
           Modal Nova Carga
       ═══════════════════════════════════════════════════════════════════ */}
       {modalNova && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalNova(false); }}>
+        <div style={modalStyle}>
           <div style={box(740)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
@@ -777,7 +777,7 @@ export default function Expedicao() {
           Modal Detalhe Carga
       ═══════════════════════════════════════════════════════════════════ */}
       {modalCarga && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalCarga(null); }}>
+        <div style={modalStyle}>
           <div style={box(700)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
@@ -1030,7 +1030,7 @@ export default function Expedicao() {
           Modal Correção de Peso
       ═══════════════════════════════════════════════════════════════════ */}
       {modalPeso && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalPeso(null); }}>
+        <div style={modalStyle}>
           <div style={box(500)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Correção de Peso — {modalPeso.numero}</h3>
@@ -1078,7 +1078,7 @@ export default function Expedicao() {
           Modal MDF-e
       ═══════════════════════════════════════════════════════════════════ */}
       {modalMdfe && (
-        <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalMdfe(null); }}>
+        <div style={modalStyle}>
           <div style={box(560)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>

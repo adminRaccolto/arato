@@ -482,7 +482,7 @@ function ConfiguracoesInner() {
       {/* ── Modal Conta Contábil ── */}
       {modalConta && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalConta(false); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 480, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 20 }}>
               {contaEditCod ? "Editar conta" : "Nova conta"}
@@ -570,7 +570,7 @@ function ConfiguracoesInner() {
       {/* ── Modal Certificado ── */}
       {modalCert && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-          onClick={e => { if (e.target === e.currentTarget) fecharModalCert(); }}>
+         >
           <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 460, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
