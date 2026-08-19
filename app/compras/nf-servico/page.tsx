@@ -94,6 +94,7 @@ interface NfServico {
   status: "digitando" | "pendente" | "processada" | "cancelada";
   origem: "manual" | "xml" | "api";
   observacao?: string;
+  lancamento_id?: string;
   created_at?: string;
 }
 
