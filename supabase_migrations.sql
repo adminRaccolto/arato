@@ -10197,3 +10197,26 @@ COMMENT ON COLUMN contratos.is_compra_terra  IS 'true = comprometimento de grão
 COMMENT ON COLUMN contratos.cct_pagamento_id IS 'FK cct_pagamentos.id — parcela originadora (compra de terra)';
 COMMENT ON COLUMN contratos.is_barter        IS 'true = comprometimento de grãos de barter (insumos × sacas)';
 COMMENT ON COLUMN contratos.pedido_compra_id IS 'FK pedidos_compra.id — pedido originador (barter)';
+
+-- ─── Seção 200: lancamentos — num_parcela, total_parcelas, origem compra_terra ──
+-- num_parcela e total_parcelas nunca foram adicionados à tabela lancamentos.
+-- origem_lancamento não incluía 'compra_terra', impedindo o insert das parcelas de CCT.
+
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS num_parcela    integer,
+  ADD COLUMN IF NOT EXISTS total_parcelas integer;
+
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_origem_lancamento_check
+  CHECK (origem_lancamento IN (
+    'nf_entrada','nf_saida','pedido_compra','arrendamento','tesouraria',
+    'plantio','contrato_financeiro','consorcio','manual','compra_terra'
+  ));
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_num_parcela ON lancamentos(fazenda_id, num_parcela)
+  WHERE num_parcela IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

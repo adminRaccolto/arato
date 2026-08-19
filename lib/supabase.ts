@@ -268,7 +268,7 @@ export type Lancamento = {
   entidade_contabil?: "pf" | "pj";  // qual entidade contabiliza (PF/CNPJ ou PJ/CNPJ)
   // Rastreabilidade — de onde veio o lançamento
   numero_documento?: string;           // Nº do documento/contrato vinculado (usado por contratos_financeiros)
-  origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "consorcio" | "manual";
+  origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "consorcio" | "manual" | "compra_terra";
   pedido_compra_id?: string;          // FK pedidos_compra.id — quando gerado por pedido de compra
   consorcio_id?: string;              // FK consorcios.id — parcelas de consórcio
   operacao_gerencial_id?: string;     // FK operacoes_gerenciais.id — vínculo contábil (débito/crédito)

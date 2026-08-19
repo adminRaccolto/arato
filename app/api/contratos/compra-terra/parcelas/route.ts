@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
           valor:                 p.valor,
           status:                "em_aberto",
           auto:                  true,
+          origem_lancamento:     "compra_terra",
           numero_documento:      body.contrato_id,
           produtor_id:           body.produtor_id ?? null,
           num_parcela:           p.num_parcela,

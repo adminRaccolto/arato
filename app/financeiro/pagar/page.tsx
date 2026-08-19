@@ -19,7 +19,7 @@ interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?:
 
 // ── Tipos ────────────────────────────────────────────────────
 type Moeda  = "BRL" | "USD" | "barter";
-type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "barter" | "previsao" | "contrato_financeiro" | "todos";
+type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "barter" | "previsao" | "contrato_financeiro" | "compra_terra" | "todos";
 
 // ── Constantes ────────────────────────────────────────────────
 const TODAY       = new Date().toISOString().split("T")[0];
@@ -75,7 +75,7 @@ const exibirValor = (l: Lancamento) => {
   return fmtBRL(l.valor);
 };
 
-type OrigemLanc = "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "manual";
+type OrigemLanc = "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "compra_terra" | "manual";
 const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: string; border: string }> = {
   nf_entrada:          { label: "NF Entrada",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
   nf_saida:            { label: "NF Saída",        bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
@@ -84,6 +84,7 @@ const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: 
   tesouraria:          { label: "Tesouraria",      bg: "#EEE6F8", cl: "#4A1A7A",  border: "#8B5CF6" },
   plantio:             { label: "Plantio",         bg: "#DCFCE7", cl: "#166534",  border: "#16A34A" },
   contrato_financeiro: { label: "Contrato",        bg: "#E6F1FB", cl: "#0C447C",  border: "#444444" },
+  compra_terra:        { label: "Compra de Terra", bg: "#F3EDE0", cl: "#5D3A1A",  border: "#8B6914" },
   manual:              { label: "Manual",          bg: "#F1EFE8", cl: "var(--text-2)",     border: "var(--border)" },
   auto:                { label: "Automático",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
 };
@@ -514,6 +515,7 @@ function ContasPagarInner() {
       if (filtro === "barter")              return isReal && l.moeda === "barter";
       if (filtro === "previsao")            return l.natureza === "previsao";
       if (filtro === "contrato_financeiro") return isReal && l.origem_lancamento === "contrato_financeiro";
+      if (filtro === "compra_terra")        return isReal && l.origem_lancamento === "compra_terra";
       return true;
     });
     // Ordenar por vencimento crescente
@@ -553,7 +555,8 @@ function ContasPagarInner() {
     const categoriasSemNF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto"];
     const precisaNF = l.moeda !== "barter"
       && !l.nfe_numero
-      && l.origem_lancamento !== "nf_entrada"   // CP originado de NF já tem vínculo implícito
+      && l.origem_lancamento !== "nf_entrada"    // CP originado de NF já tem vínculo implícito
+      && l.origem_lancamento !== "compra_terra"  // Compra de terra não emite NF
       && !categoriasSemNF.includes(l.categoria ?? "");
     if (precisaNF) { setAlertaNF(l); return; }
     setModalBaixa(l);
@@ -1053,7 +1056,8 @@ function ContasPagarInner() {
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#555555", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
                   { key: "previsao",            label: "Previsões",           count: lancamentos.filter(l => l.natureza === "previsao").length,                                                                           cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
                   { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#444444", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
-                  { key: "todos",               label: "Todos",               count: lancamentos.length,                                                                                                    cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
+                  { key: "compra_terra",        label: "Compra de Terra",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "compra_terra").length,          cor: "#8B6914", activeBg: "rgba(139,105,20,0.12)", activeBorder: "rgba(139,105,20,0.4)"   },
+                  { key: "todos",               label: "Todos",                count: lancamentos.length,                                                                                                    cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
                   <button key={f.key} className="cp-tab" onClick={() => {
                     setFiltro(f.key);
@@ -1062,7 +1066,13 @@ function ContasPagarInner() {
                       const d2a = new Date(); d2a.setFullYear(d2a.getFullYear() - 2);
                       setPeriodoInicio(d2a.toISOString().split("T")[0]);
                       setPeriodoFim(new Date().toISOString().split("T")[0]);
-                    } else if (filtro === "vencido") {
+                    } else if (f.key === "compra_terra" || f.key === "contrato_financeiro") {
+                      // Compra de terra e contratos financeiros podem ter parcelas em anos futuros
+                      const dInicio = new Date(); dInicio.setFullYear(dInicio.getFullYear() - 2);
+                      const dFim    = new Date(); dFim.setFullYear(dFim.getFullYear() + 30);
+                      setPeriodoInicio(dInicio.toISOString().split("T")[0]);
+                      setPeriodoFim(dFim.toISOString().split("T")[0]);
+                    } else if (filtro === "vencido" || filtro === "compra_terra" || filtro === "contrato_financeiro") {
                       // Voltou de Vencidos → restaura janela padrão
                       setPeriodoInicio(new Date().toISOString().split("T")[0]);
                       const df = new Date(); df.setMonth(df.getMonth() + 3); df.setDate(0);
