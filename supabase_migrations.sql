@@ -10220,3 +10220,12 @@ CREATE INDEX IF NOT EXISTS idx_lancamentos_num_parcela ON lancamentos(fazenda_id
   WHERE num_parcela IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 201: ctes — remetente_ie e destinatario_ie ────────────────────────
+-- Permite salvar a IE escolhida por CT-e (produtores com múltiplas IEs).
+
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS remetente_ie    TEXT,
+  ADD COLUMN IF NOT EXISTS destinatario_ie TEXT;
+
+NOTIFY pgrst, 'reload schema';

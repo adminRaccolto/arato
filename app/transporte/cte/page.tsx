@@ -343,6 +343,9 @@ function CtePageInner() {
   const [cteEdit, setCteEdit] = useState<Cte | null>(null);
   const [saving, setSaving]   = useState(false);
   const [err, setErr]         = useState("");
+  // IEs múltiplas por CPF/CNPJ
+  const [iesRemetente,    setIesRemetente]    = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
+  const [iesDestinatario, setIesDestinatario] = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
 
   // Contadores para nr. automático
   const [proximoNr, setProximoNr] = useState("1");
@@ -353,8 +356,8 @@ function CtePageInner() {
     cfop: "6353",
     natureza_operacao: "Prestação de Serviço de Transporte",
     tomador_tipo: "remetente" as TomadorTipo,
-    remetente_id: "", remetente_nome: "", remetente_cnpj: "",
-    destinatario_id: "", destinatario_nome: "", destinatario_cnpj: "",
+    remetente_id: "", remetente_nome: "", remetente_cnpj: "", remetente_ie: "",
+    destinatario_id: "", destinatario_nome: "", destinatario_cnpj: "", destinatario_ie: "",
     municipio_origem: "", uf_origem: "MT", ibge_origem: "",
     municipio_destino: "", uf_destino: "MT", ibge_destino: "",
     produto_descricao: "Soja em Grão", ncm: "12010090",
@@ -455,7 +458,9 @@ function CtePageInner() {
       cfop: c.cfop, natureza_operacao: c.natureza_operacao,
       tomador_tipo: c.tomador_tipo,
       remetente_id: c.remetente_id ?? "", remetente_nome: c.remetente_nome, remetente_cnpj: c.remetente_cnpj ?? "",
+      remetente_ie: (c as Cte & { remetente_ie?: string }).remetente_ie ?? "",
       destinatario_id: c.destinatario_id ?? "", destinatario_nome: c.destinatario_nome, destinatario_cnpj: c.destinatario_cnpj ?? "",
+      destinatario_ie: (c as Cte & { destinatario_ie?: string }).destinatario_ie ?? "",
       municipio_origem: c.municipio_origem, uf_origem: c.uf_origem, ibge_origem: (c as Cte & { ibge_origem?: string }).ibge_origem ?? "",
       municipio_destino: c.municipio_destino, uf_destino: c.uf_destino, ibge_destino: (c as Cte & { ibge_destino?: string }).ibge_destino ?? "",
       produto_descricao: c.produto_descricao, ncm: c.ncm ?? "",
@@ -470,27 +475,54 @@ function CtePageInner() {
     setModal(true);
   }
 
+  // ── Busca IEs de um produtor pelo CPF/CNPJ ──────────────
+  async function buscarIesPorCpfCnpj(cpf_cnpj: string | undefined) {
+    if (!cpf_cnpj || !fazendaId) return [];
+    const digits = cpf_cnpj.replace(/\D/g, "");
+    // Busca produtor pelo CPF/CNPJ e depois suas IEs
+    const { data: prod } = await supabase
+      .from("produtores")
+      .select("id")
+      .filter("cpf_cnpj", "ilike", `%${digits}%`)
+      .limit(1)
+      .maybeSingle();
+    if (!prod) return [];
+    const { data: ies } = await supabase
+      .from("produtor_inscricoes_estaduais")
+      .select("inscricao_estadual, municipio, estado")
+      .eq("produtor_id", prod.id)
+      .eq("ativa", true)
+      .order("estado");
+    return ies ?? [];
+  }
+
   // ── Auto-fill remetente ──────────────────────────────────
-  function selecionarRemetente(id: string) {
+  async function selecionarRemetente(id: string) {
     const p = pessoas.find(p => p.id === id);
+    const ies = await buscarIesPorCpfCnpj(p?.cpf_cnpj);
+    setIesRemetente(ies);
     setForm(f => ({
       ...f,
       remetente_id: id,
       remetente_nome: p?.nome ?? "",
       remetente_cnpj: p?.cpf_cnpj ?? "",
+      remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (p?.inscricao_est ?? ""),
       municipio_origem: p?.municipio ?? f.municipio_origem,
       uf_origem: p?.estado ?? f.uf_origem,
       ibge_origem: p?.municipio_ibge ?? f.ibge_origem,
     }));
   }
 
-  function selecionarDestinatario(id: string) {
+  async function selecionarDestinatario(id: string) {
     const p = pessoas.find(p => p.id === id);
+    const ies = await buscarIesPorCpfCnpj(p?.cpf_cnpj);
+    setIesDestinatario(ies);
     setForm(f => ({
       ...f,
       destinatario_id: id,
       destinatario_nome: p?.nome ?? "",
       destinatario_cnpj: p?.cpf_cnpj ?? "",
+      destinatario_ie: ies.length === 1 ? ies[0].inscricao_estadual : (p?.inscricao_est ?? ""),
       municipio_destino: p?.municipio ?? f.municipio_destino,
       uf_destino: p?.estado ?? f.uf_destino,
       ibge_destino: p?.municipio_ibge ?? f.ibge_destino,
@@ -527,9 +559,11 @@ function CtePageInner() {
         remetente_id: form.remetente_id || null,
         remetente_nome: form.remetente_nome,
         remetente_cnpj: form.remetente_cnpj || null,
+        remetente_ie: form.remetente_ie || null,
         destinatario_id: form.destinatario_id || null,
         destinatario_nome: form.destinatario_nome,
         destinatario_cnpj: form.destinatario_cnpj || null,
+        destinatario_ie: form.destinatario_ie || null,
         municipio_origem: form.municipio_origem,
         uf_origem: form.uf_origem,
         ibge_origem: form.ibge_origem || null,
@@ -639,7 +673,7 @@ function CtePageInner() {
         return {
           nome:           c.remetente_nome,
           cpf_cnpj:       c.remetente_cnpj    ?? undefined,
-          ie:             rem?.inscricao_est   ?? undefined,
+          ie:             (c as Cte & { remetente_ie?: string }).remetente_ie || rem?.inscricao_est || undefined,
           logradouro:     rem?.logradouro      || "ZONA RURAL",
           numero:         rem?.numero          || "S/N",
           bairro:         rem?.bairro          || "ZONA RURAL",
@@ -656,7 +690,7 @@ function CtePageInner() {
         return {
           nome:           c.destinatario_nome,
           cpf_cnpj:       c.destinatario_cnpj ?? undefined,
-          ie:             dest?.inscricao_est  ?? undefined,
+          ie:             (c as Cte & { destinatario_ie?: string }).destinatario_ie || dest?.inscricao_est || undefined,
           logradouro:     dest?.logradouro     || "ZONA RURAL",
           numero:         dest?.numero         || "S/N",
           bairro:         dest?.bairro         || "ZONA RURAL",
@@ -1094,13 +1128,28 @@ function CtePageInner() {
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn: "1 / 4" }}>
+              <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Razão Social / Nome</label>
                 <input value={form.remetente_nome} onChange={e => setForm(f => ({ ...f, remetente_nome: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>CNPJ/CPF</label>
                 <input value={form.remetente_cnpj} onChange={e => setForm(f => ({ ...f, remetente_cnpj: e.target.value }))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Inscrição Estadual</label>
+                {iesRemetente.length > 1 ? (
+                  <select value={form.remetente_ie} onChange={e => setForm(f => ({ ...f, remetente_ie: e.target.value }))} style={inp}>
+                    <option value="">— Selecionar IE —</option>
+                    {iesRemetente.map(ie => (
+                      <option key={ie.inscricao_estadual} value={ie.inscricao_estadual}>
+                        {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input value={form.remetente_ie} onChange={e => setForm(f => ({ ...f, remetente_ie: e.target.value }))} style={inp} placeholder="Apenas dígitos" />
+                )}
               </div>
 
               {/* ── Destinatário ── */}
@@ -1112,13 +1161,28 @@ function CtePageInner() {
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn: "1 / 4" }}>
+              <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Razão Social / Nome</label>
                 <input value={form.destinatario_nome} onChange={e => setForm(f => ({ ...f, destinatario_nome: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>CNPJ/CPF</label>
                 <input value={form.destinatario_cnpj} onChange={e => setForm(f => ({ ...f, destinatario_cnpj: e.target.value }))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Inscrição Estadual</label>
+                {iesDestinatario.length > 1 ? (
+                  <select value={form.destinatario_ie} onChange={e => setForm(f => ({ ...f, destinatario_ie: e.target.value }))} style={inp}>
+                    <option value="">— Selecionar IE —</option>
+                    {iesDestinatario.map(ie => (
+                      <option key={ie.inscricao_estadual} value={ie.inscricao_estadual}>
+                        {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input value={form.destinatario_ie} onChange={e => setForm(f => ({ ...f, destinatario_ie: e.target.value }))} style={inp} placeholder="Apenas dígitos" />
+                )}
               </div>
 
               {/* ── Percurso: Origem e Destino na mesma linha ── */}
