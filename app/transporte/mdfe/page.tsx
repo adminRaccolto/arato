@@ -439,7 +439,21 @@ export default function MdfePage() {
       });
       const data = await res.json();
       if (data.Sucesso && data.Dados?.IdOperacaoTransporte) {
-        setCiotGerado({ id: data.Dados.IdOperacaoTransporte, cv: data.Dados.CodigoVerificador, protocolo: data.Dados.Protocolo ?? "" });
+        const gerado = { id: data.Dados.IdOperacaoTransporte, cv: data.Dados.CodigoVerificador, protocolo: data.Dados.Protocolo ?? "" };
+        setCiotGerado(gerado);
+        // Persiste CIOT imediatamente via API route (service_role_key — imune a JWT expirado)
+        if (mdfeEdit?.id) {
+          fetch("/api/mdfe/salvar-ciot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mdfe_id: mdfeEdit.id,
+              ciot: gerado.id,
+              ciot_codigo_verificador: gerado.cv,
+              ciot_protocolo: gerado.protocolo,
+            }),
+          }).then(() => carregar()).catch(() => {/* best-effort */});
+        }
       } else {
         setCiotErro(data.Mensagem || data.Erros?.join(", ") || "Erro ao gerar CIOT.");
       }
