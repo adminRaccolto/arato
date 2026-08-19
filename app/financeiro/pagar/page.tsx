@@ -75,10 +75,11 @@ const exibirValor = (l: Lancamento) => {
   return fmtBRL(l.valor);
 };
 
-type OrigemLanc = "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "compra_terra" | "manual";
+type OrigemLanc = "nf_entrada" | "nf_saida" | "nf_servico" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "compra_terra" | "manual";
 const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: string; border: string }> = {
   nf_entrada:          { label: "NF Entrada",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
   nf_saida:            { label: "NF Saída",        bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
+  nf_servico:          { label: "NFS-e",           bg: "#EDF2FB", cl: "#1A3A6B",  border: "#3B6FCC" },
   pedido_compra:       { label: "Pedido Compra",   bg: "#FBF3E0", cl: "#7A4300",  border: "#C9921B" },
   arrendamento:        { label: "Arrendamento",    bg: "#FEF3E2", cl: "#7A4800",  border: "#EF9F27" },
   tesouraria:          { label: "Tesouraria",      bg: "#EEE6F8", cl: "#4A1A7A",  border: "#8B5CF6" },
@@ -556,6 +557,7 @@ function ContasPagarInner() {
     const precisaNF = l.moeda !== "barter"
       && !l.nfe_numero
       && l.origem_lancamento !== "nf_entrada"    // CP originado de NF já tem vínculo implícito
+      && l.origem_lancamento !== "nf_servico"   // NFS-e é a própria NF
       && l.origem_lancamento !== "compra_terra"  // Compra de terra não emite NF
       && !categoriasSemNF.includes(l.categoria ?? "");
     if (precisaNF) { setAlertaNF(l); return; }

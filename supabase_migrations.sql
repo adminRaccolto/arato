@@ -10229,3 +10229,21 @@ ALTER TABLE ctes
   ADD COLUMN IF NOT EXISTS destinatario_ie TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 202: nf_servicos → lancamento_id + origem nf_servico ──────────────
+-- NF de Serviço processada agora cria CP em lancamentos.
+
+ALTER TABLE nf_servicos
+  ADD COLUMN IF NOT EXISTS lancamento_id UUID REFERENCES lancamentos(id) ON DELETE SET NULL;
+
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_origem_lancamento_check
+  CHECK (origem_lancamento IN (
+    'nf_entrada','nf_saida','pedido_compra','arrendamento','tesouraria',
+    'plantio','contrato_financeiro','consorcio','manual','compra_terra','nf_servico'
+  ));
+
+NOTIFY pgrst, 'reload schema';

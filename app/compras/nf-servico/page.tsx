@@ -320,11 +320,43 @@ export default function NfServicoPage() {
 
     setSaving(true);
     try {
+      let nfId = nfEdit?.id ?? "";
       if (nfEdit) {
         await supabase.from("nf_servicos").update(payload).eq("id", nfEdit.id);
       } else {
-        await supabase.from("nf_servicos").insert(payload);
+        const { data: inserted, error: insErr } = await supabase
+          .from("nf_servicos").insert(payload).select("id").single();
+        if (insErr) throw new Error(insErr.message);
+        nfId = inserted.id;
       }
+
+      // Cria CP em lancamentos quando processada (e ainda não tem lancamento vinculado)
+      if (status === "processada" && !nfEdit?.lancamento_id) {
+        const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
+          fazenda_id:            fazendaId,
+          tipo:                  "pagar",
+          moeda:                 "BRL",
+          descricao:             `NFS-e ${cab.numero_nf} — ${cab.prestador_nome}`,
+          categoria:             "Serviços",
+          data_lancamento:       cab.data_prestacao,
+          data_vencimento:       cab.data_vencimento_cp || cab.data_prestacao,
+          valor:                 vLiquido,
+          status:                "em_aberto",
+          auto:                  true,
+          pessoa_id:             cab.prestador_id || undefined,
+          numero_documento:      cab.numero_nf,
+          origem_lancamento:     "nf_servico" as const,
+          operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
+          centro_custo_id:       cab.centro_custo_id       || undefined,
+          ano_safra_id:          cab.ano_safra_id           || undefined,
+        }).select("id").single();
+        if (lancErr) throw new Error(`Erro ao criar CP: ${lancErr.message}`);
+        // Vincula o lancamento à NF
+        await supabase.from("nf_servicos")
+          .update({ lancamento_id: lancDB.id })
+          .eq("id", nfId);
+      }
+
       await carregar();
       setWizard(false);
     } catch (e: unknown) {
