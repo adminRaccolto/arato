@@ -681,9 +681,9 @@ export default function MdfePage() {
                               DAMDFE
                             </button>
                           )}
-                          {m.status === "rascunho" && (
+                          {(m.status === "rascunho" || m.status === "autorizado") && (
                             <button onClick={() => abrirEditar(m)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
-                              Editar
+                              {m.status === "autorizado" ? "CIOT" : "Editar"}
                             </button>
                           )}
                           {m.status === "autorizado" && (
