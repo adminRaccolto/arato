@@ -146,6 +146,15 @@ export default function NfServicoPage() {
   const [err,     setErr]     = useState("");
   const [nfEdit,  setNfEdit]  = useState<NfServico | null>(null);
 
+  // Modal de exclusão (mesmo padrão do NF de Produtos)
+  const [modalExcluir, setModalExcluir] = useState<{
+    nf: NfServico;
+    lancamento: { id: string; status: string } | null;
+    verificando: boolean;
+    excluindo: boolean;
+    bloqueado: boolean;
+  } | null>(null);
+
   const [cab, setCab] = useState(CAB_VAZIO());
   // código LC 116 livre (quando selecionado "outros")
   const [codigoLivre, setCodigoLivre] = useState("");
@@ -279,6 +288,7 @@ export default function NfServicoPage() {
     if (!cab.numero_nf.trim()) { setErr("Informe o número da NF."); return; }
     if (!cab.prestador_nome.trim()) { setErr("Informe o prestador."); return; }
     if (!cab.data_prestacao) { setErr("Informe a data da prestação."); return; }
+    if (nfEdit?.status === "processada") { setErr("NFS-e já processada. Use Estornar para reprocessar."); return; }
     if (status === "processada" && vServico <= 0) { setErr("Valor do serviço deve ser maior que zero para processar."); return; }
     if (status === "processada" && !cab.operacao_gerencial_id) { setErr("Selecione a Operação Gerencial para processar."); return; }
 
@@ -371,6 +381,84 @@ export default function NfServicoPage() {
     if (!confirm(`Cancelar NF de Serviço ${nf.numero_nf}?`)) return;
     await supabase.from("nf_servicos").update({ status: "cancelada" }).eq("id", nf.id);
     await carregar();
+  }
+
+  // ── Estornar NFS-e processada ────────────────────────────────
+  async function estornarNf(nf: NfServico) {
+    if (!confirm(
+      `Estornar NFS-e ${nf.numero_nf}?\n\n` +
+      `Isso irá:\n• Cancelar o lançamento financeiro (CP) associado\n• Retornar a NFS-e para "Pendente" para reprocessamento`
+    )) return;
+    try {
+      const res = await fetch("/api/compras/estornar-nf-servico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nf_id: nf.id }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(json.error ?? `Erro HTTP ${res.status}`);
+      }
+      await carregar();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Erro ao estornar NFS-e");
+    }
+  }
+
+  // ── Excluir NFS-e ───────────────────────────────────────────
+  async function iniciarExclusao(nf: NfServico) {
+    if (nf.status !== "processada") {
+      if (!confirm(`Excluir NFS-e ${nf.numero_nf}?\n\nEsta NFS-e ainda não foi processada — nenhum lançamento financeiro será revertido.`)) return;
+      try {
+        const res = await fetch("/api/compras/excluir-nf-servico", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nf_id: nf.id, fazenda_id: fazendaId }),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(json.error ?? `Erro HTTP ${res.status}`);
+        }
+        await carregar();
+      } catch (e: unknown) {
+        alert(e instanceof Error ? e.message : "Erro ao excluir");
+      }
+      return;
+    }
+    // NFS-e processada: verificar se lancamento foi baixado
+    setModalExcluir({ nf, lancamento: null, verificando: true, excluindo: false, bloqueado: false });
+    try {
+      const { data: lanc } = await supabase
+        .from("lancamentos")
+        .select("id, status")
+        .eq("id", nf.lancamento_id ?? "")
+        .maybeSingle();
+      const bloqueado = lanc?.status === "baixado";
+      setModalExcluir({ nf, lancamento: lanc ?? null, verificando: false, excluindo: false, bloqueado });
+    } catch {
+      setModalExcluir(null);
+    }
+  }
+
+  async function confirmarExclusao() {
+    if (!modalExcluir || !fazendaId) return;
+    setModalExcluir(p => p ? { ...p, excluindo: true } : null);
+    try {
+      const res = await fetch("/api/compras/excluir-nf-servico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nf_id: modalExcluir.nf.id, fazenda_id: fazendaId }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(json.error ?? `Erro HTTP ${res.status}`);
+      }
+      setModalExcluir(null);
+      await carregar();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Erro ao excluir NFS-e");
+      setModalExcluir(p => p ? { ...p, excluindo: false } : null);
+    }
   }
 
   // ── SIEG — sincronização NFSe ───────────────────────────────
@@ -539,19 +627,39 @@ export default function NfServicoPage() {
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", color: "#111111" }}>{fmtBRL(nf.valor_liquido)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          {nf.status !== "processada" && nf.status !== "cancelada" && (
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          {/* Não processada: editar */}
+                          {nf.status === "digitando" && (
                             <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                               Editar
                             </button>
                           )}
+                          {/* Pendente: editar + processar */}
                           {nf.status === "pendente" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
-                              Processar
+                            <>
+                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                                Editar
+                              </button>
+                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                                Processar
+                              </button>
+                            </>
+                          )}
+                          {/* Processada: estornar */}
+                          {nf.status === "processada" && (
+                            <button onClick={() => estornarNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 11, color: "#7A4800", fontWeight: 600 }}>
+                              Estornar
                             </button>
                           )}
+                          {/* Excluir (todas exceto cancelada) */}
+                          {nf.status !== "cancelada" && (
+                            <button onClick={() => iniciarExclusao(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                              Excluir
+                            </button>
+                          )}
+                          {/* Cancelar (só não processada e não cancelada) */}
                           {nf.status !== "cancelada" && nf.status !== "processada" && (
-                            <button onClick={() => cancelarNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                            <button onClick={() => cancelarNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #88888850", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               Cancelar
                             </button>
                           )}
@@ -877,6 +985,53 @@ export default function NfServicoPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de Exclusão ───────────────────────────────── */}
+      {modalExcluir && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
+            {modalExcluir.verificando ? (
+              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-2)", fontSize: 13 }}>Verificando lançamentos…</div>
+            ) : modalExcluir.bloqueado ? (
+              <>
+                <div style={{ fontWeight: 600, fontSize: 16, color: "#791F1F", marginBottom: 8 }}>⛔ Exclusão bloqueada</div>
+                <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20, lineHeight: 1.6 }}>
+                  A NFS-e <strong>{modalExcluir.nf.numero_nf}</strong> possui um lançamento financeiro que já foi <strong>baixado (pago)</strong>. Não é possível excluir — estorne o pagamento no Contas a Pagar primeiro.
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button style={btnR} onClick={() => setModalExcluir(null)}>Fechar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Excluir NF de Serviço</div>
+                <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>NFS-e {modalExcluir.nf.numero_nf} — {modalExcluir.nf.prestador_nome}</div>
+
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#791F1F", marginBottom: 8 }}>Esta ação irá remover:</div>
+                  <ul style={{ margin: 0, padding: "0 0 0 18px", fontSize: 12, color: "var(--text-2)", lineHeight: 1.8 }}>
+                    <li>O registro da NF de Serviço</li>
+                    {modalExcluir.lancamento && (
+                      <li>Lançamento financeiro (CP) de {modalExcluir.nf.prestador_nome}</li>
+                    )}
+                  </ul>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</button>
+                  <button
+                    onClick={confirmarExclusao}
+                    disabled={modalExcluir.excluindo}
+                    style={{ padding: "8px 18px", background: modalExcluir.excluindo ? "var(--text-muted)" : "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: modalExcluir.excluindo ? "default" : "pointer", fontSize: 13 }}
+                  >
+                    {modalExcluir.excluindo ? "Excluindo…" : "Confirmar Exclusão"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
