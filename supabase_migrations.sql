@@ -10119,52 +10119,80 @@ ALTER TABLE pedidos_compra_itens
 
 COMMENT ON COLUMN pedidos_compra_itens.desconto_unitario IS 'Desconto por unidade (R$) com 6 casas decimais. Valor Item = valor_unitario - desconto_unitario';
 
--- ─── Seção 178: barter_compromissos ──────────────────────────────────────────
--- Compromissos de entrega de grãos originados por barter (insumos × sacas).
--- Compra de terra em sacas já usa cct_pagamentos (moeda_parcela).
--- Arrendamentos em sacas já usam arrendamento_pagamentos (commodity).
--- Barter é o único tipo sem tabela própria — criado aqui.
-CREATE TABLE IF NOT EXISTS barter_compromissos (
-  id                      uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  fazenda_id              uuid        NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
-  conta_id                uuid        REFERENCES contas(id) ON DELETE SET NULL,
-  fornecedor_id           uuid        REFERENCES pessoas(id) ON DELETE SET NULL,
-  descricao               text        NOT NULL,
-  commodity               text        NOT NULL CHECK (commodity IN ('soja','milho','algodao','trigo','sorgo')),
-  sacas_total             numeric(14,3) NOT NULL,
-  sacas_entregues         numeric(14,3) NOT NULL DEFAULT 0,
-  preco_sc_ref            numeric(14,4),    -- R$/sc acordado na época do barter
-  valor_insumos           numeric(15,2),    -- valor BRL dos insumos recebidos
-  ano_safra_id            uuid        REFERENCES anos_safra(id) ON DELETE SET NULL,
-  ciclo_id                uuid        REFERENCES ciclos(id)    ON DELETE SET NULL,
-  data_entrega            date        NOT NULL,
-  data_entrega_realizada  date,
-  status                  text        NOT NULL DEFAULT 'pendente'
-                          CHECK (status IN ('pendente','parcial','entregue','cancelado')),
-  observacao              text,
-  created_at              timestamptz NOT NULL DEFAULT now(),
-  updated_at              timestamptz NOT NULL DEFAULT now()
-);
+-- ─── Seção 178: Compromissos em Grãos — rastreabilidade na tabela contratos ──
+-- Barter NUNCA existe de forma autônoma — sempre vinculado a pedido de compra,
+-- compra de terra ou arrendamento, todos gerando um registro em `contratos`.
+-- Estratégia: flags is_compra_terra / is_barter + FKs na tabela contratos
+-- (is_arrendamento + arrendamento_id já existem como padrão).
+-- O relatório "Compromissos em Grãos" lê tudo de uma só tabela.
 
-ALTER TABLE barter_compromissos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS is_compra_terra  boolean   DEFAULT false,
+  ADD COLUMN IF NOT EXISTS cct_pagamento_id uuid      REFERENCES cct_pagamentos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS is_barter        boolean   DEFAULT false,
+  ADD COLUMN IF NOT EXISTS pedido_compra_id uuid      REFERENCES pedidos_compra(id) ON DELETE SET NULL;
 
-DROP POLICY IF EXISTS "rls_barter_conta" ON barter_compromissos;
-CREATE POLICY "rls_barter_conta" ON barter_compromissos
-  USING (
-    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
-    OR fazenda_id IN (
-      SELECT f.id FROM fazendas f
-      JOIN perfis p ON p.conta_id = f.conta_id
-      WHERE p.user_id = auth.uid()
-    )
-    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+CREATE INDEX IF NOT EXISTS idx_contratos_cct_pag ON contratos(cct_pagamento_id);
+CREATE INDEX IF NOT EXISTS idx_contratos_pedido  ON contratos(pedido_compra_id);
+
+-- Retroativo: marcar contratos de barter já criados via pedidos de compra
+UPDATE contratos
+SET    is_barter = true
+WHERE  tipo = 'barter'
+  AND  (is_barter IS NULL OR is_barter = false);
+
+-- Retroativo: criar contratos de grãos para parcelas CCT pagas em sacas
+-- (cada cct_pagamento com moeda_parcela != 'BRL' gera um contrato de grãos)
+INSERT INTO contratos (
+  fazenda_id, conta_id, numero, tipo, modalidade, moeda,
+  produto, quantidade_sc, entregue_sc, preco,
+  comprador,
+  pessoa_id, produtor_id, ano_safra_id, ciclo_id,
+  data_contrato, data_entrega, status, confirmado,
+  is_compra_terra, cct_pagamento_id,
+  observacao
+)
+SELECT
+  cct.fazenda_id,
+  ct.conta_id,
+  'CCT-' || UPPER(LEFT(cct.id::text, 8))          AS numero,
+  'compra_terra'                                    AS tipo,
+  'compra_terra'                                    AS modalidade,
+  'BRL'                                             AS moeda,
+  CASE cct.moeda_parcela
+    WHEN 'saca_soja'    THEN 'Soja'
+    WHEN 'saca_milho'   THEN 'Milho'
+    WHEN 'saca_algodao' THEN 'Algodão'
+    ELSE COALESCE(cct.produto, 'Soja')
+  END                                               AS produto,
+  cct.quantidade_sacas                              AS quantidade_sc,
+  CASE WHEN cct.status = 'pago'
+       THEN cct.quantidade_sacas ELSE 0 END         AS entregue_sc,
+  cct.preco_sc_ref                                  AS preco,
+  COALESCE(p.nome, ct.imovel_nome)                  AS comprador,
+  ct.vendedor_id                                    AS pessoa_id,
+  ct.comprador_produtor_id                          AS produtor_id,
+  cct.ano_safra_id,
+  cct.ciclo_id,
+  ct.data_contrato,
+  cct.data_vencimento                               AS data_entrega,
+  CASE WHEN cct.status = 'pago'
+       THEN 'encerrado' ELSE 'aberto' END           AS status,
+  true                                              AS confirmado,
+  true                                              AS is_compra_terra,
+  cct.id                                            AS cct_pagamento_id,
+  'Gerado automaticamente — Compra de Terra: '
+    || ct.imovel_nome                               AS observacao
+FROM  cct_pagamentos cct
+JOIN  contratos_compra_terra ct ON ct.id = cct.contrato_id
+LEFT  JOIN pessoas p ON p.id = ct.vendedor_id
+WHERE cct.moeda_parcela IN ('saca_soja','saca_milho','saca_algodao')
+  AND cct.quantidade_sacas > 0
+  AND NOT EXISTS (
+    SELECT 1 FROM contratos c WHERE c.cct_pagamento_id = cct.id
   );
 
-CREATE INDEX IF NOT EXISTS idx_barter_fazenda    ON barter_compromissos(fazenda_id);
-CREATE INDEX IF NOT EXISTS idx_barter_conta      ON barter_compromissos(conta_id);
-CREATE INDEX IF NOT EXISTS idx_barter_ano_safra  ON barter_compromissos(ano_safra_id);
-CREATE INDEX IF NOT EXISTS idx_barter_vencimento ON barter_compromissos(data_entrega);
-
-COMMENT ON TABLE barter_compromissos IS 'Compromissos de entrega de grãos por barter (insumos pagos em sacas na colheita)';
-COMMENT ON COLUMN barter_compromissos.preco_sc_ref IS 'R$/sc de referência no momento da assinatura do barter';
-COMMENT ON COLUMN barter_compromissos.valor_insumos IS 'BRL recebido em insumos (sementes, fertilizantes, defensivos)';
+COMMENT ON COLUMN contratos.is_compra_terra  IS 'true = comprometimento de grãos de compra de terra';
+COMMENT ON COLUMN contratos.cct_pagamento_id IS 'FK cct_pagamentos.id — parcela originadora (compra de terra)';
+COMMENT ON COLUMN contratos.is_barter        IS 'true = comprometimento de grãos de barter (insumos × sacas)';
+COMMENT ON COLUMN contratos.pedido_compra_id IS 'FK pedidos_compra.id — pedido originador (barter)';

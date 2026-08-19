@@ -896,6 +896,8 @@ export default function ComprasPage() {
                 data_entrega:      f.data_vencimento || f.previsao_entrega_unica || f.data_registro,
                 status:            "aberto",
                 confirmado:        true,
+                is_barter:         true,
+                pedido_compra_id:  pedidoId,
                 observacao:        `Gerado automaticamente — PC nº ${f.nr_pedido || pedidoId.slice(0,8)} — Insumos: R$ ${totalItens.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
               });
               barterContratoGerado = contBarter.numero;

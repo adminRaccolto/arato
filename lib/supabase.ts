@@ -370,6 +370,12 @@ export type Contrato = {
   // Comprometimento de arrendamento (não gera financeiro)
   is_arrendamento?: boolean;    // true = comprometimento de grãos de arrendamento
   arrendamento_id?: string;     // FK arrendamentos.id
+  // Comprometimento de compra de terra (parcela paga em sacas)
+  is_compra_terra?: boolean;    // true = comprometimento de grãos de compra de terra
+  cct_pagamento_id?: string;    // FK cct_pagamentos.id
+  // Comprometimento de barter (insumos × sacas)
+  is_barter?: boolean;          // true = comprometimento de grãos de barter
+  pedido_compra_id?: string;    // FK pedidos_compra.id
   // Adiantamento de cliente
   adiantamento_total?:    number;   // valor acordado para adiantar
   adiantamento_recebido?: number;   // soma dos recebimentos registrados
