@@ -54,24 +54,14 @@ const QR_BASE: Record<string, Record<string, string>> = {
 };
 
 function buildQrCodeCTe(
-  chave:    string,
-  tpAmb:    string,         // "1" | "2"
-  dhEmiIso: string,         // ISO-8601 ex "2026-08-12T15:42:46-04:00"
-  vICMS:    number,
-  digVal:   string,         // DigestValue base64 extraído da assinatura
-  uf:       string,
-  cscIdToken: string,       // ex "000001"
-  cscToken:   string,       // token CSC registrado na SEFAZ
+  chave: string,
+  tpAmb: string,   // "1" | "2"
+  uf:    string,
 ): string {
-  const urlBase    = QR_BASE[uf]?.[tpAmb === "1" ? "producao" : "homologacao"]
-                  ?? `https://homologacao.sefaz.mt.gov.br/cte/qrcode`;
-  const hexDhEmi   = Math.floor(new Date(dhEmiIso).getTime() / 1000).toString(16).toUpperCase();
-  const vICMSStr   = vICMS.toFixed(2);
-  const hashInput  = chave + tpAmb + "100" + hexDhEmi + vICMSStr + digVal + cscIdToken + cscToken;
-  const qrHash     = createHash("sha1").update(hashInput).digest("hex").toUpperCase();
-  const digValEnc  = encodeURIComponent(digVal);
-
-  return `${urlBase}?chCTe=${chave}&tpAmb=${tpAmb}&nVersao=100&dhEmi=${hexDhEmi}&vICMS=${vICMSStr}&digVal=${digValEnc}&cIdToken=${cscIdToken}&cHashQRCode=${qrHash}`;
+  // CT-e 4.00 tpEmis=1: XSD aceita somente chCTe e tpAmb — parâmetros extras causam cStat 215
+  const urlBase = QR_BASE[uf]?.[tpAmb === "1" ? "producao" : "homologacao"]
+               ?? `https://homologacao.sefaz.mt.gov.br/cte/qrcode`;
+  return `${urlBase}?chCTe=${chave}&tpAmb=${tpAmb}`;
 }
 
 function inserirInfCTeSupl(xmlAssinado: string, qrUrl: string): string {
@@ -199,17 +189,11 @@ export async function emitirCTe(
   try { xmlAssinado = assinarCTe(built.xml, pem); }
   catch (e) { return { sucesso: false, cStat: "503", xMotivo: `Erro na assinatura: ${e}`, xmlAssinado: built.xml }; }
 
-  // 6b. Inserir infCTeSupl (QR Code) — obrigatório CT-e 4.00 (cStat 850)
-  const tpAmb      = emitente.ambiente === "producao" ? "1" : "2";
-  const digValMatch = xmlAssinado.match(/<DigestValue>(.*?)<\/DigestValue>/);
-  const digVal     = digValMatch?.[1] ?? "";
-  const dhEmiMatch  = xmlAssinado.match(/<dhEmi>(.*?)<\/dhEmi>/);
-  const dhEmiIso   = dhEmiMatch?.[1] ?? new Date().toISOString();
-  const vICMS      = inputBase.valor_prestacao * inputBase.aliquota_icms / 100;
-  const cscIdToken = confg.csc_id_token ?? "000001";
-  const cscToken   = confg.csc_token    ?? "";
-  const qrUrl      = buildQrCodeCTe(built.chave, tpAmb, dhEmiIso, vICMS, digVal, emitente.uf, cscIdToken, cscToken);
-  xmlAssinado      = inserirInfCTeSupl(xmlAssinado, qrUrl);
+  // 6b. Inserir infCTeSupl (QR Code) — obrigatório CT-e 4.00
+  // tpEmis=1: XSD aceita somente ?chCTe=...&tpAmb=... (parâmetros extras → cStat 215)
+  const tpAmb  = emitente.ambiente === "producao" ? "1" : "2";
+  const qrUrl  = buildQrCodeCTe(built.chave, tpAmb, emitente.uf);
+  xmlAssinado  = inserirInfCTeSupl(xmlAssinado, qrUrl);
 
   // 7. Transmitir
   let resposta;
