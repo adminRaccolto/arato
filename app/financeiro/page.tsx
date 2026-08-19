@@ -193,7 +193,7 @@ const conciliados: { data: string; descricao: string; valor: number; tipo: "cred
 
 // ═══════════════════════════════════════════════════════════════
 export default function Financeiro() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, nomeFazendaSelecionada } = useAuth();
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [loading, setLoading]   = useState(true);
   const [erro, setErro]         = useState<string | null>(null);
@@ -398,6 +398,77 @@ export default function Financeiro() {
   };
 
   // ── simulações ──────────────────────────────────────────────
+  const imprimirSimulacoes = () => {
+    const ativas = [...simulacoes].filter(s => s.ativa).sort((a, b) => a.data.localeCompare(b.data));
+    const totalEntradas = ativas.filter(s => s.tipo === "receber").reduce((sum, s) => sum + s.valor, 0);
+    const totalSaidas   = ativas.filter(s => s.tipo === "pagar").reduce((sum, s) => sum + s.valor, 0);
+    const impactoLiq    = totalEntradas - totalSaidas;
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    const fazenda = nomeFazendaSelecionada ?? "Fazenda";
+
+    const linhas = ativas.map(s => `
+      <tr>
+        <td>${fmtData(s.data)}</td>
+        <td>${s.descricao}</td>
+        <td style="text-align:center;color:${s.tipo === "receber" ? "#1A5C38" : "#B91C1C"};font-weight:600">
+          ${s.tipo === "receber" ? "Entrada" : "Saída"}
+        </td>
+        <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:${s.tipo === "receber" ? "#1A5C38" : "#B91C1C"}">
+          ${s.tipo === "receber" ? "+" : "−"} ${fmtBRL(s.valor)}
+        </td>
+      </tr>`).join("");
+
+    const win = window.open("", "_blank", "width=820,height=680");
+    if (!win) return;
+    win.document.write(`<!doctype html><html lang="pt-BR"><head>
+      <meta charset="utf-8"/>
+      <title>Simulações de Caixa — ${fazenda}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, Arial, sans-serif; font-size: 13px; color: #111; padding: 32px; }
+        h1  { font-size: 18px; font-weight: 700; color: #1A4870; margin-bottom: 2px; }
+        .sub { font-size: 11px; color: #666; margin-bottom: 22px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        thead tr { background: #1A4870; color: #fff; }
+        thead th { padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .4px; }
+        thead th:last-child { text-align: right; }
+        thead th:nth-child(3) { text-align: center; }
+        tbody tr:nth-child(even) { background: #F4F6FA; }
+        tbody td { padding: 9px 12px; border-bottom: 0.5px solid #E0E4EE; font-size: 12px; }
+        .summary { border: 1px solid #DDE2EE; border-radius: 8px; padding: 14px 18px; display: flex; gap: 40px; margin-top: 4px; }
+        .sum-item label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 3px; }
+        .sum-item span  { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .green { color: #1A5C38; } .red { color: #B91C1C; }
+        .blue  { color: ${impactoLiq >= 0 ? "#1A5C38" : "#B91C1C"}; }
+        .footer { margin-top: 28px; font-size: 10px; color: #999; border-top: 0.5px solid #DDE2EE; padding-top: 10px; }
+        @media print {
+          body { padding: 20px; }
+          button { display: none; }
+        }
+      </style>
+    </head><body>
+      <h1>Simulações de Caixa</h1>
+      <div class="sub">${fazenda} &nbsp;·&nbsp; Emitido em ${hoje} &nbsp;·&nbsp; ${ativas.length} simulação(ões) ativa(s)</div>
+      <table>
+        <thead><tr>
+          <th style="width:110px">Data</th>
+          <th>Descrição</th>
+          <th style="width:90px;text-align:center">Tipo</th>
+          <th style="width:150px;text-align:right">Valor</th>
+        </tr></thead>
+        <tbody>${linhas || '<tr><td colspan="4" style="text-align:center;padding:20px;color:#999">Nenhuma simulação ativa</td></tr>'}</tbody>
+      </table>
+      <div class="summary">
+        <div class="sum-item"><label>Total Entradas</label><span class="green">+ ${fmtBRL(totalEntradas)}</span></div>
+        <div class="sum-item"><label>Total Saídas</label><span class="red">− ${fmtBRL(totalSaidas)}</span></div>
+        <div class="sum-item"><label>Impacto Líquido</label><span class="blue">${impactoLiq >= 0 ? "+" : "−"} ${fmtBRL(Math.abs(impactoLiq))}</span></div>
+      </div>
+      <div class="footer">Arato · Simulações hipotéticas — não representam lançamentos financeiros reais</div>
+      <script>window.onload = () => window.print();</script>
+    </body></html>`);
+    win.document.close();
+  };
+
   const salvarSimulacao = async () => {
     if (!modalSimDia || !novaSim.descricao || !novaSim.valorMask || !novaSim.data) return;
     try {
@@ -2006,7 +2077,13 @@ export default function Financeiro() {
               </div>
             )}
 
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <button
+                onClick={imprimirSimulacoes}
+                disabled={simulacoes.filter(s => s.ativa).length === 0}
+                style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: simulacoes.filter(s => s.ativa).length > 0 ? "#EBF2FA" : "#F4F6FA", color: simulacoes.filter(s => s.ativa).length > 0 ? "#1A4870" : "#aaa", cursor: simulacoes.filter(s => s.ativa).length > 0 ? "pointer" : "default", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                🖨 Imprimir quadro
+              </button>
               <button onClick={() => setModalGerenciarSim(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
             </div>
           </div>
