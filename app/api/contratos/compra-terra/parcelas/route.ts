@@ -169,8 +169,8 @@ export async function POST(req: NextRequest) {
         await sb.from("contratos").insert({
           fazenda_id:      body.fazenda_id,
           numero:          numContrato,
-          tipo:            "compra_terra",
-          modalidade:      "compra_terra",
+          tipo:            "venda",
+          modalidade:      "fixo",
           moeda:           "BRL",
           produto:         PRODUTO_MAP[p.moeda_parcela],
           quantidade_sc:   p.quantidade_sacas,

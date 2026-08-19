@@ -10155,8 +10155,8 @@ INSERT INTO contratos (
 SELECT
   cct.fazenda_id,
   'CCT-' || UPPER(LEFT(cct.id::text, 8))          AS numero,
-  'compra_terra'                                    AS tipo,
-  'compra_terra'                                    AS modalidade,
+  'venda'                                           AS tipo,
+  'fixo'                                            AS modalidade,
   'BRL'                                             AS moeda,
   CASE cct.moeda_parcela
     WHEN 'saca_soja'    THEN 'Soja'
