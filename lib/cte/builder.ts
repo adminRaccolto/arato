@@ -292,12 +292,8 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   const baseCalc  = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
-  const naturezaLimpa = "PRESTACAO DE SERVICO DE TRANSPORTE";
-
-  console.log("[CT-e natOp]", {
-    valor: naturezaLimpa,
-    tamanho: naturezaLimpa.length,
-  });
+  const naturezaLimpa = (limparTextoSefaz(input.natureza ?? "").slice(0, 60).trim())
+    || "PRESTACAO DE SERVICO DE TRANSPORTE";
 
   if (!naturezaLimpa) throw new Error("Natureza da operação não pode ser vazia");
 
