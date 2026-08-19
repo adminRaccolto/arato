@@ -154,7 +154,6 @@ export async function POST(req: NextRequest) {
         const numContrato = `CCT-${pg.id.slice(0, 8).toUpperCase()}`;
         await sb.from("contratos").insert({
           fazenda_id:      body.fazenda_id,
-          conta_id:        cctContrato?.conta_id ?? null,
           numero:          numContrato,
           tipo:            "compra_terra",
           modalidade:      "compra_terra",

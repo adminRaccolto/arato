@@ -10144,7 +10144,7 @@ WHERE  tipo = 'barter'
 -- Retroativo: criar contratos de grãos para parcelas CCT pagas em sacas
 -- (cada cct_pagamento com moeda_parcela != 'BRL' gera um contrato de grãos)
 INSERT INTO contratos (
-  fazenda_id, conta_id, numero, tipo, modalidade, moeda,
+  fazenda_id, numero, tipo, modalidade, moeda,
   produto, quantidade_sc, entregue_sc, preco,
   comprador,
   pessoa_id, produtor_id, ano_safra_id, ciclo_id,
@@ -10154,7 +10154,6 @@ INSERT INTO contratos (
 )
 SELECT
   cct.fazenda_id,
-  ct.conta_id,
   'CCT-' || UPPER(LEFT(cct.id::text, 8))          AS numero,
   'compra_terra'                                    AS tipo,
   'compra_terra'                                    AS modalidade,
