@@ -552,7 +552,7 @@ Clique em **+ Simulação** para criar um lançamento hipotético e ver o impact
 Lançamentos em aberto (não baixados) do **Apoio Financeiro** (ferramenta Raccotlo) também aparecem na seção de FC Previsto, com badge laranja "Apoio Financeiro". Isso permite que o consultor veja o impacto projetado de suas estimativas no fluxo de caixa da fazenda, sem que esses valores sejam parte do sistema oficial. O badge de origem identifica a fonte de cada linha.
 
 ### Grid Dia a Dia — Coluna Fornecedor/Credor
-No grid expandido por dia (aba Lançamentos, ao clicar em uma data), a coluna **Fornecedor/Credor** exibe o nome cadastrado da pessoa vinculada ao lançamento (campo `pessoa_id` → tabela `pessoas`). Se o lançamento não tiver pessoa vinculada, exibe a descrição do lançamento como fallback. Isso significa que o nome do fornecedor/credor vem do cadastro de Pessoas — não da descrição do lançamento em si.
+No grid expandido por dia (aba Lançamentos, ao clicar em uma data), a coluna **Fornecedor/Credor** exibe o nome cadastrado da pessoa vinculada ao lançamento (campo pessoa_id da tabela pessoas). Se o lançamento não tiver pessoa vinculada, exibe a descrição do lançamento como fallback. Isso significa que o nome do fornecedor/credor vem do cadastro de Pessoas — não da descrição do lançamento em si.
 
 ---
 
@@ -1466,8 +1466,8 @@ rascunho → autorizado → cancelado
 
 ### Ambiente de emissão — Homologação vs Produção
 O CT-e pode ser emitido em dois ambientes:
-- **Homologação** (`tpAmb = 2`): para testes — a SEFAZ aceita e valida o XML mas o documento **não tem validade fiscal**
-- **Produção** (`tpAmb = 1`): documentos com validade fiscal real — **use somente com certificado A1 válido e RNTRC habilitado**
+- **Homologação** (tpAmb = 2): para testes — a SEFAZ aceita e valida o XML mas o documento **não tem validade fiscal**
+- **Produção** (tpAmb = 1): documentos com validade fiscal real — **use somente com certificado A1 válido e RNTRC habilitado**
 
 **Como trocar o ambiente:**
 1. Vá em **Configurações → Parâmetros do Sistema → aba CT-e**
