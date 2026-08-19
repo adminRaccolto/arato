@@ -5,7 +5,8 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarPessoasDaConta } from "../../../lib/db";
+import { listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
+import type { Produtor } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
@@ -278,6 +279,7 @@ function CtePageInner() {
   const [veiculos,       setVeiculos]       = useState<VeiculoMin[]>([]);
   const [motoristas,     setMotoristas]     = useState<MotoristaMin[]>([]);
   const [pessoas,        setPessoas]        = useState<PessoaMin[]>([]);
+  const [produtores,     setProdutores]     = useState<Produtor[]>([]);
   const [empresasTransp, setEmpresasTransp] = useState<EmpresaTransp[]>([]);
 
   // ── Aba ─────────────────────────────────────────────────────
@@ -378,17 +380,19 @@ function CtePageInner() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId];
-    const [{ data: cd }, { data: vd }, { data: md }, todasPessoas, { data: ed }] = await Promise.all([
+    const [{ data: cd }, { data: vd }, { data: md }, todasPessoas, { data: ed }, todosProdutores] = await Promise.all([
       supabase.from("ctes").select("*").in("fazenda_id", ids).order("data_emissao", { ascending: false }),
       supabase.from("veiculos").select("id, placa, tipo, cap_kg").in("fazenda_id", ids).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, cnh").in("fazenda_id", ids).eq("ativo", true),
-      listarPessoasDaConta(fazendaId),  // paginado — retorna todas as pessoas sem limite de 1000
+      listarPessoasDaConta(fazendaId),
       supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, rntrc").in("fazenda_id", ids).contains("finalidades", ["transportadora"]),
+      listarProdutoresDaConta(contaId ?? fazendaId),
     ]);
     setCtes(cd ?? []);
     setVeiculos(vd ?? []);
     setMotoristas(md ?? []);
-    setPessoas(todasPessoas);  // já vem ordenado por localeCompare pt-BR
+    setPessoas(todasPessoas);
+    setProdutores(todosProdutores ?? []);
     setEmpresasTransp((ed ?? []).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
     // Próximo número
     if (cd && cd.length > 0) {
@@ -475,11 +479,22 @@ function CtePageInner() {
     setModal(true);
   }
 
-  // ── Busca IEs de um produtor pelo CPF/CNPJ ──────────────
+  // ── Busca IEs de um produtor pelo id ──────────────────────
+  async function buscarIesPorProdutorId(produtor_id: string) {
+    if (!produtor_id) return [];
+    const { data: ies } = await supabase
+      .from("produtor_inscricoes_estaduais")
+      .select("inscricao_estadual, municipio, estado")
+      .eq("produtor_id", produtor_id)
+      .eq("ativa", true)
+      .order("estado");
+    return ies ?? [];
+  }
+
+  // ── Busca IEs de uma pessoa pelo CPF/CNPJ (destinatário) ──
   async function buscarIesPorCpfCnpj(cpf_cnpj: string | undefined) {
-    if (!cpf_cnpj || !fazendaId) return [];
+    if (!cpf_cnpj) return [];
     const digits = cpf_cnpj.replace(/\D/g, "");
-    // Busca produtor pelo CPF/CNPJ e depois suas IEs
     const { data: prod } = await supabase
       .from("produtores")
       .select("id")
@@ -487,32 +502,27 @@ function CtePageInner() {
       .limit(1)
       .maybeSingle();
     if (!prod) return [];
-    const { data: ies } = await supabase
-      .from("produtor_inscricoes_estaduais")
-      .select("inscricao_estadual, municipio, estado")
-      .eq("produtor_id", prod.id)
-      .eq("ativa", true)
-      .order("estado");
-    return ies ?? [];
+    return buscarIesPorProdutorId(prod.id);
   }
 
-  // ── Auto-fill remetente ──────────────────────────────────
+  // ── Auto-fill remetente (usa produtores) ────────────────
   async function selecionarRemetente(id: string) {
-    const p = pessoas.find(p => p.id === id);
-    const ies = await buscarIesPorCpfCnpj(p?.cpf_cnpj);
+    const prod = produtores.find(p => p.id === id);
+    const ies = await buscarIesPorProdutorId(id);
     setIesRemetente(ies);
     setForm(f => ({
       ...f,
       remetente_id: id,
-      remetente_nome: p?.nome ?? "",
-      remetente_cnpj: p?.cpf_cnpj ?? "",
-      remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (p?.inscricao_est ?? ""),
-      municipio_origem: p?.municipio ?? f.municipio_origem,
-      uf_origem: p?.estado ?? f.uf_origem,
-      ibge_origem: p?.municipio_ibge ?? f.ibge_origem,
+      remetente_nome: prod?.nome ?? "",
+      remetente_cnpj: prod?.cpf_cnpj ?? "",
+      remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (prod?.inscricao_est ?? ""),
+      municipio_origem: prod?.municipio ?? f.municipio_origem,
+      uf_origem: prod?.estado ?? f.uf_origem,
+      ibge_origem: prod?.municipio_ibge ?? f.ibge_origem,
     }));
   }
 
+  // ── Auto-fill destinatário (usa pessoas) ────────────────
   async function selecionarDestinatario(id: string) {
     const p = pessoas.find(p => p.id === id);
     const ies = await buscarIesPorCpfCnpj(p?.cpf_cnpj);
@@ -1122,10 +1132,10 @@ function CtePageInner() {
               {/* ── Remetente ── */}
               <div style={divider}>Remetente</div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Selecionar Remetente (Pessoas cadastradas)</label>
+                <label style={lbl}>Selecionar Remetente (Produtores cadastrados)</label>
                 <select value={form.remetente_id} onChange={e => selecionarRemetente(e.target.value)} style={inp}>
                   <option value="">— Selecionar —</option>
-                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
+                  {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
                 </select>
               </div>
               <div style={{ gridColumn: "1 / 3" }}>
