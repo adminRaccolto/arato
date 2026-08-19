@@ -628,6 +628,7 @@ function CtePageInner() {
 
     const payload = {
       fazenda_id:         fazendaId,
+      cte_id:             c.id,
       emitente_id:        c.emitente_id ?? undefined,
       emitente_cnpj:      c.emitente_cnpj ?? undefined,
       emitente_razao_social: c.emitente_razao_social ?? undefined,
@@ -709,16 +710,9 @@ function CtePageInner() {
       const res  = await fetch("/api/fiscal/emitir-cte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; xmlUrl?: string };
 
-      const novoStatus = data.sucesso ? "autorizado" : "rascunho";
-      await supabase.from("ctes").update({
-        status:       novoStatus,
-        chave_acesso: data.chave   ?? null,
-        xml_url:      data.xmlUrl  ?? null,
-        numero_cte:   data.numero  ?? c.numero_cte,
-      }).eq("id", c.id);
-
       // Atualização otimista — o alert() bloqueia o browser antes do React re-renderizar,
       // então atualizamos o estado local imediatamente para o DACTE abrir com a chave correta.
+      // O update no banco já foi feito server-side com service_role_key (imune a JWT expirado).
       if (data.sucesso) {
         setCtes(prev => prev.map(x => x.id === c.id ? {
           ...x,
@@ -731,7 +725,7 @@ function CtePageInner() {
 
       if (data.sucesso) {
         alert(`✓ CT-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
-        await carregar(); // re-sync com o banco após o usuário fechar o alert
+        await carregar(); // re-sync com o banco
       } else {
         // cStats internos (5xx) = falha de comunicação antes de a SEFAZ responder.
         // cStats fiscais reais da SEFAZ são 3 dígitos começando com 1-4 (ex: 100, 539, 225).

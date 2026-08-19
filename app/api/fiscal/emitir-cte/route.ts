@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       nfe_chave?:         string;
       tomador_tipo:       CTeInput["tomador_tipo"];
       observacao?:        string;
+      cte_id?:            string | null;
     };
 
     if (!body.fazenda_id || !body.remetente?.nome || !body.destinatario?.nome) {
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
 
     const resultado = await emitirCTe(body.fazenda_id, input, {
       emitente_cnpj: body.emitente_cnpj,
+      cte_id:        body.cte_id,
     });
     return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
   } catch (err) {

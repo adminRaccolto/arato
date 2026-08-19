@@ -100,6 +100,7 @@ export interface ResultadoEmissaoCTe {
 
 export interface EmitirCTeOptions {
   emitente_cnpj?: string | null;
+  cte_id?:        string | null; // ID do registro em `ctes` — atualizado com service_role após autorização
 }
 
 // ─── Função principal ────────────────────────────────────────────────────────
@@ -204,6 +205,18 @@ export async function emitirCTe(
   let xmlUrl: string | undefined;
   if (resposta.sucesso && resposta.xmlProt) {
     try { xmlUrl = await salvarXml(fazendaId, built.chave, resposta.xmlProt); } catch { /* best-effort */ }
+  }
+
+  // 9. Atualizar registro `ctes` com service_role_key (evita falha silenciosa por JWT expirado no cliente)
+  if (options.cte_id) {
+    try {
+      await sb().from("ctes").update({
+        status:       resposta.sucesso ? "autorizado" : "rascunho",
+        chave_acesso: built.chave,
+        xml_url:      xmlUrl ?? null,
+        numero_cte:   String(built.numero),
+      }).eq("id", options.cte_id);
+    } catch { /* best-effort — cliente ainda faz o update como fallback */ }
   }
 
   return {
