@@ -292,18 +292,14 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   const baseCalc  = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
 
-  const naturezaOp = limparTextoSefaz(input.natureza).slice(0, 60);
-  if (!naturezaOp) throw new Error("Natureza da operação não pode ser vazia");
+  const naturezaLimpa = "PRESTACAO DE SERVICO DE TRANSPORTE";
 
-  console.log("[CT-e limites schema]", {
-    natureza:      limparTextoSefaz(input.natureza),
-    naturezaLength: limparTextoSefaz(input.natureza).length,
-    produtoLength:  limparTextoSefaz(input.produto_descricao).length,
-    componentes:   input.componentes.map(c => ({
-      nome:    limparTextoSefaz(c.nome),
-      tamanho: limparTextoSefaz(c.nome).length,
-    })),
+  console.log("[CT-e natOp]", {
+    valor: naturezaLimpa,
+    tamanho: naturezaLimpa.length,
   });
+
+  if (!naturezaLimpa) throw new Error("Natureza da operação não pode ser vazia");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <CTe xmlns="http://www.portalfiscal.inf.br/cte">
@@ -312,7 +308,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <cUF>${cuf}</cUF>
       <cCT>${cCT}</cCT>
       <CFOP>${input.cfop.replace(/\D/g, "")}</CFOP>
-      <natOp>${escLimite(input.natureza, 60)}</natOp>
+      <natOp>${esc(naturezaLimpa)}</natOp>
       <mod>57</mod>
       <serie>${serieXml}</serie>
       <nCT>${nCTXml}</nCT>
