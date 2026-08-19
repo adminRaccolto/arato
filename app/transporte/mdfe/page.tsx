@@ -24,6 +24,191 @@ function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
 }
 
 // ─────────────────────────────────────────────────────────────
+// DAMDFE — Documento Auxiliar do MDF-e
+// ─────────────────────────────────────────────────────────────
+function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string) {
+  const chave44 = (m.chave_acesso ?? "").replace(/\D/g, "");
+  const chaveBlocks = chave44 ? chave44.replace(/(.{4})/g, "$1 ").trim() : "— aguardando autorização SEFAZ —";
+  const numFmt = m.numero_mdfe.padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
+  const dataFmt = m.data_emissao ? new Date(m.data_emissao + "T12:00:00").toLocaleDateString("pt-BR") : "—";
+  const percurso = [m.uf_inicio, ...(m.percurso_ufs ?? []), m.uf_fim].join(" → ");
+  const pesoTon = ((m.peso_total_kg ?? 0) / 1000).toFixed(3).replace(".", ",");
+  const statusLabel = m.status === "autorizado" ? "AUTORIZADO" : m.status === "encerrado" ? "ENCERRADO" : m.status.toUpperCase();
+  const docs = Array.isArray(m.documentos) ? m.documentos : [];
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>DAMDFE MDF-e ${numFmt} — Série ${m.serie}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 8pt; color: #000; background: #fff; }
+  @page { size: A4 portrait; margin: 8mm; }
+  @media print { body { margin: 0; } }
+  .page { width: 100%; }
+  .box { border: 0.5pt solid #000; padding: 4px 6px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; }
+  .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0; }
+  .section { border: 0.5pt solid #000; margin-bottom: 0; }
+  .section + .section { border-top: none; }
+  .section-title { background: #e0e0e0; font-weight: bold; font-size: 7pt; padding: 2px 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .field { padding: 3px 4px; border-right: 0.5pt solid #000; }
+  .field:last-child { border-right: none; }
+  .label { font-size: 6.5pt; color: #555; display: block; }
+  .value { font-size: 8.5pt; font-weight: 700; }
+  .chave { font-family: monospace; font-size: 8pt; letter-spacing: 0.08em; text-align: center; padding: 4px; }
+  .header-title { text-align: center; font-size: 12pt; font-weight: 900; }
+  .header-sub { text-align: center; font-size: 7pt; }
+  .status-badge { display: inline-block; padding: 2px 10px; border: 1.5pt solid #000; font-size: 9pt; font-weight: 900; }
+  .doc-row { display: grid; grid-template-columns: 40px 1fr 100px; border-top: 0.5pt solid #ccc; padding: 2px 4px; }
+  .doc-header { display: grid; grid-template-columns: 40px 1fr 100px; padding: 2px 4px; font-size: 6.5pt; font-weight: 700; text-transform: uppercase; background: #f0f0f0; }
+  .warn { color: #cc0000; font-size: 7pt; font-weight: 700; text-align: center; margin-top: 4px; }
+  .barcode-area { text-align: center; padding: 6px 4px 2px; }
+  svg#barcode { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Cabeçalho -->
+  <div style="display:grid;grid-template-columns:1fr auto 180px;border:0.5pt solid #000;margin-bottom:0">
+    <div style="padding:6px 8px;border-right:0.5pt solid #000">
+      <div style="font-size:7pt;color:#555">EMITENTE</div>
+      <div style="font-size:10pt;font-weight:900;line-height:1.2">${emitentNome || "—"}</div>
+      <div style="font-size:7pt;margin-top:2px">CNPJ: ${emitenteCnpj || "—"}</div>
+    </div>
+    <div style="padding:6px 12px;text-align:center;border-right:0.5pt solid #000">
+      <div class="header-title">DAMDFE</div>
+      <div class="header-sub">DOCUMENTO AUXILIAR DO</div>
+      <div class="header-sub">MANIFESTO ELETRÔNICO DE</div>
+      <div class="header-sub">DOCUMENTOS FISCAIS</div>
+      <div style="margin-top:4px;font-size:8pt">MODELO <b>58</b> · SÉRIE <b>${m.serie}</b> · Nº <b>${numFmt}</b></div>
+      <div style="font-size:7pt">Emissão: ${dataFmt}</div>
+    </div>
+    <div style="padding:6px 8px;text-align:center">
+      <div style="font-size:7pt;color:#555;margin-bottom:4px">STATUS</div>
+      <div class="status-badge">${statusLabel}</div>
+    </div>
+  </div>
+
+  <!-- Chave de acesso -->
+  <div class="section">
+    <div class="section-title">CHAVE DE ACESSO</div>
+    <div class="chave">${chaveBlocks}</div>
+    ${!chave44 ? `<div class="warn">⚠ MDF-e ainda não autorizado pela SEFAZ</div>` : ""}
+    <div class="barcode-area">
+      <svg id="barcode"></svg>
+    </div>
+  </div>
+
+  <!-- Percurso -->
+  <div class="section" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:none">
+    <div class="field">
+      <span class="label">UF INÍCIO</span>
+      <span class="value">${m.uf_inicio}</span>
+    </div>
+    <div class="field">
+      <span class="label">MUNICÍPIO INÍCIO</span>
+      <span class="value">${m.municipio_inicio || "—"}</span>
+    </div>
+    <div class="field">
+      <span class="label">UF FIM</span>
+      <span class="value">${m.uf_fim}</span>
+    </div>
+    <div class="field" style="border-right:none">
+      <span class="label">PERCURSO</span>
+      <span class="value">${percurso}</span>
+    </div>
+  </div>
+
+  <!-- Veículo e Motorista -->
+  <div class="section" style="display:grid;grid-template-columns:120px 1fr 180px 180px;border-top:none">
+    <div class="field">
+      <span class="label">PLACA DO VEÍCULO</span>
+      <span class="value">${m.veiculo_placa || "—"}</span>
+    </div>
+    <div class="field">
+      <span class="label">TIPO DO VEÍCULO</span>
+      <span class="value">${m.veiculo_tipo || "—"}</span>
+    </div>
+    <div class="field">
+      <span class="label">MOTORISTA</span>
+      <span class="value">${m.motorista_nome || "—"}</span>
+    </div>
+    <div class="field" style="border-right:none">
+      <span class="label">CPF DO MOTORISTA</span>
+      <span class="value">${m.motorista_cpf || "—"}</span>
+    </div>
+  </div>
+
+  <!-- Carga -->
+  <div class="section" style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:none">
+    <div class="field">
+      <span class="label">PESO TOTAL DA CARGA (t)</span>
+      <span class="value">${pesoTon}</span>
+    </div>
+    <div class="field">
+      <span class="label">VALOR TOTAL DA CARGA</span>
+      <span class="value">${m.valor_total_carga ? fmtBRL(m.valor_total_carga) : "—"}</span>
+    </div>
+    <div class="field" style="border-right:none">
+      <span class="label">TOTAL DE DOCUMENTOS</span>
+      <span class="value">${docs.length}</span>
+    </div>
+  </div>
+
+  <!-- Documentos -->
+  <div class="section" style="border-top:none">
+    <div class="section-title">DOCUMENTOS FISCAIS VINCULADOS</div>
+    <div class="doc-header">
+      <span>TIPO</span>
+      <span>CHAVE DE ACESSO</span>
+      <span>Nº</span>
+    </div>
+    ${docs.map(d => `
+    <div class="doc-row">
+      <span style="font-weight:700">${(d.tipo ?? "").toUpperCase()}</span>
+      <span style="font-family:monospace;font-size:7pt">${(d.chave ?? "").replace(/(.{4})/g, "$1 ").trim()}</span>
+      <span>${d.numero ?? "—"}</span>
+    </div>`).join("")}
+    ${docs.length === 0 ? `<div style="padding:6px;text-align:center;color:#888;font-size:7pt">Nenhum documento vinculado</div>` : ""}
+  </div>
+
+  ${m.observacao ? `
+  <div class="section" style="border-top:none">
+    <div class="section-title">OBSERVAÇÕES</div>
+    <div style="padding:4px 6px;font-size:7.5pt">${m.observacao}</div>
+  </div>` : ""}
+
+  ${m.status === "encerrado" && m.data_encerramento ? `
+  <div class="section" style="border-top:none">
+    <div class="section-title">ENCERRAMENTO</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr">
+      <div class="field"><span class="label">DATA</span><span class="value">${fmtData(m.data_encerramento)}</span></div>
+      <div class="field"><span class="label">MUNICÍPIO</span><span class="value">${m.municipio_encerramento ?? "—"}</span></div>
+      <div class="field" style="border-right:none"><span class="label">UF</span><span class="value">${m.uf_encerramento ?? "—"}</span></div>
+    </div>
+  </div>` : ""}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script>
+  if ("${chave44}".length === 44) {
+    try { JsBarcode("#barcode","${chave44}",{format:"CODE128",width:1.2,height:35,displayValue:false,margin:0}); } catch(e){}
+  }
+  window.onload = function() { window.print(); };
+</script>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank");
+  if (win) { win.document.write(html); win.document.close(); }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Tipos
 // ─────────────────────────────────────────────────────────────
 type StatusMdfe = "rascunho" | "autorizado" | "encerrado" | "cancelado";
@@ -90,6 +275,7 @@ export default function MdfePage() {
   const [veiculos,  setVeiculos]  = useState<VeiculoMin[]>([]);
   const [motoristas,setMotoristas]= useState<MotoristaMin[]>([]);
   const [empresaCpfCnpj, setEmpresaCpfCnpj] = useState("");
+  const [empresaNome,    setEmpresaNome]    = useState("");
 
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState("");
@@ -150,8 +336,11 @@ export default function MdfePage() {
     setVeiculos(vd ?? []);
     setMotoristas(mot ?? []);
     // cpf_cnpj do contratante (primeira empresa ativa da fazenda)
-    supabase.from("empresas").select("cpf_cnpj").in("fazenda_id", fazendaIds).limit(1).single()
-      .then(({ data }) => { if (data?.cpf_cnpj) setEmpresaCpfCnpj(data.cpf_cnpj); });
+    supabase.from("empresas").select("cpf_cnpj, razao_social, nome").in("fazenda_id", fazendaIds).limit(1).single()
+      .then(({ data }) => {
+        if (data?.cpf_cnpj) setEmpresaCpfCnpj(data.cpf_cnpj);
+        if (data) setEmpresaNome(data.razao_social ?? data.nome ?? "");
+      });
     if (raw.length > 0) {
       const maxNr = Math.max(...raw.map((m: Mdfe) => parseInt(m.numero_mdfe) || 0));
       setProximoNr(String(maxNr + 1));
@@ -461,6 +650,11 @@ export default function MdfePage() {
                           {m.status === "autorizado" && (
                             <button onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Encerrar
+                            </button>
+                          )}
+                          {(m.status === "autorizado" || m.status === "encerrado") && (
+                            <button onClick={() => imprimirDamdfe(m, empresaCpfCnpj, empresaNome)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                              DAMDFE
                             </button>
                           )}
                           {m.status === "rascunho" && (
