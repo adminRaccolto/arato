@@ -10167,7 +10167,7 @@ SELECT
   cct.quantidade_sacas                              AS quantidade_sc,
   CASE WHEN cct.status = 'pago'
        THEN cct.quantidade_sacas ELSE 0 END         AS entregue_sc,
-  cct.preco_sc_ref                                  AS preco,
+  COALESCE(cct.preco_sc_ref, 0)                     AS preco,
   COALESCE(p.nome, ct.imovel_nome)                  AS comprador,
   COALESCE(asf.descricao, '')                       AS safra,
   ct.vendedor_id                                    AS pessoa_id,
