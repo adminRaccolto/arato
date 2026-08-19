@@ -10111,3 +10111,10 @@ ALTER TABLE parcelas_pagamento
   ADD COLUMN IF NOT EXISTS data_pagamento date;
 
 COMMENT ON COLUMN parcelas_pagamento.data_pagamento IS 'Data efetiva do pagamento. Preenchida automaticamente ao baixar o lançamento CP vinculado.';
+
+-- ─── Seção 177: pedidos_compra_itens — ampliar desconto_unitario para 6 casas ─
+-- Usuário solicitou 6 casas decimais no campo de desconto do processamento da NF.
+ALTER TABLE pedidos_compra_itens
+  ALTER COLUMN desconto_unitario TYPE numeric(14,6);
+
+COMMENT ON COLUMN pedidos_compra_itens.desconto_unitario IS 'Desconto por unidade (R$) com 6 casas decimais. Valor Item = valor_unitario - desconto_unitario';

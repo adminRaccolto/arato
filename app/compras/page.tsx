@@ -1834,12 +1834,13 @@ export default function ComprasPage() {
                                     placeholder="0,00"
                                   />
                                 </td>
-                                <td style={{ padding: "5px 6px", width: 110 }}>
-                                  <InputMonetario
+                                <td style={{ padding: "5px 6px", width: 120 }}>
+                                  <InputNumerico
+                                    decimais={6}
                                     style={{ ...inp, fontSize: 12, textAlign: "right", background: "#FBF3E0", color: "#7A5200" }}
                                     value={it.desconto_unitario}
-                                    onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, desconto_unitario: String(v) } : x))}
-                                    placeholder="0,00"
+                                    onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, desconto_unitario: v } : x))}
+                                    placeholder="0,000000"
                                   />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 110 }}>
