@@ -551,7 +551,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     }
     // Aguarda overrides carregarem antes de decidir — evita flicker de add-ons em clientes sem o módulo
     if (!modulosCarregados) return false;
-    if (!planoAtual) return false;
+    // Sem plano configurado na conta: acesso liberado (implantação inicial / trial sem pacote)
+    if (!planoAtual) return true;
     // Plano desconhecido (ID inválido ou legado) → não bloquear para evitar sumiço de menus
     if (!["essencial", "gestao", "performance"].includes(planoAtual)) return true;
     return planoInclui(planoAtual, modulo);
