@@ -771,6 +771,17 @@ export default function NfCompraPage() {
             pa_auto:  !!i.principio_ativo_id,
           };
         }));
+      } else if (nf.chave_acesso && nf.chave_acesso.replace(/\D/g,"").length === 44) {
+        // Nenhum item no BD ainda (NF importada via SIEG sem itens) — busca XML da SEFAZ
+        try {
+          const xmlRes = await fetch("/api/nfe/xml-por-chave", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fazendaId: nf.fazenda_id ?? fazendaId, chaveAcesso: nf.chave_acesso, ambiente: "producao" }),
+          });
+          const xmlJson = await xmlRes.json();
+          if (xmlJson.ok && xmlJson.xmlCompleto) parsearXml(xmlJson.xmlCompleto);
+        } catch { /* sem XML disponível — usuário preenche manualmente */ }
       }
     } catch {}
     setEtapa("cabecalho");
