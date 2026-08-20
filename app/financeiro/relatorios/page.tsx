@@ -590,6 +590,59 @@ function FinanceiroRelatoriosInner() {
                   setSimForm({ descricao: "", valor: "", data: "", tipo: "entrada", fornecedor: "" });
                 };
 
+                const imprimirSimsCenarios = () => {
+                  const ativas = simEntries.filter(s => s.ativo).sort((a, b) => a.data.localeCompare(b.data));
+                  const totalEnt = ativas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0);
+                  const totalSai = ativas.filter(s => s.tipo !== "entrada").reduce((a, s) => a + s.valor, 0);
+                  const liquido  = totalEnt - totalSai;
+                  const fazenda  = nomeFazendaSelecionada ?? "";
+                  const fmtV = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  const fmtD = (d: string) => d ? new Date(d + "T12:00").toLocaleDateString("pt-BR") : "—";
+                  const linhas = ativas.map(s => `
+                    <tr>
+                      <td>${fmtD(s.data)}</td>
+                      <td>${s.fornecedor || "—"}</td>
+                      <td>${s.descricao}</td>
+                      <td style="text-align:center"><span class="${s.tipo === "entrada" ? "ent" : "sai"}">${s.tipo === "entrada" ? "Entrada" : "Saída"}</span></td>
+                      <td style="text-align:right;font-weight:700;color:${s.tipo === "entrada" ? "#16A34A" : "#E24B4A"}">${s.tipo === "entrada" ? "+" : "−"} ${fmtV(s.valor)}</td>
+                    </tr>`).join("");
+                  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+                    <title>Simulador de Cenários — ${fazenda}</title>
+                    <style>
+                      body { font-family: system-ui, sans-serif; font-size: 12px; color: #111; margin: 0; padding: 24px; }
+                      h1 { font-size: 18px; font-weight: 700; margin: 0 0 4px; color: #1A4870; }
+                      .sub { font-size: 11px; color: #666; margin-bottom: 16px; }
+                      table { width: 100%; border-collapse: collapse; }
+                      th { background: #F5F3FF; color: #4C1D95; font-size: 11px; font-weight: 700; padding: 8px 12px; text-align: left; border-bottom: 1.5px solid #DDD6FE; }
+                      td { padding: 8px 12px; border-bottom: 0.5px solid #EEE; }
+                      tr:nth-child(even) td { background: #FAF5FF; }
+                      .ent { background: #DCFCE7; color: #16A34A; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 10px; }
+                      .sai { background: #FEE2E2; color: #E24B4A; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 10px; }
+                      .resumo { margin-top: 16px; display: flex; gap: 32px; padding: 12px 16px; background: #F5F3FF; border-radius: 8px; border: 0.5px solid #DDD6FE; }
+                      .resumo .item { display: flex; flex-direction: column; gap: 2px; }
+                      .resumo .lbl { font-size: 10px; color: #7C3AED; font-weight: 600; }
+                      .resumo .val { font-size: 15px; font-weight: 700; }
+                      .footer { margin-top: 24px; font-size: 10px; color: #aaa; border-top: 0.5px solid #eee; padding-top: 8px; }
+                      @media print { @page { size: A4 landscape; margin: 16mm; } }
+                    </style></head><body>
+                    <h1>Simulador de Cenários</h1>
+                    <div class="sub">${fazenda} &nbsp;·&nbsp; Emitido em ${hoje} &nbsp;·&nbsp; ${ativas.length} simulação(ões) ativa(s)</div>
+                    <table>
+                      <thead><tr><th>Data</th><th>Fornecedor / Pagador</th><th>Descrição</th><th style="text-align:center">Tipo</th><th style="text-align:right">Valor</th></tr></thead>
+                      <tbody>${linhas || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999">Nenhuma simulação ativa</td></tr>'}</tbody>
+                    </table>
+                    <div class="resumo">
+                      <div class="item"><span class="lbl">Total Entradas</span><span class="val" style="color:#16A34A">+ ${fmtV(totalEnt)}</span></div>
+                      <div class="item"><span class="lbl">Total Saídas</span><span class="val" style="color:#E24B4A">− ${fmtV(totalSai)}</span></div>
+                      <div class="item"><span class="lbl">Líquido</span><span class="val" style="color:${liquido >= 0 ? "#0B2D50" : "#E24B4A"}">${fmtV(liquido)}</span></div>
+                    </div>
+                    <div class="footer">Arato · Simulações hipotéticas — não representam lançamentos financeiros reais</div>
+                    <script>window.onload = () => window.print();</script>
+                    </body></html>`;
+                  const w = window.open("", "_blank", "width=1100,height=720");
+                  if (w) { w.document.write(html); w.document.close(); }
+                };
+
                 return (
                   <>
                     {/* Popup Simulador */}
@@ -716,11 +769,17 @@ function FinanceiroRelatoriosInner() {
                             )}
                           </div>
                           {simsAtivas.length > 0 && (
-                            <div style={{ padding: "14px 28px", borderTop: "0.5px solid #DDD6FE", background: "#F5F3FF", borderRadius: "0 0 12px 12px", display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
-                              <span style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700 }}>Impacto ({simsAtivas.length} ativas):</span>
-                              <span style={{ fontSize: 14, color: "#16A34A", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0), 2)}</span>
-                              <span style={{ fontSize: 14, color: "#E24B4A", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0), 2)}</span>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#111111" : "#E24B4A" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
+                            <div style={{ padding: "14px 28px", borderTop: "0.5px solid #DDD6FE", background: "#F5F3FF", borderRadius: "0 0 12px 12px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
+                              <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700 }}>Impacto ({simsAtivas.length} ativas):</span>
+                                <span style={{ fontSize: 14, color: "#16A34A", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0), 2)}</span>
+                                <span style={{ fontSize: 14, color: "#E24B4A", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0), 2)}</span>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#111111" : "#E24B4A" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
+                              </div>
+                              <button onClick={imprimirSimsCenarios}
+                                style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+                                🖨 Imprimir relatório
+                              </button>
                             </div>
                           )}
                         </div>
