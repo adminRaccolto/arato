@@ -133,6 +133,9 @@ export default function NfServicoPage() {
 
   const [busca,        setBusca]        = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroOrigem, setFiltroOrigem] = useState("");
+  const [filtroDataDe, setFiltroDataDe] = useState("");
+  const [filtroDataAte,setFiltroDataAte]= useState("");
 
   // ── SIEG ────────────────────────────────────────────────────
   const [siegDtInicio,      setSiegDtInicio]      = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
@@ -140,6 +143,10 @@ export default function NfServicoPage() {
   const [siegForceReimport, setSiegForceReimport] = useState(false);
   const [siegSyncing,       setSiegSyncing]       = useState(false);
   const [siegSyncMsg,       setSiegSyncMsg]       = useState("");
+  const [siegProdutores,    setSiegProdutores]    = useState<Array<{nome:string;cnpj:string}>>([]);
+
+  // ── ViewOnly modal ───────────────────────────────────────────
+  const [viewOnly, setViewOnly] = useState(false);
 
   const [wizard,  setWizard]  = useState(false);
   const [etapa,   setEtapa]   = useState<Etapa>("prestador");
@@ -224,6 +231,33 @@ export default function NfServicoPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  // ── Carrega destinatários SIEG (CNPJs configurados) ─────────
+  useEffect(() => {
+    if (!fazendaId) return;
+    (async () => {
+      try {
+        const { data: cfgs } = await supabase
+          .from("configuracoes_modulo").select("config")
+          .in("fazenda_id", fazendaIds).in("modulo", ["sieg", "fiscal", "fiscal_nfe"]);
+        const cnpjs: string[] = [];
+        for (const row of (cfgs ?? [])) {
+          const c = (row.config ?? {}) as Record<string, unknown>;
+          if (Array.isArray(c.cnpjs_destino)) (c.cnpjs_destino as string[]).forEach(d => { const n=d.replace(/\D/g,""); if(n&&!cnpjs.includes(n)) cnpjs.push(n); });
+          const s = String(c.cnpj_destino ?? c.cpf_cnpj_emitente ?? "").replace(/\D/g,"");
+          if (s && !cnpjs.includes(s)) cnpjs.push(s);
+        }
+        const { data: prods } = await supabase.from("produtores").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
+        const { data: pess  } = await supabase.from("pessoas").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
+        const todos: Array<{nome:string;cnpj:string}> = [];
+        for (const c of cnpjs) {
+          const match = [...(prods??[]), ...(pess??[])].find(p => (p.cpf_cnpj??"").replace(/\D/g,"") === c);
+          todos.push({ cnpj: c, nome: match?.nome ?? c });
+        }
+        setSiegProdutores(todos);
+      } catch {}
+    })();
+  }, [fazendaId]);
+
   // ── Auto-fill prestador ─────────────────────────────────────
   function onPrestadorChange(id: string) {
     const p = pessoas.find(x => x.id === id);
@@ -253,8 +287,9 @@ export default function NfServicoPage() {
     setWizard(true);
   }
 
-  function abrirEditar(nf: NfServico) {
+  function abrirEditar(nf: NfServico, vo = false) {
     setNfEdit(nf);
+    setViewOnly(vo);
     setEtapa("prestador");
     setCab({
       numero_nf:            nf.numero_nf,
@@ -558,9 +593,12 @@ export default function NfServicoPage() {
   // ── Lista filtrada ───────────────────────────────────────────
   const nfsFilt = nfs.filter(nf => {
     if (filtroStatus && nf.status !== filtroStatus) return false;
+    if (filtroOrigem && nf.origem !== filtroOrigem) return false;
+    if (filtroDataDe && (nf.competencia ?? nf.data_prestacao.substring(0,7)) < filtroDataDe.substring(0,7)) return false;
+    if (filtroDataAte && (nf.competencia ?? nf.data_prestacao.substring(0,7)) > filtroDataAte.substring(0,7)) return false;
     if (busca) {
       const b = busca.toLowerCase();
-      if (!nf.numero_nf.includes(busca) && !nf.prestador_nome.toLowerCase().includes(b)) return false;
+      if (!nf.numero_nf.includes(busca) && !nf.prestador_nome.toLowerCase().includes(b) && !(nf.prestador_cnpj ?? "").includes(busca)) return false;
     }
     return true;
   });
@@ -587,6 +625,18 @@ export default function NfServicoPage() {
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 18px", marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginRight: 4 }}>⟳ Sincronizar SIEG — NFS-e</span>
+            {siegProdutores.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, color: "var(--text-2)" }}>Destinatário:</span>
+                {siegProdutores.length === 1 ? (
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{siegProdutores[0].nome}</span>
+                ) : (
+                  <select style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }}>
+                    {siegProdutores.map(p => <option key={p.cnpj} value={p.cnpj}>{p.nome}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>De:</span>
               <input type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
@@ -609,18 +659,18 @@ export default function NfServicoPage() {
           </div>
           {siegSyncMsg && !siegSyncMsg.startsWith("✗") && (
             <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 6 }}>
-              NFSe importadas com status <strong>Pendente</strong> — abra cada uma para classificar operação gerencial e centro de custo antes de processar.
+              NFS-e importadas com status <strong>Pendente</strong> — abra cada uma para classificar operação gerencial e centro de custo antes de processar.
             </div>
           )}
         </div>
 
-        {/* Cards */}
+        {/* ── KPI Cards — mesma ordem da NF-e ── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
-            { label: "Total no mês",   value: fmtBRL(nfs.filter(n => n.data_prestacao?.startsWith(new Date().toISOString().substring(0,7)) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_servico,0)), bg: "var(--bg-card)" },
-            { label: "ISS total",      value: fmtBRL(nfs.filter(n => n.status === "processada").reduce((s,n)=>s+n.valor_iss,0)), bg: "#EBF8FF" },
+            { label: "Total no mês",   value: fmtBRL(nfs.filter(n => (n.competencia ?? n.data_prestacao.substring(0,7)) === new Date().toISOString().substring(0,7) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_servico,0)), bg: "var(--bg-card)" },
+            { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente"||n.status==="digitando").length),   bg: "#FBF3E0" },
             { label: "Processadas",    value: String(nfs.filter(n=>n.status==="processada").length), bg: "#E8F5E9" },
-            { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente").length),   bg: "#FBF3E0" },
+            { label: "Canceladas",     value: String(nfs.filter(n=>n.status==="cancelada").length),  bg: "#FCEBEB" },
           ].map(({ label, value, bg }) => (
             <div key={label} style={{ background: bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
@@ -629,124 +679,137 @@ export default function NfServicoPage() {
           ))}
         </div>
 
-        {/* Filtros */}
-        <div style={{ ...card, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        {/* ── Filtros — mesmo padrão da NF-e ── */}
+        <div style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <input
             placeholder="Buscar por nº ou prestador…"
             value={busca} onChange={e => setBusca(e.target.value)}
-            style={{ ...inp, width: 260 }}
+            style={{ ...inp, width: 240 }}
           />
-          <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 160 }}>
+          <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 148 }}>
             <option value="">Todos os status</option>
             {Object.entries(STATUS_META).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
+          <select value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)} style={{ ...inp, width: 120 }}>
+            <option value="">Toda origem</option>
+            <option value="manual">Manual</option>
+            <option value="api">SIEG</option>
+          </select>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Competência:</span>
+            <input type="month" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
+              style={{ ...inp, width: 136, padding: "5px 8px" }} />
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>–</span>
+            <input type="month" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
+              style={{ ...inp, width: 136, padding: "5px 8px" }} />
+            {(filtroDataDe || filtroDataAte) && (
+              <button onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
+                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }} title="Limpar filtro">✕</button>
+            )}
+          </div>
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{nfsFilt.length} resultado{nfsFilt.length !== 1 ? "s" : ""}</span>
         </div>
 
-        {/* Tabela */}
-        <div style={card}>
+        {/* ── Tabela — mesmo padrão da NF-e ── */}
+        <div style={{ ...card, padding: "0", overflow: "hidden" }}>
           {nfsFilt.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-3)", fontSize: 13 }}>
               Nenhuma NF de Serviço. Clique em &ldquo;+ Nova NF de Serviço&rdquo; para começar.
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1020 }}>
               <colgroup>
-                <col style={{ width: 110 }} />  {/* Nº */}
-                <col style={{ width: "22%" }} /> {/* Prestador */}
-                <col style={{ width: 98 }} />   {/* Competência */}
-                <col />                          {/* Serviço — flex */}
-                <col style={{ width: 118 }} />  {/* Valor Serv. */}
-                <col style={{ width: 110 }} />  {/* ISS */}
-                <col style={{ width: 118 }} />  {/* Líquido */}
-                <col style={{ width: 100 }} />  {/* Status */}
-                <col style={{ width: 210 }} />  {/* Ações */}
+                <col style={{ width: 100 }} />  {/* Nº/Série */}
+                <col style={{ width: "26%" }} /> {/* Prestador */}
+                <col style={{ width: 96 }} />   {/* Competência */}
+                <col />                          {/* Serviço/Discriminação — flex */}
+                <col style={{ width: 60 }} />   {/* Origem */}
+                <col style={{ width: 120 }} />  {/* Valor Total */}
+                <col style={{ width: 96 }} />   {/* Status */}
+                <col style={{ width: 190 }} />  {/* Ações */}
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {(["Nº", "Prestador", "Competência", "Serviço / Discriminação", "Valor Serv.", "ISS", "Líquido", "Status", "Ações"] as const).map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", overflow: "hidden" }}>{c}</th>
+                  {["Nº / Série", "Prestador", "Competência", "Serviço / Discriminação", "Origem", "Valor Total", "Status", "Ações"].map((c, i) => (
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {nfsFilt.map(nf => {
                   const sm = STATUS_META[nf.status] ?? STATUS_META["pendente"];
-                  // Descrição: código LC 116 se disponível, senão discriminação, senão "—"
-                  const descServico = nf.codigo_servico
-                    ? `${nf.codigo_servico}${nf.discriminacao ? " — " + nf.discriminacao : ""}`
-                    : (nf.discriminacao || "—");
                   return (
                     <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
-                      {/* Nº */}
-                      <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {/* Nº/Série */}
+                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {nf.numero_nf}
                         {nf.serie && <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>}
                       </td>
                       {/* Prestador */}
-                      <td style={{ padding: "9px 12px", overflow: "hidden" }}>
+                      <td style={{ padding: "10px 12px", overflow: "hidden" }}>
                         <div style={{ fontSize: 13, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.prestador_nome}>{nf.prestador_nome}</div>
                         {nf.prestador_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{nf.prestador_cnpj}</div>}
                       </td>
                       {/* Competência */}
-                      <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                         {fmtComp(nf.competencia)}
                         <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtData(nf.data_prestacao)}</div>
                       </td>
-                      {/* Serviço */}
-                      <td style={{ padding: "9px 12px", overflow: "hidden" }}>
+                      {/* Serviço/Discriminação */}
+                      <td style={{ padding: "10px 12px", overflow: "hidden" }}>
                         {nf.codigo_servico && (
                           <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", background: "#D5E8F5", borderRadius: 4, padding: "1px 5px", marginRight: 5, whiteSpace: "nowrap" }}>
                             {nf.codigo_servico}
                           </span>
                         )}
-                        <span style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginTop: nf.codigo_servico ? 3 : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={descServico}>
-                          {nf.discriminacao ? nf.discriminacao.substring(0, 80) + (nf.discriminacao.length > 80 ? "…" : "") : (nf.codigo_servico ? "" : "—")}
-                        </span>
+                        {nf.iss_retido && <span style={{ fontSize: 10, fontWeight: 600, color: "#791F1F", background: "#FCEBEB", borderRadius: 4, padding: "1px 5px", marginRight: 3, whiteSpace: "nowrap" }}>ISS Ret.</span>}
+                        {nf.discriminacao && (
+                          <span style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginTop: nf.codigo_servico ? 3 : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.discriminacao}>
+                            {nf.discriminacao.length > 70 ? nf.discriminacao.substring(0, 70) + "…" : nf.discriminacao}
+                          </span>
+                        )}
                       </td>
-                      {/* Valor Serv. */}
-                      <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(nf.valor_servico)}</td>
-                      {/* ISS */}
-                      <td style={{ padding: "9px 12px", fontSize: 12, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtBRL(nf.valor_iss)}
-                        {nf.iss_retido && <div>{badge("Retido", "#FCEBEB", "#791F1F")}</div>}
+                      {/* Origem */}
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                        {nf.origem === "api" ? badge("Sieg", "#1A48701A", "#1A4870") : nf.origem === "xml" ? badge("XML", "#E8E8E8", "#333") : <span style={{ fontSize: 11, color: "var(--text-3)" }}>Manual</span>}
                       </td>
-                      {/* Líquido */}
-                      <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 700, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(nf.valor_liquido)}</td>
+                      {/* Valor Total */}
+                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                        {fmtBRL(nf.valor_servico)}
+                        <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>líq. {fmtBRL(nf.valor_liquido)}</div>
+                      </td>
                       {/* Status */}
-                      <td style={{ padding: "9px 12px", textAlign: "center" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                       {/* Ações */}
-                      <td style={{ padding: "9px 12px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center" }}>
-                          {nf.status === "digitando" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
-                              Editar
+                      <td style={{ padding: "10px 12px" }}>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", alignItems: "center" }}>
+                          {/* Ver — abre em modo somente leitura */}
+                          <button onClick={() => abrirEditar(nf, true)} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-1)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            Ver
+                          </button>
+                          {/* Proc — processa (pendente/digitando) */}
+                          {(nf.status === "pendente" || nf.status === "digitando") && (
+                            <button onClick={() => abrirEditar(nf, false)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
+                              Proc
                             </button>
                           )}
-                          {nf.status === "pendente" && (
-                            <>
-                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
-                                Editar
-                              </button>
-                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
-                                Processar
-                              </button>
-                            </>
-                          )}
+                          {/* Estornar — processada */}
                           {nf.status === "processada" && (
-                            <button onClick={() => estornarNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 11, color: "#7A4800", fontWeight: 600, whiteSpace: "nowrap" }}>
-                              Estornar
+                            <button onClick={() => estornarNf(nf)} title="Estornar NFS-e" style={{ padding: "4px 7px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 13, color: "#7A4800", lineHeight: 1 }}>
+                              ↺
                             </button>
                           )}
+                          {/* Cancelar — pendente/digitando */}
+                          {(nf.status === "pendente" || nf.status === "digitando") && (
+                            <button onClick={() => cancelarNf(nf)} title="Cancelar" style={{ padding: "4px 7px", border: "0.5px solid #88888840", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                              ✕
+                            </button>
+                          )}
+                          {/* Excluir — ícone lixeira */}
                           {nf.status !== "cancelada" && (
-                            <button onClick={() => iniciarExclusao(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", whiteSpace: "nowrap" }}>
-                              Excluir
-                            </button>
-                          )}
-                          {nf.status !== "cancelada" && nf.status !== "processada" && (
-                            <button onClick={() => cancelarNf(nf)} style={{ padding: "4px 8px", border: "0.5px solid #88888840", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
-                              Cancelar
+                            <button onClick={() => iniciarExclusao(nf)} title="Excluir" style={{ padding: "4px 7px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 13, color: "#791F1F", lineHeight: 1 }}>
+                              🗑
                             </button>
                           )}
                         </div>
@@ -798,11 +861,17 @@ export default function NfServicoPage() {
             </div>
 
             <div style={{ padding: 24 }}>
+              {viewOnly && (
+                <div style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>🔒 Modo visualização — clique em <strong>Editar</strong> para fazer alterações</span>
+                  <button onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
+                </div>
+              )}
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{err}</div>}
 
               {/* ─── PASSO 1: PRESTADOR & DATA ─────────────── */}
               {etapa === "prestador" && (
-                <div>
+                <div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   {/* Prestador */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -860,19 +929,15 @@ export default function NfServicoPage() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                    <button style={btnR} onClick={() => setWizard(false)}>Cancelar</button>
-                    <button style={btnV} onClick={() => {
-                      if (!cab.numero_nf.trim()) { setErr("Informe o número da NF."); return; }
-                      if (!cab.prestador_nome.trim()) { setErr("Informe o nome do prestador."); return; }
-                      setErr(""); setEtapa("servico");
-                    }}>Próximo →</button>
+                    <button style={btnR} onClick={() => setWizard(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
+                    <button style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>
                   </div>
                 </div>
               )}
 
               {/* ─── PASSO 2: SERVIÇO ──────────────────────── */}
               {etapa === "servico" && (
-                <div>
+                <div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação do Serviço</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
@@ -917,7 +982,7 @@ export default function NfServicoPage() {
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                     <button style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</button>
                     <div style={{ display: "flex", gap: 10 }}>
-                      <button style={btnR} onClick={() => setWizard(false)}>Cancelar</button>
+                      <button style={btnR} onClick={() => setWizard(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
                       <button style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>
                     </div>
                   </div>
@@ -926,7 +991,7 @@ export default function NfServicoPage() {
 
               {/* ─── PASSO 3: TRIBUTAÇÃO & LANÇAMENTO ────────── */}
               {etapa === "tributacao" && (
-                <div>
+                <div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   {/* Valores */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Valores e ISS</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -1136,13 +1201,15 @@ export default function NfServicoPage() {
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                     <button style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
                     <div style={{ display: "flex", gap: 10 }}>
-                      <button style={btnR} onClick={() => setWizard(false)}>Cancelar</button>
-                      <button style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
-                        {saving ? "Salvando…" : "Salvar como Pendente"}
-                      </button>
-                      <button style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
-                        {saving ? "Processando…" : "✓ Processar NF"}
-                      </button>
+                      <button style={btnR} onClick={() => setWizard(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
+                      {!viewOnly && <>
+                        <button style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
+                          {saving ? "Salvando…" : "Salvar como Pendente"}
+                        </button>
+                        <button style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
+                          {saving ? "Processando…" : "✓ Processar NF"}
+                        </button>
+                      </>}
                     </div>
                   </div>
                 </div>
