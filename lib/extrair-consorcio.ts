@@ -133,32 +133,30 @@ Retorne APENAS o JSON válido, sem markdown:
 }`;
 
 export async function extrairConsorcio(pdfBase64: string): Promise<ConsorcioExtraido | null> {
-  try {
-    const response = await claude.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "document",
-            source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-          } as unknown as Anthropic.ContentBlockParam,
-          { type: "text", text: PROMPT },
-        ],
-      }],
-    });
+  const response = await claude.beta.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 4096,
+    betas: ["pdfs-2024-09-25"],
+    messages: [{
+      role: "user",
+      content: [
+        {
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+        } as unknown as Anthropic.ContentBlockParam,
+        { type: "text", text: PROMPT },
+      ],
+    }],
+  });
 
-    const raw = response.content
-      .filter(b => b.type === "text")
-      .map(b => (b as Anthropic.TextBlock).text)
-      .join("")
-      .trim();
+  const raw = response.content
+    .filter(b => b.type === "text")
+    .map(b => (b as Anthropic.TextBlock).text)
+    .join("")
+    .trim();
 
-    const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-    return JSON.parse(jsonStr) as ConsorcioExtraido;
-  } catch (err) {
-    console.error("[extrair-consorcio] erro:", err);
-    return null;
-  }
+  // Extrai o primeiro bloco JSON da resposta (mesmo que haja texto ao redor)
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error(`Resposta não contém JSON válido: ${raw.substring(0, 200)}`);
+  return JSON.parse(jsonMatch[0]) as ConsorcioExtraido;
 }

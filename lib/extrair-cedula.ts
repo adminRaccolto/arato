@@ -188,9 +188,10 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
 
 export async function extrairCedula(pdfBase64: string): Promise<CedulaExtraida | null> {
   try {
-    const response = await claude.messages.create({
+    const response = await claude.beta.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
+      betas: ["pdfs-2024-09-25"],
       messages: [
         {
           role: "user",
@@ -211,8 +212,9 @@ export async function extrairCedula(pdfBase64: string): Promise<CedulaExtraida |
       .join("")
       .trim();
 
-    const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-    const data = JSON.parse(jsonStr) as CedulaExtraida;
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error(`Resposta sem JSON: ${raw.substring(0, 200)}`);
+    const data = JSON.parse(jsonMatch[0]) as CedulaExtraida;
 
     // Retrocompatibilidade: campo antigo "credor" → credor_nome
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
