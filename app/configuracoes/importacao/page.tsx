@@ -2377,18 +2377,19 @@ function ImportacaoInner() {
       const docNum = r.proprietario_cpf_cnpj.replace(/\D/g, "");
       const proprietarioId = pessoaMap[docNum] ?? null;
       const scMilhoHa = r.sc_milho_ha?.trim() ? parseFloat(String(r.sc_milho_ha).replace(",", ".")) : null;
+      const valorNum = parseFloat(String(r.valor).replace(",", ".")) || 0;
       const { error } = await supabase.from("arrendamentos").insert({
-        fazenda_id:      fazendaId,
-        pessoa_id:       proprietarioId,
-        descricao:       r.descricao?.trim() || null,
-        area_ha:         parseFloat(String(r.area_ha).replace(",", ".")),
-        forma_pagamento: r.forma_pagamento,
-        valor:           parseFloat(String(r.valor).replace(",", ".")),
-        sc_milho_ha:     scMilhoHa,
-        data_inicio:     r.data_inicio.trim(),
-        data_fim:        r.data_fim.trim(),
-        obs:             r.observacao?.trim() || null,
-        status:          "ativo",
+        fazenda_id:       fazendaId,
+        proprietario_id:  proprietarioId,
+        proprietario_nome: r.proprietario_nome?.trim() || null,
+        area_ha:          parseFloat(String(r.area_ha).replace(",", ".")),
+        forma_pagamento:  r.forma_pagamento,
+        sc_ha:            r.forma_pagamento !== "brl" ? valorNum : null,
+        valor_brl:        r.forma_pagamento === "brl" ? valorNum : null,
+        sc_milho_ha:      scMilhoHa,
+        inicio:           r.data_inicio.trim(),
+        vencimento:       r.data_fim.trim(),
+        observacao:       r.observacao?.trim() || null,
       });
       if (error) { r._status = "erro"; r._msg = error.message; erros++; }
       else ok++;
