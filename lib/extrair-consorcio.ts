@@ -46,10 +46,19 @@ const PROMPT = `Você é um especialista em leitura de extratos de consórcios b
 REGRAS:
 - Use null para campos não encontrados. NUNCA invente dados.
 - Datas: YYYY-MM-DD (ex: 2025-08-11 para 11/08/2025).
-- Valores: numérico sem formatação (ex: 114163.85, não "R$ 114.163,85").
 - Percentuais: em número puro (ex: 6.0 para 6,0000%).
 - Para parcelas_pagas: CONTE as linhas com "RECBTO. PARCELA" ou similar no histórico.
 - Para total_parcelas: estime a partir de "% Pago" por parcela (% Pago total ÷ % por parcela) + parcelas restantes. Se não for possível, use null.
+
+CONVERSÃO OBRIGATÓRIA DE NÚMEROS — CRÍTICO PARA JSON VÁLIDO:
+O PDF usa formato brasileiro com ponto como separador de milhar e vírgula como decimal.
+Você DEVE converter TODOS os valores numéricos para o formato JSON padrão (ponto como decimal):
+- 2.155,24  → 2155.24   (remove ponto de milhar, vírgula vira ponto)
+- 146.716,00 → 146716.00
+- 84,90     → 84.90
+- 1,2499    → 1.2499
+- 0,00      → 0.00
+NUNCA escreva vírgulas dentro de números no JSON — isso quebra o parse. Use APENAS ponto decimal.
 
 CAMPOS A EXTRAIR:
 
@@ -132,10 +141,22 @@ Retorne APENAS o JSON válido, sem markdown:
   "confianca": "baixa"
 }`;
 
+/** Tenta corrigir números no formato brasileiro dentro de um JSON */
+function repairBrazilianNumbers(json: string): string {
+  let r = json;
+  // 1) X.XXX.XXX,XX → digits.digits (maior para menor)
+  r = r.replace(/\b(\d{1,3})\.(\d{3})\.(\d{3}),(\d{1,4})\b/g, "$1$2$3.$4");
+  // 2) X.XXX,XX → digits.digits
+  r = r.replace(/\b(\d{1,3})\.(\d{3}),(\d{1,4})\b/g, "$1$2.$3");
+  // 3) XX,XX em contexto de valor JSON (após : e antes de , } ])
+  r = r.replace(/(:\s*)(\d+),(\d{1,4})([\s\r\n]*[,}\]])/g, "$1$2.$3$4");
+  return r;
+}
+
 export async function extrairConsorcio(pdfBase64: string): Promise<ConsorcioExtraido | null> {
   const response = await claude.beta.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 4096,
+    max_tokens: 8192,
     betas: ["pdfs-2024-09-25"],
     messages: [{
       role: "user",
@@ -158,5 +179,16 @@ export async function extrairConsorcio(pdfBase64: string): Promise<ConsorcioExtr
   // Extrai o primeiro bloco JSON da resposta (mesmo que haja texto ao redor)
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error(`Resposta não contém JSON válido: ${raw.substring(0, 200)}`);
-  return JSON.parse(jsonMatch[0]) as ConsorcioExtraido;
+
+  // Tenta parse direto; se falhar, aplica repair de números brasileiros e tenta novamente
+  try {
+    return JSON.parse(jsonMatch[0]) as ConsorcioExtraido;
+  } catch {
+    const repaired = repairBrazilianNumbers(jsonMatch[0]);
+    try {
+      return JSON.parse(repaired) as ConsorcioExtraido;
+    } catch (e2) {
+      throw new Error(`JSON inválido mesmo após repair: ${e2 instanceof Error ? e2.message : e2}`);
+    }
+  }
 }
