@@ -160,6 +160,12 @@ export default function NfServicoPage() {
   // código LC 116 livre (quando selecionado "outros")
   const [codigoLivre, setCodigoLivre] = useState("");
 
+  // Parcelamento da CP gerada ao processar a NFS-e
+  const [nfCondicao,    setNfCondicao]    = useState<"avista" | "prazo">("avista");
+  const [nfQtdParcelas, setNfQtdParcelas] = useState("2");
+  const [nfFreq,        setNfFreq]        = useState("1");
+  const [nfParcelas,    setNfParcelas]    = useState<{ data: string; valorMask: string }[]>([]);
+
   // ── Cálculos derivados ──────────────────────────────────────
   const vServico  = parseFloat(String(cab.valor_servico))  || 0;
   const vDed      = parseFloat(String(cab.valor_deducoes)) || 0;
@@ -240,6 +246,10 @@ export default function NfServicoPage() {
     setCab(CAB_VAZIO());
     setCodigoLivre("");
     setErr("");
+    setNfCondicao("avista");
+    setNfParcelas([]);
+    setNfQtdParcelas("2");
+    setNfFreq("1");
     setWizard(true);
   }
 
@@ -280,6 +290,22 @@ export default function NfServicoPage() {
     }
     setErr("");
     setWizard(true);
+  }
+
+  // ── Gerar grid de parcelas para parcelamento ─────────────
+  function gerarParcelasServico() {
+    const venc = cab.data_vencimento_cp;
+    if (!venc) { setErr("Informe o 1º vencimento antes de gerar as parcelas."); return; }
+    const qtd  = Math.max(2, parseInt(nfQtdParcelas) || 2);
+    const freq = Math.max(1, parseInt(nfFreq) || 1);
+    const valorParc = vLiquido > 0 ? vLiquido / qtd : 0;
+    const novas = Array.from({ length: qtd }, (_, i) => {
+      const d = new Date(venc + "T12:00");
+      d.setMonth(d.getMonth() + i * freq);
+      return { data: d.toISOString().split("T")[0], valorMask: valorParc.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) };
+    });
+    setNfParcelas(novas);
+    setErr("");
   }
 
   // ── Salvar NF ───────────────────────────────────────────────
@@ -343,15 +369,13 @@ export default function NfServicoPage() {
 
       // Cria CP em lancamentos quando processada (e ainda não tem lancamento vinculado)
       if (status === "processada" && !nfEdit?.lancamento_id) {
-        const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
+        const baseCP = {
           fazenda_id:            fazendaId,
           tipo:                  "pagar",
           moeda:                 "BRL",
           descricao:             `NFS-e ${cab.numero_nf} — ${cab.prestador_nome}`,
           categoria:             "Serviços",
           data_lancamento:       cab.data_prestacao,
-          data_vencimento:       cab.data_vencimento_cp || cab.data_prestacao,
-          valor:                 vLiquido,
           status:                "em_aberto",
           auto:                  true,
           pessoa_id:             cab.prestador_id || undefined,
@@ -360,12 +384,41 @@ export default function NfServicoPage() {
           operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
           centro_custo_id:       cab.centro_custo_id       || undefined,
           ano_safra_id:          cab.ano_safra_id           || undefined,
-        }).select("id").single();
-        if (lancErr) throw new Error(`Erro ao criar CP: ${lancErr.message}`);
-        // Vincula o lancamento à NF
-        await supabase.from("nf_servicos")
-          .update({ lancamento_id: lancDB.id })
-          .eq("id", nfId);
+        };
+
+        let primeiroLancId: string | null = null;
+
+        if (nfCondicao === "prazo" && nfParcelas.length > 1) {
+          const agrupador = crypto.randomUUID();
+          const total = nfParcelas.length;
+          for (let i = 0; i < total; i++) {
+            const pValor = parseFloat(nfParcelas[i].valorMask.replace(/\./g, "").replace(",", ".")) || 0;
+            const { data: pd, error: pe } = await supabase.from("lancamentos").insert({
+              ...baseCP,
+              data_vencimento: nfParcelas[i].data,
+              valor:           pValor,
+              num_parcela:     i + 1,
+              total_parcelas:  total,
+              agrupador,
+            }).select("id").single();
+            if (pe) throw new Error(`Erro ao criar parcela ${i + 1}: ${pe.message}`);
+            if (i === 0) primeiroLancId = pd?.id ?? null;
+          }
+        } else {
+          const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
+            ...baseCP,
+            data_vencimento: cab.data_vencimento_cp || cab.data_prestacao,
+            valor:           vLiquido,
+          }).select("id").single();
+          if (lancErr) throw new Error(`Erro ao criar CP: ${lancErr.message}`);
+          primeiroLancId = lancDB?.id ?? null;
+        }
+
+        if (primeiroLancId) {
+          await supabase.from("nf_servicos")
+            .update({ lancamento_id: primeiroLancId })
+            .eq("id", nfId);
+        }
       }
 
       await carregar();
@@ -962,10 +1015,86 @@ export default function NfServicoPage() {
                       </select>
                     </div>
                     <div>
-                      <label style={lbl}>Vencimento da CP</label>
-                      <input type="date" value={cab.data_vencimento_cp} onChange={e => setCab(p=>({...p,data_vencimento_cp:e.target.value}))} style={inp} />
+                      <label style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º venc.)</span>}</label>
+                      <input type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                     </div>
                   </div>
+
+                  {/* ── Parcelamento ── */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
+                    <div style={{ display: "flex", gap: 6, marginBottom: nfCondicao === "prazo" ? 10 : 0 }}>
+                      {(["avista", "prazo"] as const).map(v => (
+                        <button key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
+                          style={{ padding: "5px 14px", borderRadius: 8, border: `0.5px solid ${nfCondicao === v ? "#1A4870" : "var(--border-table)"}`, background: nfCondicao === v ? "#1A4870" : "var(--bg-card)", color: nfCondicao === v ? "#fff" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                          {v === "avista" ? "À Vista" : "Parcelado"}
+                        </button>
+                      ))}
+                    </div>
+                    {nfCondicao === "prazo" && (
+                      <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
+                        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: nfParcelas.length > 0 ? 12 : 0 }}>
+                          <div>
+                            <label style={lbl}>Nº de Parcelas</label>
+                            <input type="number" min="2" max="120" value={nfQtdParcelas}
+                              onChange={e => { setNfQtdParcelas(e.target.value); setNfParcelas([]); }}
+                              style={{ ...inp, width: 80 }} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Intervalo (meses)</label>
+                            <select value={nfFreq} onChange={e => { setNfFreq(e.target.value); setNfParcelas([]); }} style={{ ...inp, width: 120 }}>
+                              <option value="1">Mensal</option>
+                              <option value="2">Bimestral</option>
+                              <option value="3">Trimestral</option>
+                              <option value="6">Semestral</option>
+                              <option value="12">Anual</option>
+                            </select>
+                          </div>
+                          <button onClick={gerarParcelasServico}
+                            style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                            Gerar parcelas
+                          </button>
+                        </div>
+                        {nfParcelas.length > 0 && (
+                          <div>
+                            <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, paddingBottom: 4, borderBottom: "0.5px solid #C5D9EE" }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Vencimento</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Valor (R$)</span>
+                              <span />
+                            </div>
+                            {nfParcelas.map((p, i) => (
+                              <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
+                                <input type="date" value={p.data}
+                                  onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
+                                  style={{ ...inp, fontSize: 12 }} />
+                                <input type="text" value={p.valorMask}
+                                  onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: e.target.value } : x))}
+                                  style={{ ...inp, fontSize: 12, textAlign: "right" }} />
+                                <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600 }}>{i + 1}/{nfParcelas.length}</span>
+                              </div>
+                            ))}
+                            {(() => {
+                              const soma = nfParcelas.reduce((s, p) => s + (parseFloat(p.valorMask.replace(/\./g, "").replace(",", ".")) || 0), 0);
+                              const diff = Math.abs(soma - vLiquido);
+                              return diff > 0.01 ? (
+                                <div style={{ fontSize: 11, color: "#B91C1C", marginTop: 6 }}>
+                                  ⚠ Soma ({soma.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}) difere do valor líquido ({vLiquido.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})})
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: 11, color: "#166534", marginTop: 6 }}>
+                                  ✓ Soma confere: {soma.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                        {nfParcelas.length === 0 && (
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Clique em "Gerar parcelas" para criar o cronograma editável.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ marginBottom: 14 }}>
                     <label style={lbl}>Observações</label>
                     <textarea value={cab.observacao} onChange={e => setCab(p=>({...p,observacao:e.target.value}))} rows={2} style={{ ...inp, resize: "vertical" }} />

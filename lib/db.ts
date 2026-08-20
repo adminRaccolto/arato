@@ -1855,6 +1855,7 @@ export async function processarNfEntrada(
     pedidoCompraId?: string;
     produtorId?: string;
     maquinaId?: string;
+    parcelas?: { data: string; valor: number }[];
   },
 ): Promise<void> {
   for (const item of itens) {
@@ -2102,15 +2103,13 @@ export async function processarNfEntrada(
         opts?.tipoEntrada === "insumos"      ? "Insumos — Fertilizantes" :
         "Outros";
 
-      const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
+      const baseCP = {
         fazenda_id,
         tipo:                    "pagar",
         moeda:                   "BRL",
         descricao:               `NF ${opts?.nfeNumero ? `${opts.nfeNumero} — ` : ""}${emitente}${temVef ? " (VEF)" : ""}`,
         categoria:               categoriaCP,
         data_lancamento:         dataEntrada,
-        data_vencimento:         opts?.dataVencimentoCp ?? dataEntrada,
-        valor:                   valorTotal,
         status:                  "em_aberto",
         auto:                    true,
         pessoa_id:               pessoaId ?? undefined,
@@ -2125,10 +2124,36 @@ export async function processarNfEntrada(
         ciclo_id:                opts?.cicloId ?? undefined,
         operacao_gerencial_id:   opts?.operacaoGerencialId ?? undefined,
         centro_custo_id:         opts?.centroCustoId ?? undefined,
-      }).select("id").single();
+      };
 
-      if (lancErr) throw new Error(`Erro ao criar CP da NF: ${lancErr.message} (code: ${lancErr.code})`);
-      if (lancDB?.id) nfUpdates.lancamento_id = lancDB.id;
+      const parcs = opts?.parcelas;
+      if (parcs && parcs.length > 1) {
+        // Parcelado: cria múltiplos lançamentos com agrupador
+        const agrupador = crypto.randomUUID();
+        const total = parcs.length;
+        let primeiroId: string | null = null;
+        for (let i = 0; i < total; i++) {
+          const { data: pd, error: pe } = await supabase.from("lancamentos").insert({
+            ...baseCP,
+            data_vencimento: parcs[i].data,
+            valor:           parcs[i].valor,
+            num_parcela:     i + 1,
+            total_parcelas:  total,
+            agrupador,
+          }).select("id").single();
+          if (pe) throw new Error(`Erro ao criar parcela ${i + 1} da NF: ${pe.message}`);
+          if (i === 0) primeiroId = pd?.id ?? null;
+        }
+        if (primeiroId) nfUpdates.lancamento_id = primeiroId;
+      } else {
+        const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
+          ...baseCP,
+          data_vencimento: opts?.dataVencimentoCp ?? dataEntrada,
+          valor:           valorTotal,
+        }).select("id").single();
+        if (lancErr) throw new Error(`Erro ao criar CP da NF: ${lancErr.message} (code: ${lancErr.code})`);
+        if (lancDB?.id) nfUpdates.lancamento_id = lancDB.id;
+      }
     }
   }
 
@@ -2182,7 +2207,8 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
   // 3. Estoque de terceiros vinculados a esta NF
   await supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId);
 
-  // 4. Lançamento financeiro
+  // 4. Lançamento(s) financeiro(s) — inclui parcelas múltiplas
+  await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
   const { data: nf } = await supabase.from("nf_entradas")
     .select("lancamento_id").eq("id", nfId).single();
   if (nf?.lancamento_id) {
@@ -2225,12 +2251,15 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
   // 3. Estoque de terceiros
   await supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId);
 
-  // 4. Lançamento financeiro (CP)
+  // 4. Lançamento(s) financeiro(s) (CP) — inclui parcelas
+  // Deleta todos os lançamentos vinculados via nf_entrada_id (cobre parcelas múltiplas)
+  await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
+  // Fallback: lançamento único pelo ID (compatibilidade com registros antigos sem nf_entrada_id)
   const { data: nfRow } = await supabase.from("nf_entradas").select("lancamento_id").eq("id", nfId).single();
   if (nfRow?.lancamento_id) {
     await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
-    await supabase.from("nf_entradas").update({ lancamento_id: null }).eq("id", nfId);
   }
+  await supabase.from("nf_entradas").update({ lancamento_id: null }).eq("id", nfId);
 
   // 5. Itens + volta status para pendente (pronta para reprocessar)
   await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);

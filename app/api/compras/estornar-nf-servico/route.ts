@@ -15,16 +15,28 @@ export async function POST(req: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    // 1. Busca lancamento_id
+    // 1. Busca lancamento_id (pode ser a 1ª parcela de um parcelamento)
     const { data: nfRow } = await sb
       .from("nf_servicos")
       .select("lancamento_id")
       .eq("id", nf_id)
       .single();
 
-    // 2. Remove CP (se existir)
+    // 2. Remove CP — se parcelado, busca todas via agrupador e deleta em lote
     if (nfRow?.lancamento_id) {
-      await sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
+      const { data: lancRow } = await sb
+        .from("lancamentos")
+        .select("id, agrupador")
+        .eq("id", nfRow.lancamento_id)
+        .maybeSingle();
+
+      if (lancRow?.agrupador) {
+        // Parcelado: remove todas as parcelas do mesmo agrupador
+        await sb.from("lancamentos").delete().eq("agrupador", lancRow.agrupador);
+      } else if (lancRow?.id) {
+        // Parcela única
+        await sb.from("lancamentos").delete().eq("id", lancRow.id);
+      }
     }
 
     // 3. Retorna NFS-e para "pendente"
