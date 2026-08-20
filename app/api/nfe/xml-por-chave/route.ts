@@ -1,11 +1,18 @@
 /**
  * POST /api/nfe/xml-por-chave
- * Consulta a SEFAZ pela chave de acesso (44 dígitos) e devolve o XML completo
- * para o frontend parsear com parsearXmlNfe — usado na entrada de NF de Estoque
- * via leitor de código de barras.
+ * Devolve o XML completo de uma NF-e pela chave de acesso (44 dígitos).
+ * Fluxo:
+ *   1. Procura no Storage (nfs-sieg/{fazenda_id}/{chave}.xml) — sem certificado
+ *   2. Consulta SEFAZ como fallback (requer A1 configurado)
  */
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { consultarNfePorChave } from "../../../../lib/sefaz-consulta";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: NextRequest) {
   let body: { fazendaId?: string; chaveAcesso?: string; ambiente?: "producao" | "homologacao" };
@@ -23,6 +30,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, erro: "Chave de acesso inválida — deve ter exatamente 44 dígitos." }, { status: 400 });
   }
 
+  // ── 1. Tenta buscar no Storage (SIEG salva aqui ao sincronizar) ────────────
+  const xmlPath = `nfs-sieg/${fazendaId}/${chave}.xml`;
+  try {
+    const { data: blob, error: storErr } = await supabaseAdmin.storage
+      .from("arquivos")
+      .download(xmlPath);
+
+    if (!storErr && blob) {
+      const xmlText = await blob.text();
+      if (xmlText && (xmlText.includes("<NFe") || xmlText.includes("<nfeProc"))) {
+        return NextResponse.json({ ok: true, xmlCompleto: xmlText, fonte: "storage" });
+      }
+    }
+  } catch {
+    // Storage não disponível — segue para SEFAZ
+  }
+
+  // ── 2. Fallback: consulta SEFAZ ────────────────────────────────────────────
   const resultado = await consultarNfePorChave(chave, fazendaId, ambiente);
 
   if (!resultado.ok) {
@@ -34,5 +59,6 @@ export async function POST(req: NextRequest) {
     xmlCompleto: resultado.xmlCompleto ?? resultado.nfeXml,
     cStat: resultado.cStat,
     xMotivo: resultado.xMotivo,
+    fonte: "sefaz",
   });
 }

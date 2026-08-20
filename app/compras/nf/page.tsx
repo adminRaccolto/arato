@@ -736,9 +736,11 @@ export default function NfCompraPage() {
       valor_desconto: String((nf as Record<string,unknown>).valor_desconto ?? ""),
     });
     // Carregar itens existentes
+    let itensCarregadosDoBd = false;
     try {
       const itensDB = await listarNfEntradaItens(nf.id);
       if (itensDB.length > 0) {
+        itensCarregadosDoBd = true;
         setItens(itensDB.map(i => {
           const fator   = i.fator_conversao ?? 1;
           // Qtd NF original: quantidade / fator (reverso da conversão salva)
@@ -771,19 +773,22 @@ export default function NfCompraPage() {
             pa_auto:  !!i.principio_ativo_id,
           };
         }));
-      } else if (nf.chave_acesso && nf.chave_acesso.replace(/\D/g,"").length === 44) {
-        // Nenhum item no BD ainda (NF importada via SIEG sem itens) — busca XML da SEFAZ
-        try {
-          const xmlRes = await fetch("/api/nfe/xml-por-chave", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fazendaId: nf.fazenda_id ?? fazendaId, chaveAcesso: nf.chave_acesso, ambiente: "producao" }),
-          });
-          const xmlJson = await xmlRes.json();
-          if (xmlJson.ok && xmlJson.xmlCompleto) parsearXml(xmlJson.xmlCompleto);
-        } catch { /* sem XML disponível — usuário preenche manualmente */ }
       }
-    } catch {}
+    } catch { /* falha silenciosa — tenta XML abaixo */ }
+
+    // Se BD não tem itens (NF importada via SIEG antes de salvar itens, ou erro no BD)
+    // tenta carregar o XML do Storage (salvo pelo SIEG) ou da SEFAZ
+    if (!itensCarregadosDoBd && nf.chave_acesso && nf.chave_acesso.replace(/\D/g,"").length === 44) {
+      try {
+        const xmlRes = await fetch("/api/nfe/xml-por-chave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazendaId: nf.fazenda_id ?? fazendaId, chaveAcesso: nf.chave_acesso, ambiente: "producao" }),
+        });
+        const xmlJson = await xmlRes.json();
+        if (xmlJson.ok && xmlJson.xmlCompleto) parsearXml(xmlJson.xmlCompleto);
+      } catch { /* sem XML disponível — usuário preenche manualmente */ }
+    }
     setEtapa("cabecalho");
     setErr("");
     // Carrega CC/depósitos/pedidos frescos para a fazenda desta NF (sempre fresh, sem cache)
