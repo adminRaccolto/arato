@@ -160,10 +160,16 @@ function FinanceiroRelatoriosInner() {
   const [tipoCPCR,    setTipoCPCR]    = useState<"todos"|"receber"|"pagar">("todos");
   const [statusCPCR,  setStatusCPCR]  = useState<Set<string>>(new Set());   // vazio = todos
   const [catCPCR,     setCatCPCR]     = useState<Set<string>>(new Set());   // vazio = todas
+  const [prodCPCR,    setProdCPCR]    = useState<Set<string>>(new Set());   // vazio = todos
   const [statusDDOpen, setStatusDDOpen] = useState(false);
   const [catDDOpen,    setCatDDOpen]    = useState(false);
+  const [prodDDOpen,   setProdDDOpen]   = useState(false);
   const [inicioCPCR,  setInicioCPCR]  = useState(`${anoAtual}-01-01`);
   const [fimCPCR,     setFimCPCR]     = useState(`${anoAtual}-12-31`);
+  // Agrupamentos — lista ordenada de dimensões ativas
+  type GrupoKey = "produtor" | "og" | "data" | "categoria" | "status" | "tipo";
+  const [agrupAtivos, setAgrupAtivos] = useState<GrupoKey[]>([]);
+  const [gruposExpand, setGruposExpand] = useState<Set<string>>(new Set());
 
   const toggleMes = (m: string) =>
     setMesesExpandidos(prev => { const s = new Set(prev); s.has(m) ? s.delete(m) : s.add(m); return s; });
@@ -1438,6 +1444,20 @@ function FinanceiroRelatoriosInner() {
 
               {/* ═══════ ABA: CP / CR ═══════ */}
               {aba === "cpcr" && (() => {
+                // ── helpers locais ────────────────────────────────────
+                const prodMap  = Object.fromEntries(produtores.map(p => [p.id, p.nome]));
+                const pessoaMap = Object.fromEntries(pessoas.map(p => [p.id, p.nome]));
+                const ogMap    = Object.fromEntries(operacoesGer.map(o => [o.id, o.descricao]));
+
+                const corStatusCPCR: Record<string, { bg: string; color: string; label: string }> = {
+                  em_aberto: { bg: "#E8E8E8", color: "#0D0D0D", label: "Em Aberto" },
+                  vencido:   { bg: "#FCEBEB", color: "#791F1F", label: "Vencido" },
+                  vencendo:  { bg: "#FBF3E0", color: "#7A5A12", label: "Vencendo" },
+                  baixado:   { bg: "#DCF5E8", color: "#14532D", label: "Baixado" },
+                  parcial:   { bg: "#FEF9C3", color: "#713F12", label: "Parcial" },
+                };
+
+                // ── filtrar ───────────────────────────────────────────
                 const lancsCPCR = lancamentos.filter(l => {
                   if (l.moeda === "barter") return false;
                   const dt = l.data_vencimento ?? l.data_lancamento ?? "";
@@ -1446,242 +1466,388 @@ function FinanceiroRelatoriosInner() {
                   if (tipoCPCR !== "todos" && l.tipo !== tipoCPCR) return false;
                   if (statusCPCR.size > 0 && !statusCPCR.has(statusEfetivo(l))) return false;
                   if (catCPCR.size > 0 && !catCPCR.has(l.categoria ?? "")) return false;
+                  if (prodCPCR.size > 0 && !prodCPCR.has(l.produtor_id ?? "")) return false;
                   return true;
                 });
 
-                const categorias = [...new Set(lancamentos.filter(l => l.moeda !== "barter").map(l => l.categoria).filter(Boolean))].sort();
+                const categorias = [...new Set(lancamentos.filter(l => l.moeda !== "barter").map(l => l.categoria).filter(Boolean))].sort() as string[];
+                const produtoresPresentes = produtores.filter(p => lancamentos.some(l => l.produtor_id === p.id));
 
                 const totalCR    = lancsCPCR.filter(l => l.tipo === "receber").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
                 const totalCP    = lancsCPCR.filter(l => l.tipo === "pagar").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
                 const totalVenc  = lancsCPCR.filter(l => statusEfetivo(l) === "vencido").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
                 const totalBaixado = lancsCPCR.filter(l => l.status === "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
 
-                const corStatus: Record<string, { bg: string; color: string; label: string }> = {
-                  em_aberto: { bg: "#E8E8E8", color: "#0D0D0D", label: "Em Aberto" },
-                  vencido:   { bg: "#FCEBEB", color: "#791F1F", label: "Vencido" },
-                  vencendo:  { bg: "#FBF3E0", color: "#7A5A12", label: "Vencendo" },
-                  baixado:   { bg: "#DCF5E8", color: "#14532D", label: "Baixado" },
-                };
+                // ── configuração de agrupamentos ──────────────────────
+                type GrupoConf = { key: GrupoKey; label: string; getKey: (l: Lancamento) => string; getLabel: (k: string) => string };
+                const GRUPOS_CONF: GrupoConf[] = [
+                  { key: "produtor",  label: "Produtor",           getKey: l => l.produtor_id ?? "__",   getLabel: k => k === "__" ? "Sem Produtor" : (prodMap[k] ?? k)       },
+                  { key: "og",        label: "Operação Gerencial",  getKey: l => l.operacao_gerencial_id ?? "__", getLabel: k => k === "__" ? "Sem OG" : (ogMap[k] ?? k)    },
+                  { key: "data",      label: "Mês",                getKey: l => (l.data_vencimento ?? l.data_lancamento ?? "").slice(0,7), getLabel: k => k ? new Date(k+"-01T12:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"}) : "Sem data" },
+                  { key: "categoria", label: "Categoria",           getKey: l => l.categoria ?? "Sem categoria", getLabel: k => k                                              },
+                  { key: "tipo",      label: "Tipo (CP/CR)",        getKey: l => l.tipo,                  getLabel: k => k === "receber" ? "↓ CR — Contas a Receber" : "↑ CP — Contas a Pagar" },
+                  { key: "status",    label: "Status",              getKey: l => statusEfetivo(l),        getLabel: k => corStatusCPCR[k]?.label ?? k                          },
+                ];
+                const confAtivos = agrupAtivos.map(k => GRUPOS_CONF.find(c => c.key === k)!).filter(Boolean);
 
+                // ── árvore de grupos ──────────────────────────────────
+                type TreeNode = { grpKey: string; label: string; items: Lancamento[]; children: TreeNode[]; cr: number; cp: number };
+                function buildTree(items: Lancamento[], confs: GrupoConf[], path: string): TreeNode[] {
+                  if (confs.length === 0) return [];
+                  const conf = confs[0];
+                  const rest = confs.slice(1);
+                  const map = new Map<string, Lancamento[]>();
+                  for (const l of items) {
+                    const k = conf.getKey(l);
+                    if (!map.has(k)) map.set(k, []);
+                    map.get(k)!.push(l);
+                  }
+                  return [...map.entries()].sort((a,b) => a[0].localeCompare(b[0])).map(([k, ls]) => {
+                    const nodePath = path + "||" + k;
+                    const cr = ls.filter(l => l.tipo === "receber").reduce((s,l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                    const cp = ls.filter(l => l.tipo === "pagar").reduce((s,l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                    return { grpKey: k, label: conf.getLabel(k), items: rest.length === 0 ? ls : [], children: buildTree(ls, rest, nodePath), cr, cp };
+                  });
+                }
+                const tree = confAtivos.length > 0 ? buildTree(lancsCPCR, confAtivos, "") : [];
+
+                // ── renderizar linhas ─────────────────────────────────
+                type RowItem = { type: "group"; depth: number; node: TreeNode; path: string } | { type: "lancamento"; l: Lancamento; depth: number };
+                function flattenTree(nodes: TreeNode[], depth: number, parentPath: string): RowItem[] {
+                  const rows: RowItem[] = [];
+                  for (const node of nodes) {
+                    const path = parentPath + "||" + node.grpKey;
+                    rows.push({ type: "group", depth, node, path });
+                    if (gruposExpand.has(path)) {
+                      if (node.children.length > 0) rows.push(...flattenTree(node.children, depth + 1, path));
+                      else for (const l of node.items) rows.push({ type: "lancamento", l, depth: depth + 1 });
+                    }
+                  }
+                  return rows;
+                }
+                const flatRows = confAtivos.length > 0 ? flattenTree(tree, 0, "") : [];
+
+                const toggleGrupo = (path: string) => setGruposExpand(prev => {
+                  const n = new Set(prev); n.has(path) ? n.delete(path) : n.add(path); return n;
+                });
+
+                // ── funções de agrupamento ────────────────────────────
+                const addAgrup = (k: GrupoKey) => {
+                  if (!agrupAtivos.includes(k)) setAgrupAtivos(prev => [...prev, k]);
+                };
+                const remAgrup = (k: GrupoKey) => setAgrupAtivos(prev => prev.filter(x => x !== k));
+                const moveAgrup = (k: GrupoKey, dir: -1 | 1) => setAgrupAtivos(prev => {
+                  const arr = [...prev]; const i = arr.indexOf(k);
+                  if (i < 0) return arr;
+                  const j = i + dir;
+                  if (j < 0 || j >= arr.length) return arr;
+                  [arr[i], arr[j]] = [arr[j], arr[i]]; return arr;
+                });
+
+                // ── exportar XLSX ─────────────────────────────────────
                 const exportarXLSX = async () => {
                   const XLSX = await import("xlsx");
-                  const tipoLabel: Record<string, string> = { receber: "CR", pagar: "CP" };
-                  const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado" };
-
-                  // Aba Resumo
+                  const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
                   const resumo = [
-                    ["Relatório CP / CR"],
+                    ["Relatório CP / CR Analítico"],
                     ["Período", `${inicioCPCR} a ${fimCPCR}`],
                     ["Tipo", tipoCPCR === "todos" ? "Todos (CR + CP)" : tipoCPCR === "receber" ? "Contas a Receber" : "Contas a Pagar"],
                     ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].join(", ")],
                     ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
+                    ["Produtor", prodCPCR.size === 0 ? "Todos" : [...prodCPCR].map(id => prodMap[id] ?? id).join(", ")],
+                    ["Agrupamentos", agrupAtivos.map(k => GRUPOS_CONF.find(c => c.key === k)?.label ?? k).join(" › ")],
                     [],
                     ["Total a Receber (CR)", totalCR],
                     ["Total a Pagar (CP)", totalCP],
                     ["Saldo (CR − CP)", totalCR - totalCP],
                     ["Vencidos", totalVenc],
                     ["Baixados / Pagos", totalBaixado],
-                    [],
                     ["Total de lançamentos", lancsCPCR.length],
                   ];
-
-                  // Aba Lançamentos
-                  // CR → positivo, CP → negativo (convenção de fluxo de caixa)
                   const sinal = (l: Lancamento) => l.tipo === "pagar" ? -1 : 1;
-                  const pessoaMap = Object.fromEntries(pessoas.map(p => [p.id, p.nome]));
-                  const cabecalho = ["Tipo", "Emissão", "Vencimento", "Descrição", "Fornecedor / Pagador", "Categoria", "Operação", "Conta Bancária", "Forma Pgto", "Status", "Moeda", "Valor Original", "Valor BRL", "Observações"];
+                  const cab = ["Tipo","Emissão","Vencimento","Descrição","Produtor","Fornecedor / Pagador","Categoria","Operação Gerencial","Conta Bancária","Forma Pgto","Status","Moeda","Valor Original","Valor BRL","Observações"];
                   const linhas = lancsCPCR.map(l => {
-                    const contaNome   = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
-                    const opNome      = operacoesGer.find(o => o.id === l.operacao_id)?.descricao ?? (l.origem_lancamento ?? "");
-                    const fornecedor  = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "";
-                    const brl = paraBRLRel(l, cotacaoUSD);
-                    const venc    = l.data_vencimento  ? new Date(l.data_vencimento  + "T12:00").toLocaleDateString("pt-BR") : "";
-                    const emissao = l.data_lancamento  ? new Date(l.data_lancamento  + "T12:00").toLocaleDateString("pt-BR") : "";
-                    return [
-                      tipoLabel[l.tipo] ?? l.tipo,
-                      emissao,
-                      venc,
-                      l.descricao ?? "",
-                      fornecedor,
-                      l.categoria ?? "",
-                      opNome,
-                      contaNome,
-                      l.forma_pagamento ?? "",
-                      statusLabel[l.status] ?? l.status,
-                      l.moeda?.toUpperCase() ?? "BRL",
-                      sinal(l) * l.valor,
-                      sinal(l) * brl,
-                      l.observacao ?? "",
-                    ];
+                    const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
+                    const ogNome    = l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : "";
+                    const fornecedor = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "";
+                    const produtor  = (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
+                    const brl       = paraBRLRel(l, cotacaoUSD);
+                    const venc      = l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
+                    const emissao   = l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
+                    return [l.tipo === "receber" ? "CR" : "CP", emissao, venc, l.descricao ?? "", produtor, fornecedor, l.categoria ?? "", ogNome, contaNome, l.forma_pagamento ?? "", statusLabel[l.status] ?? l.status, l.moeda?.toUpperCase() ?? "BRL", sinal(l)*l.valor, sinal(l)*brl, l.observacao ?? ""];
                   });
-
                   const wb = XLSX.utils.book_new();
-                  const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
-                  wsResumo["!cols"] = [{ wch: 30 }, { wch: 18 }];
-                  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
-
-                  const wsLanc = XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]);
-                  wsLanc["!cols"] = [6,14,14,40,28,22,28,20,16,12,8,14,14,40].map(w => ({ wch: w }));
-                  XLSX.utils.book_append_sheet(wb, wsLanc, "Lançamentos");
-
-                  const hoje = new Date().toISOString().slice(0, 10);
+                  const ws1 = XLSX.utils.aoa_to_sheet(resumo); ws1["!cols"] = [{wch:32},{wch:22}];
+                  XLSX.utils.book_append_sheet(wb, ws1, "Resumo");
+                  const ws2 = XLSX.utils.aoa_to_sheet([cab,...linhas]); ws2["!cols"] = [6,14,14,40,22,28,22,32,20,14,10,8,14,14,40].map(w=>({wch:w}));
+                  XLSX.utils.book_append_sheet(wb, ws2, "Lançamentos");
                   XLSX.writeFile(wb, `CP-CR_${inicioCPCR}_${fimCPCR}_${hoje}.xlsx`);
                 };
 
+                // ── dropdown helper ───────────────────────────────────
+                const DD = ({ open, onToggle, label, children }: { open: boolean; onToggle: () => void; label: string; children: React.ReactNode }) => (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+                    <label style={labelStyle}>{label}</label>
+                    <button onClick={onToggle} style={{ ...inputStyle, width: 170, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>{open ? "—" : "▼"}</span>
+                    </button>
+                    {open && <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 220, maxHeight: 280, overflowY: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.13)", marginTop: 2 }}>{children}</div>}
+                  </div>
+                );
+                const DDItem = ({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label: string }) => (
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
+                    onMouseEnter={e=>(e.currentTarget.style.background="#F4F6FA")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+                    <input type="checkbox" checked={checked} onChange={onToggle} style={{ cursor: "pointer", accentColor: "#1A4870" }} />
+                    {label}
+                  </label>
+                );
+
                 return (
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
-                    {/* Filtros CP/CR */}
-                    <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+
+                    {/* ── Filtros ── */}
+                    <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}
+                      onClick={() => { setStatusDDOpen(false); setCatDDOpen(false); setProdDDOpen(false); }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Início</label>
-                        <input type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} />
+                        <input type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Fim</label>
-                        <input type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} />
+                        <input type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Tipo</label>
-                        <select value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: 150 }}>
+                        <select value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: 170 }} onClick={e=>e.stopPropagation()}>
                           <option value="todos">Todos (CR + CP)</option>
                           <option value="receber">Contas a Receber (CR)</option>
                           <option value="pagar">Contas a Pagar (CP)</option>
                         </select>
                       </div>
-                      {/* Status — multi-select dropdown */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
-                        <label style={labelStyle}>Status</label>
-                        <button onClick={() => { setStatusDDOpen(p => !p); setCatDDOpen(false); }}
-                          style={{ ...inputStyle, width: 160, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: "#fff" }}>
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
-                            {statusCPCR.size === 0 ? "Todos" : `${statusCPCR.size} selecionado(s)`}
-                          </span>
-                          <span style={{ fontSize: 10, color: "var(--text-3)", marginLeft: 4 }}>▼</span>
+
+                      {/* Status */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }} onClick={e=>e.stopPropagation()}>
+                        <label style={labelStyle}>Status {statusCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({statusCPCR.size})</span>}</label>
+                        <button onClick={() => { setStatusDDOpen(p=>!p); setCatDDOpen(false); setProdDDOpen(false); }}
+                          style={{ ...inputStyle, width: 160, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: statusCPCR.size > 0 ? "#EDF4FD" : "var(--bg-input)", borderColor: statusCPCR.size > 0 ? "#1A4870" : undefined }}>
+                          <span style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{statusCPCR.size === 0 ? "Todos" : `${statusCPCR.size} selecionado(s)`}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-3)" }}>▼</span>
                         </button>
-                        {statusDDOpen && (
-                          <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 200, background: "#fff", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 180, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", marginTop: 2 }}>
-                            {[{v:"em_aberto",l:"Em Aberto"},{v:"vencido",l:"Vencido"},{v:"baixado",l:"Baixado / Pago"},{v:"parcial",l:"Parcial"}].map(opt => (
-                              <label key={opt.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
-                                onMouseEnter={e => (e.currentTarget.style.background="#F4F6FA")}
-                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}>
-                                <input type="checkbox" checked={statusCPCR.has(opt.v)} onChange={e => {
-                                  setStatusCPCR(prev => { const n = new Set(prev); e.target.checked ? n.add(opt.v) : n.delete(opt.v); return n; });
-                                }} style={{ cursor: "pointer" }} />
-                                {opt.l}
-                              </label>
-                            ))}
-                            <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
-                            <button onClick={() => { setStatusCPCR(new Set()); setStatusDDOpen(false); }}
-                              style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
-                              Limpar seleção
-                            </button>
-                          </div>
-                        )}
+                        {statusDDOpen && <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 180, boxShadow: "0 4px 20px rgba(0,0,0,0.13)", marginTop: 2 }}>
+                          {[{v:"em_aberto",l:"Em Aberto"},{v:"vencido",l:"Vencido"},{v:"vencendo",l:"Vencendo"},{v:"baixado",l:"Baixado / Pago"},{v:"parcial",l:"Parcial"}].map(opt =>
+                            <DDItem key={opt.v} checked={statusCPCR.has(opt.v)} onToggle={() => setStatusCPCR(prev => { const n=new Set(prev); n.has(opt.v)?n.delete(opt.v):n.add(opt.v); return n; })} label={opt.l} />
+                          )}
+                          <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
+                          <button onClick={() => { setStatusCPCR(new Set()); setStatusDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
+                        </div>}
                       </div>
 
-                      {/* Categoria — multi-select dropdown */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
-                        <label style={labelStyle}>Categoria</label>
-                        <button onClick={() => { setCatDDOpen(p => !p); setStatusDDOpen(false); }}
-                          style={{ ...inputStyle, width: 200, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: "#fff" }}>
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
-                            {catCPCR.size === 0 ? "Todas" : `${catCPCR.size} selecionada(s)`}
-                          </span>
-                          <span style={{ fontSize: 10, color: "var(--text-3)", marginLeft: 4 }}>▼</span>
+                      {/* Categoria */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }} onClick={e=>e.stopPropagation()}>
+                        <label style={labelStyle}>Categoria {catCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({catCPCR.size})</span>}</label>
+                        <button onClick={() => { setCatDDOpen(p=>!p); setStatusDDOpen(false); setProdDDOpen(false); }}
+                          style={{ ...inputStyle, width: 190, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: catCPCR.size > 0 ? "#EDF4FD" : "var(--bg-input)", borderColor: catCPCR.size > 0 ? "#1A4870" : undefined }}>
+                          <span style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catCPCR.size === 0 ? "Todas" : `${catCPCR.size} selecionada(s)`}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-3)" }}>▼</span>
                         </button>
-                        {catDDOpen && (
-                          <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 200, background: "#fff", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 220, maxHeight: 260, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", marginTop: 2 }}>
-                            {categorias.map(c => (
-                              <label key={c} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
-                                onMouseEnter={e => (e.currentTarget.style.background="#F4F6FA")}
-                                onMouseLeave={e => (e.currentTarget.style.background="transparent")}>
-                                <input type="checkbox" checked={catCPCR.has(c)} onChange={e => {
-                                  setCatCPCR(prev => { const n = new Set(prev); e.target.checked ? n.add(c) : n.delete(c); return n; });
-                                }} style={{ cursor: "pointer" }} />
-                                {c}
-                              </label>
-                            ))}
-                            <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
-                            <button onClick={() => { setCatCPCR(new Set()); setCatDDOpen(false); }}
-                              style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
-                              Limpar seleção
-                            </button>
-                          </div>
-                        )}
+                        {catDDOpen && <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 230, maxHeight: 280, overflowY: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.13)", marginTop: 2 }}>
+                          {categorias.map(c => <DDItem key={c} checked={catCPCR.has(c)} onToggle={() => setCatCPCR(prev => { const n=new Set(prev); n.has(c)?n.delete(c):n.add(c); return n; })} label={c} />)}
+                          <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
+                          <button onClick={() => { setCatCPCR(new Set()); setCatDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
+                        </div>}
                       </div>
+
+                      {/* Produtor */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }} onClick={e=>e.stopPropagation()}>
+                        <label style={labelStyle}>Produtor {prodCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({prodCPCR.size})</span>}</label>
+                        <button onClick={() => { setProdDDOpen(p=>!p); setStatusDDOpen(false); setCatDDOpen(false); }}
+                          style={{ ...inputStyle, width: 190, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: prodCPCR.size > 0 ? "#EDF4FD" : "var(--bg-input)", borderColor: prodCPCR.size > 0 ? "#1A4870" : undefined }}>
+                          <span style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prodCPCR.size === 0 ? "Todos" : `${prodCPCR.size} selecionado(s)`}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-3)" }}>▼</span>
+                        </button>
+                        {prodDDOpen && <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 230, maxHeight: 280, overflowY: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.13)", marginTop: 2 }}>
+                          {produtoresPresentes.map(p => <DDItem key={p.id} checked={prodCPCR.has(p.id)} onToggle={() => setProdCPCR(prev => { const n=new Set(prev); n.has(p.id)?n.delete(p.id):n.add(p.id); return n; })} label={p.nome} />)}
+                          {produtoresPresentes.length === 0 && <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--text-3)" }}>Nenhum produtor vinculado</div>}
+                          <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
+                          <button onClick={() => { setProdCPCR(new Set()); setProdDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
+                        </div>}
+                      </div>
+
                       <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end" }}>
                         <button onClick={exportarXLSX} disabled={lancsCPCR.length === 0}
-                          style={{ padding: "7px 14px", background: lancsCPCR.length === 0 ? "#ccc" : "#16763A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: lancsCPCR.length === 0 ? "default" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                          style={{ padding: "7px 14px", background: lancsCPCR.length === 0 ? "#ccc" : "#16763A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: lancsCPCR.length === 0 ? "default" : "pointer" }}>
                           ⬇ Exportar XLSX
                         </button>
                       </div>
                     </div>
 
-                    {/* KPIs */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)" }}>
+                    {/* ── Painel de Agrupamentos ── */}
+                    <div style={{ padding: "10px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, whiteSpace: "nowrap" }}>Agrupar por:</span>
+
+                        {/* Ativos — em ordem */}
+                        {agrupAtivos.map((k, idx) => {
+                          const conf = GRUPOS_CONF.find(c => c.key === k)!;
+                          return (
+                            <div key={k} style={{ display: "flex", alignItems: "center", gap: 2, background: "#1A4870", borderRadius: 20, padding: "3px 5px 3px 10px", color: "#fff", fontSize: 12, fontWeight: 600 }}>
+                              <span style={{ fontSize: 10, background: "rgba(255,255,255,0.22)", borderRadius: 10, padding: "0 5px", marginRight: 4, minWidth: 16, textAlign: "center" }}>{idx + 1}</span>
+                              {conf?.label}
+                              <button onClick={() => moveAgrup(k, -1)} disabled={idx === 0}
+                                style={{ background: "none", border: "none", color: idx === 0 ? "rgba(255,255,255,0.3)" : "#fff", cursor: idx === 0 ? "default" : "pointer", padding: "0 3px", fontSize: 13, lineHeight: 1 }}>↑</button>
+                              <button onClick={() => moveAgrup(k, 1)} disabled={idx === agrupAtivos.length - 1}
+                                style={{ background: "none", border: "none", color: idx === agrupAtivos.length-1 ? "rgba(255,255,255,0.3)" : "#fff", cursor: idx === agrupAtivos.length-1 ? "default" : "pointer", padding: "0 3px", fontSize: 13, lineHeight: 1 }}>↓</button>
+                              <button onClick={() => remAgrup(k)}
+                                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", cursor: "pointer", padding: "0 3px", fontSize: 15, lineHeight: 1, marginLeft: 2 }}>×</button>
+                            </div>
+                          );
+                        })}
+
+                        {/* Disponíveis (não ativos) */}
+                        {GRUPOS_CONF.filter(c => !agrupAtivos.includes(c.key)).map(c => (
+                          <button key={c.key} onClick={() => addAgrup(c.key)}
+                            style={{ background: "var(--bg-input)", border: "0.5px dashed var(--border-table)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "var(--text-3)", cursor: "pointer" }}>
+                            + {c.label}
+                          </button>
+                        ))}
+
+                        {agrupAtivos.length > 0 && (
+                          <>
+                            <span style={{ color: "var(--border-table)", margin: "0 4px" }}>|</span>
+                            <button onClick={() => { setAgrupAtivos([]); setGruposExpand(new Set()); }}
+                              style={{ background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer", textDecoration: "underline" }}>
+                              Limpar agrupamentos
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ── KPIs ── */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                       {[
                         { label: "Total a Receber (CR)", valor: fmtBRL(totalCR), cor: "#16A34A" },
                         { label: "Total a Pagar (CP)",   valor: fmtBRL(totalCP), cor: "#E24B4A" },
                         { label: "Vencidos",             valor: fmtBRL(totalVenc), cor: "#E24B4A" },
                         { label: "Já Baixados / Pagos",  valor: fmtBRL(totalBaixado), cor: "var(--text-2)" },
                       ].map((k, i) => (
-                        <div key={i} style={{ padding: "12px 20px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
-                          <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3 }}>{k.label}</div>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
+                        <div key={i} style={{ padding: "11px 20px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>{k.label}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Tabela */}
+                    {/* ── Tabela / Grupos ── */}
                     {lancsCPCR.length === 0 ? (
                       <div style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum lançamento no período com os filtros selecionados.</div>
-                    ) : (
+                    ) : confAtivos.length > 0 ? (
+                      /* Modo agrupado */
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: "var(--bg-page)" }}>
-                              {["Tipo", "Vencimento", "Descrição", "Categoria", "Conta Bancária", "Status", "Valor (BRL)", ""].map(h => (
-                                <th key={h} style={{ padding: "8px 12px", textAlign: h === "Valor (BRL)" ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                              {["Agrupamento / Lançamento","Produtor","Vencimento","Categoria","Operação Gerencial","Status","CR","CP","Saldo"].map(h => (
+                                <th key={h} style={{ padding: "8px 12px", textAlign: ["CR","CP","Saldo"].includes(h) ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
-                            {lancsCPCR.map((l, i) => {
-                              const st = corStatus[statusEfetivo(l)] ?? corStatus.em_aberto;
-                              const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome;
+                            {flatRows.map((row, ri) => {
+                              if (row.type === "group") {
+                                const { node, depth, path } = row;
+                                const expanded = gruposExpand.has(path);
+                                const indent = depth * 18;
+                                const bgGrp = depth === 0 ? "#EEF3FA" : depth === 1 ? "#F4F7FC" : "#F9FAFB";
+                                return (
+                                  <tr key={path + ri} style={{ background: bgGrp, cursor: "pointer", borderBottom: "0.5px solid var(--border-table)" }} onClick={() => toggleGrupo(path)}>
+                                    <td style={{ padding: "9px 12px", paddingLeft: 12 + indent, fontWeight: 700, fontSize: 12 + (2 - depth), color: "#0B2D50", whiteSpace: "nowrap" }}>
+                                      <span style={{ marginRight: 8, fontSize: 11, opacity: 0.6 }}>{expanded ? "▾" : "▸"}</span>
+                                      {node.label}
+                                      <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 400, color: "var(--text-3)", background: "rgba(0,0,0,0.06)", borderRadius: 10, padding: "1px 7px" }}>
+                                        {confAtivos.length - depth === 1 ? `${node.items.length} lanç.` : `${node.children.length} subgrupo(s)`}
+                                      </span>
+                                    </td>
+                                    <td colSpan={5} />
+                                    <td style={{ padding: "9px 12px", textAlign: "right", color: "#16A34A", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{node.cr > 0 ? fmtBRL(node.cr) : "—"}</td>
+                                    <td style={{ padding: "9px 12px", textAlign: "right", color: "#E24B4A", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{node.cp > 0 ? fmtBRL(node.cp) : "—"}</td>
+                                    <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: node.cr - node.cp >= 0 ? "#0B2D50" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(node.cr - node.cp)}</td>
+                                  </tr>
+                                );
+                              }
+                              // lancamento leaf
+                              const { l, depth } = row;
+                              const st  = corStatusCPCR[statusEfetivo(l)] ?? corStatusCPCR.em_aberto;
                               const brl = paraBRLRel(l, cotacaoUSD);
+                              const indent = depth * 18;
                               return (
-                                <tr key={l.id} style={{ borderBottom: "0.5px solid #EEF1F7", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                                  <td style={{ padding: "9px 12px" }}>
-                                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
+                                <tr key={l.id + ri} style={{ borderBottom: "0.5px solid #EEF1F7", background: ri % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                                  <td style={{ padding: "8px 12px", paddingLeft: 12 + indent }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                      <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 700, flexShrink: 0 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
+                                      <span style={{ color: "var(--text-1)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }} title={l.descricao ?? ""}>{l.descricao || "—"}</span>
+                                    </div>
                                   </td>
-                                  <td style={{ padding: "9px 12px", color: statusEfetivo(l) === "vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap" }}>
-                                    {l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}
-                                  </td>
-                                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? ""}>{l.descricao || "—"}</td>
-                                  <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{l.categoria || "—"}</td>
-                                  <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{contaNome || "—"}</td>
-                                  <td style={{ padding: "9px 12px" }}><span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span></td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>
-                                    <div>{fmtBRL(brl)}</div>
-                                    {l.moeda === "USD" && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{subMoedaRel(l, cotacaoUSD)}</div>}
-                                  </td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
-                                    {l.auto && <span style={{ fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 4 }}>auto</span>}
-                                  </td>
+                                  <td style={{ padding: "8px 12px", color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" }}>{l.produtor_id ? (prodMap[l.produtor_id] ?? "—") : "—"}</td>
+                                  <td style={{ padding: "8px 12px", color: statusEfetivo(l)==="vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap", fontSize: 11 }}>{l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>
+                                  <td style={{ padding: "8px 12px", color: "var(--text-2)", fontSize: 11, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.categoria || "—"}</td>
+                                  <td style={{ padding: "8px 12px", color: "var(--text-2)", fontSize: 11, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "—") : "—"}</td>
+                                  <td style={{ padding: "8px 12px" }}><span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span></td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#16A34A", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{l.tipo === "receber" ? fmtBRL(brl) : "—"}</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#E24B4A", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{l.tipo === "pagar" ? fmtBRL(brl) : "—"}</td>
+                                  <td />
                                 </tr>
                               );
                             })}
                           </tbody>
                           <tfoot>
                             <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid var(--border-table)" }}>
-                              <td colSpan={6} style={{ padding: "10px 12px" }}>{lancsCPCR.length} lançamentos</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                                <div style={{ color: "#16A34A" }}>+ {fmtBRL(totalCR)}</div>
-                                <div style={{ color: "#E24B4A" }}>− {fmtBRL(totalCP)}</div>
-                                <div style={{ fontWeight: 800, color: totalCR - totalCP >= 0 ? "#111111" : "#E24B4A", borderTop: "0.5px solid #ccc", paddingTop: 2, marginTop: 2 }}>{fmtBRL(totalCR - totalCP)}</div>
-                              </td>
-                              <td />
+                              <td colSpan={6} style={{ padding: "10px 12px", fontSize: 12 }}>{lancsCPCR.length} lançamentos</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalCR)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalCP)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", color: totalCR-totalCP >= 0 ? "#0B2D50" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalCR-totalCP)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    ) : (
+                      /* Modo plano (sem agrupamento) */
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "var(--bg-page)" }}>
+                              {["Tipo","Vencimento","Descrição","Produtor","Categoria","Operação Gerencial","Status","CR","CP"].map(h => (
+                                <th key={h} style={{ padding: "8px 12px", textAlign: ["CR","CP"].includes(h) ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lancsCPCR.map((l, i) => {
+                              const st  = corStatusCPCR[statusEfetivo(l)] ?? corStatusCPCR.em_aberto;
+                              const brl = paraBRLRel(l, cotacaoUSD);
+                              const ogNome = l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "—") : "—";
+                              return (
+                                <tr key={l.id} style={{ borderBottom: "0.5px solid #EEF1F7", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                                  <td style={{ padding: "9px 12px" }}>
+                                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
+                                  </td>
+                                  <td style={{ padding: "9px 12px", color: statusEfetivo(l)==="vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap" }}>{l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>
+                                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? ""}>{l.descricao || "—"}</td>
+                                  <td style={{ padding: "9px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{l.produtor_id ? (prodMap[l.produtor_id] ?? "—") : "—"}</td>
+                                  <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{l.categoria || "—"}</td>
+                                  <td style={{ padding: "9px 12px", color: "var(--text-2)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ogNome}</td>
+                                  <td style={{ padding: "9px 12px" }}><span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span></td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{l.tipo === "receber" ? fmtBRL(brl) : "—"}</td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{l.tipo === "pagar" ? fmtBRL(brl) : "—"}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid var(--border-table)" }}>
+                              <td colSpan={7} style={{ padding: "10px 12px" }}>{lancsCPCR.length} lançamentos</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalCR)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalCP)}</td>
                             </tr>
                           </tfoot>
                         </table>
