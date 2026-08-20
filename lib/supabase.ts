@@ -622,7 +622,8 @@ export type NotaFiscal = {
 
 export type Simulacao = {
   id: string;
-  fazenda_id: string;
+  conta_id: string;
+  fazenda_id?: string;
   tipo: "receber" | "pagar";
   descricao: string;
   data: string;

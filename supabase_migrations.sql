@@ -10256,3 +10256,23 @@ ALTER TABLE arrendamentos
   ADD COLUMN IF NOT EXISTS ie_id UUID REFERENCES produtor_inscricoes_estaduais(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 204: simulacoes → conta_id ────────────────────────────────────────
+-- Simulações do fluxo de caixa devem ser visíveis para todos os usuários
+-- da mesma conta (cliente), não só para quem criou.
+
+ALTER TABLE simulacoes
+  ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE CASCADE;
+
+-- Backfill: deriva conta_id a partir da fazenda
+UPDATE simulacoes s
+SET conta_id = f.conta_id
+FROM fazendas f
+WHERE s.fazenda_id = f.id
+  AND s.conta_id IS NULL
+  AND f.conta_id IS NOT NULL;
+
+-- Índice para performance
+CREATE INDEX IF NOT EXISTS idx_simulacoes_conta_id ON simulacoes(conta_id);
+
+NOTIFY pgrst, 'reload schema';

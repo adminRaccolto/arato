@@ -909,8 +909,8 @@ export async function atualizarStatusNFe(id: string, status: NotaFiscal["status"
 // SIMULAÇÕES
 // ————————————————————————————————————————
 
-export async function listarSimulacoes(fazenda_id: string): Promise<Simulacao[]> {
-  const { data, error } = await supabase.from("simulacoes").select("*").eq("fazenda_id", fazenda_id).order("data");
+export async function listarSimulacoes(conta_id: string): Promise<Simulacao[]> {
+  const { data, error } = await supabase.from("simulacoes").select("*").eq("conta_id", conta_id).order("data");
   if (error) throw error;
   return data ?? [];
 }

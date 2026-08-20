@@ -277,7 +277,7 @@ export default function Financeiro() {
         calcularSaldoAnterior(fazendaId!, periodoInicio).then(setSaldoAnterior).catch(() => setSaldoAnterior(0)),
       ]);
       setLancamentos(lans);
-      listarSimulacoes(fazendaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
+      listarSimulacoes(contaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
       listarPessoasDaConta(fazendaId!).then(ps => {
         const m: Record<string, string> = {};
         for (const p of ps) m[p.id] = p.nome ?? "";
@@ -488,7 +488,7 @@ export default function Financeiro() {
     try {
       setSalvando(true);
       const nova = await criarSimulacao({
-        fazenda_id: fazendaId!,
+        conta_id: contaId!,
         tipo: novaSim.tipo,
         descricao: novaSim.descricao,
         data: novaSim.data,
