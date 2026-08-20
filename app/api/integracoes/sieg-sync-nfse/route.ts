@@ -195,15 +195,15 @@ export async function POST(req: NextRequest) {
       }
 
       // Nível 3 — Fallback geral: download sem filtro + filtro client-side no XML
-      // Limita a 30 dias para não exceder o timeout de 300s
+      // Limita a 15 dias para não exceder o timeout de 300s quando combinado com os níveis 1 e 2
       if (docs.length === 0) {
         const diffDias = (new Date(fimStr).getTime() - new Date(iniStr).getTime()) / 86_400_000;
-        const limiteFallback = 30;
+        const limiteFallback = 15;
         if (diffDias > limiteFallback) {
           console.warn(`[nfse] CnpjTom e CnpjDest retornaram 0 e período (${Math.ceil(diffDias)}d) > ${limiteFallback}d. Restrinja o período para o fallback.`);
-          erros.push(`CNPJ ${cnpj}: nenhuma NFS-e encontrada pelos filtros do SIEG. Tente um período de até 30 dias para o modo fallback.`);
+          erros.push(`CNPJ ${cnpj}: nenhuma NFS-e encontrada pelos filtros do SIEG. Tente um período de até ${limiteFallback} dias para ativar a busca geral.`);
         } else {
-          await sleep(2000);
+          await sleep(1000);
           console.log(`[nfse] Fallback geral para CNPJ ${cnpj} (${Math.ceil(diffDias)} dias)…`);
           try {
             const all = await baixarXmlsSiegChunked(siegCreds, {

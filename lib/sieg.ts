@@ -212,14 +212,14 @@ async function fetchComRetry(
   init: RequestInit,
   maxTentativas = 4,
 ): Promise<Response> {
-  const delays = [3000, 8000, 15000, 20000]; // backoff: 3s, 8s, 15s, 20s
+  const delays = [2000, 4000, 7000, 10000]; // backoff: 2s, 4s, 7s, 10s
   let lastErr: Error | null = null;
   for (let t = 0; t < maxTentativas; t++) {
     const res = await fetch(url, init);
     if (res.status !== 429) return res;
     const retryAfter = Number(res.headers.get("Retry-After") ?? 0);
-    // Cap de 15s para evitar estouro do timeout de 300s da Vercel
-    const wait = Math.min(retryAfter > 0 ? retryAfter * 1000 : (delays[t] ?? 20000), 15000);
+    // Cap de 10s para evitar estouro do timeout de 300s da Vercel
+    const wait = Math.min(retryAfter > 0 ? retryAfter * 1000 : (delays[t] ?? 10000), 10000);
     console.warn(`[sieg] 429 Too Many Requests — aguardando ${wait}ms antes da tentativa ${t + 2}/${maxTentativas}`);
     await sleep(wait);
     lastErr = new Error(`SIEG 429 após ${maxTentativas} tentativas`);

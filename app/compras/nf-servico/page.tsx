@@ -521,7 +521,8 @@ export default function NfServicoPage() {
     setSiegSyncing(true); setSiegSyncMsg("");
     try {
       const ctrl = new AbortController();
-      const tmo  = setTimeout(() => ctrl.abort(), 120_000); // 2 min
+      const tmo  = setTimeout(() => ctrl.abort(), 270_000); // 4 min 30s (server maxDuration=300s)
+      setSiegSyncMsg("⏳ Buscando NFS-e no SIEG — pode levar alguns minutos…");
       const res = await fetch("/api/integracoes/sieg-sync-nfse", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim, force_reimport: siegForceReimport }),
@@ -532,7 +533,7 @@ export default function NfServicoPage() {
       try {
         d = await res.json() as Record<string, unknown>;
       } catch {
-        setSiegSyncMsg("✗ A sincronização demorou muito — tente um período menor (ex: últimos 30 dias)");
+        setSiegSyncMsg("✗ A sincronização demorou muito — tente um período menor (ex: últimos 15 dias)");
         return;
       }
       if (d.erro) {
