@@ -650,75 +650,102 @@ export default function NfServicoPage() {
               Nenhuma NF de Serviço. Clique em &ldquo;+ Nova NF de Serviço&rdquo; para começar.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
+              <colgroup>
+                <col style={{ width: 110 }} />  {/* Nº */}
+                <col style={{ width: "22%" }} /> {/* Prestador */}
+                <col style={{ width: 98 }} />   {/* Competência */}
+                <col />                          {/* Serviço — flex */}
+                <col style={{ width: 118 }} />  {/* Valor Serv. */}
+                <col style={{ width: 110 }} />  {/* ISS */}
+                <col style={{ width: 118 }} />  {/* Líquido */}
+                <col style={{ width: 100 }} />  {/* Status */}
+                <col style={{ width: 210 }} />  {/* Ações */}
+              </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["Nº", "Prestador", "Competência", "Serviço (LC 116)", "Valor Serv.", "ISS", "Líquido", "Status", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                  {(["Nº", "Prestador", "Competência", "Serviço / Discriminação", "Valor Serv.", "ISS", "Líquido", "Status", "Ações"] as const).map((c, i) => (
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", overflow: "hidden" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {nfsFilt.map(nf => {
                   const sm = STATUS_META[nf.status] ?? STATUS_META["pendente"];
+                  // Descrição: código LC 116 se disponível, senão discriminação, senão "—"
+                  const descServico = nf.codigo_servico
+                    ? `${nf.codigo_servico}${nf.discriminacao ? " — " + nf.discriminacao : ""}`
+                    : (nf.discriminacao || "—");
                   return (
                     <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
-                        {nf.numero_nf}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
+                      {/* Nº */}
+                      <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {nf.numero_nf}
+                        {nf.serie && <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {nf.prestador_nome}
-                        {nf.prestador_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{nf.prestador_cnpj}</div>}
+                      {/* Prestador */}
+                      <td style={{ padding: "9px 12px", overflow: "hidden" }}>
+                        <div style={{ fontSize: 13, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.prestador_nome}>{nf.prestador_nome}</div>
+                        {nf.prestador_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{nf.prestador_cnpj}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>
+                      {/* Competência */}
+                      <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                         {fmtComp(nf.competencia)}
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{fmtData(nf.data_prestacao)}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtData(nf.data_prestacao)}</div>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {nf.codigo_servico && <span style={{ fontWeight: 600 }}>{nf.codigo_servico} </span>}
-                        {nf.discriminacao ? nf.discriminacao.substring(0, 60) + (nf.discriminacao.length > 60 ? "…" : "") : "—"}
+                      {/* Serviço */}
+                      <td style={{ padding: "9px 12px", overflow: "hidden" }}>
+                        {nf.codigo_servico && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", background: "#D5E8F5", borderRadius: 4, padding: "1px 5px", marginRight: 5, whiteSpace: "nowrap" }}>
+                            {nf.codigo_servico}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginTop: nf.codigo_servico ? 3 : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={descServico}>
+                          {nf.discriminacao ? nf.discriminacao.substring(0, 80) + (nf.discriminacao.length > 80 ? "…" : "") : (nf.codigo_servico ? "" : "—")}
+                        </span>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right" }}>{fmtBRL(nf.valor_servico)}</td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, textAlign: "right" }}>
+                      {/* Valor Serv. */}
+                      <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(nf.valor_servico)}</td>
+                      {/* ISS */}
+                      <td style={{ padding: "9px 12px", fontSize: 12, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
                         {fmtBRL(nf.valor_iss)}
-                        {nf.iss_retido && badge(" Retido", "#FCEBEB", "#791F1F")}
+                        {nf.iss_retido && <div>{badge("Retido", "#FCEBEB", "#791F1F")}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", color: "#111111" }}>{fmtBRL(nf.valor_liquido)}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                          {/* Não processada: editar */}
+                      {/* Líquido */}
+                      <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 700, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(nf.valor_liquido)}</td>
+                      {/* Status */}
+                      <td style={{ padding: "9px 12px", textAlign: "center" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                      {/* Ações */}
+                      <td style={{ padding: "9px 12px", textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center" }}>
                           {nf.status === "digitando" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
                               Editar
                             </button>
                           )}
-                          {/* Pendente: editar + processar */}
                           {nf.status === "pendente" && (
                             <>
-                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
                                 Editar
                               </button>
-                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                              <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
                                 Processar
                               </button>
                             </>
                           )}
-                          {/* Processada: estornar */}
                           {nf.status === "processada" && (
-                            <button onClick={() => estornarNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 11, color: "#7A4800", fontWeight: 600 }}>
+                            <button onClick={() => estornarNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 11, color: "#7A4800", fontWeight: 600, whiteSpace: "nowrap" }}>
                               Estornar
                             </button>
                           )}
-                          {/* Excluir (todas exceto cancelada) */}
                           {nf.status !== "cancelada" && (
-                            <button onClick={() => iniciarExclusao(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                            <button onClick={() => iniciarExclusao(nf)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", whiteSpace: "nowrap" }}>
                               Excluir
                             </button>
                           )}
-                          {/* Cancelar (só não processada e não cancelada) */}
                           {nf.status !== "cancelada" && nf.status !== "processada" && (
-                            <button onClick={() => cancelarNf(nf)} style={{ padding: "4px 10px", border: "0.5px solid #88888850", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                            <button onClick={() => cancelarNf(nf)} style={{ padding: "4px 8px", border: "0.5px solid #88888840", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
                               Cancelar
                             </button>
                           )}
@@ -729,6 +756,7 @@ export default function NfServicoPage() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </main>
