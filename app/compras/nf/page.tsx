@@ -265,6 +265,7 @@ export default function NfCompraPage() {
   const [siegCnpjDest,      setSiegCnpjDest]      = useState("");
   const [siegProdutores,    setSiegProdutores]    = useState<Array<{nome: string; cnpj: string}>>([]);
   const [siegReimporting,   setSiegReimporting]   = useState<Record<string, boolean>>({});
+  const [wizardResyncando,  setWizardResyncando]  = useState(false);
   // SIEG — manifestação inline
   const [siegBusy,       setSiegBusy]       = useState<Record<string, boolean>>({});
   const [siegErros,      setSiegErros]      = useState<Record<string, string>>({});
@@ -615,6 +616,62 @@ export default function NfCompraPage() {
       else await carregar();
     } catch (e) { alert(`Erro ao reimportar: ${e}`); }
     finally { setSiegReimporting(p => ({ ...p, [nf.id]: false })); }
+  }
+
+  // Re-sync de uma NF diretamente de dentro do wizard (sem fechar o modal)
+  async function resyncWizard() {
+    if (!nfEdit?.chave_acesso || !fazendaId) return;
+    setWizardResyncando(true);
+    try {
+      const base  = nfEdit.data_emissao ?? new Date().toISOString().slice(0, 10);
+      const dtIni = new Date(new Date(base).getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
+      const dtFim = new Date(new Date(base).getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
+      const res = await fetch("/api/integracoes/sieg-sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id: nfEdit.fazenda_id ?? fazendaId,
+          data_inicio: dtIni, data_fim: dtFim,
+          force_reimport: true,
+          chaves_acesso: [nfEdit.chave_acesso],
+        }),
+      });
+      const d = await res.json() as Record<string, unknown>;
+      if (d.erro) { alert(`Erro ao re-sincronizar: ${d.erro}`); return; }
+      // Recarrega itens do banco (agora populados pelo re-sync)
+      const novosItens = await listarNfEntradaItens(nfEdit.id);
+      if (novosItens.length > 0) {
+        setItens(novosItens.map(i => {
+          const fator  = i.fator_conversao ?? 1;
+          const qtdNf  = fator > 0 ? i.quantidade / fator : i.quantidade;
+          const convKey = fator !== 1
+            ? (TABELA_CONVERSAO.find(c => Math.abs((c.fator ?? 1) - fator) < 0.00001)?.key ?? "")
+            : "";
+          return {
+            key: i.id, descricao_nf: i.descricao_nf ?? i.descricao_produto,
+            ncm: i.ncm ?? "", cfop: i.cfop ?? "",
+            unidade_nf: i.unidade_nf ?? i.unidade, qtd_nf: qtdNf,
+            vunit_nf: i.valor_unitario, valor_total: i.valor_total,
+            conversao_key: convKey, quantidade: i.quantidade,
+            valor_unitario: i.valor_unitario, fator_conversao: fator,
+            insumo_id: i.insumo_id ?? "", principio_ativo_id: i.principio_ativo_id ?? "",
+            nome_comercial_ref: i.nome_comercial_ref ?? "",
+            tipo_apropiacao: i.tipo_apropiacao,
+            deposito_id: i.deposito_id ?? "", bomba_id: i.bomba_id ?? "",
+            maquina_id: i.maquina_id ?? "", centro_custo_id: i.centro_custo_id ?? "",
+            pa_nome: i.principio_ativo_id ? i.descricao_produto : undefined,
+            pa_auto: !!i.principio_ativo_id,
+          };
+        }));
+        // Atualiza nfEdit com destinatário preenchido pelo re-sync
+        const { data: nfAtual } = await supabase.from("nf_entradas").select("cnpj_destino,nome_destinatario").eq("id", nfEdit.id).maybeSingle();
+        if (nfAtual) {
+          setNfEdit(p => p ? { ...p, nome_destinatario: nfAtual.nome_destinatario ?? p.nome_destinatario, cnpj_destino: nfAtual.cnpj_destino ?? p.cnpj_destino } : p);
+        }
+      } else {
+        alert("Re-sincronização concluída, mas o XML do SIEG ainda não tem itens para esta NF.");
+      }
+    } catch (e) { alert(`Erro: ${e}`); }
+    finally { setWizardResyncando(false); }
   }
 
   async function executarManifestacao(nf: NfEntrada, tipo: number, justificativa?: string) {
@@ -2836,6 +2893,21 @@ export default function NfCompraPage() {
               {/* ─── ETAPA 3: ITENS ──────────────────────────── */}
               {etapa === "itens" && (
                 <div>
+                  {/* Banner de re-sync para NFs do SIEG sem itens */}
+                  {itens.length === 0 && nfEdit?.origem === "sieg" && nfEdit?.chave_acesso && (
+                    <div style={{ background: "#FFF8E6", border: "0.5px solid #F0C040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, color: "#7A5500" }}>
+                        ⚠ Esta NF foi importada sem itens (possível contingência ou XML incompleto no SIEG).
+                      </span>
+                      <button
+                        onClick={resyncWizard}
+                        disabled={wizardResyncando}
+                        style={{ padding: "5px 14px", borderRadius: 7, border: "0.5px solid #C9921B", background: wizardResyncando ? "#f5e0a0" : "#FBF3E0", color: "#7A5500", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        {wizardResyncando ? "Re-sincronizando…" : "🔄 Re-sincronizar do SIEG"}
+                      </button>
+                    </div>
+                  )}
                   {/* Cabeçalho da etapa */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                     <div>

@@ -164,10 +164,14 @@ export async function POST(req: NextRequest) {
 
       // Salva XML no Storage (sempre — novo ou reimport)
       const xmlPath = `nfs-sieg/${fazenda_id}/${nfe.chave}.xml`;
-      await db.storage.from("arquivos").upload(xmlPath, xml, {
+      const { error: uploadErr } = await db.storage.from("arquivos").upload(xmlPath, xml, {
         contentType: "application/xml",
         upsert: true,
       });
+      if (uploadErr) {
+        console.warn(`[sieg-sync] upload XML falhou para chave ${nfe.chave}: ${uploadErr.message}`);
+      }
+      const xmlStorageOk = !uploadErr;
 
       if (dup) {
         if (!forceReimport) { duplicados_nfe++; continue; }
@@ -183,7 +187,7 @@ export async function POST(req: NextRequest) {
           cfop:              nfe.cfop,
           cnpj_destino:      nfe.cnpj_destinatario,   // CNPJ/CPF exato do <dest> — essencial para Manifestação
           nome_destinatario: nfe.nome_destinatario,
-          xml_storage_path:  xmlPath,
+          xml_storage_path:  xmlStorageOk ? xmlPath : null,
           observacao:        `Re-importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
         }).eq("id", dup.id);
         if (dup.status === "pendente" && itensPayload.length > 0) {
@@ -212,7 +216,7 @@ export async function POST(req: NextRequest) {
           nome_destinatario: nfe.nome_destinatario,
           status:            "pendente",
           origem:            "sieg",
-          xml_storage_path:  xmlPath,
+          xml_storage_path:  xmlStorageOk ? xmlPath : null,
           observacao:        `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
         })
         .select("id")

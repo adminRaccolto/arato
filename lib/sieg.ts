@@ -111,13 +111,16 @@ export interface SiegBaixarParams {
 
 // ─── Extração de tags XML ─────────────────────────────────────────────────────
 
+// Prefixo de namespace opcional (ex: "nfe:", "NFe:", etc.)
+const NS = "(?:[a-zA-Z0-9_-]+:)?";
+
 function tagVal(xml: string, tag: string): string {
-  const m = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([^<]*)</${tag}>`));
+  const m = xml.match(new RegExp(`<${NS}${tag}(?:\\s[^>]*)?>([^<]*)</${NS}${tag}>`));
   return m ? m[1].trim() : "";
 }
 
 function blockOf(xml: string, tag: string): string {
-  const m = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>[\\s\\S]*?</${tag}>`));
+  const m = xml.match(new RegExp(`<${NS}${tag}(?:\\s[^>]*)?>[\\s\\S]*?</${NS}${tag}>`));
   return m ? m[0] : "";
 }
 
@@ -175,7 +178,8 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
 
     const valor_total = parseFloat(tagVal(xml, "vNF") || "0");
 
-    const detRe = /<det\s+nItem="(\d+)">([\s\S]*?)<\/det>/g;
+    // Suporta aspas simples ou duplas e prefixo de namespace opcional
+    const detRe = new RegExp(`<${NS}det\\s+nItem=["'](\\d+)["']>([\\s\\S]*?)</${NS}det>`, "g");
     const itens: NFeItemParsed[] = [];
     let m;
     while ((m = detRe.exec(xml)) !== null) {
