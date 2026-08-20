@@ -10247,3 +10247,12 @@ ALTER TABLE lancamentos
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 203: arrendamentos → ie_id ────────────────────────────────────────
+-- Captura a IE do produtor no contrato de arrendamento para pré-preencher
+-- o contrato de grãos gerado e facilitar a expedição NF-e com a IE correta.
+
+ALTER TABLE arrendamentos
+  ADD COLUMN IF NOT EXISTS ie_id UUID REFERENCES produtor_inscricoes_estaduais(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';

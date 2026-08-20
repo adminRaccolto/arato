@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarAnosSafra, criarLancamento, listarProdutoresDaConta } from "../../../lib/db";
+import { listarAnosSafra, criarLancamento, listarProdutoresDaConta, listarIEsDoProdutor } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import type { AnoSafra } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
@@ -29,9 +29,11 @@ interface Arrendamento {
   renovacao_auto?: boolean; observacao?: string | null;
   produtor_id?: string | null;   // IE explorador — agricultor que declara no LCDPR
   produtor_id_2?: string | null; // segundo IE explorador (contrato conjunto)
+  ie_id?: string | null;         // inscrição estadual do produtor para NF-e de expedição
 }
 interface InsumoPA { id: string; nome: string; }
 interface Produtor { id: string; nome: string; inscricao_est?: string | null; municipio?: string | null; estado?: string | null; }
+interface IE { id: string; inscricao_estadual: string; municipio?: string | null; estado: string; ativa: boolean; }
 interface Pagamento {
   id: string; arrendamento_id: string; fazenda_id: string;
   ano_safra_id?: string | null; data_vencimento: string;
@@ -128,7 +130,7 @@ const initFC = () => ({
   sc_soja_ha: "", sc_milho_ha: "", valor_brl: "",
   produto_agricola_id: "", produto_agricola_id_milho: "",
   inicio: "", vencimento: "", renovacao_auto: false, observacao: "",
-  produtor_id: "", produtor_id_2: "",
+  produtor_id: "", produtor_id_2: "", ie_id: "",
 });
 
 export default function Arrendamentos() {
@@ -142,6 +144,7 @@ export default function Arrendamentos() {
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
   const [fazendas,      setFazendas]      = useState<Fazenda[]>([]);
   const [insumosPA,     setInsumosPA]     = useState<InsumoPA[]>([]);
+  const [iesProdutor,   setIesProdutor]   = useState<IE[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
 
@@ -209,6 +212,16 @@ export default function Arrendamentos() {
     setPagsByArr(map);
   }, [pagamentos]);
 
+  // ── IEs do produtor selecionado no formulário ──────────
+  useEffect(() => {
+    if (!fC.produtor_id) { setIesProdutor([]); setFC(f => ({ ...f, ie_id: "" })); return; }
+    listarIEsDoProdutor(fC.produtor_id, fazendaId ?? undefined).then(list => {
+      setIesProdutor(list as IE[]);
+      if (list.length === 1) setFC(f => ({ ...f, ie_id: list[0].id }));
+      else if (list.length === 0) setFC(f => ({ ...f, ie_id: "" }));
+    }).catch(() => setIesProdutor([]));
+  }, [fC.produtor_id, fazendaId]);
+
   // ── toggle expandir arrendamento ────────────────────────
   async function toggleArr(id: string) {
     setExpandedArr(prev => {
@@ -251,6 +264,7 @@ export default function Arrendamentos() {
         observacao: fC.observacao || null,
         produtor_id:   fC.produtor_id   || null,
         produtor_id_2: fC.produtor_id_2 || null,
+        ie_id:         fC.ie_id         || null,
         produto_agricola_id:       fC.produto_agricola_id       || null,
         produto_agricola_id_milho: fC.produto_agricola_id_milho || null,
       };
@@ -591,6 +605,10 @@ export default function Arrendamentos() {
             if (error) errosContrato.push(`${cfg.descricao}: ${error.message}`);
           };
 
+          const produtorId   = arr.produtor_id   || null;
+          const produtorNome = produtores.find(p => p.id === produtorId)?.nome || null;
+          const ieId         = arr.ie_id || null;
+
           if (ehSoja) {
             const scHa  = parseFloat(cfg.sc_soja_ha) || 0;
             const sacas = parseFloat((arr.area_ha * scHa).toFixed(4));
@@ -613,6 +631,9 @@ export default function Arrendamentos() {
                 is_arrendamento: true,
                 arrendamento_id: arr.id,
                 observacao:      descContrato,
+                produtor_id:     produtorId,
+                produtor_nome:   produtorNome,
+                ie_id:           ieId,
               });
             } else {
               errosContrato.push(`Soja ${cfg.descricao}: sc/ha não preenchido — contrato não criado.`);
@@ -641,6 +662,9 @@ export default function Arrendamentos() {
                 is_arrendamento: true,
                 arrendamento_id: arr.id,
                 observacao:      descContrato,
+                produtor_id:     produtorId,
+                produtor_nome:   produtorNome,
+                ie_id:           ieId,
               });
             } else {
               errosContrato.push(`Milho ${cfg.descricao}: sc/ha não preenchido — contrato não criado.`);
@@ -1001,6 +1025,7 @@ export default function Arrendamentos() {
                               observacao: arr.observacao ?? "",
                               produtor_id:   arr.produtor_id   ?? "",
                               produtor_id_2: arr.produtor_id_2 ?? "",
+                              ie_id:         arr.ie_id         ?? "",
                             });
                             setModalContrato(true);
                           }}>
@@ -1527,9 +1552,44 @@ export default function Arrendamentos() {
               <ProdutorCombo
                 produtores={produtores}
                 value={fC.produtor_id}
-                onChange={id => setFC(f => ({ ...f, produtor_id: id }))}
+                onChange={id => setFC(f => ({ ...f, produtor_id: id, ie_id: "" }))}
                 placeholder="Não especificado"
               />
+              {fC.produtor_id && (
+                <div style={{ marginTop: 6 }}>
+                  <label style={{ ...lbl, color: "#C9921B" }}>
+                    Inscrição Estadual (IE)
+                    {iesProdutor.length > 1 && <span style={{ fontWeight: 400, color: "#888" }}> — {iesProdutor.length} registradas</span>}
+                  </label>
+                  {iesProdutor.length > 1 ? (
+                    <select
+                      style={{ ...inp, borderColor: !fC.ie_id ? "#E24B4A" : undefined }}
+                      value={fC.ie_id ?? ""}
+                      onChange={e => setFC(f => ({ ...f, ie_id: e.target.value || "" }))}
+                    >
+                      <option value="">— selecione a IE —</option>
+                      {iesProdutor.map(ie => (
+                        <option key={ie.id} value={ie.id}>
+                          {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
+                          {ie.ativa ? "" : " (inativa)"}
+                        </option>
+                      ))}
+                    </select>
+                  ) : iesProdutor.length === 1 ? (
+                    <input
+                      style={{ ...inp, background: "var(--bg-page)", color: "#555", cursor: "default" }}
+                      value={`${iesProdutor[0].inscricao_estadual} — ${iesProdutor[0].municipio ? `${iesProdutor[0].municipio}/` : ""}${iesProdutor[0].estado}`}
+                      readOnly
+                    />
+                  ) : (
+                    <input
+                      style={{ ...inp, borderColor: "var(--border-table)", color: "#888" }}
+                      value="IE não cadastrada para este produtor"
+                      readOnly
+                    />
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label style={lbl}>
