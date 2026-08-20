@@ -2168,7 +2168,7 @@ export default function Financeiro() {
                       {fmtData(s.data)} · {s.tipo === "receber" ? "entrada" : "saída"}
                     </div>
                   </div>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: s.ativa ? (s.tipo === "receber" ? "#16A34A" : "#E24B4A") : "var(--text-3)", whiteSpace: "nowrap" }}>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: s.ativa ? (s.tipo === "receber" ? "#111111" : "#C026D3") : "var(--text-3)", whiteSpace: "nowrap" }}>
                     {s.tipo === "receber" ? "+" : "−"} {fmtBRL(s.valor)}
                   </span>
                   <div
@@ -2191,9 +2191,9 @@ export default function Financeiro() {
                 return (
                   <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 12, display: "flex", gap: 16, flexWrap: "wrap" }}>
                     <span>Impacto <strong style={{ color: "#4C1D95" }}>({simulacoes.filter(s => s.ativa).length} ativas)</strong>:</span>
-                    <span style={{ color: "#16A34A", fontWeight: 700 }}>+{fmtBRL(ent)}</span>
-                    <span style={{ color: "#E24B4A", fontWeight: 700 }}>−{fmtBRL(sai)}</span>
-                    <span style={{ fontWeight: 700, color: ent - sai >= 0 ? "#0B2D50" : "#E24B4A" }}>Líquido: {fmtBRL(ent - sai)}</span>
+                    <span style={{ color: "#111111", fontWeight: 700 }}>+{fmtBRL(ent)}</span>
+                    <span style={{ color: "#C026D3", fontWeight: 700 }}>−{fmtBRL(sai)}</span>
+                    <span style={{ fontWeight: 700, color: ent - sai >= 0 ? "#0B2D50" : "#C026D3" }}>Líquido: {fmtBRL(ent - sai)}</span>
                   </div>
                 );
               })()}

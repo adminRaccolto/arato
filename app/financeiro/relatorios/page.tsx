@@ -604,7 +604,7 @@ function FinanceiroRelatoriosInner() {
                       <td>${s.fornecedor || "—"}</td>
                       <td>${s.descricao}</td>
                       <td style="text-align:center"><span class="${s.tipo === "entrada" ? "ent" : "sai"}">${s.tipo === "entrada" ? "Entrada" : "Saída"}</span></td>
-                      <td style="text-align:right;font-weight:700;color:${s.tipo === "entrada" ? "#16A34A" : "#E24B4A"}">${s.tipo === "entrada" ? "+" : "−"} ${fmtV(s.valor)}</td>
+                      <td style="text-align:right;font-weight:700;color:${s.tipo === "entrada" ? "#111111" : "#C026D3"}">${s.tipo === "entrada" ? "+" : "−"} ${fmtV(s.valor)}</td>
                     </tr>`).join("");
                   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
                     <title>Simulador de Cenários — ${fazenda}</title>
@@ -616,8 +616,8 @@ function FinanceiroRelatoriosInner() {
                       th { background: #F5F3FF; color: #4C1D95; font-size: 11px; font-weight: 700; padding: 8px 12px; text-align: left; border-bottom: 1.5px solid #DDD6FE; }
                       td { padding: 8px 12px; border-bottom: 0.5px solid #EEE; }
                       tr:nth-child(even) td { background: #FAF5FF; }
-                      .ent { background: #DCFCE7; color: #16A34A; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 10px; }
-                      .sai { background: #FEE2E2; color: #E24B4A; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 10px; }
+                      .ent { background: #E8E8E8; color: #111111; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 10px; }
+                      .sai { background: #FCE7F9; color: #C026D3; padding: 2px 8px; border-radius: 8px; font-weight: 600; font-size: 10px; }
                       .resumo { margin-top: 16px; display: flex; gap: 32px; padding: 12px 16px; background: #F5F3FF; border-radius: 8px; border: 0.5px solid #DDD6FE; }
                       .resumo .item { display: flex; flex-direction: column; gap: 2px; }
                       .resumo .lbl { font-size: 10px; color: #7C3AED; font-weight: 600; }
@@ -632,9 +632,9 @@ function FinanceiroRelatoriosInner() {
                       <tbody>${linhas || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999">Nenhuma simulação ativa</td></tr>'}</tbody>
                     </table>
                     <div class="resumo">
-                      <div class="item"><span class="lbl">Total Entradas</span><span class="val" style="color:#16A34A">+ ${fmtV(totalEnt)}</span></div>
-                      <div class="item"><span class="lbl">Total Saídas</span><span class="val" style="color:#E24B4A">− ${fmtV(totalSai)}</span></div>
-                      <div class="item"><span class="lbl">Líquido</span><span class="val" style="color:${liquido >= 0 ? "#0B2D50" : "#E24B4A"}">${fmtV(liquido)}</span></div>
+                      <div class="item"><span class="lbl">Total Entradas</span><span class="val" style="color:#111111">+ ${fmtV(totalEnt)}</span></div>
+                      <div class="item"><span class="lbl">Total Saídas</span><span class="val" style="color:#C026D3">− ${fmtV(totalSai)}</span></div>
+                      <div class="item"><span class="lbl">Líquido</span><span class="val" style="color:${liquido >= 0 ? "#0B2D50" : "#C026D3"}">${fmtV(liquido)}</span></div>
                     </div>
                     <div class="footer">Arato · Simulações hipotéticas — não representam lançamentos financeiros reais</div>
                     <script>window.onload = () => window.print();</script>
@@ -747,11 +747,11 @@ function FinanceiroRelatoriosInner() {
                                       <td style={{ padding: "11px 16px", color: "#444" }}>{s.fornecedor || "—"}</td>
                                       <td style={{ padding: "11px 16px", color: "#222", fontWeight: 500 }}>{s.descricao}</td>
                                       <td style={{ padding: "11px 16px" }}>
-                                        <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 10, fontWeight: 600, background: s.tipo === "entrada" ? "#DCFCE7" : "#FEE2E2", color: s.tipo === "entrada" ? "#16A34A" : "#E24B4A" }}>
+                                        <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 10, fontWeight: 600, background: s.tipo === "entrada" ? "#E8E8E8" : "#FCE7F9", color: s.tipo === "entrada" ? "#111111" : "#C026D3" }}>
                                           {s.tipo === "entrada" ? "Entrada" : "Saída"}
                                         </span>
                                       </td>
-                                      <td style={{ padding: "11px 16px", textAlign: "right", fontWeight: 700, fontSize: 14, color: s.tipo === "entrada" ? "#16A34A" : "#E24B4A" }}>
+                                      <td style={{ padding: "11px 16px", textAlign: "right", fontWeight: 700, fontSize: 14, color: s.tipo === "entrada" ? "#111111" : "#C026D3" }}>
                                         {s.tipo === "entrada" ? "+" : "−"} {fmtBRL(s.valor, 2)}
                                       </td>
                                       <td style={{ padding: "11px 16px", width: 64 }}>
@@ -772,9 +772,9 @@ function FinanceiroRelatoriosInner() {
                             <div style={{ padding: "14px 28px", borderTop: "0.5px solid #DDD6FE", background: "#F5F3FF", borderRadius: "0 0 12px 12px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
                               <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
                                 <span style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700 }}>Impacto ({simsAtivas.length} ativas):</span>
-                                <span style={{ fontSize: 14, color: "#16A34A", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0), 2)}</span>
-                                <span style={{ fontSize: 14, color: "#E24B4A", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0), 2)}</span>
-                                <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#111111" : "#E24B4A" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
+                                <span style={{ fontSize: 14, color: "#111111", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0), 2)}</span>
+                                <span style={{ fontSize: 14, color: "#C026D3", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0), 2)}</span>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#111111" : "#C026D3" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
                               </div>
                               <button onClick={imprimirSimsCenarios}
                                 style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
