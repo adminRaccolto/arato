@@ -79,6 +79,7 @@ type ArrFaz = {
   observacao: string;
   produtor_id: string;
   produtor_id_2: string;
+  ie_id: string;
   aberto: boolean;
   mats: { _key: string; id?: string; numero: string; area_ha: string; cartorio: string }[];
 };
@@ -321,6 +322,7 @@ function CadastrosInner() {
   const [buscandoCepFaz, setBuscandoCepFaz] = useState(false);
   const [cepAutoOk, setCepAutoOk]           = useState(false);
   const [fazArrendamentos, setFazArrendamentos] = useState<ArrFaz[]>([]);
+  const [iesMapArr,        setIesMapArr]        = useState<Record<string, ProdutorIE[]>>({});
   const [fazMatsLocal, setFazMatsLocal] = useState<FazMatLocal[]>([]);
   const [fFaz, setFFaz]               = useState({
     nome: "", municipio: "", estado: "MT", area: "", cnpj: "",
@@ -1127,9 +1129,20 @@ function CadastrosInner() {
           observacao: a.observacao ?? "",
           produtor_id: (a as { produtor_id?: string | null }).produtor_id ?? "",
           produtor_id_2: (a as { produtor_id_2?: string | null }).produtor_id_2 ?? "",
+          ie_id: (a as { ie_id?: string | null }).ie_id ?? "",
           aberto: false,
           mats: [],
         })));
+        // Pré-carrega IEs dos produtores já associados
+        const mapped = arrs.filter(a => (a as { produtor_id?: string | null }).produtor_id);
+        const iesInit: Record<string, ProdutorIE[]> = {};
+        await Promise.allSettled(mapped.map(async a => {
+          const pid = (a as { produtor_id?: string | null }).produtor_id!;
+          const key = a.id;
+          const ies = await listarIEsDoProdutor(pid, f.id).catch(() => []);
+          iesInit[key] = ies;
+        }));
+        setIesMapArr(iesInit);
       } catch { setFazArrendamentos([]); }
       // Carrega CARs múltiplos
       try {
@@ -1295,6 +1308,7 @@ function CadastrosInner() {
       observacao: a.observacao || undefined,
       produtor_id: a.produtor_id || undefined,
       produtor_id_2: a.produtor_id_2 || undefined,
+      ie_id: a.ie_id || undefined,
       mats: a.mats.map(m => ({ id: m.id, numero: m.numero, area_ha: m.area_ha ? Number(m.area_ha) : undefined, cartorio: m.cartorio || undefined })),
     })));
     // Salva CARs múltiplos
@@ -7710,9 +7724,49 @@ function CadastrosInner() {
                               <ProdutorCombo
                                 produtores={produtores}
                                 value={a.produtor_id}
-                                onChange={id => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,produtor_id:id} : x))}
+                                onChange={id => {
+                                  setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,produtor_id:id,ie_id:""} : x));
+                                  if (id) {
+                                    listarIEsDoProdutor(id, fazendaId ?? undefined).then(ies => {
+                                      setIesMapArr(prev => ({ ...prev, [a._key]: ies }));
+                                      if (ies.length === 1) setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,ie_id:ies[0].id} : x));
+                                    }).catch(() => setIesMapArr(prev => ({ ...prev, [a._key]: [] })));
+                                  } else {
+                                    setIesMapArr(prev => ({ ...prev, [a._key]: [] }));
+                                  }
+                                }}
                                 placeholder="Não especificado"
                               />
+                              {a.produtor_id && (() => {
+                                const ies = iesMapArr[a._key] ?? [];
+                                return (
+                                  <div style={{ marginTop: 6 }}>
+                                    <label style={{ ...lbl, color: "#C9921B" }}>
+                                      Inscrição Estadual (IE)
+                                      {ies.length > 1 && <span style={{ fontWeight: 400, color: "#888" }}> — {ies.length} registradas</span>}
+                                    </label>
+                                    {ies.length > 1 ? (
+                                      <select
+                                        style={{ ...inp, borderColor: !a.ie_id ? "#E24B4A" : undefined }}
+                                        value={a.ie_id}
+                                        onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,ie_id:e.target.value} : x))}
+                                      >
+                                        <option value="">— selecione a IE —</option>
+                                        {ies.map(ie => (
+                                          <option key={ie.id} value={ie.id}>
+                                            {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}{ie.ativa ? "" : " (inativa)"}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : ies.length === 1 ? (
+                                      <input style={{ ...inp, background: "var(--bg-page)", color: "#555", cursor: "default" }}
+                                        value={`${ies[0].inscricao_estadual} — ${ies[0].municipio ? `${ies[0].municipio}/` : ""}${ies[0].estado}`} readOnly />
+                                    ) : (
+                                      <input style={{ ...inp, color: "#888" }} value="IE não cadastrada" readOnly />
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div>
                               <label style={lbl}>2º Agricultor (contrato conjunto)</label>
@@ -7751,7 +7805,7 @@ function CadastrosInner() {
                     </div>
                   )}
                 </div>
-                <button style={{ ...btnV, background: "#C9921B", marginTop: 14 }} onClick={() => setFazArrendamentos(p => [...p, { _key: `arr_${Date.now()}`, proprietario_id: "", proprietario_nome: "", area_ha: "", forma_pagamento: "sc_soja", sc_ha: "", sc_milho_ha: "", valor_brl: "", ano_safra_id: "", inicio: "", vencimento: "", renovacao_auto: false, observacao: "", produtor_id: fFaz.produtor_id, produtor_id_2: "", aberto: true, mats: [] }])}>+ Novo Arrendamento</button>
+                <button style={{ ...btnV, background: "#C9921B", marginTop: 14 }} onClick={() => setFazArrendamentos(p => [...p, { _key: `arr_${Date.now()}`, proprietario_id: "", proprietario_nome: "", area_ha: "", forma_pagamento: "sc_soja", sc_ha: "", sc_milho_ha: "", valor_brl: "", ano_safra_id: "", inicio: "", vencimento: "", renovacao_auto: false, observacao: "", produtor_id: fFaz.produtor_id, produtor_id_2: "", ie_id: "", aberto: true, mats: [] }])}>+ Novo Arrendamento</button>
                 {!fFaz.area && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>Dica: preencha a Área total na aba Dados Gerais para calcular percentuais.</div>}
               </div>
             )}
