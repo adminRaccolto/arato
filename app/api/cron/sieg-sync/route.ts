@@ -113,10 +113,14 @@ async function syncFazenda(
 
       // Arquiva XML
       const xmlPath = `nfs-sieg/${fazendaId}/${nfe.chave}.xml`;
-      await db.storage.from("arquivos").upload(xmlPath, xml, {
+      const { error: uploadErr } = await db.storage.from("arquivos").upload(xmlPath, xml, {
         contentType: "application/xml",
         upsert: true,
       });
+      if (uploadErr) {
+        console.warn(`[sieg] upload XML falhou para chave ${nfe.chave}: ${uploadErr.message}`);
+      }
+      const xmlStorageOk = !uploadErr;
 
       // Verifica/cria fornecedor
       let pessoaId: string | null = null;
@@ -173,7 +177,7 @@ async function syncFazenda(
         cnpj_emitente:    nfe.cnpj_emitente,
         nome_emitente:    nfe.nome_emitente || null,
         valor_total:      nfe.valor_total,
-        xml_storage_path: xmlPath,
+        xml_storage_path: xmlStorageOk ? xmlPath : null,
         status:           "pendente",
         pessoa_id:        pessoaId,
         cp_id:            cpId,

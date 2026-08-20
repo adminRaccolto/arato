@@ -608,7 +608,7 @@ export default function NfServicoPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
-      <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1300, margin: "0 auto", width: "100%" }}>
+      <main style={{ flex: 1, padding: "24px 28px", width: "100%" }}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -776,8 +776,10 @@ export default function NfServicoPage() {
                       </td>
                       {/* Valor Total */}
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtBRL(nf.valor_servico)}
-                        <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>líq. {fmtBRL(nf.valor_liquido)}</div>
+                        {fmtBRL(nf.valor_servico || nf.valor_liquido)}
+                        {nf.valor_servico > 0 && nf.valor_liquido !== nf.valor_servico && (
+                          <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>líq. {fmtBRL(nf.valor_liquido)}</div>
+                        )}
                       </td>
                       {/* Status */}
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
@@ -871,7 +873,7 @@ export default function NfServicoPage() {
 
               {/* ─── PASSO 1: PRESTADOR & DATA ─────────────── */}
               {etapa === "prestador" && (
-                <div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
+                <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   {/* Prestador */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -928,16 +930,17 @@ export default function NfServicoPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                    <button style={btnR} onClick={() => setWizard(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
-                    <button style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>
-                  </div>
                 </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+                  <button style={btnR} onClick={() => setWizard(false)}>Fechar</button>
+                  {!viewOnly && <button style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>}
+                </div>
+                </>
               )}
 
               {/* ─── PASSO 2: SERVIÇO ──────────────────────── */}
               {etapa === "servico" && (
-                <div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
+                <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação do Serviço</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
@@ -979,19 +982,20 @@ export default function NfServicoPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <button style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</button>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button style={btnR} onClick={() => setWizard(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
-                      <button style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>
-                    </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+                  <button style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</button>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button style={btnR} onClick={() => setWizard(false)}>Fechar</button>
+                    {!viewOnly && <button style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>}
                   </div>
                 </div>
+                </>
               )}
 
               {/* ─── PASSO 3: TRIBUTAÇÃO & LANÇAMENTO ────────── */}
               {etapa === "tributacao" && (
-                <div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
+                <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   {/* Valores */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Valores e ISS</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -1198,21 +1202,22 @@ export default function NfServicoPage() {
                     <textarea value={cab.observacao} onChange={e => setCab(p=>({...p,observacao:e.target.value}))} rows={2} style={{ ...inp, resize: "vertical" }} />
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <button style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button style={btnR} onClick={() => setWizard(false)}>{viewOnly ? "Fechar" : "Cancelar"}</button>
-                      {!viewOnly && <>
-                        <button style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
-                          {saving ? "Salvando…" : "Salvar como Pendente"}
-                        </button>
-                        <button style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
-                          {saving ? "Processando…" : "✓ Processar NF"}
-                        </button>
-                      </>}
-                    </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+                  <button style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button style={btnR} onClick={() => setWizard(false)}>Fechar</button>
+                    {!viewOnly && <>
+                      <button style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
+                        {saving ? "Salvando…" : "Salvar como Pendente"}
+                      </button>
+                      <button style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
+                        {saving ? "Processando…" : "✓ Processar NF"}
+                      </button>
+                    </>}
                   </div>
                 </div>
+                </>
               )}
             </div>
           </div>
