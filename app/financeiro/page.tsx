@@ -2136,58 +2136,76 @@ export default function Financeiro() {
       {modalGerenciarSim && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)" }}>Simulações de Fluxo</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Aparecem em roxo no fluxo · ativas afetam os totais do dia</div>
-              </div>
-              <div style={{ display: "flex", gap: 6, fontSize: 11 }}>
-                <span style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "3px 10px", borderRadius: 8 }}>{simulacoes.filter(s => s.ativa).length} ativas</span>
-                <span style={{ background: "#F1EFE8", color: "var(--text-2)", padding: "3px 10px", borderRadius: 8 }}>{simulacoes.filter(s => !s.ativa).length} pausadas</span>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 600, maxWidth: "94vw", maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+
+            {/* ── Cabeçalho fixo ── */}
+            <div style={{ padding: "20px 24px 14px", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)" }}>Simulador de Cenários</div>
+                  <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Aparecem em roxo no fluxo · ativas afetam os totais do dia</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, fontSize: 11, alignItems: "center" }}>
+                  <span style={{ background: "#EDE9FE", color: "#4C1D95", padding: "3px 10px", borderRadius: 8, fontWeight: 600 }}>{simulacoes.filter(s => s.ativa).length} ativas</span>
+                  <span style={{ background: "#F1EFE8", color: "var(--text-2)", padding: "3px 10px", borderRadius: 8 }}>{simulacoes.filter(s => !s.ativa).length} pausadas</span>
+                  <button onClick={() => setModalGerenciarSim(false)} style={{ marginLeft: 6, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: "0 4px" }}>×</button>
+                </div>
               </div>
             </div>
 
-            {simulacoes.length === 0 ? (
-              <div style={{ padding: "24px 0", textAlign: "center", color: "#444", fontSize: 12 }}>
-                Nenhuma simulação criada ainda.<br />
-                <span style={{ fontSize: 11 }}>Use o botão <strong>+ sim</strong> em qualquer dia do fluxo vertical para criar uma.</span>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {simulacoes.map(s => (
-                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: s.ativa ? "#FBF3E0" : "#F8F8F8", border: `0.5px solid ${s.ativa ? "#C9921B30" : "var(--border-table)"}`, opacity: s.ativa ? 1 : 0.6 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 12, color: s.ativa ? "#7A5A12" : "#444" }}>{s.descricao}</div>
-                      <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>
-                        {fmtData(s.data)} · {s.tipo === "receber" ? "entrada" : "saída"}
-                      </div>
+            {/* ── Lista rolável ── */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 24px", display: "flex", flexDirection: "column", gap: 6 }}>
+              {simulacoes.length === 0 ? (
+                <div style={{ padding: "24px 0", textAlign: "center", color: "#444", fontSize: 12 }}>
+                  Nenhuma simulação criada ainda.<br />
+                  <span style={{ fontSize: 11 }}>Use o botão <strong>+ sim</strong> em qualquer dia do fluxo para criar uma.</span>
+                </div>
+              ) : simulacoes.map(s => (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: s.ativa ? "#FBF3E0" : "#F8F8F8", border: `0.5px solid ${s.ativa ? "#C9921B30" : "var(--border-table)"}`, opacity: s.ativa ? 1 : 0.6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 12, color: s.ativa ? "#7A5A12" : "#444", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.descricao}</div>
+                    <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>
+                      {fmtData(s.data)} · {s.tipo === "receber" ? "entrada" : "saída"}
                     </div>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: s.ativa ? "#C9921B" : "var(--text-3)" }}>
-                      {s.tipo === "receber" ? "+" : "−"} {fmtBRL(s.valor)}
-                    </span>
-                    {/* Toggle ativa/pausada */}
-                    <div
-                      onClick={() => handleToggleSim(s.id, !s.ativa)}
-                      title={s.ativa ? "Pausar simulação" : "Ativar simulação"}
-                      style={{ width: 34, height: 18, borderRadius: 9, cursor: "pointer", flexShrink: 0, background: s.ativa ? "#C9921B" : "#ddd", position: "relative", transition: "background 0.15s" }}
-                    >
-                      <span style={{ position: "absolute", top: 1, width: 16, height: 16, background: "var(--bg-card)", borderRadius: "50%", left: s.ativa ? 16 : 1, transition: "left 0.15s", display: "block" }} />
-                    </div>
-                    <button onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A60", background: "#FCEBEB", color: "#791F1F", borderRadius: 6, cursor: "pointer" }}>✕</button>
                   </div>
-                ))}
-              </div>
-            )}
+                  <span style={{ fontWeight: 700, fontSize: 13, color: s.ativa ? (s.tipo === "receber" ? "#16A34A" : "#E24B4A") : "var(--text-3)", whiteSpace: "nowrap" }}>
+                    {s.tipo === "receber" ? "+" : "−"} {fmtBRL(s.valor)}
+                  </span>
+                  <div
+                    onClick={() => handleToggleSim(s.id, !s.ativa)}
+                    title={s.ativa ? "Pausar simulação" : "Ativar simulação"}
+                    style={{ width: 34, height: 18, borderRadius: 9, cursor: "pointer", flexShrink: 0, background: s.ativa ? "#C9921B" : "#ddd", position: "relative", transition: "background 0.15s" }}
+                  >
+                    <span style={{ position: "absolute", top: 1, width: 16, height: 16, background: "var(--bg-card)", borderRadius: "50%", left: s.ativa ? 16 : 1, transition: "left 0.15s", display: "block" }} />
+                  </div>
+                  <button onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A60", background: "#FCEBEB", color: "#791F1F", borderRadius: 6, cursor: "pointer", flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
 
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <button
-                onClick={imprimirSimulacoes}
-                disabled={simulacoes.filter(s => s.ativa).length === 0}
-                style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: simulacoes.filter(s => s.ativa).length > 0 ? "#EBF2FA" : "#F4F6FA", color: simulacoes.filter(s => s.ativa).length > 0 ? "#1A4870" : "#aaa", cursor: simulacoes.filter(s => s.ativa).length > 0 ? "pointer" : "default", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                🖨 Imprimir quadro
-              </button>
-              <button onClick={() => setModalGerenciarSim(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
+            {/* ── Rodapé fixo: impacto + botões ── */}
+            <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "14px 24px", flexShrink: 0, background: "#FAFBFD", borderRadius: "0 0 14px 14px" }}>
+              {simulacoes.filter(s => s.ativa).length > 0 && (() => {
+                const ent = simulacoes.filter(s => s.ativa && s.tipo === "receber").reduce((a, s) => a + s.valor, 0);
+                const sai = simulacoes.filter(s => s.ativa && s.tipo !== "receber").reduce((a, s) => a + s.valor, 0);
+                return (
+                  <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 12, display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <span>Impacto <strong style={{ color: "#4C1D95" }}>({simulacoes.filter(s => s.ativa).length} ativas)</strong>:</span>
+                    <span style={{ color: "#16A34A", fontWeight: 700 }}>+{fmtBRL(ent)}</span>
+                    <span style={{ color: "#E24B4A", fontWeight: 700 }}>−{fmtBRL(sai)}</span>
+                    <span style={{ fontWeight: 700, color: ent - sai >= 0 ? "#0B2D50" : "#E24B4A" }}>Líquido: {fmtBRL(ent - sai)}</span>
+                  </div>
+                );
+              })()}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button
+                  onClick={imprimirSimulacoes}
+                  disabled={simulacoes.filter(s => s.ativa).length === 0}
+                  style={{ padding: "8px 18px", border: "0.5px solid #1A4870", borderRadius: 8, background: simulacoes.filter(s => s.ativa).length > 0 ? "#1A4870" : "#E8E8E8", color: simulacoes.filter(s => s.ativa).length > 0 ? "#fff" : "#aaa", cursor: simulacoes.filter(s => s.ativa).length > 0 ? "pointer" : "default", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}>
+                  🖨 Imprimir relatório
+                </button>
+                <button onClick={() => setModalGerenciarSim(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Fechar</button>
+              </div>
             </div>
           </div>
         </div>
