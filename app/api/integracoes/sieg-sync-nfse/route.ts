@@ -151,14 +151,18 @@ export async function POST(req: NextRequest) {
 
     // ── Período ───────────────────────────────────────────────────────────────
     const toISO   = (d: string) => d.length === 10 ? d + "T00:00:00.000Z" : d;
-    const umAno   = new Date(Date.now() - 365 * 86_400_000).toISOString();
-    const iniStr  = dtIni ? toISO(dtIni) : (cfg.ultima_sync_nfse_ts ?? umAno);
+    // Padrão 30 dias (não 1 ano) para a primeira sync ser rápida
+    const trintaDias = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const iniStr  = dtIni ? toISO(dtIni) : (cfg.ultima_sync_nfse_ts ?? trintaDias);
     const fimStr  = dtFim ? toISO(dtFim).replace("T00:00:00.000Z", "T23:59:59.999Z") : new Date().toISOString();
 
     console.log(`[nfse] fazenda=${fazenda_id} cnpjs=${cnpjs.join(",")} ${iniStr.slice(0,10)}→${fimStr.slice(0,10)}`);
 
     // ── Buscar XMLs no SIEG ───────────────────────────────────────────────────
-    // Tenta primeiro com CnpjTom; se vier 0 XMLs, tenta sem filtro e filtra client-side
+    // Estratégia em 3 níveis (NFSe no SIEG pode ser indexada de formas diferentes):
+    // 1. CnpjTom  (tomador — padrão ABRASF)
+    // 2. CnpjDest (destinatário — variante de alguns provedores no SIEG)
+    // 3. Fallback geral chunked + filtro client-side (último recurso; limita a 30 dias)
     const xmlsList: Array<{ xml: string; cnpj: string }> = [];
     let importadas = 0;
     let duplicadas = 0;
@@ -167,45 +171,59 @@ export async function POST(req: NextRequest) {
     for (const cnpj of cnpjs) {
       let docs: string[] = [];
 
+      // Nível 1 — CnpjTom
       try {
         docs = await baixarXmlsSiegChunked(siegCreds, {
           TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjTom: cnpj,
         });
         console.log(`[nfse] CnpjTom=${cnpj}: ${docs.length} XMLs`);
       } catch (e) {
-        return NextResponse.json({ erro: `Falha SIEG: ${e}` }, { status: 502 });
+        console.warn(`[nfse] CnpjTom falhou: ${e}`);
       }
 
-      if (docs.length > 0) {
-        for (const xml of docs) xmlsList.push({ xml, cnpj });
-      } else {
-        // CnpjTom retornou 0 — conta SIEG pode não indexar por tomador.
-        // Fallback: download geral + filtro client-side pelo CNPJ no XML.
-        // Limitado a ≤55 dias (uma página de resultados, sem chunking) para não acumular 429s.
+      // Nível 2 — CnpjDest (NFSe indexada como "destinatário" no SIEG)
+      if (docs.length === 0) {
+        await sleep(1500);
+        try {
+          docs = await baixarXmlsSiegChunked(siegCreds, {
+            TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjDest: cnpj,
+          });
+          console.log(`[nfse] CnpjDest=${cnpj}: ${docs.length} XMLs`);
+        } catch (e) {
+          console.warn(`[nfse] CnpjDest falhou: ${e}`);
+        }
+      }
+
+      // Nível 3 — Fallback geral: download sem filtro + filtro client-side no XML
+      // Limita a 30 dias para não exceder o timeout de 300s
+      if (docs.length === 0) {
         const diffDias = (new Date(fimStr).getTime() - new Date(iniStr).getTime()) / 86_400_000;
-        if (diffDias > 55) {
-          console.warn(`[nfse] CnpjTom=${cnpj}: 0 XMLs e período ${Math.ceil(diffDias)}d > 55d. Reduza o intervalo.`);
-          erros.push(`CNPJ ${cnpj}: filtro CnpjTom não suportado e período > 55 dias. Selecione no máximo 55 dias e tente novamente.`);
+        const limiteFallback = 30;
+        if (diffDias > limiteFallback) {
+          console.warn(`[nfse] CnpjTom e CnpjDest retornaram 0 e período (${Math.ceil(diffDias)}d) > ${limiteFallback}d. Restrinja o período para o fallback.`);
+          erros.push(`CNPJ ${cnpj}: nenhuma NFS-e encontrada pelos filtros do SIEG. Tente um período de até 30 dias para o modo fallback.`);
         } else {
-          console.log(`[nfse] CnpjTom=${cnpj}: fallback geral (período ${Math.ceil(diffDias)}d)`);
-          await sleep(2000); // deixa o rate limit do SIEG recuperar antes do próximo call
+          await sleep(2000);
+          console.log(`[nfse] Fallback geral para CNPJ ${cnpj} (${Math.ceil(diffDias)} dias)…`);
           try {
-            const all = await baixarXmlsSieg(siegCreds, {
+            const all = await baixarXmlsSiegChunked(siegCreds, {
               TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr,
             });
-            console.log(`[nfse] fallback: ${all.length} XMLs total`);
+            console.log(`[nfse] Fallback: ${all.length} XMLs total`);
             for (const xml of all) {
               const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador");
               const tId  = blk(tBlk || xml, "IdentificacaoTomador", "CpfCnpjTomador");
               const cTom = tv(tId || tBlk || xml, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "");
-              if (cTom === cnpj) xmlsList.push({ xml, cnpj });
+              if (cTom === cnpj) docs.push(xml);
             }
-            console.log(`[nfse] fallback após filtro: ${xmlsList.filter(x => x.cnpj === cnpj).length} XMLs do CNPJ ${cnpj}`);
+            console.log(`[nfse] Fallback filtrado: ${docs.length} XMLs para CNPJ ${cnpj}`);
           } catch (e2) {
-            console.warn(`[nfse] fallback falhou: ${e2}`);
+            console.warn(`[nfse] Fallback falhou: ${e2}`);
           }
         }
       }
+
+      for (const xml of docs) xmlsList.push({ xml, cnpj });
     }
 
     console.log(`[nfse] total XMLs: ${xmlsList.length}`);

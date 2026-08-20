@@ -520,10 +520,14 @@ export default function NfServicoPage() {
     if (!fazendaId) return;
     setSiegSyncing(true); setSiegSyncMsg("");
     try {
+      const ctrl = new AbortController();
+      const tmo  = setTimeout(() => ctrl.abort(), 120_000); // 2 min
       const res = await fetch("/api/integracoes/sieg-sync-nfse", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim, force_reimport: siegForceReimport }),
+        signal: ctrl.signal,
       });
+      clearTimeout(tmo);
       let d: Record<string, unknown>;
       try {
         d = await res.json() as Record<string, unknown>;
