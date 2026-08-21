@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { useAuth } from "../../../components/AuthProvider";
@@ -24,6 +24,9 @@ const STATUS_COR: Record<string, string> = {
   vencido: "#E24B4A", parcial: "#9333EA", baixado: "#16A34A",
 };
 
+type OrdemGrupos = "label_asc" | "label_desc" | "valor_desc" | "valor_asc" | "qtd_desc";
+type OrdemLinhas = "vcto_asc" | "vcto_desc" | "valor_desc" | "valor_asc" | "descricao_asc";
+
 interface LancRow extends Lancamento {
   pessoa_nome?: string;
   op_descricao?: string;
@@ -46,8 +49,16 @@ function RelFinClassInner() {
   const [statusSel, setStatusSel] = useState<Set<string>>(
     new Set(["em_aberto", "vencendo", "vencido", "parcial", "baixado"])
   );
-  const [classifSel, setClassifSel] = useState<Set<string>>(new Set());
+
+  // null = sem filtro (mostra tudo); Set = mostra só os IDs listados
+  const [classifSel, setClassifSel] = useState<Set<string> | null>(null);
   const [classifOpts, setClassifOpts] = useState<{ chave: string; label: string }[]>([]);
+  const [classifDropdownOpen, setClassifDropdownOpen] = useState(false);
+  const [classifBusca, setClassifBusca] = useState("");
+  const classifDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [ordemGrupos, setOrdemGrupos] = useState<OrdemGrupos>("label_asc");
+  const [ordemLinhas, setOrdemLinhas] = useState<OrdemLinhas>("vcto_asc");
 
   const [grupos, setGrupos]   = useState<Grupo[]>([]);
   const [gerado, setGerado]   = useState(false);
@@ -59,9 +70,9 @@ function RelFinClassInner() {
     listarOperacoesGerenciais(fazendaId).then(setOps).catch(() => {});
   }, [fazendaId]);
 
-  // ── carregar classificações disponíveis ──────────────────────────────────
+  // carregar OGs usadas em lançamentos
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazendaId || ops.length === 0) return;
     supabase.from("lancamentos")
       .select("categoria, operacao_gerencial_id")
       .in("fazenda_id", fazendaIds)
@@ -77,9 +88,42 @@ function RelFinClassInner() {
           .map(([chave, label]) => ({ chave, label }))
           .sort((a, b) => a.label.localeCompare(b.label));
         setClassifOpts(sorted);
-        setClassifSel(new Set(sorted.map(s => s.chave)));
       });
   }, [fazendaId, ops]);
+
+  // fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (classifDropdownRef.current && !classifDropdownRef.current.contains(e.target as Node)) {
+        setClassifDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // OGs disponíveis no dropdown — somente as que têm lançamentos
+  const optsVisiveis = classifOpts.filter(o =>
+    classifBusca === "" || o.label.toLowerCase().includes(classifBusca.toLowerCase())
+  );
+
+  const totalOpts = classifOpts.length;
+  const selCount = classifSel === null ? totalOpts : [...classifSel].filter(id => classifOpts.some(o => o.chave === id)).length;
+
+  function toggleClassif(chave: string) {
+    if (classifSel === null) {
+      // estava "todas" → desmarcar só esta
+      const novo = new Set(classifOpts.map(o => o.chave).filter(x => x !== chave));
+      setClassifSel(novo);
+    } else {
+      const n = new Set(classifSel);
+      n.has(chave) ? n.delete(chave) : n.add(chave);
+      setClassifSel(n);
+    }
+  }
+  function isChecked(chave: string) {
+    return classifSel === null || classifSel.has(chave);
+  }
 
   function toggleStatus(s: string) {
     setStatusSel(prev => {
@@ -88,11 +132,30 @@ function RelFinClassInner() {
       return n;
     });
   }
-  function toggleClassif(c: string) {
-    setClassifSel(prev => {
-      const n = new Set(prev);
-      n.has(c) ? n.delete(c) : n.add(c);
-      return n;
+
+  // ordenar linhas dentro do grupo
+  function sortLinhas(rows: LancRow[]): LancRow[] {
+    return [...rows].sort((a, b) => {
+      switch (ordemLinhas) {
+        case "vcto_asc":      return (a.data_vencimento ?? "").localeCompare(b.data_vencimento ?? "");
+        case "vcto_desc":     return (b.data_vencimento ?? "").localeCompare(a.data_vencimento ?? "");
+        case "valor_desc":    return b.valor - a.valor;
+        case "valor_asc":     return a.valor - b.valor;
+        case "descricao_asc": return (a.descricao ?? "").localeCompare(b.descricao ?? "");
+      }
+    });
+  }
+
+  // ordenar grupos
+  function sortGrupos(gs: Grupo[]): Grupo[] {
+    return [...gs].sort((a, b) => {
+      switch (ordemGrupos) {
+        case "label_asc":   return a.label.localeCompare(b.label);
+        case "label_desc":  return b.label.localeCompare(a.label);
+        case "valor_desc":  return Math.abs(b.total) - Math.abs(a.total);
+        case "valor_asc":   return Math.abs(a.total) - Math.abs(b.total);
+        case "qtd_desc":    return b.rows.length - a.rows.length;
+      }
     });
   }
 
@@ -106,9 +169,7 @@ function RelFinClassInner() {
         .select("*, pessoas(nome)")
         .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", inicio)
-        .lte("data_vencimento", fim)
-        .order("categoria")
-        .order("data_vencimento");
+        .lte("data_vencimento", fim);
 
       if (tipo !== "todos") q = q.eq("tipo", tipo);
       if (statusSel.size < 5)
@@ -127,7 +188,9 @@ function RelFinClassInner() {
       const mapaGrupos = new Map<string, Grupo>();
       rows.forEach(r => {
         const chave = r.operacao_gerencial_id ?? r.categoria ?? "Sem Classificação";
-        if (classifSel.size > 0 && !classifSel.has(chave)) return;
+        // aplicar filtro de classificação
+        if (classifSel !== null && classifSel.size > 0 && !classifSel.has(chave)) return;
+        if (classifSel !== null && classifSel.size === 0) return; // nenhuma selecionada
         const label = r.op_descricao ?? r.categoria ?? "Sem Classificação";
         if (!mapaGrupos.has(chave)) mapaGrupos.set(chave, { chave, label, rows: [], total: 0 });
         const g = mapaGrupos.get(chave)!;
@@ -135,7 +198,11 @@ function RelFinClassInner() {
         g.total += r.tipo === "pagar" ? -r.valor : r.valor;
       });
 
-      setGrupos([...mapaGrupos.values()].sort((a, b) => a.label.localeCompare(b.label)));
+      // ordenar linhas de cada grupo
+      const gruposOrdenados = sortGrupos(
+        [...mapaGrupos.values()].map(g => ({ ...g, rows: sortLinhas(g.rows) }))
+      );
+      setGrupos(gruposOrdenados);
       setGerado(true);
     } finally {
       setLoading(false);
@@ -243,17 +310,14 @@ function RelFinClassInner() {
 
     const ws_data: (string | number)[][] = [];
 
-    // Cabeçalho
     ws_data.push([`Relatório Financeiro por Classificação — ${nomeFazendaSelecionada ?? ""}`]);
     ws_data.push([`Período: ${fmtDate(inicio)} a ${fmtDate(fim)} | Tipo: ${{ todos: "CP + CR", pagar: "Contas a Pagar", receber: "Contas a Receber" }[tipo]}`]);
     ws_data.push([`Gerado em: ${new Date().toLocaleString("pt-BR")}`]);
     ws_data.push([]);
 
-    // Header das colunas
     ws_data.push(["Vcto", "Descrição", "Fornecedor / Cliente", "Parcela", "Tipo", "Valor (R$)", "Status", "Data Baixa"]);
 
     grupos.forEach(g => {
-      // Linha de grupo
       ws_data.push([g.label, "", "", "", "", "", "", ""]);
 
       g.rows.forEach(r => {
@@ -269,13 +333,11 @@ function RelFinClassInner() {
         ]);
       });
 
-      // Subtotal
       const subTotal = g.rows.reduce((s, r) => s + (r.tipo === "pagar" ? -r.valor : r.valor), 0);
       ws_data.push(["", "", "", "", `Subtotal ${g.label}`, subTotal, "", ""]);
       ws_data.push([]);
     });
 
-    // Total geral
     ws_data.push(["", "", "", "", "TOTAL ENTRADAS", totalEntradas, "", ""]);
     ws_data.push(["", "", "", "", "TOTAL SAÍDAS", -totalSaidas, "", ""]);
     ws_data.push(["", "", "", "", "SALDO", saldo, "", ""]);
@@ -283,14 +345,12 @@ function RelFinClassInner() {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-    // Larguras das colunas
     ws["!cols"] = [
       { wch: 12 }, { wch: 40 }, { wch: 30 }, { wch: 10 },
       { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 12 },
     ];
 
-    // Formatação de número nas células de valor
-    const valueCol = 5; // coluna F (0-indexed)
+    const valueCol = 5;
     const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
     for (let R = range.s.r; R <= range.e.r; R++) {
       const cell = ws[XLSX.utils.encode_cell({ r: R, c: valueCol })];
@@ -301,7 +361,6 @@ function RelFinClassInner() {
 
     XLSX.utils.book_append_sheet(wb, ws, "Por Classificação");
 
-    // Aba Resumo
     const resumo: (string | number)[][] = [
       ["Classificação", "Entradas (R$)", "Saídas (R$)", "Saldo (R$)", "Qtd Lançamentos"],
     ];
@@ -324,7 +383,7 @@ function RelFinClassInner() {
   // ── estilos ───────────────────────────────────────────────────────────────
   const inp: React.CSSProperties = {
     padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8,
-    fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", outline: "none",
+    fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", outline: "none", width: "100%",
   };
   const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
   const btnCheck = (active: boolean, cor?: string): React.CSSProperties => ({
@@ -333,6 +392,10 @@ function RelFinClassInner() {
     background: active ? (cor ?? "#111111") + "15" : "var(--bg-card)",
     color: active ? (cor ?? "#111111") : "var(--text-3)",
   });
+  const selStyle: React.CSSProperties = {
+    padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8,
+    fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", outline: "none", cursor: "pointer",
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
@@ -360,6 +423,8 @@ function RelFinClassInner() {
 
         {/* Filtros */}
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
+
+          {/* Linha 1: datas, tipo, status */}
           <div style={{ display: "grid", gridTemplateColumns: "160px 160px 1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={lbl}>Data Início (Vcto)</label>
@@ -393,26 +458,133 @@ function RelFinClassInner() {
             </div>
           </div>
 
-          {/* Classificações */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <label style={{ ...lbl, margin: 0 }}>Classificações</label>
-              <button onClick={() => setClassifSel(new Set(classifOpts.map(c => c.chave)))}
-                style={{ fontSize: 11, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-                Todas
-              </button>
-              <button onClick={() => setClassifSel(new Set())}
-                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-                Nenhuma
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {classifOpts.map(c => (
-                <button key={c.chave} onClick={() => toggleClassif(c.chave)}
-                  style={btnCheck(classifSel.has(c.chave))}>
-                  {c.label}
+          {/* Linha 2: classificações (dropdown) + ordenação */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 220px 220px", gap: 16, alignItems: "end" }}>
+
+            {/* Dropdown multi-select de OGs */}
+            <div>
+              <label style={lbl}>
+                Operações Gerenciais
+                {classifSel !== null && classifSel.size < totalOpts && (
+                  <span style={{ marginLeft: 8, color: "#C9921B", fontWeight: 600 }}>
+                    {selCount} de {totalOpts} selecionada{selCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </label>
+              <div ref={classifDropdownRef} style={{ position: "relative" }}>
+                {/* Trigger */}
+                <button
+                  onClick={() => setClassifDropdownOpen(v => !v)}
+                  style={{
+                    width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)",
+                    borderRadius: 8, fontSize: 13, background: "var(--bg-input)", color: "var(--text-1)",
+                    cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center",
+                    outline: "none",
+                  }}
+                >
+                  <span>
+                    {classifSel === null || selCount === totalOpts
+                      ? `Todas (${totalOpts})`
+                      : classifSel.size === 0
+                        ? "Nenhuma selecionada"
+                        : `${selCount} de ${totalOpts} selecionada${selCount !== 1 ? "s" : ""}`}
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--text-3)" }}>{classifDropdownOpen ? "▲" : "▼"}</span>
                 </button>
-              ))}
+
+                {/* Panel */}
+                {classifDropdownOpen && (
+                  <div style={{
+                    position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 200,
+                    background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10,
+                    boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+                  }}>
+                    {/* Busca */}
+                    <div style={{ padding: "10px 12px", borderBottom: "0.5px solid var(--border)" }}>
+                      <input
+                        type="text"
+                        placeholder="Buscar OG..."
+                        value={classifBusca}
+                        onChange={e => setClassifBusca(e.target.value)}
+                        style={{ ...inp, padding: "6px 10px", width: "100%" }}
+                        autoFocus
+                      />
+                    </div>
+                    {/* Todas / Nenhuma */}
+                    <div style={{ padding: "6px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", gap: 16 }}>
+                      <button
+                        onClick={() => { setClassifSel(null); setClassifBusca(""); }}
+                        style={{ fontSize: 12, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}
+                      >
+                        Todas
+                      </button>
+                      <button
+                        onClick={() => setClassifSel(new Set())}
+                        style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      >
+                        Nenhuma
+                      </button>
+                    </div>
+                    {/* Lista de OGs usadas */}
+                    <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                      {optsVisiveis.length === 0 ? (
+                        <div style={{ padding: "12px 14px", fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>
+                          Nenhuma OG encontrada
+                        </div>
+                      ) : optsVisiveis.map(o => (
+                        <label key={o.chave} style={{
+                          display: "flex", alignItems: "center", gap: 10,
+                          padding: "7px 14px", cursor: "pointer",
+                          borderBottom: "0.5px solid var(--border-table)",
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked(o.chave)}
+                            onChange={() => toggleClassif(o.chave)}
+                            style={{ flexShrink: 0, cursor: "pointer", accentColor: "#1A4870" }}
+                          />
+                          <span style={{ fontSize: 12, color: "var(--text-1)", fontWeight: 500 }}>
+                            {o.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {/* Footer com botão fechar */}
+                    <div style={{ padding: "8px 12px", borderTop: "0.5px solid var(--border)", textAlign: "right" }}>
+                      <button
+                        onClick={() => setClassifDropdownOpen(false)}
+                        style={{ padding: "5px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Confirmar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ordenação dos grupos */}
+            <div>
+              <label style={lbl}>Ordenar grupos por</label>
+              <select value={ordemGrupos} onChange={e => setOrdemGrupos(e.target.value as OrdemGrupos)} style={selStyle}>
+                <option value="label_asc">Classificação A→Z</option>
+                <option value="label_desc">Classificação Z→A</option>
+                <option value="valor_desc">Maior valor (absoluto)</option>
+                <option value="valor_asc">Menor valor (absoluto)</option>
+                <option value="qtd_desc">Mais lançamentos</option>
+              </select>
+            </div>
+
+            {/* Ordenação das linhas */}
+            <div>
+              <label style={lbl}>Ordenar lançamentos por</label>
+              <select value={ordemLinhas} onChange={e => setOrdemLinhas(e.target.value as OrdemLinhas)} style={selStyle}>
+                <option value="vcto_asc">Vencimento (mais próximo)</option>
+                <option value="vcto_desc">Vencimento (mais antigo)</option>
+                <option value="valor_desc">Maior valor</option>
+                <option value="valor_asc">Menor valor</option>
+                <option value="descricao_asc">Descrição A→Z</option>
+              </select>
             </div>
           </div>
 
@@ -465,14 +637,12 @@ function RelFinClassInner() {
                         const subTotal = g.rows.reduce((s, r) => s + (r.tipo === "pagar" ? -r.valor : r.valor), 0);
                         return (
                           <React.Fragment key={g.chave}>
-                            {/* Cabeçalho do grupo */}
                             <tr style={{ background: "#111111" }}>
                               <td colSpan={7} style={{ padding: "8px 12px", fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>
                                 {g.label}
                                 <span style={{ float: "right", fontSize: 11, opacity: 0.8 }}>{g.rows.length} lançamento{g.rows.length !== 1 ? "s" : ""}</span>
                               </td>
                             </tr>
-                            {/* Linhas */}
                             {g.rows.map((r, i) => (
                               <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD", borderBottom: "0.5px solid #F0F3FA" }}>
                                 <td style={{ padding: "8px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDate(r.data_vencimento)}</td>
@@ -494,7 +664,6 @@ function RelFinClassInner() {
                                 </td>
                               </tr>
                             ))}
-                            {/* Subtotal */}
                             <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #E8E8E8" }}>
                               <td colSpan={4} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#111111", textAlign: "right" }}>
                                 Subtotal
@@ -506,7 +675,6 @@ function RelFinClassInner() {
                           </React.Fragment>
                         );
                       })}
-                      {/* Total geral */}
                       <tr style={{ background: "#111111" }}>
                         <td colSpan={4} style={{ padding: "10px 12px", fontSize: 13, fontWeight: 700, color: "#fff", textAlign: "right" }}>TOTAL GERAL</td>
                         <td colSpan={3} style={{ padding: "10px 12px", fontSize: 15, fontWeight: 800, textAlign: "right", color: saldo >= 0 ? "#86EFAC" : "#FCA5A5" }}>
