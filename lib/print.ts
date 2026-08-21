@@ -186,7 +186,8 @@ export function abrirPreviewImpressao(
       <!-- Cabeçalho do relatório -->
       <div class="rt-rep-header">
         <div>
-          <div class="rt-rep-logo">Arato</div>
+          <img src="${typeof window !== "undefined" ? window.location.origin : ""}/logo_Arato_Nova.png" alt="Arato" style="height:36px;object-fit:contain;display:block;" onerror="this.style.display='none';this.nextSibling.style.display='block';" />
+          <div class="rt-rep-logo" style="display:none;">Arato</div>
           <div class="rt-rep-tag">Gestão Agrícola · menos cliques, mais campo</div>
         </div>
         <div class="rt-rep-meta">

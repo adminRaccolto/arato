@@ -787,7 +787,7 @@ function FinanceiroRelatoriosInner() {
                     )}
 
                     {/* Sub-abas Diário / Mensal */}
-                    <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
+                    <div className="no-print" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
                       {(["diario", "mensal", "anual"] as const).map(t => (
                         <button key={t} onClick={() => setSubAbaFluxo(t)}
                           style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #111111" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "var(--bg-card)", color: subAbaFluxo === t ? "#111111" : "var(--text-3)", transition: "all 0.15s" }}>
@@ -800,7 +800,7 @@ function FinanceiroRelatoriosInner() {
                     {subAbaFluxo === "diario" && (
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
                       {/* Filtros — linha 1: período + produtores */}
-                      <div style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                      <div className="no-print" style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           <label style={labelStyle}>Início</label>
                           <input type="date" value={filtro.inicio} onChange={e => setFiltro(f => ({ ...f, inicio: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
@@ -825,7 +825,7 @@ function FinanceiroRelatoriosInner() {
                         )}
                       </div>
                       {/* Filtros — linha 2: tipo + moeda + toggles */}
-                      <div style={{ padding: "8px 20px 10px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                      <div className="no-print" style={{ padding: "8px 20px 10px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                         <span style={{ fontSize: 11, color: "var(--text-3)", marginRight: 2 }}>Tipo:</span>
                         {(["ambos", "previsto", "realizado"] as const).map(t => (
                           <button key={t} onClick={() => setFiltro(f => ({ ...f, tipoVis: t }))}
@@ -860,7 +860,7 @@ function FinanceiroRelatoriosInner() {
 
                       {/* Painel de checkboxes Produtores / Contas */}
                       {filtroAberto && (
-                        <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", gap: 32, flexWrap: "wrap" }}>
+                        <div className="no-print" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", gap: 32, flexWrap: "wrap" }}>
                           {/* Produtores */}
                           {produtores.length > 0 && (
                             <div>
@@ -1149,7 +1149,7 @@ function FinanceiroRelatoriosInner() {
                       return (
                         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                           {/* Cabeçalho */}
-                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                          <div className="no-print" style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                             <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                               Entradas e saídas por categoria · {incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}
                             </div>
@@ -1262,7 +1262,7 @@ function FinanceiroRelatoriosInner() {
                       ];
                       const inpA: React.CSSProperties = { padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" };
                       const barraFiltros = (
-                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div className="no-print" style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                           {/* Intervalo de vencimento */}
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Vencimento de</span>
