@@ -10276,3 +10276,97 @@ WHERE s.fazenda_id = f.id
 CREATE INDEX IF NOT EXISTS idx_simulacoes_conta_id ON simulacoes(conta_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 205: Backfill operacao_gerencial_id, pessoa_id, produtor_id em lancamentos de contratos financeiros ────────────────────────────────────────
+-- Lançamentos criados antes da correção usavam string `categoria` em vez de FK `operacao_gerencial_id`.
+-- Este backfill vincula os lançamentos existentes ao plano de OGs por código de classificação.
+
+-- Passo 1: amortização/principal (tipo=pagar, descricao contém Amortização ou Parcela mas não Juros/Encargo)
+UPDATE lancamentos l
+SET
+  operacao_gerencial_id = (
+    SELECT og.id FROM operacoes_gerenciais og
+    WHERE og.fazenda_id = l.fazenda_id
+      AND og.classificacao = CASE cf.tipo
+        WHEN 'custeio'       THEN '2.02.01.02.002'
+        WHEN 'investimento'  THEN '2.02.01.02.007'
+        WHEN 'securitizacao' THEN '2.02.01.02.007'
+        WHEN 'cpr'           THEN '2.02.01.02.003'
+        WHEN 'egf'           THEN '2.02.01.02.001'
+        ELSE                      '2.02.01.02.005'
+      END
+    LIMIT 1
+  ),
+  produtor_id = COALESCE(l.produtor_id, cf.produtor_id),
+  pessoa_id   = COALESCE(l.pessoa_id,   cf.pessoa_id)
+FROM contratos_financeiros cf
+WHERE l.contrato_financeiro_id = cf.id
+  AND l.origem_lancamento = 'contrato_financeiro'
+  AND l.operacao_gerencial_id IS NULL
+  AND l.tipo = 'pagar'
+  AND (
+    l.descricao ILIKE '%Amortização%'
+    OR (l.descricao ILIKE '%Parcela%' AND l.descricao NOT ILIKE '%Juros%' AND l.descricao NOT ILIKE '%Encargo%' AND l.descricao NOT ILIKE '%IOF%')
+  );
+
+-- Passo 2: juros
+UPDATE lancamentos l
+SET
+  operacao_gerencial_id = (
+    SELECT og.id FROM operacoes_gerenciais og
+    WHERE og.fazenda_id = l.fazenda_id
+      AND og.classificacao = CASE cf.tipo
+        WHEN 'custeio'       THEN '2.02.01.03.002'
+        WHEN 'investimento'  THEN '2.02.01.03.007'
+        WHEN 'securitizacao' THEN '2.02.01.03.007'
+        WHEN 'cpr'           THEN '2.02.01.03.003'
+        WHEN 'egf'           THEN '2.02.01.03.001'
+        ELSE                      '2.02.01.03.005'
+      END
+    LIMIT 1
+  ),
+  produtor_id = COALESCE(l.produtor_id, cf.produtor_id),
+  pessoa_id   = COALESCE(l.pessoa_id,   cf.pessoa_id)
+FROM contratos_financeiros cf
+WHERE l.contrato_financeiro_id = cf.id
+  AND l.origem_lancamento = 'contrato_financeiro'
+  AND l.operacao_gerencial_id IS NULL
+  AND l.tipo = 'pagar'
+  AND l.descricao ILIKE '%Juros%';
+
+-- Passo 3: encargos (IOF/TAC)
+UPDATE lancamentos l
+SET
+  operacao_gerencial_id = (
+    SELECT og.id FROM operacoes_gerenciais og
+    WHERE og.fazenda_id = l.fazenda_id
+      AND og.classificacao = '2.02.01.01.001'
+    LIMIT 1
+  ),
+  produtor_id = COALESCE(l.produtor_id, cf.produtor_id),
+  pessoa_id   = COALESCE(l.pessoa_id,   cf.pessoa_id)
+FROM contratos_financeiros cf
+WHERE l.contrato_financeiro_id = cf.id
+  AND l.origem_lancamento = 'contrato_financeiro'
+  AND l.operacao_gerencial_id IS NULL
+  AND l.tipo = 'pagar'
+  AND (l.descricao ILIKE '%Encargo%' OR l.descricao ILIKE '%IOF%' OR l.descricao ILIKE '%TAC%');
+
+-- Passo 4: captação/liberação (tipo=receber)
+UPDATE lancamentos l
+SET
+  operacao_gerencial_id = (
+    SELECT og.id FROM operacoes_gerenciais og
+    WHERE og.fazenda_id = l.fazenda_id
+      AND og.classificacao = '1.03.01.01.003'
+    LIMIT 1
+  ),
+  produtor_id = COALESCE(l.produtor_id, cf.produtor_id),
+  pessoa_id   = COALESCE(l.pessoa_id,   cf.pessoa_id)
+FROM contratos_financeiros cf
+WHERE l.contrato_financeiro_id = cf.id
+  AND l.origem_lancamento = 'contrato_financeiro'
+  AND l.operacao_gerencial_id IS NULL
+  AND l.tipo = 'receber';
+
+NOTIFY pgrst, 'reload schema';

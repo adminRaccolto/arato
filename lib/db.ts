@@ -2608,18 +2608,24 @@ export async function criarParcelaLiberacao(
   const valor = contrato.moeda === "USD" && contrato.valor_cotacao
     ? p.valor_liberado * contrato.valor_cotacao
     : p.valor_liberado;
+  const ogMap = await buscarOgsCf(p.fazenda_id);
   const { data: lanc } = await supabase.from("lancamentos").insert({
     fazenda_id: p.fazenda_id,
     tipo: "receber",
     moeda: contrato.moeda,
     descricao: `${contrato.descricao} — Liberação ${p.num_parcela}`,
     categoria: CAT_CAPTACAO[contrato.tipo],
+    operacao_gerencial_id: ogMap.get(OG_CAPTACAO_CLASS) ?? null,
+    pessoa_id: contrato.pessoa_id ?? null,
+    produtor_id: contrato.produtor_id ?? null,
     data_lancamento: p.data_liberacao,
     data_vencimento: p.data_liberacao,
     valor,
     conta_bancaria: contrato.conta_liberacao_id ?? null,
     status: "em_aberto",
     auto: true,
+    origem_lancamento: "contrato_financeiro",
+    contrato_financeiro_id: contrato.id,
   }).select().single();
 
   if (lanc) {
@@ -2676,6 +2682,43 @@ const CAT_CAPTACAO: Record<ContratoFinanceiro["tipo"], string> = {
   outros:        "Captação de Empréstimos",
 };
 
+// Classificações OG para lançamentos de contratos financeiros
+const OG_AMORT_CLASS: Record<ContratoFinanceiro["tipo"], string> = {
+  custeio:       "2.02.01.02.002",
+  investimento:  "2.02.01.02.007",
+  securitizacao: "2.02.01.02.007",
+  cpr:           "2.02.01.02.003",
+  egf:           "2.02.01.02.001",
+  outros:        "2.02.01.02.005",
+};
+const OG_JUROS_CLASS: Record<ContratoFinanceiro["tipo"], string> = {
+  custeio:       "2.02.01.03.002",
+  investimento:  "2.02.01.03.007",
+  securitizacao: "2.02.01.03.007",
+  cpr:           "2.02.01.03.003",
+  egf:           "2.02.01.03.001",
+  outros:        "2.02.01.03.005",
+};
+const OG_ENCARGO_CLASS = "2.02.01.01.001";  // IOF/TAC
+const OG_CAPTACAO_CLASS = "1.03.01.01.003"; // Recebimento de financiamentos
+
+export async function buscarOgsCf(fazenda_id: string): Promise<Map<string, string>> {
+  const uniq = [...new Set([
+    ...Object.values(OG_AMORT_CLASS),
+    ...Object.values(OG_JUROS_CLASS),
+    OG_ENCARGO_CLASS,
+    OG_CAPTACAO_CLASS,
+  ])];
+  const { data } = await supabase
+    .from("operacoes_gerenciais")
+    .select("id, classificacao")
+    .eq("fazenda_id", fazenda_id)
+    .in("classificacao", uniq);
+  const m = new Map<string, string>();
+  (data ?? []).forEach((o: { id: string; classificacao: string }) => m.set(o.classificacao, o.id));
+  return m;
+}
+
 export async function baixarParcelaPagamento(
   id: string,
   fazenda_id: string,
@@ -2686,14 +2729,16 @@ export async function baixarParcelaPagamento(
   const moeda = contrato.moeda;
   const contaId = contrato.conta_pagamento_id;
   const descBase = `${contrato.descricao} — Parcela ${parcela.num_parcela}`;
+  const ogMap = await buscarOgsCf(fazenda_id);
 
   const baseFields = {
     fazenda_id, moeda, tipo: "pagar" as const,
     data_lancamento: hoje, data_vencimento: parcela.data_vencimento,
     conta_bancaria: contaId ?? null, status: "em_aberto" as const, auto: true,
     contrato_financeiro_id: contrato.id,
-    pessoa_id:       contrato.pessoa_id ?? null,
-    cotacao_usd:     contrato.moeda === "USD" ? (contrato.valor_cotacao ?? null) : null,
+    pessoa_id:    contrato.pessoa_id ?? null,
+    produtor_id:  contrato.produtor_id ?? null,
+    cotacao_usd:  contrato.moeda === "USD" ? (contrato.valor_cotacao ?? null) : null,
     origem_lancamento: "contrato_financeiro" as const,
   };
 
@@ -2703,6 +2748,7 @@ export async function baixarParcelaPagamento(
       ...baseFields,
       descricao: `${descBase} — Amortização`,
       categoria: CAT_AMORT[contrato.tipo],
+      operacao_gerencial_id: ogMap.get(OG_AMORT_CLASS[contrato.tipo]) ?? null,
       valor: parcela.amortizacao,
     });
   }
@@ -2713,6 +2759,7 @@ export async function baixarParcelaPagamento(
       ...baseFields,
       descricao: `${descBase} — Juros`,
       categoria: CAT_JUROS[contrato.tipo],
+      operacao_gerencial_id: ogMap.get(OG_JUROS_CLASS[contrato.tipo]) ?? null,
       valor: parcela.juros,
     });
   }
@@ -2723,6 +2770,7 @@ export async function baixarParcelaPagamento(
       ...baseFields,
       descricao: `${descBase} — Encargos (IOF/TAC)`,
       categoria: "Encargos Bancários",
+      operacao_gerencial_id: ogMap.get(OG_ENCARGO_CLASS) ?? null,
       valor: parcela.despesas_acessorios,
     });
   }

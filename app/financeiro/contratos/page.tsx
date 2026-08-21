@@ -18,6 +18,7 @@ import {
   listarFazendas,
   listarCentrosCustoGeralDaConta,
   listarPessoasDaConta,
+  buscarOgsCf,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -734,15 +735,31 @@ export default function ContratosFinanceiros() {
     const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
     // Gera CP lançamentos para cada parcela
     const hoje = new Date().toISOString().slice(0, 10);
+    const ogMap = await buscarOgsCf(fazendaId!);
+    const produtorIdCalc = fC.produtor_id || contratoModal.produtor_id || null;
+    const OG_AMORT_CALC: Record<ContratoFinanceiro["tipo"], string> = {
+      custeio: "2.02.01.02.002", investimento: "2.02.01.02.007", securitizacao: "2.02.01.02.007",
+      cpr: "2.02.01.02.003", egf: "2.02.01.02.001", outros: "2.02.01.02.005",
+    };
+    const OG_JUROS_CALC: Record<ContratoFinanceiro["tipo"], string> = {
+      custeio: "2.02.01.03.002", investimento: "2.02.01.03.007", securitizacao: "2.02.01.03.007",
+      cpr: "2.02.01.03.003", egf: "2.02.01.03.001", outros: "2.02.01.03.005",
+    };
     const lancsParcelas: Record<string, unknown>[] = [];
     for (const p of salvas) {
       const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
       const descBase = `${descricaoCalc} — Parcela ${p.num_parcela}`;
-      const camposBase = { fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar", moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro", pessoa_id: pessoaId || null, ano_safra_id: anoSafraVigenteId || null };
-      if (p.amortizacao > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[tipoContrato], valor: p.amortizacao });
-      if (p.juros > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[tipoContrato], valor: p.juros });
-      if (p.despesas_acessorios > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", valor: p.despesas_acessorios });
-      if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ ...camposBase, descricao: descBase, categoria: CAT_AMORT[tipoContrato], valor: p.valor_parcela });
+      const camposBase = {
+        fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar",
+        moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
+        status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro",
+        pessoa_id: pessoaId || null, produtor_id: produtorIdCalc,
+        ano_safra_id: anoSafraVigenteId || null,
+      };
+      if (p.amortizacao > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[tipoContrato], operacao_gerencial_id: ogMap.get(OG_AMORT_CALC[tipoContrato]) ?? null, valor: p.amortizacao });
+      if (p.juros > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[tipoContrato], operacao_gerencial_id: ogMap.get(OG_JUROS_CALC[tipoContrato]) ?? null, valor: p.juros });
+      if (p.despesas_acessorios > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", operacao_gerencial_id: ogMap.get("2.02.01.01.001") ?? null, valor: p.despesas_acessorios });
+      if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ ...camposBase, descricao: descBase, categoria: CAT_AMORT[tipoContrato], operacao_gerencial_id: ogMap.get(OG_AMORT_CALC[tipoContrato]) ?? null, valor: p.valor_parcela });
     }
     if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
     setParcelasPagamento(salvas);
@@ -776,17 +793,25 @@ export default function ContratosFinanceiros() {
       const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, parcelasParaSalvar);
 
       // 4. Cria CP lançamentos (falha silenciosa — não bloqueia o cronograma)
+      const ogMapPdf = await buscarOgsCf(fazendaId!);
+      const OG_AMORT_PDF: Record<ContratoFinanceiro["tipo"], string> = {
+        custeio: "2.02.01.02.002", investimento: "2.02.01.02.007", securitizacao: "2.02.01.02.007",
+        cpr: "2.02.01.02.003", egf: "2.02.01.02.001", outros: "2.02.01.02.005",
+      };
       const lancsParcelas: Record<string, unknown>[] = [];
       for (const p of salvas) {
         const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
         lancsParcelas.push({
           fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar", moeda: contratoModal.moeda,
           descricao: `${contratoModal.descricao} — Parcela ${p.num_parcela}`,
-          categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento,
+          categoria: CAT_AMORT[contratoModal.tipo],
+          operacao_gerencial_id: ogMapPdf.get(OG_AMORT_PDF[contratoModal.tipo]) ?? null,
+          data_lancamento: p.data_vencimento,
           data_vencimento: p.data_vencimento, valor: p.valor_parcela ?? 0, status: statusLanc,
           auto: true, numero_documento: contratoModal.numero_documento || undefined,
           origem_lancamento: "contrato_financeiro",
           pessoa_id: (fC.pessoa_id || contratoModal.pessoa_id) || null,
+          produtor_id: (fC.produtor_id || contratoModal.produtor_id) || null,
           ano_safra_id: anoSafraVigenteId || null,
         });
       }
