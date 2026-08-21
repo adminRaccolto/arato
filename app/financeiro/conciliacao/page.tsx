@@ -69,6 +69,7 @@ interface FormTesouraria {
   valor: number;
   data: string;
   tipo_op: string;  // id da operação de tesouraria (padrão ou custom)
+  og_id: string;    // operacao_gerencial_id para vínculo fiscal
 }
 
 interface OpTesouraria {
@@ -76,7 +77,10 @@ interface OpTesouraria {
   nome: string;
   tipo: "entrada" | "saida" | "ambos" | "transferencia" | "ajuste";
   descricao?: string;
+  operacao_gerencial_id?: string | null;
 }
+
+interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; }
 
 // Operações padrão idênticas às de app/financeiro/tesouraria/operacoes/page.tsx
 const OPS_TESOURARIA_PADRAO: OpTesouraria[] = [
@@ -186,9 +190,10 @@ function ConciliacaoInner() {
 
   // Tesouraria inline
   const [modalTes, setModalTes]   = useState<LinhaOFX | null>(null);
-  const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", tipo_op: "__taxa__" });
+  const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", tipo_op: "__taxa__", og_id: "" });
   const [savingTes, setSavingTes] = useState(false);
   const [opsCustom, setOpsCustom] = useState<OpTesouraria[]>([]);
+  const [ogsDisponiveis, setOgsDisponiveis] = useState<OgMin[]>([]);
 
   // Colunas redimensionáveis
   const [colWidths, setColWidths] = useState<number[]>([...COL_INIT]);
@@ -196,7 +201,7 @@ function ConciliacaoInner() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lR, exR, hR, ogR] = await Promise.all([
+    const [cR, lR, exR, hR, ogR, gsR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("lancamentos")
         .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
@@ -207,15 +212,21 @@ function ConciliacaoInner() {
       supabase.from("extratos_bancarios").select("*").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
       supabase.from("historico_conciliacao").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(200),
       supabase.from("operacoes_tesouraria")
-        .select("id,nome,tipo")
+        .select("id,nome,tipo,operacao_gerencial_id")
         .in("fazenda_id", fazendaIds)
         .eq("ativo", true)
         .order("nome"),
+      supabase.from("operacoes_gerenciais")
+        .select("id,classificacao,descricao,tipo")
+        .or(`fazenda_id.is.null,fazenda_id.in.(${fazendaIds.join(",")})`)
+        .neq("inativo", true)
+        .order("classificacao"),
     ]);
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     if (lR.data) setLancamentos(lR.data as Lancamento[]);
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
+    if (gsR.data) setOgsDisponiveis(gsR.data as OgMin[]);
 
     if (exR.data) {
       const lista = exR.data as unknown as Extrato[];
@@ -375,6 +386,8 @@ function ConciliacaoInner() {
 
     const todasOps: OpTesouraria[] = [...OPS_TESOURARIA_PADRAO, ...opsCustom];
     const opSel = todasOps.find(o => o.id === fTes.tipo_op);
+    // Vínculo fiscal: preferência ao og_id selecionado manualmente; fallback ao da operação custom
+    const ogId = fTes.og_id || opSel?.operacao_gerencial_id || null;
     const { data: novoLanc, error } = await supabase
       .from("lancamentos")
       .insert({
@@ -387,6 +400,7 @@ function ConciliacaoInner() {
         data_baixa: modalTes.data,
         status: "baixado",
         categoria: opSel?.nome ?? "Tesouraria",
+        operacao_gerencial_id: ogId,
       })
       .select()
       .single();
@@ -447,6 +461,7 @@ function ConciliacaoInner() {
       valor: linha.valor,
       data: linha.data,
       tipo_op: opPadrao,
+      og_id: "",
     });
   }
 
@@ -595,6 +610,8 @@ function ConciliacaoInner() {
                       ...f,
                       tipo_op: e.target.value,
                       tipo: op?.tipo === "entrada" ? "receber" : op?.tipo === "saida" ? "pagar" : f.tipo,
+                      // Auto-preenche OG se a op custom tiver vínculo
+                      og_id: op?.operacao_gerencial_id ?? f.og_id,
                     }));
                   }}
                   style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
@@ -606,11 +623,34 @@ function ConciliacaoInner() {
                   {opsCustom.length > 0 && (
                     <optgroup label="Operações da Fazenda">
                       {opsCustom.map(o => (
-                        <option key={o.id} value={o.id}>{o.nome}</option>
+                        <option key={o.id} value={o.id}>{o.nome}{o.operacao_gerencial_id ? " ✓" : ""}</option>
                       ))}
                     </optgroup>
                   )}
                 </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Vínculo Fiscal — Plano de Contas</label>
+                <select
+                  value={fTes.og_id}
+                  onChange={e => setFTes(f => ({ ...f, og_id: e.target.value }))}
+                  style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${fTes.og_id ? "#16A34A" : "var(--border)"}`, borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                  <option value="">— Sem vínculo (não impacta DRE/LCDPR)</option>
+                  <optgroup label="Receitas">
+                    {ogsDisponiveis.filter(g => g.tipo === "receita").map(g => (
+                      <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Despesas">
+                    {ogsDisponiveis.filter(g => g.tipo === "despesa").map(g => (
+                      <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                    ))}
+                  </optgroup>
+                </select>
+                {fTes.og_id && (
+                  <div style={{ marginTop: 3, fontSize: 10, color: "#16A34A" }}>✓ Lançamento impactará DRE, LCDPR e SPED ECD</div>
+                )}
               </div>
 
               <div>

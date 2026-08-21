@@ -10404,3 +10404,13 @@ CREATE INDEX IF NOT EXISTS idx_apolices_seguro_conta_id ON apolices_seguro(conta
 CREATE INDEX IF NOT EXISTS idx_pagamentos_premio_fazenda ON pagamentos_premio_seguro(fazenda_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 207: Vínculo fiscal em operacoes_tesouraria ─────────────────────────
+-- Permite associar cada Operação de Tesouraria a uma Operação Gerencial (plano de contas)
+-- para que lançamentos gerados via tesouraria impactem DRE, LCDPR e SPED ECD.
+ALTER TABLE operacoes_tesouraria
+  ADD COLUMN IF NOT EXISTS operacao_gerencial_id UUID REFERENCES operacoes_gerenciais(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_op_tesouraria_og ON operacoes_tesouraria(operacao_gerencial_id);
+
+NOTIFY pgrst, 'reload schema';

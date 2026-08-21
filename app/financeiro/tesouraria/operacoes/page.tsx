@@ -9,10 +9,13 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginB
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
+interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; }
+
 interface OpTesoura {
   id: string; fazenda_id: string; nome: string;
   tipo: "entrada" | "saida" | "ambos" | "transferencia" | "ajuste";
   categoria?: string; observacao?: string; ativo: boolean;
+  operacao_gerencial_id?: string | null;
 }
 
 const TIPOS_OP_PADRAO = [
@@ -39,30 +42,35 @@ export default function OperacoesTesourariaPage() {
   const { fazendaId, fazendaIds } = useAuth();
 
   const [ops, setOps]         = useState<OpTesoura[]>([]);
+  const [ogs, setOgs]         = useState<OgMin[]>([]);
   const [modalOp, setModalOp] = useState(false);
   const [opEdit, setOpEdit]   = useState<OpTesoura | null>(null);
-  const [form, setForm]       = useState({ nome: "", tipo: "saida" as OpTesoura["tipo"], categoria: "", observacao: "" });
+  const [form, setForm]       = useState({ nome: "", tipo: "saida" as OpTesoura["tipo"], categoria: "", observacao: "", og_id: "" });
   const [saving, setSaving]   = useState(false);
   const [err, setErr]         = useState("");
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const { data } = await supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome");
-    setOps(data ?? []);
-  }, [fazendaId]);
+    const [{ data: opData }, { data: ogData }] = await Promise.all([
+      supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`fazenda_id.is.null,fazenda_id.in.(${fazendaIds.join(",")})`).neq("inativo", true).order("classificacao"),
+    ]);
+    setOps(opData ?? []);
+    setOgs(ogData ?? []);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
   function abrirNova() {
     setOpEdit(null);
-    setForm({ nome: "", tipo: "saida", categoria: "", observacao: "" });
+    setForm({ nome: "", tipo: "saida", categoria: "", observacao: "", og_id: "" });
     setErr("");
     setModalOp(true);
   }
 
   function abrirEditar(op: OpTesoura) {
     setOpEdit(op);
-    setForm({ nome: op.nome, tipo: op.tipo, categoria: op.categoria ?? "", observacao: op.observacao ?? "" });
+    setForm({ nome: op.nome, tipo: op.tipo, categoria: op.categoria ?? "", observacao: op.observacao ?? "", og_id: op.operacao_gerencial_id ?? "" });
     setErr("");
     setModalOp(true);
   }
@@ -71,7 +79,7 @@ export default function OperacoesTesourariaPage() {
     if (!fazendaId || !form.nome.trim()) { setErr("Informe o nome da operação."); return; }
     setSaving(true); setErr("");
     try {
-      const payload = { fazenda_id: fazendaId, nome: form.nome.trim(), tipo: form.tipo, categoria: form.categoria || null, observacao: form.observacao || null, ativo: true };
+      const payload = { fazenda_id: fazendaId, nome: form.nome.trim(), tipo: form.tipo, categoria: form.categoria || null, observacao: form.observacao || null, ativo: true, operacao_gerencial_id: form.og_id || null };
       if (opEdit) { await supabase.from("operacoes_tesouraria").update(payload).eq("id", opEdit.id); }
       else { await supabase.from("operacoes_tesouraria").insert(payload); }
       await carregar();
@@ -149,7 +157,7 @@ export default function OperacoesTesourariaPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#FAFBFC" }}>
-                  {["Operação", "Tipo", "Categoria", ""].map(h => (
+                  {["Operação", "Tipo", "Categoria", "Vinculada ao Plano de Contas", ""].map(h => (
                     <th key={h} style={{ padding: "8px 16px", textAlign: h === "" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>
                   ))}
                 </tr>
@@ -157,6 +165,7 @@ export default function OperacoesTesourariaPage() {
               <tbody>
                 {ops.map((op, i) => {
                   const tm = TIPO_META[op.tipo] ?? TIPO_META.ambos;
+                  const og = ogs.find(g => g.id === op.operacao_gerencial_id);
                   return (
                     <tr key={op.id} style={{ borderBottom: i < ops.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                       <td style={{ padding: "9px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{op.nome}</td>
@@ -164,6 +173,9 @@ export default function OperacoesTesourariaPage() {
                         <span style={{ fontSize: 10, background: tm.bg, color: tm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
                       </td>
                       <td style={{ padding: "9px 16px", fontSize: 12, color: "var(--text-2)" }}>{op.categoria ?? "—"}</td>
+                      <td style={{ padding: "9px 16px", fontSize: 11, color: og ? "var(--text-1)" : "var(--text-muted)" }}>
+                        {og ? <span><span style={{ fontFamily: "monospace", color: "#1A4870" }}>{og.classificacao}</span> — {og.descricao}</span> : <span style={{ color: "#E24B4A", fontSize: 10 }}>⚠ Sem vínculo fiscal</span>}
+                      </td>
                       <td style={{ padding: "9px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           <button onClick={() => abrirEditar(op)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
@@ -206,6 +218,27 @@ export default function OperacoesTesourariaPage() {
               <div>
                 <label style={lbl}>Categoria</label>
                 <input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} style={inp} placeholder="Ex.: Investimentos" />
+              </div>
+              <div>
+                <label style={lbl}>Vínculo Fiscal — Plano de Contas (OG)</label>
+                <select value={form.og_id} onChange={e => setForm(f => ({ ...f, og_id: e.target.value }))} style={inp}>
+                  <option value="">— Sem vínculo (não impacta DRE/LCDPR/SPED)</option>
+                  <optgroup label="Receitas">
+                    {ogs.filter(g => g.tipo === "receita").map(g => (
+                      <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Despesas">
+                    {ogs.filter(g => g.tipo === "despesa").map(g => (
+                      <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                    ))}
+                  </optgroup>
+                </select>
+                {form.og_id && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: "#16A34A" }}>
+                    ✓ Lançamentos desta operação impactarão o plano de contas selecionado.
+                  </div>
+                )}
               </div>
               <div>
                 <label style={lbl}>Observação</label>

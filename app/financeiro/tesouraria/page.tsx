@@ -28,10 +28,13 @@ interface LancTesoura {
   status: string; conta_bancaria?: string; observacao?: string;
   origem_lancamento?: string; auto: boolean;
 }
+interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; }
+
 interface OpTesoura {
   id: string; fazenda_id: string; nome: string;
   tipo: "entrada" | "saida" | "ambos" | "transferencia" | "ajuste";
   categoria?: string; observacao?: string; ativo: boolean;
+  operacao_gerencial_id?: string | null;
 }
 interface ContaBancariaMin { id: string; banco?: string; agencia?: string; conta?: string; descricao?: string; tipo?: string; }
 
@@ -56,6 +59,7 @@ export default function TesourariaPage() {
   const [lancamentos, setLancamentos] = useState<LancTesoura[]>([]);
   const [contas, setContas]           = useState<ContaBancariaMin[]>([]);
   const [opsTesouraria, setOpsTesouraria] = useState<OpTesoura[]>([]);
+  const [ogs, setOgs]                 = useState<OgMin[]>([]);
 
   // Modal Lançamento
   const [modalLanc, setModalLanc] = useState(false);
@@ -68,6 +72,7 @@ export default function TesourariaPage() {
     data: hoje(), data_vencimento: "",
     observacao: "",
     conta_ajuste: "", saldo_atual: 0, saldo_correto: 0,
+    og_id: "",
   });
   const [lSaving, setLSaving] = useState(false);
   const [lErr, setLErr]       = useState("");
@@ -76,15 +81,17 @@ export default function TesourariaPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
 
-    const [{ data: lb }, { data: cb }, { data: ob }] = await Promise.all([
+    const [{ data: lb }, { data: cb }, { data: ob }, { data: gsb }] = await Promise.all([
       supabase.from("lancamentos").select("*").in("fazenda_id", fazendaIds).eq("origem_lancamento", "tesouraria").order("data_lancamento", { ascending: false }),
       supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").in("fazenda_id", fazendaIds),
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`fazenda_id.is.null,fazenda_id.in.(${fazendaIds.join(",")})`).neq("inativo", true).order("classificacao"),
     ]);
 
     setLancamentos(lb ?? []);
     setContas(cb ?? []);
     setOpsTesouraria(ob ?? []);
+    setOgs(gsb ?? []);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -155,6 +162,9 @@ export default function TesourariaPage() {
         if (!lForm.valor || !lForm.descricao.trim()) throw new Error("Preencha valor e descrição.");
         const nomeOp = [...TIPOS_OP_PADRAO, ...opsTesouraria.map(o => ({ id: o.id, nome: o.nome, tipo: o.tipo }))].find(o => o.id === op);
         const tipoLanc = (nomeOp?.tipo === "entrada" || lForm.tipo === "receber") ? "receber" as const : "pagar" as const;
+        // Vínculo fiscal: og_id selecionado manualmente > og da operação custom
+        const opCustom = opsTesouraria.find(o => o.id === op);
+        const ogId = lForm.og_id || opCustom?.operacao_gerencial_id || null;
         await supabase.from("lancamentos").insert({
           fazenda_id: fazendaId, tipo: tipoLanc, moeda: "BRL",
           descricao: lForm.descricao.trim(), categoria: nomeOp?.nome ?? "Tesouraria",
@@ -164,11 +174,12 @@ export default function TesourariaPage() {
           conta_bancaria: lForm.conta_origem || null,
           observacao: lForm.observacao || null,
           origem_lancamento: "tesouraria",
+          operacao_gerencial_id: ogId,
         });
       }
       await carregar();
       setModalLanc(false);
-      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", conta_aplicacao: "", valor: 0, valor_destino: 0, iof: 0, ir: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0  });
+      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", conta_aplicacao: "", valor: 0, valor_destino: 0, iof: 0, ir: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0, og_id: "" });
     } catch (e: unknown) {
       setLErr(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -292,13 +303,21 @@ export default function TesourariaPage() {
 
                 <div>
                   <label style={lbl}>Operação</label>
-                  <select value={lForm.tipo_op} onChange={e => setLForm(f => ({ ...f, tipo_op: e.target.value }))} style={inp}>
+                  <select value={lForm.tipo_op} onChange={e => {
+                    const opCustom = opsTesouraria.find(o => o.id === e.target.value);
+                    setLForm(f => ({
+                      ...f,
+                      tipo_op: e.target.value,
+                      // Auto-preenche OG se a op custom tiver vínculo
+                      og_id: opCustom?.operacao_gerencial_id ?? f.og_id,
+                    }));
+                  }} style={inp}>
                     <optgroup label="Operações Padrão">
                       {TIPOS_OP_PADRAO.map(op => <option key={op.id} value={op.id}>{op.nome}</option>)}
                     </optgroup>
                     {opsTesouraria.length > 0 && (
                       <optgroup label="Operações Personalizadas">
-                        {opsTesouraria.map(op => <option key={op.id} value={op.id}>{op.nome}</option>)}
+                        {opsTesouraria.map(op => <option key={op.id} value={op.id}>{op.nome}{op.operacao_gerencial_id ? " ✓" : ""}</option>)}
                       </optgroup>
                     )}
                   </select>
@@ -501,6 +520,26 @@ export default function TesourariaPage() {
                           {contaOpts}
                         </select>
                       </div>
+                    </div>
+                    <div>
+                      <label style={lbl}>Vínculo Fiscal — Plano de Contas (OG)</label>
+                      <select value={lForm.og_id} onChange={e => setLForm(f => ({ ...f, og_id: e.target.value }))}
+                        style={{ ...inp, borderColor: lForm.og_id ? "#16A34A" : undefined }}>
+                        <option value="">— Sem vínculo (não impacta DRE/LCDPR)</option>
+                        <optgroup label="Receitas">
+                          {ogs.filter(g => g.tipo === "receita").map(g => (
+                            <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Despesas">
+                          {ogs.filter(g => g.tipo === "despesa").map(g => (
+                            <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                          ))}
+                        </optgroup>
+                      </select>
+                      {lForm.og_id && (
+                        <div style={{ marginTop: 3, fontSize: 11, color: "#16A34A" }}>✓ Impacta DRE, LCDPR e SPED ECD</div>
+                      )}
                     </div>
                   </div>
                 )}
