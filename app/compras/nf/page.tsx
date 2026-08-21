@@ -267,6 +267,7 @@ export default function NfCompraPage() {
   const [siegReimporting,   setSiegReimporting]   = useState<Record<string, boolean>>({});
   const [wizardResyncando,  setWizardResyncando]  = useState(false);
   const [xmlSemItens,       setXmlSemItens]       = useState(false); // XML carregado mas 0 det encontrados
+  const xmlRawRef = useRef<string | null>(null);   // XML bruto do upload manual — persistido no Storage em salvarRascunho
   // SIEG — manifestação inline
   const [siegBusy,       setSiegBusy]       = useState<Record<string, boolean>>({});
   const [siegErros,      setSiegErros]      = useState<Record<string, string>>({});
@@ -340,6 +341,7 @@ export default function NfCompraPage() {
     numero: "", serie: "1", chave_acesso: "",
     emitente_nome: "", emitente_cnpj: "",
     emitente_municipio: "", emitente_estado: "",
+    nome_destinatario: "", cnpj_destino: "",   // destinatário da NF (nossa fazenda)
     pessoa_id: "", cfop: "",
     data_emissao: "", data_entrada: new Date().toISOString().split("T")[0],
     valor_total: "", natureza: "",
@@ -715,6 +717,7 @@ export default function NfCompraPage() {
       numero: "", serie: "1", chave_acesso: "",
       emitente_nome: "", emitente_cnpj: "",
       emitente_municipio: "", emitente_estado: "",
+      nome_destinatario: "", cnpj_destino: "",
       pessoa_id: "", cfop: "",
       data_emissao: new Date().toISOString().split("T")[0],
       data_entrada: new Date().toISOString().split("T")[0],
@@ -767,6 +770,8 @@ export default function NfCompraPage() {
       emitente_cnpj: nf.emitente_cnpj ?? "",
       emitente_municipio: "",
       emitente_estado: "",
+      nome_destinatario: nf.nome_destinatario ?? "",
+      cnpj_destino:      nf.cnpj_destino      ?? "",
       pessoa_id: nf.pessoa_id ?? pessoaPorCnpj(nf.emitente_cnpj ?? ""),
       cfop: nf.cfop ?? "",
       data_emissao: nf.data_emissao,
@@ -858,10 +863,13 @@ export default function NfCompraPage() {
 
   // ── Parse XML ─────────────────────────────────────────────
   function parsearXml(xmlText: string) {
+    // Armazena o XML bruto para upload no Storage em salvarRascunho()
+    xmlRawRef.current = xmlText;
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlText, "text/xml");
       const emit = doc.querySelector("emit");
+      const dest = doc.querySelector("dest");
       const ide  = doc.querySelector("ide");
       const total = doc.querySelector("total ICMSTot, ICMSTot");
 
@@ -876,6 +884,10 @@ export default function NfCompraPage() {
       const enderEmit = emit?.querySelector("enderEmit");
       const xMun    = enderEmit?.querySelector("xMun")?.textContent ?? "";
       const ufEmit  = enderEmit?.querySelector("UF")?.textContent   ?? "";
+
+      // Destinatário — campo <dest> presente na NF-e completa (não apenas no resumo SIEG)
+      const destNome = dest?.querySelector("xNome")?.textContent ?? "";
+      const destCnpj = (dest?.querySelector("CNPJ") ?? dest?.querySelector("CPF"))?.textContent ?? "";
 
       // Tenta classificação automática com o CNPJ/nome do emitente
       const regraHeader = aplicarRegraClassificacao(regrasClass, cnpj, xNome, "", "", "");
@@ -894,6 +906,9 @@ export default function NfCompraPage() {
         data_emissao: dhEmi ? dhEmi.substring(0, 10) : p.data_emissao,
         valor_total: vNF,
         natureza: natOp,
+        // Destinatário da NF (nossa fazenda — preenchido se presente no XML)
+        nome_destinatario: destNome || p.nome_destinatario,
+        cnpj_destino:      destCnpj || p.cnpj_destino,
         // auto-preenche fornecedor se CNPJ bater com cadastro
         pessoa_id: pessoaAutoId || p.pessoa_id,
         // aplica sugestão apenas se o campo ainda não foi preenchido
@@ -1026,6 +1041,8 @@ export default function NfCompraPage() {
       chave_acesso:          cab.chave_acesso || undefined,
       emitente_nome:         cab.emitente_nome,
       emitente_cnpj:         cab.emitente_cnpj || undefined,
+      nome_destinatario:     cab.nome_destinatario || undefined,
+      cnpj_destino:          cab.cnpj_destino || undefined,
       pessoa_id:             cab.pessoa_id    || undefined,
       cfop:                  cab.cfop         || undefined,
       data_emissao:          cab.data_emissao,
@@ -1064,6 +1081,36 @@ export default function NfCompraPage() {
         nf = await criarNfEntrada(payload);
       }
       setNfEdit(nf);
+
+      // ── Persistência de itens + XML (imune a JWT expirado via API route) ──
+      // Salva os itens brutos do estado atual e faz upload do XML no Storage.
+      // Garante que reabrir a NF sempre mostre os itens corretamente.
+      const itensPayload = itens
+        .filter(i => i.descricao_nf?.trim())
+        .map(i => ({
+          descricao_nf:    i.descricao_nf,
+          ncm:             i.ncm   || undefined,
+          cfop:            i.cfop  || undefined,
+          unidade_nf:      i.unidade_nf,
+          quantidade:      i.quantidade,
+          valor_unitario:  i.vunit_nf,
+          valor_total:     i.valor_total,
+          fator_conversao: i.fator_conversao ?? 1,
+        }));
+
+      const chaveRaw = (cab.chave_acesso || nf.chave_acesso || "").replace(/\D/g, "");
+      fetch("/api/compras/nf-rascunho-itens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nf_id:        nf.id,
+          fazenda_id:   fazendaId,
+          chave_acesso: chaveRaw.length === 44 ? chaveRaw : undefined,
+          xml_text:     xmlRawRef.current ?? undefined,
+          itens:        itensPayload,
+        }),
+      }).catch(() => { /* falha silenciosa — itens ainda podem ser salvos em processarNF */ });
+
       return nf;
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string; code?: string };
