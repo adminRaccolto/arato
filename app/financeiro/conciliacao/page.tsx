@@ -129,7 +129,7 @@ const statusMeta = (l: Lancamento): { label: string; bg: string; color: string }
   return { label: "aberto", bg: "#FEF3C7", color: "#92400E" };
 };
 
-const COL_INIT = [80, 280, 110, 95, 230, 115];
+const COL_INIT = [80, 320, 110, 90, 260, 135];
 
 const TES_CATEGORIAS = ["Tarifa Bancária", "IOF", "CPMF/IOF", "Rendimento CDB", "Rendimento LCI/LCA", "Rendimento Poupança", "Transferência", "Outros"];
 
@@ -285,8 +285,10 @@ function ConciliacaoInner() {
   }
 
   // ── Confirmar vínculo — Baixar + Conciliar em um passo ────────────────────
-  async function confirmarVinculo() {
-    if (!linhaAtiva || lancsSel.size === 0 || !extrato || !fazendaId) return;
+  // linhaParam: usado quando chamado direto do botão OFX (estado ainda não atualizou)
+  async function confirmarVinculo(linhaParam?: LinhaOFX) {
+    const linha = linhaParam ?? linhaAtiva;
+    if (!linha || lancsSel.size === 0 || !extrato || !fazendaId) return;
     setSalvando(true);
     const ids = Array.from(lancsSel);
 
@@ -300,7 +302,7 @@ function ConciliacaoInner() {
         paraBaixar.map(l =>
           supabase.from("lancamentos").update({
             status: "baixado",
-            data_baixa: linhaAtiva.data,
+            data_baixa: linha.data,
             valor_pago: l.valor_pago ?? l.valor,
           }).eq("id", l.id)
         )
@@ -308,7 +310,7 @@ function ConciliacaoInner() {
       // Atualizar estado local imediatamente
       setLancamentos(prev => prev.map(l => {
         if (!ids.includes(l.id) || l.status === "baixado") return l;
-        return { ...l, status: "baixado", data_baixa: linhaAtiva.data, valor_pago: l.valor_pago ?? l.valor };
+        return { ...l, status: "baixado", data_baixa: linha.data, valor_pago: l.valor_pago ?? l.valor };
       }));
     }
 
@@ -321,7 +323,7 @@ function ConciliacaoInner() {
     }, 0);
 
     const novasLinhas = extrato.linhas.map(l =>
-      l.id === linhaAtiva.id
+      l.id === linha.id
         ? { ...l, conciliado: true, lancamento_id: ids[0], lancamento_ids: ids, lancamento_desc: descVinc, lancamento_valor: valorVinc }
         : l
     );
@@ -331,8 +333,8 @@ function ConciliacaoInner() {
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
         .update({ status: "resolvido", lancamento_id: ids[0] })
-        .eq("fazenda_id", fazendaId).eq("fitid", linhaAtiva.id);
-      registrarHistorico(linhaAtiva, "conciliado", ids, descVinc);
+        .eq("fazenda_id", fazendaId).eq("fitid", linha.id);
+      registrarHistorico(linha, "conciliado", ids, descVinc);
     }
 
     setLinhaAtiva(null);
@@ -582,7 +584,7 @@ function ConciliacaoInner() {
         </div>
       )}
 
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "22px 20px" }}>
+      <div style={{ maxWidth: 1700, margin: "0 auto", padding: "18px 20px" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -767,19 +769,26 @@ function ConciliacaoInner() {
             </div>
 
             {/* ═══ DOIS PAINÉIS ═══ */}
-            <div style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 12, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "460px 1fr", gap: 12, alignItems: "start" }}>
 
               {/* ─── PAINEL ESQUERDO: Lançamentos CP/CR ─────────────────── */}
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: `1.5px solid ${linhaAtiva ? "#C9921B" : "var(--border)"}`, overflow: "hidden", position: "sticky", top: 20 }}>
-                <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#FBF3E0" : "var(--bg-page)" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: linhaAtiva ? "#7A5A12" : "var(--text-1)", marginBottom: 6 }}>
+                <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#FBF3E0" : lancsSel.size > 0 ? "#EBF4FF" : "var(--bg-page)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: linhaAtiva ? "#7A5A12" : lancsSel.size > 0 ? "#0B2D50" : "var(--text-1)", marginBottom: 4 }}>
                     {linhaAtiva
-                      ? `Vinculando: ${linhaAtiva.tipo === "debito" ? "−" : "+"}${fmtBRL(linhaAtiva.valor)} · ${fmtDt(linhaAtiva.data)}`
-                      : "Lançamentos CP / CR"}
+                      ? `Vinculando ao extrato: ${linhaAtiva.tipo === "debito" ? "−" : "+"}${fmtBRL(linhaAtiva.valor)}`
+                      : lancsSel.size > 0
+                        ? `${lancsSel.size} selecionado${lancsSel.size > 1 ? "s" : ""} — clique "Vincular CP/CR" no extrato`
+                        : "Lançamentos CP / CR"}
                   </div>
                   {linhaAtiva && (
-                    <div style={{ fontSize: 11, color: "#7A5A12", marginBottom: 8, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {linhaAtiva.descricao}
+                    <div style={{ fontSize: 11, color: "#7A5A12", marginBottom: 6, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {linhaAtiva.descricao} · {fmtDt(linhaAtiva.data)}
+                    </div>
+                  )}
+                  {lancsSel.size > 0 && !linhaAtiva && (
+                    <div style={{ fontSize: 11, color: "#1A4870", marginBottom: 4 }}>
+                      Selecione uma transação no painel do extrato →
                     </div>
                   )}
 
@@ -823,7 +832,7 @@ function ConciliacaoInner() {
                         style={{ fontSize: 11, padding: "3px 8px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 6, cursor: "pointer" }}>
                         Limpar
                       </button>
-                      <button onClick={confirmarVinculo} disabled={salvando}
+                      <button onClick={() => confirmarVinculo()} disabled={salvando}
                         style={{ fontSize: 11, padding: "3px 12px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, cursor: salvando ? "default" : "pointer", fontWeight: 700 }}>
                         {btnConfirmarLabel}
                       </button>
@@ -840,7 +849,6 @@ function ConciliacaoInner() {
                     return (
                       <div key={l.id}
                         onClick={() => {
-                          if (!linhaAtiva) return;
                           setLancsSel(prev => {
                             const next = new Set(prev);
                             if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
@@ -852,13 +860,11 @@ function ConciliacaoInner() {
                           borderBottom: i < arr.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
                           background: isSel ? "#EBF4FF" : "transparent",
                           borderLeft: isSel ? "3px solid #1A4870" : "3px solid transparent",
-                          cursor: linhaAtiva ? "pointer" : "default",
+                          cursor: "pointer",
                           display: "flex", alignItems: "flex-start", gap: 8,
                         }}>
-                        {linhaAtiva && (
-                          <input type="checkbox" checked={isSel} readOnly
-                            style={{ marginTop: 2, flexShrink: 0, accentColor: "#1A4870" }} />
-                        )}
+                        <input type="checkbox" checked={isSel} readOnly
+                          style={{ marginTop: 2, flexShrink: 0, accentColor: "#1A4870", cursor: "pointer" }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>
                           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
@@ -893,12 +899,18 @@ function ConciliacaoInner() {
                   )}
                 </div>
 
-                {linhaAtiva && (
-                  <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
-                    <button onClick={() => { setLinhaAtiva(null); setLancsSel(new Set()); }}
-                      style={{ width: "100%", padding: "6px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
-                      Cancelar vinculação
+                {(linhaAtiva || lancsSel.size > 0) && (
+                  <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 6 }}>
+                    <button onClick={() => setLancsSel(new Set())}
+                      style={{ flex: 1, padding: "6px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+                      Limpar seleção
                     </button>
+                    {linhaAtiva && (
+                      <button onClick={() => { setLinhaAtiva(null); setLancsSel(new Set()); }}
+                        style={{ flex: 1, padding: "6px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
+                        Cancelar vinculação
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -992,12 +1004,23 @@ function ConciliacaoInner() {
                               ) : (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                                   <button
+                                    disabled={salvando}
                                     onClick={() => {
-                                      if (isAtiva) { setLinhaAtiva(null); setLancsSel(new Set()); }
-                                      else { setLinhaAtiva(l); setLancsSel(new Set()); setFiltroLancTipo(l.tipo === "credito" ? "receber" : "pagar"); }
+                                      if (isAtiva) {
+                                        // Cancelar vinculação ativa
+                                        setLinhaAtiva(null);
+                                      } else if (lancsSel.size > 0) {
+                                        // Já tem seleções → conciliar imediatamente
+                                        setLinhaAtiva(l);
+                                        confirmarVinculo(l);
+                                      } else {
+                                        // Ativar modo vinculação
+                                        setLinhaAtiva(l);
+                                        setFiltroLancTipo(l.tipo === "credito" ? "receber" : "pagar");
+                                      }
                                     }}
-                                    style={{ padding: "3px 9px", borderRadius: 6, border: `0.5px solid #C9921B`, background: isAtiva ? "#C9921B" : "#FBF3E0", color: isAtiva ? "#fff" : "#C9921B", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                    {isAtiva ? "✓ Vinculando..." : "Vincular CP/CR"}
+                                    style={{ padding: "4px 10px", borderRadius: 6, border: `0.5px solid #C9921B`, background: isAtiva ? "#C9921B" : lancsSel.size > 0 ? "#1A4870" : "#FBF3E0", color: isAtiva || lancsSel.size > 0 ? "#fff" : "#C9921B", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                    {isAtiva && salvando ? "Salvando..." : isAtiva ? "Cancelar" : lancsSel.size > 0 ? `↗ Vincular (${lancsSel.size})` : "Vincular CP/CR"}
                                   </button>
                                   {!isAtiva && (
                                     <button onClick={() => abrirTesouraria(l)}
