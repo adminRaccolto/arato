@@ -11,8 +11,8 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, type VeiculoUnificado } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada } from "../../../lib/supabase";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, type VeiculoUnificado } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -314,13 +314,18 @@ function ContasPagarInner() {
   }
 
   // ── Seleção para borderô ──────────────────────────────────
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const [modalLote,    setModalLote]    = useState(false);
-  const [loteData,     setLoteData]     = useState(TODAY);
-  const [loteConta,    setLoteConta]    = useState("");
-  const [loteDesc,     setLoteDesc]     = useState("");
-  const [loteSalvando, setLoteSalvando] = useState(false);
-  const [loteErro,     setLoteErro]     = useState("");
+  const [selecionados,      setSelecionados]      = useState<Set<string>>(new Set());
+  const [modalLote,         setModalLote]         = useState(false);
+  const [loteDesc,          setLoteDesc]          = useState("");
+  const [loteSalvando,      setLoteSalvando]      = useState(false);
+  const [loteErro,          setLoteErro]          = useState("");
+  // Borderôs pendentes
+  const [borderosPendentes, setBorderosPendentes] = useState<PagamentoLote[]>([]);
+  const [modalConfirmar,    setModalConfirmar]    = useState<PagamentoLote | null>(null);
+  const [confirmData,       setConfirmData]       = useState(TODAY);
+  const [confirmConta,      setConfirmConta]      = useState("");
+  const [confirmSalvando,   setConfirmSalvando]   = useState(false);
+  const [confirmErro,       setConfirmErro]       = useState("");
 
   const [baixa, setBaixa] = useState({
     valorMask: "", data: TODAY, conta: "", obs: "",
@@ -464,8 +469,13 @@ function ContasPagarInner() {
     setLoading(true);
     setErro(null);
     try {
-      const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "pagar", fazendaId);
+      const fids = fazendaIds?.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
+      const [dados, borderos] = await Promise.all([
+        listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "pagar", fazendaId),
+        fids.length ? listarBorderosPendentes(fids, "pagar") : Promise.resolve([]),
+      ]);
       setLancamentos(dados);
+      setBorderosPendentes(borderos);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message
         : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message)
@@ -726,7 +736,7 @@ function ContasPagarInner() {
 
   // ── Pagamento em Lote (Borderô) ───────────────────────────
 
-  const itensLote = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado");
+  const itensLote = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado" && !l.lote_id);
   const totalLote = itensLote.reduce((s, l) => s + paraBRL(l), 0);
 
   const toggleSel = (id: string) =>
@@ -738,21 +748,47 @@ function ContasPagarInner() {
     setSelecionados(todosSel ? new Set() : new Set(todos));
   };
 
-  const pagarEmLote = async () => {
+  const criarBordero = async () => {
     if (!fazendaId || itensLote.length === 0) return;
     setLoteSalvando(true); setLoteErro("");
     try {
       const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, valor_pago: paraBRL(l) }));
-      await criarPagamentoLote(fazendaId, "pagar", loteData, loteConta, loteDesc || `Borderô ${loteData} — ${itensLote.length} títulos`, itensPayload);
+      const desc = loteDesc || `Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`;
+      await criarPagamentoLote(fazendaId, "pagar", null, null, desc, itensPayload, "pendente");
       setSelecionados(new Set());
       setModalLote(false);
       await carregar();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e);
-      setLoteErro(msg || "Erro ao processar lote");
-      console.error("pagarEmLote:", e);
+      setLoteErro(msg || "Erro ao criar borderô");
+      console.error("criarBordero:", e);
     } finally {
       setLoteSalvando(false);
+    }
+  };
+
+  const confirmarBordero = async () => {
+    if (!modalConfirmar || !confirmData || !confirmConta) return;
+    setConfirmSalvando(true); setConfirmErro("");
+    try {
+      await confirmarPagamentoBordero(modalConfirmar.id, confirmData, confirmConta);
+      setModalConfirmar(null);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e);
+      setConfirmErro(msg || "Erro ao confirmar pagamento");
+    } finally {
+      setConfirmSalvando(false);
+    }
+  };
+
+  const excluirBordero = async (b: PagamentoLote) => {
+    if (!confirm(`Cancelar borderô "${b.descricao}"? Os títulos voltam ao estado em aberto.`)) return;
+    try {
+      await cancelarBordero(b.id);
+      await carregar();
+    } catch (e: unknown) {
+      alert("Erro: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -1210,8 +1246,12 @@ function ContasPagarInner() {
                             style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid rgba(255,255,255,0.04)" : "none", background: "transparent", borderLeft: `3px solid ${statusBorder}`, cursor: "pointer" }}>
                             {/* Checkbox */}
                             <td style={{ padding: "8px 4px", textAlign: "center" }}>
-                              <input type="checkbox" style={{ cursor: "pointer", accentColor: "#60A5FA" }}
-                                checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />
+                              {l.lote_id && l.status !== "baixado" ? (
+                                <span title="Em borderô pendente" style={{ fontSize: 9, background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B60", borderRadius: 4, padding: "2px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>BDR</span>
+                              ) : (
+                                <input type="checkbox" style={{ cursor: "pointer", accentColor: "#60A5FA" }}
+                                  checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />
+                              )}
                             </td>
                             {/* Nº */}
                             <td style={{ padding: "8px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
@@ -1683,6 +1723,76 @@ function ContasPagarInner() {
         </div>
       )}
 
+      {/* ── Borderôs Pendentes ────────────────────────────────── */}
+      {borderosPendentes.length > 0 && (
+        <div style={{ maxWidth: 1600, margin: "24px auto 0", padding: "0 24px" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #C9921B60", borderRadius: 12, padding: "16px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#C9921B" }}>Borderôs Pendentes</span>
+              <span style={{ background: "#FBF3E0", color: "#7A5C00", borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{borderosPendentes.length}</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 4 }}>— agrupados, aguardando confirmação de pagamento</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {borderosPendentes.map(b => {
+                const itensB = b.itens ?? [];
+                const totalB = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
+                const dtCriac = b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "—";
+                return (
+                  <div key={b.id} style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                    {/* Cabeçalho do borderô */}
+                    <div style={{ background: "var(--bg-stripe)", padding: "8px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{b.descricao || "Borderô"}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>Criado em {dtCriac}</span>
+                        <span style={{ fontSize: 11, background: "#FBF3E0", color: "#7A5C00", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
+                          {itensB.length} título{itensB.length !== 1 ? "s" : ""}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#EF4444" }}>
+                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          onClick={() => { setModalConfirmar(b); setConfirmData(TODAY); setConfirmConta(""); setConfirmErro(""); }}
+                          style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                        >
+                          Confirmar Pagamento
+                        </button>
+                        <button
+                          onClick={() => excluirBordero(b)}
+                          style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                    {/* Lista compacta de títulos */}
+                    {itensB.length > 0 && (
+                      <div>
+                        {itensB.map((item, i) => {
+                          const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+                          return (
+                            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "7px 14px", borderTop: "0.5px solid var(--bg-input)", fontSize: 12, alignItems: "center" }}>
+                              <span style={{ color: "var(--text-1)" }}>{lanc?.descricao ?? "Título"}</span>
+                              <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                                {lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                              </span>
+                              <span style={{ fontWeight: 600, color: "#EF4444", textAlign: "right", whiteSpace: "nowrap" }}>
+                                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago ?? 0)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Barra flutuante de seleção (borderô) ─────────────── */}
       {selecionados.size > 0 && (() => {
         const qtdBaixados = filtrados.filter(l => selecionados.has(l.id) && l.status === "baixado").length;
@@ -1700,10 +1810,10 @@ function ContasPagarInner() {
           </span>
           {itensLote.length > 0 && (
           <button
-            onClick={() => { setLoteData(TODAY); setLoteConta(""); setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
+            onClick={() => { setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
             style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
           >
-            Pagar em Lote ›
+            Criar Borderô ›
           </button>
           )}
           {qtdBaixados > 0 && (
@@ -2016,46 +2126,28 @@ function ContasPagarInner() {
         );
       })()}
 
-      {/* ── Modal Pagamento em Lote ──────────────────────────── */}
+      {/* ── Modal Criar Borderô ──────────────────────────────── */}
       {modalLote && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-         >
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 540, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Pagamento em Lote (Borderô)</div>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total {fmtBRL(totalLote)}</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Criar Borderô</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total {fmtBRL(totalLote)} · aguarda confirmação de pagamento</div>
               </div>
               <button onClick={() => setModalLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "18px 22px" }}>
 
-              {/* Parâmetros do lote */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 16 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do Pagamento *</label>
-                  <input type="date" style={{ ...inp }} value={loteData} onChange={e => setLoteData(e.target.value)} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
-                  <select style={{ ...inp }} value={loteConta} onChange={e => setLoteConta(e.target.value)}>
-                    <option value="">— Selecionar conta —</option>
-                    {contas.map(c => {
-                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
-                      return <option key={c.id} value={label}>{label}</option>;
-                    })}
-                    {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
-                  </select>
-                </div>
-                <div style={{ gridColumn: "1/-1" }}>
-                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Descrição do Borderô (opcional)</label>
-                  <input style={{ ...inp }} value={loteDesc} onChange={e => setLoteDesc(e.target.value)} placeholder={`Borderô ${loteData} — ${itensLote.length} títulos`} />
-                </div>
+              {/* Descrição */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Descrição do Borderô (opcional)</label>
+                <input style={{ ...inp }} value={loteDesc} onChange={e => setLoteDesc(e.target.value)} placeholder={`Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`} />
               </div>
 
               {/* Lista dos títulos selecionados */}
               <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
-                <div style={{ background: "var(--bg-stripe)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
+                <div style={{ background: "var(--bg-stripe)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" as const, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
                   <span>Título</span><span>Vencimento</span><span style={{ textAlign: "right" }}>Valor</span>
                 </div>
                 {itensLote.map((l, i) => (
@@ -2066,15 +2158,14 @@ function ContasPagarInner() {
                   </div>
                 ))}
                 <div style={{ background: "var(--bg-stripe)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border)" }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do lote</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#60A5FA" }}>{fmtBRL(totalLote)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#EF4444" }}>{fmtBRL(totalLote)}</span>
                 </div>
               </div>
 
-              {/* Aviso conciliação */}
-              <div style={{ background: "rgba(96,165,250,0.08)", border: "0.5px solid rgba(96,165,250,0.2)", borderRadius: 7, padding: "8px 12px", fontSize: 11, color: "#93C5FD", marginBottom: 14 }}>
-                Este lote será registrado como <strong>uma única saída de caixa</strong> de {fmtBRL(totalLote)} na conciliação bancária.
-                Cada título será baixado individualmente.
+              {/* Aviso fluxo de dois passos */}
+              <div style={{ background: "rgba(201,146,27,0.08)", border: "0.5px solid rgba(201,146,27,0.3)", borderRadius: 7, padding: "8px 12px", fontSize: 11, color: "#7A5C00", marginBottom: 14 }}>
+                O borderô <strong>não baixa os títulos</strong>. Ele fica pendente na lista abaixo até que outra pessoa confirme o pagamento informando a data e a conta bancária.
               </div>
 
               {loteErro && (
@@ -2086,11 +2177,76 @@ function ContasPagarInner() {
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => setModalLote(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                 <button
-                  onClick={pagarEmLote}
-                  disabled={loteSalvando || !loteData || !loteConta}
+                  onClick={criarBordero}
+                  disabled={loteSalvando}
                   style={{ padding: "8px 20px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: loteSalvando ? 0.6 : 1 }}
                 >
-                  {loteSalvando ? "Processando…" : `Confirmar Pagamento de ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`}
+                  {loteSalvando ? "Criando…" : `Criar Borderô (${itensLote.length} título${itensLote.length !== 1 ? "s" : ""})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Confirmar Pagamento de Borderô ─────────────── */}
+      {modalConfirmar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 480, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Confirmar Pagamento</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{modalConfirmar.descricao}</div>
+              </div>
+              <button onClick={() => setModalConfirmar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 22px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do Pagamento *</label>
+                  <input type="date" style={{ ...inp }} value={confirmData} onChange={e => setConfirmData(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
+                  <select style={{ ...inp }} value={confirmConta} onChange={e => setConfirmConta(e.target.value)}>
+                    <option value="">— Selecionar conta —</option>
+                    {contas.map(c => {
+                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                      return <option key={c.id} value={label}>{label}</option>;
+                    })}
+                    {contas.length === 0 && <option disabled>Cadastre contas em Cadastros</option>}
+                  </select>
+                </div>
+              </div>
+
+              {/* Resumo do borderô */}
+              <div style={{ background: "var(--bg-stripe)", borderRadius: 8, padding: "10px 14px", fontSize: 12, marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ color: "var(--text-2)" }}>Títulos no borderô</span>
+                  <span style={{ fontWeight: 600 }}>{(modalConfirmar.itens ?? []).length}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--text-2)" }}>Total a pagar</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#EF4444" }}>
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(modalConfirmar.valor_total)}
+                  </span>
+                </div>
+              </div>
+
+              {confirmErro && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 12 }}>
+                  {confirmErro}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setModalConfirmar(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button
+                  onClick={confirmarBordero}
+                  disabled={confirmSalvando || !confirmData || !confirmConta}
+                  style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: confirmSalvando ? 0.6 : 1 }}
+                >
+                  {confirmSalvando ? "Baixando…" : "Confirmar e Baixar Todos"}
                 </button>
               </div>
             </div>

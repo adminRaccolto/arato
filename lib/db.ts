@@ -708,22 +708,25 @@ export async function reabrirLancamentos(ids: string[]): Promise<void> {
 }
 
 /**
- * Cria um lote de pagamento (borderô) e baixa todos os títulos de uma vez.
- * Retorna o lote criado.
+ * Cria um borderô pendente (agrupa títulos sem baixa) ou já pago (baixa imediata).
+ * status='pendente' → só vincula lote_id nos lançamentos, sem baixar.
+ * status='pago'     → comportamento original: baixa tudo de uma vez.
  */
 export async function criarPagamentoLote(
   fazenda_id: string,
   tipo: "pagar" | "receber",
-  data_pagamento: string,
-  conta_bancaria: string,
+  data_pagamento: string | null,
+  conta_bancaria: string | null,
   descricao: string,
   itens: { lancamento_id: string; valor_pago: number }[],
+  status: "pendente" | "pago" = "pago",
 ): Promise<import("./supabase").PagamentoLote> {
   const valor_total = itens.reduce((s, i) => s + i.valor_pago, 0);
+
   // 1. Cria o lote
   const { data: lote, error: le } = await supabase
     .from("pagamento_lotes")
-    .insert({ fazenda_id, tipo, conta_bancaria, data_pagamento, valor_total, descricao })
+    .insert({ fazenda_id, tipo, conta_bancaria, data_pagamento, valor_total, descricao, status })
     .select()
     .single();
   if (le) throw le;
@@ -733,15 +736,74 @@ export async function criarPagamentoLote(
   const { error: ie } = await supabase.from("pagamento_lote_itens").insert(rows);
   if (ie) throw ie;
 
-  // 3. Baixa cada lançamento individualmente
-  for (const item of itens) {
+  if (status === "pago") {
+    // 3. Baixa cada lançamento individualmente
+    for (const item of itens) {
+      const { error: be } = await supabase
+        .from("lancamentos")
+        .update({ status: "baixado", valor_pago: item.valor_pago, data_baixa: data_pagamento, conta_bancaria, lote_id: lote.id })
+        .eq("id", item.lancamento_id);
+      if (be) throw be;
+    }
+  } else {
+    // 3. Apenas vincula o lote_id sem mudar status
+    for (const item of itens) {
+      const { error: be } = await supabase
+        .from("lancamentos")
+        .update({ lote_id: lote.id })
+        .eq("id", item.lancamento_id);
+      if (be) throw be;
+    }
+  }
+  return lote;
+}
+
+/** Confirma um borderô pendente: define data/conta e baixa todos os títulos. */
+export async function confirmarPagamentoBordero(
+  lote_id: string,
+  data_pagamento: string,
+  conta_bancaria: string,
+): Promise<void> {
+  // Busca os itens do lote
+  const { data: itens, error: ie } = await supabase
+    .from("pagamento_lote_itens")
+    .select("lancamento_id, valor_pago")
+    .eq("lote_id", lote_id);
+  if (ie) throw ie;
+
+  // Atualiza o lote
+  const { error: le } = await supabase
+    .from("pagamento_lotes")
+    .update({ status: "pago", data_pagamento, conta_bancaria })
+    .eq("id", lote_id);
+  if (le) throw le;
+
+  // Baixa cada lançamento
+  for (const item of (itens ?? [])) {
     const { error: be } = await supabase
       .from("lancamentos")
-      .update({ status: "baixado", valor_pago: item.valor_pago, data_baixa: data_pagamento, conta_bancaria, lote_id: lote.id })
+      .update({ status: "baixado", valor_pago: item.valor_pago, data_baixa: data_pagamento, conta_bancaria, lote_id })
       .eq("id", item.lancamento_id);
     if (be) throw be;
   }
-  return lote;
+}
+
+/** Cancela um borderô pendente: remove vínculo dos lançamentos e exclui o lote. */
+export async function cancelarBordero(lote_id: string): Promise<void> {
+  // Remove lote_id dos lançamentos
+  const { error: ue } = await supabase
+    .from("lancamentos")
+    .update({ lote_id: null })
+    .eq("lote_id", lote_id)
+    .neq("status", "baixado");
+  if (ue) throw ue;
+
+  // Exclui os itens
+  await supabase.from("pagamento_lote_itens").delete().eq("lote_id", lote_id);
+
+  // Exclui o lote
+  const { error: de } = await supabase.from("pagamento_lotes").delete().eq("id", lote_id);
+  if (de) throw de;
 }
 
 export async function listarPagamentoLotes(fazenda_id: string, tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
@@ -750,7 +812,21 @@ export async function listarPagamentoLotes(fazenda_id: string, tipo: "pagar" | "
     .select("*, itens:pagamento_lote_itens(*)")
     .eq("fazenda_id", fazenda_id)
     .eq("tipo", tipo)
-    .order("data_pagamento", { ascending: false });
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Lista borderôs pendentes de um conjunto de fazendas. */
+export async function listarBorderosPendentes(fazenda_ids: string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase
+    .from("pagamento_lotes")
+    .select("*, itens:pagamento_lote_itens(*)")
+    .in("fazenda_id", fazenda_ids)
+    .eq("tipo", tipo)
+    .eq("status", "pendente")
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }

@@ -10414,3 +10414,19 @@ ALTER TABLE operacoes_tesouraria
 CREATE INDEX IF NOT EXISTS idx_op_tesouraria_og ON operacoes_tesouraria(operacao_gerencial_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 208: Borderô pendente — status em pagamento_lotes ──────────────────
+-- Permite criar borderôs sem baixa imediata. status='pendente' = agrupado mas não pago.
+-- status='pago' = confirmado e baixado (comportamento anterior, padrão 'pago' para backcompat).
+ALTER TABLE pagamento_lotes
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pago'
+    CHECK (status IN ('pendente','pago'));
+
+-- conta_bancaria e data_pagamento podem ser NULL em borderôs pendentes
+ALTER TABLE pagamento_lotes
+  ALTER COLUMN conta_bancaria DROP NOT NULL,
+  ALTER COLUMN data_pagamento DROP NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_pagamento_lotes_status ON pagamento_lotes(status);
+
+NOTIFY pgrst, 'reload schema';

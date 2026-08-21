@@ -411,6 +411,7 @@ function ConciliacaoInner() {
         descricao: fTes.descricao || modalTes.descricao,
         valor: fTes.valor || modalTes.valor,
         valor_pago: fTes.valor || modalTes.valor,
+        data_lancamento: fTes.data || modalTes.data,
         data_vencimento: fTes.data || modalTes.data,
         data_baixa: modalTes.data,
         status: "baixado",

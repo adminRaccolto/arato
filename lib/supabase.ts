@@ -295,8 +295,9 @@ export type PagamentoLote = {
   id: string;
   fazenda_id: string;
   tipo: "pagar" | "receber";
+  status?: "pendente" | "pago";   // pendente = agrupado sem baixa; pago = confirmado e baixado
   conta_bancaria?: string;
-  data_pagamento: string;
+  data_pagamento?: string;         // preenchido só na confirmação
   valor_total: number;
   descricao?: string;
   conciliado?: boolean;
