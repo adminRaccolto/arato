@@ -36,7 +36,7 @@ interface OpTesoura {
   categoria?: string; observacao?: string; ativo: boolean;
   operacao_gerencial_id?: string | null;
 }
-interface ContaBancariaMin { id: string; banco?: string; agencia?: string; conta?: string; descricao?: string; tipo?: string; }
+interface ContaBancariaMin { id: string; nome?: string; banco?: string; agencia?: string; conta?: string; tipo_conta?: string; }
 
 const TIPOS_OP_PADRAO = [
   { id: "__mutuo__",         nome: "Mútuo entre Empresas",      tipo: "ambos"        },
@@ -54,7 +54,7 @@ const TIPOS_OP_PADRAO = [
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function TesourariaPage() {
-  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
 
   const [lancamentos, setLancamentos] = useState<LancTesoura[]>([]);
   const [contas, setContas]           = useState<ContaBancariaMin[]>([]);
@@ -83,16 +83,16 @@ export default function TesourariaPage() {
 
     const [{ data: lb }, { data: cb }, { data: ob }, { data: gsb }] = await Promise.all([
       supabase.from("lancamentos").select("*").in("fazenda_id", fazendaIds).eq("origem_lancamento", "tesouraria").order("data_lancamento", { ascending: false }),
-      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").in("fazenda_id", fazendaIds),
+      supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, tipo_conta").in("fazenda_id", fazendaIds),
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
-      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`fazenda_id.is.null,fazenda_id.in.(${fazendaIds.join(",")})`).neq("inativo", true).order("classificacao"),
+      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`).neq("inativo", true).order("classificacao"),
     ]);
 
     setLancamentos(lb ?? []);
     setContas(cb ?? []);
     setOpsTesouraria(ob ?? []);
     setOgs(gsb ?? []);
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -276,7 +276,7 @@ export default function TesourariaPage() {
         const isResgate   = lForm.tipo_op === "__resgate__";
         const isAmbos  = lForm.tipo_op === "__mutuo__" || lForm.tipo_op === "__outros__"
           || (!TIPOS_OP_PADRAO.find(o => o.id === lForm.tipo_op) && opsTesouraria.find(o => o.id === lForm.tipo_op)?.tipo === "ambos");
-        const contaLabel = (c: ContaBancariaMin) => `${c.banco ?? ""} ${c.agencia ? `Ag. ${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim() || c.descricao || c.id;
+        const contaLabel = (c: ContaBancariaMin) => c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag. ${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim() || c.id;
         const contaOpts = contas.length > 0
           ? contas.map(c => <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)
           : [<option key="_vazio" value="" disabled>Nenhuma conta cadastrada — acesse Cadastros &gt; Contas Bancárias</option>];
@@ -284,8 +284,8 @@ export default function TesourariaPage() {
         const contaOptsGrupo = contas.length === 0
           ? [<option key="_vazio" value="" disabled>Nenhuma conta cadastrada</option>]
           : (() => {
-              const inv  = contas.filter(c => c.tipo === "investimento");
-              const rest = contas.filter(c => c.tipo !== "investimento");
+              const inv  = contas.filter(c => c.tipo_conta === "investimento");
+              const rest = contas.filter(c => c.tipo_conta !== "investimento");
               return [
                 inv.length  > 0 && <optgroup key="inv"  label="● Conta Investimento">{inv.map(c =>  <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)}</optgroup>,
                 rest.length > 0 && <optgroup key="rest" label="Outras Contas">{rest.map(c => <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)}</optgroup>,

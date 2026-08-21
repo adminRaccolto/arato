@@ -162,7 +162,7 @@ export default function Conciliacao() {
 }
 
 function ConciliacaoInner() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -218,7 +218,7 @@ function ConciliacaoInner() {
         .order("nome"),
       supabase.from("operacoes_gerenciais")
         .select("id,classificacao,descricao,tipo")
-        .or(`fazenda_id.is.null,fazenda_id.in.(${fazendaIds.join(",")})`)
+        .or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`)
         .neq("inativo", true)
         .order("classificacao"),
     ]);
@@ -236,9 +236,24 @@ function ConciliacaoInner() {
         if (primeiroPend) { setExtrato(primeiroPend); setFiltroPend(true); }
       }
     }
-  }, [fazendaId, fazendaIds, searchParams]);
+  }, [fazendaId, fazendaIds, contaId, searchParams]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  const [lancRefresh, setLancRefresh] = useState(false);
+  async function recarregarLancamentos() {
+    if (!fazendaId || lancRefresh) return;
+    setLancRefresh(true);
+    try {
+      const { data } = await supabase.from("lancamentos")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+        .in("fazenda_id", fazendaIds)
+        .not("status", "eq", "cancelado")
+        .order("data_vencimento", { ascending: false })
+        .limit(600);
+      if (data) setLancamentos(data as Lancamento[]);
+    } finally { setLancRefresh(false); }
+  }
 
   // ── Upload OFX ─────────────────────────────────────────────────────────────
   async function handleOFX(e: React.ChangeEvent<HTMLInputElement>) {
@@ -864,12 +879,18 @@ function ConciliacaoInner() {
               {/* ─── PAINEL ESQUERDO: Lançamentos CP/CR ─────────────────── */}
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: `1.5px solid ${linhaAtiva ? "#C9921B" : "var(--border)"}`, overflow: "hidden", position: "sticky", top: 20 }}>
                 <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#FBF3E0" : lancsSel.size > 0 ? "#EBF4FF" : "var(--bg-page)" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: linhaAtiva ? "#7A5A12" : lancsSel.size > 0 ? "#0B2D50" : "var(--text-1)", marginBottom: 4 }}>
-                    {linhaAtiva
-                      ? `Vinculando ao extrato: ${linhaAtiva.tipo === "debito" ? "−" : "+"}${fmtBRL(linhaAtiva.valor)}`
-                      : lancsSel.size > 0
-                        ? `${lancsSel.size} selecionado${lancsSel.size > 1 ? "s" : ""} — clique "Vincular CP/CR" no extrato`
-                        : "Lançamentos CP / CR"}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: linhaAtiva ? "#7A5A12" : lancsSel.size > 0 ? "#0B2D50" : "var(--text-1)" }}>
+                      {linhaAtiva
+                        ? `Vinculando ao extrato: ${linhaAtiva.tipo === "debito" ? "−" : "+"}${fmtBRL(linhaAtiva.valor)}`
+                        : lancsSel.size > 0
+                          ? `${lancsSel.size} selecionado${lancsSel.size > 1 ? "s" : ""} — clique "Vincular CP/CR" no extrato`
+                          : "Lançamentos CP / CR"}
+                    </div>
+                    <button onClick={recarregarLancamentos} title="Atualizar lançamentos" disabled={lancRefresh}
+                      style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: lancRefresh ? "default" : "pointer", fontSize: 13, color: "var(--text-2)", padding: "2px 7px", lineHeight: 1, opacity: lancRefresh ? 0.5 : 1 }}>
+                      {lancRefresh ? "…" : "↻"}
+                    </button>
                   </div>
                   {linhaAtiva && (
                     <div style={{ fontSize: 11, color: "#7A5A12", marginBottom: 6, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

@@ -39,7 +39,7 @@ const TIPO_META: Record<string, { label: string; bg: string; cl: string }> = {
 };
 
 export default function OperacoesTesourariaPage() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
 
   const [ops, setOps]         = useState<OpTesoura[]>([]);
   const [ogs, setOgs]         = useState<OgMin[]>([]);
@@ -53,11 +53,11 @@ export default function OperacoesTesourariaPage() {
     if (!fazendaId) return;
     const [{ data: opData }, { data: ogData }] = await Promise.all([
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
-      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`fazenda_id.is.null,fazenda_id.in.(${fazendaIds.join(",")})`).neq("inativo", true).order("classificacao"),
+      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`).neq("inativo", true).order("classificacao"),
     ]);
     setOps(opData ?? []);
     setOgs(ogData ?? []);
-  }, [fazendaId, fazendaIds]);
+  }, [fazendaId, fazendaIds, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
