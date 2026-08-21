@@ -10,14 +10,14 @@ import TopNav from "../../../components/TopNav";
 interface ContaBancaria { id: string; nome: string; banco: string; agencia?: string; conta?: string }
 
 interface LinhaOFX {
-  id: string;          // FITID do OFX
-  data: string;        // DTPOSTED → YYYY-MM-DD
-  descricao: string;   // MEMO / NAME
-  valor: number;       // positivo = crédito, negativo = débito
+  id: string;
+  data: string;
+  descricao: string;
+  valor: number;
   tipo: "credito" | "debito";
   conciliado: boolean;
-  lancamento_id?: string;   // vínculo simples
-  lancamento_ids?: string[]; // bordero — vários lançamentos
+  lancamento_id?: string;
+  lancamento_ids?: string[];
   lancamento_desc?: string;
   lancamento_valor?: number;
 }
@@ -63,6 +63,14 @@ interface HistoricoConciliacao {
   created_at: string;
 }
 
+interface FormTesouraria {
+  descricao: string;
+  tipo: "pagar" | "receber";
+  valor: number;
+  data: string;
+  categoria: string;
+}
+
 // ─── Parse OFX ────────────────────────────────────────────────────────────────
 function parseOFX(texto: string): LinhaOFX[] {
   const linhas: LinhaOFX[] = [];
@@ -95,7 +103,7 @@ function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[]): LinhaOFX[] {
       if (Math.abs(vl - linha.valor) > 0.02) return false;
       if (linha.tipo === "credito" && l.tipo !== "receber") return false;
       if (linha.tipo === "debito"  && l.tipo !== "pagar")   return false;
-      const dr  = new Date(((l.data_baixa ?? l.data_vencimento) + "T00:00:00"));
+      const dr = new Date(((l.data_baixa ?? l.data_vencimento) + "T00:00:00"));
       return Math.abs((dl.getTime() - dr.getTime()) / 86400000) <= 7;
     });
     if (candidatos.length === 1) {
@@ -111,8 +119,19 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtDt  = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const hoje   = () => new Date().toISOString().slice(0, 10);
 
-// ─── Larguras iniciais das colunas OFX ───────────────────────────────────────
-const COL_INIT = [80, 280, 110, 95, 230, 95];
+const ehParcial = (l: Lancamento) =>
+  l.valor_pago !== undefined && l.valor_pago !== null && l.valor_pago > 0 && l.valor_pago < l.valor;
+
+const statusMeta = (l: Lancamento): { label: string; bg: string; color: string } => {
+  if (ehParcial(l)) return { label: "parcial", bg: "#FEF9C3", color: "#A16207" };
+  if (l.status === "baixado") return { label: "baixado", bg: "#DCFCE7", color: "#16A34A" };
+  if (l.status === "vencido") return { label: "vencido", bg: "#FEE2E2", color: "#DC2626" };
+  return { label: "aberto", bg: "#FEF3C7", color: "#92400E" };
+};
+
+const COL_INIT = [80, 280, 110, 95, 230, 115];
+
+const TES_CATEGORIAS = ["Tarifa Bancária", "IOF", "CPMF/IOF", "Rendimento CDB", "Rendimento LCI/LCA", "Rendimento Poupança", "Transferência", "Outros"];
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Conciliacao() {
@@ -136,13 +155,20 @@ function ConciliacaoInner() {
   const [filtroPend, setFiltroPend] = useState(() => searchParams.get("pendentes") === "true");
   const [busca, setBusca]           = useState("");
 
-  // Painel esquerdo (lançamentos)
+  // Painel esquerdo — filtros
   const [buscaLanc, setBuscaLanc]           = useState("");
   const [filtroLancTipo, setFiltroLancTipo] = useState<"todos"|"pagar"|"receber">("todos");
+  const [filtroLancStatus, setFiltroLancStatus] = useState<"todos"|"aberto"|"baixado"|"parcial">("todos");
 
   // Vinculação (bordero)
-  const [linhaAtiva, setLinhaAtiva]   = useState<LinhaOFX | null>(null);
-  const [lancsSel, setLancsSel]       = useState<Set<string>>(new Set());
+  const [linhaAtiva, setLinhaAtiva] = useState<LinhaOFX | null>(null);
+  const [lancsSel, setLancsSel]     = useState<Set<string>>(new Set());
+  const [salvando, setSalvando]     = useState(false);
+
+  // Tesouraria inline
+  const [modalTes, setModalTes]   = useState<LinhaOFX | null>(null);
+  const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", categoria: "" });
+  const [savingTes, setSavingTes] = useState(false);
 
   // Colunas redimensionáveis
   const [colWidths, setColWidths] = useState<number[]>([...COL_INIT]);
@@ -152,10 +178,12 @@ function ConciliacaoInner() {
     if (!fazendaId) return;
     const [cR, lR, exR, hR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
-      supabase.from("lancamentos").select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+      supabase.from("lancamentos")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
         .in("fazenda_id", fazendaIds)
-        .in("status", ["aberto","vencido","baixado"])
-        .order("data_vencimento", { ascending: false }),
+        .not("status", "eq", "cancelado")
+        .order("data_vencimento", { ascending: false })
+        .limit(600),
       supabase.from("extratos_bancarios").select("*").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
       supabase.from("historico_conciliacao").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(200),
     ]);
@@ -166,7 +194,6 @@ function ConciliacaoInner() {
     if (exR.data) {
       const lista = exR.data as unknown as Extrato[];
       setExtratos(lista);
-      // Auto-abrir o primeiro extrato com pendências quando vindo da dashboard (?pendentes=true)
       if (searchParams.get("pendentes") === "true") {
         const primeiroPend = lista.find(e => e.pendentes > 0);
         if (primeiroPend) { setExtrato(primeiroPend); setFiltroPend(true); }
@@ -248,26 +275,44 @@ function ConciliacaoInner() {
   async function registrarHistorico(linha: LinhaOFX, acao: "conciliado" | "desvinculado", lancsIds: string[], lancDesc: string) {
     if (!fazendaId || !extrato) return;
     const row = {
-      fazenda_id: fazendaId,
-      extrato_id: extrato.id,
-      fitid: linha.id,
-      conta_nome: extrato.conta_nome,
-      data_transacao: linha.data,
-      descricao: linha.descricao,
-      valor: linha.valor,
-      tipo: linha.tipo,
-      acao,
-      lancamento_ids: lancsIds,
-      lancamento_desc: lancDesc,
+      fazenda_id: fazendaId, extrato_id: extrato.id, fitid: linha.id,
+      conta_nome: extrato.conta_nome, data_transacao: linha.data,
+      descricao: linha.descricao, valor: linha.valor, tipo: linha.tipo,
+      acao, lancamento_ids: lancsIds, lancamento_desc: lancDesc,
     };
     const { data } = await supabase.from("historico_conciliacao").insert(row).select().single();
     if (data) setHistorico(prev => [data as HistoricoConciliacao, ...prev]);
   }
 
-  // ── Confirmar vínculo (simples ou bordero) ─────────────────────────────────
-  function confirmarVinculo() {
-    if (!linhaAtiva || lancsSel.size === 0 || !extrato) return;
+  // ── Confirmar vínculo — Baixar + Conciliar em um passo ────────────────────
+  async function confirmarVinculo() {
+    if (!linhaAtiva || lancsSel.size === 0 || !extrato || !fazendaId) return;
+    setSalvando(true);
     const ids = Array.from(lancsSel);
+
+    // Baixar lançamentos ainda não baixados
+    const paraBaixar = ids
+      .map(id => lancamentos.find(x => x.id === id))
+      .filter(l => l && l.status !== "baixado") as Lancamento[];
+
+    if (paraBaixar.length > 0) {
+      await Promise.all(
+        paraBaixar.map(l =>
+          supabase.from("lancamentos").update({
+            status: "baixado",
+            data_baixa: linhaAtiva.data,
+            valor_pago: l.valor_pago ?? l.valor,
+          }).eq("id", l.id)
+        )
+      );
+      // Atualizar estado local imediatamente
+      setLancamentos(prev => prev.map(l => {
+        if (!ids.includes(l.id) || l.status === "baixado") return l;
+        return { ...l, status: "baixado", data_baixa: linhaAtiva.data, valor_pago: l.valor_pago ?? l.valor };
+      }));
+    }
+
+    // Vincular à linha OFX
     const primeiro = lancamentos.find(l => l.id === ids[0]);
     const descVinc = ids.length === 1 && primeiro ? primeiro.descricao : `${ids.length} lançamentos (bordero)`;
     const valorVinc = ids.reduce((s, id) => {
@@ -275,21 +320,76 @@ function ConciliacaoInner() {
       return s + (l ? (l.valor_pago ?? l.valor) : 0);
     }, 0);
 
-    const linhas = extrato.linhas.map(l =>
+    const novasLinhas = extrato.linhas.map(l =>
       l.id === linhaAtiva.id
         ? { ...l, conciliado: true, lancamento_id: ids[0], lancamento_ids: ids, lancamento_desc: descVinc, lancamento_valor: valorVinc }
         : l
     );
-    const conciliadoN = linhas.filter(l => l.conciliado).length;
-    persistExtrato({ ...extrato, linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN });
-    // Resolve pendências + histórico
+    const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
+    persistExtrato({ ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN });
+
     if (fazendaId) {
-      supabase.from("conciliacao_pendencias").update({ status: "resolvido", lancamento_id: ids[0] })
+      supabase.from("conciliacao_pendencias")
+        .update({ status: "resolvido", lancamento_id: ids[0] })
         .eq("fazenda_id", fazendaId).eq("fitid", linhaAtiva.id);
       registrarHistorico(linhaAtiva, "conciliado", ids, descVinc);
     }
+
     setLinhaAtiva(null);
     setLancsSel(new Set());
+    setSalvando(false);
+  }
+
+  // ── Salvar lançamento de tesouraria e conciliar ───────────────────────────
+  async function salvarTesouraria() {
+    if (!modalTes || !fazendaId || !extrato) return;
+    setSavingTes(true);
+
+    const { data: novoLanc, error } = await supabase
+      .from("lancamentos")
+      .insert({
+        fazenda_id: fazendaId,
+        tipo: fTes.tipo,
+        descricao: fTes.descricao || modalTes.descricao,
+        valor: fTes.valor || modalTes.valor,
+        valor_pago: fTes.valor || modalTes.valor,
+        data_vencimento: fTes.data || modalTes.data,
+        data_baixa: modalTes.data,
+        status: "baixado",
+        categoria: fTes.categoria || "Tesouraria",
+      })
+      .select()
+      .single();
+
+    if (error || !novoLanc) {
+      alert("Erro ao salvar lançamento: " + (error?.message ?? "erro desconhecido"));
+      setSavingTes(false);
+      return;
+    }
+
+    // Atualizar estado local
+    setLancamentos(prev => [novoLanc as Lancamento, ...prev]);
+
+    // Vincular linha OFX
+    const ids = [novoLanc.id];
+    const desc = fTes.descricao || modalTes.descricao;
+    const novasLinhas = extrato.linhas.map(l =>
+      l.id === modalTes.id
+        ? { ...l, conciliado: true, lancamento_id: novoLanc.id, lancamento_ids: ids, lancamento_desc: desc, lancamento_valor: fTes.valor || modalTes.valor }
+        : l
+    );
+    const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
+    persistExtrato({ ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN });
+
+    if (fazendaId) {
+      supabase.from("conciliacao_pendencias")
+        .update({ status: "resolvido", lancamento_id: novoLanc.id })
+        .eq("fazenda_id", fazendaId).eq("fitid", modalTes.id);
+      registrarHistorico(modalTes, "conciliado", ids, desc);
+    }
+
+    setModalTes(null);
+    setSavingTes(false);
   }
 
   // ── Desvincular ────────────────────────────────────────────────────────────
@@ -304,6 +404,18 @@ function ConciliacaoInner() {
     if (fazendaId && linhaOriginal) {
       registrarHistorico(linhaOriginal, "desvinculado", linhaOriginal.lancamento_ids ?? [], linhaOriginal.lancamento_desc ?? "");
     }
+  }
+
+  // ── Abrir modal tesouraria ─────────────────────────────────────────────────
+  function abrirTesouraria(linha: LinhaOFX) {
+    setModalTes(linha);
+    setFTes({
+      descricao: linha.descricao,
+      tipo: linha.tipo === "debito" ? "pagar" : "receber",
+      valor: linha.valor,
+      data: linha.data,
+      categoria: "",
+    });
   }
 
   // ── Resize colunas ─────────────────────────────────────────────────────────
@@ -335,17 +447,39 @@ function ConciliacaoInner() {
   });
 
   const lancFiltrados = lancamentos.filter(l => {
+    // Filtro de status
+    if (filtroLancStatus === "aberto" && !["aberto", "vencido", "em_aberto"].includes(l.status)) return false;
+    if (filtroLancStatus === "baixado" && l.status !== "baixado") return false;
+    if (filtroLancStatus === "parcial" && !ehParcial(l)) return false;
+
+    // Filtro de tipo
     if (filtroLancTipo !== "todos" && l.tipo !== filtroLancTipo) return false;
+
+    // Auto-filtro por tipo do OFX quando linha ativa
     if (linhaAtiva) {
       if (linhaAtiva.tipo === "credito" && l.tipo !== "receber") return false;
       if (linhaAtiva.tipo === "debito"  && l.tipo !== "pagar")   return false;
     }
+
+    // Busca
     if (buscaLanc) {
       const q = buscaLanc.toLowerCase();
       if (!l.descricao.toLowerCase().includes(q) && !l.categoria?.toLowerCase().includes(q)) return false;
     }
     return true;
   });
+
+  // Contagens para badges do filtro de status
+  const cntAberto  = lancamentos.filter(l => ["aberto","vencido","em_aberto"].includes(l.status)).length;
+  const cntBaixado = lancamentos.filter(l => l.status === "baixado").length;
+  const cntParcial = lancamentos.filter(ehParcial).length;
+
+  // Rótulo do botão confirmar
+  const todosJaBaixados = Array.from(lancsSel).every(id => {
+    const l = lancamentos.find(x => x.id === id);
+    return l?.status === "baixado";
+  });
+  const btnConfirmarLabel = salvando ? "Salvando..." : todosJaBaixados ? "✓ Vincular" : "✓ Baixar e Conciliar";
 
   const totalCreditos = (extrato?.linhas ?? []).filter(l => l.tipo === "credito").reduce((s, l) => s + l.valor, 0);
   const totalDebitos  = (extrato?.linhas ?? []).filter(l => l.tipo === "debito").reduce((s, l) => s + l.valor, 0);
@@ -369,6 +503,84 @@ function ConciliacaoInner() {
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
+
+      {/* ── Modal Tesouraria ──────────────────────────────────────────────── */}
+      {modalTes && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Lançamento de Tesouraria</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Criar lançamento e conciliar em um passo</div>
+              </div>
+              <button onClick={() => setModalTes(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+            </div>
+
+            {/* Linha OFX de referência */}
+            <div style={{ margin: "14px 20px 0", padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Transação no extrato</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{modalTes.descricao}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{fmtDt(modalTes.data)} · FITID: {modalTes.id}</div>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: modalTes.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
+                  {modalTes.tipo === "credito" ? "+" : "−"}{fmtBRL(modalTes.valor)}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</label>
+                  <select value={fTes.tipo} onChange={e => setFTes(f => ({ ...f, tipo: e.target.value as "pagar"|"receber" }))}
+                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                    <option value="pagar">Conta a Pagar (saída)</option>
+                    <option value="receber">Conta a Receber (entrada)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Valor</label>
+                  <input type="number" step="0.01" value={fTes.valor} onChange={e => setFTes(f => ({ ...f, valor: parseFloat(e.target.value) || 0 }))}
+                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Descrição</label>
+                <input value={fTes.descricao} onChange={e => setFTes(f => ({ ...f, descricao: e.target.value }))}
+                  style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</label>
+                  <input type="date" value={fTes.data} onChange={e => setFTes(f => ({ ...f, data: e.target.value }))}
+                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Categoria</label>
+                  <input list="tes-cats" value={fTes.categoria} onChange={e => setFTes(f => ({ ...f, categoria: e.target.value }))} placeholder="Tarifa Bancária, IOF..."
+                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <datalist id="tes-cats">{TES_CATEGORIAS.map(c => <option key={c} value={c} />)}</datalist>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <button onClick={() => setModalTes(null)} disabled={savingTes}
+                  style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>
+                  Cancelar
+                </button>
+                <button onClick={salvarTesouraria} disabled={savingTes || !fTes.descricao || fTes.valor <= 0}
+                  style={{ flex: 2, padding: "9px", border: "none", borderRadius: 8, background: savingTes ? "#999" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingTes ? "default" : "pointer" }}>
+                  {savingTes ? "Salvando..." : "✓ Salvar e Conciliar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "22px 20px" }}>
 
@@ -410,7 +622,7 @@ function ConciliacaoInner() {
           </div>
         )}
 
-        {/* Banner: extratos pendentes quando não há extrato ativo */}
+        {/* Banner: extratos pendentes */}
         {!extrato && abaAtiva === "extrato" && extratosPend.length > 0 && (
           <div style={{ background: "#FEF3C7", border: "0.5px solid #F59E0B", borderRadius: 10, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ fontSize: 20 }}>⏳</div>
@@ -431,7 +643,7 @@ function ConciliacaoInner() {
           </div>
         )}
 
-        {/* Lista de extratos salvos */}
+        {/* Lista de extratos */}
         {!extrato && abaAtiva === "extrato" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, marginBottom: 20 }}>
             {extratos.length === 0 ? (
@@ -537,15 +749,14 @@ function ConciliacaoInner() {
                   </div>
                 </div>
               </div>
-              {/* Progress + KPIs */}
               <div style={{ height: 6, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
                 <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 ? "#16A34A" : "#1A4870", borderRadius: 3, transition: "width 0.3s" }} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                 {[
-                  { label: "Total Créditos",   valor: totalCreditos, cor: "#16A34A" },
-                  { label: "Total Débitos",     valor: totalDebitos,  cor: "#E24B4A" },
-                  { label: "Saldo do Período",  valor: saldo,         cor: saldo >= 0 ? "#111" : "#E24B4A" },
+                  { label: "Total Créditos",  valor: totalCreditos, cor: "#16A34A" },
+                  { label: "Total Débitos",    valor: totalDebitos,  cor: "#E24B4A" },
+                  { label: "Saldo do Período", valor: saldo,         cor: saldo >= 0 ? "#111" : "#E24B4A" },
                 ].map(k => (
                   <div key={k.label} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "8px 12px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{k.label}</div>
@@ -556,7 +767,7 @@ function ConciliacaoInner() {
             </div>
 
             {/* ═══ DOIS PAINÉIS ═══ */}
-            <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 12, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 12, alignItems: "start" }}>
 
               {/* ─── PAINEL ESQUERDO: Lançamentos CP/CR ─────────────────── */}
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: `1.5px solid ${linhaAtiva ? "#C9921B" : "var(--border)"}`, overflow: "hidden", position: "sticky", top: 20 }}>
@@ -571,18 +782,37 @@ function ConciliacaoInner() {
                       {linhaAtiva.descricao}
                     </div>
                   )}
+
+                  {/* Filtro Tipo */}
                   <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
                     {(["todos","pagar","receber"] as const).map(t => (
                       <button key={t} onClick={() => setFiltroLancTipo(t)}
                         style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: filtroLancTipo === t ? "#111" : "var(--bg-card)", color: filtroLancTipo === t ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
-                        {t === "todos" ? "Todos" : t === "pagar" ? "A Pagar" : "A Receber"}
+                        {t === "todos" ? "Todos" : t === "pagar" ? "CP" : "CR"}
                       </button>
                     ))}
                   </div>
+
+                  {/* Filtro Status */}
+                  <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                    {([
+                      ["todos",   "Todos",    null],
+                      ["aberto",  "Em Aberto", cntAberto],
+                      ["baixado", "Baixados",  cntBaixado],
+                      ["parcial", "Parciais",  cntParcial],
+                    ] as const).map(([k, lbl, cnt]) => (
+                      <button key={k} onClick={() => setFiltroLancStatus(k)}
+                        style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, border: `0.5px solid ${filtroLancStatus === k ? "#1A4870" : "var(--border)"}`, background: filtroLancStatus === k ? "#D5E8F5" : "var(--bg-card)", color: filtroLancStatus === k ? "#0B2D50" : "var(--text-3)", cursor: "pointer", fontWeight: filtroLancStatus === k ? 700 : 400, whiteSpace: "nowrap" }}>
+                        {lbl}{cnt !== null && cnt > 0 ? ` (${cnt})` : ""}
+                      </button>
+                    ))}
+                  </div>
+
                   <input placeholder="Buscar lançamento..." value={buscaLanc} onChange={e => setBuscaLanc(e.target.value)}
                     style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
                 </div>
 
+                {/* Barra de confirmação */}
                 {linhaAtiva && lancsSel.size > 0 && (
                   <div style={{ padding: "8px 14px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>
@@ -593,26 +823,30 @@ function ConciliacaoInner() {
                         style={{ fontSize: 11, padding: "3px 8px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 6, cursor: "pointer" }}>
                         Limpar
                       </button>
-                      <button onClick={confirmarVinculo}
-                        style={{ fontSize: 11, padding: "3px 10px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
-                        ✓ Confirmar
+                      <button onClick={confirmarVinculo} disabled={salvando}
+                        style={{ fontSize: 11, padding: "3px 12px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, cursor: salvando ? "default" : "pointer", fontWeight: 700 }}>
+                        {btnConfirmarLabel}
                       </button>
                     </div>
                   </div>
                 )}
 
+                {/* Lista de lançamentos */}
                 <div style={{ maxHeight: 520, overflowY: "auto" }}>
-                  {lancFiltrados.slice(0, 80).map((l, i, arr) => {
+                  {lancFiltrados.slice(0, 100).map((l, i, arr) => {
                     const isSel = lancsSel.has(l.id);
+                    const sm    = statusMeta(l);
+                    const saldo = ehParcial(l) ? l.valor - (l.valor_pago ?? 0) : null;
                     return (
-                      <div key={l.id} onClick={() => {
-                        if (!linhaAtiva) return;
-                        setLancsSel(prev => {
-                          const next = new Set(prev);
-                          if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
-                          return next;
-                        });
-                      }}
+                      <div key={l.id}
+                        onClick={() => {
+                          if (!linhaAtiva) return;
+                          setLancsSel(prev => {
+                            const next = new Set(prev);
+                            if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
+                            return next;
+                          });
+                        }}
                         style={{
                           padding: "9px 14px",
                           borderBottom: i < arr.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
@@ -632,20 +866,30 @@ function ConciliacaoInner() {
                             {l.data_baixa ? ` · baixado ${fmtDt(l.data_baixa)}` : ""}
                             {l.categoria ? ` · ${l.categoria}` : ""}
                           </div>
+                          {saldo !== null && (
+                            <div style={{ fontSize: 10, color: "#A16207", marginTop: 2, fontWeight: 600 }}>
+                              Saldo pendente: {fmtBRL(saldo)}
+                            </div>
+                          )}
                         </div>
                         <div style={{ flexShrink: 0, textAlign: "right" }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
                             {fmtBRL(l.valor_pago ?? l.valor)}
                           </div>
-                          <div style={{ fontSize: 10, padding: "1px 5px", borderRadius: 6, background: l.status === "baixado" ? "#DCFCE7" : "#FEF3C7", color: l.status === "baixado" ? "#16A34A" : "#92400E", display: "inline-block", marginTop: 1 }}>
-                            {l.status}
-                          </div>
+                          <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 6, background: sm.bg, color: sm.color, display: "inline-block", marginTop: 2, fontWeight: 600 }}>
+                            {sm.label}
+                          </span>
                         </div>
                       </div>
                     );
                   })}
                   {lancFiltrados.length === 0 && (
                     <div style={{ padding: "24px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum lançamento encontrado</div>
+                  )}
+                  {lancFiltrados.length > 100 && (
+                    <div style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, color: "var(--text-3)", borderTop: "0.5px solid var(--bg-tag)" }}>
+                      +{lancFiltrados.length - 100} ocultos — use a busca para refinar
+                    </div>
                   )}
                 </div>
 
@@ -678,7 +922,7 @@ function ConciliacaoInner() {
                   </button>
                 </div>
 
-                {/* Tabela OFX com colunas redimensionáveis */}
+                {/* Tabela OFX */}
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ tableLayout: "fixed", width: colWidths.reduce((a, b) => a + b, 0), borderCollapse: "collapse", fontSize: 13 }}>
                     <colgroup>
@@ -719,7 +963,7 @@ function ConciliacaoInner() {
                             </td>
                             <td style={{ padding: "9px 10px", overflow: "hidden" }}>
                               {l.conciliado
-                                ? <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#DCFCE7", color: "#16A34A", whiteSpace: "nowrap" }}>Conciliado</span>
+                                ? <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#DCFCE7", color: "#16A34A", whiteSpace: "nowrap" }}>✓ Conciliado</span>
                                 : <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#FEF3C7", color: "#92400E", whiteSpace: "nowrap" }}>Pendente</span>}
                             </td>
                             <td style={{ padding: "9px 10px", overflow: "hidden" }}>
@@ -746,14 +990,22 @@ function ConciliacaoInner() {
                                   Desvincular
                                 </button>
                               ) : (
-                                <button
-                                  onClick={() => {
-                                    if (isAtiva) { setLinhaAtiva(null); setLancsSel(new Set()); }
-                                    else { setLinhaAtiva(l); setLancsSel(new Set()); setFiltroLancTipo(l.tipo === "credito" ? "receber" : "pagar"); }
-                                  }}
-                                  style={{ padding: "3px 9px", borderRadius: 6, border: `0.5px solid ${isAtiva ? "#C9921B" : "#C9921B"}`, background: isAtiva ? "#C9921B" : "#FBF3E0", color: isAtiva ? "#fff" : "#C9921B", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                  {isAtiva ? "✓ Vinculando..." : "Vincular"}
-                                </button>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <button
+                                    onClick={() => {
+                                      if (isAtiva) { setLinhaAtiva(null); setLancsSel(new Set()); }
+                                      else { setLinhaAtiva(l); setLancsSel(new Set()); setFiltroLancTipo(l.tipo === "credito" ? "receber" : "pagar"); }
+                                    }}
+                                    style={{ padding: "3px 9px", borderRadius: 6, border: `0.5px solid #C9921B`, background: isAtiva ? "#C9921B" : "#FBF3E0", color: isAtiva ? "#fff" : "#C9921B", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                    {isAtiva ? "✓ Vinculando..." : "Vincular CP/CR"}
+                                  </button>
+                                  {!isAtiva && (
+                                    <button onClick={() => abrirTesouraria(l)}
+                                      style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                      + Tesouraria
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </td>
                           </tr>
@@ -771,7 +1023,7 @@ function ConciliacaoInner() {
             {/* Avisos finais */}
             {extrato.pendentes > 0 && (
               <div style={{ marginTop: 14, background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#7A5A12" }}>
-                <strong>{extrato.pendentes} transações pendentes.</strong> Clique "Vincular" em uma linha do extrato e selecione o(s) lançamento(s) correspondente(s) no painel esquerdo. Para bordero, selecione múltiplos lançamentos antes de confirmar.
+                <strong>{extrato.pendentes} transações pendentes.</strong> Clique "Vincular CP/CR" em uma linha do extrato e selecione os lançamentos no painel esquerdo. Para bordero, selecione múltiplos. Para tarifas e IOF sem CP/CR, use "+ Tesouraria".
               </div>
             )}
             {pct === 100 && (
