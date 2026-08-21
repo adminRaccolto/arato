@@ -10370,3 +10370,37 @@ WHERE l.contrato_financeiro_id = cf.id
   AND l.tipo = 'receber';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 206: Expansão de apolices_seguro — bem vinculado, campos por ramo, lancamento_id ───
+ALTER TABLE apolices_seguro
+  ADD COLUMN IF NOT EXISTS conta_id          UUID REFERENCES contas(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS bem_tipo          TEXT CHECK (bem_tipo IN ('fazenda','maquina','produtor','funcionario','imovel','outro')),
+  ADD COLUMN IF NOT EXISTS bem_id            UUID,
+  ADD COLUMN IF NOT EXISTS area_ha           NUMERIC,
+  ADD COLUMN IF NOT EXISTS cultura           TEXT,
+  ADD COLUMN IF NOT EXISTS modalidade_seguro TEXT CHECK (modalidade_seguro IN ('proagro','proagro_mais','app_privada')),
+  ADD COLUMN IF NOT EXISTS produtividade_garantida_pct NUMERIC,
+  ADD COLUMN IF NOT EXISTS valor_referencia_sc         NUMERIC,
+  ADD COLUMN IF NOT EXISTS coberturas_vida   JSONB DEFAULT '[]'::jsonb;
+
+-- Backfill conta_id a partir de fazenda
+UPDATE apolices_seguro a
+SET conta_id = f.conta_id
+FROM fazendas f
+WHERE a.fazenda_id = f.id AND a.conta_id IS NULL;
+
+-- Adiciona lancamento_id em pagamentos_premio_seguro para rastrear CP gerado
+ALTER TABLE pagamentos_premio_seguro
+  ADD COLUMN IF NOT EXISTS lancamento_id UUID REFERENCES lancamentos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS fazenda_id    UUID REFERENCES fazendas(id)   ON DELETE CASCADE;
+
+-- Backfill fazenda_id em pagamentos_premio_seguro
+UPDATE pagamentos_premio_seguro pp
+SET fazenda_id = a.fazenda_id
+FROM apolices_seguro a
+WHERE pp.apolice_id = a.id AND pp.fazenda_id IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_apolices_seguro_conta_id ON apolices_seguro(conta_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_premio_fazenda ON pagamentos_premio_seguro(fazenda_id);
+
+NOTIFY pgrst, 'reload schema';

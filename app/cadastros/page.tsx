@@ -382,8 +382,8 @@ function CadastrosInner() {
   const [contratsFinanc, setContratsFinanc] = useState<ContratoFinanceiro[]>([]);
   const [modalMaq, setModalMaq]       = useState(false);
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
-  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
-  const [tabMaq, setTabMaq]           = useState<"geral" | "aquisicao" | "seguro">("geral");
+  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "" });
+  const [tabMaq, setTabMaq]           = useState<"geral" | "aquisicao">("geral");
 
   // ── Benfeitorias ──
   const [benfeitorias, setBenfeitorias] = useState<Benfeitoria[]>([]);
@@ -1873,13 +1873,8 @@ function CadastrosInner() {
       contrato_financiamento_id: m.contrato_financiamento_id ?? "",
       status_financiamento: m.status_financiamento ?? "proprio",
       data_quitacao: m.data_quitacao ?? "",
-      seguro_seguradora: m.seguro_seguradora ?? "", seguro_corretora: m.seguro_corretora ?? "",
-      seguro_numero_apolice: m.seguro_numero_apolice ?? "",
-      seguro_data_contratacao: m.seguro_data_contratacao ?? "",
-      seguro_vencimento_apolice: m.seguro_vencimento_apolice ?? "",
-      seguro_premio: String(m.seguro_premio ?? ""),
       consome_combustivel: m.consome_combustivel !== false,
-    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
+    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "" });
     setModalMaq(true);
   };
   const salvarMaq = () => salvar(async () => {
@@ -1899,12 +1894,6 @@ function CadastrosInner() {
       contrato_financiamento_id: fMaq.contrato_financiamento_id || undefined,
       status_financiamento: fMaq.status_financiamento || "proprio",
       data_quitacao: fMaq.status_financiamento === "quitado" ? (fMaq.data_quitacao || undefined) : undefined,
-      seguro_seguradora: fMaq.seguro_seguradora || undefined,
-      seguro_corretora: fMaq.seguro_corretora || undefined,
-      seguro_numero_apolice: fMaq.seguro_numero_apolice || undefined,
-      seguro_data_contratacao: fMaq.seguro_data_contratacao || undefined,
-      seguro_vencimento_apolice: fMaq.seguro_vencimento_apolice || undefined,
-      seguro_premio: fMaq.seguro_premio ? Number(fMaq.seguro_premio) : undefined,
       consome_combustivel: fMaq.consome_combustivel,
       ativa: true,
     };
@@ -2736,7 +2725,7 @@ function CadastrosInner() {
                         onChange={e => setSelMaquinas(e.target.checked ? new Set(maquinas.map(m => m.id)) : new Set())}
                         style={{ cursor: "pointer", width: 15, height: 15 }} />
                     </th>
-                    {["Nome", "Proprietário", "Patrimônio", "Tipo", "Marca / Modelo", "Ano", "Km / Horímetro", "Seguro", "Financiamento", ""].map((c, i) => (
+                    {["Nome", "Proprietário", "Patrimônio", "Tipo", "Marca / Modelo", "Ano", "Km / Horímetro", "Apólice", "Financiamento", ""].map((c, i) => (
                       <th key={i} style={{ ...thS, textAlign: i === 0 ? "left" : "center" }}>{c}</th>
                     ))}
                   </tr>
@@ -2744,8 +2733,6 @@ function CadastrosInner() {
                 <tbody>
                   {maquinas.length === 0 && <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
                   {maquinas.map((m, i) => {
-                    const vencSeguro = m.seguro_vencimento_apolice ? diasAteDate(m.seguro_vencimento_apolice) : null;
-                    const corSeguro = vencSeguro === null ? "var(--text-3)" : vencSeguro < 0 ? "#E24B4A" : vencSeguro <= 15 ? "#EF9F27" : "#16A34A";
                     const sel = selMaquinas.has(m.id);
                     return (
                       <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: sel ? "#EEEEEE" : "transparent" }}>
@@ -2771,11 +2758,7 @@ function CadastrosInner() {
                             : "—"}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          {m.seguro_vencimento_apolice
-                            ? <span style={{ fontSize: 11, color: corSeguro, fontWeight: 600 }}>
-                                {vencSeguro! < 0 ? "Vencido" : vencSeguro! <= 15 ? `${vencSeguro}d` : m.seguro_vencimento_apolice.split("-").reverse().join("/")}
-                              </span>
-                            : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
+                          <a href="/financeiro/seguros" style={{ fontSize: 11, color: "#1A4870", textDecoration: "underline" }}>Ver apólices</a>
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           {!m.status_financiamento || m.status_financiamento === "proprio"
@@ -8582,9 +8565,9 @@ function CadastrosInner() {
         <Modal titulo={editMaq ? "Editar Máquina / Veículo" : "Nova Máquina / Veículo"} onClose={() => setModalMaq(false)} width={820}>
           {/* Abas internas */}
           <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginBottom: 18 }}>
-            {(["geral", "aquisicao", "seguro"] as const).map(t => (
+            {(["geral", "aquisicao"] as const).map(t => (
               <button key={t} onClick={() => setTabMaq(t)} style={{ padding: "8px 20px", border: "none", borderBottom: tabMaq === t ? "2px solid #2A2A2A" : "2px solid transparent", background: "transparent", fontWeight: tabMaq === t ? 600 : 400, color: tabMaq === t ? "#2A2A2A" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
-                {t === "geral" ? "Dados Gerais" : t === "aquisicao" ? "Aquisição / Financiamento" : "Seguro"}
+                {t === "geral" ? "Dados Gerais" : "Aquisição / Financiamento"}
               </button>
             ))}
           </div>
@@ -8675,33 +8658,6 @@ function CadastrosInner() {
                   ⚠ O status muda automaticamente para <strong>Quitado</strong> quando a última parcela do contrato vinculado for baixada.
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Aba Seguro */}
-          {tabMaq === "seguro" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-              <div><label style={lbl}>Seguradora</label><input style={inp} placeholder="Ex: Porto Seguro, Bradesco Seguros" value={fMaq.seguro_seguradora} onChange={e => setFMaq(p => ({ ...p, seguro_seguradora: e.target.value }))} /></div>
-              <div><label style={lbl}>Corretora</label><input style={inp} placeholder="Ex: Corretora XYZ" value={fMaq.seguro_corretora} onChange={e => setFMaq(p => ({ ...p, seguro_corretora: e.target.value }))} /></div>
-              <div><label style={lbl}>Nº da Apólice</label><input style={inp} placeholder="Ex: 000.123456-7" value={fMaq.seguro_numero_apolice} onChange={e => setFMaq(p => ({ ...p, seguro_numero_apolice: e.target.value }))} /></div>
-              <div>
-                <label style={lbl}>Data de Contratação</label>
-                <input style={inp} type="date" value={fMaq.seguro_data_contratacao} onChange={e => setFMaq(p => ({ ...p, seguro_data_contratacao: e.target.value }))} />
-              </div>
-              <div>
-                <label style={lbl}>Vencimento da Apólice</label>
-                <input style={inp} type="date" value={fMaq.seguro_vencimento_apolice} onChange={e => setFMaq(p => ({ ...p, seguro_vencimento_apolice: e.target.value }))} />
-              </div>
-              <div>
-                <label style={lbl}>Prêmio anual (R$)</label>
-                <InputMonetario style={inp} min="0" placeholder="Ex: 3500.00" value={fMaq.seguro_premio} onChange={v => setFMaq(p => ({ ...p, seguro_premio: String(v) }))} />
-              </div>
-              {fMaq.seguro_vencimento_apolice && (() => {
-                const dias = diasAteDate(fMaq.seguro_vencimento_apolice);
-                const cor = dias < 0 ? "#E24B4A" : dias <= 15 ? "#EF9F27" : "#16A34A";
-                const txt = dias < 0 ? `Apólice VENCIDA há ${Math.abs(dias)} dias` : dias <= 15 ? `⚠️ Vence em ${dias} dias` : `✓ Válida — vence em ${dias} dias`;
-                return <div style={{ gridColumn: "1/-1", background: dias <= 15 ? "#FFF8ED" : "#F0FDF4", border: `0.5px solid ${cor}30`, borderRadius: 8, padding: "10px 14px", color: cor, fontWeight: 600, fontSize: 12 }}>{txt}</div>;
-              })()}
             </div>
           )}
 
