@@ -68,8 +68,28 @@ interface FormTesouraria {
   tipo: "pagar" | "receber";
   valor: number;
   data: string;
-  categoria: string;
+  tipo_op: string;  // id da operação de tesouraria (padrão ou custom)
 }
+
+interface OpTesouraria {
+  id: string;
+  nome: string;
+  tipo: "entrada" | "saida" | "ambos" | "transferencia" | "ajuste";
+  descricao?: string;
+}
+
+// Operações padrão idênticas às de app/financeiro/tesouraria/operacoes/page.tsx
+const OPS_TESOURARIA_PADRAO: OpTesouraria[] = [
+  { id: "__taxa__",          nome: "Taxa Bancária",             tipo: "saida",        descricao: "TED, DOC, boletos, tarifas de manutenção, IOF" },
+  { id: "__resgate__",       nome: "Resgate de Aplicação",      tipo: "entrada",      descricao: "Resgate de investimentos financeiros" },
+  { id: "__aplicacao__",     nome: "Aplicação Financeira",      tipo: "saida",        descricao: "Investimento em CDB, LCA, tesouro direto, etc." },
+  { id: "__transferencia__", nome: "Transferência entre Contas",tipo: "transferencia",descricao: "Movimentação entre contas bancárias próprias" },
+  { id: "__ajuste__",        nome: "Ajuste de Saldo",           tipo: "ajuste",       descricao: "Correção de divergência entre saldo real e sistema" },
+  { id: "__mutuo__",         nome: "Mútuo entre Empresas",      tipo: "ambos",        descricao: "Empréstimos entre empresas do grupo" },
+  { id: "__seguro__",        nome: "Seguros",                   tipo: "saida",        descricao: "Prêmios e parcelas de apólices de seguro" },
+  { id: "__consorcio__",     nome: "Consórcio",                 tipo: "saida",        descricao: "Parcelas mensais de consórcio" },
+  { id: "__outros__",        nome: "Outros",                    tipo: "ambos",        descricao: "Operações financeiras diversas não classificadas" },
+];
 
 // ─── Parse OFX ────────────────────────────────────────────────────────────────
 function parseOFX(texto: string): LinhaOFX[] {
@@ -131,7 +151,6 @@ const statusMeta = (l: Lancamento): { label: string; bg: string; color: string }
 
 const COL_INIT = [80, 320, 110, 90, 260, 135];
 
-const TES_CATEGORIAS = ["Tarifa Bancária", "IOF", "CPMF/IOF", "Rendimento CDB", "Rendimento LCI/LCA", "Rendimento Poupança", "Transferência", "Outros"];
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Conciliacao() {
@@ -167,8 +186,9 @@ function ConciliacaoInner() {
 
   // Tesouraria inline
   const [modalTes, setModalTes]   = useState<LinhaOFX | null>(null);
-  const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", categoria: "" });
+  const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", tipo_op: "__taxa__" });
   const [savingTes, setSavingTes] = useState(false);
+  const [opsCustom, setOpsCustom] = useState<OpTesouraria[]>([]);
 
   // Colunas redimensionáveis
   const [colWidths, setColWidths] = useState<number[]>([...COL_INIT]);
@@ -176,7 +196,7 @@ function ConciliacaoInner() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lR, exR, hR] = await Promise.all([
+    const [cR, lR, exR, hR, ogR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("lancamentos")
         .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
@@ -186,10 +206,16 @@ function ConciliacaoInner() {
         .limit(600),
       supabase.from("extratos_bancarios").select("*").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
       supabase.from("historico_conciliacao").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(200),
+      supabase.from("operacoes_tesouraria")
+        .select("id,nome,tipo")
+        .in("fazenda_id", fazendaIds)
+        .eq("ativo", true)
+        .order("nome"),
     ]);
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     if (lR.data) setLancamentos(lR.data as Lancamento[]);
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
+    if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
 
     if (exR.data) {
       const lista = exR.data as unknown as Extrato[];
@@ -347,6 +373,8 @@ function ConciliacaoInner() {
     if (!modalTes || !fazendaId || !extrato) return;
     setSavingTes(true);
 
+    const todasOps: OpTesouraria[] = [...OPS_TESOURARIA_PADRAO, ...opsCustom];
+    const opSel = todasOps.find(o => o.id === fTes.tipo_op);
     const { data: novoLanc, error } = await supabase
       .from("lancamentos")
       .insert({
@@ -358,7 +386,7 @@ function ConciliacaoInner() {
         data_vencimento: fTes.data || modalTes.data,
         data_baixa: modalTes.data,
         status: "baixado",
-        categoria: fTes.categoria || "Tesouraria",
+        categoria: opSel?.nome ?? "Tesouraria",
       })
       .select()
       .single();
@@ -411,12 +439,14 @@ function ConciliacaoInner() {
   // ── Abrir modal tesouraria ─────────────────────────────────────────────────
   function abrirTesouraria(linha: LinhaOFX) {
     setModalTes(linha);
+    // Pré-selecionar operação mais provável pelo tipo OFX
+    const opPadrao = linha.tipo === "credito" ? "__resgate__" : "__taxa__";
     setFTes({
       descricao: linha.descricao,
       tipo: linha.tipo === "debito" ? "pagar" : "receber",
       valor: linha.valor,
       data: linha.data,
-      categoria: "",
+      tipo_op: opPadrao,
     });
   }
 
@@ -555,18 +585,38 @@ function ConciliacaoInner() {
                   style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</label>
-                  <input type="date" value={fTes.data} onChange={e => setFTes(f => ({ ...f, data: e.target.value }))}
-                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Categoria</label>
-                  <input list="tes-cats" value={fTes.categoria} onChange={e => setFTes(f => ({ ...f, categoria: e.target.value }))} placeholder="Tarifa Bancária, IOF..."
-                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-                  <datalist id="tes-cats">{TES_CATEGORIAS.map(c => <option key={c} value={c} />)}</datalist>
-                </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação de Tesouraria</label>
+                <select
+                  value={fTes.tipo_op}
+                  onChange={e => {
+                    const op = [...OPS_TESOURARIA_PADRAO, ...opsCustom].find(o => o.id === e.target.value);
+                    setFTes(f => ({
+                      ...f,
+                      tipo_op: e.target.value,
+                      tipo: op?.tipo === "entrada" ? "receber" : op?.tipo === "saida" ? "pagar" : f.tipo,
+                    }));
+                  }}
+                  style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                  <optgroup label="Operações Padrão">
+                    {OPS_TESOURARIA_PADRAO.map(o => (
+                      <option key={o.id} value={o.id}>{o.nome}</option>
+                    ))}
+                  </optgroup>
+                  {opsCustom.length > 0 && (
+                    <optgroup label="Operações da Fazenda">
+                      {opsCustom.map(o => (
+                        <option key={o.id} value={o.id}>{o.nome}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</label>
+                <input type="date" value={fTes.data} onChange={e => setFTes(f => ({ ...f, data: e.target.value }))}
+                  style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
 
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
