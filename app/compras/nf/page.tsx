@@ -266,6 +266,7 @@ export default function NfCompraPage() {
   const [siegProdutores,    setSiegProdutores]    = useState<Array<{nome: string; cnpj: string}>>([]);
   const [siegReimporting,   setSiegReimporting]   = useState<Record<string, boolean>>({});
   const [wizardResyncando,  setWizardResyncando]  = useState(false);
+  const [xmlSemItens,       setXmlSemItens]       = useState(false); // XML carregado mas 0 det encontrados
   // SIEG — manifestação inline
   const [siegBusy,       setSiegBusy]       = useState<Record<string, boolean>>({});
   const [siegErros,      setSiegErros]      = useState<Record<string, string>>({});
@@ -738,6 +739,7 @@ export default function NfCompraPage() {
     setBulkOpGer("");
     setItens([ITEM_VAZIO()]);
     setErr("");
+    setXmlSemItens(false);
     setSiegChave("");
     setLeitorChave("");
     setLeitorErro(null);
@@ -899,21 +901,33 @@ export default function NfCompraPage() {
         centro_custo_id:       regraHeader?.centro_custo_id       ?? p.centro_custo_id,
       }));
 
-      // Itens — aplica regra por item (NCM + CFOP + descrição)
-      const dets = Array.from(doc.querySelectorAll("det"));
+      // Verifica se o DOMParser retornou um erro de parse
+      if (doc.querySelector("parsererror")) {
+        setErr("Erro ao ler o XML da NF-e. Verifique se o arquivo não está corrompido ou com encoding inválido.");
+        return;
+      }
+
+      // Itens — querySelectorAll pode falhar com xmlns declarado; fallback para getElementsByTagName
+      let dets = Array.from(doc.querySelectorAll("det"));
+      if (dets.length === 0) dets = Array.from(doc.getElementsByTagName("det"));
+      setXmlSemItens(dets.length === 0);
       if (dets.length > 0) {
         setItens(dets.map(det => {
-          const prod = det.querySelector("prod");
-          const xProd  = prod?.querySelector("xProd")?.textContent  ?? "";
-          const NCM    = prod?.querySelector("NCM")?.textContent    ?? "";
-          const CFOP   = prod?.querySelector("CFOP")?.textContent   ?? "";
-          const uCom   = prod?.querySelector("uCom")?.textContent   ?? "UN";
-          const qCom   = parseFloat(prod?.querySelector("qCom")?.textContent  ?? "0");
-          const vUnCom = parseFloat(prod?.querySelector("vUnCom")?.textContent ?? "0");
-          const vProd  = parseFloat(prod?.querySelector("vProd")?.textContent  ?? "0");
+          // getElementsByTagName é mais robusto que querySelector em XMLs com namespace
+          const getTag = (parent: Element, tag: string) =>
+            parent.querySelector(tag)?.textContent ?? parent.getElementsByTagName(tag)[0]?.textContent ?? "";
+          const prod = det.querySelector("prod") ?? det.getElementsByTagName("prod")[0];
+          if (!prod) return { ...ITEM_VAZIO() };
+          const xProd  = getTag(prod, "xProd");
+          const NCM    = getTag(prod, "NCM");
+          const CFOP   = getTag(prod, "CFOP");
+          const uCom   = getTag(prod, "uCom") || "UN";
+          const qCom   = parseFloat(getTag(prod, "qCom")  || "0");
+          const vUnCom = parseFloat(getTag(prod, "vUnCom") || "0");
+          const vProd  = parseFloat(getTag(prod, "vProd")  || "0");
           // Unidade tributável — em sementes costuma ter qTrib em KG mesmo quando uCom = BAG
-          const uTrib  = prod?.querySelector("uTrib")?.textContent ?? "";
-          const qTrib  = parseFloat(prod?.querySelector("qTrib")?.textContent  ?? "0");
+          const uTrib  = getTag(prod, "uTrib");
+          const qTrib  = parseFloat(getTag(prod, "qTrib") || "0");
 
           // ── Detecção de conversão BAG → KG via campos da NF ─────────────────
           // Se uCom = BAG e uTrib tem o peso, pre-preenche conversão manual com o total.
@@ -2906,6 +2920,33 @@ export default function NfCompraPage() {
                       >
                         {wizardResyncando ? "Re-sincronizando…" : "🔄 Re-sincronizar do SIEG"}
                       </button>
+                    </div>
+                  )}
+                  {/* Banner: XML carregado mas nenhum <det> encontrado */}
+                  {xmlSemItens && (
+                    <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 13, color: "#791F1F", fontWeight: 600, marginBottom: 4 }}>
+                        ⚠ O XML foi lido mas nenhum item ({"<det>"}) foi encontrado
+                      </div>
+                      <div style={{ fontSize: 12, color: "#791F1F" }}>
+                        Isso pode ocorrer por encoding inválido, XML compactado ou NF-e de serviço (sem linha de produtos).
+                        Tente: (1) voltar ao Passo 1 e recarregar o XML, (2) adicionar os itens manualmente abaixo, ou
+                        (3) buscar via Chave de Acesso no Passo 1.
+                      </div>
+                    </div>
+                  )}
+                  {/* Banner: itens zerados vindo de qualquer origem (apenas 1 item vazio gerado por padrão) */}
+                  {!xmlSemItens && itens.length === 1 && !itens[0].descricao_nf && itens[0].valor_total === 0 && nfEdit?.chave_acesso && nfEdit?.chave_acesso.replace(/\D/g,"").length === 44 && (
+                    <div style={{ background: "#FFF8E6", border: "0.5px solid #F0C040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, color: "#7A5500" }}>
+                        Nenhum item carregado. Volte ao Passo 1 e importe o XML ou busque via Leitor de Chave.
+                      </span>
+                      {nfEdit?.origem === "sieg" && (
+                        <button onClick={resyncWizard} disabled={wizardResyncando}
+                          style={{ padding: "5px 14px", borderRadius: 7, border: "0.5px solid #C9921B", background: wizardResyncando ? "#f5e0a0" : "#FBF3E0", color: "#7A5500", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          {wizardResyncando ? "Re-sincronizando…" : "🔄 Re-sincronizar do SIEG"}
+                        </button>
+                      )}
                     </div>
                   )}
                   {/* Cabeçalho da etapa */}
