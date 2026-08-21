@@ -614,10 +614,40 @@ export default function Financeiro() {
   const d30 = new Date(TODAY); d30.setDate(d30.getDate() + 30);
   const d30Key = d30.toISOString().split("T")[0];
 
+  const subAbaLabel = subAbaFluxo === "horizontal" ? "DFC Mensal" : subAbaFluxo === "vertical" ? "Dia a Dia" : "Previsto × Real";
+  const printDate = new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+      <style>{`
+        @media print {
+          .fc-tabs-bar    { display: none !important; }
+          .fc-sub-tabs    { display: none !important; }
+          .fc-dfc-toolbar { display: none !important; }
+          .fc-dia-sum     { display: none !important; }
+          .fc-dia-header  { position: static !important; }
+          .fc-dia-list    { max-height: none !important; overflow: visible !important; }
+          .fc-dfc-wrap    { overflow: visible !important; }
+          .fc-dfc-table   { min-width: 0 !important; font-size: 9px !important; }
+          .fc-dfc-th-desc { min-width: 100px !important; position: static !important; background: #f0f0f0 !important; }
+          .fc-dfc-th-month{ min-width: 55px !important; font-size: 9px !important; }
+          .fc-dfc-th-total{ min-width: 65px !important; }
+          .fc-dfc-td-desc { position: static !important; background: inherit !important; }
+          .fc-stats-cards { display: none !important; }
+        }
+      `}</style>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        {/* Cabeçalho apenas para impressão */}
+        <div className="print-area" style={{ display: "none", padding: "0 0 12px 0", borderBottom: "1px solid #ccc", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 36, objectFit: "contain" }} />
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Fluxo de Caixa — {subAbaLabel}</div>
+              <div style={{ fontSize: 11, color: "#555" }}>{nomeFazendaSelecionada ?? "Fazenda"} · Gerado em {printDate}</div>
+            </div>
+          </div>
+        </div>
 
         {/* Header */}
         <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px 0 22px" }}>
@@ -677,7 +707,7 @@ export default function Financeiro() {
           {!loading && !erro && (
             <>
               {/* Stats */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
+              <div className="fc-stats-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
                   { label: "A receber",          valor: fmtBRL(aReceber), cor: "#111111", sub: `${lancOper.filter(l => l.tipo === "receber" && l.status !== "baixado").length} lançamentos em aberto` },
                   { label: "A pagar",            valor: fmtBRL(aPagar),   cor: "#E24B4A", sub: `${lancOper.filter(l => l.tipo === "pagar" && l.status !== "baixado").length} lançamentos em aberto` },
@@ -722,7 +752,7 @@ export default function Financeiro() {
               {lancamentos.length > 0 && (
                 <>
                   {/* Abas */}
-                  <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)", marginBottom: 0 }}>
+                  <div className="fc-tabs-bar" style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)", marginBottom: 0 }}>
                     {([
                       { key: "lancamentos", label: "Lançamentos CP/CR" },
                       { key: "fluxo",       label: "Fluxo de Caixa"    },
@@ -867,7 +897,7 @@ export default function Financeiro() {
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 12px 12px" }}>
 
                       {/* Sub-abas Horizontal / Vertical */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)" }}>
+                      <div className="fc-sub-tabs" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)" }}>
                         <div style={{ display: "flex", gap: 4 }}>
                           {([
                             { key: "horizontal", label: "⊞ DFC Mensal"      },
@@ -998,7 +1028,7 @@ export default function Financeiro() {
                         return (
                           <div>
                             {/* Toolbar */}
-                            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#F9FAFB" }}>
+                            <div className="fc-dfc-toolbar" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#F9FAFB" }}>
                               <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Modo:</span>
                               {(["realizado","previsto"] as const).map(m => (
                                 <button key={m} onClick={() => setModoDFC(m)} style={{
@@ -1021,20 +1051,20 @@ export default function Financeiro() {
                             </div>
 
                             {/* Table */}
-                            <div style={{ overflowX: "auto" }}>
-                              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+                            <div className="fc-dfc-wrap" style={{ overflowX: "auto" }}>
+                              <table className="fc-dfc-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-page)" }}>
-                                    <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", minWidth: 240, position: "sticky", left: 0, background: "var(--bg-page)", zIndex: 2 }}>
+                                    <th className="fc-dfc-th-desc" style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", minWidth: 240, position: "sticky", left: 0, background: "var(--bg-page)", zIndex: 2 }}>
                                       Conta / Descrição
                                     </th>
                                     {mesesDFC.map(m => (
-                                      <th key={m.keyMes} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: m.passado ? "var(--text-2)" : "var(--text-1)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", minWidth: 110 }}>
+                                      <th key={m.keyMes} className="fc-dfc-th-month" style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: m.passado ? "var(--text-2)" : "var(--text-1)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", minWidth: 110 }}>
                                         {m.label}
                                         {m.passado && <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 400 }}>{modoDFC}</div>}
                                       </th>
                                     ))}
-                                    <th style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-1)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", minWidth: 120, background: "var(--bg-page)" }}>
+                                    <th className="fc-dfc-th-total" style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-1)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", minWidth: 120, background: "var(--bg-page)" }}>
                                       Total
                                     </th>
                                   </tr>
@@ -1051,6 +1081,7 @@ export default function Financeiro() {
                                     return (
                                       <tr key={node.id} style={{ borderBottom: "0.5px solid #E8ECF2" }}>
                                         <td
+                                          className="fc-dfc-td-desc"
                                           onClick={() => hasChildren && toggleCollapse(node.id)}
                                           style={{ ...s, padding: "7px 14px", paddingLeft: 14 + indent, position: "sticky", left: 0, zIndex: 1, cursor: hasChildren ? "pointer" : "default", whiteSpace: "nowrap", minWidth: 240, userSelect: "none" }}
                                         >
@@ -1417,7 +1448,7 @@ export default function Financeiro() {
                         return (
                           <div style={{ background: "var(--bg-page)" }}>
                             {/* Sumário 30 dias + botão simulação */}
-                            <div style={{ display: "flex", alignItems: "stretch", background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)" }}>
+                            <div className="fc-dia-sum" style={{ display: "flex", alignItems: "stretch", background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)" }}>
                               <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
                                 {[
                                   { label: "Entradas previstas (30 dias)", valor: lancamentos.filter(l => l.tipo === "receber" && l.moeda !== "barter" && l.status !== "baixado" && (l.data_vencimento ?? "") <= d30Key).reduce((a, l) => a + paraBRL(l), 0) + previsoes.filter(p => p.tipo === "receber" && p.data <= d30Key).reduce((a, p) => a + p.valor, 0), cor: "#111111" },
@@ -1440,7 +1471,7 @@ export default function Financeiro() {
                             </div>
 
                             {/* Cabeçalho fixo */}
-                            <div style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "7px 14px", background: "#EFEFEC", borderBottom: "0.5px solid #e0e0dc", position: "sticky", top: 0, zIndex: 2 }}>
+                            <div className="fc-dia-header" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "7px 14px", background: "#EFEFEC", borderBottom: "0.5px solid #e0e0dc", position: "sticky", top: 0, zIndex: 2 }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Data / Descrição</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Status</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textAlign: "right", paddingRight: 6 }}>CR — Entradas</div>
@@ -1455,7 +1486,7 @@ export default function Financeiro() {
                             </div>
 
                             {/* Lista de dias */}
-                            <div style={{ maxHeight: 480, overflowY: "auto" }}>
+                            <div className="fc-dia-list" style={{ maxHeight: 480, overflowY: "auto" }}>
                               {diasOrdenados.map(dia => {
                                 const lDia = lancamentos.filter(l => l.moeda !== "barter" && l.data_vencimento === dia);
                                 const pDia = previsoes.filter(p => p.data === dia);
