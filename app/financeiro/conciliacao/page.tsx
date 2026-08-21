@@ -315,12 +315,26 @@ function ConciliacaoInner() {
   }
 
   // ── Persistir extrato atualizado ───────────────────────────────────────────
-  function persistExtrato(upd: Extrato) {
+  // Usa API route com service_role_key para ser imune a JWT expirado.
+  // O estado local é atualizado imediatamente (optimistic); a persistência é async.
+  function persistExtrato(
+    upd: Extrato,
+    opts?: { conciliarIds?: string[]; desconciliarIds?: string[] },
+  ) {
     setExtrato(upd);
     setExtratos(prev => prev.map(e => e.id === upd.id ? upd : e));
-    supabase.from("extratos_bancarios").update({
-      linhas: upd.linhas, conciliados: upd.conciliados, pendentes: upd.pendentes,
-    }).eq("id", upd.id);
+    fetch("/api/financeiro/persistir-extrato", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: upd.id,
+        linhas: upd.linhas,
+        conciliados: upd.conciliados,
+        pendentes: upd.pendentes,
+        lancamento_ids_conciliados: opts?.conciliarIds,
+        lancamento_ids_desconciliados: opts?.desconciliarIds,
+      }),
+    }).catch(e => console.error("[persistExtrato]", e));
   }
 
   // ── Registrar no histórico ─────────────────────────────────────────────────
@@ -380,7 +394,11 @@ function ConciliacaoInner() {
         : l
     );
     const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
-    persistExtrato({ ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN });
+    // Também atualiza conciliado=true em todos os lançamentos vinculados (para badge em CP/CR)
+    persistExtrato(
+      { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
+      { conciliarIds: ids },
+    );
 
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
@@ -439,7 +457,10 @@ function ConciliacaoInner() {
         : l
     );
     const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
-    persistExtrato({ ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN });
+    persistExtrato(
+      { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
+      { conciliarIds: ids },
+    );
 
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
@@ -456,11 +477,16 @@ function ConciliacaoInner() {
   function desvincular(linhaId: string) {
     if (!extrato) return;
     const linhaOriginal = extrato.linhas.find(l => l.id === linhaId);
+    const idsDesconciliados = linhaOriginal?.lancamento_ids ?? (linhaOriginal?.lancamento_id ? [linhaOriginal.lancamento_id] : []);
     const linhas = extrato.linhas.map(l =>
       l.id === linhaId ? { ...l, conciliado: false, lancamento_id: undefined, lancamento_ids: undefined, lancamento_desc: undefined, lancamento_valor: undefined } : l
     );
     const conciliadoN = linhas.filter(l => l.conciliado).length;
-    persistExtrato({ ...extrato, linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN });
+    // Desconcilia os lançamentos (conciliado=false) para remover badge em CP/CR
+    persistExtrato(
+      { ...extrato, linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN },
+      { desconciliarIds: idsDesconciliados.length ? idsDesconciliados : undefined },
+    );
     if (fazendaId && linhaOriginal) {
       registrarHistorico(linhaOriginal, "desvinculado", linhaOriginal.lancamento_ids ?? [], linhaOriginal.lancamento_desc ?? "");
     }

@@ -10430,3 +10430,13 @@ ALTER TABLE pagamento_lotes
 CREATE INDEX IF NOT EXISTS idx_pagamento_lotes_status ON pagamento_lotes(status);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 209: Indicador de conciliação OFX em lançamentos ──────────────────
+-- Permite exibir badge "OFX" em CP/CR para lançamentos já conciliados com extrato bancário.
+-- Atualizado automaticamente pela tela de Conciliação ao vincular/desvincular linhas OFX.
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS conciliado BOOLEAN DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_conciliado ON lancamentos(conciliado) WHERE conciliado = TRUE;
+
+NOTIFY pgrst, 'reload schema';

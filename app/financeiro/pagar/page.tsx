@@ -1264,6 +1264,7 @@ function ContasPagarInner() {
                                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                     <span style={{ fontWeight: 600, fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{fornNome}</span>
                                     {isPrevisao && <span style={{ fontSize: 9, background: "rgba(129,140,248,0.2)", color: "#818CF8", padding: "1px 5px", borderRadius: 4, fontWeight: 700, flexShrink: 0, border: "0.5px solid rgba(129,140,248,0.3)" }}>PREV</span>}
+                                    {l.conciliado && <span title="Conciliado com extrato OFX" style={{ fontSize: 9, background: "rgba(22,163,74,0.15)", color: "#16A34A", padding: "1px 5px", borderRadius: 4, fontWeight: 700, flexShrink: 0, border: "0.5px solid rgba(22,163,74,0.35)" }}>OFX</span>}
                                   </div>
                                   {fornDetalhe && <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fornDetalhe}</div>}
                                 </div>
