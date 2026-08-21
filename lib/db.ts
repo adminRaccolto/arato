@@ -605,14 +605,37 @@ export async function criarParcelamento(
   totalParcelas: number,
   intervaloMeses: number, // 1 = mensal, 3 = trimestral, etc.
 ): Promise<Lancamento[]> {
+  // Pré-carrega anos-safra da fazenda para resolver ano_safra_id por data de vencimento
+  // Somente quando o parcelamento tiver > 1 parcela (evita query desnecessária)
+  let anosSafra: { id: string; data_inicio: string; data_fim: string }[] = [];
+  if (totalParcelas > 1 && base.fazenda_id) {
+    const { data: rows } = await supabase
+      .from("anos_safra")
+      .select("id, data_inicio, data_fim")
+      .eq("fazenda_id", base.fazenda_id)
+      .order("data_inicio");
+    if (rows) anosSafra = rows;
+  }
+
+  // Resolve qual ano-safra cobre uma data de vencimento
+  function resolverAnoSafra(dataVenc: string): string | undefined {
+    if (!anosSafra.length) return base.ano_safra_id;
+    const d = dataVenc.slice(0, 10);
+    const match = anosSafra.find(a => d >= a.data_inicio.slice(0, 10) && d <= a.data_fim.slice(0, 10));
+    // Fallback: se não cobre nenhuma safra, usa o mais próximo pelo fim
+    return match?.id ?? base.ano_safra_id;
+  }
+
   const agrupador = crypto.randomUUID();
   const criados: Lancamento[] = [];
   for (let i = 0; i < totalParcelas; i++) {
     const dataVenc = new Date(base.data_vencimento);
     dataVenc.setMonth(dataVenc.getMonth() + i * intervaloMeses);
+    const dataVencStr = dataVenc.toISOString().slice(0, 10);
     const parcela: Omit<Lancamento, "id" | "created_at"> = {
       ...base,
-      data_vencimento: dataVenc.toISOString().slice(0, 10),
+      data_vencimento: dataVencStr,
+      ano_safra_id:    resolverAnoSafra(dataVencStr),
       num_parcela:     i + 1,
       total_parcelas:  totalParcelas,
       agrupador,

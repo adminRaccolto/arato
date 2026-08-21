@@ -55,22 +55,39 @@ async function carregarCertificado(fazendaId: string): Promise<{ pfxBuffer: Buff
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Buscar config do certificado
+  // Busca todos os módulos relevantes: certificado_a1_* E fiscal_* (pf e emp)
+  // O cert-upload salva storage_path em certificado_a1_* e cert_a1_senha em fiscal_pf_*/fiscal_emp_*
   const { data: configs } = await sb.from("configuracoes_modulo")
     .select("modulo, config")
     .eq("fazenda_id", fazendaId)
-    .like("modulo", "certificado_a1%");
+    .or("modulo.like.certificado_a1%,modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
 
   if (!configs?.length) return null;
 
-  // Pegar primeiro certificado válido
-  const certConfig = configs[0].config as Record<string, string>;
-  const storagePath = certConfig.storage_path;
-  const senha = certConfig.cert_senha ?? "";
+  // 1. Pegar storage_path do primeiro certificado_a1_* com storage_path preenchido
+  const certRow = configs.find(r => r.modulo.startsWith("certificado_a1_"));
+  if (!certRow) return null;
+  const certConfig = certRow.config as Record<string, string>;
+  const storagePath = certConfig.storage_path ?? certConfig.cert_a1_path ?? "";
 
-  if (!storagePath || !senha) return null;
+  if (!storagePath) return null;
 
-  // Baixar PFX do Storage
+  // 2. Pegar senha do fiscal_pf_*/fiscal_emp_* correspondente (cert_a1_senha)
+  //    Fallback: cert_senha no próprio certificado_a1_* (legado)
+  let senha = certConfig.cert_senha ?? certConfig.cert_a1_senha ?? "";
+  if (!senha) {
+    const fiscalRow = configs.find(r =>
+      (r.modulo.startsWith("fiscal_pf_") || r.modulo.startsWith("fiscal_emp_")) &&
+      (r.config as Record<string, string>).cert_a1_senha
+    );
+    if (fiscalRow) {
+      senha = (fiscalRow.config as Record<string, string>).cert_a1_senha ?? "";
+    }
+  }
+
+  if (!senha) return null;
+
+  // 3. Baixar PFX do Storage
   const { data: blob, error } = await sb.storage
     .from("certificados")
     .download(storagePath);

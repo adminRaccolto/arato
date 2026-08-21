@@ -1010,11 +1010,9 @@ export default function NfCompraPage() {
     setSiegLoading(true);
     setErr("");
     try {
-      // Sieg requer chave de acesso de 44 dígitos
-      // Na integração real: POST /api/sieg com a chave
-      // Aqui simulamos com a estrutura esperada
-      const res = await fetch(`/api/sieg?chave=${siegChave.trim()}`);
-      if (!res.ok) throw new Error("NF não encontrada no Sieg");
+      const res = await fetch(`/api/sieg?chave=${siegChave.trim()}&fazenda_id=${fazendaId ?? ""}`);
+      const errText = !res.ok ? await res.text().catch(() => "Erro na consulta Sieg") : "";
+      if (!res.ok) throw new Error(errText || "NF não encontrada no Sieg");
       const xml = await res.text();
       parsearXml(xml);
       setOrig("sieg");
