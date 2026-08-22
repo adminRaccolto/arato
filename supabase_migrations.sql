@@ -10440,3 +10440,58 @@ ALTER TABLE lancamentos
 CREATE INDEX IF NOT EXISTS idx_lancamentos_conciliado ON lancamentos(conciliado) WHERE conciliado = TRUE;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Seção 210: NF Remessas Logísticas ───────────────────────────────────────
+-- Rastreia NFs de remessa para armazenagem em condomínios logísticos (5905/6905)
+-- e seus respectivos retornos (5906/6906), vinculadas à NF de compra de origem.
+CREATE TABLE IF NOT EXISTS nf_remessas_logisticas (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id              UUID NOT NULL REFERENCES fazendas(id),
+  conta_id                UUID REFERENCES contas(id),
+  -- NF de compra que originou a remessa
+  nf_entrada_id           UUID REFERENCES nf_entradas(id),
+  nf_compra_chave         TEXT,          -- chave de acesso da NF de compra
+  -- NF de remessa emitida (5905/6905)
+  nf_remessa_chave        TEXT,          -- chave após autorização SEFAZ
+  nf_remessa_numero       TEXT,
+  nf_remessa_protocolo    TEXT,
+  nf_remessa_data         DATE,
+  cfop_remessa            TEXT NOT NULL DEFAULT '5905',
+  -- NF de retorno (5906/6906)
+  nf_retorno_chave        TEXT,
+  nf_retorno_numero       TEXT,
+  nf_retorno_protocolo    TEXT,
+  nf_retorno_data         DATE,
+  cfop_retorno            TEXT NOT NULL DEFAULT '5906',
+  -- Destinatário (condomínio logístico)
+  destinatario_pessoa_id  UUID REFERENCES pessoas(id),
+  destinatario_nome       TEXT NOT NULL DEFAULT '',
+  destinatario_uf         TEXT,
+  -- Itens (cópia da NF de compra)
+  itens_json              JSONB,
+  valor_total             NUMERIC(15,2) NOT NULL DEFAULT 0,
+  natureza_remessa        TEXT NOT NULL DEFAULT 'Remessa para armazenagem em condomínio logístico',
+  observacao              TEXT,
+  -- Status geral
+  status                  TEXT NOT NULL DEFAULT 'emitida' CHECK (status IN ('emitida','retornada','cancelada')),
+  created_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE nf_remessas_logisticas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS nf_remessas_log_tenant ON nf_remessas_logisticas;
+CREATE POLICY nf_remessas_log_tenant ON nf_remessas_logisticas
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR (SELECT role FROM perfis WHERE user_id = auth.uid() LIMIT 1) = 'raccotlo'
+  );
+
+CREATE INDEX IF NOT EXISTS idx_nf_remessas_log_fazenda  ON nf_remessas_logisticas(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_nf_remessas_log_status   ON nf_remessas_logisticas(status);
+CREATE INDEX IF NOT EXISTS idx_nf_remessas_log_nf_ent   ON nf_remessas_logisticas(nf_entrada_id);
+
+NOTIFY pgrst, 'reload schema';

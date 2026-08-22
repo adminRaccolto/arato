@@ -5829,3 +5829,49 @@ export async function excluirReceita(id: string): Promise<void> {
   const { error } = await supabase.from("tratamento_receitas").delete().eq("id", id);
   if (error) throw error;
 }
+
+// ─── NF Remessas Logísticas ──────────────────────────────────────────────────
+
+import type { NfRemessaLogistica } from "./supabase";
+
+export async function listarNfRemessasLogisticas(
+  contaId: string,
+): Promise<NfRemessaLogistica[]> {
+  const fazIds = await supabase
+    .from("fazendas")
+    .select("id")
+    .eq("conta_id", contaId);
+  const ids = (fazIds.data ?? []).map((f: { id: string }) => f.id);
+  if (!ids.length) return [];
+
+  const { data, error } = await supabase
+    .from("nf_remessas_logisticas")
+    .select("*")
+    .in("fazenda_id", ids)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as NfRemessaLogistica[];
+}
+
+export async function criarNfRemessaLogistica(
+  dados: Omit<NfRemessaLogistica, "id" | "created_at">,
+): Promise<NfRemessaLogistica> {
+  const { data, error } = await supabase
+    .from("nf_remessas_logisticas")
+    .insert(dados)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as NfRemessaLogistica;
+}
+
+export async function atualizarNfRemessaLogistica(
+  id: string,
+  dados: Partial<Omit<NfRemessaLogistica, "id" | "created_at">>,
+): Promise<void> {
+  const { error } = await supabase
+    .from("nf_remessas_logisticas")
+    .update(dados)
+    .eq("id", id);
+  if (error) throw error;
+}

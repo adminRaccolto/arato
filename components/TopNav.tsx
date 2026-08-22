@@ -224,6 +224,7 @@ const NAV: NavItem[] = [
       { id: "fiscal-triangulacao",  label: "Triangulação de NF",     path: "/fiscal/triangulacao",        moduleId: "fiscal_nfe",  disabled: true },
       { id: "fiscal-pendencias",    label: "Pendências Fiscais",      path: "/fiscal/pendencias",          moduleId: "fiscal_nfe"  },
       { id: "fiscal-gnre",          label: "GNRE",                    path: "/fiscal/gnre",                moduleId: "fiscal_nfe"  },
+      { id: "fiscal-remessas",      label: "Remessas Logísticas",    path: "/fiscal/remessas",            moduleId: "fiscal_nfe"  },
       { id: "fiscal-esocial",    label: "eSocial Rural",         path: "/fiscal/esocial",    moduleId: "fiscal_sped" },
       { id: "fiscal-parcerias",  label: "Parcerias & Grupos",    path: "/parcerias",           moduleId: "fiscal_sped" },
       {

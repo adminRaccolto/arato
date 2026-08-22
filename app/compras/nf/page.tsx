@@ -336,6 +336,114 @@ export default function NfCompraPage() {
   const [devSaving,  setDevSaving]  = useState(false);
   const [devErr,     setDevErr]     = useState("");
 
+  // Modal de Remessa Logística
+  const [remessaModal,    setRemessaModal]    = useState<NfEntrada | null>(null);
+  const [remessaItens,    setRemessaItens]    = useState<NfEntradaItem[]>([]);
+  const [remessaDestId,   setRemessaDestId]   = useState("");
+  const [remessaObs,      setRemessaObs]      = useState("");
+  const [remessaEmitindo, setRemessaEmitindo] = useState(false);
+  const [remessaErro,     setRemessaErro]     = useState("");
+  const [remessaOk,       setRemessaOk]       = useState<{chave: string; numero: string} | null>(null);
+  const [fiscalModulos,   setFiscalModulos]   = useState<Array<{modulo: string; config: Record<string,string>}>>([]);
+
+  async function abrirRemessa(nf: NfEntrada) {
+    setRemessaModal(nf);
+    setRemessaDestId("");
+    setRemessaObs("");
+    setRemessaErro("");
+    setRemessaOk(null);
+    const [itens, fmods] = await Promise.all([
+      listarNfEntradaItens(nf.id).catch(() => [] as NfEntradaItem[]),
+      supabase
+        .from("configuracoes_modulo")
+        .select("modulo, config")
+        .eq("fazenda_id", nf.fazenda_id)
+        .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%")
+        .then(r => (r.data ?? []) as Array<{modulo: string; config: Record<string,string>}>),
+    ]);
+    setRemessaItens(itens.filter(i => i.tipo_apropiacao === "estoque" || i.tipo_apropiacao === "maquinario" || i.tipo_apropiacao === "direto"));
+    setFiscalModulos(fmods);
+  }
+
+  async function emitirRemessaLogistica() {
+    if (!remessaModal || !remessaDestId) { setRemessaErro("Selecione o destinatário (condomínio)."); return; }
+    setRemessaEmitindo(true);
+    setRemessaErro("");
+    try {
+      const dest = pessoas.find(p => p.id === remessaDestId);
+      if (!dest) throw new Error("Destinatário não encontrado.");
+      const ufEmit = (fiscalModulos[0]?.config as Record<string,string>)?.uf ?? "MT";
+      const ufDest = dest.estado ?? "MT";
+      const cfop   = ufEmit === ufDest ? "5905" : "6905";
+      const cfopRet = ufEmit === ufDest ? "5906" : "6906";
+      const itensNfe = remessaItens.map((it, i) => ({
+        descricao:      it.descricao_produto,
+        ncm:            it.ncm ?? "31052000",
+        cfop,
+        unidade:        (it.unidade_nf ?? it.unidade).toUpperCase(),
+        quantidade:     it.quantidade,
+        valor_unitario: it.valor_unitario,
+      }));
+      if (!itensNfe.length) throw new Error("Nenhum item de estoque encontrado nesta NF.");
+      const valorTotal = remessaItens.reduce((s, i) => s + i.valor_total, 0);
+      const resp = await fetch("/api/fiscal/emitir-nfe", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id:   remessaModal.fazenda_id,
+          modulo_key:   fiscalModulos[0]?.modulo ?? "",
+          destinatario: {
+            nome:           dest.nome,
+            cpf_cnpj:       (dest.cpf_cnpj ?? "").replace(/\D/g, "") || undefined,
+            ie:             dest.inscricao_est || undefined,
+            logradouro:     dest.logradouro || undefined,
+            numero:         dest.numero || undefined,
+            bairro:         dest.bairro || undefined,
+            municipio_ibge: dest.municipio_ibge || undefined,
+            municipio_nome: dest.municipio || undefined,
+            uf:             ufDest,
+            cep:            (dest.cep ?? "").replace(/\D/g, "") || undefined,
+          },
+          itens:    itensNfe,
+          natureza: "Remessa para armazenagem em condomínio logístico",
+          inf_cpl:  `NF de compra referenciada: ${remessaModal.chave_acesso ?? remessaModal.numero}${remessaObs ? `\n${remessaObs}` : ""}`,
+          frete:    "9",
+          nfe_ref:  remessaModal.chave_acesso || undefined,
+          tipo:     "1",
+        }),
+      });
+      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
+      if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
+      // Salva no banco
+      const { criarNfRemessaLogistica } = await import("../../../lib/db");
+      await criarNfRemessaLogistica({
+        fazenda_id:             remessaModal.fazenda_id,
+        conta_id:               contaId ?? undefined,
+        nf_entrada_id:          remessaModal.id,
+        nf_compra_chave:        remessaModal.chave_acesso,
+        nf_remessa_chave:       res.chave,
+        nf_remessa_numero:      res.numero,
+        nf_remessa_protocolo:   res.protocolo,
+        nf_remessa_data:        new Date().toISOString().split("T")[0],
+        cfop_remessa:           cfop,
+        cfop_retorno:           cfopRet,
+        destinatario_pessoa_id: remessaDestId,
+        destinatario_nome:      dest.nome,
+        destinatario_uf:        ufDest,
+        itens_json:             remessaItens,
+        valor_total:            valorTotal,
+        natureza_remessa:       "Remessa para armazenagem em condomínio logístico",
+        observacao:             remessaObs || undefined,
+        status:                 "emitida",
+      });
+      setRemessaOk({ chave: res.chave, numero: res.numero ?? "" });
+    } catch (e) {
+      setRemessaErro((e as Error).message ?? "Erro ao emitir NF remessa.");
+    } finally {
+      setRemessaEmitindo(false);
+    }
+  }
+
   // Cabeçalho da NF
   const [cab, setCab] = useState({
     numero: "", serie: "1", chave_acesso: "",
@@ -2026,6 +2134,12 @@ export default function NfCompraPage() {
                                         Devolver
                                       </button>
                                     )}
+                                    {(nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas" || nf.tipo_entrada === "custo_direto") && (
+                                      <button onClick={() => { setAcaoDropdown(null); abrirRemessa(nf); }}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                        Emitir NF Remessa
+                                      </button>
+                                    )}
                                     <button onClick={() => { setAcaoDropdown(null); abrirReclassificar(nf); }}
                                       style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#7B4A00", fontWeight: 600, textAlign: "left" }}>
                                       Reclassificar
@@ -3660,6 +3774,138 @@ export default function NfCompraPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          MODAL REMESSA LOGÍSTICA
+      ══════════════════════════════════════════════════════ */}
+      {remessaModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+            {/* Cabeçalho */}
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Remessa para Armazenagem</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                  Origem: NF {remessaModal.numero}/{remessaModal.serie} — {remessaModal.emitente_nome}
+                  {remessaModal.chave_acesso && <span style={{ marginLeft: 6, fontSize: 10, fontFamily: "monospace", color: "var(--text-muted)" }}>{remessaModal.chave_acesso}</span>}
+                </div>
+              </div>
+              <button onClick={() => setRemessaModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+            </div>
+
+            {remessaOk ? (
+              /* ── Sucesso ── */
+              <div style={{ padding: 28, textAlign: "center" }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>NF de Remessa Emitida!</div>
+                <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>Número: <strong>{remessaOk.numero}</strong></div>
+                <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-3)", wordBreak: "break-all", marginBottom: 20 }}>{remessaOk.chave}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>
+                  O retorno pode ser gerenciado em <strong>Fiscal → Remessas Logísticas</strong>.
+                </div>
+                <button onClick={() => setRemessaModal(null)}
+                  style={{ ...btnV, background: "#1A4870" }}>
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              /* ── Formulário ── */
+              <div style={{ padding: "18px 22px", overflowY: "auto", flex: 1 }}>
+                {/* Destinatário */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={lbl}>Destinatário — Condomínio Logístico *</label>
+                  <select style={inp} value={remessaDestId} onChange={e => setRemessaDestId(e.target.value)}>
+                    <option value="">Selecionar...</option>
+                    {pessoas.filter(p => p.fornecedor || p.cliente).map(p => (
+                      <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}{p.municipio ? ` (${p.municipio}/${p.estado})` : ""}</option>
+                    ))}
+                  </select>
+                  {remessaDestId && (() => {
+                    const dest = pessoas.find(p => p.id === remessaDestId);
+                    const ufEmit = (fiscalModulos[0]?.config as Record<string,string>)?.uf ?? "MT";
+                    const ufDest = dest?.estado ?? "MT";
+                    const cfop = ufEmit === ufDest ? "5905" : "6905";
+                    return (
+                      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
+                        UF emitente: <strong>{ufEmit}</strong> · UF destino: <strong>{ufDest}</strong> →{" "}
+                        CFOP <strong style={{ color: "#1A4870" }}>{cfop}</strong>{" "}
+                        ({cfop === "5905" ? "Remessa interna" : "Remessa inter-estadual"})
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Itens */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={lbl}>Itens incluídos na remessa ({remessaItens.length})</label>
+                  {remessaItens.length === 0 ? (
+                    <div style={{ fontSize: 12, color: "#E24B4A", background: "#FDECEA", padding: "10px 14px", borderRadius: 8 }}>
+                      Nenhum item de estoque encontrado nesta NF.
+                    </div>
+                  ) : (
+                    <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "var(--bg-stripe)" }}>
+                            <th style={{ padding: "7px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Descrição</th>
+                            <th style={{ padding: "7px 8px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Qtd</th>
+                            <th style={{ padding: "7px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Valor Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {remessaItens.map((it, i) => (
+                            <tr key={it.id} style={{ borderTop: "0.5px solid var(--border)", background: i % 2 === 0 ? "transparent" : "var(--bg-stripe)" }}>
+                              <td style={{ padding: "7px 12px", color: "var(--text-1)" }}>{it.descricao_produto}</td>
+                              <td style={{ padding: "7px 8px", textAlign: "right", color: "var(--text-2)" }}>{it.quantidade} {it.unidade}</td>
+                              <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-1)" }}>{fmtBRL(it.valor_total)}</td>
+                            </tr>
+                          ))}
+                          <tr style={{ borderTop: "0.5px solid var(--border)", background: "var(--bg-stripe)" }}>
+                            <td colSpan={2} style={{ padding: "8px 12px", fontWeight: 700, fontSize: 12 }}>Total</td>
+                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                              {fmtBRL(remessaItens.reduce((s, i) => s + i.valor_total, 0))}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Observação */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={lbl}>Observações complementares (opcional)</label>
+                  <textarea style={{ ...inp, minHeight: 60, resize: "vertical" }}
+                    value={remessaObs} onChange={e => setRemessaObs(e.target.value)}
+                    placeholder="Ex: Ref. pedido #123, armazém prédio A…" />
+                </div>
+
+                {/* Info fiscal */}
+                <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50", marginBottom: 16 }}>
+                  <strong>Informações fiscais:</strong><br/>
+                  Natureza: Remessa para armazenagem em condomínio logístico<br/>
+                  A NF de compra será referenciada automaticamente via &lt;NFref&gt;.<br/>
+                  O retorno será gerenciado em Fiscal → Remessas Logísticas.
+                </div>
+
+                {remessaErro && (
+                  <div style={{ background: "#FDECEA", color: "#B91C1C", borderRadius: 8, padding: "10px 14px", fontSize: 12, marginBottom: 14 }}>
+                    {remessaErro}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setRemessaModal(null)} style={btnR}>Cancelar</button>
+                  <button onClick={emitirRemessaLogistica} disabled={remessaEmitindo || !remessaDestId || remessaItens.length === 0}
+                    style={{ ...btnV, background: "#1A4870", opacity: (remessaEmitindo || !remessaDestId || remessaItens.length === 0) ? 0.6 : 1 }}>
+                    {remessaEmitindo ? "Emitindo…" : "Emitir NF Remessa →"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

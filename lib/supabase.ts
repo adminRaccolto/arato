@@ -1169,6 +1169,34 @@ export type NfEntrada = {
   created_at?: string;
 };
 
+// ── NF Remessas Logísticas ────────────────────────────────────
+export type NfRemessaLogistica = {
+  id: string;
+  fazenda_id: string;
+  conta_id?: string;
+  nf_entrada_id?: string;
+  nf_compra_chave?: string;
+  nf_remessa_chave?: string;
+  nf_remessa_numero?: string;
+  nf_remessa_protocolo?: string;
+  nf_remessa_data?: string;
+  cfop_remessa: string;
+  nf_retorno_chave?: string;
+  nf_retorno_numero?: string;
+  nf_retorno_protocolo?: string;
+  nf_retorno_data?: string;
+  cfop_retorno: string;
+  destinatario_pessoa_id?: string;
+  destinatario_nome: string;
+  destinatario_uf?: string;
+  itens_json?: unknown;
+  valor_total: number;
+  natureza_remessa: string;
+  observacao?: string;
+  status: "emitida" | "retornada" | "cancelada";
+  created_at?: string;
+};
+
 // ── Configuração Contábil (SPED ECD) ─────────────────────────
 // Uma configuração por entidade (PF/PJ) dentro da fazenda
 export type ConfigContabilidade = {
