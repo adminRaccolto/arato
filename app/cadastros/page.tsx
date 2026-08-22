@@ -4431,10 +4431,7 @@ function CadastrosInner() {
             };
 
             const salvarIns = async () => {
-              // Apenas defensivo e fertilizante exigem Princípio Ativo
-              const isPA = ["defensivo","fertilizante"].includes(fIns.categoria);
-              if (isPA && !fIns.principio_ativo_id) { setErroModal("Preencha: Princípio Ativo"); return; }
-              if (!isPA && !fIns.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+              if (!fIns.nome.trim()) { setErroModal("Preencha: Nome"); return; }
               setErroModal("");
               setSalvando(true);
               try {
@@ -4656,69 +4653,44 @@ function CadastrosInner() {
                       </div>
 
                       {/* ── Defensivos / Fertilizantes exigem Princípio Ativo ── */}
-                      {["defensivo","fertilizante"].includes(fIns.categoria) ? (
-                        <>
-                          {/* Seletor de PA — o nome do insumo deriva daqui */}
-                          <div style={{ gridColumn: "1/-1" }}>
-                            <label style={lbl}>
-                              Princípio Ativo *
-                              <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>
-                                — o estoque é registrado pelo ingrediente ativo, não pela marca
-                              </span>
-                            </label>
-                            {principios.length === 0 ? (
-                              <div style={{ padding: "10px 12px", background: "#FBF3E0", borderRadius: 8, fontSize: 12, color: "#7A5A12", border: "0.5px solid #F0D9A0" }}>
-                                Nenhum princípio ativo cadastrado. Acesse <strong>Cadastros → Princípios Ativos (BOT)</strong> para criar antes de cadastrar este insumo.
-                              </div>
-                            ) : (
-                              <select style={inp} value={fIns.principio_ativo_id} onChange={e => {
-                                const paId = e.target.value;
-                                const pa = principios.find(p => p.id === paId);
-                                setFIns(prev => ({ ...prev, principio_ativo_id: paId, nome: pa?.nome ?? "", unidade: pa?.unidade ?? prev.unidade }));
-                              }}>
-                                <option value="">— Selecione o princípio ativo —</option>
-                                {principios
-                                  .filter(pa => {
-                                    if (fIns.categoria === "defensivo") return ["herbicida","fungicida","inseticida","acaricida","outro"].includes(pa.categoria);
-                                    if (fIns.categoria === "fertilizante") return ["fertilizante","inoculante","outro"].includes(pa.categoria);
-                                    return true;
-                                  })
-                                  .map(pa => <option key={pa.id} value={pa.id}>{pa.nome}</option>)}
-                              </select>
-                            )}
-                          </div>
-                          {/* Nome: leitura — preenchido pelo PA */}
-                          <div style={{ gridColumn: "1/-1" }}>
-                            <label style={lbl}>Nome no estoque <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(preenchido automaticamente pelo PA)</span></label>
-                            <input
-                              style={{ ...inp, background: "var(--bg-page)", color: fIns.nome ? "var(--text-1)" : "var(--text-muted)" }}
-                              value={fIns.nome || "Selecione o princípio ativo acima"}
-                              readOnly
-                            />
-                          </div>
-                          {/* Fabricante: opcional, só para referência */}
-                          <div style={{ gridColumn: "1/-1" }}>
-                            <label style={lbl}>Fabricante / Marca habitual <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(opcional — apenas para referência)</span></label>
-                            <input style={inp} placeholder="Ex: Bayer, Syngenta — não afeta o estoque" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
-                          </div>
-                        </>
-                      ) : (
-                        /* ── Semente / Corretivo: nome livre ── */
-                        <>
-                          <div style={{ gridColumn: "1/-1" }}>
-                            <label style={lbl}>Nome *</label>
-                            <input style={inp}
-                              placeholder={fIns.categoria === "semente" ? "Ex: Soja TMG 3770 IPRO" : "Ex: Calcário Dolomítico AG"}
-                              value={fIns.nome}
-                              onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
-                          </div>
-                          {!isComb && (
-                            <div>
-                              <label style={lbl}>Fabricante / Marca</label>
-                              <input style={inp} placeholder="Ex: Bayer, Syngenta" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
-                            </div>
-                          )}
-                        </>
+                      {/* Nome comercial — sempre editável */}
+                      <div style={{ gridColumn: "1/-1" }}>
+                        <label style={lbl}>Nome *</label>
+                        <input style={inp}
+                          placeholder={
+                            fIns.categoria === "semente"     ? "Ex: Soja TMG 3770 IPRO" :
+                            fIns.categoria === "defensivo"   ? "Ex: Roundup Transorb HC, Eficaz" :
+                            fIns.categoria === "fertilizante"? "Ex: Urea 46%, MAP Yara" :
+                            "Ex: Calcário Dolomítico AG"
+                          }
+                          value={fIns.nome}
+                          onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                      </div>
+                      {!isComb && (
+                        <div>
+                          <label style={lbl}>Fabricante / Marca</label>
+                          <input style={inp} placeholder="Ex: Bayer, Syngenta, Yara" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
+                        </div>
+                      )}
+                      {/* Princípio Ativo — opcional, apenas para defensivos e fertilizantes */}
+                      {["defensivo","fertilizante"].includes(fIns.categoria) && principios.length > 0 && (
+                        <div>
+                          <label style={lbl}>Princípio Ativo <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(opcional)</span></label>
+                          <select style={inp} value={fIns.principio_ativo_id} onChange={e => {
+                            const paId = e.target.value;
+                            const pa = principios.find(p => p.id === paId);
+                            setFIns(prev => ({ ...prev, principio_ativo_id: paId, unidade: paId && pa?.unidade ? pa.unidade : prev.unidade }));
+                          }}>
+                            <option value="">— Sem vínculo —</option>
+                            {principios
+                              .filter(pa => {
+                                if (fIns.categoria === "defensivo") return ["herbicida","fungicida","inseticida","acaricida","outro"].includes(pa.categoria);
+                                if (fIns.categoria === "fertilizante") return ["fertilizante","inoculante","outro"].includes(pa.categoria);
+                                return true;
+                              })
+                              .map(pa => <option key={pa.id} value={pa.id}>{pa.nome}</option>)}
+                          </select>
+                        </div>
                       )}
                       {/* Unidade */}
                       <div>
