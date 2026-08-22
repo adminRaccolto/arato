@@ -255,9 +255,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             if (json?.ok && json.fazendas?.length) setFazendaIds(json.fazendas.map(f => f.id));
           }).catch(() => {});
         } else {
-          // Sem farm: hub (/raccotlo), seletor e admin são rotas livres
+          // Sem farm selecionada: rotas de gestão interna são livres; rotas de dados do cliente requerem farm
           const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-          const rotasLivres = ["/raccotlo", "/seletor-cliente", "/admin"];
+          const rotasLivres = [
+            "/raccotlo", "/seletor-cliente", "/admin",
+            "/configuracoes", "/cadastros", "/bi",
+          ];
           if (!rotasLivres.some(r => pathname.startsWith(r))) {
             router.push(role === "raccotlo_seletor" ? "/seletor-cliente" : "/raccotlo");
           }
