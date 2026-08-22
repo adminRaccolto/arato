@@ -2289,7 +2289,7 @@ export default function ComprasPage() {
 
       {/* ── Modal Criar Insumo ── */}
       {modalNovoInsumo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, width: 440, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Criar Insumo no Cadastro</div>
             <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 18 }}>
