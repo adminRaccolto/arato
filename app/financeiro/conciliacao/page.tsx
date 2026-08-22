@@ -61,6 +61,8 @@ interface HistoricoConciliacao {
   lancamento_ids: string[];
   lancamento_desc: string;
   created_at: string;
+  periodo_inicio?: string;
+  periodo_fim?: string;
 }
 
 interface FormTesouraria {
@@ -182,6 +184,8 @@ function ConciliacaoInner() {
   const [buscaLanc, setBuscaLanc]           = useState("");
   const [filtroLancTipo, setFiltroLancTipo] = useState<"todos"|"pagar"|"receber">("todos");
   const [filtroLancStatus, setFiltroLancStatus] = useState<"todos"|"aberto"|"baixado"|"parcial">("todos");
+  const [filtroLancDe, setFiltroLancDe]     = useState<string>("");
+  const [filtroLancAte, setFiltroLancAte]   = useState<string>("");
 
   // Vinculação (bordero)
   const [linhaAtiva, setLinhaAtiva] = useState<LinhaOFX | null>(null);
@@ -239,6 +243,18 @@ function ConciliacaoInner() {
   }, [fazendaId, fazendaIds, contaId, searchParams]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Pré-preenche o filtro de período ao carregar um extrato (±15 dias de folga)
+  useEffect(() => {
+    if (!extrato) { setFiltroLancDe(""); setFiltroLancAte(""); return; }
+    const dIni = new Date(extrato.data_inicio + "T00:00:00");
+    dIni.setDate(dIni.getDate() - 15);
+    const dFim = new Date(extrato.data_fim + "T00:00:00");
+    dFim.setDate(dFim.getDate() + 15);
+    setFiltroLancDe(dIni.toISOString().slice(0, 10));
+    setFiltroLancAte(dFim.toISOString().slice(0, 10));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extrato?.id]);
 
   const [lancRefresh, setLancRefresh] = useState(false);
   async function recarregarLancamentos() {
@@ -345,6 +361,9 @@ function ConciliacaoInner() {
       conta_nome: extrato.conta_nome, data_transacao: linha.data,
       descricao: linha.descricao, valor: linha.valor, tipo: linha.tipo,
       acao, lancamento_ids: lancsIds, lancamento_desc: lancDesc,
+      // Período que estava filtrado no momento da conciliação
+      periodo_inicio: filtroLancDe || extrato.data_inicio,
+      periodo_fim:    filtroLancAte || extrato.data_fim,
     };
     const { data } = await supabase.from("historico_conciliacao").insert(row).select().single();
     if (data) setHistorico(prev => [data as HistoricoConciliacao, ...prev]);
@@ -548,6 +567,13 @@ function ConciliacaoInner() {
     if (linhaAtiva) {
       if (linhaAtiva.tipo === "credito" && l.tipo !== "receber") return false;
       if (linhaAtiva.tipo === "debito"  && l.tipo !== "pagar")   return false;
+    }
+
+    // Filtro de período: usa data_baixa quando disponível, senão data_vencimento
+    if (filtroLancDe || filtroLancAte) {
+      const dataRef = l.data_baixa ?? l.data_vencimento;
+      if (filtroLancDe && dataRef < filtroLancDe) return false;
+      if (filtroLancAte && dataRef > filtroLancAte) return false;
     }
 
     // Busca
@@ -806,53 +832,136 @@ function ConciliacaoInner() {
         )}
 
         {/* ═══ ABA HISTÓRICO ═══ */}
-        {!extrato && abaAtiva === "historico" && (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-            {historico.length === 0 ? (
-              <div style={{ padding: "40px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-                <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
-                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum histórico registrado</div>
-                <div style={{ fontSize: 12 }}>O histórico é registrado automaticamente ao conciliar ou desvincular transações.</div>
+        {!extrato && abaAtiva === "historico" && (() => {
+          // Resumo por extrato_id (períodos conciliados)
+          const periodoMap = new Map<string, {
+            extrato_id: string; conta_nome: string;
+            periodo_inicio?: string; periodo_fim?: string;
+            conciliados: number; desvinculados: number;
+          }>();
+          for (const h of historico) {
+            if (!periodoMap.has(h.extrato_id)) {
+              periodoMap.set(h.extrato_id, {
+                extrato_id: h.extrato_id, conta_nome: h.conta_nome,
+                periodo_inicio: h.periodo_inicio, periodo_fim: h.periodo_fim,
+                conciliados: 0, desvinculados: 0,
+              });
+            }
+            const e = periodoMap.get(h.extrato_id)!;
+            if (h.acao === "conciliado") e.conciliados++; else e.desvinculados++;
+            // Pega o período mais amplo registrado neste extrato
+            if (h.periodo_inicio && (!e.periodo_inicio || h.periodo_inicio < e.periodo_inicio)) e.periodo_inicio = h.periodo_inicio;
+            if (h.periodo_fim    && (!e.periodo_fim    || h.periodo_fim    > e.periodo_fim))    e.periodo_fim    = h.periodo_fim;
+          }
+          const periodos = Array.from(periodoMap.values()).sort((a, b) => (b.periodo_fim ?? "").localeCompare(a.periodo_fim ?? ""));
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+              {/* Resumo de Períodos */}
+              {periodos.length > 0 && (
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Períodos Conciliados</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Um registro por extrato OFX importado — período filtrado durante a conciliação</div>
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg-page)" }}>
+                        {["Conta Bancária", "Período Conciliado", "Conciliadas", "Desvinculadas"].map(h => (
+                          <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {periodos.map((p, i) => (
+                        <tr key={p.extrato_id} style={{ borderBottom: i < periodos.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
+                          <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{p.conta_nome}</td>
+                          <td style={{ padding: "10px 14px" }}>
+                            {p.periodo_inicio || p.periodo_fim ? (
+                              <span style={{ fontSize: 13, color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>
+                                {fmtDt(p.periodo_inicio)} a {fmtDt(p.periodo_fim)}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>— (extrato antigo)</span>
+                            )}
+                          </td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <span style={{ padding: "3px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#DCFCE7", color: "#16A34A" }}>
+                              {p.conciliados} ✓
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 14px" }}>
+                            {p.desvinculados > 0 ? (
+                              <span style={{ padding: "3px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "rgba(239,68,68,0.08)", color: "#E24B4A" }}>
+                                {p.desvinculados} ✗
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Detalhe de movimentações */}
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Movimentações</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Histórico individual de cada conciliação e desvinculação</div>
+                </div>
+                {historico.length === 0 ? (
+                  <div style={{ padding: "40px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                    <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum histórico registrado</div>
+                    <div style={{ fontSize: 12 }}>O histórico é registrado automaticamente ao conciliar ou desvincular transações.</div>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: "var(--bg-page)" }}>
+                          {["Data/Hora", "Conta", "Período Filtrado", "Transação OFX", "Valor", "Lançamento Vinculado", "Ação"].map(h => (
+                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historico.map((h, i) => (
+                          <tr key={h.id} style={{ borderBottom: i < historico.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: h.acao === "desvinculado" ? "rgba(239,68,68,0.03)" : "transparent" }}>
+                            <td style={{ padding: "9px 12px", color: "var(--text-3)", fontSize: 11, whiteSpace: "nowrap" }}>
+                              {new Date(h.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                            </td>
+                            <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>{h.conta_nome}</td>
+                            <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                              {h.periodo_inicio ? `${fmtDt(h.periodo_inicio)} a ${fmtDt(h.periodo_fim)}` : "—"}
+                            </td>
+                            <td style={{ padding: "9px 12px", overflow: "hidden", maxWidth: 240 }}>
+                              <div style={{ fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.descricao}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{fmtDt(h.data_transacao)} · {h.fitid}</div>
+                            </td>
+                            <td style={{ padding: "9px 12px", whiteSpace: "nowrap", fontWeight: 700, color: h.tipo === "credito" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
+                              {h.tipo === "credito" ? "+" : "−"}{fmtBRL(h.valor)}
+                            </td>
+                            <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{h.lancamento_desc || "—"}</td>
+                            <td style={{ padding: "9px 12px" }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 5, background: h.acao === "conciliado" ? "#DCFCE7" : "rgba(239,68,68,0.1)", color: h.acao === "conciliado" ? "#16A34A" : "#E24B4A", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                                {h.acao === "conciliado" ? "✓ Conciliado" : "✗ Desvinculado"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            ) : (
-              <table style={{ tableLayout: "fixed", width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: "var(--bg-page)" }}>
-                    {["Data/Hora", "Conta", "Transação OFX", "Valor", "Lançamento Vinculado", "Ação", "Tipo"].map(h => (
-                      <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {historico.map((h, i) => (
-                    <tr key={h.id} style={{ borderBottom: i < historico.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: h.acao === "desvinculado" ? "rgba(239,68,68,0.03)" : "transparent" }}>
-                      <td style={{ padding: "9px 12px", color: "var(--text-3)", fontSize: 11, whiteSpace: "nowrap" }}>
-                        {new Date(h.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                      </td>
-                      <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.conta_nome}</td>
-                      <td style={{ padding: "9px 12px", overflow: "hidden" }}>
-                        <div style={{ fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.descricao}</div>
-                        <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{fmtDt(h.data_transacao)} · FITID: {h.fitid}</div>
-                      </td>
-                      <td style={{ padding: "9px 12px", whiteSpace: "nowrap", fontWeight: 700, color: h.tipo === "credito" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
-                        {h.tipo === "credito" ? "+" : "−"}{fmtBRL(h.valor)}
-                      </td>
-                      <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.lancamento_desc || "—"}</td>
-                      <td style={{ padding: "9px 12px" }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 5, background: h.acao === "conciliado" ? "#DCFCE7" : "rgba(239,68,68,0.1)", color: h.acao === "conciliado" ? "#16A34A" : "#E24B4A", textTransform: "uppercase" }}>
-                          {h.acao === "conciliado" ? "✓ Conciliado" : "✗ Desvinculado"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-3)" }}>
-                        {h.tipo === "credito" ? "Crédito" : "Débito"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         {/* ═══ EXTRATO ATIVO — layout lado a lado ═══ */}
         {extrato && (
@@ -929,6 +1038,20 @@ function ConciliacaoInner() {
                       Selecione uma transação no painel do extrato →
                     </div>
                   )}
+
+                  {/* Filtro Período */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 2 }}>DE</label>
+                      <input type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
+                        style={{ width: "100%", padding: "4px 7px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 2 }}>ATÉ</label>
+                      <input type="date" value={filtroLancAte} onChange={e => setFiltroLancAte(e.target.value)}
+                        style={{ width: "100%", padding: "4px 7px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                    </div>
+                  </div>
 
                   {/* Filtro Tipo */}
                   <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>

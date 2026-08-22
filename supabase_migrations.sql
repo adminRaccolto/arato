@@ -10518,3 +10518,19 @@ JOIN fazendas f ON f.id = p.fazenda_id
 WHERE p.conta_id IS NULL AND f.conta_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION — Período de conciliação no histórico
+-- Adiciona periodo_inicio e periodo_fim em historico_conciliacao
+-- Execute no Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE historico_conciliacao
+  ADD COLUMN IF NOT EXISTS periodo_inicio date,
+  ADD COLUMN IF NOT EXISTS periodo_fim    date;
+
+COMMENT ON COLUMN historico_conciliacao.periodo_inicio IS 'Início do período de data filtrado no painel CP/CR durante a conciliação';
+COMMENT ON COLUMN historico_conciliacao.periodo_fim    IS 'Fim do período de data filtrado no painel CP/CR durante a conciliação';
+
+NOTIFY pgrst, 'reload schema';
