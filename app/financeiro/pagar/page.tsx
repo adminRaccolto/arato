@@ -320,8 +320,9 @@ function ContasPagarInner() {
   const [loteSalvando,      setLoteSalvando]      = useState(false);
   const [loteErro,          setLoteErro]          = useState("");
   // Borderôs pendentes
-  const [borderosPendentes, setBorderosPendentes] = useState<PagamentoLote[]>([]);
-  const [modalConfirmar,    setModalConfirmar]    = useState<PagamentoLote | null>(null);
+  const [borderosPendentes,  setBorderosPendentes]  = useState<PagamentoLote[]>([]);
+  const [expandedBorderos,   setExpandedBorderos]   = useState<Set<string>>(new Set());
+  const [modalConfirmar,     setModalConfirmar]     = useState<PagamentoLote | null>(null);
   const [confirmData,       setConfirmData]       = useState(TODAY);
   const [confirmConta,      setConfirmConta]      = useState("");
   const [confirmSalvando,   setConfirmSalvando]   = useState(false);
@@ -1212,6 +1213,79 @@ function ContasPagarInner() {
                       </tr>
                     </thead>
                     <tbody>
+                      {/* ── Borderôs pendentes no topo da grid ── */}
+                      {borderosPendentes.map(b => {
+                        const itensB   = b.itens ?? [];
+                        const totalB   = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
+                        const dtCriac  = b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "—";
+                        const expanded = expandedBorderos.has(b.id);
+                        const toggleExpand = () => setExpandedBorderos(prev => {
+                          const next = new Set(prev);
+                          expanded ? next.delete(b.id) : next.add(b.id);
+                          return next;
+                        });
+                        return (
+                          <>
+                            {/* Linha cabeçalho do borderô */}
+                            <tr key={`bdr-hdr-${b.id}`} style={{ background: "#FBF3E0", borderLeft: "3px solid #C9921B", borderBottom: "0.5px solid #C9921B30", cursor: "pointer" }} onClick={toggleExpand}>
+                              <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                                <span style={{ fontSize: 10, background: "#C9921B", color: "#fff", borderRadius: 4, padding: "2px 5px", fontWeight: 700 }}>BDR</span>
+                              </td>
+                              <td colSpan={3} style={{ padding: "10px 8px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#7A5C00" }}>{b.descricao || "Borderô"}</span>
+                                  <span style={{ fontSize: 11, color: "#7A5C00" }}>Criado em {dtCriac}</span>
+                                  <span style={{ fontSize: 11, background: "#fff", color: "#7A5C00", border: "0.5px solid #C9921B60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
+                                    {itensB.length} título{itensB.length !== 1 ? "s" : ""}
+                                  </span>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#EF4444", marginLeft: 4 }}>
+                                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                                  </span>
+                                  <span style={{ fontSize: 11, color: "#7A5C00", marginLeft: 4 }}>{expanded ? "▲ ocultar" : "▼ ver títulos"}</span>
+                                </div>
+                              </td>
+                              <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => { setModalConfirmar(b); setConfirmData(TODAY); setConfirmConta(""); setConfirmErro(""); }}
+                                    style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 7, padding: "5px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                                    Confirmar Pagamento
+                                  </button>
+                                  <button
+                                    onClick={() => excluirBordero(b)}
+                                    style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {/* Sub-linhas dos títulos quando expandido */}
+                            {expanded && itensB.map((item, idx) => {
+                              const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+                              return (
+                                <tr key={`bdr-item-${item.id}`} style={{ background: idx % 2 === 0 ? "#FDFAF2" : "#FAF5E4", borderLeft: "3px solid #C9921B40", borderBottom: "0.5px solid #C9921B20" }}>
+                                  <td style={{ padding: "7px 6px", textAlign: "center" }}>
+                                    <span style={{ fontSize: 9, color: "#C9921B" }}>└</span>
+                                  </td>
+                                  <td style={{ padding: "7px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{lanc?.numero ?? "—"}</td>
+                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)" }}>{lanc?.descricao ?? item.lancamento_id}</td>
+                                  <td colSpan={99} style={{ padding: "7px 8px" }}>
+                                    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                        {lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                                      </span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "#EF4444" }}>
+                                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago ?? 0)}
+                                      </span>
+                                      {lanc?.categoria && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{lanc.categoria}</span>}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </>
+                        );
+                      })}
                       {filtrados.length === 0 ? (
                         <tr><td colSpan={19} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
                       ) : filtrados.map((l, li) => {
@@ -1720,76 +1794,6 @@ function ContasPagarInner() {
               </button>
             </div>
 
-          </div>
-        </div>
-      )}
-
-      {/* ── Borderôs Pendentes ────────────────────────────────── */}
-      {borderosPendentes.length > 0 && (
-        <div style={{ maxWidth: 1600, margin: "24px auto 0", padding: "0 24px" }}>
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #C9921B60", borderRadius: 12, padding: "16px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#C9921B" }}>Borderôs Pendentes</span>
-              <span style={{ background: "#FBF3E0", color: "#7A5C00", borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{borderosPendentes.length}</span>
-              <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 4 }}>— agrupados, aguardando confirmação de pagamento</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {borderosPendentes.map(b => {
-                const itensB = b.itens ?? [];
-                const totalB = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
-                const dtCriac = b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "—";
-                return (
-                  <div key={b.id} style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-                    {/* Cabeçalho do borderô */}
-                    <div style={{ background: "var(--bg-stripe)", padding: "8px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{b.descricao || "Borderô"}</span>
-                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>Criado em {dtCriac}</span>
-                        <span style={{ fontSize: 11, background: "#FBF3E0", color: "#7A5C00", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
-                          {itensB.length} título{itensB.length !== 1 ? "s" : ""}
-                        </span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#EF4444" }}>
-                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          onClick={() => { setModalConfirmar(b); setConfirmData(TODAY); setConfirmConta(""); setConfirmErro(""); }}
-                          style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-                        >
-                          Confirmar Pagamento
-                        </button>
-                        <button
-                          onClick={() => excluirBordero(b)}
-                          style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                    {/* Lista compacta de títulos */}
-                    {itensB.length > 0 && (
-                      <div>
-                        {itensB.map((item, i) => {
-                          const lanc = lancamentos.find(l => l.id === item.lancamento_id);
-                          return (
-                            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "7px 14px", borderTop: "0.5px solid var(--bg-input)", fontSize: 12, alignItems: "center" }}>
-                              <span style={{ color: "var(--text-1)" }}>{lanc?.descricao ?? "Título"}</span>
-                              <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>
-                                {lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
-                              </span>
-                              <span style={{ fontWeight: 600, color: "#EF4444", textAlign: "right", whiteSpace: "nowrap" }}>
-                                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago ?? 0)}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
       )}

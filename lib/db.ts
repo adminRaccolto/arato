@@ -1957,6 +1957,16 @@ export async function processarNfEntrada(
     parcelas?: { data: string; valor: number }[];
   },
 ): Promise<void> {
+  // Normaliza CNPJ do emitente para dígitos puros — o XML entrega sem máscara,
+  // mas pessoas.cpf_cnpj pode estar salvo com ou sem máscara dependendo da origem.
+  // A busca usa OR das duas formas para cobrir ambos os casos.
+  const cnpjRaw = (emitenteCnpj ?? "").replace(/\D/g, "");
+  const cnpjFmt = cnpjRaw.length === 14
+    ? cnpjRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+    : cnpjRaw.length === 11
+      ? cnpjRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+      : cnpjRaw;
+
   for (const item of itens) {
     // Custo por unidade do catálogo — sempre derivado do total monetário da NF dividido pela
     // quantidade já convertida (armazenada em catalog units). Cobre dois cenários:
@@ -2026,7 +2036,7 @@ export async function processarNfEntrada(
         insumo_id:           item.insumo_id ?? null,
         descricao:           item.descricao_produto,
         terceiro_nome:       emitente,
-        terceiro_cnpj:       emitenteCnpj ?? null,
+        terceiro_cnpj:       cnpjRaw || null,
         nf_entrada_id:       nfId,
         quantidade_original: item.quantidade,
         quantidade_saldo:    item.quantidade,
@@ -2038,13 +2048,13 @@ export async function processarNfEntrada(
     // NF de faturamento antecipado: o insumo ainda está no fornecedor.
     // Credita o depósito de terceiro vinculado ao CNPJ do emitente.
     if (item.tipo_apropiacao === "vef") {
-      const depositoId = await buscarDepositoTerceiroPorCnpj(fazenda_id, emitenteCnpj ?? "");
+      const depositoId = await buscarDepositoTerceiroPorCnpj(fazenda_id, cnpjRaw);
       await supabase.from("estoque_terceiros").insert({
         fazenda_id,
         insumo_id:           item.insumo_id ?? null,
         descricao:           item.descricao_produto,
         terceiro_nome:       emitente,
-        terceiro_cnpj:       emitenteCnpj ?? null,
+        terceiro_cnpj:       cnpjRaw || null,
         nf_entrada_id:       nfId,
         deposito_id:         depositoId ?? null,
         quantidade_original: item.quantidade,
@@ -2067,14 +2077,14 @@ export async function processarNfEntrada(
         .order("created_at", { ascending: true })
         .limit(1)
         .then(async r => {
-          // Filtra por CNPJ apenas se disponível
-          if (emitenteCnpj) {
+          // Filtra por CNPJ (normalizado para raw) se disponível
+          if (cnpjRaw) {
             const { data: byCnpj } = await supabase
               .from("estoque_terceiros")
               .select("id, quantidade_saldo, quantidade_original")
               .eq("fazenda_id", fazenda_id)
               .eq("insumo_id", item.insumo_id!)
-              .eq("terceiro_cnpj", emitenteCnpj)
+              .or(`terceiro_cnpj.eq.${cnpjRaw},terceiro_cnpj.eq.${cnpjFmt}`)
               .in("status", ["aberto", "parcial"])
               .order("created_at", { ascending: true })
               .limit(1);
@@ -2128,11 +2138,15 @@ export async function processarNfEntrada(
   }
 
   // ── Pessoa: lookup por CNPJ ou auto-cria fornecedor ──────────────────────
+  // pessoas.cpf_cnpj pode estar formatado ("06.315.338/0226-00") ou raw ("06315338022600")
+  // dependendo da origem do cadastro. Busca por ambos os formatos.
   let pessoaId: string | null = null;
-  if (emitenteCnpj) {
+  if (cnpjRaw) {
     const { data: pesExist } = await supabase
       .from("pessoas").select("id")
-      .eq("fazenda_id", fazenda_id).eq("cpf_cnpj", emitenteCnpj).maybeSingle();
+      .eq("fazenda_id", fazenda_id)
+      .or(`cpf_cnpj.eq.${cnpjRaw},cpf_cnpj.eq.${cnpjFmt}`)
+      .maybeSingle();
     if (pesExist) {
       pessoaId = pesExist.id;
     } else {
@@ -2142,7 +2156,7 @@ export async function processarNfEntrada(
         tipo: "pj",
         cliente: false,
         fornecedor: true,
-        cpf_cnpj: emitenteCnpj,
+        cpf_cnpj: cnpjRaw,  // armazena sempre sem máscara para consistência
       }).select("id").single();
       pessoaId = novaPes?.id ?? null;
     }
