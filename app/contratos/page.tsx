@@ -712,7 +712,14 @@ export default function Contratos() {
       const { data, error } = await supabase.storage.from("arquivos").upload(path, file, { upsert: true, contentType: "application/pdf" });
       if (error) throw error;
       const { data: pub } = supabase.storage.from("arquivos").getPublicUrl(data.path);
-      setFC(prev => ({ ...prev, pdf_url: pub.publicUrl, pdf_nome: file.name }));
+      const pdfUrl = pub.publicUrl;
+      const pdfNome = file.name;
+      setFC(prev => ({ ...prev, pdf_url: pdfUrl, pdf_nome: pdfNome }));
+      // Auto-salva no banco para contrato já existente — evita perda ao fechar sem clicar Salvar
+      if (editContrato) {
+        await atualizarContrato(editContrato.id, { pdf_url: pdfUrl, pdf_nome: pdfNome });
+        setContratos(prev => prev.map(c => c.id === editContrato.id ? { ...c, pdf_url: pdfUrl, pdf_nome: pdfNome } : c));
+      }
     } catch (e) {
       alert("Erro ao fazer upload: " + (e instanceof Error ? e.message : String(e)));
     } finally {
