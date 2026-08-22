@@ -1469,7 +1469,12 @@ export default function NfCompraPage() {
       });
       const xmlJson = await xmlRes.json() as { ok: boolean; xmlCompleto?: string; erro?: string };
       if (!xmlJson.ok || !xmlJson.xmlCompleto) {
-        alert(`Não foi possível obter o XML da SEFAZ: ${xmlJson.erro ?? "sem resposta"}`);
+        // XML não está no Storage e SEFAZ não acessível — abrir wizard de re-importação
+        setReparando(p => { const s = new Set(p); s.delete(nf.id); return s; });
+        const abrir = window.confirm(
+          "XML não encontrado no armazenamento.\n\nClique em OK para abrir o cadastro desta NF e fazer o upload manual do arquivo XML."
+        );
+        if (abrir) abrirEditar(nf);
         return;
       }
       const xml = xmlJson.xmlCompleto;
