@@ -75,8 +75,13 @@ const NAV: NavItem[] = [
       {
         type: "subgroup", id: "sg-faturamento", label: "Faturamento", moduleId: "contratos",
         children: [
-          { id: "com-faturamento", label: "NF-e de Saída",      path: "/comercial/faturamento", moduleId: "contratos"  },
-          { id: "com-expedicao",   label: "Expedição de Grãos", path: "/expedicao",             moduleId: "expedicao"  },
+          { id: "com-faturamento", label: "NF-e de Saída", path: "/comercial/faturamento", moduleId: "contratos" },
+        ],
+      },
+      {
+        type: "subgroup", id: "sg-logistica", label: "Logística", moduleId: "expedicao",
+        children: [
+          { id: "com-expedicao", label: "Expedição de Grãos", path: "/expedicao", moduleId: "expedicao" },
         ],
       },
       {
