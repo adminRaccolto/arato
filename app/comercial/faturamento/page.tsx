@@ -639,6 +639,15 @@ function FaturamentoInner() {
                 status: "autorizada", chave_acesso: res.chave, numero: novoNumero,
                 dados_nf_json: djAtualizado,
               }).eq("id", nova.id);
+              // Grava chave de volta no romaneio para que Expedição reconheça como faturado
+              if (fVenda.romaneio_id) {
+                await supabase.from("romaneios").update({
+                  nfe_chave: res.chave,
+                  nfe_numero: novoNumero,
+                  nfe_serie: nova.serie,
+                  nfe_status: "autorizada",
+                }).eq("id", fVenda.romaneio_id);
+              }
               nova.status = "autorizada";
               nova.chave_acesso = res.chave;
               nova.numero = novoNumero;

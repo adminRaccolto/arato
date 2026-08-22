@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { listarFazendas } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
@@ -106,6 +107,7 @@ const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Expedicao() {
   const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
+  const router = useRouter();
 
   // Fazendas da conta
   const [fazendas, setFazendas]         = useState<Fazenda[]>([]);
@@ -292,59 +294,14 @@ export default function Expedicao() {
     }
   }
 
-  // ── Gerar NF-e ───────────────────────────────────────────────────────────
-  async function gerarNFe(carga: Carga) {
-    const cfop = carga.rota === "transbordo_com_remessa" ? "5905" :
-                 carga.rota === "direto_comprador"       ? "6101" : null;
-    if (!cfop) { alert("Transbordo sem NF — não gera NF-e."); return; }
-
-    const num   = String(Math.floor(Math.random() * 90000) + 10000);
-    const serie = "001";
-    const chave = `35${new Date().getFullYear().toString().slice(2)}04${num.padStart(9,"0")}55${serie}${num.padStart(9,"0")}1`;
-    const dataEmissao = new Date().toISOString().slice(0, 10);
-    const pesoLiq = carga.peso_liquido_kg ?? 0;
-    const sacas   = pesoLiq / 60;
-
-    // ── 1. Atualiza a fonte de dados correta ──────────────────────────────
+  // ── Ir para Faturamento para emitir NF-e (via SEFAZ real) ───────────────
+  function irParaFaturamento(carga: Carga) {
+    if (!contratoSel) return;
+    const params = new URLSearchParams({ contrato_id: contratoSel.id });
     if (carga._origem === "romaneio" && carga._romaneio_id) {
-      // Romaneio gerado no módulo de contratos → atualiza tabela romaneios
-      await supabase.from("romaneios").update({
-        nfe_numero: num, nfe_serie: serie, nfe_chave: chave, nfe_status: "autorizada",
-      }).eq("id", carga._romaneio_id);
-    } else {
-      // Carga criada na expedição → atualiza cargas_expedicao
-      await supabase.from("cargas_expedicao").update({
-        nfe_numero: num, nfe_serie: serie, nfe_chave: chave, nfe_status: "autorizada",
-      }).eq("id", carga.id);
+      params.set("romaneio_id", carga._romaneio_id);
     }
-
-    // ── 2. Registra em notas_fiscais para aparecer no faturamento ─────────
-    if (fazendaId) {
-      await supabase.from("notas_fiscais").insert({
-        fazenda_id: fazendaId,
-        numero: num,
-        serie,
-        tipo: "saida",
-        cfop,
-        natureza: cfop === "5905" ? "Remessa para Armazenagem" : "Venda de Produção — Produtor Rural",
-        destinatario: carga.destino_razao_social ?? contratoSel?.comprador ?? "",
-        valor_total: sacas * (contratoSel ? ((contratoSel as { preco_por_sc?: number }).preco_por_sc ?? 0) : 0),
-        data_emissao: dataEmissao,
-        status: "autorizada",
-        chave_acesso: chave,
-        auto: false,
-        observacao: `Expedição ${carga.numero} — Contrato ${contratoSel?.numero ?? ""} — ${sacas.toFixed(1)} sc de ${carga.produto}`,
-        dados_nf_json: {
-          produto: carga.produto,
-          peso_liquido_kg: pesoLiq,
-          sacas: sacas.toFixed(2),
-          placa: carga.destino_razao_social ?? "",
-          contrato_numero: contratoSel?.numero ?? "",
-        },
-      });
-    }
-
-    if (contratoSel) carregarCargas(contratoSel.id);
+    router.push(`/comercial/faturamento?${params.toString()}`);
   }
 
   // ── Emitir MDF-e simulado ─────────────────────────────────────────────────
@@ -633,9 +590,9 @@ export default function Expedicao() {
                             <td style={{ padding: "9px 12px" }} onClick={e => e.stopPropagation()}>
                               <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
                                 {c.rota !== "transbordo_sem_nf" && !c.nfe_chave && (
-                                  <button onClick={() => gerarNFe(c)}
-                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                    Gerar NF-e
+                                  <button onClick={() => irParaFaturamento(c)}
+                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                    Faturar →
                                   </button>
                                 )}
                                 {c.nfe_chave && (
@@ -860,9 +817,9 @@ export default function Expedicao() {
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#EF9F27" }}>Pendente</span>
-                    <button onClick={() => { gerarNFe(modalCarga); setModalCarga(null); }}
-                      style={{ padding: "4px 12px", background: "#E8E8E8", color: "#111111", border: "0.5px solid #111111", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      Gerar NF-e
+                    <button onClick={() => { irParaFaturamento(modalCarga); setModalCarga(null); }}
+                      style={{ padding: "4px 12px", background: "#D5E8F5", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      Faturar →
                     </button>
                   </div>
                 )}
