@@ -32,6 +32,18 @@ export async function POST(req: Request) {
 
     const supabase = adminClient();
 
+    // Se conta_id não foi informado, busca da fazenda (garante que o novo usuário
+    // sempre herde o conta_id correto mesmo quando raccotlo impersona cliente antigo)
+    let contaIdFinal: string | null = conta_id ?? null;
+    if (!contaIdFinal && fazenda_id) {
+      const { data: faz } = await supabase
+        .from("fazendas")
+        .select("conta_id")
+        .eq("id", fazenda_id)
+        .maybeSingle();
+      contaIdFinal = (faz as { conta_id?: string } | null)?.conta_id ?? null;
+    }
+
     // Determinar role antes da criação para incluir no user_metadata
     const emailLower = (user_email ?? "").toLowerCase();
     const isGino = emailLower === "gino@raccolto.com.br";
@@ -78,7 +90,7 @@ export async function POST(req: Request) {
     const { error: perfErr } = await supabase.from("perfis").upsert({
       user_id:    authUserId,
       fazenda_id: fazenda_id,
-      conta_id:   conta_id ?? null,
+      conta_id:   contaIdFinal,
       nome:       user_nome,
       role:       roleFinal,
     }, { onConflict: "user_id" });

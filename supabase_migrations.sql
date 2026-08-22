@@ -10495,3 +10495,26 @@ CREATE INDEX IF NOT EXISTS idx_nf_remessas_log_status   ON nf_remessas_logistica
 CREATE INDEX IF NOT EXISTS idx_nf_remessas_log_nf_ent   ON nf_remessas_logisticas(nf_entrada_id);
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION — Backfill conta_id em perfis para usuários sem conta
+-- Corrige novos usuários criados quando conta_id não era propagado
+-- Execute no Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════
+
+-- 1. Propaga conta_id da fazenda para o perfil quando o perfil não tem conta_id
+UPDATE perfis p
+SET conta_id = f.conta_id
+FROM fazendas f
+WHERE p.fazenda_id = f.id
+  AND p.conta_id IS NULL
+  AND f.conta_id IS NOT NULL;
+
+-- 2. Verifica resultado — deve retornar 0 perfis sem conta_id (para fazendas com conta)
+SELECT COUNT(*) AS perfis_sem_conta_id
+FROM perfis p
+JOIN fazendas f ON f.id = p.fazenda_id
+WHERE p.conta_id IS NULL AND f.conta_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
