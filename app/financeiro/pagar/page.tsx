@@ -1052,7 +1052,9 @@ function ContasPagarInner() {
                 onClick={() => {
                   // Pré-preenche com o último cascade salvo (produtor/fazenda/safra da previsão anterior)
                   const lc = lastCascadeRef.current;
-                  setCascade(lc);
+                  // Garante que fazendaId sempre esteja definido para que o CascadeSelector
+                  // carregue os anos safra imediatamente sem exigir seleção manual
+                  setCascade({ ...lc, fazendaId: lc.fazendaId || fazendaId || "" });
                   setModalTab("principal");
                   setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId ?? anoSafraVigenteId ?? "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: lc.talhaoId ?? "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "" });
                   setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true);
