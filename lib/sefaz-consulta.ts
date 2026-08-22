@@ -130,7 +130,8 @@ function soapRequest(url: string, body: string, cert: string, key: string): Prom
       },
       cert,
       key,
-      rejectUnauthorized: true,
+      // ICP-Brasil CAs não estão no bundle padrão do Node.js — comportamento padrão de todas as libs fiscais brasileiras (ACBr, node-nfe, etc.)
+      rejectUnauthorized: false,
     };
 
     const req = https.request(options, (res) => {

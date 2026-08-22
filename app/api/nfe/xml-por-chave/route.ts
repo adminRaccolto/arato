@@ -54,9 +54,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, erro: resultado.erro ?? resultado.xMotivo ?? "Erro na consulta SEFAZ" });
   }
 
+  const xmlCompleto = resultado.xmlCompleto ?? resultado.nfeXml ?? "";
+
+  // Salva no Storage para consultas futuras (evita nova ida à SEFAZ)
+  if (xmlCompleto) {
+    supabaseAdmin.storage
+      .from("arquivos")
+      .upload(xmlPath, Buffer.from(xmlCompleto, "utf-8"), { contentType: "application/xml", upsert: true })
+      .catch(() => { /* falha silenciosa — não bloqueia retorno */ });
+  }
+
   return NextResponse.json({
     ok: true,
-    xmlCompleto: resultado.xmlCompleto ?? resultado.nfeXml,
+    xmlCompleto,
     cStat: resultado.cStat,
     xMotivo: resultado.xMotivo,
     fonte: "sefaz",
