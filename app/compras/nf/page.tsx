@@ -318,6 +318,8 @@ export default function NfCompraPage() {
 
   // Modal de Reclassificação (pós-processamento)
   const [reparando,       setReparando]       = useState<Set<string>>(new Set());
+  const [reparandoLote,   setReparandoLote]   = useState(false);
+  const [resultadoLote,   setResultadoLote]   = useState<{ ok: number; erro: string[] } | null>(null);
   const [modalReclass,    setModalReclass]    = useState<NfEntrada | null>(null);
   const [reclassOps,      setReclassOps]      = useState<OperacaoGerencial[]>([]);
   const [reclassOpId,     setReclassOpId]     = useState("");
@@ -1469,12 +1471,13 @@ export default function NfCompraPage() {
       });
       const xmlJson = await xmlRes.json() as { ok: boolean; xmlCompleto?: string; erro?: string };
       if (!xmlJson.ok || !xmlJson.xmlCompleto) {
-        // XML não está no Storage e SEFAZ não acessível — abrir wizard de re-importação
         setReparando(p => { const s = new Set(p); s.delete(nf.id); return s; });
-        const abrir = window.confirm(
-          "XML não encontrado no armazenamento.\n\nClique em OK para abrir o cadastro desta NF e fazer o upload manual do arquivo XML."
-        );
-        if (abrir) abrirEditar(nf);
+        const erroSefaz = xmlJson.erro ?? "sem resposta";
+        const isCertErr = erroSefaz.toLowerCase().includes("certificado") || erroSefaz.toLowerCase().includes("senha");
+        const msg = isCertErr
+          ? `Certificado A1 não configurado.\n\nConfigure em Configurações → Parâmetros do Sistema → aba Fiscal antes de reparar.\n\nOu use o botão "📎 Reparar via XMLs" na barra de filtros para fazer upload manual dos arquivos XML.`
+          : `Não foi possível buscar o XML automaticamente.\n\nErro SEFAZ: ${erroSefaz}\n\nUse o botão "📎 Reparar via XMLs" para fazer upload manual dos arquivos XML.`;
+        alert(msg);
         return;
       }
       const xml = xmlJson.xmlCompleto;
@@ -1532,6 +1535,99 @@ export default function NfCompraPage() {
     } finally {
       setReparando(p => { const s = new Set(p); s.delete(nf.id); return s; });
     }
+  }
+
+  // ── Reparar em lote via upload de múltiplos XMLs ─────────────────────────
+  async function repararViaXmls(files: FileList) {
+    if (!files.length) return;
+    setReparandoLote(true);
+    setResultadoLote(null);
+    let ok = 0;
+    const erros: string[] = [];
+
+    for (const file of Array.from(files)) {
+      try {
+        const xmlText = await file.text();
+        const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+
+        // Extrai chave de acesso do XML
+        const chave = (
+          doc.querySelector("chNFe")?.textContent ??
+          doc.getElementsByTagName("chNFe")[0]?.textContent ?? ""
+        ).replace(/\D/g, "");
+
+        if (chave.length !== 44) {
+          erros.push(`${file.name}: chave inválida no XML`);
+          continue;
+        }
+
+        // Encontra a NF correspondente na lista
+        const nfAlvo = nfs.find(n => (n.chave_acesso ?? "").replace(/\D/g, "") === chave);
+        if (!nfAlvo) {
+          erros.push(`${file.name}: chave ${chave.slice(0,10)}… não encontrada nesta lista`);
+          continue;
+        }
+
+        // Sobe o XML para o Storage
+        const fid = nfAlvo.fazenda_id ?? fazendaId ?? "";
+        const storagePath = `nfs-sieg/${fid}/${chave}.xml`;
+        const { error: upErr } = await supabase.storage
+          .from("arquivos")
+          .upload(storagePath, new Blob([xmlText], { type: "application/xml" }), { upsert: true });
+        if (upErr) {
+          erros.push(`${file.name}: erro no upload — ${upErr.message}`);
+          continue;
+        }
+
+        // Atualiza destinatário
+        const dest = doc.querySelector("dest");
+        const destNome = dest?.querySelector("xNome")?.textContent ?? "";
+        const destCnpj = (dest?.querySelector("CNPJ") ?? dest?.querySelector("CPF"))?.textContent ?? "";
+        if (destNome || destCnpj) {
+          await atualizarNfEntrada(nfAlvo.id, {
+            nome_destinatario: destNome || undefined,
+            cnpj_destino:      destCnpj || undefined,
+          });
+        }
+
+        // Cria itens se ainda não existirem
+        const itensExist = await listarNfEntradaItens(nfAlvo.id).catch(() => []);
+        if (itensExist.length === 0) {
+          const dets = Array.from(doc.querySelectorAll("det"));
+          for (const det of dets) {
+            const getTag = (p: Element, t: string) =>
+              p.querySelector(t)?.textContent ?? p.getElementsByTagName(t)[0]?.textContent ?? "";
+            const prod = det.querySelector("prod") ?? det.getElementsByTagName("prod")[0];
+            if (!prod) continue;
+            const xProd  = getTag(prod, "xProd");
+            const qCom   = parseFloat(getTag(prod, "qCom") || "0");
+            const vUnCom = parseFloat(getTag(prod, "vUnCom") || "0");
+            const vProd  = parseFloat(getTag(prod, "vProd") || "0");
+            await criarNfEntradaItem({
+              nf_entrada_id:     nfAlvo.id,
+              fazenda_id:        fid,
+              descricao_produto: xProd,
+              descricao_nf:      xProd,
+              ncm:               getTag(prod, "NCM"),
+              cfop:              getTag(prod, "CFOP"),
+              unidade:           getTag(prod, "uCom") || "UN",
+              quantidade:        qCom,
+              valor_unitario:    vUnCom,
+              valor_total:       vProd,
+              tipo_apropiacao:   "estoque",
+              alerta_preco:      false,
+            });
+          }
+        }
+        ok++;
+      } catch (e) {
+        erros.push(`${file.name}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    setReparandoLote(false);
+    setResultadoLote({ ok, erro: erros });
+    if (ok > 0) await carregar();
   }
 
   // ── Reclassificar NF pós-processamento ───────────────────
@@ -2007,7 +2103,25 @@ export default function NfCompraPage() {
             )}
           </div>
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{nfsFiltradas.length} resultado{nfsFiltradas.length !== 1 ? "s" : ""}</span>
+          {/* Reparar em lote via XMLs locais */}
+          <label style={{ padding: "5px 12px", background: reparandoLote ? "#ddd" : "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 11, fontWeight: 600, color: "#C9921B", cursor: reparandoLote ? "default" : "pointer", whiteSpace: "nowrap" }}
+            title="Selecione os arquivos XML das NFs Pendentes para reparar automaticamente">
+            {reparandoLote ? "Reparando…" : "📎 Reparar via XMLs"}
+            <input type="file" accept=".xml,text/xml,application/xml" multiple style={{ display: "none" }}
+              disabled={reparandoLote}
+              onChange={e => { if (e.target.files?.length) { repararViaXmls(e.target.files); e.target.value = ""; } }} />
+          </label>
         </div>
+        {/* Banner resultado do reparo em lote */}
+        {resultadoLote && (
+          <div style={{ background: resultadoLote.ok > 0 ? "#E8F5EB" : "#FDE8E8", border: `0.5px solid ${resultadoLote.ok > 0 ? "#16A34A" : "#E24B4A"}`, borderRadius: 8, padding: "10px 16px", marginBottom: 12, display: "flex", gap: 16, alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              {resultadoLote.ok > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: "#16A34A" }}>✓ {resultadoLote.ok} NF{resultadoLote.ok > 1 ? "s" : ""} reparada{resultadoLote.ok > 1 ? "s" : ""} com sucesso</div>}
+              {resultadoLote.erro.map((e, i) => <div key={i} style={{ fontSize: 11, color: "#E24B4A", marginTop: 2 }}>• {e}</div>)}
+            </div>
+            <button onClick={() => setResultadoLote(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}>✕</button>
+          </div>
+        )}
 
         {/* ── Barra de ações em lote ── */}
         {selectedNfs.size > 0 && (
