@@ -139,7 +139,9 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
 
   function sel(field: keyof CascadeValues, id: string) {
     const reset: Partial<CascadeValues> = {};
-    if (field === "produtorId") { reset.ieId = ""; reset.fazendaId = ""; reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = ""; }
+    // Ao trocar o produtor, não zera a fazenda — ela continua válida para o lançamento.
+    // Ciclo e safra são zerados porque dependem da combinação fazenda+produtor.
+    if (field === "produtorId") { reset.ieId = ""; reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = ""; }
     if (field === "ieId") {
       // Auto-preenche fazendaId a partir da IE selecionada
       const ie = ies.find(i => i.id === id);
