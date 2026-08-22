@@ -317,6 +317,7 @@ export default function NfCompraPage() {
   const [nfEdit, setNfEdit] = useState<NfEntrada | null>(null);
 
   // Modal de Reclassificação (pós-processamento)
+  const [reparando,       setReparando]       = useState<Set<string>>(new Set());
   const [modalReclass,    setModalReclass]    = useState<NfEntrada | null>(null);
   const [reclassOps,      setReclassOps]      = useState<OperacaoGerencial[]>([]);
   const [reclassOpId,     setReclassOpId]     = useState("");
@@ -1456,6 +1457,78 @@ export default function NfCompraPage() {
     }
   }
 
+  // ── Reparar NF: repopula destinatário + itens via XML da SEFAZ ─────────
+  async function repararNf(nf: NfEntrada) {
+    if (!nf.chave_acesso) { alert("NF sem chave de acesso — não é possível buscar XML."); return; }
+    setReparando(p => new Set(p).add(nf.id));
+    try {
+      const xmlRes = await fetch("/api/nfe/xml-por-chave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazendaId: nf.fazenda_id ?? fazendaId, chaveAcesso: nf.chave_acesso, ambiente: "producao" }),
+      });
+      const xmlJson = await xmlRes.json() as { ok: boolean; xmlCompleto?: string; erro?: string };
+      if (!xmlJson.ok || !xmlJson.xmlCompleto) {
+        alert(`Não foi possível obter o XML da SEFAZ: ${xmlJson.erro ?? "sem resposta"}`);
+        return;
+      }
+      const xml = xmlJson.xmlCompleto;
+      const doc = new DOMParser().parseFromString(xml, "text/xml");
+      const dest = doc.querySelector("dest");
+      const destNome = dest?.querySelector("xNome")?.textContent ?? "";
+      const destCnpj = (dest?.querySelector("CNPJ") ?? dest?.querySelector("CPF"))?.textContent ?? "";
+
+      // Atualiza destinatário na NF
+      if (destNome || destCnpj) {
+        await atualizarNfEntrada(nf.id, {
+          nome_destinatario: destNome || undefined,
+          cnpj_destino:      destCnpj || undefined,
+        });
+      }
+
+      // Cria itens se ainda não existirem
+      const itensExistentes = await listarNfEntradaItens(nf.id).catch(() => []);
+      if (itensExistentes.length === 0) {
+        let dets = Array.from(doc.querySelectorAll("det"));
+        if (dets.length === 0) dets = Array.from(doc.getElementsByTagName("det"));
+        for (const det of dets) {
+          const getTag = (parent: Element, tag: string) =>
+            parent.querySelector(tag)?.textContent ?? parent.getElementsByTagName(tag)[0]?.textContent ?? "";
+          const prod = det.querySelector("prod") ?? det.getElementsByTagName("prod")[0];
+          if (!prod) continue;
+          const xProd  = getTag(prod, "xProd");
+          const NCM    = getTag(prod, "NCM");
+          const CFOP   = getTag(prod, "CFOP");
+          const uCom   = getTag(prod, "uCom") || "UN";
+          const qCom   = parseFloat(getTag(prod, "qCom") || "0");
+          const vUnCom = parseFloat(getTag(prod, "vUnCom") || "0");
+          const vProd  = parseFloat(getTag(prod, "vProd") || "0");
+          await criarNfEntradaItem({
+            nf_entrada_id:    nf.id,
+            fazenda_id:       nf.fazenda_id ?? fazendaId ?? "",
+            descricao_produto: xProd,
+            descricao_nf:     xProd,
+            ncm:              NCM || undefined,
+            cfop:             CFOP || undefined,
+            unidade:          uCom,
+            unidade_nf:       uCom,
+            quantidade:       qCom,
+            valor_unitario:   vUnCom,
+            valor_total:      vProd,
+            tipo_apropiacao:  "estoque",
+            alerta_preco:     false,
+          });
+        }
+      }
+
+      await carregar();
+    } catch (e) {
+      alert(`Erro ao reparar NF: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setReparando(p => { const s = new Set(p); s.delete(nf.id); return s; });
+    }
+  }
+
   // ── Reclassificar NF pós-processamento ───────────────────
   function abrirReclassificar(nf: NfEntrada) {
     setModalReclass(nf);
@@ -2103,6 +2176,17 @@ export default function NfCompraPage() {
                           {nf.status === "pendente" && (
                             <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 9px", border: "none", borderRadius: 6, background: "#1A5C38", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
                               Proc
+                            </button>
+                          )}
+
+                          {/* Reparar — repopula destinatário + itens via XML SEFAZ */}
+                          {nf.status === "pendente" && !!nf.chave_acesso && !nf.nome_destinatario && (
+                            <button
+                              onClick={() => repararNf(nf)}
+                              disabled={reparando.has(nf.id)}
+                              title="Buscar XML na SEFAZ e preencher destinatário + itens"
+                              style={{ padding: "4px 8px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", cursor: reparando.has(nf.id) ? "default" : "pointer", fontSize: 11, color: "#C9921B", fontWeight: 600, whiteSpace: "nowrap", opacity: reparando.has(nf.id) ? 0.6 : 1 }}>
+                              {reparando.has(nf.id) ? "…" : "Reparar"}
                             </button>
                           )}
 
