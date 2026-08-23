@@ -900,7 +900,8 @@ export default function NfCompraPage() {
       observacao: nf.observacao ?? "",
       ano_safra_id: nf.ano_safra_id ?? "",
       ciclo_id: nf.ciclo_id ?? "",
-      produtor_id: nf.produtor_id ?? produtorPorCnpj(nf.emitente_cnpj ?? ""),
+      // Produtor = destinatário da NF (nosso produtor, CPF no campo cnpj_destino)
+      produtor_id: nf.produtor_id ?? produtorPorCnpj(nf.cnpj_destino ?? ""),
       ie_produtor: (nf as Record<string,unknown>).ie_produtor as string ?? "",
       vinculo_atividade: (nf.vinculo_atividade ?? "rural") as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
       entidade_contabil: (nf.entidade_contabil ?? "pf") as "pf" | "pj",
@@ -1022,6 +1023,8 @@ export default function NfCompraPage() {
         cnpj_destino:      destCnpj || p.cnpj_destino,
         // auto-preenche fornecedor se CNPJ bater com cadastro
         pessoa_id: pessoaAutoId || p.pessoa_id,
+        // auto-preenche produtor pelo CPF/CNPJ do destinatário da NF
+        produtor_id: produtorPorCnpj(destCnpj) || p.produtor_id,
         // aplica sugestão apenas se o campo ainda não foi preenchido
         operacao_gerencial_id: regraHeader?.operacao_gerencial_id ?? p.operacao_gerencial_id,
         centro_custo_id:       regraHeader?.centro_custo_id       ?? p.centro_custo_id,
