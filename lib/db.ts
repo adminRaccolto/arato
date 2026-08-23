@@ -3796,6 +3796,7 @@ export async function salvarArrendamentos(
     observacao?: string;
     produtor_id?: string;
     produtor_id_2?: string;
+    ie_id?: string;
     mats: Array<{ id?: string; numero: string; area_ha?: number; cartorio?: string }>;
   }>
 ): Promise<void> {
@@ -3824,6 +3825,7 @@ export async function salvarArrendamentos(
       observacao: a.observacao || undefined,
       produtor_id: a.produtor_id || undefined,
       produtor_id_2: a.produtor_id_2 || undefined,
+      ie_id: a.ie_id || undefined,
     };
     let arrId = a.id;
     if (arrId) {

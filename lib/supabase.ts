@@ -88,6 +88,7 @@ export type Arrendamento = {
   // Agricultores responsáveis (locatários) — impacta LCDPR e split de lancamentos
   produtor_id?: string | null;  // FK produtores — agricultor principal
   produtor_id_2?: string | null;// FK produtores — segundo agricultor (contrato conjunto)
+  ie_id?: string | null;        // FK produtor_inscricoes_estaduais — IE usada no LCDPR
   created_at?: string;
 };
 

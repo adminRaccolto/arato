@@ -991,6 +991,7 @@ function CadastrosInner() {
       complemento: fProd.complemento || undefined,
       bairro: fProd.bairro || undefined,
       municipio: fProd.municipio || undefined,
+      municipio_ibge: fProd.municipio_ibge || undefined,
       estado: fProd.estado || undefined,
     };
     let prodId: string;

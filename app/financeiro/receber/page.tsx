@@ -212,7 +212,7 @@ function ContasReceberInner() {
       operacao_gerencial_id: l.operacao_gerencial_id ?? "",
       natureza:              (l.natureza as "real" | "previsao") ?? "real",
       data_emissao:          l.data_lancamento       ?? TODAY,
-      numero_documento:      "",
+      numero_documento:      l.numero_documento ?? "",
       serie:                 "",
       meses_diferido:        "0",
     });
@@ -624,6 +624,7 @@ function ContasReceberInner() {
           operacao_gerencial_id: form.operacao_gerencial_id || null,
           natureza:              form.natureza,
           forma_pagamento:       form.forma_recebimento    || null,
+          numero_documento:      form.numero_documento     || null,
         };
         const { error, count } = await supabase.from("lancamentos").update(patch, { count: "exact" }).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
@@ -668,6 +669,7 @@ function ContasReceberInner() {
       produtor_id:           form.produtor_id           || undefined,
       operacao_gerencial_id: form.operacao_gerencial_id || undefined,
       natureza:              form.natureza,
+      numero_documento:      form.numero_documento      || undefined,
     };
 
     const totalParcelas  = form.parcelar ? Math.max(1, Number(form.totalParcelas) || 1) : 1;
