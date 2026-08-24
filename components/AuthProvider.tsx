@@ -212,6 +212,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
       setUserRole(role);
 
+      // Operador de campo — acesso restrito a /campo/*
+      if (role === "campo") {
+        const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+        if (!pathname.startsWith("/campo")) {
+          router.push("/campo");
+        }
+        // Carrega fazenda e segue fluxo normal (sem return — precisa de fazenda_id)
+      }
+
       // raccotlo / raccotlo_gestor = acesso ao admin panel + seletor
       // raccotlo_seletor = apenas seletor de clientes
       const isRaccotloAny = role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor";
@@ -437,6 +446,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
   }, []);
+
+  // Guard permanente para operador de campo — bloqueia qualquer rota fora de /campo
+  useEffect(() => {
+    if (userRole !== "campo") return;
+    const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    if (!pathname.startsWith("/campo")) {
+      router.push("/campo");
+    }
+  }, [userRole, router]);
 
   // Re-executa só os steps (chamar após o usuário completar um passo do onboarding)
   const refetchOnboarding = useCallback(() => {
