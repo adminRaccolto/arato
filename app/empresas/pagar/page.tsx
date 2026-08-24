@@ -96,16 +96,20 @@ export default function EmpresaPagarPage() {
     if (!fazendaIds.length) return;
     setLoading(true);
     try {
-      const [emps, lancs, pess, conts] = await Promise.all([
+      // Carrega empresas/pessoas/contas independente dos lançamentos
+      const [emps, pess, conts] = await Promise.all([
         listarEmpresasDaConta(fazendaIds),
-        listarEmpresaLancamentos(fazendaIds, { tipo: "pagar", de: fDe, ate: fAte }),
         listarPessoasDaConta(fazendaIds[0] ?? ""),
         listarContasBancariasDaConta(fazendaIds[0]),
       ]);
       setEmpresas(emps);
-      setLancamentos(lancs);
       setPessoas(pess as Pessoa[]);
       setContas(conts as ContaBancariaMin[]);
+      // Lançamentos separado — pode falhar se tabela ainda não existe
+      try {
+        const lancs = await listarEmpresaLancamentos(fazendaIds, { tipo: "pagar", de: fDe, ate: fAte });
+        setLancamentos(lancs);
+      } catch { /* tabela empresa_lancamentos ainda não criada no Supabase */ }
     } finally {
       setLoading(false);
     }
