@@ -108,6 +108,76 @@ export async function consultaGastoCategoria(fazendaId: string, categoria: strin
   return `📊 Gastos com *${categoria}* em ${anoAtual}: ${fmtBRL(total)}`;
 }
 
+// ── Fluxo de Caixa por Intervalo ───────────────────────────────────────────
+export async function consultaFluxoCaixaIntervalo(fazendaId: string, dataInicio: string, dataFim: string) {
+  const [cpData, crData] = await Promise.all([
+    sb().from("lancamentos")
+      .select("descricao, valor, moeda, data_vencimento, categoria, status, fornecedor")
+      .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
+      .in("status", ["em_aberto", "vencido", "vencendo"])
+      .gte("data_vencimento", dataInicio).lte("data_vencimento", dataFim)
+      .order("data_vencimento"),
+    sb().from("lancamentos")
+      .select("descricao, valor, moeda, data_vencimento, categoria, status, fornecedor")
+      .eq("fazenda_id", fazendaId).eq("tipo", "receber")
+      .in("status", ["em_aberto", "vencido", "vencendo"])
+      .gte("data_vencimento", dataInicio).lte("data_vencimento", dataFim)
+      .order("data_vencimento"),
+  ]);
+
+  const cp = cpData.data ?? [];
+  const cr = crData.data ?? [];
+  const totalCp = cp.reduce((s, r) => s + Number(r.valor), 0);
+  const totalCr = cr.reduce((s, r) => s + Number(r.valor), 0);
+  const saldo = totalCr - totalCp;
+  const saldoEmoji = saldo >= 0 ? "🟢" : "🔴";
+
+  const periodoStr = `${fmtData(dataInicio)} a ${fmtData(dataFim)}`;
+
+  if (!cp.length && !cr.length) {
+    return `📭 Nenhum lançamento no período *${periodoStr}*.`;
+  }
+
+  // Agrupa CP por categoria
+  const cpPorCat: Record<string, number> = {};
+  for (const r of cp) {
+    const cat = r.categoria ?? "Outros";
+    cpPorCat[cat] = (cpPorCat[cat] ?? 0) + Number(r.valor);
+  }
+  const cpCatLinhas = Object.entries(cpPorCat)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, val]) => `  ▪ ${cat}: ${fmtBRL(val)}`)
+    .join("\n");
+
+  // Agrupa CR por categoria/fornecedor
+  const crPorCat: Record<string, number> = {};
+  for (const r of cr) {
+    const cat = r.categoria ?? r.fornecedor ?? "Outros";
+    crPorCat[cat] = (crPorCat[cat] ?? 0) + Number(r.valor);
+  }
+  const crCatLinhas = Object.entries(crPorCat)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, val]) => `  ▪ ${cat}: ${fmtBRL(val)}`)
+    .join("\n");
+
+  // Maiores saídas (top 3)
+  const top3Cp = [...cp].sort((a, b) => Number(b.valor) - Number(a.valor)).slice(0, 3);
+  const top3Linhas = top3Cp.map(r =>
+    `  • ${fmtData(r.data_vencimento)} — ${r.descricao}: ${fmtBRL(Number(r.valor))}`
+  ).join("\n");
+
+  let msg = `📊 *Fluxo de Caixa — ${periodoStr}*\n\n`;
+  msg += `📈 *A Receber* (${cr.length} lançamento${cr.length !== 1 ? "s" : ""}): *${fmtBRL(totalCr)}*\n`;
+  if (crCatLinhas) msg += `${crCatLinhas}\n`;
+  msg += `\n📉 *A Pagar* (${cp.length} lançamento${cp.length !== 1 ? "s" : ""}): *${fmtBRL(totalCp)}*\n`;
+  if (cpCatLinhas) msg += `${cpCatLinhas}\n`;
+  if (top3Cp.length) {
+    msg += `\n🔺 *Maiores saídas:*\n${top3Linhas}\n`;
+  }
+  msg += `\n${saldoEmoji} *Saldo projetado: ${fmtBRL(saldo)}*`;
+  return msg;
+}
+
 // ── Arrendamentos ──────────────────────────────────────────────────────────
 export async function consultaArrendamentosVencer(fazendaId: string) {
   const { data } = await sb().from("arrendamento_pagamentos")

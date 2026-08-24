@@ -9,6 +9,7 @@ import {
   consultaArrendamentosVencer, consultaSacasComprometidas,
   consultaEstoqueProduto, consultaEstoqueMinimo,
   consultaStatusLavoura, consultaProdutividade, consultaDRESumario,
+  consultaFluxoCaixaIntervalo,
 } from "./whatsapp-consultas";
 import { executarInsercao } from "./whatsapp-inserir";
 import type { FluxoNome } from "./whatsapp-flows";
@@ -91,6 +92,18 @@ const TOOLS: Anthropic.Tool[] = [
     name: "consultar_dre",
     description: "Mostra o resultado econômico (DRE) da safra atual: receita, custos, margem.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "consultar_fluxo_caixa_periodo",
+    description: "Consulta o fluxo de caixa resumido em um intervalo de datas específico. Use quando o usuário perguntar sobre saldo, entradas e saídas para um período determinado (ex: 'fluxo de hoje até 30/09', 'quanto tenho a pagar até outubro', 'resumo financeiro da semana'). Não use para consultas genéricas do mês — para isso use consultar_saldo_projetado.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        data_inicio: { type: "string", description: "Data de início no formato YYYY-MM-DD. Use a data de hoje quando o usuário disser 'de hoje', 'a partir de hoje', 'do dia'." },
+        data_fim:    { type: "string", description: "Data de fim no formato YYYY-MM-DD. Converta 'setembro' → último dia de setembro (YYYY-09-30), 'outubro' → YYYY-10-31, etc." },
+      },
+      required: ["data_inicio", "data_fim"],
+    },
   },
   {
     name: "registrar_abastecimento",
@@ -383,6 +396,11 @@ async function executarFerramenta(
         return consultaArrendamentosVencer(fazendaId);
       case "consultar_dre":
         return consultaDRESumario(fazendaId);
+      case "consultar_fluxo_caixa_periodo": {
+        const di = String(input.data_inicio ?? new Date().toISOString().split("T")[0]);
+        const df = String(input.data_fim ?? di);
+        return consultaFluxoCaixaIntervalo(fazendaId, di, df);
+      }
 
       case "registrar_abastecimento": {
         const res = await executarInsercao("abastecimento", {
