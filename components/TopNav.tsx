@@ -149,8 +149,6 @@ const NAV: NavItem[] = [
       { id: "fin-pagar",        label: "Contas a Pagar",            path: "/financeiro/pagar",         moduleId: "fin_pagar"     },
       { id: "fin-receber",      label: "Contas a Receber",          path: "/financeiro/receber",       moduleId: "fin_receber"   },
       { id: "fin-adiantamentos",label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos", moduleId: "fin_pagar" },
-      { id: "fin-folha",         label: "Folha de Pagamento",        path: "/financeiro/folha",         moduleId: "fin_pagar"     },
-      { id: "fin-dre-empresa",  label: "DRE por Empresa",           path: "/financeiro/empresas",      moduleId: "fin_relatorios" },
       { id: "fin-contratos",    label: "Contratos Financeiros",     path: "/financeiro/contratos",     moduleId: "fin_contratos" },
       { id: "fin-apoio",        label: "Apoio Financeiro",          path: "/financeiro/apoio",         moduleId: "apoio_financeiro" },
       {
@@ -182,6 +180,16 @@ const NAV: NavItem[] = [
           { id: "rel-manutencao",       label: "Manutenção de Máquinas",      path: "/relatorios/manutencao",                        moduleId: "fin_relatorios" },
         ],
       },
+    ],
+  },
+
+  {
+    type: "group", id: "empresas", label: "Empresas", minStep: 6,
+    children: [
+      { id: "emp-pagar",   label: "Contas a Pagar",      path: "/financeiro/pagar?modo=empresa",   moduleId: "empresas" },
+      { id: "emp-receber", label: "Contas a Receber",    path: "/financeiro/receber?modo=empresa", moduleId: "empresas" },
+      { id: "emp-folha",   label: "Folha de Pagamento",  path: "/financeiro/folha",                moduleId: "empresas" },
+      { id: "emp-dre",     label: "DRE por Empresa",     path: "/financeiro/empresas",             moduleId: "empresas" },
     ],
   },
 
@@ -308,6 +316,7 @@ const NAV: NavItem[] = [
 // Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
 const NAV_MODULE_MAP: Record<string, string[]> = {
   // "cadastros" sem entrada → sempre visível (módulo base, igual ao dashboard/mapa)
+  "empresas":      ["empresas"],
   "comercial":     ["contratos", "expedicao", "arrendamento"],
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],

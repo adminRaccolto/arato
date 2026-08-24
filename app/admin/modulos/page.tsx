@@ -42,6 +42,7 @@ const MODULOS_LABEL: Record<string, string> = {
   configuracoes:   "Configurações",
   bi:              "BI — Raccotlo Intelligence",
   // ── Add-ons opcionais (vendidos separadamente) ──
+  empresas:         "🏢 Módulo Empresas (CP/CR/Folha/DRE por empresa não-rural)",
   algodao:          "🌱 Módulo Algodão (Add-on)",
   cerealista:       "🌾 Módulo Cerealista (Add-on)",
   sementes:         "🫘 Módulo Sementes (Add-on)",
@@ -77,7 +78,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   },
   {
     label: "Add-ons Opcionais",
-    modulos: ["algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "ia_pedido_compra", "ia_consorcio", "protecao_margem"],
+    modulos: ["empresas", "algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "ia_pedido_compra", "ia_consorcio", "protecao_margem"],
   },
 ];
 

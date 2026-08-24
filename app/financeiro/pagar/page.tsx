@@ -137,6 +137,7 @@ function ContasPagarInner() {
   const { fazendaId, contaId, fazendaIds = [], anoSafraVigenteId, emailUsuario } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const modoEmpresa = searchParams.get("modo") === "empresa";
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   // Guarda o último cascade usado para pré-preencher o próximo modal novo
   const lastCascadeRef = useRef<Partial<CascadeValues>>({});
@@ -571,6 +572,8 @@ function ContasPagarInner() {
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
       if (fValorMin   && paraBRL(l) < desmascarar(fValorMin))                                  return false;
       if (fValorMax   && paraBRL(l) > desmascarar(fValorMax))                                  return false;
+      if (modoEmpresa && !l.empresa_id)                                                        return false;
+      if (!modoEmpresa && l.empresa_id && !fEmpresa)                                          return false;
       if (fEmpresa === "__fazenda__" && l.empresa_id)                                          return false;
       if (fEmpresa && fEmpresa !== "__fazenda__" && l.empresa_id !== fEmpresa)                return false;
       return true;
@@ -1045,7 +1048,7 @@ function ContasPagarInner() {
         <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid var(--border)", padding: "16px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Contas a Pagar</h1>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>{modoEmpresa ? "Contas a Pagar — Empresas" : "Contas a Pagar"}</h1>
               <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-3)" }}>Compromissos financeiros, parcelas e pagamentos</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
