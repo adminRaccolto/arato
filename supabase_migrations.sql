@@ -10690,3 +10690,27 @@ CREATE POLICY emp_lanc_delete ON empresa_lancamentos FOR DELETE
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- Seção 201 — empresa_lancamentos: suporte a NF de entrada + CT-e
+-- ============================================================================
+
+-- 1. Adiciona nf_entrada_id para rastrear qual NF gerou o lançamento
+ALTER TABLE empresa_lancamentos
+  ADD COLUMN IF NOT EXISTS nf_entrada_id uuid REFERENCES nf_entradas(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_nf ON empresa_lancamentos(nf_entrada_id);
+
+-- 2. Adiciona emp_lancamento_id em nf_entradas para linkar o CP gerado
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS emp_lancamento_id uuid REFERENCES empresa_lancamentos(id) ON DELETE SET NULL;
+
+-- 3. Expande o CHECK de origem para incluir nf_entrada e cte
+ALTER TABLE empresa_lancamentos
+  DROP CONSTRAINT IF EXISTS empresa_lancamentos_origem_check;
+
+ALTER TABLE empresa_lancamentos
+  ADD CONSTRAINT empresa_lancamentos_origem_check
+  CHECK (origem IN ('manual','folha','nf_servico','tesouraria','nf_entrada','cte'));
+
+NOTIFY pgrst, 'reload schema';

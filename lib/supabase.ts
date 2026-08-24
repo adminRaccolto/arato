@@ -317,8 +317,9 @@ export type EmpresaLancamento = {
   forma_pagamento?: string;
   numero_documento?: string;
   observacao?: string;
-  origem?: "manual" | "folha" | "nf_servico" | "tesouraria";
+  origem?: "manual" | "folha" | "nf_servico" | "tesouraria" | "nf_entrada";
   folha_id?: string;
+  nf_entrada_id?: string;
   numero?: number;
   conciliado?: boolean;
   created_at?: string;
@@ -1164,6 +1165,7 @@ export type NfEntrada = {
   status: "digitando" | "pendente" | "processada" | "cancelada";
   xml_content?: string;
   lancamento_id?: string;
+  emp_lancamento_id?: string;   // CP gerado em empresa_lancamentos (NF para CNPJ de empresa)
   observacao?: string;
   // Campos da v2
   origem?: "manual" | "xml" | "sieg" | "leitor";
