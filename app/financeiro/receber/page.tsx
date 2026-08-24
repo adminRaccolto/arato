@@ -433,7 +433,7 @@ function ContasReceberInner() {
       if (fEmpresa && fEmpresa !== "__fazenda__" && l.empresa_id !== fEmpresa)                  return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fEmpresa, produtores, ogMap]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fEmpresa, modoEmpresa, produtores, ogMap]);
 
   // ── Baixar ─────────────────────────────────────────────────
 

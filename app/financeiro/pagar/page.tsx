@@ -578,7 +578,7 @@ function ContasPagarInner() {
       if (fEmpresa && fEmpresa !== "__fazenda__" && l.empresa_id !== fEmpresa)                return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValorMin, fValorMax, fEmpresa, anosSafra, produtores, ogMap, pessoas, contas]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValorMin, fValorMax, fEmpresa, modoEmpresa, anosSafra, produtores, ogMap, pessoas, contas]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
