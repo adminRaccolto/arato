@@ -315,21 +315,24 @@ export default function FolhaPagamentoPage() {
       const { data: funcs } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", fol.id);
       const mesLabel = nomeMes(fol.competencia);
 
-      // gerar CP por funcionário
+      // gerar CP por funcionário em empresa_lancamentos (módulo isolado)
       for (const fn of funcs ?? []) {
         const liq = liquidoCalc(fn);
-        const { data: cp } = await supabase.from("lancamentos").insert({
-          fazenda_id:  fazendaId,
-          empresa_id:  fol.empresa_id ?? null,
-          tipo:        "pagar",
-          descricao:   `Salário ${fn.nome_funcionario} — ${mesLabel}`,
-          valor:       liq,
+        const { data: cp } = await supabase.from("empresa_lancamentos").insert({
+          fazenda_id:   fazendaId,
+          empresa_id:   fol.empresa_id,
+          tipo:         "pagar",
+          descricao:    `Salário ${fn.nome_funcionario} — ${mesLabel}`,
+          valor:        liq,
           data_vencimento: `${fol.competencia}-05`,
-          status:      "pendente",
-          categoria:   "salarios",
+          competencia:  fol.competencia,
+          status:       "pendente",
+          categoria:    "Salários e Encargos",
+          origem:       "folha",
+          folha_id:     fol.id,
         }).select("id").single();
         if (cp?.id) {
-          await supabase.from("folha_funcionarios").update({ cp_lancamento_id: cp.id }).eq("id", fn.id);
+          await supabase.from("folha_funcionarios").update({ emp_lancamento_id: cp.id }).eq("id", fn.id);
         }
       }
 

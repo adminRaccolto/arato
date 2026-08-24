@@ -127,7 +127,7 @@ export default function ContasReceber() {
 function ContasReceberInner() {
   const { fazendaId, contaId, fazendaIds = [], anoSafraVigenteId, emailUsuario } = useAuth();
   const searchParams = useSearchParams();
-  const modoEmpresa = searchParams.get("modo") === "empresa";
+  // modoEmpresa removido — empresa usa /empresas/receber com empresa_lancamentos
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
@@ -427,13 +427,10 @@ function ContasReceberInner() {
       }
       if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))             return false;
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))       return false;
-      if (modoEmpresa && !l.empresa_id)                                                         return false;
-      if (!modoEmpresa && l.empresa_id && !fEmpresa)                                           return false;
-      if (fEmpresa === "__fazenda__" && l.empresa_id)                                           return false;
-      if (fEmpresa && fEmpresa !== "__fazenda__" && l.empresa_id !== fEmpresa)                  return false;
+      if (l.empresa_id) return false; // lançamentos empresa → /empresas/receber
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fEmpresa, modoEmpresa, produtores, ogMap]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fEmpresa, produtores, ogMap]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
@@ -762,7 +759,7 @@ function ContasReceberInner() {
         <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid var(--border)", padding: "16px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>{modoEmpresa ? "Contas a Receber — Empresas" : "Contas a Receber"}</h1>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Contas a Receber</h1>
               <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-3)" }}>Vendas de grãos, serviços, arrendamentos e outros recebimentos</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -10609,3 +10609,84 @@ COMMENT ON TABLE folha_pagamento IS 'Cabeçalho da folha de pagamento mensal por
 COMMENT ON TABLE folha_funcionarios IS 'Itens da folha — um registro por funcionário por competência';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- SEÇÃO 200 — empresa_lancamentos (financeiro isolado por empresa)
+-- Tabela dedicada ao controle financeiro de empresas não-rurais.
+-- NÃO compartilha schema com lancamentos (sem safra/ciclo/talhão/barter).
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS empresa_lancamentos (
+  id                uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id        uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  empresa_id        uuid NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+  tipo              varchar(10) NOT NULL CHECK (tipo IN ('pagar','receber')),
+  descricao         text NOT NULL,
+  valor             numeric(14,2) NOT NULL DEFAULT 0,
+  moeda             varchar(5)    NOT NULL DEFAULT 'BRL',
+  cotacao_usd       numeric(10,4),
+  status            varchar(20)   NOT NULL DEFAULT 'pendente'
+                      CHECK (status IN ('pendente','pago','cancelado')),
+  data_vencimento   date NOT NULL,
+  data_pagamento    date,
+  valor_pago        numeric(14,2),
+  competencia       varchar(7),          -- YYYY-MM
+  categoria         text,
+  centro_custo      text,
+  pessoa_id         uuid REFERENCES pessoas(id) ON DELETE SET NULL,
+  conta_bancaria    uuid REFERENCES contas_bancarias(id) ON DELETE SET NULL,
+  forma_pagamento   text,
+  numero_documento  text,
+  observacao        text,
+  -- Origem automática
+  origem            varchar(30) DEFAULT 'manual'
+                      CHECK (origem IN ('manual','folha','nf_servico','tesouraria')),
+  folha_id          uuid REFERENCES folha_pagamento(id) ON DELETE SET NULL,
+  numero            bigint GENERATED ALWAYS AS IDENTITY,
+  conciliado        boolean DEFAULT false,
+  created_at        timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_fazenda    ON empresa_lancamentos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_empresa    ON empresa_lancamentos(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_tipo       ON empresa_lancamentos(tipo);
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_status     ON empresa_lancamentos(status);
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_vencimento ON empresa_lancamentos(data_vencimento);
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_competencia ON empresa_lancamentos(competencia);
+
+-- Atualiza referência da folha: agora aponta para empresa_lancamentos
+ALTER TABLE folha_funcionarios
+  ADD COLUMN IF NOT EXISTS emp_lancamento_id uuid REFERENCES empresa_lancamentos(id) ON DELETE SET NULL;
+
+-- RLS
+ALTER TABLE empresa_lancamentos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY emp_lanc_select ON empresa_lancamentos FOR SELECT
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+CREATE POLICY emp_lanc_insert ON empresa_lancamentos FOR INSERT
+  WITH CHECK (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+CREATE POLICY emp_lanc_update ON empresa_lancamentos FOR UPDATE
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+CREATE POLICY emp_lanc_delete ON empresa_lancamentos FOR DELETE
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+NOTIFY pgrst, 'reload schema';

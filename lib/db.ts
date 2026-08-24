@@ -1638,6 +1638,60 @@ export async function listarEmpresasDaConta(fazendaIds: string[]): Promise<Empre
   return data ?? [];
 }
 
+// ─── empresa_lancamentos ────────────────────────────────────
+import type { EmpresaLancamento } from "./supabase";
+
+export async function listarEmpresaLancamentos(
+  fazendaIds: string[],
+  opts?: { empresaId?: string; tipo?: "pagar" | "receber"; de?: string; ate?: string; status?: string }
+): Promise<EmpresaLancamento[]> {
+  if (!fazendaIds.length) return [];
+  let q = supabase
+    .from("empresa_lancamentos")
+    .select("*, empresas(nome), pessoas(nome_razao_social)")
+    .in("fazenda_id", fazendaIds)
+    .order("data_vencimento", { ascending: true });
+  if (opts?.empresaId) q = q.eq("empresa_id", opts.empresaId);
+  if (opts?.tipo)      q = q.eq("tipo", opts.tipo);
+  if (opts?.status)    q = q.eq("status", opts.status);
+  if (opts?.de)        q = q.gte("data_vencimento", opts.de);
+  if (opts?.ate)       q = q.lte("data_vencimento", opts.ate);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    ...r,
+    empresa_nome: r.empresas?.nome ?? null,
+    pessoa_nome:  r.pessoas?.nome_razao_social ?? null,
+  }));
+}
+
+export async function criarEmpresaLancamento(
+  l: Omit<EmpresaLancamento, "id" | "numero" | "created_at" | "empresa_nome" | "pessoa_nome">
+): Promise<EmpresaLancamento> {
+  const { data, error } = await supabase.from("empresa_lancamentos").insert(l).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarEmpresaLancamento(id: string, patch: Partial<EmpresaLancamento>): Promise<void> {
+  const { error } = await supabase.from("empresa_lancamentos").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirEmpresaLancamento(id: string): Promise<void> {
+  const { error } = await supabase.from("empresa_lancamentos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function baixarEmpresaLancamento(
+  id: string, dataPagamento: string, valorPago: number
+): Promise<void> {
+  const { error } = await supabase.from("empresa_lancamentos").update({
+    status: "pago", data_pagamento: dataPagamento, valor_pago: valorPago,
+  }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function criarEmpresa(e: Omit<Empresa, "id" | "created_at">): Promise<Empresa> {
   const { data, error } = await supabase.from("empresas").insert(e).select().single();
   if (error) throw error;

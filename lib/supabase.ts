@@ -293,6 +293,37 @@ export type Lancamento = {
   created_at?: string;
 };
 
+// ── Lançamento Financeiro de Empresa (tabela isolada) ─────────
+export type EmpresaLancamento = {
+  id: string;
+  fazenda_id: string;
+  empresa_id: string;
+  empresa_nome?: string;          // join
+  tipo: "pagar" | "receber";
+  descricao: string;
+  valor: number;
+  moeda?: string;
+  cotacao_usd?: number;
+  status: "pendente" | "pago" | "cancelado";
+  data_vencimento: string;
+  data_pagamento?: string;
+  valor_pago?: number;
+  competencia?: string;           // YYYY-MM
+  categoria?: string;
+  centro_custo?: string;
+  pessoa_id?: string;
+  pessoa_nome?: string;           // join
+  conta_bancaria?: string;
+  forma_pagamento?: string;
+  numero_documento?: string;
+  observacao?: string;
+  origem?: "manual" | "folha" | "nf_servico" | "tesouraria";
+  folha_id?: string;
+  numero?: number;
+  conciliado?: boolean;
+  created_at?: string;
+};
+
 // ── Pagamento em Lote (Borderô) ────────────────────────────
 export type PagamentoLote = {
   id: string;

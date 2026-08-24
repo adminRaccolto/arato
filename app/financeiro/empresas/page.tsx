@@ -109,10 +109,9 @@ export default function DREEmpresasPage() {
     try {
       const [{ data: emp }, { data: lanc }, { data: fols }] = await Promise.all([
         supabase.from("empresas").select("id,nome,cnpj").eq("fazenda_id", fazendaId).order("nome"),
-        supabase.from("lancamentos")
+        supabase.from("empresa_lancamentos")
           .select("id,tipo,valor,categoria,empresa_id,competencia,status,data_vencimento")
           .eq("fazenda_id", fazendaId)
-          .neq("empresa_id", null)
           .gte("data_vencimento", fDe + "-01")
           .lte("data_vencimento", fAte + "-31"),
         supabase.from("folha_pagamento")
