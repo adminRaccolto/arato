@@ -18,6 +18,7 @@ interface Transportadora {
   cep?: string; logradouro?: string; numero?: string; bairro?: string;
   municipio?: string; uf?: string;
   telefone?: string; email?: string;
+  empresa_id?: string;  // FK empresas — quando é transportadora própria/interna
   ativa: boolean; obs?: string;
 }
 interface Veiculo {
@@ -96,6 +97,7 @@ export default function TransporteCadastrosPage() {
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
   const [veiculos,        setVeiculos]        = useState<Veiculo[]>([]);
   const [motoristas,      setMotoristas]      = useState<Motorista[]>([]);
+  const [empresas,        setEmpresas]        = useState<{ id: string; nome: string }[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState("");
@@ -117,6 +119,9 @@ export default function TransporteCadastrosPage() {
     if (r1.data) setTransportadoras(r1.data);
     if (r2.data) setVeiculos(r2.data);
     if (r3.data) setMotoristas(r3.data);
+    // Carrega empresas próprias para vincular transportadora interna
+    const { data: emp } = await supabase.from("empresas").select("id, nome").in("fazenda_id", fazendaIds).order("nome");
+    if (emp) setEmpresas(emp);
     setLoading(false);
   }, [fazendaId]);
 
@@ -469,6 +474,18 @@ export default function TransporteCadastrosPage() {
                 </Campo>
               </div>
             </div>
+
+            {/* Empresa própria — vínculo com entidade jurídica interna */}
+            {empresas.length > 0 && (
+              <div>
+                <Campo label="Empresa Própria (vínculo jurídico)">
+                  <select style={inp} value={modalT.empresa_id ?? ""} onChange={e => setModalT(p => ({ ...p!, empresa_id: e.target.value || undefined }))}>
+                    <option value="">— Transportadora externa —</option>
+                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                  </select>
+                </Campo>
+              </div>
+            )}
 
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>

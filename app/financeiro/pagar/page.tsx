@@ -11,8 +11,8 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, type VeiculoUnificado } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote } from "../../../lib/supabase";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, type VeiculoUnificado } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -155,6 +155,7 @@ function ContasPagarInner() {
   const [opGerenciais,  setOpGerenciais]  = useState<OperacaoGerencial[]>([]);
   const [allOgs,        setAllOgs]        = useState<OperacaoGerencial[]>([]);
   const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
+  const [empresas,      setEmpresas]      = useState<Empresa[]>([]);
   const [opGerBusca,    setOpGerBusca]    = useState("");
   const [arquivoNF,     setArquivoNF]     = useState<File | null>(null);
   const [errosForm,     setErrosForm]     = useState<string[]>([]);
@@ -307,6 +308,7 @@ function ContasPagarInner() {
       unidade_mao_obra:      l.unidade_mao_obra      ?? "Dia",
       quantidade_mao_obra:   l.quantidade_mao_obra?.toString() ?? "",
       veiculo_sel:           l.maquina_id ? `m:${l.maquina_id}` : l.veiculo_id ? `v:${l.veiculo_id}` : "",
+      empresa_id:            l.empresa_id            ?? "",
     });
     setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
     carregarOps();
@@ -358,6 +360,8 @@ function ContasPagarInner() {
     funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "",
     // Veículo vinculado
     veiculo_sel: "",  // "m:uuid" | "v:uuid" | ""
+    // Empresa não-rural
+    empresa_id: "",
   });
 
   // grid editável de parcelas (prazo) — cada parcela tem safra/ciclo próprio para rateio
@@ -401,6 +405,7 @@ function ContasPagarInner() {
   const [fObs,        setFObs]        = useState("");
   const [fValorMin,   setFValorMin]   = useState("");
   const [fValorMax,   setFValorMax]   = useState("");
+  const [fEmpresa,    setFEmpresa]    = useState("");
 
   // Gera/atualiza grid quando os parâmetros de prazo mudam
   const gerarParcelas = (vencimento: string, qtd: number, freqMeses: number, valorTotal: number) => {
@@ -455,6 +460,8 @@ function ContasPagarInner() {
         }).catch(() => {});
       listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
     }
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (fids.length) listarEmpresasDaConta(fids).then(setEmpresas).catch(() => {});
   }, [contaId, fazendaId, fazendaIds?.join(",")]);
 
   // Recarrega ciclos e talhões quando a fazenda selecionada no form muda
@@ -564,9 +571,11 @@ function ContasPagarInner() {
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
       if (fValorMin   && paraBRL(l) < desmascarar(fValorMin))                                  return false;
       if (fValorMax   && paraBRL(l) > desmascarar(fValorMax))                                  return false;
+      if (fEmpresa === "__fazenda__" && l.empresa_id)                                          return false;
+      if (fEmpresa && fEmpresa !== "__fazenda__" && l.empresa_id !== fEmpresa)                return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValorMin, fValorMax, anosSafra, produtores, ogMap, pessoas, contas]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValorMin, fValorMax, fEmpresa, anosSafra, produtores, ogMap, pessoas, contas]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
@@ -865,6 +874,7 @@ function ContasPagarInner() {
           } : {}),
           maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : null,
           veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : null,
+          empresa_id:  form.empresa_id || null,
         };
         const res = await fetch("/api/financeiro/lancamentos", {
           method: "PATCH",
@@ -929,6 +939,7 @@ function ContasPagarInner() {
         maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : undefined,
         veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : undefined,
       } : {}),
+      empresa_id: form.empresa_id || undefined,
     };
 
     try {
@@ -981,7 +992,7 @@ function ContasPagarInner() {
 
   const limparFiltrosColunas = () => {
     setFFornecedor(""); setFOperacao(""); setFSafra(""); setFVencDe(""); setFVencAte("");
-    setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs("");
+    setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs(""); setFEmpresa("");
   };
 
   const disabled = salvando || (!form.pessoa_id && !form.descricao.trim()) || !form.vencimento
@@ -1056,7 +1067,7 @@ function ContasPagarInner() {
                   // carregue os anos safra imediatamente sem exigir seleção manual
                   setCascade({ ...lc, fazendaId: lc.fazendaId || fazendaId || "" });
                   setModalTab("principal");
-                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId ?? anoSafraVigenteId ?? "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: lc.talhaoId ?? "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "" });
+                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId ?? anoSafraVigenteId ?? "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: lc.talhaoId ?? "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "", empresa_id: "" });
                   setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true);
                 }}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -1136,6 +1147,15 @@ function ContasPagarInner() {
                   </button>
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+                  {/* Filtro por empresa */}
+                  {empresas.length > 0 && (
+                    <select value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}
+                      style={{ fontSize: 11, padding: "4px 8px", borderRadius: 7, border: `0.5px solid ${fEmpresa ? "#1A4870" : "var(--border)"}`, background: fEmpresa ? "#D5E8F5" : "var(--bg-card)", color: fEmpresa ? "#0B2D50" : "var(--text-2)", cursor: "pointer" }}>
+                      <option value="">Todas as entidades</option>
+                      <option value="__fazenda__">Fazenda (sem empresa)</option>
+                      {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                    </select>
+                  )}
                   {hasColFilter && (
                     <button onClick={limparFiltrosColunas} style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border-row)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
                       ✕ Limpar filtros
@@ -2762,6 +2782,16 @@ function ContasPagarInner() {
               {/* ─── Aba Adicionais ─── */}
               {modalTab === "adicionais" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Empresa não-rural — transportadora, trading, etc. */}
+                  {empresas.length > 0 && (
+                    <div>
+                      <label style={lbl}>Empresa (não-rural)</label>
+                      <select style={inp} value={form.empresa_id} onChange={e => setForm(p => ({ ...p, empresa_id: e.target.value }))}>
+                        <option value="">— Fazenda (padrão) —</option>
+                        {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}{e.razao_social && e.razao_social !== e.nome ? ` — ${e.razao_social}` : ""}</option>)}
+                      </select>
+                    </div>
+                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                     <div>
                       <label style={lbl}>% Juros a.m.</label>

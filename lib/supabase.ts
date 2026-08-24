@@ -289,6 +289,7 @@ export type Lancamento = {
   veiculo_id?: string;                // FK veiculos.id — veículo de transportadora
   numero?: number;                    // Número sequencial de lançamento (GENERATED ALWAYS AS IDENTITY)
   conciliado?: boolean;               // true = vinculado a uma linha OFX na Conciliação
+  empresa_id?: string;                // FK empresas.id — vínculo com empresa não-rural (transportadora, trading, etc.)
   created_at?: string;
 };
 

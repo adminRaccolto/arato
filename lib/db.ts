@@ -1627,6 +1627,17 @@ export async function listarEmpresas(fazenda_id: string): Promise<Empresa[]> {
   return data ?? [];
 }
 
+export async function listarEmpresasDaConta(fazendaIds: string[]): Promise<Empresa[]> {
+  if (!fazendaIds.length) return [];
+  const { data, error } = await supabase
+    .from("empresas")
+    .select("*")
+    .in("fazenda_id", fazendaIds)
+    .order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function criarEmpresa(e: Omit<Empresa, "id" | "created_at">): Promise<Empresa> {
   const { data, error } = await supabase.from("empresas").insert(e).select().single();
   if (error) throw error;

@@ -10534,3 +10534,78 @@ COMMENT ON COLUMN historico_conciliacao.periodo_inicio IS 'Início do período d
 COMMENT ON COLUMN historico_conciliacao.periodo_fim    IS 'Fim do período de data filtrado no painel CP/CR durante a conciliação';
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION — Financeiro por Empresa (não-rural)
+-- 1. empresa_id em lancamentos e transportadoras
+-- 2. Folha de Pagamento
+-- Execute no Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════
+
+-- 1. Vincular lançamentos CP/CR a empresas não-rurais
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES empresas(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_empresa_id ON lancamentos(empresa_id) WHERE empresa_id IS NOT NULL;
+
+-- 2. Vincular transportadora (fiscal) à empresa jurídica interna
+ALTER TABLE transportadoras
+  ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES empresas(id) ON DELETE SET NULL;
+
+-- 3. Folha de Pagamento — cabeçalho por competência
+CREATE TABLE IF NOT EXISTS folha_pagamento (
+  id              uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id      uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  empresa_id      uuid REFERENCES empresas(id) ON DELETE SET NULL,  -- empresa pagante
+  competencia     varchar(7) NOT NULL,   -- YYYY-MM (ex: 2026-08)
+  status          varchar(20) NOT NULL DEFAULT 'rascunho',  -- rascunho | fechado | pago
+  valor_bruto     numeric(14,2) DEFAULT 0,
+  valor_liquido   numeric(14,2) DEFAULT 0,
+  inss_patronal   numeric(14,2) DEFAULT 0,
+  fgts_total      numeric(14,2) DEFAULT 0,
+  obs             text,
+  created_at      timestamptz DEFAULT now(),
+  UNIQUE(fazenda_id, empresa_id, competencia)
+);
+
+-- 4. Folha de Pagamento — itens por funcionário
+CREATE TABLE IF NOT EXISTS folha_funcionarios (
+  id                       uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  folha_id                 uuid NOT NULL REFERENCES folha_pagamento(id) ON DELETE CASCADE,
+  funcionario_id           uuid REFERENCES funcionarios(id) ON DELETE SET NULL,
+  nome_funcionario         text NOT NULL,
+  cargo                    text,
+  salario_bruto            numeric(14,2) NOT NULL DEFAULT 0,
+  -- Descontos do trabalhador
+  inss_trabalhador         numeric(14,2) DEFAULT 0,
+  irrf                     numeric(14,2) DEFAULT 0,
+  adiantamento             numeric(14,2) DEFAULT 0,
+  outros_descontos         numeric(14,2) DEFAULT 0,
+  desc_outros_descontos    text,
+  -- Benefícios
+  vale_transporte          numeric(14,2) DEFAULT 0,
+  vale_refeicao            numeric(14,2) DEFAULT 0,
+  outros_beneficios        numeric(14,2) DEFAULT 0,
+  desc_outros_beneficios   text,
+  -- Encargos patronais
+  inss_patronal            numeric(14,2) DEFAULT 0,  -- 20% sobre bruto
+  fgts                     numeric(14,2) DEFAULT 0,  -- 8% sobre bruto
+  -- Salário líquido calculado
+  salario_liquido          numeric(14,2) GENERATED ALWAYS AS (
+    salario_bruto
+    - inss_trabalhador - irrf - adiantamento - outros_descontos
+    + vale_transporte + vale_refeicao + outros_beneficios
+  ) STORED,
+  cp_lancamento_id         uuid,   -- FK lancamentos — CP gerado ao fechar folha
+  created_at               timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_folha_pagamento_fazenda ON folha_pagamento(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_folha_pagamento_empresa ON folha_pagamento(empresa_id) WHERE empresa_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_folha_funcionarios_folha ON folha_funcionarios(folha_id);
+
+COMMENT ON TABLE folha_pagamento IS 'Cabeçalho da folha de pagamento mensal por empresa/competência';
+COMMENT ON TABLE folha_funcionarios IS 'Itens da folha — um registro por funcionário por competência';
+
+NOTIFY pgrst, 'reload schema';

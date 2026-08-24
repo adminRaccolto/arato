@@ -10,8 +10,8 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao } from "../../../lib/supabase";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -125,7 +125,7 @@ export default function ContasReceber() {
 }
 
 function ContasReceberInner() {
-  const { fazendaId, contaId, anoSafraVigenteId, emailUsuario } = useAuth();
+  const { fazendaId, contaId, fazendaIds = [], anoSafraVigenteId, emailUsuario } = useAuth();
   const searchParams = useSearchParams();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
@@ -139,6 +139,7 @@ function ContasReceberInner() {
   const [contas,       setContas]       = useState<ContaBancariaMin[]>([]);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
   const [allOgs,       setAllOgs]       = useState<OperacaoGerencial[]>([]);
+  const [empresas,     setEmpresas]     = useState<Empresa[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
@@ -215,6 +216,7 @@ function ContasReceberInner() {
       numero_documento:      l.numero_documento ?? "",
       serie:                 "",
       meses_diferido:        "0",
+      empresa_id:            l.empresa_id ?? "",
     });
     setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
     carregarOps();
@@ -254,6 +256,7 @@ function ContasReceberInner() {
     numero_documento: "",
     serie: "",
     meses_diferido: "0",
+    empresa_id: "",
   });
 
   // ── Filtros de coluna ─────────────────────────────────────
@@ -290,6 +293,7 @@ function ContasReceberInner() {
   const [fConta,      setFConta]      = useState("");
   const [fProdutor,   setFProdutor]   = useState("");
   const [fObs,        setFObs]        = useState("");
+  const [fEmpresa,    setFEmpresa]    = useState("");
 
   // ── Carga ──────────────────────────────────────────────────
 
@@ -318,6 +322,8 @@ function ContasReceberInner() {
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     }
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (fids.length) listarEmpresasDaConta(fids).then(setEmpresas).catch(() => {});
   }, [contaId, fazendaId]);
 
   // Reload ciclos e talhões sempre que a fazenda selecionada no formulário mudar
@@ -420,9 +426,11 @@ function ContasReceberInner() {
       }
       if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))             return false;
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))       return false;
+      if (fEmpresa === "__fazenda__" && l.empresa_id)                                           return false;
+      if (fEmpresa && fEmpresa !== "__fazenda__" && l.empresa_id !== fEmpresa)                  return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, produtores, ogMap]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fEmpresa, produtores, ogMap]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
@@ -625,6 +633,7 @@ function ContasReceberInner() {
           natureza:              form.natureza,
           forma_pagamento:       form.forma_recebimento    || null,
           numero_documento:      form.numero_documento     || null,
+          empresa_id:            form.empresa_id           || null,
         };
         const { error, count } = await supabase.from("lancamentos").update(patch, { count: "exact" }).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
@@ -670,6 +679,7 @@ function ContasReceberInner() {
       operacao_gerencial_id: form.operacao_gerencial_id || undefined,
       natureza:              form.natureza,
       numero_documento:      form.numero_documento      || undefined,
+      empresa_id:            form.empresa_id            || undefined,
     };
 
     const totalParcelas  = form.parcelar ? Math.max(1, Number(form.totalParcelas) || 1) : 1;
@@ -694,9 +704,11 @@ function ContasReceberInner() {
 
   const hasColFilter = fFornecedor || fOperacao || fSafra || fVencDe || fVencAte || fMoedaOrig || fConta || fProdutor || fObs;
 
+  const hasEmpresaFiltro = !!fEmpresa;
+
   const limparFiltrosColunas = () => {
     setFFornecedor(""); setFOperacao(""); setFSafra(""); setFVencDe(""); setFVencAte("");
-    setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs("");
+    setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs(""); setFEmpresa("");
   };
 
   const totalParcDisplay = form.parcelar ? Math.max(1, Number(form.totalParcelas) || 1) : 1;
@@ -823,6 +835,15 @@ function ContasReceberInner() {
                   </button>
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+                  {/* Filtro por empresa */}
+                  {empresas.length > 0 && (
+                    <select value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}
+                      style={{ fontSize: 11, padding: "4px 8px", borderRadius: 7, border: `0.5px solid ${fEmpresa ? "#1A4870" : "var(--border)"}`, background: fEmpresa ? "#D5E8F5" : "var(--bg-card)", color: fEmpresa ? "#0B2D50" : "var(--text-2)", cursor: "pointer" }}>
+                      <option value="">Todas as entidades</option>
+                      <option value="__fazenda__">Fazenda (sem empresa)</option>
+                      {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                    </select>
+                  )}
                   {hasColFilter && (
                     <button onClick={limparFiltrosColunas} style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border-row)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
                       ✕ Limpar filtros
@@ -1736,6 +1757,16 @@ function ContasReceberInner() {
               {/* ─── Aba Adicionais ─── */}
               {modalTab === "adicionais" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Empresa não-rural — frete de transportadora própria, trading, etc. */}
+                  {empresas.length > 0 && (
+                    <div>
+                      <label style={lbl}>Empresa (não-rural)</label>
+                      <select style={inp} value={form.empresa_id} onChange={e => setForm(p => ({ ...p, empresa_id: e.target.value }))}>
+                        <option value="">— Fazenda (padrão) —</option>
+                        {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}{e.razao_social && e.razao_social !== e.nome ? ` — ${e.razao_social}` : ""}</option>)}
+                      </select>
+                    </div>
+                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                     <div>
                       <label style={lbl}>Meses Diferido</label>

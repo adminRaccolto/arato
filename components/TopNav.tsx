@@ -149,6 +149,8 @@ const NAV: NavItem[] = [
       { id: "fin-pagar",        label: "Contas a Pagar",            path: "/financeiro/pagar",         moduleId: "fin_pagar"     },
       { id: "fin-receber",      label: "Contas a Receber",          path: "/financeiro/receber",       moduleId: "fin_receber"   },
       { id: "fin-adiantamentos",label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos", moduleId: "fin_pagar" },
+      { id: "fin-folha",         label: "Folha de Pagamento",        path: "/financeiro/folha",         moduleId: "fin_pagar"     },
+      { id: "fin-dre-empresa",  label: "DRE por Empresa",           path: "/financeiro/empresas",      moduleId: "fin_relatorios" },
       { id: "fin-contratos",    label: "Contratos Financeiros",     path: "/financeiro/contratos",     moduleId: "fin_contratos" },
       { id: "fin-apoio",        label: "Apoio Financeiro",          path: "/financeiro/apoio",         moduleId: "apoio_financeiro" },
       {
