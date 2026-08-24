@@ -28,6 +28,8 @@ const FORMAS = ["PIX", "TED", "Boleto", "Dinheiro", "Cheque", "Débito Automáti
 const TODAY = new Date().toISOString().split("T")[0];
 
 // ─── Helpers ─────────────────────────────────────────────────
+const fmtCNPJ = (v?: string) => { if (!v) return ""; const d = v.replace(/\D/g,""); return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,"$1.$2.$3/$4-$5") : d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4") : v; };
+const empLabel = (e: { nome: string; cpf_cnpj?: string }) => e.cpf_cnpj ? `${fmtCNPJ(e.cpf_cnpj)} — ${e.nome}` : e.nome;
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (iso?: string | null) => { if (!iso) return "—"; const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; };
 function competenciaAtual() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
@@ -223,7 +225,7 @@ export default function EmpresaPagarPage() {
               <label style={S.label}>Empresa</label>
               <select style={S.inp} value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}>
                 <option value="">Todas</option>
-                {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                {empresas.map(e => <option key={e.id} value={e.id}>{empLabel(e)}</option>)}
               </select>
             </div>
             <div style={{ flex: "0 0 160px" }}>
@@ -342,7 +344,7 @@ export default function EmpresaPagarPage() {
                   <label style={S.label}>Empresa *</label>
                   <select style={S.inp} value={form.empresa_id ?? ""} onChange={e => setForm(p => ({ ...p, empresa_id: e.target.value }))}>
                     <option value="">Selecione...</option>
-                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                    {empresas.map(e => <option key={e.id} value={e.id}>{empLabel(e)}</option>)}
                   </select>
                 </div>
                 <div style={{ gridColumn: "1/-1" }}>
