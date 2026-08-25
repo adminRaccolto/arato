@@ -675,8 +675,10 @@ export async function baixarLancamento(
   const valorTotal   = atual?.moeda === "USD" ? (atual.valor ?? 0) * cotacao : (atual?.valor ?? 0);
   const jaRPago      = (atual?.valor_pago as number | null) ?? 0;
   const novoTotal    = jaRPago + valor_pago_agora;
-  // Tolerância de R$0,01 para evitar problemas de arredondamento
-  const novoStatus   = novoTotal >= valorTotal - 0.01 ? "baixado" : "parcial";
+  const desconto     = extras?.desconto_valor ?? 0;
+  // Tolerância de R$0,01 para evitar problemas de arredondamento.
+  // Desconto reduz o valor devido — inclui no cálculo para evitar falso "parcial".
+  const novoStatus   = novoTotal + desconto >= valorTotal - 0.01 ? "baixado" : "parcial";
 
   const patch: Record<string, unknown> = { status: novoStatus, valor_pago: novoTotal, data_baixa, conta_bancaria };
   if (extras?.pessoa_id)             patch.pessoa_id = extras.pessoa_id;

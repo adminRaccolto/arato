@@ -458,6 +458,9 @@ function ContasReceberInner() {
     const valorPago = modalBaixa.moeda === "barter" ? 0 : desmascarar(baixa.valorMask);
     try {
       setSalvando(true);
+      const valorOriginalCR = paraBRL(modalBaixa);
+      const saldoRestanteCR = Math.max(0, valorOriginalCR - (modalBaixa.valor_pago ?? 0));
+      const descontoValorCR = saldoRestanteCR * (parseFloat(baixa.desconto_pct.replace(",", ".")) || 0) / 100;
       await baixarLancamento(
         modalBaixa.id, valorPago, baixa.data, modalBaixa.moeda === "barter" ? "" : baixa.conta,
         {
@@ -466,11 +469,11 @@ function ContasReceberInner() {
           ano_safra_id:          baixa.ano_safra_id || undefined,
           ciclo_id:              baixa.ciclo_id || undefined,
           observacao:            baixa.obs || undefined,
+          desconto_valor:        descontoValorCR || undefined,
         }
       );
       const novoTotalPago = (modalBaixa.valor_pago ?? 0) + valorPago;
-      const valorOriginal = paraBRL(modalBaixa);
-      const novoStatus = novoTotalPago >= valorOriginal - 0.01 ? "baixado" : "parcial";
+      const novoStatus = novoTotalPago + descontoValorCR >= valorOriginalCR - 0.01 ? "baixado" : "parcial";
       setLancamentos(prev => prev.map(l =>
         l.id !== modalBaixa.id ? l : {
           ...l, status: novoStatus as Lancamento["status"], data_baixa: baixa.data,

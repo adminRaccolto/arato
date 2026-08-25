@@ -1373,7 +1373,7 @@ export default function NfCompraPage() {
         itensDB,
         nfEdit.valor_total,
         nfEdit.emitente_nome,
-        nfEdit.data_entrada ?? nfEdit.data_emissao,
+        nfEdit.data_emissao ?? nfEdit.data_entrada,
         nfEdit.emitente_cnpj,
         {
           nfeNumero:           nfEdit.numero,
@@ -1736,7 +1736,7 @@ export default function NfCompraPage() {
             itensDireto,
             nf.valor_total,
             nf.emitente_nome,
-            nf.data_entrada ?? new Date().toISOString().split("T")[0],
+            nf.data_emissao ?? nf.data_entrada ?? new Date().toISOString().slice(0, 10),
             nf.emitente_cnpj ?? undefined,
             {
               nfeNumero:             nf.numero,

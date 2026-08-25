@@ -622,6 +622,7 @@ function ContasPagarInner() {
           ano_safra_id:            baixa.ano_safra_id || undefined,
           ciclo_id:                baixa.ciclo_id || undefined,
           observacao:              baixa.obs || undefined,
+          desconto_valor:          desmascarar(baixa.desconto_valor) || undefined,
         }
       );
       // Salvar classificação automática para o fornecedor
