@@ -336,6 +336,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // ── Atalho: confirmação de NF de compra por foto pendente ───────────────────
+  const pendingNfCompra = sessao?.dados?.pending_nf_compra as Record<string, unknown> | undefined;
+  if (pendingNfCompra && ehConfirmacaoSimples) {
+    console.log("[WH] confirmação de NF compra pendente detectada — inserindo direto");
+    let respostaNf: string;
+    try {
+      const res = await executarInsercao(
+        "nf_compra_foto",
+        { ...pendingNfCompra, confirmado: true },
+        fazendaId,
+        usuarioId,
+        usuarioNome,
+        usuarioWhatsapp,
+      );
+      respostaNf = res.mensagem;
+    } catch (err) {
+      console.error("[WH] ERRO inserção NF compra:", err);
+      respostaNf = "❌ Erro ao salvar a NF. Tente novamente.";
+    }
+    const novoHistNf: Mensagem[] = [
+      ...historico,
+      { role: "user" as const, content: textoMensagem },
+      { role: "assistant" as const, content: respostaNf },
+    ].slice(-20);
+    await salvarSessao(telefone, {
+      fazenda_id: fazendaId,
+      fazenda_nome: fazendaNome,
+      dados: { historico: novoHistNf, fazenda_confirmada_id: sessao?.dados?.fazenda_confirmada_id as string | undefined, pending_nf_compra: null },
+    });
+    await enviarTexto(telefone, respostaNf);
+    return NextResponse.json({ ok: true });
+  }
+
   // ── Atalho: confirmação de contrato financeiro (cédula) pendente ─────────────
   const pendingCF = sessao?.dados?.pending_contrato_financeiro as Record<string, unknown> | undefined;
   if (pendingCF && ehConfirmacaoSimples) {
@@ -425,7 +458,7 @@ export async function POST(req: NextRequest) {
     console.error("[WH] ERRO Claude:", err);
     iaResult = { texto: "⚠️ Serviço temporariamente indisponível. Tente novamente em instantes." };
   }
-  const { texto: resposta, pendingContrato: novoPending } = iaResult;
+  const { texto: resposta, pendingContrato: novoPending, pendingNfCompra: novoPendingNf } = iaResult;
 
   // Captura confirmação de fazenda e remove o token interno da resposta
   let fazendaConfirmadaId = sessao?.dados?.fazenda_confirmada_id as string | undefined;
@@ -454,8 +487,9 @@ export async function POST(req: NextRequest) {
     dados: {
       historico: novoHistorico,
       fazenda_confirmada_id: fazendaConfirmadaId,
-      // Persiste dados de contrato pendente para o próximo turno de confirmação
+      // Persiste dados pendentes para o próximo turno de confirmação
       ...(novoPending ? { pending_contrato: novoPending } : {}),
+      ...(novoPendingNf ? { pending_nf_compra: novoPendingNf } : { pending_nf_compra: null }),
     },
   });
   console.log("[WH] histórico salvo OK");

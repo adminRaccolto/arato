@@ -619,7 +619,7 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
 }
 
 // ── Processador principal ───────────────────────────────────────────────────
-export type IAResult = { texto: string; pendingContrato?: Record<string, unknown> };
+export type IAResult = { texto: string; pendingContrato?: Record<string, unknown>; pendingNfCompra?: Record<string, unknown> };
 
 export async function processarMensagemIA(
   texto: string,
@@ -824,6 +824,7 @@ COMPORTAMENTO GERAL:
   let ultimosResultados: string[] = [];
   let iteracoes = 0;
   let pendingContrato: Record<string, unknown> | undefined;
+  let pendingNfCompra: Record<string, unknown> | undefined;
 
   while (response.stop_reason === "tool_use" && iteracoes < 6) {
     iteracoes++;
@@ -841,6 +842,11 @@ COMPORTAMENTO GERAL:
         // do Claude reconstituir os dados a partir do preview
         if (block.name === "registrar_contrato_graos" && inp.confirmado === false) {
           pendingContrato = inp;
+        }
+        // Captura NF de compra no preview (confirmado=false) — sem isso, "sim" do usuário
+        // faz o Claude reconstruir dados do texto sem a imagem, causando erros/confusão
+        if (block.name === "registrar_nf_compra" && inp.confirmado === false) {
+          pendingNfCompra = inp;
         }
 
         const resultado = await executarFerramenta(
@@ -882,5 +888,5 @@ COMPORTAMENTO GERAL:
     if (ultimosResultados.length > 0) return { texto: ultimosResultados.join("\n\n"), pendingContrato };
   }
 
-  return { texto: texto_resposta || "Não consegui processar. Tente novamente.", pendingContrato };
+  return { texto: texto_resposta || "Não consegui processar. Tente novamente.", pendingContrato, pendingNfCompra };
 }
