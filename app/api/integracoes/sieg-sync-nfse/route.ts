@@ -159,56 +159,100 @@ export async function POST(req: NextRequest) {
     console.log(`[nfse] fazenda=${fazenda_id} cnpjs=${cnpjs.join(",")} ${iniStr.slice(0,10)}→${fimStr.slice(0,10)}`);
 
     // ── Buscar XMLs no SIEG ───────────────────────────────────────────────────
-    // Estratégia em 3 níveis (NFSe no SIEG pode ser indexada de formas diferentes):
-    // 1. CnpjTom  (tomador — padrão ABRASF)
-    // 2. CnpjDest (destinatário — variante de alguns provedores no SIEG)
-    // 3. Fallback geral chunked + filtro client-side (último recurso; limita a 30 dias)
+    // Estratégia em 5 níveis (NFSe no SIEG pode ser indexada de formas diferentes):
+    // 1. CnpjTom  + DataUpload  (tomador — padrão ABRASF)
+    // 2. CnpjDest + DataUpload  (destinatário — variante de alguns provedores)
+    // 3. CnpjTom  + DataEmissao (tomador por data de emissão — alguns municípios usam DataEmissao no índice)
+    // 4. CnpjDest + DataEmissao (destinatário por data de emissão)
+    // 5. Fallback geral (sem filtro CNPJ) + filtro client-side — limite: 30d com force, 15d sem force
     const xmlsList: Array<{ xml: string; cnpj: string }> = [];
     let importadas = 0;
     let duplicadas = 0;
     const erros: string[] = [];
+    const diagnostico: string[] = [];
 
     for (const cnpj of cnpjs) {
       let docs: string[] = [];
+      let nivelEncontrado = "";
 
-      // Nível 1 — CnpjTom
+      // Nível 1 — CnpjTom + DataUpload
       try {
         docs = await baixarXmlsSiegChunked(siegCreds, {
           TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjTom: cnpj,
         });
-        console.log(`[nfse] CnpjTom=${cnpj}: ${docs.length} XMLs`);
+        console.log(`[nfse] CnpjTom+DataUpload=${cnpj}: ${docs.length} XMLs`);
+        if (docs.length > 0) nivelEncontrado = "CnpjTom+DataUpload";
       } catch (e) {
-        console.warn(`[nfse] CnpjTom falhou: ${e}`);
+        console.warn(`[nfse] Nível 1 falhou: ${e}`);
       }
 
-      // Nível 2 — CnpjDest (NFSe indexada como "destinatário" no SIEG)
+      // Nível 2 — CnpjDest + DataUpload
       if (docs.length === 0) {
-        await sleep(1500);
+        await sleep(1000);
         try {
           docs = await baixarXmlsSiegChunked(siegCreds, {
             TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjDest: cnpj,
           });
-          console.log(`[nfse] CnpjDest=${cnpj}: ${docs.length} XMLs`);
+          console.log(`[nfse] CnpjDest+DataUpload=${cnpj}: ${docs.length} XMLs`);
+          if (docs.length > 0) nivelEncontrado = "CnpjDest+DataUpload";
         } catch (e) {
-          console.warn(`[nfse] CnpjDest falhou: ${e}`);
+          console.warn(`[nfse] Nível 2 falhou: ${e}`);
         }
       }
 
-      // Nível 3 — Fallback geral: download sem filtro + filtro client-side no XML
-      // Limita a 15 dias para não exceder o timeout de 300s quando combinado com os níveis 1 e 2
+      // Nível 3 — CnpjTom + DataEmissao
+      // Alguns municípios enviam ao SIEG com DataEmissao diferente de DataUpload
+      if (docs.length === 0) {
+        await sleep(1000);
+        try {
+          docs = await baixarXmlsSiegChunked(siegCreds, {
+            TipoXml: 3, DataEmissaoInicio: iniStr, DataEmissaoFim: fimStr, CnpjTom: cnpj,
+          });
+          console.log(`[nfse] CnpjTom+DataEmissao=${cnpj}: ${docs.length} XMLs`);
+          if (docs.length > 0) nivelEncontrado = "CnpjTom+DataEmissao";
+        } catch (e) {
+          console.warn(`[nfse] Nível 3 falhou: ${e}`);
+        }
+      }
+
+      // Nível 4 — CnpjDest + DataEmissao
+      if (docs.length === 0) {
+        await sleep(1000);
+        try {
+          docs = await baixarXmlsSiegChunked(siegCreds, {
+            TipoXml: 3, DataEmissaoInicio: iniStr, DataEmissaoFim: fimStr, CnpjDest: cnpj,
+          });
+          console.log(`[nfse] CnpjDest+DataEmissao=${cnpj}: ${docs.length} XMLs`);
+          if (docs.length > 0) nivelEncontrado = "CnpjDest+DataEmissao";
+        } catch (e) {
+          console.warn(`[nfse] Nível 4 falhou: ${e}`);
+        }
+      }
+
+      // Nível 5 — Fallback geral: sem filtro CNPJ + filtro client-side
+      // force_reimport aumenta o limite para 30 dias (ao custo de mais tempo)
       if (docs.length === 0) {
         const diffDias = (new Date(fimStr).getTime() - new Date(iniStr).getTime()) / 86_400_000;
-        const limiteFallback = 15;
+        const limiteFallback = force ? 30 : 15;
         if (diffDias > limiteFallback) {
-          console.warn(`[nfse] CnpjTom e CnpjDest retornaram 0 e período (${Math.ceil(diffDias)}d) > ${limiteFallback}d. Restrinja o período para o fallback.`);
-          erros.push(`CNPJ ${cnpj}: nenhuma NFS-e encontrada pelos filtros do SIEG. Tente um período de até ${limiteFallback} dias para ativar a busca geral.`);
+          const msg = `CNPJ ${cnpj}: nenhuma NFS-e encontrada em nenhum dos 4 filtros SIEG. Período (${Math.ceil(diffDias)} dias) excede limite do fallback geral (${limiteFallback} dias). Tente um período menor ou verifique o CNPJ configurado em Integrações.`;
+          console.warn(`[nfse] ${msg}`);
+          erros.push(msg);
+          diagnostico.push(`CNPJ ${cnpj}: todos os níveis retornaram 0 XMLs. CNPJ buscado: ${cnpj}. Período: ${iniStr.slice(0,10)} → ${fimStr.slice(0,10)}`);
         } else {
           await sleep(1000);
-          console.log(`[nfse] Fallback geral para CNPJ ${cnpj} (${Math.ceil(diffDias)} dias)…`);
+          console.log(`[nfse] Fallback geral para CNPJ ${cnpj} (${Math.ceil(diffDias)} dias, limite=${limiteFallback}d)…`);
           try {
-            const all = await baixarXmlsSiegChunked(siegCreds, {
+            // Tenta DataUpload primeiro, depois DataEmissao no fallback
+            let all = await baixarXmlsSiegChunked(siegCreds, {
               TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr,
             });
+            if (all.length === 0) {
+              await sleep(1000);
+              all = await baixarXmlsSiegChunked(siegCreds, {
+                TipoXml: 3, DataEmissaoInicio: iniStr, DataEmissaoFim: fimStr,
+              });
+            }
             console.log(`[nfse] Fallback: ${all.length} XMLs total`);
             for (const xml of all) {
               const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador");
@@ -217,12 +261,15 @@ export async function POST(req: NextRequest) {
               if (cTom === cnpj) docs.push(xml);
             }
             console.log(`[nfse] Fallback filtrado: ${docs.length} XMLs para CNPJ ${cnpj}`);
+            if (docs.length > 0) nivelEncontrado = "Fallback+FiltroClienteSide";
+            else diagnostico.push(`CNPJ ${cnpj}: fallback geral encontrou ${all.length} XMLs mas nenhum com tomador=${cnpj}. Verifique se o CNPJ está correto.`);
           } catch (e2) {
             console.warn(`[nfse] Fallback falhou: ${e2}`);
           }
         }
       }
 
+      if (docs.length > 0) diagnostico.push(`CNPJ ${cnpj}: ${docs.length} XMLs via ${nivelEncontrado}`);
       for (const xml of docs) xmlsList.push({ xml, cnpj });
     }
 
@@ -319,6 +366,7 @@ export async function POST(req: NextRequest) {
       sucesso: true, importadas, duplicadas,
       total_xmls: xmlsList.length,
       erros: erros.slice(0, 10),
+      diagnostico,
     });
 
   } catch (err) {

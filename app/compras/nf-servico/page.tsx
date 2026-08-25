@@ -581,11 +581,13 @@ export default function NfServicoPage() {
         const dup  = Number(d.duplicadas  ?? 0);
         const tot  = Number(d.total_xmls  ?? 0);
         const errs = Array.isArray(d.erros) ? (d.erros as string[]) : [];
-        let msg = `✓ ${imp} importada${imp !== 1 ? "s" : ""}`;
-        if (tot > 0) msg += ` de ${tot} XML${tot !== 1 ? "s" : ""} SIEG`;
+        const diag = Array.isArray(d.diagnostico) ? (d.diagnostico as string[]) : [];
+        let msg = tot === 0
+          ? `✗ 0 XMLs encontrados no SIEG (tentados: DataUpload e DataEmissao com CnpjTom e CnpjDest)`
+          : `✓ ${imp} importada${imp !== 1 ? "s" : ""} de ${tot} XML${tot !== 1 ? "s" : ""} SIEG`;
         if (dup > 0) msg += ` · ${dup} já existia${dup !== 1 ? "m" : ""}`;
-        if (tot === 0) msg += ` · 0 XMLs encontrados no SIEG`;
-        if (errs.length > 0) msg += ` · ${errs.length} erro${errs.length !== 1 ? "s" : ""}: ${errs[0].slice(0, 80)}`;
+        if (errs.length > 0) msg += ` · Erro: ${errs[0].slice(0, 100)}`;
+        if (tot === 0 && diag.length > 0) msg += `. Diagnóstico: ${diag[0]}`;
         setSiegSyncMsg(msg);
         if (imp > 0) await carregar();
       }
