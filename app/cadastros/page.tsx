@@ -2143,15 +2143,30 @@ function CadastrosInner() {
     const payload = { fazenda_id: fazId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || undefined, whatsapp, ativo: true };
     if (editUser) {
       await atualizarUsuario(editUser.id, payload);
-      // Sincroniza role no perfis quando tipo_acesso foi alterado na edição
-      if (editUser.auth_user_id) {
+      // Sincroniza role no perfis quando tipo_acesso foi alterado na edição.
+      // Se auth_user_id não está na tabela usuarios, busca pelo email via API.
+      let authUserId = editUser.auth_user_id;
+      if (!authUserId) {
+        const res = await fetch("/api/admin/buscar-auth-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: editUser.email }),
+        });
+        const json = await res.json();
+        if (json.auth_user_id) {
+          authUserId = json.auth_user_id;
+          // Persiste para consultas futuras
+          await atualizarUsuario(editUser.id, { auth_user_id: authUserId });
+        }
+      }
+      if (authUserId) {
         const novoRole = fUser.tipo_acesso === "campo" ? "campo" : "client";
         const roleAtual = editUser.role ?? "client";
         if (novoRole !== roleAtual) {
           await fetch("/api/admin/atualizar-role-usuario", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ auth_user_id: editUser.auth_user_id, role: novoRole }),
+            body: JSON.stringify({ auth_user_id: authUserId, role: novoRole }),
           });
         }
       }
@@ -9992,8 +10007,7 @@ function CadastrosInner() {
           <div style={{ display: "grid", gap: 14 }}>
             <div><label style={lbl}>Nome *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} /></div>
             <div><label style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} /></div>
-            {(!editUser || editUser.auth_user_id) && (
-              <div>
+            <div>
                 <label style={lbl}>Tipo de Acesso</label>
                 <select style={inp} value={fUser.tipo_acesso} onChange={e => setFUser(p => ({ ...p, tipo_acesso: e.target.value as "completo" | "campo" }))}>
                   <option value="completo">ERP Completo (web)</option>
@@ -10002,6 +10016,11 @@ function CadastrosInner() {
                 {fUser.tipo_acesso === "campo" && (
                   <span style={{ fontSize: 11, color: "#111111", marginTop: 4, display: "block" }}>
                     Acesso restrito ao app mobile — não pode entrar no ERP web.
+                  </span>
+                )}
+                {editUser && !editUser.auth_user_id && (
+                  <span style={{ fontSize: 11, color: "#E24B4A", marginTop: 4, display: "block" }}>
+                    ⚠ Este usuário não tem conta Auth vinculada — o tipo de acesso não pode ser alterado.
                   </span>
                 )}
               </div>
