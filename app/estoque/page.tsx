@@ -270,7 +270,9 @@ export default function Estoque() {
   const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos">("saldos");
   const [relInsumoId, setRelInsumoId] = useState("");
   const [_depAberto, _setDepAberto]   = useState<Set<string>>(new Set());
-  const [filtroDepProduto, setFiltroDepProduto] = useState("");
+  const [filtroDepProdutos, setFiltroDepProdutos] = useState<Set<string>>(new Set());
+  const [filtroDepBusca, setFiltroDepBusca]       = useState("");
+  const [filtroDepDropOpen, setFiltroDepDropOpen] = useState(false);
   const [relDataInicio, setRelDataInicio] = useState(() => { const d = new Date(); d.setMonth(d.getMonth()-3); return d.toISOString().slice(0,10); });
   const [relMovs, setRelMovs]     = useState<MovimentacaoEstoque[]>([]);
   // kardex
@@ -1440,11 +1442,15 @@ export default function Estoque() {
                   armazem_terceiro: "Armazém Terceiro",
                 };
 
-                // Filtro de produto
-                const termoDep = filtroDepProduto.toLowerCase().trim();
-                const insumosFiltrados = termoDep
-                  ? insumos.filter(i => i.nome.toLowerCase().includes(termoDep))
+                // Multi-seletor de produtos
+                const insumosFiltrados = filtroDepProdutos.size > 0
+                  ? insumos.filter(i => filtroDepProdutos.has(i.id))
                   : insumos;
+                const termoDep = filtroDepBusca.toLowerCase().trim();
+                const opcoesDrop = insumos
+                  .filter(i => !filtroDepProdutos.has(i.id))
+                  .filter(i => !termoDep || i.nome.toLowerCase().includes(termoDep))
+                  .slice(0, 60);
 
                 // Agrupar insumos por deposito_id
                 type DepGrupo = {
@@ -1470,35 +1476,107 @@ export default function Estoque() {
                 const totalGeral = grupos.reduce((s, g) => s + g.valorTotal, 0);
                 const totalItens = insumosFiltrados.length;
                 // Quando há filtro ativo, expande todos os depósitos que têm resultado
-                const depAbertoEfetivo: Set<string> = termoDep
+                const depAbertoEfetivo: Set<string> = filtroDepProdutos.size > 0
                   ? new Set(grupos.map(g => g.dep?.id ?? "__sem__"))
                   : _depAberto;
                 const [depAberto, setDepAberto] = [depAbertoEfetivo, _setDepAberto];
 
                 return (
                   <div>
-                    {/* Filtro de produto */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                      <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
-                        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--text-3)", pointerEvents: "none" }}>🔍</span>
+                    {/* Multi-seletor de produtos */}
+                    <div style={{ marginBottom: 14 }}>
+                      {/* Campo de busca + chips selecionados */}
+                      <div
+                        style={{
+                          display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6,
+                          minHeight: 38, padding: "5px 10px",
+                          border: `0.5px solid ${filtroDepProdutos.size > 0 ? "#1A4870" : "var(--border)"}`,
+                          borderRadius: 10, background: filtroDepProdutos.size > 0 ? "#EBF4FF" : "var(--bg-card)",
+                          cursor: "text", position: "relative",
+                        }}
+                        onClick={() => { setFiltroDepDropOpen(true); }}
+                      >
+                        <span style={{ fontSize: 13, color: "var(--text-3)", flexShrink: 0 }}>🔍</span>
+                        {/* Chips dos produtos selecionados */}
+                        {[...filtroDepProdutos].map(id => {
+                          const ins = insumos.find(i => i.id === id);
+                          if (!ins) return null;
+                          return (
+                            <span key={id} style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              background: "#1A4870", color: "#fff",
+                              fontSize: 12, fontWeight: 500, padding: "2px 8px 2px 10px",
+                              borderRadius: 20, flexShrink: 0,
+                            }}>
+                              {ins.nome}
+                              <button
+                                onClick={e => { e.stopPropagation(); setFiltroDepProdutos(prev => { const n = new Set(prev); n.delete(id); return n; }); }}
+                                style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 0 0 2px", opacity: 0.8 }}
+                              >×</button>
+                            </span>
+                          );
+                        })}
+                        {/* Input de busca */}
                         <input
                           type="text"
-                          placeholder="Filtrar por produto..."
-                          value={filtroDepProduto}
-                          onChange={e => setFiltroDepProduto(e.target.value)}
-                          style={{ width: "100%", padding: "7px 10px 7px 32px", borderRadius: 8, border: `0.5px solid ${filtroDepProduto ? "#1A4870" : "var(--border)"}`, fontSize: 13, background: filtroDepProduto ? "#EBF4FF" : "var(--bg-card)", outline: "none", boxSizing: "border-box", color: "var(--text-1)" }}
+                          placeholder={filtroDepProdutos.size === 0 ? "Buscar e selecionar produtos..." : "Adicionar mais..."}
+                          value={filtroDepBusca}
+                          onChange={e => { setFiltroDepBusca(e.target.value); setFiltroDepDropOpen(true); }}
+                          onFocus={() => setFiltroDepDropOpen(true)}
+                          onBlur={() => setTimeout(() => setFiltroDepDropOpen(false), 150)}
+                          style={{ flex: "1 1 140px", minWidth: 120, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "var(--text-1)" }}
                         />
+                        {filtroDepProdutos.size > 0 && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setFiltroDepProdutos(new Set()); setFiltroDepBusca(""); }}
+                            style={{ marginLeft: "auto", fontSize: 11, padding: "2px 10px", borderRadius: 6, border: "0.5px solid #1A4870", background: "transparent", color: "#1A4870", cursor: "pointer", flexShrink: 0 }}
+                          >
+                            Limpar tudo
+                          </button>
+                        )}
                       </div>
-                      {filtroDepProduto && (
-                        <button onClick={() => setFiltroDepProduto("")}
-                          style={{ fontSize: 12, padding: "5px 12px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer" }}>
-                          Limpar
-                        </button>
+
+                      {/* Dropdown de opções */}
+                      {filtroDepDropOpen && (
+                        <div style={{
+                          position: "absolute", zIndex: 100,
+                          background: "var(--bg-card)", border: "0.5px solid var(--border)",
+                          borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                          maxHeight: 240, overflowY: "auto", minWidth: 320,
+                          marginTop: 4,
+                        }}>
+                          {opcoesDrop.length === 0 ? (
+                            <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-3)" }}>
+                              {termoDep ? "Nenhum produto encontrado" : "Todos os produtos já foram selecionados"}
+                            </div>
+                          ) : opcoesDrop.map(i => (
+                            <button
+                              key={i.id}
+                              onMouseDown={e => {
+                                e.preventDefault();
+                                setFiltroDepProdutos(prev => new Set([...prev, i.id]));
+                                setFiltroDepBusca("");
+                              }}
+                              style={{
+                                width: "100%", textAlign: "left", background: "none", border: "none",
+                                padding: "8px 14px", cursor: "pointer", fontSize: 13, color: "var(--text-1)",
+                                display: "flex", alignItems: "center", gap: 8,
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "var(--bg)")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                            >
+                              <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 70 }}>{i.categoria}</span>
+                              <span>{i.nome}</span>
+                            </button>
+                          ))}
+                        </div>
                       )}
-                      {termoDep && (
-                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-                          {insumosFiltrados.length} produto{insumosFiltrados.length !== 1 ? "s" : ""} em {grupos.length} depósito{grupos.length !== 1 ? "s" : ""}
-                        </span>
+
+                      {/* Contador */}
+                      {filtroDepProdutos.size > 0 && (
+                        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>
+                          {insumosFiltrados.length} produto{insumosFiltrados.length !== 1 ? "s" : ""} selecionado{insumosFiltrados.length !== 1 ? "s" : ""} · {grupos.length} depósito{grupos.length !== 1 ? "s" : ""}
+                        </div>
                       )}
                     </div>
 
