@@ -132,8 +132,19 @@ function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[]): LinhaOFX[] {
       const dr = new Date(((l.data_baixa ?? l.data_vencimento) + "T00:00:00"));
       return Math.abs((dl.getTime() - dr.getTime()) / 86400000) <= 7;
     });
-    if (candidatos.length === 1) {
-      const c = candidatos[0];
+    if (candidatos.length === 0) return linha;
+    // Score: proximidade de data (dias × 10) + penalidade de status (0=baixado, 1=outros)
+    const scored = candidatos
+      .map(c => {
+        const dr = new Date(((c.data_baixa ?? c.data_vencimento) + "T00:00:00"));
+        const diffDays = Math.abs((dl.getTime() - dr.getTime()) / 86400000);
+        return { c, diffDays, score: diffDays * 10 + (c.status === "baixado" ? 0 : 1) };
+      })
+      .sort((a, b) => a.score - b.score);
+    const best = scored[0];
+    // Concilia automaticamente: único candidato OU melhor candidato dentro de 2 dias
+    if (candidatos.length === 1 || best.diffDays <= 2) {
+      const c = best.c;
       return { ...linha, conciliado: true, lancamento_id: c.id, lancamento_ids: [c.id], lancamento_desc: c.descricao, lancamento_valor: c.valor_pago ?? c.valor };
     }
     return linha;
@@ -186,6 +197,17 @@ function ConciliacaoInner() {
   const [filtroLancStatus, setFiltroLancStatus] = useState<"todos"|"aberto"|"baixado"|"parcial">("todos");
   const [filtroLancDe, setFiltroLancDe]     = useState<string>("");
   const [filtroLancAte, setFiltroLancAte]   = useState<string>("");
+
+  // Período de fetch dos lançamentos (header — antes de importar OFX)
+  const [periodoFetchDe, setPeriodoFetchDe] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+  const [periodoFetchAte, setPeriodoFetchAte] = useState<string>(() => {
+    const d = new Date();
+    const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return ultimo.toISOString().slice(0, 10);
+  });
 
   // Vinculação (bordero)
   const [linhaAtiva, setLinhaAtiva] = useState<LinhaOFX | null>(null);
@@ -271,6 +293,29 @@ function ConciliacaoInner() {
     } finally { setLancRefresh(false); }
   }
 
+  async function recarregarParaPeriodo(de?: string, ate?: string) {
+    const dFrom = de ?? periodoFetchDe;
+    const dTo   = ate ?? periodoFetchAte;
+    if (!fazendaId || !dFrom || !dTo || lancRefresh) return;
+    setLancRefresh(true);
+    try {
+      const { data } = await supabase.from("lancamentos")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+        .in("fazenda_id", fazendaIds)
+        .not("status", "eq", "cancelado")
+        .gte("data_vencimento", dFrom)
+        .lte("data_vencimento", dTo)
+        .order("data_vencimento", { ascending: false });
+      if (data) {
+        setLancamentos(prev => {
+          const mapa = new Map(prev.map(l => [l.id, l]));
+          for (const l of data as Lancamento[]) mapa.set(l.id, l);
+          return Array.from(mapa.values()).sort((a, b) => b.data_vencimento.localeCompare(a.data_vencimento));
+        });
+      }
+    } finally { setLancRefresh(false); }
+  }
+
   // ── Upload OFX ─────────────────────────────────────────────────────────────
   async function handleOFX(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -283,7 +328,25 @@ function ConciliacaoInner() {
       setLoading(false);
       return;
     }
-    linhas = autoMatch(linhas, lancamentos);
+    // Fetch fresco para o período do OFX (±15 dias) — garante lançamentos atualizados
+    const dIniMatch = new Date((linhas[0]?.data ?? hoje()) + "T00:00:00");
+    dIniMatch.setDate(dIniMatch.getDate() - 15);
+    const dFimMatch = new Date((linhas[linhas.length - 1]?.data ?? hoje()) + "T00:00:00");
+    dFimMatch.setDate(dFimMatch.getDate() + 15);
+    const { data: lancFresh } = await supabase.from("lancamentos")
+      .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+      .in("fazenda_id", fazendaIds)
+      .not("status", "eq", "cancelado")
+      .gte("data_vencimento", dIniMatch.toISOString().slice(0, 10))
+      .lte("data_vencimento", dFimMatch.toISOString().slice(0, 10));
+    let lancParaMatch = lancamentos;
+    if (lancFresh && lancFresh.length > 0) {
+      const mapa = new Map(lancamentos.map(l => [l.id, l]));
+      for (const l of lancFresh as Lancamento[]) mapa.set(l.id, l);
+      lancParaMatch = Array.from(mapa.values()).sort((a, b) => b.data_vencimento.localeCompare(a.data_vencimento));
+      setLancamentos(lancParaMatch);
+    }
+    linhas = autoMatch(linhas, lancParaMatch);
     const dataInicio  = linhas[0]?.data ?? hoje();
     const dataFim     = linhas[linhas.length - 1]?.data ?? hoje();
     const conciliadoN = linhas.filter(l => l.conciliado).length;
@@ -768,6 +831,54 @@ function ConciliacaoInner() {
             </div>
             <div style={{ fontSize: 11, color: "var(--text-3)" }}>Suporta OFX de qualquer banco brasileiro</div>
           </div>
+        </div>
+
+        {/* Seletor de período — controla quais lançamentos são carregados */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "10px 14px" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Período dos lançamentos</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <label style={{ fontSize: 11, color: "var(--text-3)" }}>De</label>
+            <input type="date" value={periodoFetchDe} onChange={e => setPeriodoFetchDe(e.target.value)}
+              style={{ padding: "4px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", background: "var(--bg-card)" }} />
+            <label style={{ fontSize: 11, color: "var(--text-3)" }}>até</label>
+            <input type="date" value={periodoFetchAte} onChange={e => setPeriodoFetchAte(e.target.value)}
+              style={{ padding: "4px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", background: "var(--bg-card)" }} />
+          </div>
+          {/* Atalhos rápidos de mês */}
+          {[
+            { label: "Mês atual", fn: () => {
+              const d = new Date();
+              const de = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
+              const ate = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
+              setPeriodoFetchDe(de); setPeriodoFetchAte(ate); recarregarParaPeriodo(de, ate);
+            }},
+            { label: "Mês anterior", fn: () => {
+              const d = new Date();
+              const mes = d.getMonth() === 0 ? 12 : d.getMonth();
+              const ano = d.getMonth() === 0 ? d.getFullYear()-1 : d.getFullYear();
+              const de = `${ano}-${String(mes).padStart(2,"0")}-01`;
+              const ate = new Date(ano, mes, 0).toISOString().slice(0,10);
+              setPeriodoFetchDe(de); setPeriodoFetchAte(ate); recarregarParaPeriodo(de, ate);
+            }},
+            { label: "Últimos 3 meses", fn: () => {
+              const ate = new Date().toISOString().slice(0,10);
+              const d3 = new Date(); d3.setMonth(d3.getMonth()-3); d3.setDate(1);
+              const de = d3.toISOString().slice(0,10);
+              setPeriodoFetchDe(de); setPeriodoFetchAte(ate); recarregarParaPeriodo(de, ate);
+            }},
+          ].map(({ label, fn }) => (
+            <button key={label} onClick={fn}
+              style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
+              {label}
+            </button>
+          ))}
+          <button onClick={() => recarregarParaPeriodo()} disabled={lancRefresh}
+            style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", cursor: lancRefresh ? "default" : "pointer", fontWeight: 600, opacity: lancRefresh ? 0.6 : 1, whiteSpace: "nowrap" }}>
+            {lancRefresh ? "Carregando…" : "↻ Atualizar"}
+          </button>
+          <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+            {lancamentos.length} lançamento{lancamentos.length !== 1 ? "s" : ""} carregado{lancamentos.length !== 1 ? "s" : ""}
+          </span>
         </div>
 
         {/* Abas: Extratos / Histórico */}
