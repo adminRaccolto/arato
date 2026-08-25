@@ -2321,31 +2321,28 @@ export async function processarNfEntrada(
         nf_entrada_id: nfId,
       };
 
+      // Usa API route com service_role_key — evita 42501 por JWT expirado
       const parcs = opts?.parcelas;
-      if (parcs && parcs.length > 1) {
-        let primeiroEmpId: string | null = null;
-        for (let i = 0; i < parcs.length; i++) {
-          const { data: ep, error: ee } = await supabase
-            .from("empresa_lancamentos").insert({
-              ...baseEmpCP,
-              data_vencimento: parcs[i].data,
-              valor:           parcs[i].valor,
-              observacao:      `Parcela ${i + 1}/${parcs.length}`,
-            }).select("id").single();
-          if (ee) throw new Error(`Erro ao criar parcela empresa ${i + 1}: ${ee.message}`);
-          if (i === 0) primeiroEmpId = ep?.id ?? null;
-        }
-        if (primeiroEmpId) nfUpdates.emp_lancamento_id = primeiroEmpId;
-      } else {
-        const { data: empLanc, error: empErr } = await supabase
-          .from("empresa_lancamentos").insert({
+      const empRows = parcs && parcs.length > 1
+        ? parcs.map((p, i) => ({
+            ...baseEmpCP,
+            data_vencimento: p.data,
+            valor:           p.valor,
+            observacao:      `Parcela ${i + 1}/${parcs.length}`,
+          }))
+        : [{
             ...baseEmpCP,
             data_vencimento: opts?.dataVencimentoCp ?? dataEntrada,
             valor:           valorTotal,
-          }).select("id").single();
-        if (empErr) throw new Error(`Erro ao criar CP empresa da NF: ${empErr.message}`);
-        if (empLanc?.id) nfUpdates.emp_lancamento_id = empLanc.id;
-      }
+          }];
+      const empRes = await fetch("/api/empresa-lancamentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: empRows }),
+      });
+      const empJson = await empRes.json() as { ok: boolean; ids?: string[]; error?: string };
+      if (!empJson.ok) throw new Error(`Erro ao criar CP empresa da NF: ${empJson.error}`);
+      if (empJson.ids?.[0]) nfUpdates.emp_lancamento_id = empJson.ids[0];
 
     } else {
       // ── CP Agro (comportamento padrão) ──────────────────────────────────────

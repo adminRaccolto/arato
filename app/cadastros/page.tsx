@@ -10024,7 +10024,6 @@ function CadastrosInner() {
                   </span>
                 )}
               </div>
-            )}
             {!editUser && fUser.tipo_acesso === "campo" && (
               <div>
                 <label style={lbl}>Senha provisória *</label>

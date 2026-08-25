@@ -333,7 +333,7 @@ function ContasPagarInner() {
 
   const [baixa, setBaixa] = useState({
     valorMask: "", data: TODAY, conta: "", obs: "",
-    multa_pct: "", juros_pct: "", desconto_pct: "",
+    multa_valor: "", juros_valor: "", desconto_valor: "",
     pessoa_id: "", operacao_gerencial_id: "", og_busca: "",
     salvar_class: false,
     ano_safra_id: "", ciclo_id: "",
@@ -596,7 +596,7 @@ function ContasPagarInner() {
       data: TODAY,
       conta: l.conta_bancaria ?? "",
       obs: l.observacao ?? "",
-      multa_pct: "", juros_pct: "", desconto_pct: "",
+      multa_valor: "", juros_valor: "", desconto_valor: "",
       pessoa_id: l.pessoa_id ?? "",
       operacao_gerencial_id: l.operacao_gerencial_id ?? "",
       og_busca: "",
@@ -632,7 +632,8 @@ function ContasPagarInner() {
       }
       const novoTotalPago = (modalBaixa.valor_pago ?? 0) + valorPago;
       const valorOriginal = paraBRL(modalBaixa);
-      const novoStatus = novoTotalPago >= valorOriginal - 0.01 ? "baixado" : "parcial";
+      const descV_save    = desmascarar(baixa.desconto_valor);
+      const novoStatus = novoTotalPago + descV_save >= valorOriginal - 0.01 ? "baixado" : "parcial";
 
       // Se parcial e nova data informada → reprograma vencimento do saldo restante
       const novaDataVenc = novoStatus === "parcial" && baixa.nova_data_vencimento
@@ -1779,7 +1780,7 @@ function ContasPagarInner() {
                 setBaixa({
                   valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
                   data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
-                  multa_pct: "", juros_pct: "", desconto_pct: "",
+                  multa_valor: "", juros_valor: "", desconto_valor: "",
                   pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
                   og_busca: "", salvar_class: false,
                   ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
@@ -1804,7 +1805,7 @@ function ContasPagarInner() {
                   setBaixa({
                     valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
                     data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
-                    multa_pct: "", juros_pct: "", desconto_pct: "",
+                    multa_valor: "", juros_valor: "", desconto_valor: "",
                     pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
                     og_busca: "", salvar_class: false,
                     ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
@@ -1922,9 +1923,9 @@ function ContasPagarInner() {
         const valorTotal = paraBRL(modalBaixa);
         const jaPago     = modalBaixa.valor_pago ?? 0;
         const valorOrig  = Math.max(0, valorTotal - jaPago);  // saldo restante — base para encargos
-        const multaV   = valorOrig * (parseFloat(baixa.multa_pct.replace(",", ".")) || 0) / 100;
-        const jurosV   = valorOrig * (parseFloat(baixa.juros_pct.replace(",", ".")) || 0) / 100;
-        const descV    = valorOrig * (parseFloat(baixa.desconto_pct.replace(",", ".")) || 0) / 100;
+        const multaV   = desmascarar(baixa.multa_valor);
+        const jurosV   = desmascarar(baixa.juros_valor);
+        const descV    = desmascarar(baixa.desconto_valor);
         const valorCom = valorOrig + multaV + jurosV - descV;
         const temEncargo = multaV + jurosV + descV !== 0;
         return (
@@ -2030,30 +2031,30 @@ function ContasPagarInner() {
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={lbl}>Multa (%)</label>
-                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.multa_pct}
+                      <label style={lbl}>Multa (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.multa_valor}
                         onChange={e => {
-                          const v = e.target.value.replace(/[^\d,]/g, "");
-                          const com = valorOrig + valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100 + jurosV - descV;
-                          setBaixa(p => ({ ...p, multa_pct: v, valorMask: numParaMascara(com) }));
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + desmascarar(v) + jurosV - descV;
+                          setBaixa(p => ({ ...p, multa_valor: v, valorMask: numParaMascara(com) }));
                         }} />
                     </div>
                     <div>
-                      <label style={lbl}>Juros (%)</label>
-                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.juros_pct}
+                      <label style={lbl}>Juros (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.juros_valor}
                         onChange={e => {
-                          const v = e.target.value.replace(/[^\d,]/g, "");
-                          const com = valorOrig + multaV + valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100 - descV;
-                          setBaixa(p => ({ ...p, juros_pct: v, valorMask: numParaMascara(com) }));
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + multaV + desmascarar(v) - descV;
+                          setBaixa(p => ({ ...p, juros_valor: v, valorMask: numParaMascara(com) }));
                         }} />
                     </div>
                     <div>
-                      <label style={lbl}>Desconto (%)</label>
-                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.desconto_pct}
+                      <label style={lbl}>Desconto (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.desconto_valor}
                         onChange={e => {
-                          const v = e.target.value.replace(/[^\d,]/g, "");
-                          const com = valorOrig + multaV + jurosV - valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100;
-                          setBaixa(p => ({ ...p, desconto_pct: v, valorMask: numParaMascara(com) }));
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + multaV + jurosV - desmascarar(v);
+                          setBaixa(p => ({ ...p, desconto_valor: v, valorMask: numParaMascara(Math.max(0, com)) }));
                         }} />
                     </div>
                   </div>
@@ -2102,8 +2103,8 @@ function ContasPagarInner() {
                     </div>
                   </div>
 
-                  {/* Nova data de vencimento — aparece somente em pagamento parcial */}
-                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < valorOrig && (
+                  {/* Nova data de vencimento — aparece somente em pagamento parcial (não quando há desconto que cobre o restante) */}
+                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < valorCom - 0.01 && (
                     <div style={{ marginTop: 12, padding: "12px 14px", background: "#FFF8EC", borderRadius: 8, border: "0.5px solid #F0C060" }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#8B5E14", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
                         Reprogramação do saldo — {fmtBRL(valorOrig - desmascarar(baixa.valorMask))}

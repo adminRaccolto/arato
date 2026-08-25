@@ -277,6 +277,7 @@ export default function Estoque() {
   const [kardexFim, setKardexFim]       = useState(() => new Date().toISOString().slice(0,10));
   const [kardexCat, setKardexCat]       = useState<"todos" | Insumo["categoria"]>("todos");
   const [kardexInsumoId, setKardexInsumoId] = useState("");
+  const [kardexDepositoId, setKardexDepositoId] = useState("");
   const [kardexMovs, setKardexMovs]         = useState<MovimentacaoEstoque[]>([]);
   const [kardexMovsAntes, setKardexMovsAntes] = useState<MovimentacaoEstoque[]>([]); // movs antes do período → saldo inicial real
   const [kardexBuscando, setKardexBuscando] = useState(false);
@@ -1111,7 +1112,8 @@ export default function Estoque() {
                 // Filtrar movs por categoria e produto selecionado
                 const insumosFiltrados = insumos.filter(ins =>
                   (kardexCat === "todos" || ins.categoria === kardexCat) &&
-                  (!kardexInsumoId || ins.id === kardexInsumoId)
+                  (!kardexInsumoId || ins.id === kardexInsumoId) &&
+                  (!kardexDepositoId || ins.deposito_id === kardexDepositoId)
                 );
                 const insIds = new Set(insumosFiltrados.map(i => i.id));
                 const movsFiltr = kardexMovs.filter(m => insIds.has(m.insumo_id));
@@ -1149,7 +1151,7 @@ export default function Estoque() {
                   <div>
                     {/* Filtros */}
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
                         <div>
                           <label style={lbl}>Data início *</label>
                           <input style={inp} type="date" value={kardexInicio} onChange={e => setKardexInicio(e.target.value)} />
@@ -1160,16 +1162,26 @@ export default function Estoque() {
                         </div>
                         <div>
                           <label style={lbl}>Categoria</label>
-                          <select style={inp} value={kardexCat} onChange={e => setKardexCat(e.target.value as typeof kardexCat)}>
+                          <select style={inp} value={kardexCat} onChange={e => { setKardexCat(e.target.value as typeof kardexCat); setKardexInsumoId(""); }}>
                             <option value="todos">Todas</option>
                             {Object.entries(CAT_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Depósito</label>
+                          <select style={inp} value={kardexDepositoId} onChange={e => { setKardexDepositoId(e.target.value); setKardexInsumoId(""); }}>
+                            <option value="">Todos</option>
+                            {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                           </select>
                         </div>
                         <div>
                           <label style={lbl}>Produto (opcional)</label>
                           <select style={inp} value={kardexInsumoId} onChange={e => setKardexInsumoId(e.target.value)}>
                             <option value="">Todos</option>
-                            {insumos.filter(i => kardexCat === "todos" || i.categoria === kardexCat).map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+                            {insumos.filter(i =>
+                              (kardexCat === "todos" || i.categoria === kardexCat) &&
+                              (!kardexDepositoId || i.deposito_id === kardexDepositoId)
+                            ).map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
                           </select>
                         </div>
                         <div>
