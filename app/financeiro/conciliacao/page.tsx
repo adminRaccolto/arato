@@ -32,6 +32,7 @@ interface Lancamento {
   data_baixa?: string;
   status: string;
   categoria?: string;
+  conta_bancaria?: string;
 }
 
 interface Extrato {
@@ -230,7 +231,7 @@ function ConciliacaoInner() {
     const [cR, lR, exR, hR, ogR, gsR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
         .in("fazenda_id", fazendaIds)
         .not("status", "eq", "cancelado")
         .order("data_vencimento", { ascending: false })
@@ -284,7 +285,7 @@ function ConciliacaoInner() {
     setLancRefresh(true);
     try {
       const { data } = await supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
         .in("fazenda_id", fazendaIds)
         .not("status", "eq", "cancelado")
         .order("data_vencimento", { ascending: false })
@@ -300,7 +301,7 @@ function ConciliacaoInner() {
     setLancRefresh(true);
     try {
       const { data } = await supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
         .in("fazenda_id", fazendaIds)
         .not("status", "eq", "cancelado")
         .gte("data_vencimento", dFrom)
@@ -618,6 +619,10 @@ function ConciliacaoInner() {
   });
 
   const lancFiltrados = lancamentos.filter(l => {
+    // Filtro por conta bancária selecionada no header:
+    // mostra lançamentos da conta OU sem conta (ainda não baixados — disponíveis para vincular)
+    if (contaSel && l.conta_bancaria && l.conta_bancaria !== contaSel) return false;
+
     // Filtro de status
     if (filtroLancStatus === "aberto" && !["aberto", "vencido", "em_aberto"].includes(l.status)) return false;
     if (filtroLancStatus === "baixado" && l.status !== "baixado") return false;
@@ -1121,7 +1126,7 @@ function ConciliacaoInner() {
             </div>
 
             {/* ═══ DOIS PAINÉIS ═══ */}
-            <div style={{ display: "grid", gridTemplateColumns: "460px 1fr", gap: 12, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "540px 1fr", gap: 12, alignItems: "start" }}>
 
               {/* ─── PAINEL ESQUERDO: Lançamentos CP/CR ─────────────────── */}
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: `1.5px solid ${linhaAtiva ? "#C9921B" : "var(--border)"}`, overflow: "hidden", position: "sticky", top: 20 }}>
