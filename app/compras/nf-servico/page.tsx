@@ -423,31 +423,34 @@ export default function NfServicoPage() {
 
         let primeiroLancId: string | null = null;
 
+        let lancRows: Record<string, unknown>[];
         if (nfCondicao === "prazo" && nfParcelas.length > 1) {
           const agrupador = crypto.randomUUID();
           const total = nfParcelas.length;
-          for (let i = 0; i < total; i++) {
-            const pValor = parseFloat(nfParcelas[i].valorMask.replace(/\./g, "").replace(",", ".")) || 0;
-            const { data: pd, error: pe } = await supabase.from("lancamentos").insert({
-              ...baseCP,
-              data_vencimento: nfParcelas[i].data,
-              valor:           pValor,
-              num_parcela:     i + 1,
-              total_parcelas:  total,
-              agrupador,
-            }).select("id").single();
-            if (pe) throw new Error(`Erro ao criar parcela ${i + 1}: ${pe.message}`);
-            if (i === 0) primeiroLancId = pd?.id ?? null;
-          }
+          lancRows = nfParcelas.map((parc, i) => ({
+            ...baseCP,
+            data_vencimento: parc.data,
+            valor:           parseFloat(parc.valorMask.replace(/\./g, "").replace(",", ".")) || 0,
+            num_parcela:     i + 1,
+            total_parcelas:  total,
+            agrupador,
+          }));
         } else {
-          const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
+          lancRows = [{
             ...baseCP,
             data_vencimento: cab.data_vencimento_cp || cab.data_prestacao,
             valor:           vLiquido,
-          }).select("id").single();
-          if (lancErr) throw new Error(`Erro ao criar CP: ${lancErr.message}`);
-          primeiroLancId = lancDB?.id ?? null;
+          }];
         }
+
+        const lancRes = await fetch("/api/lancamentos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rows: lancRows }),
+        });
+        const lancJson = await lancRes.json() as { ok: boolean; ids?: string[]; error?: string };
+        if (!lancJson.ok) throw new Error(`Erro ao criar CP: ${lancJson.error}`);
+        primeiroLancId = lancJson.ids?.[0] ?? null;
 
         if (primeiroLancId) {
           await supabase.from("nf_servicos")
