@@ -143,6 +143,7 @@ export default function NfServicoPage() {
   const [siegForceReimport, setSiegForceReimport] = useState(false);
   const [siegSyncing,       setSiegSyncing]       = useState(false);
   const [siegSyncMsg,       setSiegSyncMsg]       = useState("");
+  const [siegDiag,          setSiegDiag]          = useState<string[]>([]);
   const [siegProdutores,    setSiegProdutores]    = useState<Array<{nome:string;cnpj:string}>>([]);
 
   // ── ViewOnly modal ───────────────────────────────────────────
@@ -556,7 +557,7 @@ export default function NfServicoPage() {
   // ── SIEG — sincronização NFSe ───────────────────────────────
   async function sincronizarSiegNfse() {
     if (!fazendaId) return;
-    setSiegSyncing(true); setSiegSyncMsg("");
+    setSiegSyncing(true); setSiegSyncMsg(""); setSiegDiag([]);
     try {
       const ctrl = new AbortController();
       const tmo  = setTimeout(() => ctrl.abort(), 270_000); // 4 min 30s (server maxDuration=300s)
@@ -583,12 +584,12 @@ export default function NfServicoPage() {
         const errs = Array.isArray(d.erros) ? (d.erros as string[]) : [];
         const diag = Array.isArray(d.diagnostico) ? (d.diagnostico as string[]) : [];
         let msg = tot === 0
-          ? `✗ 0 XMLs encontrados no SIEG (tentados: DataUpload e DataEmissao com CnpjTom e CnpjDest)`
+          ? `✗ 0 XMLs encontrados no SIEG`
           : `✓ ${imp} importada${imp !== 1 ? "s" : ""} de ${tot} XML${tot !== 1 ? "s" : ""} SIEG`;
         if (dup > 0) msg += ` · ${dup} já existia${dup !== 1 ? "m" : ""}`;
-        if (errs.length > 0) msg += ` · Erro: ${errs[0].slice(0, 100)}`;
-        if (tot === 0 && diag.length > 0) msg += `. Diagnóstico: ${diag[0]}`;
+        if (errs.length > 0) msg += ` · ${errs[0].slice(0, 80)}`;
         setSiegSyncMsg(msg);
+        setSiegDiag(diag);
         if (imp > 0) await carregar();
       }
     } catch (e) { setSiegSyncMsg(`✗ Erro de rede: ${e}`); }
@@ -665,6 +666,14 @@ export default function NfServicoPage() {
           {siegSyncMsg && !siegSyncMsg.startsWith("✗") && (
             <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 6 }}>
               NFS-e importadas com status <strong>Pendente</strong> — abra cada uma para classificar operação gerencial e centro de custo antes de processar.
+            </div>
+          )}
+          {siegDiag.length > 0 && (
+            <div style={{ marginTop: 8, padding: "10px 14px", background: siegSyncMsg.startsWith("✗") ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${siegSyncMsg.startsWith("✗") ? "#FECACA" : "#BBF7D0"}`, borderRadius: 8, fontSize: 11, color: "#444" }}>
+              <div style={{ fontWeight: 700, marginBottom: 4, color: siegSyncMsg.startsWith("✗") ? "#991B1B" : "#166534" }}>Diagnóstico SIEG:</div>
+              {siegDiag.map((linha, i) => (
+                <div key={i} style={{ fontFamily: "monospace", fontSize: 10, wordBreak: "break-all", marginTop: i > 0 ? 4 : 0 }}>{linha}</div>
+              ))}
             </div>
           )}
         </div>
