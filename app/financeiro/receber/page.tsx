@@ -10,8 +10,8 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa } from "../../../lib/supabase";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa, PagamentoLote } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -295,6 +295,8 @@ function ContasReceberInner() {
   const [fProdutor,   setFProdutor]   = useState("");
   const [fObs,        setFObs]        = useState("");
   const [fEmpresa,    setFEmpresa]    = useState("");
+  const [filtroLoteId, setFiltroLoteId] = useState("");
+  const [borderosCR,   setBorderosCR]   = useState<PagamentoLote[]>([]);
 
   // ── Carga ──────────────────────────────────────────────────
 
@@ -325,6 +327,7 @@ function ContasReceberInner() {
     }
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (fids.length) listarEmpresasDaConta(fids).then(setEmpresas).catch(() => {});
+    if (fids.length) listarBorderosPendentes(fids, "receber").then(setBorderosCR).catch(() => {});
   }, [contaId, fazendaId]);
 
   // Reload ciclos e talhões sempre que a fazenda selecionada no formulário mudar
@@ -427,10 +430,11 @@ function ContasReceberInner() {
       }
       if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))             return false;
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))       return false;
+      if (filtroLoteId && l.lote_id !== filtroLoteId)                                            return false;
       if (l.empresa_id) return false; // lançamentos empresa → /empresas/receber
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fEmpresa, produtores, ogMap]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fEmpresa, filtroLoteId, produtores, ogMap]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
@@ -702,13 +706,14 @@ function ContasReceberInner() {
     }
   };
 
-  const hasColFilter = fFornecedor || fOperacao || fSafra || fVencDe || fVencAte || fMoedaOrig || fConta || fProdutor || fObs;
+  const hasColFilter = fFornecedor || fOperacao || fSafra || fVencDe || fVencAte || fMoedaOrig || fConta || fProdutor || fObs || filtroLoteId;
 
   const hasEmpresaFiltro = !!fEmpresa;
 
   const limparFiltrosColunas = () => {
     setFFornecedor(""); setFOperacao(""); setFSafra(""); setFVencDe(""); setFVencAte("");
     setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs(""); setFEmpresa("");
+    setFiltroLoteId("");
   };
 
   const totalParcDisplay = form.parcelar ? Math.max(1, Number(form.totalParcelas) || 1) : 1;
@@ -835,6 +840,18 @@ function ContasReceberInner() {
                   </button>
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+                  {/* Filtro por borderô */}
+                  {borderosCR.length > 0 && (
+                    <select value={filtroLoteId} onChange={e => setFiltroLoteId(e.target.value)}
+                      style={{ fontSize: 11, padding: "4px 8px", borderRadius: 7, border: `0.5px solid ${filtroLoteId ? "#16A34A" : "var(--border)"}`, background: filtroLoteId ? "#EDFAF3" : "var(--bg-card)", color: filtroLoteId ? "#0B5C31" : "var(--text-2)", cursor: "pointer" }}>
+                      <option value="">Todos os borderôs</option>
+                      {borderosCR.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.descricao || `Borderô ${b.data_pagamento ?? b.created_at?.slice(0,10) ?? ""}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   {/* Filtro por empresa */}
                   {empresas.length > 0 && (
                     <select value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}
@@ -1059,6 +1076,9 @@ function ContasReceberInner() {
                               ) : l.moeda === "barter" ? (
                                 <button onClick={() => abrirBaixa(l)} title="Confirmar entrega barter"
                                   style={btnAcao("#F0F0F0", "#555555", "0.5px solid #D8D8D8")}>⇄</button>
+                              ) : l.lote_id && l.status !== "baixado" ? (
+                                <span title="Em borderô pendente — use 'Confirmar Recebimento' no lote"
+                                  style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:28, height:26, fontSize:9, fontWeight:700, borderRadius:6, background:"#EDFAF3", color:"#0B5C31", border:"0.5px solid rgba(22,163,74,0.4)", cursor:"default" }}>BDR</span>
                               ) : l.status !== "baixado" ? (
                                 <button onClick={() => abrirBaixa(l)} title="Receber / Registrar recebimento"
                                   style={btnAcao("#16A34A", "#fff")}>↓</button>

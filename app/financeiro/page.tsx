@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior, listarPessoasDaConta } from "../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior, listarPessoasDaConta, listarPagamentoLotes } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
-import type { Lancamento, Simulacao } from "../../lib/supabase";
+import type { Lancamento, Simulacao, PagamentoLote } from "../../lib/supabase";
 
 // ── tipos locais ─────────────────────────────────────────────
 type TipoLanc   = "receber" | "pagar";
@@ -217,6 +217,7 @@ export default function Financeiro() {
   const [popover,    setPopover]    = useState<{ l: Lancamento; x: number; y: number } | null>(null);
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo, setModalNovo]   = useState(false);
+  const [borderosPagos, setBorderosPagos] = useState<PagamentoLote[]>([]);
 
   // Fluxo de caixa
   const [subAbaFluxo, setSubAbaFluxo]   = useState<SubAbaFluxo>("vertical");
@@ -278,6 +279,7 @@ export default function Financeiro() {
       ]);
       setLancamentos(lans);
       listarSimulacoes(contaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
+      if (fazendaId) listarPagamentoLotes(fazendaId, "pagar").then(lotes => setBorderosPagos(lotes.filter(l => l.status === "pago"))).catch(() => {});
       listarPessoasDaConta(fazendaId!).then(ps => {
         const m: Record<string, string> = {};
         for (const p of ps) m[p.id] = p.nome ?? "";
@@ -1636,65 +1638,89 @@ export default function Financeiro() {
                   )}
 
                   {/* ─── ABA: Conciliação ─────────────────────── */}
-                  {aba === "conciliacao" && (
-                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
-                      <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 2 }}>Último extrato importado</div>
-                          <div style={{ fontSize: 11, color: "var(--text-2)" }}>
-                            Banco do Brasil · Conta Corrente · importado hoje às 08:04
-                            <span style={{ marginLeft: 8, background: "#E8E8E8", color: "#0D0D0D", fontSize: 10, padding: "1px 6px", borderRadius: 6 }}>⟳ automático</span>
+                  {aba === "conciliacao" && (() => {
+                    // Entradas: borderôs confirmados (pago) + OFX futuros
+                    const entradasBordero = borderosPagos.map(b => ({
+                      id: b.id,
+                      data: b.data_pagamento ?? b.created_at?.slice(0,10) ?? "",
+                      descricao: b.descricao ?? `Borderô ${b.data_pagamento ?? ""}`,
+                      valor: b.valor_total,
+                      tipo: "debito" as const,
+                      conciliado: b.conciliado ?? false,
+                      conta: b.conta_bancaria ?? "",
+                    }));
+                    const allEntradas = [...conciliados.map(c => ({ ...c, id: c.data+c.descricao, conta: "" })), ...entradasBordero]
+                      .sort((a, b) => b.data.localeCompare(a.data));
+                    const nConciliados = allEntradas.filter(e => e.conciliado).length;
+                    const nPendentes   = allEntradas.filter(e => !e.conciliado).length;
+                    return (
+                      <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                        <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 2 }}>Extrato e Borderôs Confirmados</div>
+                            <div style={{ fontSize: 11, color: "var(--text-2)" }}>
+                              Borderôs confirmados aparecem como débito único para conciliação com o extrato bancário
+                              <span style={{ marginLeft: 8, background: "#E8E8E8", color: "#0D0D0D", fontSize: 10, padding: "1px 6px", borderRadius: 6 }}>⟳ automático</span>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <div style={{ textAlign: "center", padding: "6px 14px", background: "#E8E8E8", borderRadius: 8 }}>
+                              <div style={{ fontWeight: 600, color: "#111111" }}>{nConciliados}</div>
+                              <div style={{ fontSize: 10, color: "#0D0D0D" }}>conciliados</div>
+                            </div>
+                            <div style={{ textAlign: "center", padding: "6px 14px", background: "#FAEEDA", borderRadius: 8 }}>
+                              <div style={{ fontWeight: 600, color: "#EF9F27" }}>{nPendentes}</div>
+                              <div style={{ fontSize: 10, color: "#633806" }}>pendentes</div>
+                            </div>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <div style={{ textAlign: "center", padding: "6px 14px", background: "#E8E8E8", borderRadius: 8 }}>
-                            <div style={{ fontWeight: 600, color: "#111111" }}>{conciliados.filter(c => c.conciliado).length}</div>
-                            <div style={{ fontSize: 10, color: "#0D0D0D" }}>conciliados</div>
-                          </div>
-                          <div style={{ textAlign: "center", padding: "6px 14px", background: "#FAEEDA", borderRadius: 8 }}>
-                            <div style={{ fontWeight: 600, color: "#EF9F27" }}>{conciliados.filter(c => !c.conciliado).length}</div>
-                            <div style={{ fontSize: 10, color: "#633806" }}>pendentes</div>
-                          </div>
-                        </div>
-                      </div>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead>
-                          <tr style={{ background: "var(--bg-page)" }}>
-                            {["Data", "Descrição no extrato", "Valor", "Conciliação", "Lançamento vinculado", ""].map((h, i) => (
-                              <th key={i} style={{ padding: "8px 14px", textAlign: i === 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {conciliados.map((c, ci) => (
-                            <tr key={ci} style={{ borderBottom: ci < conciliados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                              <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtData(c.data)}</td>
-                              <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--text-1)", fontSize: 12 }}>{c.descricao}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, whiteSpace: "nowrap", color: c.tipo === "credito" ? "#111111" : "#E24B4A" }}>
-                                {c.tipo === "credito" ? "+ " : "- "}{fmtBRL(c.valor)}
-                              </td>
-                              <td style={{ padding: "10px 14px" }}>
-                                {c.conciliado
-                                  ? <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 8 }}>✓ Conciliado</span>
-                                  : <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 8 }}>○ Pendente</span>}
-                              </td>
-                              <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--text-1)" }}>{c.lancRef || <span style={{ color: "#666" }}>—</span>}</td>
-                              <td style={{ padding: "10px 14px" }}>
-                                {!c.conciliado && (
-                                  <button style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600 }}>
-                                    ◈ Vincular
-                                  </button>
-                                )}
-                              </td>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <thead>
+                            <tr style={{ background: "var(--bg-page)" }}>
+                              {["Data", "Descrição", "Valor", "Conciliação", "Conta", ""].map((h, i) => (
+                                <th key={i} style={{ padding: "8px 14px", textAlign: i === 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                              ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", fontSize: 11, color: "#444" }}>
-                        A conciliação automática ocorre às 8h de cada dia útil. Lançamentos não conciliados exigem vinculação manual.
+                          </thead>
+                          <tbody>
+                            {allEntradas.length === 0 && (
+                              <tr><td colSpan={6} style={{ padding: "30px 14px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
+                                Nenhum borderô confirmado neste período. Confirme um borderô em Contas a Pagar para que ele apareça aqui.
+                              </td></tr>
+                            )}
+                            {allEntradas.map((c, ci) => (
+                              <tr key={c.id} style={{ borderBottom: ci < allEntradas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                                <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtData(c.data)}</td>
+                                <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--text-1)", fontSize: 12 }}>
+                                  <span style={{ marginRight: 6, fontSize: 10, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B60", padding: "1px 5px", borderRadius: 5 }}>BDR</span>
+                                  {c.descricao}
+                                </td>
+                                <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap", color: c.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
+                                  {c.tipo === "credito" ? "+ " : "- "}{fmtBRL(c.valor)}
+                                </td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  {c.conciliado
+                                    ? <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 8 }}>✓ Conciliado</span>
+                                    : <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 8 }}>○ Pendente</span>}
+                                </td>
+                                <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--text-2)" }}>{c.conta || <span style={{ color: "#999" }}>—</span>}</td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  {!c.conciliado && (
+                                    <button style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600 }}>
+                                      ◈ Vincular
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", fontSize: 11, color: "#444" }}>
+                          A conciliação automática ocorre às 8h de cada dia útil. Lançamentos não conciliados exigem vinculação manual.
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </>
               )}
 

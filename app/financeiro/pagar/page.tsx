@@ -1449,6 +1449,9 @@ function ContasPagarInner() {
                                   style={btnAcao("#2A2A2A", "#fff")}>✓</button>
                               ) : l.moeda === "barter" ? (
                                 <span title="Liquidar no fechamento da safra" style={{ ...btnAcao("#F5F5F5", "#7A5200"), border: "0.5px solid #C9921B50", display: "flex", alignItems: "center", justifyContent: "center" }}>🌾</span>
+                              ) : l.lote_id && l.status !== "baixado" ? (
+                                <span title="Em borderô pendente — use 'Confirmar Pagamento' no lote"
+                                  style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:28, height:26, fontSize:9, fontWeight:700, borderRadius:6, background:"#FBF3E0", color:"#7A5200", border:"0.5px solid #C9921B80", cursor:"default" }}>BDR</span>
                               ) : l.status !== "baixado" ? (
                                 <button onClick={() => abrirBaixa(l)} title="Baixar / Registrar pagamento"
                                   style={btnAcao("#C9921B", "#fff")}>↓</button>
