@@ -52,9 +52,10 @@ const RAMO_LABEL: Record<string, string> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
-      apolice_id?: string;   // presente apenas na edição
+      apolice_id?: string;
       payload: Record<string, unknown>;
       gerar_parcelas: boolean;
+      parcelas_explicitas?: Array<{ data_vencimento: string; valor: number }>;
       ramo_label?: string;
     };
 
@@ -91,7 +92,9 @@ export async function POST(req: NextRequest) {
           .select("id").eq("fazenda_id", fazendaId).eq("classificacao", og).maybeSingle();
         const ogId = ogRow?.id ?? null;
 
-        const parcelas = gerarParcelasPremio(inicio, premioAnual, forma);
+        const parcelas = body.parcelas_explicitas && body.parcelas_explicitas.length > 0
+          ? body.parcelas_explicitas
+          : gerarParcelasPremio(inicio, premioAnual, forma);
 
         const lancRows = parcelas.map((parc, i) => ({
           fazenda_id: fazendaId,

@@ -37,7 +37,7 @@ type StatusApolice = "vigente" | "vencida" | "cancelada" | "em_renovacao";
 type StatusSinistro = "aberto" | "em_analise" | "pago" | "negado";
 type BemTipo = "fazenda" | "maquina" | "produtor" | "funcionario" | "imovel" | "outro";
 type ModalidadeSeguro = "proagro" | "proagro_mais" | "app_privada";
-type FormaPagamento = "unica" | "semestral" | "trimestral" | "mensal";
+type FormaPagamento = "avista" | "parcelado";
 
 interface CoerturaVida { tipo: string; capital: number }
 
@@ -129,27 +129,20 @@ const MODALIDADE_LABEL: Record<ModalidadeSeguro, string> = {
   app_privada: "Apólice Privada",
 };
 
-const FORMA_PAG_LABEL: Record<FormaPagamento, string> = {
-  unica: "Única (à vista)",
-  semestral: "Semestral (2x/ano)",
-  trimestral: "Trimestral (4x/ano)",
-  mensal: "Mensal (12x/ano)",
-};
-
-// ── Gerador de parcelas de prêmio ─────────────────────────────────────────────
-function gerarParcelasPremio(
+// ── Gerador de parcelas de prêmio (flexível) ─────────────────────────────────
+function gerarParcelasSeguro(
   inicio: string,
+  qtd: number,
+  freqMeses: number,
   premioAnual: number,
-  forma: FormaPagamento,
-): Array<{ data_vencimento: string; valor: number }> {
-  const base = new Date(inicio + "T12:00:00");
-  const add = (d: Date, m: number) => { const n = new Date(d); n.setMonth(n.getMonth() + m); return n.toISOString().slice(0, 10); };
-  switch (forma) {
-    case "unica":      return [{ data_vencimento: inicio, valor: premioAnual }];
-    case "semestral":  return [0, 6].map(m => ({ data_vencimento: add(base, m), valor: premioAnual / 2 }));
-    case "trimestral": return [0, 3, 6, 9].map(m => ({ data_vencimento: add(base, m), valor: premioAnual / 4 }));
-    case "mensal":     return Array.from({ length: 12 }, (_, m) => ({ data_vencimento: add(base, m), valor: premioAnual / 12 }));
-  }
+): Array<{ data: string; valor: number }> {
+  if (!inicio || qtd < 1) return [];
+  const valorParcela = premioAnual > 0 ? premioAnual / qtd : 0;
+  return Array.from({ length: qtd }, (_, i) => {
+    const d = new Date(inicio + "T12:00:00");
+    d.setMonth(d.getMonth() + i * freqMeses);
+    return { data: d.toISOString().slice(0, 10), valor: valorParcela };
+  });
 }
 
 // ── Label do bem vinculado ────────────────────────────────────────────────────
@@ -186,7 +179,7 @@ export default function SegurosPage() {
   const FORM_VAZIO = (): Omit<Apolice, "id" | "fazenda_id" | "conta_id" | "created_at"> => ({
     numero_apolice: "", seguradora: "", ramo: "maquinas",
     objeto_segurado: "", importancia_segurada: 0, premio_anual: 0,
-    forma_pagamento_premio: "unica", data_inicio_vigencia: hoje(),
+    forma_pagamento_premio: "avista", data_inicio_vigencia: hoje(),
     data_fim_vigencia: "", status: "vigente",
     corretora: "", corretor_contato: "", observacao: "",
     bem_tipo: undefined, bem_id: undefined,
@@ -200,6 +193,12 @@ export default function SegurosPage() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+
+  // ── Parcelamento de prêmio ─────────────────────────────────────────────────
+  const [premioCondicao, setPremioCondicao] = useState<"avista" | "parcelado">("avista");
+  const [premioQtd,      setPremioQtd]      = useState("2");
+  const [premioFreq,     setPremioFreq]     = useState("1"); // meses entre parcelas
+  const [parcelasSeguro, setParcelasSeguro] = useState<Array<{ data: string; valor: number }>>([]);
 
   // Cobertura vida inline
   const [novaCobertura, setNovaCobertura] = useState({ tipo: "morte", capital: 0 });
@@ -281,7 +280,7 @@ export default function SegurosPage() {
       setAForm(FORM_VAZIO());
       setUploadedUrl(null);
     }
-    setAErr(""); setTabModal("dados"); setModalApolice(true);
+    setAErr(""); setTabModal("dados"); setParcelasSeguro([]); setPremioCondicao("avista"); setPremioQtd("2"); setPremioFreq("1"); setModalApolice(true);
   }
 
   // Busca UUID da OG para o ramo da apólice na fazenda correta
@@ -297,6 +296,9 @@ export default function SegurosPage() {
     if (!aForm.seguradora.trim())     { setAErr("Informe a seguradora."); return; }
     if (!aForm.data_fim_vigencia)     { setAErr("Informe a data de fim de vigência."); return; }
     if (aForm.premio_anual <= 0)      { setAErr("Informe o prêmio anual."); return; }
+    if (!apoliceEdit && premioCondicao === "parcelado" && parcelasSeguro.length === 0) {
+      setAErr("Gere as parcelas antes de salvar."); return;
+    }
     setASaving(true); setAErr("");
     try {
       const objeto = aForm.objeto_segurado.trim() || derivarObjeto();
@@ -307,7 +309,7 @@ export default function SegurosPage() {
         ramo: aForm.ramo, objeto_segurado: objeto,
         importancia_segurada: aForm.importancia_segurada || 0,
         premio_anual: aForm.premio_anual,
-        forma_pagamento_premio: aForm.forma_pagamento_premio,
+        forma_pagamento_premio: premioCondicao,
         data_inicio_vigencia: aForm.data_inicio_vigencia,
         data_fim_vigencia: aForm.data_fim_vigencia,
         status: aForm.status,
@@ -325,6 +327,11 @@ export default function SegurosPage() {
         coberturas_vida: aForm.coberturas_vida?.length ? aForm.coberturas_vida : null,
       };
 
+      // Monta parcelas explícitas para enviar à API
+      const parcelasExplicitas = premioCondicao === "avista"
+        ? [{ data_vencimento: aForm.data_inicio_vigencia, valor: aForm.premio_anual }]
+        : parcelasSeguro.map(p => ({ data_vencimento: p.data, valor: p.valor }));
+
       const res = await fetch("/api/financeiro/seguros", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -332,6 +339,7 @@ export default function SegurosPage() {
           ...(apoliceEdit ? { apolice_id: apoliceEdit.id } : {}),
           payload,
           gerar_parcelas: !apoliceEdit,
+          parcelas_explicitas: parcelasExplicitas,
           ramo_label: RAMO_META[aForm.ramo].label,
         }),
       });
@@ -836,32 +844,84 @@ export default function SegurosPage() {
 
               {/* ── ABA FINANCEIRO ─────────────────────────────────────────── */}
               {tabModal === "financeiro" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={sep}>Prêmio</div>
-                  <div><label style={lbl}>Prêmio Anual (R$) *</label><InputMonetario style={inp} value={aForm.premio_anual} onChange={v => setAForm(f => ({ ...f, premio_anual: v }))} /></div>
-                  <div>
-                    <label style={lbl}>Forma de Pagamento</label>
-                    <select value={aForm.forma_pagamento_premio} onChange={e => setAForm(f => ({ ...f, forma_pagamento_premio: e.target.value as FormaPagamento }))} style={inp}>
-                      {Object.entries(FORMA_PAG_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label style={lbl}>Prêmio Anual (R$) *</label><InputMonetario style={inp} value={aForm.premio_anual} onChange={v => setAForm(f => ({ ...f, premio_anual: v }))} /></div>
                   </div>
-                  {/* Preview de parcelas */}
-                  {aForm.premio_anual > 0 && aForm.data_inicio_vigencia && (
-                    <div style={{ gridColumn: "1/-1" }}>
-                      <div style={sep}>Parcelas que serão geradas</div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        {gerarParcelasPremio(aForm.data_inicio_vigencia, aForm.premio_anual, aForm.forma_pagamento_premio).map((p, i) => (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 12px", background: "var(--bg-page)", borderRadius: 6, fontSize: 12 }}>
-                            <span style={{ color: "var(--text-2)" }}>Parcela {i + 1} — {fmtData(p.data_vencimento)}</span>
-                            <span style={{ fontWeight: 600 }}>{fmtBRL(p.valor)}</span>
-                          </div>
-                        ))}
+
+                  <div style={sep}>Pagamento do Prêmio</div>
+                  {/* Toggle À vista / Parcelado */}
+                  <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+                    {(["avista", "parcelado"] as const).map(opt => (
+                      <button key={opt} onClick={() => { setPremioCondicao(opt); setParcelasSeguro([]); }}
+                        style={{ padding: "7px 20px", fontSize: 13, fontWeight: premioCondicao === opt ? 600 : 400, background: premioCondicao === opt ? "#1A4870" : "var(--bg-card)", color: premioCondicao === opt ? "#fff" : "var(--text-2)", border: "none", cursor: "pointer" }}>
+                        {opt === "avista" ? "À vista" : "Parcelado"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {premioCondicao === "avista" && (
+                    <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 8, fontSize: 13 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--text-2)" }}>Vencimento: {aForm.data_inicio_vigencia ? fmtData(aForm.data_inicio_vigencia) : "—"}</span>
+                        <span style={{ fontWeight: 600 }}>{fmtBRL(aForm.premio_anual)}</span>
                       </div>
-                      {apoliceEdit && (
-                        <div style={{ fontSize: 11, color: "#C9921B", marginTop: 8, padding: "8px 12px", background: "#FBF3E0", borderRadius: 6 }}>
-                          ⚠ Parcelas existentes não são recriadas ao editar uma apólice. Para alterar o cronograma de prêmios, use a aba Prêmios Pendentes.
+                    </div>
+                  )}
+
+                  {premioCondicao === "parcelado" && (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
+                        <div>
+                          <label style={lbl}>Nº de Parcelas</label>
+                          <input type="number" min={2} max={24} value={premioQtd} onChange={e => { setPremioQtd(e.target.value); setParcelasSeguro([]); }} style={inp} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Intervalo entre parcelas</label>
+                          <select value={premioFreq} onChange={e => { setPremioFreq(e.target.value); setParcelasSeguro([]); }} style={inp}>
+                            <option value="1">Mensal (1 mês)</option>
+                            <option value="2">Bimestral (2 meses)</option>
+                            <option value="3">Trimestral (3 meses)</option>
+                            <option value="6">Semestral (6 meses)</option>
+                            <option value="12">Anual (12 meses)</option>
+                          </select>
+                        </div>
+                        <button onClick={() => {
+                          const qtd = parseInt(premioQtd) || 2;
+                          const freq = parseInt(premioFreq) || 1;
+                          setParcelasSeguro(gerarParcelasSeguro(aForm.data_inicio_vigencia, qtd, freq, aForm.premio_anual));
+                        }} style={{ ...btnV, whiteSpace: "nowrap" }}>Gerar</button>
+                      </div>
+
+                      {parcelasSeguro.length > 0 && (
+                        <div>
+                          <div style={sep}>Conferência de Parcelas (editável)</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {parcelasSeguro.map((p, i) => (
+                              <div key={i} style={{ display: "grid", gridTemplateColumns: "32px 1fr 1fr", gap: 8, alignItems: "center", padding: "6px 10px", background: "var(--bg-page)", borderRadius: 6 }}>
+                                <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{i + 1}</span>
+                                <input type="date" value={p.data}
+                                  onChange={e => setParcelasSeguro(ps => ps.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
+                                  style={{ ...inp, margin: 0, fontSize: 12 }} />
+                                <InputMonetario value={p.valor}
+                                  onChange={v => setParcelasSeguro(ps => ps.map((x, j) => j === i ? { ...x, valor: v } : x))}
+                                  style={{ ...inp, margin: 0, fontSize: 12 }} />
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", fontSize: 13, fontWeight: 600, borderTop: "0.5px solid var(--border-table)", marginTop: 4 }}>
+                            <span>Total</span>
+                            <span>{fmtBRL(parcelasSeguro.reduce((s, p) => s + p.valor, 0))}</span>
+                          </div>
                         </div>
                       )}
+                    </>
+                  )}
+
+                  {apoliceEdit && (
+                    <div style={{ fontSize: 11, color: "#C9921B", padding: "8px 12px", background: "#FBF3E0", borderRadius: 6 }}>
+                      ⚠ Parcelas existentes não são recriadas ao editar uma apólice. Para alterar o cronograma de prêmios, acesse os Prêmios Pendentes.
                     </div>
                   )}
                 </div>
