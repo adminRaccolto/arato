@@ -2143,7 +2143,19 @@ function CadastrosInner() {
     const payload = { fazenda_id: fazId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || undefined, whatsapp, ativo: true };
     if (editUser) {
       await atualizarUsuario(editUser.id, payload);
-      setUsuarios(p => p.map(x => x.id === editUser.id ? { ...x, ...payload } : x));
+      // Sincroniza role no perfis quando tipo_acesso foi alterado na edição
+      if (editUser.auth_user_id) {
+        const novoRole = fUser.tipo_acesso === "campo" ? "campo" : "client";
+        const roleAtual = editUser.role ?? "client";
+        if (novoRole !== roleAtual) {
+          await fetch("/api/admin/atualizar-role-usuario", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ auth_user_id: editUser.auth_user_id, role: novoRole }),
+          });
+        }
+      }
+      setUsuarios(p => p.map(x => x.id === editUser.id ? { ...x, ...payload, role: fUser.tipo_acesso === "campo" ? "campo" : "client" } : x));
     } else {
       const n = await criarUsuario(payload);
       setUsuarios(p => [...p, n]);
@@ -9980,7 +9992,7 @@ function CadastrosInner() {
           <div style={{ display: "grid", gap: 14 }}>
             <div><label style={lbl}>Nome *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} /></div>
             <div><label style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} /></div>
-            {!editUser && (
+            {(!editUser || editUser.auth_user_id) && (
               <div>
                 <label style={lbl}>Tipo de Acesso</label>
                 <select style={inp} value={fUser.tipo_acesso} onChange={e => setFUser(p => ({ ...p, tipo_acesso: e.target.value as "completo" | "campo" }))}>
