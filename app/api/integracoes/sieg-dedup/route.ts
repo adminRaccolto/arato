@@ -56,8 +56,11 @@ export async function POST(req: NextRequest) {
 
     for (const [chave, registros] of Object.entries(grupos)) {
       if (registros.length <= 1) continue;
-      // Mantém o mais antigo (created_at asc), remove os demais
-      const [_manter, ...remover] = registros;
+      // Protege NFs processadas — nunca remover status=processada
+      const processada = registros.find(r => r.status === "processada");
+      const manter = processada ?? registros[0]!;
+      const remover = registros.filter(r => r.id !== manter.id && r.status !== "processada");
+      if (remover.length === 0) continue;
       const idsRemover = remover.map(r => r.id);
       idsParaRemover.push(...idsRemover);
       duplicatas.push({ chave, ids_removidos: idsRemover });

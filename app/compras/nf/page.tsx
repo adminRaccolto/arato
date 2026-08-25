@@ -262,6 +262,7 @@ export default function NfCompraPage() {
   const [siegForceReimport, setSiegForceReimport] = useState(false);
   const [siegSyncing,       setSiegSyncing]       = useState(false);
   const [siegSyncMsg,       setSiegSyncMsg]       = useState("");
+  const [siegDeduping,      setSiegDeduping]      = useState(false);
   const [siegCnpjDest,      setSiegCnpjDest]      = useState("");
   const [siegProdutores,    setSiegProdutores]    = useState<Array<{nome: string; cnpj: string}>>([]);
   const [siegReimporting,   setSiegReimporting]   = useState<Record<string, boolean>>({});
@@ -709,6 +710,24 @@ export default function NfCompraPage() {
       }
     } catch (e) { setSiegSyncMsg(`✗ Erro de rede: ${e}`); }
     finally { setSiegSyncing(false); }
+  }
+
+  async function limparDuplicatas() {
+    if (!fazendaId) return;
+    if (!confirm("Remover NFs duplicadas do SIEG?\n\nNFs processadas serão preservadas. Apenas cópias pendentes duplicadas serão excluídas.")) return;
+    setSiegDeduping(true);
+    try {
+      const res = await fetch("/api/integracoes/sieg-dedup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId }),
+      });
+      const d = await res.json() as { sucesso?: boolean; registros_removidos?: number; duplicatas_encontradas?: number; erro?: string };
+      if (d.erro) { alert(`Erro: ${d.erro}`); return; }
+      setSiegSyncMsg(`✓ Limpeza: ${d.registros_removidos ?? 0} duplicata(s) removida(s)`);
+      await carregar();
+    } catch (e) { alert(`Erro: ${e}`); }
+    finally { setSiegDeduping(false); }
   }
 
   async function reimportarNf(nf: NfEntrada) {
@@ -2049,6 +2068,11 @@ export default function NfCompraPage() {
             <button onClick={sincronizarSieg} disabled={siegSyncing}
               style={{ padding: "6px 18px", background: siegSyncing ? "var(--border)" : "#111111", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
               {siegSyncing ? "Sincronizando…" : "Sincronizar"}
+            </button>
+
+            <button onClick={limparDuplicatas} disabled={siegDeduping}
+              style={{ padding: "6px 14px", background: siegDeduping ? "var(--border)" : "#FBF3E0", color: siegDeduping ? "var(--text-3)" : "#7B4A00", border: "0.5px solid #C9921B", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: siegDeduping ? "default" : "pointer" }}>
+              {siegDeduping ? "Limpando…" : "Limpar Duplicatas"}
             </button>
 
             {siegSyncMsg && (

@@ -140,12 +140,16 @@ export async function POST(req: NextRequest) {
       if (chavesAcesso && chavesAcesso.length > 0 && !chavesAcesso.includes(nfe.chave)) continue;
 
       // Verificar duplicata pela chave de acesso em qualquer fazenda da conta
-      const { data: dup } = await db
+      // Usa limit(1) + array: maybeSingle() falha silenciosamente quando há >1 linha
+      // (retorna {data:null, error:PGRST116}), causando criação de mais duplicatas.
+      const { data: dups } = await db
         .from("nf_entradas")
         .select("id, status, fazenda_id")
         .in("fazenda_id", fazendaIdsDaConta)
         .eq("chave_acesso", nfe.chave)
-        .maybeSingle();
+        .order("created_at", { ascending: true })
+        .limit(1);
+      const dup = dups?.[0] ?? null;
 
       const itensPayload = nfe.itens.map(item => ({
         fazenda_id,

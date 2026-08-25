@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
-import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarPessoasDaConta } from "../../../lib/db";
+import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
@@ -86,7 +86,7 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", 
 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
-  const { fazendaId, fazendaIds, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
@@ -201,7 +201,11 @@ function FinanceiroRelatoriosInner() {
       .finally(() => setCarregando(false));
     listarEmpresas(fazendaId).then(setEmpresas).catch(() => setEmpresas([]));
     listarContas(fazendaId).then(setContas).catch(() => setContas([]));
-    listarProdutores(fazendaId).then(setProdutores).catch(() => setProdutores([]));
+    if (contaId) {
+      listarProdutoresDaConta(contaId).then(setProdutores).catch(() => setProdutores([]));
+    } else {
+      listarProdutores(fazendaId).then(setProdutores).catch(() => setProdutores([]));
+    }
     listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => setPessoas([]));
     fetch("/api/precos").then(r => r.json()).then(d => {
       const taxa = d?.usdPtax ?? d?.usdBrl;
