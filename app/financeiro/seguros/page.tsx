@@ -325,46 +325,18 @@ export default function SegurosPage() {
         coberturas_vida: aForm.coberturas_vida?.length ? aForm.coberturas_vida : null,
       };
 
-      let apoliceId: string;
-      if (apoliceEdit) {
-        const { error } = await supabase.from("apolices_seguro").update(payload).eq("id", apoliceEdit.id);
-        if (error) throw new Error(error.message);
-        apoliceId = apoliceEdit.id;
-      } else {
-        const { data, error } = await supabase.from("apolices_seguro").insert(payload).select("id").single();
-        if (error) throw new Error(error.message);
-        apoliceId = data.id;
-
-        // Gerar parcelas de prêmio + lançamentos CP automaticamente
-        const parcelas = gerarParcelasPremio(aForm.data_inicio_vigencia, aForm.premio_anual, aForm.forma_pagamento_premio);
-        const ogId = await buscarOgSeguro(fazendaId, aForm.ramo);
-        const lancRows = parcelas.map((p, i) => ({
-          fazenda_id: fazendaId,
-          tipo: "pagar" as const,
-          descricao: `Prêmio Seguro ${aForm.seguradora} — ${RAMO_META[aForm.ramo].label} — Parcela ${i + 1}/${parcelas.length}`,
-          categoria: `Prêmio de Seguro (${RAMO_META[aForm.ramo].label})`,
-          operacao_gerencial_id: ogId,
-          data_lancamento: p.data_vencimento,
-          data_vencimento: p.data_vencimento,
-          valor: p.valor,
-          status: p.data_vencimento < hoje() ? "baixado" : "em_aberto",
-          auto: true,
-          origem_lancamento: "seguro",
-          numero_documento: aForm.numero_apolice.trim(),
-        }));
-        const { data: lancs } = await supabase.from("lancamentos").insert(lancRows).select("id, data_vencimento");
-        if (lancs && lancs.length > 0) {
-          const premioRows = parcelas.map((p, i) => ({
-            apolice_id: apoliceId,
-            fazenda_id: fazendaId,
-            data_vencimento: p.data_vencimento,
-            valor: p.valor,
-            pago: p.data_vencimento < hoje(),
-            lancamento_id: lancs[i]?.id ?? null,
-          }));
-          await supabase.from("pagamentos_premio_seguro").insert(premioRows);
-        }
-      }
+      const res = await fetch("/api/financeiro/seguros", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(apoliceEdit ? { apolice_id: apoliceEdit.id } : {}),
+          payload,
+          gerar_parcelas: !apoliceEdit,
+          ramo_label: RAMO_META[aForm.ramo].label,
+        }),
+      });
+      const json = await res.json() as { ok: boolean; error?: string };
+      if (!json.ok) throw new Error(json.error ?? "Erro ao salvar.");
 
       await carregar();
       setModalApolice(false);
