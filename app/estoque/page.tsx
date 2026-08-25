@@ -270,6 +270,7 @@ export default function Estoque() {
   const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos">("saldos");
   const [relInsumoId, setRelInsumoId] = useState("");
   const [_depAberto, _setDepAberto]   = useState<Set<string>>(new Set());
+  const [filtroDepProduto, setFiltroDepProduto] = useState("");
   const [relDataInicio, setRelDataInicio] = useState(() => { const d = new Date(); d.setMonth(d.getMonth()-3); return d.toISOString().slice(0,10); });
   const [relMovs, setRelMovs]     = useState<MovimentacaoEstoque[]>([]);
   // kardex
@@ -1439,6 +1440,12 @@ export default function Estoque() {
                   armazem_terceiro: "Armazém Terceiro",
                 };
 
+                // Filtro de produto
+                const termoDep = filtroDepProduto.toLowerCase().trim();
+                const insumosFiltrados = termoDep
+                  ? insumos.filter(i => i.nome.toLowerCase().includes(termoDep))
+                  : insumos;
+
                 // Agrupar insumos por deposito_id
                 type DepGrupo = {
                   dep: Deposito | null; // null = sem depósito
@@ -1451,7 +1458,7 @@ export default function Estoque() {
                 gruposMap.set("__sem__", { dep: null, itens: [], valorTotal: 0, alertas: 0 });
                 depositos.forEach(d => gruposMap.set(d.id, { dep: d, itens: [], valorTotal: 0, alertas: 0 }));
 
-                for (const ins of insumos) {
+                for (const ins of insumosFiltrados) {
                   const chave = ins.deposito_id && gruposMap.has(ins.deposito_id) ? ins.deposito_id : "__sem__";
                   const g = gruposMap.get(chave)!;
                   g.itens.push(ins);
@@ -1461,11 +1468,40 @@ export default function Estoque() {
 
                 const grupos = [...gruposMap.values()].filter(g => g.itens.length > 0);
                 const totalGeral = grupos.reduce((s, g) => s + g.valorTotal, 0);
-                const totalItens = insumos.length;
-                const [depAberto, setDepAberto] = [_depAberto, _setDepAberto];
+                const totalItens = insumosFiltrados.length;
+                // Quando há filtro ativo, expande todos os depósitos que têm resultado
+                const depAbertoEfetivo: Set<string> = termoDep
+                  ? new Set(grupos.map(g => g.dep?.id ?? "__sem__"))
+                  : _depAberto;
+                const [depAberto, setDepAberto] = [depAbertoEfetivo, _setDepAberto];
 
                 return (
                   <div>
+                    {/* Filtro de produto */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                      <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
+                        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--text-3)", pointerEvents: "none" }}>🔍</span>
+                        <input
+                          type="text"
+                          placeholder="Filtrar por produto..."
+                          value={filtroDepProduto}
+                          onChange={e => setFiltroDepProduto(e.target.value)}
+                          style={{ width: "100%", padding: "7px 10px 7px 32px", borderRadius: 8, border: `0.5px solid ${filtroDepProduto ? "#1A4870" : "var(--border)"}`, fontSize: 13, background: filtroDepProduto ? "#EBF4FF" : "var(--bg-card)", outline: "none", boxSizing: "border-box", color: "var(--text-1)" }}
+                        />
+                      </div>
+                      {filtroDepProduto && (
+                        <button onClick={() => setFiltroDepProduto("")}
+                          style={{ fontSize: 12, padding: "5px 12px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer" }}>
+                          Limpar
+                        </button>
+                      )}
+                      {termoDep && (
+                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                          {insumosFiltrados.length} produto{insumosFiltrados.length !== 1 ? "s" : ""} em {grupos.length} depósito{grupos.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+
                     {/* KPIs */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
                       {[
