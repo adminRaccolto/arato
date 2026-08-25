@@ -267,8 +267,9 @@ export default function Estoque() {
   const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "" });
 
   // relatórios
-  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex">("saldos");
+  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos">("saldos");
   const [relInsumoId, setRelInsumoId] = useState("");
+  const [_depAberto, _setDepAberto]   = useState<Set<string>>(new Set());
   const [relDataInicio, setRelDataInicio] = useState(() => { const d = new Date(); d.setMonth(d.getMonth()-3); return d.toISOString().slice(0,10); });
   const [relMovs, setRelMovs]     = useState<MovimentacaoEstoque[]>([]);
   // kardex
@@ -1100,7 +1101,7 @@ export default function Estoque() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Sub-abas — scroll horizontal no mobile */}
               <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
-                {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
+                {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["depositos","Saldo por Depósito"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#111111" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
                 ))}
               </div>
@@ -1414,6 +1415,144 @@ export default function Estoque() {
                   </div>
                 </div>
               )}
+
+              {/* ── Saldo por Depósito ── */}
+              {relTipo === "depositos" && (() => {
+                const TIPO_DEP: Record<string, string> = {
+                  insumo_fazenda:   "Depósito de Insumos",
+                  armazem_fazenda:  "Armazém Próprio",
+                  almoxarifado:     "Almoxarifado",
+                  oficina:          "Oficina",
+                  terceiro:         "Depósito Terceiro",
+                  armazem_terceiro: "Armazém Terceiro",
+                };
+
+                // Agrupar insumos por deposito_id
+                type DepGrupo = {
+                  dep: Deposito | null; // null = sem depósito
+                  itens: Insumo[];
+                  valorTotal: number;
+                  alertas: number;
+                };
+
+                const gruposMap = new Map<string, DepGrupo>();
+                gruposMap.set("__sem__", { dep: null, itens: [], valorTotal: 0, alertas: 0 });
+                depositos.forEach(d => gruposMap.set(d.id, { dep: d, itens: [], valorTotal: 0, alertas: 0 }));
+
+                for (const ins of insumos) {
+                  const chave = ins.deposito_id && gruposMap.has(ins.deposito_id) ? ins.deposito_id : "__sem__";
+                  const g = gruposMap.get(chave)!;
+                  g.itens.push(ins);
+                  g.valorTotal += ins.estoque * ins.valor_unitario;
+                  if (ins.estoque <= ins.estoque_minimo || ins.estoque < 0) g.alertas++;
+                }
+
+                const grupos = [...gruposMap.values()].filter(g => g.itens.length > 0);
+                const totalGeral = grupos.reduce((s, g) => s + g.valorTotal, 0);
+                const totalItens = insumos.length;
+                const [depAberto, setDepAberto] = [_depAberto, _setDepAberto];
+
+                return (
+                  <div>
+                    {/* KPIs */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+                      {[
+                        ["Depósitos com itens", String(grupos.filter(g => g.dep !== null).length), "#1A4870", "#D5E8F5"],
+                        ["Total de itens", String(totalItens), "#111111", "#E8E8E8"],
+                        ["Valor total em estoque", fmtBRL(totalGeral), "#1A6B3C", "#E8F5E9"],
+                      ].map(([l, v, cl, bg]) => (
+                        <div key={l} style={{ background: bg, border: `0.5px solid ${cl}30`, borderRadius: 10, padding: "14px 18px" }}>
+                          <div style={{ fontSize: 11, color: cl, marginBottom: 4 }}>{l}</div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: cl }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Um card por depósito */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {grupos.map(g => {
+                        const depId = g.dep?.id ?? "__sem__";
+                        const aberto = depAberto.has(depId);
+                        const pct = totalGeral > 0 ? g.valorTotal / totalGeral * 100 : 0;
+                        return (
+                          <div key={depId} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                            {/* Cabeçalho do depósito */}
+                            <button
+                              onClick={() => setDepAberto(prev => {
+                                const n = new Set(prev);
+                                n.has(depId) ? n.delete(depId) : n.add(depId);
+                                return n;
+                              })}
+                              style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+                            >
+                              <span style={{ fontSize: 16, flexShrink: 0 }}>{aberto ? "▾" : "▸"}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
+                                  {g.dep ? g.dep.nome : "Sem depósito vinculado"}
+                                </div>
+                                {g.dep && (
+                                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{TIPO_DEP[g.dep.tipo] ?? g.dep.tipo}</div>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+                                {g.alertas > 0 && (
+                                  <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", border: "0.5px solid #C9921B", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
+                                    {g.alertas} alerta{g.alertas !== 1 ? "s" : ""}
+                                  </span>
+                                )}
+                                <div style={{ textAlign: "right" }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(g.valorTotal)}</div>
+                                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>{g.itens.length} item{g.itens.length !== 1 ? "s" : ""} · {pct.toFixed(1)}% do total</div>
+                                </div>
+                                {/* barra proporcional */}
+                                <div style={{ width: 60, height: 6, background: "var(--border-row)", borderRadius: 3, overflow: "hidden", flexShrink: 0 }}>
+                                  <div style={{ height: "100%", width: `${pct}%`, background: g.dep ? "#1A4870" : "#888", borderRadius: 3 }} />
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Tabela de itens — visível ao expandir */}
+                            {aberto && (
+                              <div style={{ borderTop: "0.5px solid var(--border-row)", overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                  <TH cols={["Item","Categoria","Saldo","Unidade","Valor Unit.","Valor Total","Status"]} />
+                                  <tbody>
+                                    {g.itens.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map((ins, idx) => {
+                                      const negativo = ins.estoque < 0;
+                                      const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
+                                      const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: ins.categoria };
+                                      return (
+                                        <tr key={ins.id} style={{ borderBottom: idx < g.itens.length - 1 ? "0.5px solid var(--border-row)" : "none", background: negativo ? "#FFF5F5" : alerta ? "#FFFCF5" : "transparent" }}>
+                                          <td style={{ padding: "9px 14px", fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>{ins.nome}</td>
+                                          <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
+                                          <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 700, color: negativo ? "#E24B4A" : "#1A6B3C", fontVariantNumeric: "tabular-nums" }}>
+                                            {fmtNum(ins.estoque)}
+                                          </td>
+                                          <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-2)", fontSize: 12 }}>{ins.unidade}</td>
+                                          <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-2)", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{fmtBRL(ins.valor_unitario)}</td>
+                                          <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(ins.estoque * ins.valor_unitario)}</td>
+                                          <td style={{ padding: "9px 14px", textAlign: "center" }}>
+                                            {negativo ? badge("Negativo","#FCEBEB","#791F1F") : alerta ? badge("Mínimo","#FAEEDA","#633806") : badge("OK","#E8E8E8","#0D0D0D")}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                                {/* Rodapé do depósito */}
+                                <div style={{ padding: "8px 14px", borderTop: "0.5px solid var(--border-row)", background: "var(--bg-page)", display: "flex", justifyContent: "flex-end", gap: 24 }}>
+                                  <span style={{ fontSize: 12, color: "var(--text-2)" }}>{g.itens.length} item{g.itens.length !== 1 ? "s" : ""}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>Total: {fmtBRL(g.valorTotal)}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Posição Financeira */}
               {relTipo === "posicao" && (() => {
