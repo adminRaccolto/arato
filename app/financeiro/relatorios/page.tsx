@@ -151,7 +151,20 @@ function FinanceiroRelatoriosInner() {
     saldoAcA:  number[];
     incluirPrevisoes: boolean;
   };
-  const printAnualRef = useRef<PrintAnualData | null>(null);
+  const printAnualRef  = useRef<PrintAnualData | null>(null);
+
+  type PrintDiarioData = {
+    dias: string[];
+    diasMap: Record<string, Array<FlowRow & { saldo: number; simEntrada: number; simSaida: number }>>;
+    totalEntradas: number;
+    totalSaidas: number;
+    saldoFinal: number;
+    saldoInicial: number;
+    filtroInicio: string;
+    filtroFim: string;
+    tipoVis: string;
+  };
+  const printDiarioRef = useRef<PrintDiarioData | null>(null);
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
@@ -408,8 +421,102 @@ function FinanceiroRelatoriosInner() {
                 </div>`;
 
               abrirPreviewImpressao("Fluxo de Caixa — Anual", html, { ...opts, subtitulo: fazenda });
+            } else if (aba === "fluxo" && subAbaFluxo === "diario" && printDiarioRef.current) {
+              const d = printDiarioRef.current;
+              const fmtV = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+              const fmtDt = (dt: string) => dt ? new Date(dt + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+
+              const ORIG_LABEL: Record<string, string> = {
+                pedido_compra: "Pedido Compra", nf_entrada: "NF Entrada", nf_saida: "NF Saída",
+                contrato: "Contrato Venda", arrendamento: "Arrendamento",
+                contrato_financeiro: "Contrato Fin.", manual: "Manual", cron: "Automático",
+                transporte: "Transporte", apoio_financeiro: "Apoio Financeiro",
+              };
+              const TIPO_LABEL: Record<string, string> = { real: "Realizado", pendente: "Pendente", previsao: "Previsão", simulacao: "Simulação" };
+
+              const linhas = d.dias.map(dia => {
+                const diaRows = d.diasMap[dia];
+                const diaEnt  = diaRows.reduce((s, r) => s + r.entrada, 0);
+                const diaSai  = diaRows.reduce((s, r) => s + r.saida, 0);
+                const diaUltSaldo = diaRows[diaRows.length - 1].saldo;
+                const cabDia = `
+                  <tr style="background:#F0F4FA;border-top:1.5px solid #DDE2EE">
+                    <td colspan="2" style="padding:7px 10px;font-weight:700;font-size:11px;color:#1A4870">${fmtDt(dia)}</td>
+                    <td style="padding:7px 10px;font-size:10px;color:#888">${diaRows.length} lançamento${diaRows.length !== 1 ? "s" : ""}</td>
+                    <td style="padding:7px 10px;font-size:10px;color:#888"></td>
+                    <td style="padding:7px 10px;text-align:right;font-weight:700;color:#16A34A;font-size:11px">${diaEnt > 0 ? fmtV(diaEnt) : ""}</td>
+                    <td style="padding:7px 10px;text-align:right;font-weight:700;color:#E24B4A;font-size:11px">${diaSai > 0 ? fmtV(diaSai) : ""}</td>
+                    <td style="padding:7px 10px;text-align:right;font-weight:700;font-size:11px;color:${diaUltSaldo >= 0 ? "#111" : "#E24B4A"}">${fmtV(diaUltSaldo)}</td>
+                  </tr>`;
+                const detalhes = diaRows.map(r => {
+                  const origLabel = r.origem_lancamento ? (ORIG_LABEL[r.origem_lancamento] ?? r.origem_lancamento) : TIPO_LABEL[r.tipo_row];
+                  return `<tr style="border-bottom:0.5px solid #F0F3FA">
+                    <td style="padding:5px 10px 5px 20px;font-size:10px;color:#888;white-space:nowrap">${new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}</td>
+                    <td style="padding:5px 10px;font-size:11px;color:#444;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fornecedor || "—"}</td>
+                    <td style="padding:5px 10px;font-size:11px;color:#444;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.descricao || "—"}</td>
+                    <td style="padding:5px 10px;font-size:10px;color:#666">${origLabel}</td>
+                    <td style="padding:5px 10px;text-align:right;font-weight:600;color:#16A34A;font-size:11px">${r.entrada > 0 ? fmtV(r.entrada) : ""}</td>
+                    <td style="padding:5px 10px;text-align:right;font-weight:600;color:#E24B4A;font-size:11px">${r.saida > 0 ? fmtV(r.saida) : ""}</td>
+                    <td style="padding:5px 10px;text-align:right;font-weight:700;font-size:11px;color:${r.saldo >= 0 ? "#111" : "#E24B4A"}">${fmtV(r.saldo)}</td>
+                  </tr>`;
+                }).join("");
+                return cabDia + detalhes;
+              }).join("");
+
+              const periodo = `${new Date(d.filtroInicio + "T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(d.filtroFim + "T12:00:00").toLocaleDateString("pt-BR")}`;
+              const tipoLabel = { ambos: "Previstos + Realizados", previsto: "Somente Previstos", realizado: "Somente Realizados" }[d.tipoVis] ?? "";
+
+              const html = `
+                <!-- Resumo de filtros -->
+                <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F8FAFB;border:0.5px solid #DDE2EE;border-radius:8px;font-size:11px;color:#555">
+                  <span><strong>Período:</strong> ${periodo}</span>
+                  <span><strong>Tipo:</strong> ${tipoLabel}</span>
+                  ${d.saldoInicial !== 0 ? `<span><strong>Saldo Inicial:</strong> <span style="color:${d.saldoInicial >= 0 ? "#111" : "#E24B4A"}">${fmtV(d.saldoInicial)}</span></span>` : ""}
+                </div>
+                <!-- KPIs -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+                  <div style="background:#F0FDF4;border:0.5px solid #BBF7D0;border-radius:8px;padding:10px 14px">
+                    <div style="font-size:10px;color:#166534;margin-bottom:3px">Total Entradas</div>
+                    <div style="font-size:16px;font-weight:700;color:#16A34A">${fmtV(d.totalEntradas)}</div>
+                  </div>
+                  <div style="background:#FEF2F2;border:0.5px solid #FECACA;border-radius:8px;padding:10px 14px">
+                    <div style="font-size:10px;color:#991B1B;margin-bottom:3px">Total Saídas</div>
+                    <div style="font-size:16px;font-weight:700;color:#E24B4A">${fmtV(d.totalSaidas)}</div>
+                  </div>
+                  <div style="background:${d.saldoFinal >= 0 ? "#EFF6FF" : "#FEF2F2"};border:0.5px solid ${d.saldoFinal >= 0 ? "#BFDBFE" : "#FECACA"};border-radius:8px;padding:10px 14px">
+                    <div style="font-size:10px;color:#1E3A5F;margin-bottom:3px">Saldo Final</div>
+                    <div style="font-size:16px;font-weight:700;color:${d.saldoFinal >= 0 ? "#1A4870" : "#E24B4A"}">${fmtV(d.saldoFinal)}</div>
+                  </div>
+                </div>
+                <!-- Tabela -->
+                <div class="auto-fit-table">
+                <table style="width:100%;border-collapse:collapse;font-family:system-ui,sans-serif">
+                  <thead>
+                    <tr style="background:#1A4870">
+                      <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:#fff;white-space:nowrap">Data</th>
+                      <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:#fff">Fornecedor / Pagador</th>
+                      <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:#fff">Descrição</th>
+                      <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:#fff">Origem</th>
+                      <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:#86EFAC;white-space:nowrap">Entrada</th>
+                      <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:#FCA5A5;white-space:nowrap">Saída</th>
+                      <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:#fff;white-space:nowrap">Saldo Acum.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${linhas || '<tr><td colspan="7" style="padding:20px;text-align:center;color:#999">Nenhum lançamento no período.</td></tr>'}
+                    <tr style="background:#1A4870;border-top:1.5px solid #111">
+                      <td colspan="4" style="padding:8px 10px;font-size:11px;font-weight:700;color:#fff">TOTAIS</td>
+                      <td style="padding:8px 10px;text-align:right;font-weight:700;color:#86EFAC;font-size:12px">${fmtV(d.totalEntradas)}</td>
+                      <td style="padding:8px 10px;text-align:right;font-weight:700;color:#FCA5A5;font-size:12px">${fmtV(d.totalSaidas)}</td>
+                      <td style="padding:8px 10px;text-align:right;font-weight:700;color:#fff;font-size:12px">${fmtV(d.saldoFinal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                </div>`;
+
+              abrirPreviewImpressao("Fluxo de Caixa — Diário", html, { ...opts, subtitulo: fazenda });
             } else {
-              // Outros modos: DOM com elementos interativos ocultos
+              // Modo mensal: DOM com elementos interativos ocultos
               const el = document.getElementById("fluxo-print-content");
               abrirPreviewImpressao(
                 `Fluxo de Caixa${{ diario: " — Diário", mensal: " — Mensal", anual: " — Anual" }[subAbaFluxo]}`,
@@ -580,6 +687,9 @@ function FinanceiroRelatoriosInner() {
                 const saldoFinal    = saldoInicial + totalEntradas - totalSaidas + totalSimLiq;
 
                 const fmtDia = (dt: string) => dt ? new Date(dt + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+
+                // Atualiza ref para impressão limpa
+                printDiarioRef.current = { dias, diasMap, totalEntradas, totalSaidas, saldoFinal, saldoInicial, filtroInicio: filtro.inicio, filtroFim: filtro.fim, tipoVis: filtro.tipoVis };
 
                 const salvarSim = () => {
                   if (!simForm.descricao || !simForm.valor || !simForm.data) return;
