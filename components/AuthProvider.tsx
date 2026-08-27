@@ -6,7 +6,7 @@ import { planoInclui } from "../lib/planos";
 import type { PlanoId } from "../lib/planos";
 import { useRouter } from "next/navigation";
 
-const INACTIVITY_MS  = 30 * 60 * 1000; // 30 minutos
+const INACTIVITY_MS  = 8 * 60 * 60 * 1000; // 8 horas — usuários agrícolas trabalham o dia todo
 const LAST_ACTIVE_KEY = "ractech_last_active";
 
 // Permissões por módulo — values: 'escrita' | 'leitura' | 'nenhum'

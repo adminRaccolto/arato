@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export type ColDef = {
   key: string;
@@ -10,15 +10,20 @@ export type ColDef = {
 export function useColunasGrid(storageKey: string, colunas: ColDef[]) {
   const defaults = Object.fromEntries(colunas.map(c => [c.key, true]));
 
-  const [visiveis, setVisiveis] = useState<Record<string, boolean>>(() => {
-    if (typeof window === "undefined") return defaults;
+  const [visiveis, setVisiveis] = useState<Record<string, boolean>>(defaults);
+
+  // Re-lê do localStorage quando storageKey muda (ex: emailUsuario carrega depois da auth)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
       const saved = localStorage.getItem(storageKey);
-      return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+      if (saved) setVisiveis({ ...defaults, ...JSON.parse(saved) });
+      else setVisiveis(defaults);
     } catch {
-      return defaults;
+      setVisiveis(defaults);
     }
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
 
   const toggle = useCallback((key: string) => {
     setVisiveis(prev => {

@@ -1637,7 +1637,14 @@ export async function listarEmpresasDaConta(fazendaIds: string[]): Promise<Empre
     .in("fazenda_id", fazendaIds)
     .order("nome");
   if (error) throw error;
-  return data ?? [];
+  // Deduplica por nome: cliente com múltiplas fazendas registra a mesma empresa em cada uma
+  const seen = new Set<string>();
+  return (data ?? []).filter(e => {
+    const key = e.nome?.trim().toUpperCase() ?? e.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ─── empresa_lancamentos ────────────────────────────────────

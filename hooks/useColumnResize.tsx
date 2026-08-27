@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 
 /**
  * Hook para redimensionamento de colunas de tabela via drag, estilo Excel.
@@ -15,16 +15,22 @@ import React, { useState, useRef, useCallback } from "react";
 const MIN_WIDTH = 40;
 
 export function useColumnResize(initial: Record<string, number>, storageKey?: string) {
-  const [widths, setWidths] = useState<Record<string, number>>(() => {
-    if (!storageKey || typeof window === "undefined") return initial;
+  const [widths, setWidths] = useState<Record<string, number>>(initial);
+  const widthsRef = useRef(widths);
+
+  // Re-lê do localStorage quando storageKey muda (ex: emailUsuario carrega depois da auth)
+  useEffect(() => {
+    if (!storageKey || typeof window === "undefined") return;
     try {
       const saved = localStorage.getItem(storageKey);
-      return saved ? { ...initial, ...JSON.parse(saved) } : initial;
-    } catch {
-      return initial;
-    }
-  });
-  const widthsRef = useRef(widths);
+      if (saved) {
+        const parsed = { ...initial, ...JSON.parse(saved) };
+        setWidths(parsed);
+        widthsRef.current = parsed;
+      }
+    } catch { /* ok */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
   widthsRef.current = widths;
   const storageKeyRef = useRef(storageKey);
   storageKeyRef.current = storageKey;

@@ -395,11 +395,15 @@ function ConciliacaoInner() {
   }
 
   // ── Persistir extrato atualizado ───────────────────────────────────────────
-  // Usa API route com service_role_key para ser imune a JWT expirado.
+  // Usa API route com service_role_key — imune a JWT expirado.
   // O estado local é atualizado imediatamente (optimistic); a persistência é async.
   function persistExtrato(
     upd: Extrato,
-    opts?: { conciliarIds?: string[]; desconciliarIds?: string[] },
+    opts?: {
+      conciliarIds?: string[];
+      desconciliarIds?: string[];
+      baixar?: { id: string; data_baixa: string; valor_pago: number }[];
+    },
   ) {
     setExtrato(upd);
     setExtratos(prev => prev.map(e => e.id === upd.id ? upd : e));
@@ -413,6 +417,7 @@ function ConciliacaoInner() {
         pendentes: upd.pendentes,
         lancamento_ids_conciliados: opts?.conciliarIds,
         lancamento_ids_desconciliados: opts?.desconciliarIds,
+        baixar: opts?.baixar,
       }),
     }).catch(e => console.error("[persistExtrato]", e));
   }
@@ -441,22 +446,13 @@ function ConciliacaoInner() {
     setSalvando(true);
     const ids = Array.from(lancsSel);
 
-    // Baixar lançamentos ainda não baixados
+    // Lançamentos a baixar (ainda não estão baixados)
     const paraBaixar = ids
       .map(id => lancamentos.find(x => x.id === id))
       .filter(l => l && l.status !== "baixado") as Lancamento[];
 
+    // Atualiza estado local imediatamente (optimistic)
     if (paraBaixar.length > 0) {
-      await Promise.all(
-        paraBaixar.map(l =>
-          supabase.from("lancamentos").update({
-            status: "baixado",
-            data_baixa: linha.data,
-            valor_pago: l.valor_pago ?? l.valor,
-          }).eq("id", l.id)
-        )
-      );
-      // Atualizar estado local imediatamente
       setLancamentos(prev => prev.map(l => {
         if (!ids.includes(l.id) || l.status === "baixado") return l;
         return { ...l, status: "baixado", data_baixa: linha.data, valor_pago: l.valor_pago ?? l.valor };
@@ -477,10 +473,17 @@ function ConciliacaoInner() {
         : l
     );
     const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
-    // Também atualiza conciliado=true em todos os lançamentos vinculados (para badge em CP/CR)
+    // Persiste via service_role_key — imune a JWT expirado — inclui baixa e flag conciliado
     persistExtrato(
       { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
-      { conciliarIds: ids },
+      {
+        conciliarIds: ids,
+        baixar: paraBaixar.map(l => ({
+          id: l.id,
+          data_baixa: linha.data,
+          valor_pago: l.valor_pago ?? l.valor,
+        })),
+      },
     );
 
     if (fazendaId) {
