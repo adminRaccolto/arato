@@ -103,7 +103,7 @@ type Aba = "processamento" | "adiantamentos" | "gratificacoes";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaEmpresaPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, fazendaIds = [] } = useAuth();
   const [aba, setAba]               = useState<Aba>("processamento");
   const [loading, setLoading]       = useState(false);
   const [msg, setMsg]               = useState("");
@@ -128,12 +128,13 @@ export default function FolhaEmpresaPage() {
 
   // Carregar empresas
   useEffect(() => {
-    if (!contaId && !fazendaId) return;
-    listarEmpresasDaConta(contaId ?? "", fazendaId ?? undefined).then(e => {
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (!fids.length) return;
+    listarEmpresasDaConta(fids).then(e => {
       setEmpresas(e);
       if (e.length === 1) setEmpresaSel(e[0].id);
     });
-  }, [contaId, fazendaId]);
+  }, [contaId, fazendaId, fazendaIds?.join(",")]);
 
   // Carregar dados da empresa selecionada
   const carregar = useCallback(async () => {
@@ -346,10 +347,10 @@ export default function FolhaEmpresaPage() {
           <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>Empresa</div>
           <select value={empresaSel} onChange={e => setEmpresaSel(e.target.value)} style={{ ...S.inp, minWidth: 280 }}>
             <option value="">— Selecionar empresa —</option>
-            {empresas.map(e => <option key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</option>)}
+            {empresas.map(e => <option key={e.id} value={e.id}>{e.nome || e.razao_social}</option>)}
           </select>
           {empresaAtual && (
-            <span style={{ fontSize: 12, color: "#888" }}>{empresaAtual.cnpj}</span>
+            <span style={{ fontSize: 12, color: "#888" }}>{empresaAtual.cpf_cnpj}</span>
           )}
         </div>
 
