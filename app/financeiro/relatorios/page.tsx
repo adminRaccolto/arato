@@ -197,6 +197,7 @@ function FinanceiroRelatoriosInner() {
     { key: "data_pagamento", label: "Data Pgto",         defaultW: 100, align: "left"  as const },
     { key: "valor_pago",     label: "Valor Pago",        defaultW: 110, align: "right" as const },
     { key: "moeda",          label: "Moeda",             defaultW: 65,  align: "left"  as const },
+    { key: "forma_pgto",     label: "Forma Pgto",        defaultW: 120, align: "left"  as const },
     { key: "op_gerencial",   label: "Op. Gerencial",     defaultW: 160, align: "left"  as const },
     { key: "produtor",       label: "Produtor",          defaultW: 140, align: "left"  as const },
     { key: "observacao",     label: "Observação",        defaultW: 180, align: "left"  as const },
@@ -1809,6 +1810,7 @@ function FinanceiroRelatoriosInner() {
                       case "data_pagamento": return l.data_baixa ? new Date(l.data_baixa+"T12:00").toLocaleDateString("pt-BR") : "";
                       case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
                       case "moeda":          return (l.moeda ?? "brl").toUpperCase();
+                      case "forma_pgto":     return l.forma_pagamento ?? "";
                       case "op_gerencial":   return l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : "";
                       case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
                       case "observacao":     return l.observacao ?? "";
@@ -2116,6 +2118,8 @@ function FinanceiroRelatoriosInner() {
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key], textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{l.valor_pago != null ? fmtBRL(l.valor_pago) : "—"}</td>;
                           case "moeda":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{(l.moeda ?? "BRL").toUpperCase()}</td>;
+                          case "forma_pgto":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.forma_pagamento || "—"}</td>;
                           case "op_gerencial":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : ""}>{l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "—") : "—"}</td>;
                           case "produtor":
