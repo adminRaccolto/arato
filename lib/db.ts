@@ -1161,6 +1161,33 @@ export async function excluirMatricula(id: string): Promise<void> {
 const sortPessoas = (arr: Pessoa[]) =>
   [...arr].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
 
+// Pontuação de riqueza do cadastro — quanto maior, mais completo o registro.
+// Usada para resolver duplicatas com mesmo CNPJ/CPF: mantemos o mais completo.
+function riquezaPessoa(p: Pessoa): number {
+  let score = 0;
+  const doc = p.cpf_cnpj ?? "";
+  if (/[.\-/]/.test(doc)) score += 4;         // tem máscara (formatado)
+  if (p.email)            score += 3;
+  if (p.municipio)        score += 2;
+  if (p.telefone)         score += 1;
+  if (p.cep)              score += 1;
+  if (p.logradouro)       score += 1;
+  return score;
+}
+
+// Deduplica por CNPJ/CPF normalizado, mantendo o registro mais completo.
+function dedupPessoas(arr: Pessoa[]): Pessoa[] {
+  const map = new Map<string, Pessoa>();
+  for (const p of arr) {
+    const key = (p.cpf_cnpj ?? "").replace(/\D/g, "") || p.id;
+    const existing = map.get(key);
+    if (!existing || riquezaPessoa(p) > riquezaPessoa(existing)) {
+      map.set(key, p);
+    }
+  }
+  return [...map.values()];
+}
+
 export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
   const PAGE = 1000;
   let all: Pessoa[] = [];
@@ -1172,7 +1199,7 @@ export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
     if (!data || data.length < PAGE) break;
     from += PAGE;
   }
-  return sortPessoas(all);
+  return sortPessoas(dedupPessoas(all));
 }
 
 // Resolve IDs de fazendas dado contaId + fallback de fazenda individual
@@ -1207,7 +1234,7 @@ export async function listarPessoasDaConta(fazenda_id_fallback?: string | null):
     if (!data || data.length < PAGE) break;
     from += PAGE;
   }
-  return sortPessoas(all);
+  return sortPessoas(dedupPessoas(all));
 }
 
 // Carrega contas bancárias de TODAS as fazendas da conta
