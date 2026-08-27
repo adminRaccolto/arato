@@ -187,17 +187,19 @@ function FinanceiroRelatoriosInner() {
 
   // ── Grid configurável CP/CR ──────────────────────────────────
   const COLUNAS_CPCR_DEF = [
-    { key: "tipo",           label: "Tipo",           defaultW: 60,  align: "left"  as const },
-    { key: "fornecedor",     label: "Fornecedor",     defaultW: 190, align: "left"  as const },
-    { key: "numero_nf",      label: "Nº NF",          defaultW: 110, align: "left"  as const },
-    { key: "vencimento",     label: "Vencimento",     defaultW: 100, align: "left"  as const },
-    { key: "valor",          label: "Valor",          defaultW: 110, align: "right" as const },
-    { key: "status",         label: "Status",         defaultW: 90,  align: "left"  as const },
-    { key: "data_pagamento", label: "Data Pgto",      defaultW: 100, align: "left"  as const },
-    { key: "valor_pago",     label: "Valor Pago",     defaultW: 110, align: "right" as const },
-    { key: "moeda",          label: "Moeda",          defaultW: 65,  align: "left"  as const },
-    { key: "produtor",       label: "Produtor",       defaultW: 140, align: "left"  as const },
-    { key: "observacao",     label: "Observação",     defaultW: 180, align: "left"  as const },
+    { key: "tipo",           label: "Tipo",              defaultW: 60,  align: "left"  as const },
+    { key: "fornecedor",     label: "Fornecedor",        defaultW: 190, align: "left"  as const },
+    { key: "numero_nf",      label: "Nº NF",             defaultW: 110, align: "left"  as const },
+    { key: "emissao",        label: "Emissão",           defaultW: 95,  align: "left"  as const },
+    { key: "vencimento",     label: "Vencimento",        defaultW: 100, align: "left"  as const },
+    { key: "valor",          label: "Valor",             defaultW: 110, align: "right" as const },
+    { key: "status",         label: "Status",            defaultW: 90,  align: "left"  as const },
+    { key: "data_pagamento", label: "Data Pgto",         defaultW: 100, align: "left"  as const },
+    { key: "valor_pago",     label: "Valor Pago",        defaultW: 110, align: "right" as const },
+    { key: "moeda",          label: "Moeda",             defaultW: 65,  align: "left"  as const },
+    { key: "op_gerencial",   label: "Op. Gerencial",     defaultW: 160, align: "left"  as const },
+    { key: "produtor",       label: "Produtor",          defaultW: 140, align: "left"  as const },
+    { key: "observacao",     label: "Observação",        defaultW: 180, align: "left"  as const },
   ];
   const _defCPCROrder = COLUNAS_CPCR_DEF.map(c => c.key);
   const _defCPCRVis   = Object.fromEntries(COLUNAS_CPCR_DEF.map(c => [c.key, true]));
@@ -1795,12 +1797,14 @@ function FinanceiroRelatoriosInner() {
                       case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
                       case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "";
                       case "numero_nf":      return l.numero_documento ?? "";
+                      case "emissao":        return l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
                       case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
                       case "valor":          return sinal * brl;
                       case "status":         return statusLabel[statusEfetivo(l)] ?? l.status;
                       case "data_pagamento": return l.data_baixa ? new Date(l.data_baixa+"T12:00").toLocaleDateString("pt-BR") : "";
                       case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
                       case "moeda":          return (l.moeda ?? "brl").toUpperCase();
+                      case "op_gerencial":   return l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : "";
                       case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
                       case "observacao":     return l.observacao ?? "";
                       default:               return "";
@@ -2093,6 +2097,8 @@ function FinanceiroRelatoriosInner() {
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={(l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? ""}>{(l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "—"}</td>;
                           case "numero_nf":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.numero_documento ?? "—"}</td>;
+                          case "emissao":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>;
                           case "vencimento":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key], color: statusEfetivo(l)==="vencido" ? "#E24B4A" : "var(--text-2)" }}>{l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>;
                           case "valor":
@@ -2105,6 +2111,8 @@ function FinanceiroRelatoriosInner() {
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key], textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{l.valor_pago != null ? fmtBRL(l.valor_pago) : "—"}</td>;
                           case "moeda":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{(l.moeda ?? "BRL").toUpperCase()}</td>;
+                          case "op_gerencial":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : ""}>{l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "—") : "—"}</td>;
                           case "produtor":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={(l.produtor_id ? prodMap[l.produtor_id] : null) ?? ""}>{(l.produtor_id ? prodMap[l.produtor_id] : null) ?? "—"}</td>;
                           case "observacao":
