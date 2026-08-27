@@ -10714,3 +10714,70 @@ ALTER TABLE empresa_lancamentos
   CHECK (origem IN ('manual','folha','nf_servico','tesouraria','nf_entrada','cte'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- SEÇÃO 201 — Folha Simplificada: adiantamentos_salario +
+--             funcionarios_premiacoes + gratificacao em folha_funcionarios
+-- ═══════════════════════════════════════════════════════════════
+
+-- 1. Adiantamentos salariais
+CREATE TABLE IF NOT EXISTS adiantamentos_salario (
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id       uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  funcionario_id   uuid NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+  data             date NOT NULL,
+  valor            numeric(14,2) NOT NULL CHECK (valor > 0),
+  competencia_ref  varchar(7),     -- YYYY-MM: mês onde será descontado
+  descricao        text,
+  lancamento_id    uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  status           varchar(20) NOT NULL DEFAULT 'pendente'
+                     CHECK (status IN ('pendente','descontado','cancelado')),
+  created_at       timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adi_sal_fazenda    ON adiantamentos_salario(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_adi_sal_funcionario ON adiantamentos_salario(funcionario_id);
+CREATE INDEX IF NOT EXISTS idx_adi_sal_comp       ON adiantamentos_salario(competencia_ref);
+CREATE INDEX IF NOT EXISTS idx_adi_sal_status     ON adiantamentos_salario(status);
+
+ALTER TABLE adiantamentos_salario ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY adi_sal_all ON adiantamentos_salario FOR ALL
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+-- 2. Premiações / Gratificações por funcionário
+CREATE TABLE IF NOT EXISTS funcionarios_premiacoes (
+  id                  uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  funcionario_id      uuid NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+  fazenda_id          uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  mes_referencia      varchar(7) NOT NULL,  -- YYYY-MM
+  data_pagamento      date,
+  descricao           text NOT NULL,
+  valor               numeric(14,2) NOT NULL CHECK (valor > 0),
+  lancado_financeiro  boolean DEFAULT false,
+  lancamento_id       uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  created_at          timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_prem_fazenda    ON funcionarios_premiacoes(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_prem_funcionario ON funcionarios_premiacoes(funcionario_id);
+CREATE INDEX IF NOT EXISTS idx_prem_mes        ON funcionarios_premiacoes(mes_referencia);
+
+ALTER TABLE funcionarios_premiacoes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY prem_all ON funcionarios_premiacoes FOR ALL
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+-- 3. Adiciona gratificacao em folha_funcionarios (afeta o bruto)
+ALTER TABLE folha_funcionarios
+  ADD COLUMN IF NOT EXISTS gratificacao numeric(14,2) DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';
