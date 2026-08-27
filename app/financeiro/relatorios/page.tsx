@@ -1801,7 +1801,7 @@ function FinanceiroRelatoriosInner() {
                     const sinal = l.tipo === "pagar" ? -1 : 1;
                     switch (col.key) {
                       case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
-                      case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "";
+                      case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? l.descricao ?? "";
                       case "numero_nf":      return l.numero_documento ?? "";
                       case "emissao":        return l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
                       case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
@@ -2100,8 +2100,10 @@ function FinanceiroRelatoriosInner() {
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>
                               <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
                             </td>;
-                          case "fornecedor":
-                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={(l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? ""}>{(l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "—"}</td>;
+                          case "fornecedor": {
+                            const fNome = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? l.descricao ?? "—";
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={fNome}>{fNome}</td>;
+                          }
                           case "numero_nf":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.numero_documento ?? "—"}</td>;
                           case "emissao":
