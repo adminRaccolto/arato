@@ -346,6 +346,7 @@ export type PagamentoLoteItem = {
   lancamento_id: string;
   valor_pago: number;
   created_at?: string;
+  lancamento?: { numero?: number; descricao?: string; pessoa_id?: string } | null;
 };
 
 export type Contrato = {

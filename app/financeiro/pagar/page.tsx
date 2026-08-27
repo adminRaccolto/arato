@@ -1286,13 +1286,15 @@ function ContasPagarInner() {
                             {/* Sub-linhas dos títulos quando expandido */}
                             {expanded && itensB.map((item, idx) => {
                               const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+                              const desc = lanc?.descricao ?? item.lancamento?.descricao ?? "—";
+                              const num  = lanc?.numero    ?? item.lancamento?.numero    ?? null;
                               return (
                                 <tr key={`bdr-item-${item.id}`} style={{ background: idx % 2 === 0 ? "#FDFAF2" : "#FAF5E4", borderLeft: "3px solid #C9921B40", borderBottom: "0.5px solid #C9921B20" }}>
                                   <td style={{ padding: "7px 6px", textAlign: "center" }}>
                                     <span style={{ fontSize: 9, color: "#C9921B" }}>└</span>
                                   </td>
-                                  <td style={{ padding: "7px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{lanc?.numero ?? "—"}</td>
-                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)" }}>{lanc?.descricao ?? item.lancamento_id}</td>
+                                  <td style={{ padding: "7px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{num ?? "—"}</td>
+                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)" }}>{desc}</td>
                                   <td colSpan={99} style={{ padding: "7px 8px" }}>
                                     <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                                       <span style={{ fontSize: 11, color: "var(--text-3)" }}>

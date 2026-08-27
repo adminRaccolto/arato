@@ -847,7 +847,7 @@ export async function listarBorderosPendentes(fazenda_ids: string[], tipo: "paga
   if (!fazenda_ids.length) return [];
   const { data, error } = await supabase
     .from("pagamento_lotes")
-    .select("*, itens:pagamento_lote_itens(*)")
+    .select("*, itens:pagamento_lote_itens(*, lancamento:lancamentos(numero, descricao, pessoa_id))")
     .in("fazenda_id", fazenda_ids)
     .eq("tipo", tipo)
     .eq("status", "pendente")
