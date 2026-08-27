@@ -13,6 +13,7 @@ type Compromisso = {
   id: string;
   numero: string;
   produto: string;
+  tipo: string;
   quantidade_sc: number;
   entregue_sc: number;
   preco: number | null;
@@ -42,9 +43,24 @@ type Commodity = "Soja" | "Milho" | "Algodão" | "Trigo" | "Sorgo";
 const COMMODITIES: Commodity[] = ["Soja", "Milho", "Algodão", "Trigo", "Sorgo"];
 
 const ORIGEM_LABEL: Record<string, string> = {
-  arrendamento: "Arrendamento",
-  compra_terra: "Compra de Terra",
-  barter:       "Barter",
+  arrendamento:    "Arrendamento",
+  compra_terra:    "Compra de Terra",
+  barter:          "Barter",
+  comercializacao: "Comercialização",
+};
+
+const ORIGEM_BG: Record<string, string> = {
+  arrendamento:    "#D5E8F5",
+  compra_terra:    "#FBF3E0",
+  barter:          "#EDE9FE",
+  comercializacao: "#F0FDF4",
+};
+
+const ORIGEM_COLOR: Record<string, string> = {
+  arrendamento:    "#1A4870",
+  compra_terra:    "#C9921B",
+  barter:          "#7C3AED",
+  comercializacao: "#16A34A",
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -66,7 +82,7 @@ function getOrigem(c: Compromisso): string {
   if (c.is_arrendamento) return "arrendamento";
   if (c.is_compra_terra) return "compra_terra";
   if (c.is_barter)       return "barter";
-  return "outro";
+  return "comercializacao";
 }
 
 function fmtSc(v: number | null | undefined) {
@@ -108,7 +124,7 @@ export default function CompromissosGraosPage() {
         supabase
           .from("contratos")
           .select(`
-            id, numero, produto, quantidade_sc, entregue_sc, preco,
+            id, numero, produto, tipo, quantidade_sc, entregue_sc, preco,
             data_contrato, data_entrega, status, comprador,
             pessoa_id, produtor_id, ano_safra_id, ciclo_id,
             is_arrendamento, arrendamento_id,
@@ -120,7 +136,7 @@ export default function CompromissosGraosPage() {
             anos_safra:ano_safra_id(descricao)
           `)
           .in("fazenda_id", ids)
-          .or("is_arrendamento.eq.true,is_compra_terra.eq.true,is_barter.eq.true")
+          .or("is_arrendamento.eq.true,is_compra_terra.eq.true,is_barter.eq.true,tipo.eq.venda")
           .order("data_entrega", { ascending: true }),
         supabase
           .from("anos_safra")
@@ -135,6 +151,7 @@ export default function CompromissosGraosPage() {
         id:               r.id as string,
         numero:           r.numero as string,
         produto:          r.produto as string,
+        tipo:             (r.tipo as string) ?? "",
         quantidade_sc:    (r.quantidade_sc as number) ?? 0,
         entregue_sc:      (r.entregue_sc as number) ?? 0,
         preco:            r.preco as number | null,
@@ -212,7 +229,7 @@ export default function CompromissosGraosPage() {
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compromissos em Grãos</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-              Sacas comprometidas por arrendamento, compra de terra e barter — relatório consolidado
+              Sacas comprometidas por comercialização, arrendamento, compra de terra e barter — relatório consolidado
             </p>
           </div>
           <button
@@ -246,6 +263,7 @@ export default function CompromissosGraosPage() {
             <label style={lbl}>Origem</label>
             <select value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)} style={inp}>
               <option value="todos">Todas</option>
+              <option value="comercializacao">Comercialização</option>
               <option value="arrendamento">Arrendamento</option>
               <option value="compra_terra">Compra de Terra</option>
               <option value="barter">Barter</option>
@@ -351,8 +369,8 @@ export default function CompromissosGraosPage() {
                         <td style={{ padding: "10px 12px" }}>
                           <span style={{
                             display: "inline-block", padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-                            background: org === "arrendamento" ? "#D5E8F5" : org === "compra_terra" ? "#FBF3E0" : "#EDE9FE",
-                            color:      org === "arrendamento" ? "#1A4870"  : org === "compra_terra" ? "#C9921B"  : "#7C3AED",
+                            background: ORIGEM_BG[org] ?? "#F4F6FA",
+                            color:      ORIGEM_COLOR[org] ?? "#555",
                           }}>
                             {ORIGEM_LABEL[org] ?? "—"}
                           </span>
