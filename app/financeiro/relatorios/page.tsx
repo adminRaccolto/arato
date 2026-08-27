@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
+import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
@@ -86,7 +87,7 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", 
 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, emailUsuario, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
@@ -183,6 +184,51 @@ function FinanceiroRelatoriosInner() {
   type GrupoKey = "produtor" | "og" | "data" | "categoria" | "status" | "tipo";
   const [agrupAtivos, setAgrupAtivos] = useState<GrupoKey[]>([]);
   const [gruposExpand, setGruposExpand] = useState<Set<string>>(new Set());
+
+  // ── Grid configurável CP/CR ──────────────────────────────────
+  const COLUNAS_CPCR_DEF = [
+    { key: "tipo",           label: "Tipo",           defaultW: 60,  align: "left"  as const },
+    { key: "fornecedor",     label: "Fornecedor",     defaultW: 190, align: "left"  as const },
+    { key: "numero_nf",      label: "Nº NF",          defaultW: 110, align: "left"  as const },
+    { key: "vencimento",     label: "Vencimento",     defaultW: 100, align: "left"  as const },
+    { key: "valor",          label: "Valor",          defaultW: 110, align: "right" as const },
+    { key: "status",         label: "Status",         defaultW: 90,  align: "left"  as const },
+    { key: "data_pagamento", label: "Data Pgto",      defaultW: 100, align: "left"  as const },
+    { key: "valor_pago",     label: "Valor Pago",     defaultW: 110, align: "right" as const },
+    { key: "moeda",          label: "Moeda",          defaultW: 65,  align: "left"  as const },
+    { key: "produtor",       label: "Produtor",       defaultW: 140, align: "left"  as const },
+    { key: "observacao",     label: "Observação",     defaultW: 180, align: "left"  as const },
+  ];
+  const _defCPCROrder = COLUNAS_CPCR_DEF.map(c => c.key);
+  const _defCPCRVis   = Object.fromEntries(COLUNAS_CPCR_DEF.map(c => [c.key, true]));
+  const _defCPCRW     = Object.fromEntries(COLUNAS_CPCR_DEF.map(c => [c.key, c.defaultW]));
+  const [cpcrColOrder,   setCpcrColOrder]   = useState<string[]>(_defCPCROrder);
+  const [cpcrColVis,     setCpcrColVis]     = useState<Record<string,boolean>>(_defCPCRVis);
+  const [cpcrColDDOpen,  setCpcrColDDOpen]  = useState(false);
+  const cpcrDragCol = useRef<string | null>(null);
+  const { widths: cpcrW, startResize: cpcrResize } = useColumnResize(
+    _defCPCRW,
+    emailUsuario ? `cpcr_colW_${emailUsuario}` : undefined,
+  );
+  // Carrega config salva quando emailUsuario carrega
+  useEffect(() => {
+    if (!emailUsuario || typeof window === "undefined") return;
+    try {
+      const savedOrder = localStorage.getItem(`cpcr_colOrder_${emailUsuario}`);
+      const savedVis   = localStorage.getItem(`cpcr_colVis_${emailUsuario}`);
+      if (savedOrder) setCpcrColOrder(JSON.parse(savedOrder));
+      if (savedVis)   setCpcrColVis(prev => ({ ..._defCPCRVis, ...JSON.parse(savedVis) }));
+    } catch { /* ok */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailUsuario]);
+  const saveCpcrColOrder = (order: string[]) => {
+    setCpcrColOrder(order);
+    if (emailUsuario) localStorage.setItem(`cpcr_colOrder_${emailUsuario}`, JSON.stringify(order));
+  };
+  const saveCpcrColVis = (vis: Record<string,boolean>) => {
+    setCpcrColVis(vis);
+    if (emailUsuario) localStorage.setItem(`cpcr_colVis_${emailUsuario}`, JSON.stringify(vis));
+  };
 
   const toggleMes = (m: string) =>
     setMesesExpandidos(prev => { const s = new Set(prev); s.has(m) ? s.delete(m) : s.add(m); return s; });
@@ -1737,22 +1783,35 @@ function FinanceiroRelatoriosInner() {
                     ["Baixados / Pagos", totalBaixado],
                     ["Total de lançamentos", lancsCPCR.length],
                   ];
-                  const sinal = (l: Lancamento) => l.tipo === "pagar" ? -1 : 1;
-                  const cab = ["Tipo","Emissão","Vencimento","Descrição","Produtor","Fornecedor / Pagador","Categoria","Operação Gerencial","Conta Bancária","Forma Pgto","Status","Moeda","Valor Original","Valor BRL","Observações"];
-                  const linhas = lancsCPCR.map(l => {
-                    const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
-                    const ogNome    = l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : "";
-                    const fornecedor = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "";
-                    const produtor  = (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
-                    const brl       = paraBRLRel(l, cotacaoUSD);
-                    const venc      = l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
-                    const emissao   = l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
-                    return [l.tipo === "receber" ? "CR" : "CP", emissao, venc, l.descricao ?? "", produtor, fornecedor, l.categoria ?? "", ogNome, contaNome, l.forma_pagamento ?? "", statusLabel[l.status] ?? l.status, l.moeda?.toUpperCase() ?? "BRL", sinal(l)*l.valor, sinal(l)*brl, l.observacao ?? ""];
-                  });
+                  // Colunas respeitam a ordem e visibilidade do grid
+                  const colsVisiveis = cpcrColOrder
+                    .filter(k => cpcrColVis[k] !== false)
+                    .map(k => COLUNAS_CPCR_DEF.find(c => c.key === k)!).filter(Boolean);
+                  const cab = colsVisiveis.map(c => c.label);
+                  const getCellVal = (col: typeof COLUNAS_CPCR_DEF[0], l: Lancamento): string | number => {
+                    const brl = paraBRLRel(l, cotacaoUSD);
+                    const sinal = l.tipo === "pagar" ? -1 : 1;
+                    switch (col.key) {
+                      case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
+                      case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "";
+                      case "numero_nf":      return l.numero_documento ?? "";
+                      case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
+                      case "valor":          return sinal * brl;
+                      case "status":         return statusLabel[statusEfetivo(l)] ?? l.status;
+                      case "data_pagamento": return l.data_baixa ? new Date(l.data_baixa+"T12:00").toLocaleDateString("pt-BR") : "";
+                      case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
+                      case "moeda":          return (l.moeda ?? "brl").toUpperCase();
+                      case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
+                      case "observacao":     return l.observacao ?? "";
+                      default:               return "";
+                    }
+                  };
+                  const linhas = lancsCPCR.map(l => colsVisiveis.map(col => getCellVal(col, l)));
                   const wb = XLSX.utils.book_new();
                   const ws1 = XLSX.utils.aoa_to_sheet(resumo); ws1["!cols"] = [{wch:32},{wch:22}];
                   XLSX.utils.book_append_sheet(wb, ws1, "Resumo");
-                  const ws2 = XLSX.utils.aoa_to_sheet([cab,...linhas]); ws2["!cols"] = [6,14,14,40,22,28,22,32,20,14,10,8,14,14,40].map(w=>({wch:w}));
+                  const ws2 = XLSX.utils.aoa_to_sheet([cab,...linhas]);
+                  ws2["!cols"] = colsVisiveis.map(c => ({ wch: Math.round(cpcrW[c.key] / 7) }));
                   XLSX.utils.book_append_sheet(wb, ws2, "Lançamentos");
                   XLSX.writeFile(wb, `CP-CR_${inicioCPCR}_${fimCPCR}_${hoje}.xlsx`);
                 };
@@ -1780,7 +1839,7 @@ function FinanceiroRelatoriosInner() {
 
                     {/* ── Filtros ── */}
                     <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}
-                      onClick={() => { setStatusDDOpen(false); setCatDDOpen(false); setProdDDOpen(false); }}>
+                      onClick={() => { setStatusDDOpen(false); setCatDDOpen(false); setProdDDOpen(false); setCpcrColDDOpen(false); }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Início</label>
                         <input type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
@@ -1846,7 +1905,35 @@ function FinanceiroRelatoriosInner() {
                         </div>}
                       </div>
 
-                      <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end" }}>
+                      <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end", gap: 8, position: "relative" }}>
+                        {/* Botão Colunas — só no modo plano */}
+                        {agrupAtivos.length === 0 && (
+                          <div style={{ position: "relative" }}>
+                            <button onClick={e => { e.stopPropagation(); setCpcrColDDOpen(v => !v); }}
+                              style={{ padding: "7px 12px", background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                              ⚙ Colunas
+                            </button>
+                            {cpcrColDDOpen && (
+                              <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 400, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "8px 0", minWidth: 190, boxShadow: "0 4px 20px rgba(0,0,0,0.13)" }}>
+                                <div style={{ padding: "4px 14px 6px", fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Mostrar / ocultar</div>
+                                {COLUNAS_CPCR_DEF.map(col => (
+                                  <label key={col.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
+                                    onMouseEnter={e=>(e.currentTarget.style.background="#F4F6FA")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+                                    <input type="checkbox" checked={cpcrColVis[col.key] !== false}
+                                      onChange={() => saveCpcrColVis({ ...cpcrColVis, [col.key]: !(cpcrColVis[col.key] !== false) })}
+                                      style={{ cursor: "pointer", accentColor: "#1A4870" }} />
+                                    {col.label}
+                                  </label>
+                                ))}
+                                <div style={{ borderTop: "0.5px solid var(--border)", margin: "6px 0" }} />
+                                <button onClick={() => { saveCpcrColOrder(_defCPCROrder); saveCpcrColVis(_defCPCRVis); setCpcrColDDOpen(false); }}
+                                  style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+                                  Restaurar padrão
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <button onClick={exportarXLSX} disabled={lancsCPCR.length === 0}
                           style={{ padding: "7px 14px", background: lancsCPCR.length === 0 ? "#ccc" : "#16763A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: lancsCPCR.length === 0 ? "default" : "pointer" }}>
                           ⬇ Exportar XLSX
@@ -1983,49 +2070,125 @@ function FinanceiroRelatoriosInner() {
                           </tfoot>
                         </table>
                       </div>
-                    ) : (
-                      /* Modo plano (sem agrupamento) */
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ background: "var(--bg-page)" }}>
-                              {["Tipo","Vencimento","Descrição","Produtor","Categoria","Operação Gerencial","Status","CR","CP"].map(h => (
-                                <th key={h} style={{ padding: "8px 12px", textAlign: ["CR","CP"].includes(h) ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {lancsCPCR.map((l, i) => {
-                              const st  = corStatusCPCR[statusEfetivo(l)] ?? corStatusCPCR.em_aberto;
-                              const brl = paraBRLRel(l, cotacaoUSD);
-                              const ogNome = l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "—") : "—";
-                              return (
+                    ) : (() => {
+                      /* Modo plano — grid configurável com drag-to-reorder e resize */
+                      const colsVisiveis = cpcrColOrder
+                        .filter(k => cpcrColVis[k] !== false)
+                        .map(k => COLUNAS_CPCR_DEF.find(c => c.key === k)!).filter(Boolean);
+
+                      const renderCell = (col: typeof COLUNAS_CPCR_DEF[0], l: Lancamento, i: number) => {
+                        const brl = paraBRLRel(l, cotacaoUSD);
+                        const st  = corStatusCPCR[statusEfetivo(l)] ?? corStatusCPCR.em_aberto;
+                        const sinal = l.tipo === "pagar" ? -1 : 1;
+                        const tdBase: React.CSSProperties = {
+                          padding: "9px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          maxWidth: cpcrW[col.key], color: "var(--text-2)", fontSize: 12,
+                        };
+                        switch (col.key) {
+                          case "tipo":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>
+                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
+                            </td>;
+                          case "fornecedor":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={(l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? ""}>{(l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "—"}</td>;
+                          case "numero_nf":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.numero_documento ?? "—"}</td>;
+                          case "vencimento":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key], color: statusEfetivo(l)==="vencido" ? "#E24B4A" : "var(--text-2)" }}>{l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>;
+                          case "valor":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key], textAlign: "right", fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(Math.abs(brl))}</td>;
+                          case "status":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}><span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span></td>;
+                          case "data_pagamento":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.data_baixa ? new Date(l.data_baixa+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>;
+                          case "valor_pago":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key], textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{l.valor_pago != null ? fmtBRL(l.valor_pago) : "—"}</td>;
+                          case "moeda":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{(l.moeda ?? "BRL").toUpperCase()}</td>;
+                          case "produtor":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={(l.produtor_id ? prodMap[l.produtor_id] : null) ?? ""}>{(l.produtor_id ? prodMap[l.produtor_id] : null) ?? "—"}</td>;
+                          case "observacao":
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={l.observacao ?? ""}>{l.observacao || "—"}</td>;
+                          default: return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>—</td>;
+                        }
+                      };
+
+                      // Totais de valor e valor_pago pelas colunas visíveis
+                      const showValorCol    = colsVisiveis.some(c => c.key === "valor");
+                      const showValorPagoCol = colsVisiveis.some(c => c.key === "valor_pago");
+                      const totalValorPago  = lancsCPCR.reduce((s, l) => s + (l.valor_pago ?? 0), 0);
+
+                      return (
+                        <div style={{ overflowX: "auto" }}>
+                          <style>{`
+                            @media print {
+                              .cpcr-grid-table thead th { white-space: nowrap; font-size: 10px !important; padding: 5px 7px !important; }
+                              .cpcr-grid-table td { font-size: 10px !important; padding: 5px 7px !important; }
+                              .cpcr-grid-table .resize-handle { display: none; }
+                            }
+                          `}</style>
+                          <table className="cpcr-grid-table" style={{ borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
+                            <thead>
+                              <tr style={{ background: "var(--bg-page)" }}>
+                                {colsVisiveis.map((col, ci) => (
+                                  <th key={col.key}
+                                    draggable
+                                    onDragStart={() => { cpcrDragCol.current = col.key; }}
+                                    onDragOver={e => e.preventDefault()}
+                                    onDrop={() => {
+                                      if (!cpcrDragCol.current || cpcrDragCol.current === col.key) return;
+                                      const from = cpcrColOrder.indexOf(cpcrDragCol.current);
+                                      const to   = cpcrColOrder.indexOf(col.key);
+                                      if (from < 0 || to < 0) return;
+                                      const next = [...cpcrColOrder];
+                                      next.splice(from, 1);
+                                      next.splice(to, 0, cpcrDragCol.current);
+                                      saveCpcrColOrder(next);
+                                      cpcrDragCol.current = null;
+                                    }}
+                                    style={{
+                                      width: cpcrW[col.key], minWidth: cpcrW[col.key], maxWidth: cpcrW[col.key],
+                                      padding: "8px 10px", textAlign: col.align === "right" ? "right" : "left",
+                                      fontWeight: 600, fontSize: 11, color: "var(--text-2)",
+                                      borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap",
+                                      position: "relative", userSelect: "none", cursor: "grab",
+                                    }}>
+                                    {col.label}
+                                    <ResizeHandle onMouseDown={cpcrResize(col.key)} />
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {lancsCPCR.map((l, i) => (
                                 <tr key={l.id} style={{ borderBottom: "0.5px solid #EEF1F7", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                                  <td style={{ padding: "9px 12px" }}>
-                                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
-                                  </td>
-                                  <td style={{ padding: "9px 12px", color: statusEfetivo(l)==="vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap" }}>{l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>
-                                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? ""}>{l.descricao || "—"}</td>
-                                  <td style={{ padding: "9px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{l.produtor_id ? (prodMap[l.produtor_id] ?? "—") : "—"}</td>
-                                  <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{l.categoria || "—"}</td>
-                                  <td style={{ padding: "9px 12px", color: "var(--text-2)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ogNome}</td>
-                                  <td style={{ padding: "9px 12px" }}><span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span></td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{l.tipo === "receber" ? fmtBRL(brl) : "—"}</td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{l.tipo === "pagar" ? fmtBRL(brl) : "—"}</td>
+                                  {colsVisiveis.map(col => renderCell(col, l, i))}
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                          <tfoot>
-                            <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid var(--border-table)" }}>
-                              <td colSpan={7} style={{ padding: "10px 12px" }}>{lancsCPCR.length} lançamentos</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalCR)}</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalCP)}</td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    )}
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid var(--border-table)" }}>
+                                {colsVisiveis.map((col, ci) => {
+                                  if (col.key === "valor") return (
+                                    <td key={col.key} colSpan={1} style={{ padding: "10px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                                      <div style={{ color: "#16A34A", fontSize: 11 }}>CR: {fmtBRL(totalCR)}</div>
+                                      <div style={{ color: "#E24B4A", fontSize: 11 }}>CP: {fmtBRL(totalCP)}</div>
+                                    </td>
+                                  );
+                                  if (col.key === "valor_pago") return (
+                                    <td key={col.key} style={{ padding: "10px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{fmtBRL(totalValorPago)}</td>
+                                  );
+                                  if (ci === 0) return (
+                                    <td key={col.key} style={{ padding: "10px 10px" }}>{lancsCPCR.length} lançamentos</td>
+                                  );
+                                  return <td key={col.key} />;
+                                })}
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}
