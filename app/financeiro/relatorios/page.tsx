@@ -218,8 +218,13 @@ function FinanceiroRelatoriosInner() {
     try {
       const savedOrder = localStorage.getItem(`cpcr_colOrder_${emailUsuario}`);
       const savedVis   = localStorage.getItem(`cpcr_colVis_${emailUsuario}`);
-      if (savedOrder) setCpcrColOrder(JSON.parse(savedOrder));
-      if (savedVis)   setCpcrColVis(prev => ({ ..._defCPCRVis, ...JSON.parse(savedVis) }));
+      if (savedOrder) {
+        const parsed = JSON.parse(savedOrder) as string[];
+        // Novas colunas adicionadas depois que o usuário salvou não estão no array — anexar no final
+        const merged = [...parsed, ..._defCPCROrder.filter(k => !parsed.includes(k))];
+        setCpcrColOrder(merged);
+      }
+      if (savedVis)   setCpcrColVis({ ..._defCPCRVis, ...JSON.parse(savedVis) });
     } catch { /* ok */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailUsuario]);
