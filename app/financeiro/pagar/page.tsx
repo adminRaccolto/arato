@@ -2356,6 +2356,7 @@ function ContasPagarInner() {
                   <CascadeSelector
                     contaId={contaId}
                     fazendaIdFallback={fazendaId}
+                    fazendaRequired={false}
                     values={cascade}
                     onChange={next => {
                       setCascade(next);
