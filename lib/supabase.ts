@@ -938,6 +938,7 @@ export type Funcionario = {
   tipo_vinculo_esocial?: string;
   centro_custo_id?: string;
   produtor_id?: string;
+  empresa_id?: string;
   created_at?: string;
 };
 

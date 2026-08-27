@@ -201,11 +201,13 @@ export default function FolhaPagamentoPage() {
         supabase.from("funcionarios")
           .select("id,nome,cargo,salario_base,tipo")
           .eq("fazenda_id", fazendaId)
+          .is("empresa_id", null)
           .eq("ativo", true)
           .order("nome"),
         supabase.from("folha_pagamento")
           .select("*")
           .eq("fazenda_id", fazendaId)
+          .is("empresa_id", null)
           .order("competencia", { ascending: false }),
         supabase.from("adiantamentos_salario")
           .select("*, funcionarios(nome)")
@@ -216,10 +218,12 @@ export default function FolhaPagamentoPage() {
           .eq("fazenda_id", fazendaId)
           .order("mes_referencia", { ascending: false }),
       ]);
-      setFuncionarios(funcs ?? []);
+      const funcsLista = funcs ?? [];
+      const funcIds = new Set(funcsLista.map((f: any) => f.id));
+      setFuncionarios(funcsLista);
       setFolhas(fols ?? []);
-      setAdiantamentos((adis ?? []).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
-      setPremiacoes((prems ?? []).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
+      setAdiantamentos((adis ?? []).filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
+      setPremiacoes((prems ?? []).filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
     } finally {
       setLoading(false);
     }

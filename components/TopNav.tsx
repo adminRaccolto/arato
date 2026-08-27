@@ -149,6 +149,7 @@ const NAV: NavItem[] = [
       { id: "fin-pagar",        label: "Contas a Pagar",            path: "/financeiro/pagar",         moduleId: "fin_pagar"     },
       { id: "fin-receber",      label: "Contas a Receber",          path: "/financeiro/receber",       moduleId: "fin_receber"   },
       { id: "fin-adiantamentos",label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos", moduleId: "fin_pagar" },
+      { id: "fin-folha",        label: "Folha de Pagamento",         path: "/financeiro/folha" },
       { id: "fin-contratos",    label: "Contratos Financeiros",     path: "/financeiro/contratos",     moduleId: "fin_contratos" },
       { id: "fin-apoio",        label: "Apoio Financeiro",          path: "/financeiro/apoio",         moduleId: "apoio_financeiro" },
       {
@@ -186,10 +187,10 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "empresas", label: "Empresas", minStep: 6,
     children: [
-      { id: "emp-pagar",   label: "Contas a Pagar",      path: "/empresas/pagar",   moduleId: "empresas" },
-      { id: "emp-receber", label: "Contas a Receber",    path: "/empresas/receber", moduleId: "empresas" },
-      { id: "emp-folha",   label: "Folha de Pagamento",  path: "/financeiro/folha",                moduleId: "empresas" },
-      { id: "emp-dre",     label: "DRE por Empresa",     path: "/financeiro/empresas",             moduleId: "empresas" },
+      { id: "emp-pagar",   label: "Contas a Pagar",      path: "/empresas/pagar",    moduleId: "empresas" },
+      { id: "emp-receber", label: "Contas a Receber",    path: "/empresas/receber",  moduleId: "empresas" },
+      { id: "emp-folha",   label: "Folha de Pagamento",  path: "/empresas/folha",    moduleId: "empresas" },
+      { id: "emp-dre",     label: "DRE por Empresa",     path: "/financeiro/empresas", moduleId: "empresas" },
     ],
   },
 

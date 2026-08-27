@@ -1,0 +1,644 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../../../components/AuthProvider";
+import { supabase } from "../../../lib/supabase";
+import { listarEmpresasDaConta } from "../../../lib/db";
+import type { Empresa } from "../../../lib/supabase";
+import TopNav from "../../../components/TopNav";
+
+// ─── Tipos ────────────────────────────────────────────────────
+interface Funcionario { id: string; nome: string; cargo?: string; salario_base?: number; tipo?: string; }
+interface FolhaFunc {
+  id?: string; folha_id?: string; funcionario_id?: string;
+  nome_funcionario: string; cargo: string;
+  salario_base: number; gratificacao: number; salario_bruto: number;
+  inss_trabalhador: number; irrf: number; adiantamento: number;
+  outros_descontos: number; desc_outros_descontos: string;
+  vale_transporte: number; vale_refeicao: number; outros_beneficios: number;
+  inss_patronal: number; fgts: number; cp_lancamento_id?: string;
+}
+interface Folha {
+  id: string; fazenda_id: string; empresa_id?: string;
+  competencia: string; status: "rascunho" | "fechado" | "pago";
+  valor_bruto: number; valor_liquido: number;
+  inss_patronal?: number; fgts_total?: number; obs?: string;
+  funcionarios?: FolhaFunc[];
+}
+interface Adiantamento {
+  id: string; fazenda_id: string; funcionario_id: string; funcionario_nome?: string;
+  data: string; valor: number; competencia_ref?: string; descricao?: string;
+  lancamento_id?: string; status: "pendente" | "descontado" | "cancelado"; created_at?: string;
+}
+interface Premiacao {
+  id: string; funcionario_id: string; funcionario_nome?: string; fazenda_id: string;
+  mes_referencia: string; descricao: string; valor: number; lancado_financeiro: boolean;
+}
+
+// ─── Cálculos ────────────────────────────────────────────────
+function calcINSS(bruto: number): number {
+  const faixas = [
+    { limite: 1518.00, a: 0.075 }, { limite: 2793.88, a: 0.09 },
+    { limite: 4190.83, a: 0.12  }, { limite: 8157.41, a: 0.14 },
+  ];
+  let inss = 0, anterior = 0;
+  for (const f of faixas) {
+    if (bruto <= anterior) break;
+    inss += (Math.min(bruto, f.limite) - anterior) * f.a;
+    anterior = f.limite;
+    if (bruto <= f.limite) break;
+  }
+  return Math.round(inss * 100) / 100;
+}
+function calcIRRF(bruto: number, inss: number): number {
+  const base = bruto - inss;
+  const faixas = [
+    { lim: 2259.20, a: 0,     ded: 0      }, { lim: 2826.65, a: 0.075, ded: 169.44 },
+    { lim: 3751.05, a: 0.15,  ded: 381.44 }, { lim: 4664.68, a: 0.225, ded: 662.77 },
+    { lim: Infinity,a: 0.275, ded: 896.00 },
+  ];
+  for (const f of faixas) {
+    if (base <= f.lim) return Math.max(0, Math.round((base * f.a - f.ded) * 100) / 100);
+  }
+  return 0;
+}
+function calcFGTS(b: number)    { return Math.round(b * 0.08 * 100) / 100; }
+function calcINSSPat(b: number) { return Math.round(b * 0.28 * 100) / 100; }
+function liquido(f: FolhaFunc)  {
+  return Math.max(0, Math.round((f.salario_bruto - f.inss_trabalhador - f.irrf - f.adiantamento - f.outros_descontos + f.vale_transporte + f.vale_refeicao + f.outros_beneficios) * 100) / 100);
+}
+function recalc(f: FolhaFunc): FolhaFunc {
+  const bruto = (f.salario_base || 0) + (f.gratificacao || 0);
+  const inss  = calcINSS(bruto);
+  return { ...f, salario_bruto: bruto, inss_trabalhador: inss, irrf: calcIRRF(bruto, inss), fgts: calcFGTS(bruto), inss_patronal: calcINSSPat(bruto) };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
+const moeda = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function nomeMes(comp: string) {
+  const [ano, mes] = comp.split("-");
+  const n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  return `${n[parseInt(mes)-1]}/${ano}`;
+}
+function compAtual() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function dataFmt(s?: string) { if (!s) return "—"; return new Date(s+"T12:00").toLocaleDateString("pt-BR"); }
+
+// ─── Estilos ─────────────────────────────────────────────────
+const S = {
+  page:    { background: "#F4F6FA", minHeight: "100vh", fontFamily: "system-ui,sans-serif" },
+  body:    { maxWidth: 1300, margin: "0 auto", padding: "24px 20px" },
+  card:    { background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, marginBottom: 16 },
+  label:   { fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: 4 },
+  inp:     { border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "6px 10px", fontSize: 13, background: "#fff" } as React.CSSProperties,
+  btn:     (bg: string, color = "#fff"): React.CSSProperties => ({ background: bg, color, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }),
+  th:      { padding: "8px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" as const, background: "#F4F6FA" },
+  td:      { padding: "8px 10px", fontSize: 13, borderBottom: "0.5px solid #F0F2F7", verticalAlign: "middle" as const },
+  overlay: { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" },
+  modal:   { background: "#fff", borderRadius: 10, padding: 28, width: "min(96vw,760px)", maxHeight: "92vh", overflowY: "auto" as const, position: "relative" as const },
+};
+const ST_LABEL: Record<string,string>  = { rascunho:"Rascunho", fechado:"Fechado", pago:"Pago" };
+const ST_COLOR: Record<string,string>  = { rascunho:"#888", fechado:"#C9921B", pago:"#16A34A" };
+const ADI_LABEL: Record<string,string> = { pendente:"Pendente", descontado:"Descontado", cancelado:"Cancelado" };
+const ADI_COLOR: Record<string,string> = { pendente:"#C9921B", descontado:"#16A34A", cancelado:"#888" };
+type Aba = "processamento" | "adiantamentos" | "gratificacoes";
+
+// ─── Componente ───────────────────────────────────────────────
+export default function FolhaEmpresaPage() {
+  const { fazendaId, contaId } = useAuth();
+  const [aba, setAba]               = useState<Aba>("processamento");
+  const [loading, setLoading]       = useState(false);
+  const [msg, setMsg]               = useState("");
+  const [saving, setSaving]         = useState(false);
+
+  const [empresas,      setEmpresas]      = useState<Empresa[]>([]);
+  const [empresaSel,    setEmpresaSel]    = useState("");
+  const [funcionarios,  setFuncionarios]  = useState<Funcionario[]>([]);
+  const [folhas,        setFolhas]        = useState<Folha[]>([]);
+  const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
+  const [premiacoes,    setPremiacoes]    = useState<Premiacao[]>([]);
+  const [fComp,         setFComp]         = useState(compAtual());
+
+  const [modalFolha,  setModalFolha]  = useState(false);
+  const [folhaEdit,   setFolhaEdit]   = useState<Partial<Folha> & { funcionarios: FolhaFunc[] }>({ funcionarios: [] });
+  const [abaModal,    setAbaModal]    = useState<"funcionarios"|"resumo">("funcionarios");
+  const [funcExpand,  setFuncExpand]  = useState<Set<number>>(new Set());
+  const [modalAdi,    setModalAdi]    = useState(false);
+  const [adiEdit,     setAdiEdit]     = useState<Partial<Adiantamento>>({});
+  const [modalPrem,   setModalPrem]   = useState(false);
+  const [premEdit,    setPremEdit]    = useState<Partial<Premiacao>>({});
+
+  // Carregar empresas
+  useEffect(() => {
+    if (!contaId && !fazendaId) return;
+    listarEmpresasDaConta(contaId ?? "", fazendaId ?? undefined).then(e => {
+      setEmpresas(e);
+      if (e.length === 1) setEmpresaSel(e[0].id);
+    });
+  }, [contaId, fazendaId]);
+
+  // Carregar dados da empresa selecionada
+  const carregar = useCallback(async () => {
+    if (!fazendaId || !empresaSel) return;
+    setLoading(true);
+    try {
+      const [
+        { data: funcs },
+        { data: fols },
+        { data: adis },
+        { data: prems },
+      ] = await Promise.all([
+        supabase.from("funcionarios")
+          .select("id,nome,cargo,salario_base,tipo")
+          .eq("fazenda_id", fazendaId)
+          .eq("empresa_id", empresaSel)
+          .eq("ativo", true)
+          .order("nome"),
+        supabase.from("folha_pagamento")
+          .select("*")
+          .eq("fazenda_id", fazendaId)
+          .eq("empresa_id", empresaSel)
+          .order("competencia", { ascending: false }),
+        supabase.from("adiantamentos_salario")
+          .select("*, funcionarios(nome)")
+          .eq("fazenda_id", fazendaId)
+          .order("data", { ascending: false }),
+        supabase.from("funcionarios_premiacoes")
+          .select("*, funcionarios(nome)")
+          .eq("fazenda_id", fazendaId)
+          .order("mes_referencia", { ascending: false }),
+      ]);
+      const funcsLista = funcs ?? [];
+      const funcIds = new Set(funcsLista.map((f: any) => f.id));
+      setFuncionarios(funcsLista);
+      setFolhas(fols ?? []);
+      setAdiantamentos((adis ?? []).filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
+      setPremiacoes((prems ?? []).filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
+    } finally {
+      setLoading(false);
+    }
+  }, [fazendaId, empresaSel]);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  async function abrirFolha(folha?: Folha) {
+    if (!fazendaId || !empresaSel) return;
+    if (folha) {
+      const { data: itens } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", folha.id).order("nome_funcionario");
+      setFolhaEdit({ ...folha, funcionarios: (itens ?? []).map((i: any) => ({ ...i, salario_base: (i.salario_bruto ?? 0) - (i.gratificacao ?? 0), gratificacao: i.gratificacao ?? 0 })) });
+    } else {
+      const adisComp  = adiantamentos.filter(a => a.competencia_ref === fComp && a.status === "pendente");
+      const premsComp = premiacoes.filter(p => p.mes_referencia === fComp);
+      const funcs: FolhaFunc[] = funcionarios.map(f => {
+        const base = f.salario_base ?? 0;
+        const grat = premsComp.filter(p => p.funcionario_id === f.id).reduce((s, p) => s + p.valor, 0);
+        const adi  = adisComp.filter(a => a.funcionario_id === f.id).reduce((s, a) => s + a.valor, 0);
+        return recalc({ funcionario_id: f.id, nome_funcionario: f.nome, cargo: f.cargo ?? "", salario_base: base, gratificacao: grat, salario_bruto: base+grat, inss_trabalhador: 0, irrf: 0, adiantamento: adi, outros_descontos: 0, desc_outros_descontos: "", vale_transporte: 0, vale_refeicao: 0, outros_beneficios: 0, inss_patronal: 0, fgts: 0 });
+      });
+      setFolhaEdit({ competencia: fComp, status: "rascunho", empresa_id: empresaSel, funcionarios: funcs });
+    }
+    setAbaModal("funcionarios");
+    setFuncExpand(new Set());
+    setModalFolha(true);
+  }
+
+  async function salvarFolha() {
+    if (!fazendaId || !empresaSel) return;
+    setSaving(true);
+    try {
+      const funcs        = folhaEdit.funcionarios ?? [];
+      const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
+      const totalLiq     = funcs.reduce((s, f) => s + liquido(f), 0);
+      const totalINSSPat = funcs.reduce((s, f) => s + f.inss_patronal, 0);
+      const totalFGTS    = funcs.reduce((s, f) => s + f.fgts, 0);
+
+      let folhaId = folhaEdit.id;
+      if (!folhaId) {
+        const { data, error } = await supabase.from("folha_pagamento").insert({
+          fazenda_id: fazendaId, empresa_id: empresaSel,
+          competencia: folhaEdit.competencia, status: "rascunho",
+          valor_bruto: totalBruto, valor_liquido: totalLiq,
+          inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs,
+        }).select("id").single();
+        if (error) throw error;
+        folhaId = data.id;
+      } else {
+        await supabase.from("folha_pagamento").update({ valor_bruto: totalBruto, valor_liquido: totalLiq, inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs }).eq("id", folhaId);
+        await supabase.from("folha_funcionarios").delete().eq("folha_id", folhaId);
+      }
+
+      if (funcs.length) {
+        await supabase.from("folha_funcionarios").insert(funcs.map(f => ({
+          folha_id: folhaId, funcionario_id: f.funcionario_id ?? null,
+          nome_funcionario: f.nome_funcionario, cargo: f.cargo, salario_bruto: f.salario_bruto,
+          gratificacao: f.gratificacao, inss_trabalhador: f.inss_trabalhador, irrf: f.irrf,
+          adiantamento: f.adiantamento, outros_descontos: f.outros_descontos,
+          desc_outros_descontos: f.desc_outros_descontos, vale_transporte: f.vale_transporte,
+          vale_refeicao: f.vale_refeicao, outros_beneficios: f.outros_beneficios,
+          inss_patronal: f.inss_patronal, fgts: f.fgts,
+        })));
+      }
+      setMsg("Folha salva."); setModalFolha(false); carregar();
+    } catch (e: any) { setMsg("Erro: " + e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function fecharFolha(folha: Folha) {
+    if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? Isso irá gerar os lançamentos de CP.`)) return;
+    setSaving(true);
+    try {
+      const { data: itens } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", folha.id);
+      for (const it of (itens ?? [])) {
+        const liq = Math.max(0, it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios);
+        const { data: lancamento } = await supabase.from("lancamentos").insert({
+          fazenda_id: fazendaId, empresa_id: empresaSel, tipo: "pagar",
+          descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
+          valor: liq, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Salários",
+          data_vencimento: `${folha.competencia}-05`, data_lancamento: new Date().toISOString().slice(0,10),
+        }).select("id").single();
+        if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
+      }
+      await supabase.from("adiantamentos_salario").update({ status: "descontado" }).eq("fazenda_id", fazendaId).eq("competencia_ref", folha.competencia).eq("status", "pendente");
+      await supabase.from("folha_pagamento").update({ status: "fechado" }).eq("id", folha.id);
+      setMsg("Folha fechada e CPs gerados."); carregar();
+    } catch (e: any) { setMsg("Erro: " + e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function salvarAdiantamento() {
+    if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) { setMsg("Preencha funcionário, data e valor."); return; }
+    setSaving(true);
+    try {
+      const { data: lanc } = await supabase.from("lancamentos").insert({
+        fazenda_id: fazendaId, empresa_id: empresaSel, tipo: "pagar",
+        descricao: `Adiantamento — ${funcionarios.find(f=>f.id===adiEdit.funcionario_id)?.nome ?? ""}${adiEdit.descricao ? ` — ${adiEdit.descricao}` : ""}`,
+        valor: adiEdit.valor, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Adiantamentos",
+        data_vencimento: adiEdit.data, data_lancamento: adiEdit.data,
+      }).select("id").single();
+      await supabase.from("adiantamentos_salario").insert({
+        fazenda_id: fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data,
+        valor: adiEdit.valor, competencia_ref: adiEdit.competencia_ref || null,
+        descricao: adiEdit.descricao || null, lancamento_id: lanc?.id ?? null, status: "pendente",
+      });
+      setMsg("Adiantamento registrado e CP gerado."); setModalAdi(false); setAdiEdit({}); carregar();
+    } catch (e: any) { setMsg("Erro: " + e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function cancelarAdiantamento(id: string) {
+    if (!confirm("Cancelar este adiantamento?")) return;
+    await supabase.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
+    carregar();
+  }
+
+  async function salvarPremiacao() {
+    if (!fazendaId || !premEdit.funcionario_id || !premEdit.valor || !premEdit.descricao || !premEdit.mes_referencia) { setMsg("Preencha todos os campos."); return; }
+    setSaving(true);
+    try {
+      await supabase.from("funcionarios_premiacoes").insert({ fazenda_id: fazendaId, funcionario_id: premEdit.funcionario_id, mes_referencia: premEdit.mes_referencia, descricao: premEdit.descricao, valor: premEdit.valor, lancado_financeiro: false });
+      setMsg("Gratificação registrada."); setModalPrem(false); setPremEdit({}); carregar();
+    } catch (e: any) { setMsg("Erro: " + e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function excluirPremiacao(id: string) {
+    if (!confirm("Excluir esta gratificação?")) return;
+    await supabase.from("funcionarios_premiacoes").delete().eq("id", id); carregar();
+  }
+
+  function setFuncField(idx: number, field: keyof FolhaFunc, val: number | string) {
+    setFolhaEdit(prev => {
+      const funcs = [...prev.funcionarios];
+      const f = { ...funcs[idx], [field]: val };
+      funcs[idx] = (field === "salario_base" || field === "gratificacao") ? recalc(f) : f;
+      return { ...prev, funcionarios: funcs };
+    });
+  }
+  function toggleExpand(idx: number) {
+    setFuncExpand(prev => { const s = new Set(prev); s.has(idx) ? s.delete(idx) : s.add(idx); return s; });
+  }
+
+  const folhasFiltradas      = folhas.filter(f => !fComp || f.competencia === fComp);
+  const totalBrutoFolhaEdit  = folhaEdit.funcionarios?.reduce((s,f)=>s+f.salario_bruto,0)??0;
+  const totalLiqFolhaEdit    = folhaEdit.funcionarios?.reduce((s,f)=>s+liquido(f),0)??0;
+  const totalINSSPatFolhaEdit = folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_patronal,0)??0;
+  const empresaAtual = empresas.find(e => e.id === empresaSel);
+
+  return (
+    <div style={S.page}>
+      <TopNav />
+      <div style={S.body}>
+
+        {/* Cabeçalho */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Folha de Pagamento — Empresa</h1>
+            <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>Processamento mensal para funcionários da empresa</p>
+          </div>
+        </div>
+
+        {msg && (
+          <div style={{ background: msg.startsWith("Erro") ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${msg.startsWith("Erro") ? "#FECACA" : "#BBF7D0"}`, borderRadius: 6, padding: "10px 16px", marginBottom: 12, fontSize: 13, color: msg.startsWith("Erro") ? "#B91C1C" : "#166534" }}>
+            {msg} <button onClick={()=>setMsg("")} style={{ float:"right", background:"none", border:"none", cursor:"pointer", fontSize:15 }}>×</button>
+          </div>
+        )}
+
+        {/* Seletor de empresa */}
+        <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>Empresa</div>
+          <select value={empresaSel} onChange={e => setEmpresaSel(e.target.value)} style={{ ...S.inp, minWidth: 280 }}>
+            <option value="">— Selecionar empresa —</option>
+            {empresas.map(e => <option key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</option>)}
+          </select>
+          {empresaAtual && (
+            <span style={{ fontSize: 12, color: "#888" }}>{empresaAtual.cnpj}</span>
+          )}
+        </div>
+
+        {!empresaSel ? (
+          <div style={{ ...S.card, padding: 40, textAlign: "center", color: "#888" }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🏢</div>
+            <div>Selecione uma empresa para visualizar a folha.</div>
+          </div>
+        ) : (
+          <>
+            {/* Abas */}
+            <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
+              {([["processamento","📋 Processamento"],["adiantamentos","💵 Adiantamentos"],["gratificacoes","⭐ Gratificações"]] as [Aba,string][]).map(([k,l]) => (
+                <button key={k} onClick={()=>setAba(k)} style={{ padding:"10px 20px", background:"none", border:"none", borderBottom:aba===k?"2px solid #1A4870":"2px solid transparent", fontWeight:aba===k?700:400, color:aba===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>{l}</button>
+              ))}
+            </div>
+
+            {/* ══ ABA PROCESSAMENTO ══ */}
+            {aba === "processamento" && (
+              <>
+                <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                  <div>
+                    <label style={S.label}>Competência</label>
+                    <input type="month" value={fComp} onChange={e=>setFComp(e.target.value)} style={{ ...S.inp, width:160 }} />
+                  </div>
+                  <div style={{ marginLeft:"auto" }}>
+                    <button onClick={()=>abrirFolha()} style={S.btn("#1A4870")}>+ Nova Folha</button>
+                  </div>
+                </div>
+                {loading ? <div style={{ textAlign:"center", padding:40, color:"#888" }}>Carregando...</div>
+                  : folhasFiltradas.length === 0 ? (
+                    <div style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}>
+                      <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
+                      <div>Nenhuma folha para {fComp ? nomeMes(fComp) : "o período"}.</div>
+                      <button onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop:12 }}>Criar Folha</button>
+                    </div>
+                  ) : (
+                    <div style={S.card}>
+                      <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                        <thead><tr>{["Competência","Funcionários","Bruto Total","Líquido Total","Encargos Patronais","Status",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {folhasFiltradas.map(f => (
+                            <tr key={f.id}>
+                              <td style={S.td}><span style={{ fontWeight:700, color:"#0B2D50" }}>{nomeMes(f.competencia)}</span></td>
+                              <td style={S.td}>{f.funcionarios?.length ?? "—"}</td>
+                              <td style={{ ...S.td, fontWeight:700, color:"#0B2D50", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_bruto)}</td>
+                              <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_liquido)}</td>
+                              <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_patronal??0)}</td>
+                              <td style={S.td}><span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[f.status], background:ST_COLOR[f.status]+"18", borderRadius:4, padding:"2px 8px" }}>{ST_LABEL[f.status]}</span></td>
+                              <td style={{ ...S.td, whiteSpace:"nowrap" }}>
+                                <button onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</button>
+                                {f.status === "rascunho" && <button onClick={()=>fecharFolha(f)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</button>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+              </>
+            )}
+
+            {/* ══ ABA ADIANTAMENTOS ══ */}
+            {aba === "adiantamentos" && (
+              <>
+                <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:13, color:"#555" }}>{adiantamentos.filter(a=>a.status==="pendente").length} adiantamentos pendentes</span>
+                  <div style={{ marginLeft:"auto" }}><button onClick={()=>{ setAdiEdit({ data:new Date().toISOString().slice(0,10), competencia_ref:compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>+ Novo Adiantamento</button></div>
+                </div>
+                {adiantamentos.length === 0 ? (
+                  <div style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}><div style={{ fontSize:32, marginBottom:8 }}>💵</div><div>Nenhum adiantamento registrado.</div></div>
+                ) : (
+                  <div style={S.card}>
+                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead><tr>{["Funcionário","Data","Valor","Descontar em","Descrição","Status",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {adiantamentos.map(a => (
+                          <tr key={a.id}>
+                            <td style={{ ...S.td, fontWeight:600 }}>{a.funcionario_nome ?? "—"}</td>
+                            <td style={S.td}>{dataFmt(a.data)}</td>
+                            <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(a.valor)}</td>
+                            <td style={S.td}>{a.competencia_ref ? nomeMes(a.competencia_ref) : "—"}</td>
+                            <td style={{ ...S.td, color:"#888" }}>{a.descricao || "—"}</td>
+                            <td style={S.td}><span style={{ fontSize:11, fontWeight:700, color:ADI_COLOR[a.status], background:ADI_COLOR[a.status]+"18", borderRadius:4, padding:"2px 8px" }}>{ADI_LABEL[a.status]}</span></td>
+                            <td style={S.td}>{a.status==="pendente" && <button onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</button>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ══ ABA GRATIFICAÇÕES ══ */}
+            {aba === "gratificacoes" && (
+              <>
+                <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:13, color:"#555" }}>{premiacoes.length} gratificação(ões) registradas</span>
+                  <div style={{ marginLeft:"auto" }}><button onClick={()=>{ setPremEdit({ mes_referencia:compAtual() }); setModalPrem(true); }} style={S.btn("#C9921B")}>+ Nova Gratificação</button></div>
+                </div>
+                {premiacoes.length === 0 ? (
+                  <div style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}><div style={{ fontSize:32, marginBottom:8 }}>⭐</div><div>Nenhuma gratificação registrada.</div></div>
+                ) : (
+                  <div style={S.card}>
+                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead><tr>{["Funcionário","Mês Ref.","Descrição","Valor","Incluída na Folha",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {premiacoes.map(p => (
+                          <tr key={p.id}>
+                            <td style={{ ...S.td, fontWeight:600 }}>{p.funcionario_nome ?? "—"}</td>
+                            <td style={S.td}>{nomeMes(p.mes_referencia)}</td>
+                            <td style={S.td}>{p.descricao}</td>
+                            <td style={{ ...S.td, fontWeight:700, color:"#C9921B", fontVariantNumeric:"tabular-nums" }}>{moeda(p.valor)}</td>
+                            <td style={S.td}>{p.lancado_financeiro ? <span style={{ fontSize:11, color:"#16A34A", fontWeight:700 }}>✓ Sim</span> : <span style={{ fontSize:11, color:"#888" }}>Pendente</span>}</td>
+                            <td style={S.td}>{!p.lancado_financeiro && <button onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</button>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ══ MODAL FOLHA ══ */}
+      {modalFolha && (
+        <div style={S.overlay} onClick={()=>setModalFolha(false)}>
+          <div style={{ ...S.modal, width:"min(96vw,1100px)" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <h2 style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
+                Folha — {folhaEdit.competencia ? nomeMes(folhaEdit.competencia) : ""}
+                {folhaEdit.status && <span style={{ marginLeft:10, fontSize:12, fontWeight:700, color:ST_COLOR[folhaEdit.status], background:ST_COLOR[folhaEdit.status]+"18", borderRadius:4, padding:"2px 8px" }}>{ST_LABEL[folhaEdit.status]}</span>}
+              </h2>
+              <button onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+            </div>
+            <div style={{ display:"flex", gap:0, borderBottom:"0.5px solid #DDE2EE", marginBottom:16 }}>
+              {([["funcionarios","Funcionários"],["resumo","Resumo"]] as const).map(([k,l])=>(
+                <button key={k} onClick={()=>setAbaModal(k)} style={{ padding:"8px 18px", background:"none", border:"none", borderBottom:abaModal===k?"2px solid #1A4870":"2px solid transparent", fontWeight:abaModal===k?700:400, color:abaModal===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>{l}</button>
+              ))}
+            </div>
+            {abaModal === "funcionarios" && (
+              <div>
+                {(folhaEdit.funcionarios ?? []).length === 0 ? (
+                  <div style={{ textAlign:"center", padding:24, color:"#888" }}>Nenhum funcionário vinculado a esta empresa. Cadastre funcionários com esta empresa em Cadastros → Funcionários.</div>
+                ) : (
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                      <thead><tr>{["","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Líquido"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {(folhaEdit.funcionarios ?? []).map((f, idx) => {
+                          const liq = liquido(f);
+                          const expanded = funcExpand.has(idx);
+                          return (
+                            <>
+                              <tr key={idx} style={{ background:idx%2===0?"#fff":"#FAFBFD" }}>
+                                <td style={{ ...S.td, width:28 }}><button onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#1A4870", padding:"0 4px" }}>{expanded?"▾":"▸"}</button></td>
+                                <td style={{ ...S.td, fontWeight:600, minWidth:160 }}>{f.nome_funcionario}</td>
+                                <td style={S.td}><input type="number" value={f.salario_base} onChange={e=>setFuncField(idx,"salario_base",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:100, textAlign:"right" }} /></td>
+                                <td style={S.td}><input type="number" value={f.gratificacao} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:90, textAlign:"right", borderColor:f.gratificacao>0?"#C9921B":"#DDE2EE" }} /></td>
+                                <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(f.salario_bruto)}</td>
+                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_trabalhador)}</td>
+                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.irrf)}</td>
+                                <td style={S.td}><input type="number" value={f.adiantamento} onChange={e=>setFuncField(idx,"adiantamento",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:90, textAlign:"right", borderColor:f.adiantamento>0?"#EF9F27":"#DDE2EE" }} /></td>
+                                <td style={S.td}><input type="number" value={f.outros_descontos} onChange={e=>setFuncField(idx,"outros_descontos",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:80, textAlign:"right" }} /></td>
+                                <td style={S.td}><input type="number" value={f.vale_transporte+f.vale_refeicao+f.outros_beneficios} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:80, textAlign:"right" }} /></td>
+                                <td style={{ ...S.td, fontWeight:700, color:liq>=0?"#16A34A":"#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(liq)}</td>
+                              </tr>
+                              {expanded && (
+                                <tr key={`${idx}-d`} style={{ background:"#F8FAFD" }}>
+                                  <td colSpan={11} style={{ padding:"12px 16px 16px 44px" }}>
+                                    <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
+                                      <div><label style={S.label}>Vale Transporte</label><input type="number" value={f.vale_transporte} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
+                                      <div><label style={S.label}>Vale Refeição</label><input type="number" value={f.vale_refeicao} onChange={e=>setFuncField(idx,"vale_refeicao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
+                                      <div><label style={S.label}>Outros Benefícios</label><input type="number" value={f.outros_beneficios} onChange={e=>setFuncField(idx,"outros_beneficios",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
+                                      <div><label style={S.label}>Outros Descontos (desc.)</label><input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descrição..." /></div>
+                                      <div><label style={S.label}>INSS Patronal</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.inss_patronal)}</span></div>
+                                      <div><label style={S.label}>FGTS</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.fgts)}</span></div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            {abaModal === "resumo" && (
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                <div style={{ border:"0.5px solid #DDE2EE", borderRadius:8, padding:16 }}>
+                  <div style={{ fontSize:12, color:"#888", marginBottom:12, fontWeight:700 }}>CUSTO DO TRABALHADOR</div>
+                  {[["Total Bruto",moeda(totalBrutoFolhaEdit),"#0B2D50"],["(−) INSS Trabalhador",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_trabalhador,0)??0),"#888"],["(−) IRRF",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.irrf,0)??0),"#888"],["(−) Adiantamentos",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.adiantamento,0)??0),"#EF9F27"],["(−) Outros Descontos",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.outros_descontos,0)??0),"#888"],["(+) Benefícios",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.vale_transporte+f.vale_refeicao+f.outros_beneficios,0)??0),"#16A34A"]].map(([l,v,c])=>(
+                    <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"0.5px solid #F0F2F7", fontSize:13 }}><span style={{ color:"#555" }}>{l}</span><span style={{ fontWeight:600, color:c, fontVariantNumeric:"tabular-nums" }}>{v}</span></div>
+                  ))}
+                  <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0 0", fontSize:14, fontWeight:700 }}><span>Líquido a Pagar</span><span style={{ color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(totalLiqFolhaEdit)}</span></div>
+                </div>
+                <div style={{ border:"0.5px solid #DDE2EE", borderRadius:8, padding:16 }}>
+                  <div style={{ fontSize:12, color:"#888", marginBottom:12, fontWeight:700 }}>ENCARGOS PATRONAIS</div>
+                  {[["INSS Patronal (28%)",moeda(totalINSSPatFolhaEdit),"#0B2D50"],["FGTS (8%)",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.fgts,0)??0),"#0B2D50"]].map(([l,v,c])=>(
+                    <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"0.5px solid #F0F2F7", fontSize:13 }}><span style={{ color:"#555" }}>{l}</span><span style={{ fontWeight:600, color:c, fontVariantNumeric:"tabular-nums" }}>{v}</span></div>
+                  ))}
+                  <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0 0", fontSize:14, fontWeight:700 }}><span>Custo Total Empresa</span><span style={{ color:"#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(totalBrutoFolhaEdit+totalINSSPatFolhaEdit)}</span></div>
+                </div>
+                <div style={{ gridColumn:"1/-1" }}>
+                  <label style={S.label}>Observações da Folha</label>
+                  <textarea rows={3} value={folhaEdit.obs??""} onChange={e=>setFolhaEdit(p=>({...p,obs:e.target.value}))} style={{ ...S.inp, width:"100%", resize:"vertical" }} />
+                </div>
+              </div>
+            )}
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
+              <button onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Salvando...":"Salvar Folha"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL ADIANTAMENTO ══ */}
+      {modalAdi && (
+        <div style={S.overlay} onClick={()=>setModalAdi(false)}>
+          <div style={{ ...S.modal, width:"min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Novo Adiantamento Salarial</h2>
+              <button onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+            </div>
+            <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>O CP é gerado automaticamente na data do adiantamento.</p>
+            <div style={{ display:"grid", gap:14 }}>
+              <div>
+                <label style={S.label}>Funcionário *</label>
+                <select value={adiEdit.funcionario_id??""} onChange={e=>setAdiEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
+                  <option value="">Selecionar...</option>
+                  {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div><label style={S.label}>Data *</label><input type="date" value={adiEdit.data??""} onChange={e=>setAdiEdit(p=>({...p,data:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
+                <div><label style={S.label}>Valor (R$) *</label><input type="number" value={adiEdit.valor??""} onChange={e=>setAdiEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" /></div>
+              </div>
+              <div>
+                <label style={S.label}>Descontar na competência</label>
+                <input type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
+              </div>
+              <div><label style={S.label}>Descrição / Motivo</label><input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" /></div>
+            </div>
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
+              <button onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving?"Salvando...":"Registrar e Gerar CP"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL GRATIFICAÇÃO ══ */}
+      {modalPrem && (
+        <div style={S.overlay} onClick={()=>setModalPrem(false)}>
+          <div style={{ ...S.modal, width:"min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Nova Gratificação</h2>
+              <button onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+            </div>
+            <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>Incluída no bruto do mês de referência e carregada ao criar a folha.</p>
+            <div style={{ display:"grid", gap:14 }}>
+              <div>
+                <label style={S.label}>Funcionário *</label>
+                <select value={premEdit.funcionario_id??""} onChange={e=>setPremEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
+                  <option value="">Selecionar...</option>
+                  {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div><label style={S.label}>Mês de referência *</label><input type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
+                <div><label style={S.label}>Valor (R$) *</label><input type="number" value={premEdit.valor??""} onChange={e=>setPremEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" /></div>
+              </div>
+              <div><label style={S.label}>Descrição *</label><input type="text" value={premEdit.descricao??""} onChange={e=>setPremEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Gratificação de produtividade..." /></div>
+            </div>
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
+              <button onClick={()=>setModalPrem(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving?"Salvando...":"Salvar Gratificação"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -10781,3 +10781,13 @@ ALTER TABLE folha_funcionarios
   ADD COLUMN IF NOT EXISTS gratificacao numeric(14,2) DEFAULT 0;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 202 — empresa_id em funcionarios ────────────────────────
+-- Funcionários com empresa_id → pertencem à empresa (módulo Empresas)
+-- Funcionários com empresa_id NULL → pertencem ao produtor (módulo Financeiro)
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES empresas(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_funcionarios_empresa ON funcionarios(empresa_id) WHERE empresa_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

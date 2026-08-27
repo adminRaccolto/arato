@@ -141,7 +141,7 @@ function ContasPagarInner() {
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   // Guarda o último cascade usado para pré-preencher o próximo modal novo
   const lastCascadeRef = useRef<Partial<CascadeValues>>({});
-  const fid = cascade.fazendaId ?? fazendaId ?? "";
+  const fid = cascade.fazendaId || fazendaId || "";
 
   // ── Aba principal: Lançamentos ou Faturas ──
   const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
