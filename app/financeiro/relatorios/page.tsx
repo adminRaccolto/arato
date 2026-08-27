@@ -268,11 +268,15 @@ function FinanceiroRelatoriosInner() {
       .finally(() => setCarregando(false));
     listarEmpresas(fazendaId).then(setEmpresas).catch(() => setEmpresas([]));
     listarContas(fazendaId).then(setContas).catch(() => setContas([]));
-    if (contaId) {
-      listarProdutoresDaConta(contaId).then(setProdutores).catch(() => setProdutores([]));
-    } else {
-      listarProdutores(fazendaId).then(setProdutores).catch(() => setProdutores([]));
-    }
+    // Combina as duas fontes: produtores da conta (por conta_id) + da fazenda (fallback/sem conta_id)
+    Promise.all([
+      contaId ? listarProdutoresDaConta(contaId).catch(() => [] as Produtor[]) : Promise.resolve([] as Produtor[]),
+      listarProdutores(fazendaId).catch(() => [] as Produtor[]),
+    ]).then(([porConta, porFazenda]) => {
+      const mapa = new Map<string, Produtor>();
+      [...porConta, ...porFazenda].forEach(p => mapa.set(p.id, p));
+      setProdutores([...mapa.values()]);
+    });
     listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => setPessoas([]));
     fetch("/api/precos").then(r => r.json()).then(d => {
       const taxa = d?.usdPtax ?? d?.usdBrl;
@@ -1675,6 +1679,11 @@ function FinanceiroRelatoriosInner() {
                 const prodMap  = Object.fromEntries(produtores.map(p => [p.id, p.nome]));
                 const pessoaMap = Object.fromEntries(pessoas.map(p => [p.id, p.nome]));
                 const ogMap    = Object.fromEntries(operacoesGer.map(o => [o.id, o.descricao]));
+                // Extrai o nome do fornecedor da descrição (remove prefixo "NF 123 — " ou "NFS-e 123 — ")
+                const extrairFornecedor = (desc: string) => {
+                  const m = desc.match(/^NF[Ss]?[-]?e?\s+[\w\d]+\s+[—–-]+\s*(.+)$/i);
+                  return m ? m[1].trim() : desc;
+                };
 
                 const corStatusCPCR: Record<string, { bg: string; color: string; label: string }> = {
                   em_aberto: { bg: "#E8E8E8", color: "#0D0D0D", label: "Em Aberto" },
@@ -1801,7 +1810,7 @@ function FinanceiroRelatoriosInner() {
                     const sinal = l.tipo === "pagar" ? -1 : 1;
                     switch (col.key) {
                       case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
-                      case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? l.descricao ?? "";
+                      case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "";
                       case "numero_nf":      return l.numero_documento ?? "";
                       case "emissao":        return l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
                       case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
@@ -2101,7 +2110,7 @@ function FinanceiroRelatoriosInner() {
                               <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
                             </td>;
                           case "fornecedor": {
-                            const fNome = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? l.descricao ?? "—";
+                            const fNome = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "—") ?? "—";
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={fNome}>{fNome}</td>;
                           }
                           case "numero_nf":
