@@ -213,7 +213,7 @@ export default function FolhaPagamentoPage() {
         { data: emps },
       ] = await Promise.all([
         supabase.from("funcionarios")
-          .select("id,nome,funcao,salario_base,complemento_salarial,tipo,empresa_id,ativo")
+          .select("id,nome,funcao,salario_base,tipo,empresa_id,ativo")
           .eq("fazenda_id", fazendaId)
           .order("nome"),
         supabase.from("folha_pagamento")
