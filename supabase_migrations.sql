@@ -10815,3 +10815,8 @@ ALTER TABLE folha_funcionarios
   ADD COLUMN IF NOT EXISTS complemento_salarial numeric(14,2) DEFAULT 0;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 206 — Banco Cresol Cooperativo ─────────────────────────
+INSERT INTO bancos (codigo_compe, nome, nome_curto, cnpj, ispb)
+VALUES ('133', 'Banco Cresol Cooperativo S.A.', 'Cresol', '81723108000100', '81723108')
+ON CONFLICT (codigo_compe) DO NOTHING;
