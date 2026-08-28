@@ -280,7 +280,7 @@ function ContasReceberInner() {
     { key: "obs",        label: "Observação" },
   ], []);
   const colKey = `cr_colunas_${emailUsuario ?? "default"}`;
-  const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid(colKey, COLS_CR);
+  const { col, toggle: toggleCol, visiveis: visCols, ordemTodas: ordemCR, moverColuna: moverColCR, resetar: resetarCR } = useColunasGrid(colKey, COLS_CR);
   const colWKey = `cr_col_widths_${emailUsuario ?? "default"}`;
   const { w: cw, startResize } = useColumnResize({
     fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
@@ -1848,8 +1848,11 @@ function ContasReceberInner() {
           x={menuColunas.x}
           y={menuColunas.y}
           colunas={COLS_CR}
+          ordemTodas={ordemCR}
           visiveis={visCols}
           onToggle={toggleCol}
+          onMover={moverColCR}
+          onResetar={resetarCR}
           onClose={() => setMenuColunas(null)}
         />
       )}

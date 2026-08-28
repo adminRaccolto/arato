@@ -391,7 +391,9 @@ function ContasPagarInner() {
     { key: "obs",        label: "Observação" },
   ], []);
   const colKey = `cp_colunas_${emailUsuario ?? "default"}`;
-  const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid(colKey, COLS_CP);
+  const { col, toggle: toggleCol, visiveis: visCols, ordemTodas, moverColuna, resetar: resetarCols } = useColunasGrid(colKey, COLS_CP);
+  // Chaves das colunas opcionais (não fixas) — reordenáveis pelo usuário
+  const OPTIONAL_KEYS = useMemo(() => COLS_CP.filter(c => !c.fixo).map(c => c.key), [COLS_CP]);
   const colWKey = `cp_col_widths_${emailUsuario ?? "default"}`;
   const { w: cw, startResize } = useColumnResize({
     fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
@@ -1239,7 +1241,7 @@ function ContasPagarInner() {
                 {filtradosBase.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Nenhuma conta encontrada para este filtro.</div>
                 ) : (
-                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 44 + cw("fornecedor") + (col("operacao") ? cw("operacao") : 0) + (col("safra") ? cw("safra") : 0) + (col("ciclo") ? cw("ciclo") : 0) + cw("vencimento") + (col("venc_orig") ? cw("venc_orig") : 0) + cw("valor") + (col("dt_pgto") ? cw("dt_pgto") : 0) + (col("valor_pago") ? cw("valor_pago") : 0) + (col("moeda") ? cw("moeda") : 0) + (col("conta") ? cw("conta") : 0) + (col("produtor") ? cw("produtor") : 0) + (col("origem") ? cw("origem") : 0) + (col("obs") ? cw("obs") : 0) + 110, 600), borderCollapse: "collapse" }}>
+                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 52 + 44 + cw("fornecedor") + cw("vencimento") + cw("valor") + 36 + 36 + 36 + ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).reduce((s, k) => s + cw(k), 0), 600), borderCollapse: "collapse" }}>
                     <thead style={{ position: "sticky", top: 0, zIndex: 3 }}
                       onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
                       title="Clique com botão direito para configurar colunas">
@@ -1252,20 +1254,14 @@ function ContasPagarInner() {
                         <th style={{ ...thS(52, "center"), width: 52 }}>Nº</th>
                         <th style={{ ...thS(cw("fornecedor"), "left"), width: cw("fornecedor"), position: "relative", userSelect: "none" }}>Fornecedor / Cliente<ResizeHandle onMouseDown={startResize("fornecedor")} /></th>
                         <th style={{ ...thS(44, "center"), width: 44 }}>Parc.</th>
-                        {col("operacao")   && <th style={{ ...thS(cw("operacao"),   "left"),   width: cw("operacao"),   position: "relative", userSelect: "none" }}>Operação<ResizeHandle onMouseDown={startResize("operacao")} /></th>}
-                        {col("safra")      && <th style={{ ...thS(cw("safra"),      "left"),   width: cw("safra"),      position: "relative", userSelect: "none" }}>Safra<ResizeHandle onMouseDown={startResize("safra")} /></th>}
-                        {col("ciclo")      && <th style={{ ...thS(cw("ciclo"),      "left"),   width: cw("ciclo"),      position: "relative", userSelect: "none" }}>Ciclo<ResizeHandle onMouseDown={startResize("ciclo")} /></th>}
                         <th style={{ ...thS(cw("vencimento"), "center"), width: cw("vencimento"), position: "relative", userSelect: "none" }}>Vencimento ↑<ResizeHandle onMouseDown={startResize("vencimento")} /></th>
-                        {col("venc_orig")   && <th style={{ ...thS(cw("venc_orig"),   "center"), width: cw("venc_orig"),   position: "relative", userSelect: "none" }}>Venc. Original<ResizeHandle onMouseDown={startResize("venc_orig")} /></th>}
                         <th style={{ ...thS(cw("valor"), "right"), width: cw("valor"), position: "relative", userSelect: "none" }}>Valor<ResizeHandle onMouseDown={startResize("valor")} /></th>
-                        {col("dt_pgto")    && <th style={{ ...thS(cw("dt_pgto"),    "center"), width: cw("dt_pgto"),    position: "relative", userSelect: "none" }}>Dt. Pgto<ResizeHandle onMouseDown={startResize("dt_pgto")} /></th>}
-                        {col("valor_pago") && <th style={{ ...thS(cw("valor_pago"), "right"),  width: cw("valor_pago"), position: "relative", userSelect: "none" }}>Valor Pago<ResizeHandle onMouseDown={startResize("valor_pago")} /></th>}
-                        {col("moeda")      && <th style={{ ...thS(cw("moeda"),      "center"), width: cw("moeda"),      position: "relative", userSelect: "none" }}>Moeda<ResizeHandle onMouseDown={startResize("moeda")} /></th>}
-                        {col("conta")      && <th style={{ ...thS(cw("conta"),      "left"),   width: cw("conta"),      position: "relative", userSelect: "none" }}>Conta<ResizeHandle onMouseDown={startResize("conta")} /></th>}
-                        {col("produtor")   && <th style={{ ...thS(cw("produtor"),   "left"),   width: cw("produtor"),   position: "relative", userSelect: "none" }}>Produtor<ResizeHandle onMouseDown={startResize("produtor")} /></th>}
-                        {col("num_nf")     && <th style={{ ...thS(cw("num_nf"),     "center"), width: cw("num_nf"),     position: "relative", userSelect: "none" }}>Nº NF<ResizeHandle onMouseDown={startResize("num_nf")} /></th>}
-                        {col("origem")     && <th style={{ ...thS(cw("origem"),     "center"), width: cw("origem"),     position: "relative", userSelect: "none" }}>Origem<ResizeHandle onMouseDown={startResize("origem")} /></th>}
-                        {col("obs")        && <th style={{ ...thS(cw("obs"),        "left"),   width: cw("obs"),        position: "relative", userSelect: "none" }}>Observação<ResizeHandle onMouseDown={startResize("obs")} /></th>}
+                        {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
+                          const TH_LABELS: Record<string, string> = { operacao: "Operação", safra: "Safra", ciclo: "Ciclo", venc_orig: "Venc. Original", dt_pgto: "Dt. Pgto", valor_pago: "Valor Pago", moeda: "Moeda", conta: "Conta", produtor: "Produtor", num_nf: "Nº NF", origem: "Origem", obs: "Observação" };
+                          const TH_ALIGN: Record<string, "left"|"center"|"right"> = { venc_orig: "center", dt_pgto: "center", valor_pago: "right", moeda: "center", num_nf: "center", origem: "center" };
+                          const align = TH_ALIGN[k] ?? "left";
+                          return <th key={k} style={{ ...thS(cw(k), align), width: cw(k), position: "relative", userSelect: "none" }}>{TH_LABELS[k]}<ResizeHandle onMouseDown={startResize(k)} /></th>;
+                        })}
                         <th style={{ ...thS(36, "center"), width: 36 }}>Baixar</th>
                         <th style={{ ...thS(36, "center"), width: 36 }}>Reprog.</th>
                         <th style={{ ...thS(36, "center"), width: 36 }}>Editar</th>
@@ -1276,25 +1272,22 @@ function ContasPagarInner() {
                         <td></td>
                         <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} /></td>
                         <td></td>
-                        {col("operacao")   && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} /></td>}
-                        {col("safra")      && <td style={{ padding: "3px 6px" }}><select style={inpF} value={fSafra} onChange={e => setFSafra(e.target.value)}><option value="">Todas</option>{anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}</select></td>}
-                        {col("ciclo")      && <td></td>}
                         <td></td>
-                        {col("venc_orig")  && <td></td>}
                         <td style={{ padding: "3px 6px" }}>
                           <div style={{ display: "flex", gap: 2 }}>
                             <input style={{ ...inpF, width: "50%" }} placeholder="De" value={fValorMin} onChange={e => setFValorMin(e.target.value.replace(/[^\d,]/g, ""))} title="Valor mínimo" />
                             <input style={{ ...inpF, width: "50%" }} placeholder="Até" value={fValorMax} onChange={e => setFValorMax(e.target.value.replace(/[^\d,]/g, ""))} title="Valor máximo" />
                           </div>
                         </td>
-                        {col("dt_pgto")    && <td></td>}
-                        {col("valor_pago") && <td></td>}
-                        {col("moeda")      && <td></td>}
-                        {col("conta")      && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} /></td>}
-                        {col("produtor")   && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} /></td>}
-                        {col("num_nf")     && <td></td>}
-                        {col("origem")     && <td></td>}
-                        {col("obs")        && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} /></td>}
+                        {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
+                          let content: React.ReactNode = null;
+                          if (k === "operacao") content = <input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} />;
+                          if (k === "safra")    content = <select style={inpF} value={fSafra} onChange={e => setFSafra(e.target.value)}><option value="">Todas</option>{anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}</select>;
+                          if (k === "conta")    content = <input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} />;
+                          if (k === "produtor") content = <input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} />;
+                          if (k === "obs")      content = <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />;
+                          return <td key={k} style={content ? { padding: "3px 6px" } : {}}>{content}</td>;
+                        })}
                         <td></td><td></td><td></td>
                       </tr>
                     </thead>
@@ -1443,16 +1436,6 @@ function ContasPagarInner() {
                                 </div>
                               ) : <span style={{ color: "#1E3A5F", fontSize: 11 }}>—</span>}
                             </td>
-                            {/* Operação */}
-                            {col("operacao") && <td style={{ padding: "8px 8px" }}>
-                              <span style={{ fontSize: 11, color: "var(--text-1)", whiteSpace: "nowrap" }}>
-                                {l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}
-                              </span>
-                            </td>}
-                            {/* Safra */}
-                            {col("safra") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ano_safra_id ? safra : "—"}</td>}
-                            {/* Ciclo */}
-                            {col("ciclo") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ciclo_id ? cicloDesc : "—"}</td>}
                             {/* Vencimento */}
                             <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
                               <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>
@@ -1461,56 +1444,27 @@ function ContasPagarInner() {
                               </div>
                               {relativo && <div style={{ fontSize: 9, color: relativo.cor, fontWeight: 700, marginTop: 1 }}>{relativo.txt}</div>}
                             </td>
-                            {/* Vencimento Original (antes da renegociação) */}
-                            {col("venc_orig") && <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 10, fontStyle: "italic", color: "var(--text-3)" }}>
-                              {l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}
-                            </td>}
                             {/* Valor */}
                             <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                               <div style={{ fontWeight: 700, color: l.moeda === "barter" ? "#8B5E14" : "var(--text-1)", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{exibirValor(l)}</div>
                               {conv && <div style={{ fontSize: 9, color: semCotacao ? "#EF9F27" : "var(--text-muted)", marginTop: 1 }}>{conv}</div>}
                             </td>
-                            {/* Data Pgto */}
-                            {col("dt_pgto") && <td style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa)}</td>}
-                            {/* Valor Pago */}
-                            {col("valor_pago") && <td style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>
-                              {l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0
-                                ? <div>
-                                    <span style={{ color: "var(--text-2)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
-                                    <div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div>
-                                    <div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}>
-                                      <div style={{ height: 3, borderRadius: 2, background: "#111111", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
-                                    </div>
-                                  </div>
-                                : l.valor_pago != null && l.valor_pago > 0
-                                  ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
-                                  : <span style={{ color: "#1E3A5F" }}>—</span>}
-                            </td>}
-                            {/* Moeda */}
-                            {col("moeda") && <td style={{ padding: "8px 8px", textAlign: "center" }}>
-                              <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "#F0F0F0" : l.moeda === "barter" ? "#F0F0F0" : "var(--bg-input)", color: l.moeda === "USD" ? "#555555" : l.moeda === "barter" ? "#555555" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)" }}>
-                                {l.moeda === "barter" ? "Barter" : (l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `${l.moeda}→${l.moeda_pagamento}` : l.moeda)}
-                              </span>
-                            </td>}
-                            {/* Conta */}
-                            {col("conta") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "—"}</td>}
-                            {/* Produtor */}
-                            {col("produtor") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.produtor_id ? prod : "—"}</td>}
-                            {/* Nº NF */}
-                            {col("num_nf") && <td style={{ padding: "8px 6px", textAlign: "center", fontSize: 11, color: "var(--text-2)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                              {l.nfe_numero ?? "—"}
-                            </td>}
-                            {/* Origem */}
-                            {col("origem") && <td style={{ padding: "8px 8px", textAlign: "center" }}>
-                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                                <span style={{ fontSize: 9, background: "var(--bg-input)", color: "var(--text-2)", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{om.label}</span>
-                                {(l as Lancamento & { fatura_id?: string }).fatura_id && (
-                                  <span style={{ fontSize: 9, background: "#FBF3E0", color: "#7A4300", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid #C9921B", whiteSpace: "nowrap" }}>Fatura</span>
-                                )}
-                              </div>
-                            </td>}
-                            {/* Observação */}
-                            {col("obs") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", maxWidth: 160 }}>{obsExibir}</td>}
+                            {/* Colunas opcionais em ordem personalizada */}
+                            {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
+                              if (k === "operacao") return <td key={k} style={{ padding: "8px 8px" }}><span style={{ fontSize: 11, color: "var(--text-1)", whiteSpace: "nowrap" }}>{l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}</span></td>;
+                              if (k === "safra") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ano_safra_id ? safra : "—"}</td>;
+                              if (k === "ciclo") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ciclo_id ? cicloDesc : "—"}</td>;
+                              if (k === "venc_orig") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 10, fontStyle: "italic", color: "var(--text-3)" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>;
+                              if (k === "dt_pgto") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa)}</td>;
+                              if (k === "valor_pago") return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>{l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0 ? <div><span style={{ color: "var(--text-2)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span><div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div><div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}><div style={{ height: 3, borderRadius: 2, background: "#111111", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} /></div></div> : l.valor_pago != null && l.valor_pago > 0 ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span> : <span style={{ color: "#1E3A5F" }}>—</span>}</td>;
+                              if (k === "moeda") return <td key={k} style={{ padding: "8px 8px", textAlign: "center" }}><span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "#F0F0F0" : l.moeda === "barter" ? "#F0F0F0" : "var(--bg-input)", color: l.moeda === "USD" ? "#555555" : l.moeda === "barter" ? "#555555" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)" }}>{l.moeda === "barter" ? "Barter" : (l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `${l.moeda}→${l.moeda_pagamento}` : l.moeda)}</span></td>;
+                              if (k === "conta") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "—"}</td>;
+                              if (k === "produtor") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.produtor_id ? prod : "—"}</td>;
+                              if (k === "num_nf") return <td key={k} style={{ padding: "8px 6px", textAlign: "center", fontSize: 11, color: "var(--text-2)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{l.nfe_numero ?? "—"}</td>;
+                              if (k === "origem") return <td key={k} style={{ padding: "8px 8px", textAlign: "center" }}><div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}><span style={{ fontSize: 9, background: "var(--bg-input)", color: "var(--text-2)", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{om.label}</span>{(l as Lancamento & { fatura_id?: string }).fatura_id && <span style={{ fontSize: 9, background: "#FBF3E0", color: "#7A4300", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid #C9921B", whiteSpace: "nowrap" }}>Fatura</span>}</div></td>;
+                              if (k === "obs") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", maxWidth: 160 }}>{obsExibir}</td>;
+                              return null;
+                            })}
                             {/* Baixar */}
                             <td style={{ padding: "5px 4px", textAlign: "center" }}>
                               {isPrevisao ? (
@@ -3018,8 +2972,11 @@ function ContasPagarInner() {
           x={menuColunas.x}
           y={menuColunas.y}
           colunas={COLS_CP}
+          ordemTodas={ordemTodas}
           visiveis={visCols}
           onToggle={toggleCol}
+          onMover={moverColuna}
+          onResetar={resetarCols}
           onClose={() => setMenuColunas(null)}
         />
       )}
