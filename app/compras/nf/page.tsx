@@ -241,10 +241,11 @@ export default function NfCompraPage() {
   const [depFiltro, setDepFiltro] = useState<"proprio" | "terceiro">("proprio");
 
   // Filtros lista
-  const [filtroStatus, setFiltroStatus] = useState("");
-  const [filtroTipo,   setFiltroTipo]   = useState("");
-  const [filtroOrigem, setFiltroOrigem] = useState("");
-  const [busca,        setBusca]        = useState("");
+  const [filtroStatus,   setFiltroStatus]   = useState("");
+  const [filtroTipo,     setFiltroTipo]     = useState("");
+  const [filtroOrigem,   setFiltroOrigem]   = useState("");
+  const [filtroProdutor, setFiltroProdutor] = useState("");
+  const [busca,          setBusca]          = useState("");
 
   // Lê ?busca= da URL para deep-link direto a uma NF (ex: vindo de Pedido de Compra)
   useEffect(() => {
@@ -298,6 +299,7 @@ export default function NfCompraPage() {
     ano_safra_id: "", ciclo_id: "",
     operacao_gerencial_id: "",
     tipo_destino: "" as "" | "estoque" | "direto",
+    tipo_estoque: "insumos" as "insumos" | "pecas" | "combustivel",
   });
   const [batchFazendaId, setBatchFazendaId] = useState<string>("");
   const [batchOps,    setBatchOps]    = useState<OperacaoGerencial[]>([]);
@@ -905,7 +907,7 @@ export default function NfCompraPage() {
       pessoa_id: nf.pessoa_id ?? pessoaPorCnpj(nf.emitente_cnpj ?? ""),
       cfop: nf.cfop ?? "",
       data_emissao: nf.data_emissao,
-      data_entrada: nf.data_entrada ?? "",
+      data_entrada: nf.data_entrada ?? new Date().toISOString().split("T")[0],
       valor_total: String(nf.valor_total),
       natureza: nf.natureza ?? "",
       pedido_compra_id: nf.pedido_compra_id ?? "",
@@ -1710,7 +1712,7 @@ export default function NfCompraPage() {
           upd.tipo_entrada = "custo_direto";
         } else if (tipoDest === "estoque") {
           if (batchSettings.deposito_destino_id) (upd as Record<string,unknown>).deposito_destino_id = batchSettings.deposito_destino_id;
-          upd.tipo_entrada = "insumos";
+          upd.tipo_entrada = batchSettings.tipo_estoque;
         } else {
           // sem alteração de tipo — só deposito se informado
           if (batchSettings.deposito_destino_id) (upd as Record<string,unknown>).deposito_destino_id = batchSettings.deposito_destino_id;
@@ -1719,7 +1721,7 @@ export default function NfCompraPage() {
 
         // 2. Decidir se processa agora ou deixa pendente para entrada individual
         const tipoEfetivo = tipoDest === "direto" ? "custo_direto"
-          : tipoDest === "estoque" ? "insumos"
+          : tipoDest === "estoque" ? batchSettings.tipo_estoque
           : (nf.tipo_entrada ?? "custo_direto");
 
         if (tipoEfetivo === "custo_direto" && ccId) {
@@ -1995,9 +1997,10 @@ export default function NfCompraPage() {
 
   // ── Lista filtrada ────────────────────────────────────────
   const nfsFiltradas = nfs.filter(nf => {
-    if (filtroStatus && nf.status !== filtroStatus) return false;
-    if (filtroTipo   && nf.tipo_entrada !== filtroTipo) return false;
-    if (filtroOrigem && nf.origem !== filtroOrigem) return false;
+    if (filtroStatus   && nf.status !== filtroStatus) return false;
+    if (filtroTipo     && nf.tipo_entrada !== filtroTipo) return false;
+    if (filtroOrigem   && nf.origem !== filtroOrigem) return false;
+    if (filtroProdutor && nf.produtor_id !== filtroProdutor) return false;
     if (filtroDataDe  && nf.data_emissao < filtroDataDe)  return false;
     if (filtroDataAte && nf.data_emissao > filtroDataAte) return false;
     if (busca) {
@@ -2117,6 +2120,12 @@ export default function NfCompraPage() {
             <option value="xml">XML</option>
             <option value="sieg">SIEG</option>
           </select>
+          {wProdutores.length > 0 && (
+            <select value={filtroProdutor} onChange={e => setFiltroProdutor(e.target.value)} style={{ ...inp, width: 180 }}>
+              <option value="">Todos os produtores</option>
+              {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>Emissão:</span>
             <input type="date" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
@@ -2169,12 +2178,53 @@ export default function NfCompraPage() {
                   setWDepositos([...depositos]);
                   setWPedidos([...pedidos]);
                 }
-                setBatchSettings({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "", ciclo_id: "", operacao_gerencial_id: "", tipo_destino: "" });
+                setBatchSettings({ pedido_compra_id: "", data_vencimento_cp: "", deposito_destino_id: "", centro_custo_id: "", ano_safra_id: "", ciclo_id: "", operacao_gerencial_id: "", tipo_destino: "", tipo_estoque: "insumos" });
                 setBatchModal(true);
               }}
               style={{ padding: "6px 16px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
             >
               ⚡ Processar em lote
+            </button>
+            <button
+              onClick={() => {
+                const sel = nfsFiltradas.filter(n => selectedNfs.has(n.id));
+                if (!sel.length) return;
+                const html = `
+                  <html><head><title>NFs Selecionadas</title><style>
+                    body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
+                    table{width:100%;border-collapse:collapse;margin-bottom:16px}
+                    th,td{padding:5px 8px;border:0.5px solid #ccc;text-align:left}
+                    th{background:#f5f5f5;font-weight:600}
+                    h2{margin:0 0 12px;font-size:14px}
+                    .rodape{margin-top:20px;font-size:10px;color:#999}
+                    @page{size:A4 landscape}
+                  </style></head><body>
+                  <h2>Relatório de NFs — ${new Date().toLocaleDateString("pt-BR")}</h2>
+                  <table><thead><tr>
+                    <th>Nº NF</th><th>Série</th><th>Emitente</th><th>Data Emissão</th><th>Valor Total</th><th>Status</th><th>Operação</th>
+                  </tr></thead><tbody>
+                  ${sel.map(n => `<tr>
+                    <td>${n.numero ?? "—"}</td>
+                    <td>${n.serie ?? "—"}</td>
+                    <td>${n.emitente_nome ?? "—"}</td>
+                    <td>${n.data_emissao ? new Date(n.data_emissao + "T00:00").toLocaleDateString("pt-BR") : "—"}</td>
+                    <td>${(n.valor_total ?? 0).toLocaleString("pt-BR", { style:"currency", currency:"BRL" })}</td>
+                    <td>${n.status ?? "—"}</td>
+                    <td>${n.tipo_entrada ?? "—"}</td>
+                  </tr>`).join("")}
+                  </tbody><tfoot><tr>
+                    <td colspan="4" style="font-weight:600;text-align:right">Total (${sel.length} NFs):</td>
+                    <td style="font-weight:600">${sel.reduce((s,n)=>s+(n.valor_total??0),0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+                    <td colspan="2"></td>
+                  </tr></tfoot></table>
+                  <div class="rodape">Gerado em ${new Date().toLocaleString("pt-BR")}</div>
+                  </body></html>`;
+                const win = window.open("", "_blank");
+                if (win) { win.document.write(html); win.document.close(); win.print(); }
+              }}
+              style={{ padding: "6px 16px", background: "transparent", color: "#fff", border: "0.5px solid rgba(255,255,255,0.5)", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}
+            >
+              🖨 Imprimir
             </button>
             <button
               onClick={() => setSelectedNfs(new Set())}
@@ -4414,6 +4464,21 @@ export default function NfCompraPage() {
                 ))}
               </div>
             </div>
+
+            {/* Sub-tipo de estoque — só quando "estoque" está selecionado */}
+            {batchSettings.tipo_destino === "estoque" && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={lbl}>Subcategoria do Estoque</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([ ["insumos", "Insumos Agrícolas"], ["pecas", "Peças / Manutenção"], ["combustivel", "Combustível"] ] as const).map(([v, label]) => (
+                    <button key={v} onClick={() => setBatchSettings(p => ({ ...p, tipo_estoque: v }))}
+                      style={{ flex: 1, padding: "7px 8px", border: `0.5px solid ${batchSettings.tipo_estoque === v ? "#1A4870" : "var(--border-ui)"}`, borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: 600, background: batchSettings.tipo_estoque === v ? "#D5E8F5" : "var(--bg-input)", color: batchSettings.tipo_estoque === v ? "#1A4870" : "var(--text-2)" }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
               {/* ── Campos comuns ── */}

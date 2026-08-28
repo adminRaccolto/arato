@@ -2922,8 +2922,20 @@ export async function criarParcelaLiberacao(
 }
 
 export async function excluirParcelaLiberacao(id: string): Promise<void> {
+  // Busca lancamento_id antes de excluir para remover o CR vinculado
+  const { data: parcela } = await supabase
+    .from("parcelas_liberacao")
+    .select("lancamento_id")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase.from("parcelas_liberacao").delete().eq("id", id);
   if (error) throw error;
+
+  // Remove o CR criado automaticamente junto com a liberação
+  if (parcela?.lancamento_id) {
+    await supabase.from("lancamentos").delete().eq("id", parcela.lancamento_id);
+  }
 }
 
 // Parcelas de pagamento

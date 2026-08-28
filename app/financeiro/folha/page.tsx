@@ -199,9 +199,8 @@ export default function FolhaPagamentoPage() {
         { data: prems },
       ] = await Promise.all([
         supabase.from("funcionarios")
-          .select("id,nome,cargo,salario_base,tipo")
+          .select("id,nome,cargo,salario_base,tipo,empresa_id")
           .eq("fazenda_id", fazendaId)
-          .is("empresa_id", null)
           .eq("ativo", true)
           .order("nome"),
         supabase.from("folha_pagamento")
@@ -218,7 +217,8 @@ export default function FolhaPagamentoPage() {
           .eq("fazenda_id", fazendaId)
           .order("mes_referencia", { ascending: false }),
       ]);
-      const funcsLista = funcs ?? [];
+      // Filtra client-side: empresa_id null = produtor; empresa_id preenchido = módulo Empresas
+      const funcsLista = (funcs ?? []).filter((f: any) => !f.empresa_id);
       const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
       setFolhas(fols ?? []);
@@ -307,6 +307,7 @@ export default function FolhaPagamentoPage() {
         }).select("id").single();
         if (error) throw error;
         folhaId = data.id;
+        setFolhaEdit(p => ({ ...p, id: folhaId })); // evita duplicação ao salvar novamente
       } else {
         await supabase.from("folha_pagamento").update({
           valor_bruto: totalBruto, valor_liquido: totalLiq,

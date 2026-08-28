@@ -754,6 +754,7 @@ export type Pessoa = {
   regime_tributario?: string;
   cnae?: string;
   situacao_cadastral?: string;
+  inscricao_mun?: string;   // Inscrição Municipal (ISS / NFSe)
   // Subcategorias de classificação (ex: "Fornecedor de Insumos", "Arrendante", custom...)
   subcategorias?: string[];
   created_at?: string;

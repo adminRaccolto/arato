@@ -131,11 +131,14 @@ export default function NfServicoPage() {
   const [anos,     setAnos]     = useState<AnoSafra[]>([]);
   const [pedidos,  setPedidos]  = useState<PedidoMin[]>([]);
 
-  const [busca,        setBusca]        = useState("");
-  const [filtroStatus, setFiltroStatus] = useState("");
-  const [filtroOrigem, setFiltroOrigem] = useState("");
-  const [filtroDataDe, setFiltroDataDe] = useState("");
-  const [filtroDataAte,setFiltroDataAte]= useState("");
+  const [busca,          setBusca]          = useState("");
+  const [filtroStatus,   setFiltroStatus]   = useState("");
+  const [filtroOrigem,   setFiltroOrigem]   = useState("");
+  const [filtroFazenda,  setFiltroFazenda]  = useState("");
+  const [selectedNfs,    setSelectedNfs]    = useState<Set<string>>(new Set());
+  const [filtroDataDe,   setFiltroDataDe]   = useState("");
+  const [filtroDataAte,  setFiltroDataAte]  = useState("");
+  const [fazendas,       setFazendas]       = useState<Array<{id:string;nome:string}>>([]);
 
   // ── SIEG ────────────────────────────────────────────────────
   const [siegDtInicio,      setSiegDtInicio]      = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
@@ -228,6 +231,18 @@ export default function NfServicoPage() {
         .order("created_at", { ascending: false });
       setPedidos((data ?? []) as PedidoMin[]);
     } catch {}
+
+    // Fazendas (para filtro, só quando há múltiplas)
+    if (fazendaIds.length > 1) {
+      try {
+        const { data } = await supabase
+          .from("fazendas")
+          .select("id, nome")
+          .in("id", fazendaIds)
+          .order("nome");
+        setFazendas((data ?? []) as Array<{id:string;nome:string}>);
+      } catch {}
+    }
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -598,9 +613,10 @@ export default function NfServicoPage() {
 
   // ── Lista filtrada ───────────────────────────────────────────
   const nfsFilt = nfs.filter(nf => {
-    if (filtroStatus && nf.status !== filtroStatus) return false;
-    if (filtroOrigem && nf.origem !== filtroOrigem) return false;
-    if (filtroDataDe && (nf.competencia ?? nf.data_prestacao.substring(0,7)) < filtroDataDe.substring(0,7)) return false;
+    if (filtroStatus  && nf.status !== filtroStatus) return false;
+    if (filtroOrigem  && nf.origem !== filtroOrigem) return false;
+    if (filtroFazenda && nf.fazenda_id !== filtroFazenda) return false;
+    if (filtroDataDe  && (nf.competencia ?? nf.data_prestacao.substring(0,7)) < filtroDataDe.substring(0,7)) return false;
     if (filtroDataAte && (nf.competencia ?? nf.data_prestacao.substring(0,7)) > filtroDataAte.substring(0,7)) return false;
     if (busca) {
       const b = busca.toLowerCase();
@@ -709,6 +725,12 @@ export default function NfServicoPage() {
             <option value="manual">Manual</option>
             <option value="api">SIEG</option>
           </select>
+          {fazendas.length > 1 && (
+            <select value={filtroFazenda} onChange={e => setFiltroFazenda(e.target.value)} style={{ ...inp, width: 180 }}>
+              <option value="">Todas as fazendas</option>
+              {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+            </select>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Competência:</span>
             <input type="month" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
@@ -724,6 +746,60 @@ export default function NfServicoPage() {
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{nfsFilt.length} resultado{nfsFilt.length !== 1 ? "s" : ""}</span>
         </div>
 
+        {/* ── Barra de ações em lote ── */}
+        {selectedNfs.size > 0 && (
+          <div style={{ background: "#111111", borderRadius: 10, padding: "10px 18px", marginBottom: 12, display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
+              {selectedNfs.size} NFS-e selecionada{selectedNfs.size > 1 ? "s" : ""}
+            </span>
+            <button
+              onClick={() => {
+                const sel = nfsFilt.filter(n => selectedNfs.has(n.id));
+                if (!sel.length) return;
+                const html = `<html><head><title>NFS-e Selecionadas</title><style>
+                  body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
+                  table{width:100%;border-collapse:collapse;margin-bottom:16px}
+                  th,td{padding:5px 8px;border:0.5px solid #ccc;text-align:left}
+                  th{background:#f5f5f5;font-weight:600}
+                  h2{margin:0 0 12px;font-size:14px}
+                  @page{size:A4 landscape}
+                </style></head><body>
+                <h2>Relatório de NFS-e — ${new Date().toLocaleDateString("pt-BR")}</h2>
+                <table><thead><tr>
+                  <th>Nº NF</th><th>Prestador</th><th>Competência</th><th>Discriminação</th><th>Valor Total</th><th>ISS</th><th>Status</th>
+                </tr></thead><tbody>
+                ${sel.map(n => `<tr>
+                  <td>${n.numero_nf ?? "—"}</td>
+                  <td>${n.prestador_nome ?? "—"}</td>
+                  <td>${n.competencia ? n.competencia.substring(0,7) : "—"}</td>
+                  <td>${(n.discriminacao ?? "").substring(0,60)}</td>
+                  <td>${(n.valor_servico ?? 0).toLocaleString("pt-BR", { style:"currency", currency:"BRL" })}</td>
+                  <td>${(n.iss_retido ? "Retido" : "A recolher")}</td>
+                  <td>${n.status ?? "—"}</td>
+                </tr>`).join("")}
+                </tbody><tfoot><tr>
+                  <td colspan="4" style="font-weight:600;text-align:right">Total (${sel.length} NFS-e):</td>
+                  <td style="font-weight:600">${sel.reduce((s,n)=>s+(n.valor_servico??0),0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+                  <td colspan="2"></td>
+                </tr></tfoot></table>
+                <div style="font-size:10px;color:#999">Gerado em ${new Date().toLocaleString("pt-BR")}</div>
+                </body></html>`;
+                const win = window.open("", "_blank");
+                if (win) { win.document.write(html); win.document.close(); win.print(); }
+              }}
+              style={{ padding: "6px 16px", background: "transparent", color: "#fff", border: "0.5px solid rgba(255,255,255,0.5)", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}
+            >
+              🖨 Imprimir
+            </button>
+            <button
+              onClick={() => setSelectedNfs(new Set())}
+              style={{ padding: "6px 12px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 8, fontSize: 12, cursor: "pointer" }}
+            >
+              Limpar seleção
+            </button>
+          </div>
+        )}
+
         {/* ── Tabela — mesmo padrão da NF-e ── */}
         <div style={{ ...card, padding: "0", overflow: "hidden" }}>
           {nfsFilt.length === 0 ? (
@@ -732,8 +808,9 @@ export default function NfServicoPage() {
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1020 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1060 }}>
               <colgroup>
+                <col style={{ width: 36 }} />   {/* checkbox */}
                 <col style={{ width: 100 }} />  {/* Nº/Série */}
                 <col style={{ width: "26%" }} /> {/* Prestador */}
                 <col style={{ width: 96 }} />   {/* Competência */}
@@ -745,6 +822,15 @@ export default function NfServicoPage() {
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
+                  <th style={{ padding: "8px 8px", borderBottom: "0.5px solid var(--border-table)", textAlign: "center" }}>
+                    <input type="checkbox"
+                      checked={nfsFilt.length > 0 && nfsFilt.every(n => selectedNfs.has(n.id))}
+                      onChange={e => {
+                        if (e.target.checked) setSelectedNfs(new Set(nfsFilt.map(n => n.id)));
+                        else setSelectedNfs(new Set());
+                      }}
+                    />
+                  </th>
                   {["Nº / Série", "Prestador", "Competência", "Serviço / Discriminação", "Origem", "Valor Total", "Status", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
@@ -754,7 +840,18 @@ export default function NfServicoPage() {
                 {nfsFilt.map(nf => {
                   const sm = STATUS_META[nf.status] ?? STATUS_META["pendente"];
                   return (
-                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
+                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: selectedNfs.has(nf.id) ? "var(--bg-tag)" : undefined }}>
+                      {/* checkbox */}
+                      <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                        <input type="checkbox"
+                          checked={selectedNfs.has(nf.id)}
+                          onChange={e => {
+                            const next = new Set(selectedNfs);
+                            if (e.target.checked) next.add(nf.id); else next.delete(nf.id);
+                            setSelectedNfs(next);
+                          }}
+                        />
+                      </td>
                       {/* Nº/Série */}
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {nf.numero_nf}

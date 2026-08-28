@@ -10791,3 +10791,9 @@ ALTER TABLE funcionarios
 CREATE INDEX IF NOT EXISTS idx_funcionarios_empresa ON funcionarios(empresa_id) WHERE empresa_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 203 — inscricao_mun em pessoas ─────────────────────────
+ALTER TABLE pessoas
+  ADD COLUMN IF NOT EXISTS inscricao_mun text;
+
+NOTIFY pgrst, 'reload schema';

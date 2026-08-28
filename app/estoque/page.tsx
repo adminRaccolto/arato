@@ -170,9 +170,26 @@ function scoreSimilaridade(descXml: string, nomeInsumo: string): number {
   return matches / palavras.length;
 }
 
-function autoMatchInsumo(desc: string, insumos: Insumo[]): Insumo | null {
+function autoMatchInsumo(desc: string, insumos: Insumo[], ncm?: string): Insumo | null {
+  // 1. NCM exato tem prioridade
+  if (ncm) {
+    const ncmLimpo = ncm.replace(/\D/g, "");
+    const byNcm = insumos.filter(i => i.ncm && i.ncm.replace(/\D/g, "") === ncmLimpo);
+    if (byNcm.length === 1) return byNcm[0];
+    // NCM coincide em múltiplos → desempate por descrição
+    if (byNcm.length > 1) {
+      let melhor: Insumo | null = null;
+      let melhorScore = 0;
+      for (const ins of byNcm) {
+        const score = scoreSimilaridade(desc, ins.nome);
+        if (score > melhorScore) { melhorScore = score; melhor = ins; }
+      }
+      if (melhor) return melhor;
+    }
+  }
+  // 2. Fallback: similaridade por descrição
   let melhor: Insumo | null = null;
-  let melhorScore = 0.5; // limiar mínimo
+  let melhorScore = 0.5;
   for (const ins of insumos) {
     const score = scoreSimilaridade(desc, ins.nome);
     if (score > melhorScore) { melhorScore = score; melhor = ins; }
@@ -442,7 +459,7 @@ export default function Estoque() {
 
     let matched = 0;
     const itensComMatch: ItemRascunho[] = parsed.itens.map(item => {
-      const insumoMatch = autoMatchInsumo(item.descricao_produto, insumos);
+      const insumoMatch = autoMatchInsumo(item.descricao_produto, insumos, item.ncm);
       if (insumoMatch) matched++;
       return {
         ...item,

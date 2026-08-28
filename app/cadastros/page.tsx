@@ -354,7 +354,7 @@ function CadastrosInner() {
   const [pessoas, setPessoas]         = useState<Pessoa[]>([]);
   const [modalPes, setModalPes]       = useState(false);
   const [editPes, setEditPes]         = useState<Pessoa | null>(null);
-  const [fPes, setFPes]               = useState({ nome: "", tipo: "pj" as "pf"|"pj", cliente: true, fornecedor: false, cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", nome_contato: "", telefone_contato: "", banco_nome: "", banco_agencia: "", banco_conta: "", banco_tipo: "", pix_chave: "", pix_tipo: "", regime_tributario: "", cnae: "", situacao_cadastral: "", subcategorias: [] as string[], criar_deposito_terceiro: false });
+  const [fPes, setFPes]               = useState({ nome: "", tipo: "pj" as "pf"|"pj", cliente: true, fornecedor: false, cpf_cnpj: "", inscricao_est: "", inscricao_mun: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT", nome_contato: "", telefone_contato: "", banco_nome: "", banco_agencia: "", banco_conta: "", banco_tipo: "", pix_chave: "", pix_tipo: "", regime_tributario: "", cnae: "", situacao_cadastral: "", subcategorias: [] as string[], criar_deposito_terceiro: false });
   const [novaSubcat, setNovaSubcat]   = useState("");
   const [filtroPes,  setFiltroPes]    = useState({ busca: "", subcat: "", cpf: "", municipio: "", tipo: "", papel: "" });
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
@@ -1647,6 +1647,11 @@ function CadastrosInner() {
       if (!r.ok) { alert("CNPJ não encontrado na Receita Federal"); return; }
       const d = await r.json();
       const cepRaw = (d.cep ?? "").replace(/\D/g, "");
+      // IE: BrasilAPI retorna em inscricoes_estaduais[] ou inscricao_estadual
+      const ie = d.inscricao_estadual
+        || (Array.isArray(d.inscricoes_estaduais) && d.inscricoes_estaduais[0]?.numero)
+        || "";
+      const im = d.inscricao_municipal || d.im || "";
       setFPes(p => ({
         ...p,
         nome: d.razao_social || p.nome,
@@ -1662,6 +1667,8 @@ function CadastrosInner() {
         regime_tributario: d.descricao_porte || "",
         cnae: d.cnae_fiscal_descricao || "",
         situacao_cadastral: d.descricao_situacao_cadastral || "",
+        inscricao_est: ie || p.inscricao_est,
+        inscricao_mun: im || p.inscricao_mun,
       }));
     } catch { alert("Erro ao consultar CNPJ. Tente novamente."); }
     finally { setBuscandoCnpj(false); }
@@ -4751,6 +4758,11 @@ function CadastrosInner() {
                             <option value="outros">outros</option>
                           </select>
                         )}
+                      </div>
+                      {/* NCM — presente em todos os tipos para matching automático na NF */}
+                      <div>
+                        <label style={lbl}>NCM <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(para match automático de NF)</span></label>
+                        <input style={inp} value={fIns.ncm} onChange={e => setFIns(p => ({ ...p, ncm: e.target.value }))} placeholder="Ex: 3808.93.11" maxLength={12} />
                       </div>
                       {/* Depósito padrão */}
                       {!isComb && (
@@ -8091,7 +8103,10 @@ function CadastrosInner() {
                 {fPes.tipo === "pj" && <button style={{ ...btnR, padding: "7px 10px", fontSize: 11, whiteSpace: "nowrap" }} onClick={buscarCnpjPes} disabled={buscandoCnpj}>{buscandoCnpj ? "…" : "Buscar"}</button>}
               </div>
             </div>
-            <div style={{ marginBottom: 14 }}><label style={lbl}>Inscrição Estadual</label><input style={inp} value={fPes.inscricao_est} onChange={e => setFPes(p => ({ ...p, inscricao_est: e.target.value }))} /></div>
+            <div style={{ marginBottom: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div><label style={lbl}>Inscrição Estadual (IE)</label><input style={inp} value={fPes.inscricao_est} onChange={e => setFPes(p => ({ ...p, inscricao_est: e.target.value }))} placeholder="Preenche automaticamente ao buscar CNPJ" /></div>
+              <div><label style={lbl}>Inscrição Municipal (IM)</label><input style={inp} value={fPes.inscricao_mun} onChange={e => setFPes(p => ({ ...p, inscricao_mun: e.target.value }))} placeholder="Preenche automaticamente ao buscar CNPJ" /></div>
+            </div>
             <div style={{ gridColumn: "1/-1", display: "flex", gap: 24, padding: "8px 12px", background: "var(--bg-page)", borderRadius: 8, marginBottom: 14 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}><input type="checkbox" checked={fPes.cliente} onChange={e => setFPes(p => ({ ...p, cliente: e.target.checked, criar_deposito_terceiro: e.target.checked ? p.criar_deposito_terceiro : false }))} />Cliente comprador</label>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}><input type="checkbox" checked={fPes.fornecedor} onChange={e => setFPes(p => ({ ...p, fornecedor: e.target.checked }))} />Fornecedor</label>

@@ -19,6 +19,7 @@ import ProdutorCombo from "../../components/ProdutorCombo";
 import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, ProdutorIE, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato, Insumo } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
+import AnexoDocumentos from "../../components/AnexoDocumentos";
 
 const sbErr = (e: unknown) => {
   if (e instanceof Error) return e.message;
@@ -707,12 +708,17 @@ export default function Contratos() {
     if (!file) return;
     setAnexandoPdf(true);
     try {
-      const ext = file.name.split(".").pop() ?? "pdf";
-      const path = `contratos-venda/${fazendaId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      const { data, error } = await supabase.storage.from("arquivos").upload(path, file, { upsert: true, contentType: "application/pdf" });
-      if (error) throw error;
-      const { data: pub } = supabase.storage.from("arquivos").getPublicUrl(data.path);
-      const pdfUrl = pub.publicUrl;
+      const fd2 = new FormData();
+      fd2.append("file",          file);
+      fd2.append("entidade_tipo", "contrato_venda_pdf");
+      fd2.append("entidade_id",   editContrato?.id ?? `novo_${Date.now()}`);
+      fd2.append("fazenda_id",    fazendaId ?? "");
+      const resp = await fetch("/api/storage/upload", { method: "POST", body: fd2 });
+      const rj   = await resp.json();
+      if (!resp.ok) throw new Error(rj.erro ?? "Erro no upload");
+      // Obtém URL pública a partir do path retornado
+      const { data: pub } = supabase.storage.from("arquivos").getPublicUrl(rj.path);
+      const pdfUrl  = pub.publicUrl;
       const pdfNome = file.name;
       setFC(prev => ({ ...prev, pdf_url: pdfUrl, pdf_nome: pdfNome }));
       // Auto-salva no banco para contrato já existente — evita perda ao fechar sem clicar Salvar
@@ -1719,7 +1725,7 @@ export default function Contratos() {
                               <tr style={{ borderBottom:"0.5px solid var(--border-row)", cursor:"pointer" }} onClick={() => toggleExpand(c.id)}>
                                 <td style={{ padding:"10px 12px" }}>
                                   <div style={{ fontWeight:600, fontSize:12, color:"var(--text-1)", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                                    {c.numero}
+                                    {c.nr_contrato_cliente || c.numero}
                                     {(c as {is_arrendamento?:boolean}).is_arrendamento && (
                                       <span style={{ fontSize:9, background:"#FBF3E0", color:"#7A5A12", padding:"1px 6px", borderRadius:4, fontWeight:600, letterSpacing:"0.3px" }}>ARRENDAMENTO</span>
                                     )}
@@ -1727,7 +1733,7 @@ export default function Contratos() {
                                       <span style={{ fontSize:9, background:"#EDE9FE", color:"#5B21B6", padding:"1px 6px", borderRadius:4, fontWeight:600, letterSpacing:"0.3px" }}>CESSÃO</span>
                                     )}
                                   </div>
-                                  <div style={{ fontSize:10, color:"#444" }}>{c.tipo?.toUpperCase() ?? "VENDA"} · Safra {c.safra}</div>
+                                  <div style={{ fontSize:10, color:"#444" }}>{c.tipo?.toUpperCase() ?? "VENDA"} · {c.numero} · Safra {c.safra}</div>
                                 </td>
                                 <td style={{ padding:"10px 12px", fontSize:12, color:"var(--text-1)", maxWidth:200 }}>
                                   <div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.comprador || "—"}</div>
@@ -2559,7 +2565,7 @@ export default function Contratos() {
                               <span style={{ fontSize:9, color:"var(--text-3)", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodityDin(it.produto).kg_saca} kg/sc)</span>
                             </td>
                             <td style={{ padding:"6px 8px", width:120 }}>
-                              <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} min="0" value={it.valor_unitario||""} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,00" />
+                              <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} decimais={4} min="0" value={it.valor_unitario||""} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,0000" />
                             </td>
                             <td style={{ padding:"6px 8px", width:130 }}>
                               <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#111111" }}
@@ -2771,6 +2777,18 @@ export default function Contratos() {
                       </div>
                     )}
                   </div>
+
+                  {/* ── Documentos adicionais ─────────────────────── */}
+                  {editContrato && fazendaId && (
+                    <div style={{ borderTop:"0.5px solid var(--border-table)", paddingTop:14, marginTop:4, marginBottom:14 }}>
+                      <AnexoDocumentos
+                        entidade_tipo="contrato_venda"
+                        entidade_id={editContrato.id}
+                        fazenda_id={fazendaId}
+                        label="Outros Documentos"
+                      />
+                    </div>
+                  )}
 
                   {/* ── Cessão ─────────────────────────────────────── */}
                   <div style={{ borderTop:"0.5px solid var(--border-table)", paddingTop:14, marginTop:4 }}>

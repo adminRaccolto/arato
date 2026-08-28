@@ -10,8 +10,9 @@ import {
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
+  listarGruposInsumoDaConta, listarPrincipiosAtivos,
 } from "../../lib/db";
-import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE } from "../../lib/supabase";
+import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
@@ -373,7 +374,9 @@ export default function ComprasPage() {
 
   // Modal de criação/associação de insumo a partir do item extraído pela IA
   const [modalNovoInsumo, setModalNovoInsumo] = useState<{ itemIdx: number; nomePreenchido: string } | null>(null);
-  const [novoInsumoForm, setNovoInsumoForm] = useState({ nome: "", categoria: "outros" as Insumo["categoria"], unidade: "kg" as Insumo["unidade"] });
+  const [novoInsumoForm, setNovoInsumoForm] = useState({ nome: "", categoria: "outros" as Insumo["categoria"], unidade: "kg" as Insumo["unidade"], grupo_id: "", principio_ativo_id: "" });
+  const [gruposInsumo,   setGruposInsumo]   = useState<GrupoInsumo[]>([]);
+  const [principiosAtivos, setPrincipiosAtivos] = useState<PrincipioAtivo[]>([]);
   const [salvandoInsumo, setSalvandoInsumo] = useState(false);
 
   // Mini-modal de cadastro rápido de Fornecedor (Pessoa)
@@ -433,7 +436,7 @@ export default function ComprasPage() {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      const [allPed, pes, ins, cic, anos, cc, ops, fzs, prods] = await Promise.all([
+      const [allPed, pes, ins, cic, anos, cc, ops, fzs, prods, grupos, princAtivos] = await Promise.all([
         listarPedidosCompraDaConta(fazendaId),
         listarPessoasDaConta(fazendaId),
         listarInsumosParaConta(contaId, fazendaId),  // catálogo de TODA a conta — não só da fazenda ativa
@@ -443,6 +446,8 @@ export default function ComprasPage() {
         listarOperacoesGerenciais(fazendaId),
         listarFazendas(fazendaId),
         listarProdutoresDaConta(contaId ?? "", fazendaId),
+        listarGruposInsumoDaConta(fazendaId),
+        listarPrincipiosAtivos(),
       ]);
       setPedidos(allPed);
       setPessoas(pes);
@@ -454,6 +459,8 @@ export default function ComprasPage() {
       setOperacoes(ops);
       setFazendas(fzs);
       setProdutores(prods);
+      setGruposInsumo(grupos);
+      setPrincipiosAtivos(princAtivos);
       // Carrega IEs de todos os produtores para exibir no dropdown
       if (prods.length > 0) {
         const allIEs = await listarIEsDeMultiplosProdutores(prods.map(p => p.id));
@@ -700,6 +707,8 @@ export default function ComprasPage() {
         estoque: 0,
         estoque_minimo: 0,
         valor_unitario: 0,
+        grupo_id: novoInsumoForm.grupo_id || undefined,
+        principio_ativo_id: novoInsumoForm.principio_ativo_id || undefined,
       });
       // Recarrega lista de insumos (toda a conta)
       const insAtualizado = await listarInsumosParaConta(contaId, fazendaId);
@@ -1812,7 +1821,7 @@ export default function ComprasPage() {
                                         title="Criar novo insumo no cadastro"
                                         style={{ flexShrink: 0, padding: "3px 8px", border: "0.5px solid #1A487080", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", whiteSpace: "nowrap" }}
                                         onClick={() => {
-                                          setNovoInsumoForm({ nome: it.nome_item, categoria: "outros", unidade: (it.unidade as Insumo["unidade"]) || "kg" });
+                                          setNovoInsumoForm({ nome: it.nome_item, categoria: "outros", unidade: (it.unidade as Insumo["unidade"]) || "kg", grupo_id: "", principio_ativo_id: "" });
                                           setModalNovoInsumo({ itemIdx: it._idx, nomePreenchido: it.nome_item });
                                         }}
                                       >+ Criar insumo</button>
@@ -2302,10 +2311,10 @@ export default function ComprasPage() {
               <label style={lbl}>Nome do Insumo *</label>
               <input style={inp} value={novoInsumoForm.nome} onChange={e => setNovoInsumoForm(p => ({ ...p, nome: e.target.value }))} autoFocus />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
               <div>
                 <label style={lbl}>Categoria *</label>
-                <select style={inp} value={novoInsumoForm.categoria} onChange={e => setNovoInsumoForm(p => ({ ...p, categoria: e.target.value as Insumo["categoria"] }))}>
+                <select style={inp} value={novoInsumoForm.categoria} onChange={e => setNovoInsumoForm(p => ({ ...p, categoria: e.target.value as Insumo["categoria"], principio_ativo_id: "" }))}>
                   <option value="semente">Semente</option>
                   <option value="fertilizante">Fertilizante</option>
                   <option value="defensivo">Defensivo</option>
@@ -2321,6 +2330,26 @@ export default function ComprasPage() {
                   {(["kg","g","L","mL","sc","t","ton","un","m","m2","cx","pc","par","outros"] as Insumo["unidade"][]).map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+              <div>
+                <label style={lbl}>Subcategoria / Grupo</label>
+                <select style={inp} value={novoInsumoForm.grupo_id} onChange={e => setNovoInsumoForm(p => ({ ...p, grupo_id: e.target.value }))}>
+                  <option value="">— Nenhum —</option>
+                  {gruposInsumo.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                </select>
+              </div>
+              {["defensivo","fertilizante","semente"].includes(novoInsumoForm.categoria) && (
+                <div>
+                  <label style={lbl}>Princípio Ativo</label>
+                  <select style={inp} value={novoInsumoForm.principio_ativo_id} onChange={e => setNovoInsumoForm(p => ({ ...p, principio_ativo_id: e.target.value }))}>
+                    <option value="">— Nenhum —</option>
+                    {principiosAtivos.filter(pa => novoInsumoForm.categoria === "defensivo" ? ["herbicida","fungicida","inseticida","acaricida"].includes(pa.categoria) : novoInsumoForm.categoria === "fertilizante" ? pa.categoria === "fertilizante" : pa.categoria === "inoculante").map(pa => (
+                      <option key={pa.id} value={pa.id}>{pa.nome} ({pa.categoria})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button style={btnR} onClick={() => setModalNovoInsumo(null)} disabled={salvandoInsumo}>Cancelar</button>

@@ -10,6 +10,7 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
+import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa, PagamentoLote } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -1809,6 +1810,14 @@ function ContasReceberInner() {
                       <input style={inp} placeholder="Opcional" maxLength={100} value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} />
                     </div>
                   </div>
+                  {editandoId && fid && (
+                    <AnexoDocumentos
+                      entidade_tipo="lancamento_cr"
+                      entidade_id={editandoId}
+                      fazenda_id={fid}
+                      label="Documentos Anexos"
+                    />
+                  )}
                 </div>
               )}
             </div>

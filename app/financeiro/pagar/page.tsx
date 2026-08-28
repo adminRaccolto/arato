@@ -11,6 +11,7 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
+import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, type VeiculoUnificado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -326,6 +327,7 @@ function ContasPagarInner() {
   const [borderosPendentes,  setBorderosPendentes]  = useState<PagamentoLote[]>([]);
   const [expandedBorderos,   setExpandedBorderos]   = useState<Set<string>>(new Set());
   const [modalConfirmar,     setModalConfirmar]     = useState<PagamentoLote | null>(null);
+  const [modalVerBordero,    setModalVerBordero]    = useState<PagamentoLote | null>(null);
   const [confirmData,       setConfirmData]       = useState(TODAY);
   const [confirmConta,      setConfirmConta]      = useState("");
   const [confirmSalvando,   setConfirmSalvando]   = useState(false);
@@ -794,6 +796,18 @@ function ContasPagarInner() {
     }
   };
 
+  const verBordero = async (loteId: string) => {
+    const found = borderosPendentes.find(b => b.id === loteId);
+    if (found) { setModalVerBordero(found); return; }
+    // borderô já pago — buscar no banco
+    const { data } = await supabase
+      .from("pagamento_lotes")
+      .select("*, itens:pagamento_lote_itens(*, lancamento:lancamentos(numero, descricao, pessoa_id))")
+      .eq("id", loteId)
+      .single();
+    if (data) setModalVerBordero(data as PagamentoLote);
+  };
+
   const excluirBordero = async (b: PagamentoLote) => {
     if (!confirm(`Cancelar borderô "${b.descricao}"? Os títulos voltam ao estado em aberto.`)) return;
     try {
@@ -827,12 +841,20 @@ function ContasPagarInner() {
     let chaveXmlFinal = form.chave_xml || undefined;
     if (arquivoNF) {
       try {
-        const ext = arquivoNF.name.split(".").pop() ?? "pdf";
-        const path = `${fid}/nf-cp/${Date.now()}.${ext}`;
-        const { data: upData } = await supabase.storage.from("arquivos").upload(path, arquivoNF, { upsert: true });
-        if (upData) {
-          const { data: urlData } = supabase.storage.from("arquivos").getPublicUrl(upData.path);
+        const fd2 = new FormData();
+        fd2.append("file",          arquivoNF);
+        fd2.append("entidade_tipo", "lancamento_cp_nf");
+        fd2.append("entidade_id",   editandoId ?? `novo_${Date.now()}`);
+        fd2.append("fazenda_id",    fid ?? "");
+        const resp = await fetch("/api/storage/upload", { method: "POST", body: fd2 });
+        const rj = await resp.json();
+        if (rj.path) {
+          const { data: urlData } = supabase.storage.from("arquivos").getPublicUrl(rj.path);
           chaveXmlFinal = urlData.publicUrl;
+        } else if (!resp.ok) {
+          setErrosForm([`Erro no upload do arquivo: ${rj.erro ?? "Tente novamente"}`]);
+          setSalvando(false);
+          return;
         }
       } catch (_e) { /* upload opcional — prossegue sem o arquivo */ }
     }
@@ -1496,6 +1518,9 @@ function ContasPagarInner() {
                               ) : l.status !== "baixado" ? (
                                 <button onClick={() => abrirBaixa(l)} title="Baixar / Registrar pagamento"
                                   style={btnAcao("#C9921B", "#fff")}>↓</button>
+                              ) : l.lote_id ? (
+                                <span title="Baixado em borderô — use o borderô para reabrir"
+                                  style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:28, height:26, fontSize:9, fontWeight:700, borderRadius:6, background:"#E8F0FF", color:"#1A4870", border:"0.5px solid #1A487080", cursor:"default" }}>BDR</span>
                               ) : (
                                 <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de pagamento"
                                   style={btnAcao("#F5F5F5", "#7A5C00", "0.5px solid #C9921B")}>↺</button>
@@ -1688,11 +1713,14 @@ function ContasPagarInner() {
 
               {/* Ações rápidas */}
               <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {!isPrevisao && l.moeda !== "barter" && l.status !== "baixado" && (
+                {!isPrevisao && l.moeda !== "barter" && l.status !== "baixado" && !l.lote_id && (
                   <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#C9921B", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>↓ Baixar</button>
                 )}
-                {l.status === "baixado" && (
+                {l.status === "baixado" && !l.lote_id && (
                   <button onClick={() => { setPopover(null); reabrirUm(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↺ Reabrir</button>
+                )}
+                {l.lote_id && (
+                  <button onClick={() => { setPopover(null); verBordero(l.lote_id!); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#E8F0FF", color: "#1A4870", border: "0.5px solid #1A487080", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>📋 Ver Borderô</button>
                 )}
                 {isPrevisao && (
                   <button onClick={() => { setPopover(null); confirmarPrevisao(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#2A2A2A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>✓ Confirmar</button>
@@ -2326,6 +2354,56 @@ function ContasPagarInner() {
         </div>
       )}
 
+      {/* ── Modal Ver Borderô ────────────────────────────────── */}
+      {modalVerBordero && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 560, maxWidth: "95vw", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Borderô — {modalVerBordero.descricao}</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                  {modalVerBordero.status === "pago" ? "✅ Pago" : "⏳ Pendente"} · {modalVerBordero.data_pagamento ? `Pago em ${new Date(modalVerBordero.data_pagamento + "T00:00").toLocaleDateString("pt-BR")}` : "Sem data"} · Total: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(modalVerBordero.valor_total)}
+                </div>
+              </div>
+              <button onClick={() => setModalVerBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "12px 20px 16px" }}>
+              {(modalVerBordero.itens ?? []).length === 0 ? (
+                <div style={{ textAlign: "center", padding: 24, color: "var(--text-3)", fontSize: 13 }}>Nenhum título encontrado neste borderô.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-nav)" }}>
+                      <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--text-3)", fontWeight: 600, borderBottom: "0.5px solid var(--border-table)" }}>Nº</th>
+                      <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--text-3)", fontWeight: 600, borderBottom: "0.5px solid var(--border-table)" }}>Descrição</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-3)", fontWeight: 600, borderBottom: "0.5px solid var(--border-table)" }}>Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(modalVerBordero.itens ?? []).map((item, idx) => (
+                      <tr key={item.id} style={{ background: idx % 2 === 0 ? "transparent" : "var(--bg-nav)" }}>
+                        <td style={{ padding: "6px 8px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{item.lancamento?.numero ?? "—"}</td>
+                        <td style={{ padding: "6px 8px", color: "var(--text-1)" }}>{item.lancamento?.descricao ?? "—"}</td>
+                        <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-1)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2} style={{ padding: "8px 8px", fontWeight: 700, color: "var(--text-2)", borderTop: "0.5px solid var(--border-table)", fontSize: 12 }}>Total</td>
+                      <td style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, color: "var(--text-1)", borderTop: "0.5px solid var(--border-table)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(modalVerBordero.valor_total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+            <div style={{ padding: "10px 20px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => setModalVerBordero(null)} style={{ padding: "8px 18px", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Modal Novo CP ──────────────────────────────────────── */}
       {modalNovo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
@@ -2896,6 +2974,14 @@ function ContasPagarInner() {
                     )}
                     <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Arquivo enviado ao Storage e URL salva na chave da NF</div>
                   </div>
+                  {editandoId && fid && (
+                    <AnexoDocumentos
+                      entidade_tipo="lancamento_cp"
+                      entidade_id={editandoId}
+                      fazenda_id={fid}
+                      label="Documentos Anexos"
+                    />
+                  )}
                 </div>
               )}
             </div>

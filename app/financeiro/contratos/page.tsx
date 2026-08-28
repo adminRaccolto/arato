@@ -1564,7 +1564,7 @@ export default function ContratosFinanceiros() {
                     {fC.moeda === "USD" ? (
                       <div>
                         <label style={lbl}>Cotação R$/US$</label>
-                        <InputMonetario style={inp} placeholder="5,85" value={fC.valor_cotacao} onChange={v => setFC(p => ({ ...p, valor_cotacao: String(v) }))} />
+                        <InputMonetario style={inp} decimais={4} placeholder="5,8500" value={fC.valor_cotacao} onChange={v => setFC(p => ({ ...p, valor_cotacao: String(v) }))} />
                       </div>
                     ) : <div />}
                     <div>
