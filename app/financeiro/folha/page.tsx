@@ -8,9 +8,11 @@ import TopNav from "../../../components/TopNav";
 interface Funcionario {
   id: string;
   nome: string;
+  funcao?: string;
   cargo?: string;
   salario_base?: number;
   tipo?: string;
+  ativo?: boolean;
 }
 interface FolhaFunc {
   id?: string;
@@ -199,9 +201,8 @@ export default function FolhaPagamentoPage() {
         { data: prems },
       ] = await Promise.all([
         supabase.from("funcionarios")
-          .select("id,nome,cargo,salario_base,tipo,empresa_id")
+          .select("id,nome,funcao,salario_base,tipo,empresa_id,ativo")
           .eq("fazenda_id", fazendaId)
-          .eq("ativo", true)
           .order("nome"),
         supabase.from("folha_pagamento")
           .select("*")
@@ -217,7 +218,7 @@ export default function FolhaPagamentoPage() {
           .order("mes_referencia", { ascending: false }),
       ]);
       // Todos os funcionários ativos — independente de vínculo com empresa, produtor ou sem empregador
-      const funcsLista = funcs ?? [];
+      const funcsLista = (funcs ?? []).filter((f: any) => f.ativo !== false);
       const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
       setFolhas(fols ?? []);
@@ -263,7 +264,7 @@ export default function FolhaPagamentoPage() {
         return recalc({
           funcionario_id: f.id,
           nome_funcionario: f.nome,
-          cargo: f.cargo ?? "",
+          cargo: f.funcao ?? "",
           salario_base: base,
           gratificacao: grat,
           salario_bruto: base + grat,
