@@ -167,12 +167,20 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
     const natureza     = tagVal(xml, "natOp");
     const cfop         = tagVal(xml, "CFOP");
 
-    const emitBlock         = blockOf(xml, "emit");
+    // Extrai somente o bloco <infNFe> e remove seções auxiliares que contêm
+    // CNPJs de terceiros (<NFref> e <autXML>) antes de procurar o emitente.
+    // Isso evita que NFs triangulares (triangular sale) ou com autorização
+    // de download por CNPJ de comprador poluam os campos de emitente.
+    const infNFe = (blockOf(xml, "infNFe") || xml)
+      .replace(new RegExp(`<${NS}NFref>[\\s\\S]*?</${NS}NFref>`, "g"), "")
+      .replace(new RegExp(`<${NS}autXML>[\\s\\S]*?</${NS}autXML>`, "g"), "");
+
+    const emitBlock         = blockOf(infNFe, "emit");
     const cnpj_emitente     = tagVal(emitBlock, "CNPJ") || tagVal(emitBlock, "CPF");
     const nome_emitente     = tagVal(emitBlock, "xNome");
     const ie_emitente       = tagVal(emitBlock, "IE");
 
-    const destBlock         = blockOf(xml, "dest");
+    const destBlock         = blockOf(infNFe, "dest");
     const cnpj_destinatario = tagVal(destBlock, "CNPJ") || tagVal(destBlock, "CPF");
     const nome_destinatario = tagVal(destBlock, "xNome");
 
