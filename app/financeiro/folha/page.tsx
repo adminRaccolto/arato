@@ -594,7 +594,7 @@ export default function FolhaPagamentoPage() {
   }
 
   // ─── Derived ─────────────────────────────────────────────────
-  const folhasFiltradas = folhas.filter(f => !fComp || f.competencia === fComp);
+  const folhasFiltradas = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte);
   const totalBrutoFolhaEdit   = folhaEdit.funcionarios?.reduce((s,f)=>s+f.salario_bruto,0)??0;
   const totalLiqFolhaEdit     = folhaEdit.funcionarios?.reduce((s,f)=>s+liquido(f),0)??0;
   const totalINSSPatFolhaEdit  = folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_patronal,0)??0;
@@ -637,13 +637,9 @@ export default function FolhaPagamentoPage() {
         {aba === "processamento" && (
           <>
             <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <div>
-                <label style={S.label}>Competência (filtro)</label>
-                <input type="month" value={fComp} onChange={e=>{ setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 150 }} />
-              </div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                 <div>
-                  <label style={S.label}>Gerar de</label>
+                  <label style={S.label}>De</label>
                   <input type="month" value={fComp} onChange={e=>{ setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 <span style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>até</span>
@@ -669,7 +665,7 @@ export default function FolhaPagamentoPage() {
             ) : folhasFiltradas.length === 0 ? (
               <div style={{ ...S.card, padding: 32, textAlign: "center", color: "#888" }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-                <div>Nenhuma folha para {fComp ? nomeMes(fComp) : "o período"}.</div>
+                <div>Nenhuma folha para {fComp === fCompAte ? nomeMes(fComp) : `${nomeMes(fComp)} – ${nomeMes(fCompAte)}`}.</div>
                 <button onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop: 12 }}>Criar Folha</button>
               </div>
             ) : (
