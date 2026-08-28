@@ -878,16 +878,54 @@ function ContasPagarInner() {
           veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : null,
           empresa_id:  form.empresa_id || null,
         };
-        const res = await fetch("/api/financeiro/lancamentos", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editandoId, patch }),
-        });
-        const json = await res.json() as { ok: boolean; error?: string };
-        if (!json.ok) { alert("Erro ao salvar: " + (json.error ?? "Tente novamente")); return; }
-        setLancamentos(prev => prev.map(x =>
-          x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
-        ));
+        // Se mudou para recorrência, converte: atualiza lançamento existente como parcela 1 e cria as demais
+        if (form.condicao === "recorrencia") {
+          const qtd  = Math.max(2, Number(form.qtdParcelas) || 2);
+          const freq = Math.max(1, Number(form.frequencia)  || 1);
+          const agrupador = crypto.randomUUID();
+          const patchComRecorr = { ...patch, agrupador, num_parcela: 1, total_parcelas: qtd };
+          const res1 = await fetch("/api/financeiro/lancamentos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: editandoId, patch: patchComRecorr }),
+          });
+          const j1 = await res1.json() as { ok: boolean; error?: string };
+          if (!j1.ok) { alert("Erro ao salvar: " + (j1.error ?? "Tente novamente")); return; }
+          setLancamentos(prev => prev.map(x =>
+            x.id === editandoId ? { ...x, ...patchComRecorr, data_vencimento: form.vencimento } as Lancamento : x
+          ));
+          // Cria parcelas 2…qtd
+          const novas: Lancamento[] = [];
+          for (let i = 1; i < qtd; i++) {
+            const dataVenc = new Date(form.vencimento);
+            dataVenc.setMonth(dataVenc.getMonth() + i * freq);
+            const criado = await criarLancamento({
+              ...patch,
+              fazenda_id:       fid!,
+              tipo:             "pagar",
+              status:           "em_aberto",
+              auto:             false,
+              data_lancamento:  TODAY,
+              data_vencimento:  dataVenc.toISOString().slice(0, 10),
+              agrupador,
+              num_parcela:      i + 1,
+              total_parcelas:   qtd,
+            } as Omit<Lancamento, "id" | "created_at">);
+            novas.push(criado);
+          }
+          setLancamentos(prev => [...novas, ...prev]);
+        } else {
+          const res = await fetch("/api/financeiro/lancamentos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: editandoId, patch }),
+          });
+          const json = await res.json() as { ok: boolean; error?: string };
+          if (!json.ok) { alert("Erro ao salvar: " + (json.error ?? "Tente novamente")); return; }
+          setLancamentos(prev => prev.map(x =>
+            x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
+          ));
+        }
         if (salvarComoRegra) await criarRegraClassificacao();
         fecharModal(true);
       } catch (e: unknown) {
