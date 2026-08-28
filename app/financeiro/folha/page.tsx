@@ -206,7 +206,6 @@ export default function FolhaPagamentoPage() {
         supabase.from("folha_pagamento")
           .select("*")
           .eq("fazenda_id", fazendaId)
-          .is("empresa_id", null)
           .order("competencia", { ascending: false }),
         supabase.from("adiantamentos_salario")
           .select("*, funcionarios(nome)")
@@ -217,8 +216,8 @@ export default function FolhaPagamentoPage() {
           .eq("fazenda_id", fazendaId)
           .order("mes_referencia", { ascending: false }),
       ]);
-      // Filtra client-side: empresa_id null = produtor; empresa_id preenchido = módulo Empresas
-      const funcsLista = (funcs ?? []).filter((f: any) => !f.empresa_id);
+      // Todos os funcionários ativos — independente de vínculo com empresa, produtor ou sem empregador
+      const funcsLista = funcs ?? [];
       const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
       setFolhas(fols ?? []);
