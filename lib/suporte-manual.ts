@@ -676,6 +676,11 @@ Se um pagamento não ocorreu na data prevista e a data deve ser alterada:
 2. Selecione os lançamentos
 3. Clique em **Borderô** → informe data de pagamento e conta debitada
 
+### Lançamentos em borderô — regras
+- Lançamento que já pertence a um borderô exibe badge **BDR** azul na coluna de ações — não pode ser baixado individualmente
+- Ao clicar no lançamento, o popup mostra botão **"📋 Ver Borderô"** em vez de "Reabrir"
+- Para estornar individualmente, primeiro estorne o borderô completo
+
 ### Reclassificar
 CP já criada pode ter a categoria/OG alterada sem tocar nos lançamentos contábeis. Use **Reclassificar**.
 
@@ -2399,4 +2404,171 @@ Ao clicar na aba **Vencidos**, o filtro de período é automaticamente ajustado 
 Isso garante que CPs antigas (como parcelas de consórcio lançadas retroativamente após um Regenerar) apareçam na lista. Ao sair da aba Vencidos, o período volta ao padrão (hoje → +3 meses).
 
 **Pergunta frequente:** "Regenerei as parcelas do consórcio mas as CPs não aparecem em nenhuma aba." → Clique na aba **Vencidos** para ver as parcelas passadas; as futuras aparecem em Em Aberto dentro do período padrão.
+
+---
+
+## ATUALIZAÇÃO — Contas a Receber: Baixa individual bloqueada para lançamentos de borderô
+
+**Módulo:** Contas a Receber (e Contas a Pagar — mesma lógica)
+
+- Lançamento pertencente a um borderô exibe badge **BDR** azul na coluna de ações
+- Clicar no ícone de baixa em um lançamento BDR **não abre o popup de baixa** — em vez disso, aparece o botão **"📋 Ver Borderô"**
+- Lançamentos BDR **não podem ser baixados individualmente** enquanto o borderô existir
+- Para desfazer: abra o borderô e clique em **Estornar Borderô** — isso desfaz a baixa de todos os lançamentos do lote e remove o vínculo BDR
+- Após o estorno do borderô, os lançamentos voltam a aceitar baixa individual normalmente
+
+**Por quê:** garante integridade do borderô — um borderô é uma baixa única de um lote; a baixa individual quebraria o saldo do lote.
+
+---
+
+## ATUALIZAÇÃO — Liberações (Parcelas de Liberação): exclusão remove CR vinculada
+
+**Módulo:** Financeiro → Contratos Financeiros → aba Pagamento → Liberações
+
+- Ao excluir uma parcela de liberação (captação de recurso), o sistema agora **também exclui automaticamente a CR (Conta a Receber) vinculada** que foi gerada no momento da criação da parcela
+- Antes a exclusão da liberação deixava a CR "órfã" no módulo CR
+- Não há impacto para CRs que foram **baixadas** — essas são preservadas; apenas CRs em aberto são removidas
+
+---
+
+## ATUALIZAÇÃO — Pedido de Compra: subcategoria e princípio ativo no modal de novo insumo
+
+**Módulo:** Compras & Estoque → Pedidos de Compra → modal de item → botão "Criar novo insumo"
+
+Ao criar um novo insumo diretamente do pedido de compra (campo "Produto / Insumo" → "Criar novo"):
+- O modal agora inclui campos **Subcategoria** (grupo de insumo) e **Princípio Ativo** (campo livre de texto)
+- Esses campos eram ignorados antes — o insumo era criado sem grupo e sem princípio ativo
+- O campo **Princípio Ativo** aparece apenas quando a categoria do insumo é defensivo (herbicida, fungicida, inseticida, nematicida, etc.)
+
+---
+
+## ATUALIZAÇÃO — Contratos Financeiros e Contratos de Grãos: 4 casas decimais na cotação
+
+**Módulos:** Financeiro → Contratos Financeiros | Comercial → Contratos de Grãos
+
+- O campo **Cotação / Valor de Conversão** (R$/US$) agora aceita e exibe **4 casas decimais**
+- Exemplo: 5,1234 em vez de 5,12
+- Isso é importante para cotações travadas em PTAX de dias específicos, que normalmente têm 4 decimais (ex: 5,7843)
+
+---
+
+## ATUALIZAÇÃO — Anexos (AnexoDocumentos) em CP, CR e Contratos de Grãos
+
+**Módulos:** CP, CR, Contratos de Grãos
+
+- A aba **Adicionais** de CP e CR e o modal de Contrato de Grãos agora incluem o componente de **Anexos**
+- É possível fazer upload de PDFs, imagens e outros arquivos vinculados ao lançamento
+- Os arquivos ficam no Supabase Storage (bucket "arquivos") e persistem mesmo após fechar o modal
+- **Limite:** arquivos de até 50 MB por upload
+- **Pergunta frequente:** "Enviei um arquivo mas sumiu ao reabrir." → Verifique se o bucket "arquivos" está criado como público no Supabase Storage.
+
+---
+
+## ATUALIZAÇÃO — NF de Produtos e NF de Serviços: seleção e impressão em lote
+
+**Módulos:** Compras & Estoque → NF de Produtos | NF de Serviços
+
+- A lista de NFs agora tem uma **coluna de checkbox** à esquerda
+- Marque múltiplas NFs para seleção em lote
+- A barra de ação preta aparece acima da tabela mostrando quantas NFs estão selecionadas, com botões **🖨 Imprimir** e **Limpar seleção**
+- O botão **Imprimir** gera uma janela de impressão com todas as NFs selecionadas formatadas sequencialmente
+
+---
+
+## ATUALIZAÇÃO — NF de Produtos: filtro por produtor
+
+**Módulo:** Compras & Estoque → NF de Produtos
+
+- Novo filtro **Produtor** na barra de filtros da lista de NFs
+- O filtro aparece apenas quando há mais de um produtor cadastrado na conta
+- Filtra as NFs pelo produtor vinculado no campo "Produtor" do cabeçalho da NF
+
+## ATUALIZAÇÃO — NF de Serviços (NFS-e): filtro por fazenda
+
+**Módulo:** Compras & Estoque → NF de Serviços
+
+- Novo filtro **Fazenda** na barra de filtros da lista de NFS-e
+- O filtro aparece apenas quando a conta tem mais de uma fazenda
+- Filtra as NFS-e pela fazenda (`fazenda_id`) vinculada a cada nota
+
+---
+
+## ATUALIZAÇÃO — Cadastro de Pessoas: busca CNPJ preenche IE e IM automaticamente
+
+**Módulo:** Cadastros → Pessoas → modal Pessoa Jurídica → campo CNPJ → botão 🔍
+
+- A busca de CNPJ via BrasilAPI agora preenche automaticamente:
+  - **IE (Inscrição Estadual):** extraída do campo `inscricao_estadual` ou `inscricoes_estaduais[0].numero` da API
+  - **IM (Inscrição Municipal):** extraída do campo `inscricao_municipal` — nova informação, antes não era coletada
+- **Novo campo IM** adicionado ao formulário ao lado do campo IE (grade 2 colunas)
+- O campo IM é importante para empresas prestadoras de serviço: é exigido na emissão de NFS-e
+- **Banco de dados:** coluna `inscricao_mun` adicionada na tabela `pessoas` (Migration 203)
+- **Pergunta frequente:** "A busca do CNPJ não trouxe a IE/IM." → A BrasilAPI pode não ter o dado para CNPJs de estados que não disponibilizam a informação. Preencha manualmente.
+
+---
+
+## ATUALIZAÇÃO — Contratos de Grãos: coluna Contrato exibe número do cliente como principal
+
+**Módulo:** Comercial → Contratos de Grãos → grid da lista
+
+- A coluna **Contrato** agora exibe o **Nº do Contrato do Cliente** (comprador/trading, campo `nr_contrato_cliente`) como número principal em negrito
+- O número interno do sistema (CTR-XXXX/XX, campo `numero`) aparece em texto menor abaixo
+- Quando `nr_contrato_cliente` não está preenchido, exibe o número interno como principal
+- **Por quê:** os produtores se referem ao contrato pelo número da AMAGGI/BUNGE/CARGILL, não pelo número interno do sistema
+
+---
+
+## ATUALIZAÇÃO — NF de Produtos processamento em lote: subcategoria de estoque selecionável
+
+**Módulo:** Compras & Estoque → NF de Produtos → modal de processamento em lote
+
+Ao processar NFs em lote e selecionar **Estoque** como destino:
+- Aparece um sub-seletor de **Subcategoria do Estoque** com 3 opções:
+  - **Insumos Agrícolas** (padrão)
+  - **Peças / Manutenção**
+  - **Combustível**
+- Antes, todas as NFs de lote eram classificadas como "Insumos" independentemente do conteúdo
+- O tipo selecionado é aplicado a todos os itens do lote
+
+---
+
+## ATUALIZAÇÃO — Insumos: campo NCM em todas as categorias; matching por NCM na NF
+
+**Módulo:** Cadastros → Insumos → modal de insumo
+
+- Novo campo **NCM** adicionado ao formulário de insumo, presente em **todas as categorias** (antes era visível apenas em algumas)
+- O NCM do insumo é usado para matching automático durante o processamento de NF de Entrada
+- **Prioridade de matching:**
+  1. NCM exato (número sem pontos/traços) → se um único insumo tem aquele NCM, é selecionado automaticamente
+  2. Se múltiplos insumos têm o mesmo NCM → desempate por similaridade de nome com a descrição do item da NF
+  3. Se sem NCM ou sem match por NCM → fallback por similaridade de texto (comportamento anterior)
+- **Recomendação:** preencher o NCM nos insumos mais comuns agiliza muito o processamento de NFs de compra
+
+---
+
+## ATUALIZAÇÃO — NF de Entrada: data de entrada auto-preenchida com data de hoje
+
+**Módulo:** Compras & Estoque → NF de Produtos → campo Data de Entrada
+
+- Ao importar uma NF (via XML ou manual) ou ao abrir uma NF existente sem data de entrada, o campo **Data de Entrada** é agora automaticamente preenchido com a **data de hoje**
+- O usuário pode alterar a data antes de salvar
+- Antes o campo ficava vazio e o usuário esquecia de preencher, causando problemas de rastreabilidade de estoque
+
+---
+
+## ATUALIZAÇÃO — Folha de Pagamento: carregamento de funcionários e duplicação corrigidos
+
+**Módulo:** Financeiro → Folha de Pagamento
+
+Dois bugs corrigidos:
+
+1. **Funcionários não apareciam na lista da folha:**
+   - O sistema buscava funcionários com `empresa_id IS NULL` via filtro de banco, mas a coluna pode ter comportamento diferente dependendo da versão do banco
+   - Corrigido: o sistema agora carrega todos os funcionários da fazenda e filtra no cliente apenas os sem `empresa_id` (funcionários do produtor rural, não de empresas)
+   - Funcionários vinculados a uma empresa (CNPJ) continuam **não aparecendo** na folha do produtor rural — isso é correto
+
+2. **Ao salvar a folha uma segunda vez, era criada uma folha duplicada:**
+   - Após o primeiro salvamento, o ID da folha não era atualizado no estado interno
+   - No segundo salvar, o sistema interpretava como "nova folha" e criava um duplicado
+   - Corrigido: após o INSERT da folha, o `id` gerado é imediatamente gravado no estado — salvamentos subsequentes fazem UPDATE na folha existente
 `;
