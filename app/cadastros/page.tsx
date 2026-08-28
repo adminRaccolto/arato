@@ -417,7 +417,7 @@ function CadastrosInner() {
     ctps_numero: "", ctps_serie: "", ctps_uf: "",
     tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
     funcao: "", data_admissao: "", data_demissao: "", ativo: true,
-    salario_base: "", piso_categoria: "",
+    salario_base: "", complemento_salarial: "", piso_categoria: "",
     fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
     provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
     banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
@@ -1968,6 +1968,7 @@ function CadastrosInner() {
       tipo: f.tipo, tipo_vinculo_esocial: f.tipo_vinculo_esocial ?? "",
       funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
       salario_base: f.salario_base ? String(f.salario_base) : "",
+      complemento_salarial: f.complemento_salarial ? String(f.complemento_salarial) : "",
       piso_categoria: f.piso_categoria ? String(f.piso_categoria) : "",
       fgts_pct: String(f.fgts_pct ?? 8), inss_empregador_pct: String(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)),
       sat_rat_pct: String(f.sat_rat_pct ?? 1), sistema_s_pct: String(f.sistema_s_pct ?? (f.usar_funrural ? 0.2 : 5.8)),
@@ -1980,7 +1981,7 @@ function CadastrosInner() {
       ctps_numero: "", ctps_serie: "", ctps_uf: "",
       tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
       funcao: "", data_admissao: "", data_demissao: "", ativo: true,
-      salario_base: "", piso_categoria: "",
+      salario_base: "", complemento_salarial: "", piso_categoria: "",
       fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
       provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
       banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
@@ -2006,6 +2007,7 @@ function CadastrosInner() {
       data_admissao: fFunc.data_admissao || undefined, data_demissao: fFunc.data_demissao || undefined,
       ativo: fFunc.ativo,
       salario_base: fFunc.salario_base ? Number(fFunc.salario_base) : undefined,
+      complemento_salarial: fFunc.complemento_salarial ? Number(fFunc.complemento_salarial) : undefined,
       piso_categoria: fFunc.piso_categoria ? Number(fFunc.piso_categoria) : undefined,
       fgts_pct: Number(fFunc.fgts_pct) || 8,
       inss_empregador_pct: Number(fFunc.inss_empregador_pct) || (fFunc.usar_funrural ? 1.5 : 20),
@@ -5446,11 +5448,6 @@ function CadastrosInner() {
                     Funcionários <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({funcs.filter(f => f.ativo).length} ativos)</span>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "var(--text-2)" }}>Processar folha:</span>
-                    <input type="month" value={mesProcessar} onChange={e => setMesProcessar(e.target.value)} style={{ ...inp, width: 140, padding: "6px 10px" }} />
-                    <button style={{ ...btnV, background: "#C9921B", borderColor: "#C9921B", opacity: processando ? 0.6 : 1 }} disabled={processando} onClick={processarFolha}>
-                      {processando ? "Processando…" : "Gerar Folha →"}
-                    </button>
                     <button style={btnV} onClick={() => abrirModalFunc()}>+ Novo</button>
                   </div>
                 </div>
@@ -9631,6 +9628,7 @@ function CadastrosInner() {
       {/* Modal Funcionário — 4 abas */}
       {modalFunc && (() => {
         const sal   = Number(fFunc.salario_base) || 0;
+        const comp  = Number(fFunc.complemento_salarial) || 0;
         const funrural = fFunc.usar_funrural;
         const encFgts    = sal * (Number(fFunc.fgts_pct) / 100);
         const encInss    = sal * (Number(fFunc.inss_empregador_pct) / 100);
@@ -9733,9 +9731,27 @@ function CadastrosInner() {
             {/* ABA REMUNERAÇÃO */}
             {abaFunc === "remuneracao" && (
               <div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
-                  <div><label style={lbl}>Salário base (R$)</label><InputMonetario style={inp} value={fFunc.salario_base} onChange={v => setFFunc(p => ({ ...p, salario_base: String(v) }))} placeholder="0,00" /></div>
-                  <div><label style={lbl}>Piso da categoria (R$)</label><InputMonetario style={inp} value={fFunc.piso_categoria} onChange={v => setFFunc(p => ({ ...p, piso_categoria: String(v) }))} placeholder="referência" /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+                  <div>
+                    <label style={lbl}>Salário base (R$)</label>
+                    <InputMonetario style={inp} value={fFunc.salario_base} onChange={v => setFFunc(p => ({ ...p, salario_base: String(v) }))} placeholder="0,00" />
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Carteira — base dos encargos e Livro Caixa</div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Complemento Salarial (R$)</label>
+                    <InputMonetario style={inp} value={fFunc.complemento_salarial} onChange={v => setFFunc(p => ({ ...p, complemento_salarial: String(v) }))} placeholder="0,00" />
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Por fora — sem encargos, sem Livro Caixa</div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Piso da categoria (R$)</label>
+                    <InputMonetario style={inp} value={fFunc.piso_categoria} onChange={v => setFFunc(p => ({ ...p, piso_categoria: String(v) }))} placeholder="referência" />
+                  </div>
+                  {comp > 0 && (
+                    <div style={{ gridColumn: "1/-1", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#7A5A12" }}>
+                      <strong>Salário total pago ao funcionário: R$ {R(sal + comp)}</strong>
+                      {" "}(R$ {R(sal)} base + R$ {R(comp)} complemento) — encargos incidem somente sobre R$ {R(sal)}
+                    </div>
+                  )}
                   <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 4 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
                       <input type="checkbox" checked={fFunc.usar_funrural} onChange={e => {
@@ -9773,12 +9789,14 @@ function CadastrosInner() {
                   <div style={{ background: "#EDF4FB", border: "0.5px solid #B0CEEA", borderRadius: 10, padding: "14px 18px" }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 10 }}>Custo mensal estimado</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 12 }}>
-                      <div><span style={{ color: "var(--text-2)" }}>Salário base:</span> <strong>R$ {R(sal)}</strong></div>
-                      <div><span style={{ color: "var(--text-2)" }}>Total encargos:</span> <strong>R$ {R(totalEncargos)}</strong></div>
-                      <div><span style={{ color: "#C9921B" }}>Custo total:</span> <strong style={{ color: "#C9921B", fontSize: 14 }}>R$ {R(custoTotal)}</strong></div>
+                      <div><span style={{ color: "var(--text-2)" }}>Salário base (carteira):</span> <strong>R$ {R(sal)}</strong></div>
+                      {comp > 0 && <div><span style={{ color: "var(--text-2)" }}>Complemento (por fora):</span> <strong>R$ {R(comp)}</strong></div>}
+                      <div><span style={{ color: "var(--text-2)" }}>Total pago ao func.:</span> <strong>R$ {R(sal + comp)}</strong></div>
+                      <div><span style={{ color: "var(--text-2)" }}>Encargos (sobre base):</span> <strong>R$ {R(totalEncargos)}</strong></div>
+                      <div><span style={{ color: "#C9921B" }}>Custo total empresa:</span> <strong style={{ color: "#C9921B", fontSize: 14 }}>R$ {R(custoTotal + comp)}</strong></div>
                     </div>
                     <div style={{ marginTop: 8, fontSize: 11, color: "#666" }}>
-                      Percentual de encargos sobre salário: {sal > 0 ? ((totalEncargos/sal)*100).toFixed(1) : 0}% — Custo/hora (220h): R$ {R(custoTotal/220)}
+                      Encargos sobre salário base: {sal > 0 ? ((totalEncargos/sal)*100).toFixed(1) : 0}% — Custo/hora (220h): R$ {R((custoTotal + comp)/220)}
                     </div>
                   </div>
                 )}

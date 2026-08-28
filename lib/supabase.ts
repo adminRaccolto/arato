@@ -923,6 +923,7 @@ export type Funcionario = {
   ativo: boolean;
   // Remuneração
   salario_base?: number;
+  complemento_salarial?: number;
   piso_categoria?: number;
   // Encargos (%)
   fgts_pct?: number;

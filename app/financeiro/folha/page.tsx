@@ -23,9 +23,10 @@ interface FolhaFunc {
   empresa_id?: string | null;
   nome_funcionario: string;
   cargo: string;
-  salario_base: number;       // base pura
-  gratificacao: number;       // bônus do mês
-  salario_bruto: number;      // base + gratificacao
+  salario_base: number;           // base pura (carteira) — base dos encargos
+  complemento_salarial: number;   // por fora — sem encargos, sem Livro Caixa
+  gratificacao: number;           // bônus do mês
+  salario_bruto: number;          // base + gratificacao (encargos só sobre isso)
   inss_trabalhador: number;
   irrf: number;
   adiantamento: number;       // soma dos adiantamentos do mês
@@ -112,10 +113,12 @@ function calcFGTS(b: number) { return Math.round(b * 0.08 * 100) / 100; }
 function calcINSSPat(b: number) { return Math.round(b * 0.28 * 100) / 100; }
 
 function liquido(f: FolhaFunc) {
+  // Complemento é pago integral — não sofre desconto de INSS/IRRF
   return Math.max(0, Math.round((
     f.salario_bruto
     - f.inss_trabalhador - f.irrf - f.adiantamento - f.outros_descontos
     + f.vale_transporte + f.vale_refeicao + f.outros_beneficios
+    + (f.complemento_salarial ?? 0)
   ) * 100) / 100);
 }
 
@@ -210,7 +213,7 @@ export default function FolhaPagamentoPage() {
         { data: emps },
       ] = await Promise.all([
         supabase.from("funcionarios")
-          .select("id,nome,funcao,salario_base,tipo,empresa_id,ativo")
+          .select("id,nome,funcao,salario_base,complemento_salarial,tipo,empresa_id,ativo")
           .eq("fazenda_id", fazendaId)
           .order("nome"),
         supabase.from("folha_pagamento")
@@ -282,6 +285,7 @@ export default function FolhaPagamentoPage() {
       const funcsCarregados = (itens ?? []).map((i: any) => ({
         ...i,
         salario_base: (i.salario_bruto ?? 0) - (i.gratificacao ?? 0),
+        complemento_salarial: i.complemento_salarial ?? 0,
         gratificacao: i.gratificacao ?? 0,
       }));
       setFolhaEdit({ ...folha, funcionarios: funcsCarregados });
@@ -304,6 +308,7 @@ export default function FolhaPagamentoPage() {
           nome_funcionario: f.nome,
           cargo: f.funcao ?? "",
           salario_base: base,
+          complemento_salarial: (f as any).complemento_salarial ?? 0,
           gratificacao: grat,
           salario_bruto: base + grat,
           inss_trabalhador: 0,
@@ -428,6 +433,7 @@ export default function FolhaPagamentoPage() {
         nome_funcionario: f.nome_funcionario,
         cargo: f.cargo,
         salario_bruto: f.salario_bruto,
+        complemento_salarial: f.complemento_salarial ?? 0,
         gratificacao: f.gratificacao,
         inss_trabalhador: f.inss_trabalhador,
         irrf: f.irrf,

@@ -10805,3 +10805,13 @@ ALTER TABLE nf_servicos
   ADD COLUMN IF NOT EXISTS tomador_cnpj text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 205 — complemento_salarial em funcionarios e folha_funcionarios ────────
+-- Complemento salarial: acordo "por fora" — sem encargos trabalhistas, sem Livro Caixa
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS complemento_salarial numeric(14,2) DEFAULT 0;
+
+ALTER TABLE folha_funcionarios
+  ADD COLUMN IF NOT EXISTS complemento_salarial numeric(14,2) DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';
