@@ -13,11 +13,14 @@ interface Funcionario {
   salario_base?: number;
   tipo?: string;
   ativo?: boolean;
+  empresa_id?: string | null;
+  empresa_nome?: string;
 }
 interface FolhaFunc {
   id?: string;
   folha_id?: string;
   funcionario_id?: string;
+  empresa_id?: string | null;
   nome_funcionario: string;
   cargo: string;
   salario_base: number;       // base pura
@@ -38,6 +41,8 @@ interface FolhaFunc {
 interface Folha {
   id: string;
   fazenda_id: string;
+  empresa_id?: string | null;
+  empresa_nome?: string;
   competencia: string;
   status: "rascunho" | "fechado" | "pago";
   valor_bruto: number;
@@ -168,6 +173,7 @@ export default function FolhaPagamentoPage() {
   // dados
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [folhas,       setFolhas]       = useState<Folha[]>([]);
+  const [empresasMap,  setEmpresasMap]  = useState<Record<string, string>>({});
   const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
   const [premiacoes,   setPremiacoes]   = useState<Premiacao[]>([]);
 
@@ -201,6 +207,7 @@ export default function FolhaPagamentoPage() {
         { data: fols },
         { data: adis },
         { data: prems },
+        { data: emps },
       ] = await Promise.all([
         supabase.from("funcionarios")
           .select("id,nome,funcao,salario_base,tipo,empresa_id,ativo")
@@ -216,14 +223,30 @@ export default function FolhaPagamentoPage() {
           .order("data", { ascending: false }),
         supabase.from("funcionarios_premiacoes")
           .select("*, funcionarios(nome)")
+          .eq("fazenda_id", fazendaId),
+        supabase.from("empresas")
+          .select("id,nome_fantasia,razao_social")
           .eq("fazenda_id", fazendaId)
-          .order("mes_referencia", { ascending: false }),
+          .order("nome_fantasia"),
       ]);
-      // Todos os funcionários ativos — independente de vínculo com empresa, produtor ou sem empregador
-      const funcsLista = (funcs ?? []).filter((f: any) => f.ativo !== false);
+      // Mapa empresa_id → nome
+      const eMap: Record<string, string> = {};
+      (emps ?? []).forEach((e: any) => { eMap[e.id] = e.nome_fantasia || e.razao_social || e.id; });
+      setEmpresasMap(eMap);
+
+      // Todos os funcionários ativos com nome do empregador resolvido
+      const funcsLista = (funcs ?? [])
+        .filter((f: any) => f.ativo !== false)
+        .map((f: any) => ({ ...f, empresa_nome: f.empresa_id ? (eMap[f.empresa_id] ?? "Empresa não encontrada") : undefined }));
       const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
-      setFolhas(fols ?? []);
+
+      // Folhas com nome do empregador resolvido
+      const folhasComNome = (fols ?? []).map((f: any) => ({
+        ...f,
+        empresa_nome: f.empresa_id ? (eMap[f.empresa_id] ?? "Empresa não encontrada") : undefined,
+      }));
+      setFolhas(folhasComNome);
       setAdiantamentos((adis ?? []).filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
       setPremiacoes((prems ?? []).filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
     } finally {
@@ -277,6 +300,7 @@ export default function FolhaPagamentoPage() {
           .reduce((s, a) => s + a.valor, 0);
         return recalc({
           funcionario_id: f.id,
+          empresa_id: f.empresa_id ?? null,
           nome_funcionario: f.nome,
           cargo: f.funcao ?? "",
           salario_base: base,
@@ -289,6 +313,13 @@ export default function FolhaPagamentoPage() {
           vale_transporte: 0, vale_refeicao: 0, outros_beneficios: 0,
           inss_patronal: 0, fgts: 0,
         });
+      });
+      // Ordena por empregador (nulls por último) para agrupamento visual
+      funcs.sort((a, b) => {
+        const ea = a.empresa_id ?? "￿";
+        const eb = b.empresa_id ?? "￿";
+        if (ea !== eb) return ea.localeCompare(eb);
+        return a.nome_funcionario.localeCompare(b.nome_funcionario);
       });
       setFolhaEdit({ competencia: fComp, status: "rascunho", funcionarios: funcs });
       setSelecionados(new Set(funcs.map((_, i) => i)));
@@ -306,13 +337,30 @@ export default function FolhaPagamentoPage() {
       const funcs = (folhaEdit.funcionarios ?? []).filter((_, i) => selecionados.has(i));
       if (funcs.length === 0) { setMsg("Selecione ao menos um funcionário."); setSaving(false); return; }
 
-      // Se for intervalo de meses, gera uma folha por mês
-      const meses = folhaEdit.id ? [folhaEdit.competencia!] : monthsInRange(fComp, fCompAte);
-      for (const comp of meses) {
-        await salvarFolhaMes(comp, funcs);
+      if (folhaEdit.id) {
+        // Edição de folha existente — mantém empresa original
+        await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id);
+        setMsg("Folha salva.");
+      } else {
+        // Nova folha — agrupa por empregador e gera uma folha por empresa por mês
+        const grupos = new Map<string | null, FolhaFunc[]>();
+        for (const f of funcs) {
+          const key = f.empresa_id ?? null;
+          if (!grupos.has(key)) grupos.set(key, []);
+          grupos.get(key)!.push(f);
+        }
+        const meses = monthsInRange(fComp, fCompAte);
+        let total = 0;
+        for (const comp of meses) {
+          for (const [empresaId, gFuncs] of grupos) {
+            await salvarFolhaMes(comp, gFuncs, empresaId);
+            total++;
+          }
+        }
+        const quantEmpresas = grupos.size;
+        if (total > 1) setMsg(`${total} folhas geradas — ${meses.length} mês(es) × ${quantEmpresas} empregador(es).`);
+        else setMsg("Folha salva.");
       }
-      if (meses.length > 1) setMsg(`${meses.length} folhas geradas (${nomeMes(meses[0])} → ${nomeMes(meses[meses.length-1])}).`);
-      else setMsg("Folha salva.");
       setModalFolha(false);
       carregar();
     } catch (e: any) {
@@ -322,28 +370,49 @@ export default function FolhaPagamentoPage() {
     }
   }
 
-  async function salvarFolhaMes(comp: string, funcs: FolhaFunc[]) {
+  async function salvarFolhaMes(comp: string, funcs: FolhaFunc[], empresaId?: string | null) {
     const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
     const totalLiq     = funcs.reduce((s, f) => s + liquido(f), 0);
     const totalINSSPat = funcs.reduce((s, f) => s + f.inss_patronal, 0);
     const totalFGTS    = funcs.reduce((s, f) => s + f.fgts, 0);
 
-    // Reutiliza o ID só quando editando a folha existente (mesmo mês)
-    let folhaId = (folhaEdit.id && comp === folhaEdit.competencia) ? folhaEdit.id : undefined;
+    // Reutiliza o ID só quando editando a folha existente (mesmo mês e mesma empresa)
+    let folhaId = (folhaEdit.id && comp === folhaEdit.competencia && (folhaEdit.empresa_id ?? null) === (empresaId ?? null))
+      ? folhaEdit.id
+      : undefined;
+
     if (!folhaId) {
-      const { data, error } = await supabase.from("folha_pagamento").insert({
-        fazenda_id: fazendaId,
-        competencia: comp,
-        status: "rascunho",
-        valor_bruto: totalBruto,
-        valor_liquido: totalLiq,
-        inss_patronal: totalINSSPat,
-        fgts_total: totalFGTS,
-        obs: folhaEdit.obs,
-      }).select("id").single();
-      if (error) throw error;
-      folhaId = data.id;
-      if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId }));
+      // Verifica se já existe folha para (fazenda, empresa, competência)
+      const q = supabase.from("folha_pagamento")
+        .select("id")
+        .eq("fazenda_id", fazendaId!)
+        .eq("competencia", comp);
+      const existQuery = empresaId ? q.eq("empresa_id", empresaId) : q.is("empresa_id", null);
+      const { data: exist } = await existQuery.maybeSingle();
+
+      if (exist?.id) {
+        folhaId = exist.id;
+        await supabase.from("folha_pagamento").update({
+          valor_bruto: totalBruto, valor_liquido: totalLiq,
+          inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs,
+        }).eq("id", folhaId);
+        await supabase.from("folha_funcionarios").delete().eq("folha_id", folhaId);
+      } else {
+        const { data, error } = await supabase.from("folha_pagamento").insert({
+          fazenda_id: fazendaId,
+          empresa_id: empresaId ?? null,
+          competencia: comp,
+          status: "rascunho",
+          valor_bruto: totalBruto,
+          valor_liquido: totalLiq,
+          inss_patronal: totalINSSPat,
+          fgts_total: totalFGTS,
+          obs: folhaEdit.obs,
+        }).select("id").single();
+        if (error) throw error;
+        folhaId = data.id;
+        if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId, empresa_id: empresaId ?? null }));
+      }
     } else {
       await supabase.from("folha_pagamento").update({
         valor_bruto: totalBruto, valor_liquido: totalLiq,
@@ -390,6 +459,7 @@ export default function FolhaPagamentoPage() {
         );
         const { data: lancamento } = await supabase.from("lancamentos").insert({
           fazenda_id: fazendaId,
+          empresa_id: folha.empresa_id ?? null,
           tipo: "pagar",
           descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
           valor: liq,
@@ -601,7 +671,7 @@ export default function FolhaPagamentoPage() {
                 <table style={{ width:"100%", borderCollapse:"collapse" }}>
                   <thead>
                     <tr>
-                      {["Competência","Funcionários","Bruto Total","Líquido Total","Encargos Patronais","Status",""].map(h=>(
+                      {["Competência","Empregador","Funcionários","Bruto Total","Líquido Total","Encargos Patronais","Status",""].map(h=>(
                         <th key={h} style={S.th}>{h}</th>
                       ))}
                     </tr>
@@ -610,6 +680,11 @@ export default function FolhaPagamentoPage() {
                     {folhasFiltradas.map(f => (
                       <tr key={f.id}>
                         <td style={S.td}><span style={{ fontWeight:700, color:"#0B2D50" }}>{nomeMes(f.competencia)}</span></td>
+                        <td style={S.td}>
+                          {f.empresa_nome
+                            ? <span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{f.empresa_nome}</span>
+                            : <span style={{ fontSize:11, color:"#888" }}>Sem empregador</span>}
+                        </td>
                         <td style={S.td}>{f.funcionarios?.length ?? "—"}</td>
                         <td style={{ ...S.td, fontWeight:700, color:"#0B2D50", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_bruto)}</td>
                         <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_liquido)}</td>
@@ -750,7 +825,7 @@ export default function FolhaPagamentoPage() {
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <h2 style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
                 {folhaEdit.id
-                  ? `Folha — ${nomeMes(folhaEdit.competencia ?? "")}`
+                  ? `Folha — ${nomeMes(folhaEdit.competencia ?? "")}${folhaEdit.empresa_id ? ` · ${empresasMap[folhaEdit.empresa_id] ?? ""}` : " · Sem empregador"}`
                   : fCompAte > fComp
                     ? `Gerar Folhas — ${nomeMes(fComp)} → ${nomeMes(fCompAte)}`
                     : `Folha — ${nomeMes(fComp)}`
@@ -804,7 +879,7 @@ export default function FolhaPagamentoPage() {
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                       <thead>
                         <tr>
-                          {["☑","","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Líquido"].map(h=>(
+                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Líquido"].map(h=>(
                             <th key={h} style={S.th}>{h}</th>
                           ))}
                         </tr>
@@ -822,6 +897,11 @@ export default function FolhaPagamentoPage() {
                                 </td>
                                 <td style={{ ...S.td, width:28 }}>
                                   <button onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#1A4870", padding:"0 4px" }}>{expanded?"▾":"▸"}</button>
+                                </td>
+                                <td style={{ ...S.td, minWidth:120 }}>
+                                  {f.empresa_id
+                                    ? <span style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{empresasMap[f.empresa_id] ?? "Empresa"}</span>
+                                    : <span style={{ fontSize:11, color:"#aaa" }}>Sem vínculo</span>}
                                 </td>
                                 <td style={{ ...S.td, fontWeight:600, minWidth:160 }}>{f.nome_funcionario}</td>
                                 <td style={S.td}>
@@ -852,7 +932,7 @@ export default function FolhaPagamentoPage() {
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-detail`} style={{ background:"#F8FAFD" }}>
-                                  <td colSpan={12} style={{ padding:"12px 16px 16px 44px" }}>
+                                  <td colSpan={13} style={{ padding:"12px 16px 16px 44px" }}>
                                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div>
                                         <label style={S.label}>Vale Transporte</label>
