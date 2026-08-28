@@ -4,54 +4,49 @@ import { useState, useEffect, useRef } from "react";
 interface Props extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
   value: number | string | undefined | null;
   onChange: (valor: number) => void;
+  decimais?: number; // padrão 2; use 4 para cotações USD com PTAX
 }
 
-// 1234.56 → "1.234,56"
-function formatar(n: number): string {
+function formatar(n: number, dec = 2): string {
   if (!n && n !== 0) return "";
-  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
-// "1.234,56" → 1234.56
 function desformatar(s: string): number {
   return Number(s.replace(/\./g, "").replace(",", ".")) || 0;
 }
 
-// Aplica máscara de centavos em tempo real: "12345" → "123,45"
-function aplicarMascara(raw: string): string {
+function aplicarMascara(raw: string, dec = 2): string {
   const nums = raw.replace(/\D/g, "");
   if (!nums) return "";
-  return (Number(nums) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (Number(nums) / Math.pow(10, dec)).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
-function valorParaDisplay(v: number | string | undefined | null): string {
+function valorParaDisplay(v: number | string | undefined | null, dec = 2): string {
   if (v === "" || v === null || v === undefined) return "";
   let n: number;
   if (typeof v === "number") {
     n = v;
   } else if (v.includes(",")) {
-    // pt-BR formatado: "1.234,56" — ponto é milhar, vírgula é decimal
     n = Number(v.replace(/\./g, "").replace(",", ".")) || 0;
   } else {
-    // Notação inglesa do banco/JSON: "100.2" ou inteiro "1002" — ponto é decimal
     n = Number(v) || 0;
   }
-  return n > 0 ? formatar(n) : "";
+  return n > 0 ? formatar(n, dec) : "";
 }
 
-export default function InputMonetario({ value, onChange, onBlur, onFocus, ...props }: Props) {
+export default function InputMonetario({ value, onChange, onBlur, onFocus, decimais = 2, ...props }: Props) {
   const focused = useRef(false);
-  const [display, setDisplay] = useState(() => valorParaDisplay(value));
+  const [display, setDisplay] = useState(() => valorParaDisplay(value, decimais));
 
-  // Sincroniza quando o valor externo muda (ex: reset de formulário)
   useEffect(() => {
     if (!focused.current) {
-      setDisplay(valorParaDisplay(value));
+      setDisplay(valorParaDisplay(value, decimais));
     }
-  }, [value]);
+  }, [value, decimais]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const masked = aplicarMascara(e.target.value);
+    const masked = aplicarMascara(e.target.value, decimais);
     setDisplay(masked);
     onChange(desformatar(masked));
   }
@@ -75,7 +70,7 @@ export default function InputMonetario({ value, onChange, onBlur, onFocus, ...pr
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
-      placeholder={props.placeholder ?? "0,00"}
+      placeholder={props.placeholder ?? (decimais === 4 ? "0,0000" : "0,00")}
     />
   );
 }

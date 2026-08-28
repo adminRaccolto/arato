@@ -2489,7 +2489,7 @@ Ao criar um novo insumo diretamente do pedido de compra (campo "Produto / Insumo
 
 - Novo filtro **Fazenda** na barra de filtros da lista de NFS-e
 - O filtro aparece apenas quando a conta tem mais de uma fazenda
-- Filtra as NFS-e pela fazenda (`fazenda_id`) vinculada a cada nota
+- Filtra as NFS-e pela fazenda (campo fazenda_id) vinculada a cada nota
 
 ---
 
@@ -2498,11 +2498,11 @@ Ao criar um novo insumo diretamente do pedido de compra (campo "Produto / Insumo
 **Módulo:** Cadastros → Pessoas → modal Pessoa Jurídica → campo CNPJ → botão 🔍
 
 - A busca de CNPJ via BrasilAPI agora preenche automaticamente:
-  - **IE (Inscrição Estadual):** extraída do campo `inscricao_estadual` ou `inscricoes_estaduais[0].numero` da API
-  - **IM (Inscrição Municipal):** extraída do campo `inscricao_municipal` — nova informação, antes não era coletada
+  - **IE (Inscrição Estadual):** extraída do campo inscricao_estadual ou inscricoes_estaduais[0].numero da API
+  - **IM (Inscrição Municipal):** extraída do campo inscricao_municipal — nova informação, antes não era coletada
 - **Novo campo IM** adicionado ao formulário ao lado do campo IE (grade 2 colunas)
 - O campo IM é importante para empresas prestadoras de serviço: é exigido na emissão de NFS-e
-- **Banco de dados:** coluna `inscricao_mun` adicionada na tabela `pessoas` (Migration 203)
+- **Banco de dados:** coluna inscricao_mun adicionada na tabela pessoas (Migration 203)
 - **Pergunta frequente:** "A busca do CNPJ não trouxe a IE/IM." → A BrasilAPI pode não ter o dado para CNPJs de estados que não disponibilizam a informação. Preencha manualmente.
 
 ---
@@ -2511,9 +2511,9 @@ Ao criar um novo insumo diretamente do pedido de compra (campo "Produto / Insumo
 
 **Módulo:** Comercial → Contratos de Grãos → grid da lista
 
-- A coluna **Contrato** agora exibe o **Nº do Contrato do Cliente** (comprador/trading, campo `nr_contrato_cliente`) como número principal em negrito
-- O número interno do sistema (CTR-XXXX/XX, campo `numero`) aparece em texto menor abaixo
-- Quando `nr_contrato_cliente` não está preenchido, exibe o número interno como principal
+- A coluna **Contrato** agora exibe o **Nº do Contrato do Cliente** (comprador/trading, campo nr_contrato_cliente) como número principal em negrito
+- O número interno do sistema (CTR-XXXX/XX, campo numero) aparece em texto menor abaixo
+- Quando nr_contrato_cliente não está preenchido, exibe o número interno como principal
 - **Por quê:** os produtores se referem ao contrato pelo número da AMAGGI/BUNGE/CARGILL, não pelo número interno do sistema
 
 ---
@@ -2563,12 +2563,12 @@ Ao processar NFs em lote e selecionar **Estoque** como destino:
 Dois bugs corrigidos:
 
 1. **Funcionários não apareciam na lista da folha:**
-   - O sistema buscava funcionários com `empresa_id IS NULL` via filtro de banco, mas a coluna pode ter comportamento diferente dependendo da versão do banco
-   - Corrigido: o sistema agora carrega todos os funcionários da fazenda e filtra no cliente apenas os sem `empresa_id` (funcionários do produtor rural, não de empresas)
+   - O sistema buscava funcionários com empresa_id IS NULL via filtro de banco, mas a coluna pode ter comportamento diferente dependendo da versão do banco
+   - Corrigido: o sistema agora carrega todos os funcionários da fazenda e filtra no cliente apenas os sem empresa_id (funcionários do produtor rural, não de empresas)
    - Funcionários vinculados a uma empresa (CNPJ) continuam **não aparecendo** na folha do produtor rural — isso é correto
 
 2. **Ao salvar a folha uma segunda vez, era criada uma folha duplicada:**
    - Após o primeiro salvamento, o ID da folha não era atualizado no estado interno
    - No segundo salvar, o sistema interpretava como "nova folha" e criava um duplicado
-   - Corrigido: após o INSERT da folha, o `id` gerado é imediatamente gravado no estado — salvamentos subsequentes fazem UPDATE na folha existente
+   - Corrigido: após o INSERT da folha, o id gerado é imediatamente gravado no estado — salvamentos subsequentes fazem UPDATE na folha existente
 `;

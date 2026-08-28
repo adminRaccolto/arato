@@ -386,6 +386,7 @@ function ContasPagarInner() {
     { key: "moeda",      label: "Moeda" },
     { key: "conta",      label: "Conta" },
     { key: "produtor",   label: "Produtor" },
+    { key: "num_nf",     label: "Nº NF" },
     { key: "origem",     label: "Origem" },
     { key: "obs",        label: "Observação" },
   ], []);
@@ -395,7 +396,7 @@ function ContasPagarInner() {
   const { w: cw, startResize } = useColumnResize({
     fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
     vencimento: 90, venc_orig: 90, valor: 110, dt_pgto: 85, valor_pago: 100,
-    moeda: 65, conta: 110, produtor: 110, origem: 90, obs: 160,
+    moeda: 65, conta: 110, produtor: 110, num_nf: 90, origem: 90, obs: 160,
   }, colWKey);
   const [fFornecedor, setFFornecedor] = useState("");
   const [fOperacao,   setFOperacao]   = useState("");
@@ -1262,12 +1263,12 @@ function ContasPagarInner() {
                         {col("moeda")      && <th style={{ ...thS(cw("moeda"),      "center"), width: cw("moeda"),      position: "relative", userSelect: "none" }}>Moeda<ResizeHandle onMouseDown={startResize("moeda")} /></th>}
                         {col("conta")      && <th style={{ ...thS(cw("conta"),      "left"),   width: cw("conta"),      position: "relative", userSelect: "none" }}>Conta<ResizeHandle onMouseDown={startResize("conta")} /></th>}
                         {col("produtor")   && <th style={{ ...thS(cw("produtor"),   "left"),   width: cw("produtor"),   position: "relative", userSelect: "none" }}>Produtor<ResizeHandle onMouseDown={startResize("produtor")} /></th>}
+                        {col("num_nf")     && <th style={{ ...thS(cw("num_nf"),     "center"), width: cw("num_nf"),     position: "relative", userSelect: "none" }}>Nº NF<ResizeHandle onMouseDown={startResize("num_nf")} /></th>}
                         {col("origem")     && <th style={{ ...thS(cw("origem"),     "center"), width: cw("origem"),     position: "relative", userSelect: "none" }}>Origem<ResizeHandle onMouseDown={startResize("origem")} /></th>}
                         {col("obs")        && <th style={{ ...thS(cw("obs"),        "left"),   width: cw("obs"),        position: "relative", userSelect: "none" }}>Observação<ResizeHandle onMouseDown={startResize("obs")} /></th>}
                         <th style={{ ...thS(36, "center"), width: 36 }}>Baixar</th>
                         <th style={{ ...thS(36, "center"), width: 36 }}>Reprog.</th>
                         <th style={{ ...thS(36, "center"), width: 36 }}>Editar</th>
-                        <th style={{ ...thS(36, "center"), width: 36 }}>NF</th>
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
@@ -1291,9 +1292,10 @@ function ContasPagarInner() {
                         {col("moeda")      && <td></td>}
                         {col("conta")      && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} /></td>}
                         {col("produtor")   && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} /></td>}
+                        {col("num_nf")     && <td></td>}
                         {col("origem")     && <td></td>}
                         {col("obs")        && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} /></td>}
-                        <td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td>
                       </tr>
                     </thead>
                     <tbody>
@@ -1494,6 +1496,10 @@ function ContasPagarInner() {
                             {col("conta") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "—"}</td>}
                             {/* Produtor */}
                             {col("produtor") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.produtor_id ? prod : "—"}</td>}
+                            {/* Nº NF */}
+                            {col("num_nf") && <td style={{ padding: "8px 6px", textAlign: "center", fontSize: 11, color: "var(--text-2)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                              {l.nfe_numero ?? "—"}
+                            </td>}
                             {/* Origem */}
                             {col("origem") && <td style={{ padding: "8px 8px", textAlign: "center" }}>
                               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
@@ -1538,14 +1544,6 @@ function ContasPagarInner() {
                               {l.status !== "baixado" && (
                                 <button onClick={() => abrirEditar(l)} title="Editar lançamento"
                                   style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
-                              )}
-                            </td>
-                            {/* NF */}
-                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
-                              {l.nfe_numero && (
-                                <span title={`NF vinculada: ${l.nfe_numero}`} style={{ fontSize: 9, padding: "2px 5px", borderRadius: 4, background: "#F0F0F0", color: "#444", border: "0.5px solid #D0D0D0", fontWeight: 700, whiteSpace: "nowrap" }}>
-                                  NF
-                                </span>
                               )}
                             </td>
                           </tr>

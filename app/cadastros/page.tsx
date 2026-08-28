@@ -1572,7 +1572,7 @@ function CadastrosInner() {
     setNovaSubcat("");
     setFPes(p ? {
       nome: p.nome, tipo: p.tipo, cliente: p.cliente, fornecedor: p.fornecedor,
-      cpf_cnpj: p.cpf_cnpj ?? "", inscricao_est: p.inscricao_est ?? "",
+      cpf_cnpj: p.cpf_cnpj ?? "", inscricao_est: p.inscricao_est ?? "", inscricao_mun: p.inscricao_mun ?? "",
       email: p.email ?? "", telefone: p.telefone ?? "",
       cep: p.cep ?? "", logradouro: p.logradouro ?? "", numero: p.numero ?? "",
       complemento: p.complemento ?? "", bairro: p.bairro ?? "",
@@ -1586,7 +1586,7 @@ function CadastrosInner() {
       criar_deposito_terceiro: false,
     } : {
       nome: "", tipo: "pj", cliente: true, fornecedor: false,
-      cpf_cnpj: "", inscricao_est: "", email: "", telefone: "",
+      cpf_cnpj: "", inscricao_est: "", inscricao_mun: "", email: "", telefone: "",
       cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", municipio_ibge: "", estado: "MT",
       nome_contato: "", telefone_contato: "",
       banco_nome: "", banco_agencia: "", banco_conta: "", banco_tipo: "",

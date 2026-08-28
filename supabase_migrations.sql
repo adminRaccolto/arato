@@ -10797,3 +10797,11 @@ ALTER TABLE pessoas
   ADD COLUMN IF NOT EXISTS inscricao_mun text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 204 — tomador em nf_servicos ─────────────────────────
+ALTER TABLE nf_servicos
+  ADD COLUMN IF NOT EXISTS tomador_id   uuid REFERENCES pessoas(id),
+  ADD COLUMN IF NOT EXISTS tomador_nome text,
+  ADD COLUMN IF NOT EXISTS tomador_cnpj text;
+
+NOTIFY pgrst, 'reload schema';

@@ -70,6 +70,9 @@ interface NfServico {
   prestador_id?: string;
   prestador_nome: string;
   prestador_cnpj?: string;
+  tomador_id?: string;
+  tomador_nome?: string;
+  tomador_cnpj?: string;
   municipio_prestacao?: string;
   data_prestacao: string;
   competencia?: string;
@@ -106,6 +109,7 @@ type Etapa = "prestador" | "servico" | "tributacao";
 const CAB_VAZIO = () => ({
   numero_nf: "", serie: "1", chave_nfse: "",
   prestador_id: "", prestador_nome: "", prestador_cnpj: "",
+  tomador_id: "", tomador_nome: "", tomador_cnpj: "",
   municipio_prestacao: "",
   data_prestacao: new Date().toISOString().split("T")[0],
   competencia: new Date().toISOString().substring(0, 7),
@@ -289,6 +293,21 @@ export default function NfServicoPage() {
     }
   }
 
+  // ── Auto-fill tomador ────────────────────────────────────────
+  function onTomadorChange(id: string) {
+    const p = pessoas.find(x => x.id === id);
+    if (p) {
+      setCab(prev => ({
+        ...prev,
+        tomador_id:   id,
+        tomador_nome: p.nome ?? prev.tomador_nome,
+        tomador_cnpj: p.cpf_cnpj ?? prev.tomador_cnpj,
+      }));
+    } else {
+      setCab(prev => ({ ...prev, tomador_id: id }));
+    }
+  }
+
   // ── Abrir wizard ────────────────────────────────────────────
   function abrirNovo() {
     setNfEdit(null);
@@ -314,6 +333,9 @@ export default function NfServicoPage() {
       prestador_id:         nf.prestador_id ?? "",
       prestador_nome:       nf.prestador_nome,
       prestador_cnpj:       nf.prestador_cnpj ?? "",
+      tomador_id:           nf.tomador_id ?? "",
+      tomador_nome:         nf.tomador_nome ?? "",
+      tomador_cnpj:         nf.tomador_cnpj ?? "",
       municipio_prestacao:  nf.municipio_prestacao ?? "",
       data_prestacao:       nf.data_prestacao,
       competencia:          nf.competencia ?? nf.data_prestacao.substring(0, 7),
@@ -380,6 +402,9 @@ export default function NfServicoPage() {
       prestador_id:          cab.prestador_id   || undefined,
       prestador_nome:        cab.prestador_nome,
       prestador_cnpj:        cab.prestador_cnpj || undefined,
+      tomador_id:            cab.tomador_id     || undefined,
+      tomador_nome:          cab.tomador_nome   || undefined,
+      tomador_cnpj:          cab.tomador_cnpj   || undefined,
       municipio_prestacao:   cab.municipio_prestacao || undefined,
       data_prestacao:        cab.data_prestacao,
       competencia:           cab.competencia || cab.data_prestacao.substring(0, 7),
@@ -831,8 +856,8 @@ export default function NfServicoPage() {
                       }}
                     />
                   </th>
-                  {["Nº / Série", "Prestador", "Competência", "Serviço / Discriminação", "Origem", "Valor Total", "Status", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                  {["Nº / Série", "Prestador", "Tomador", "Competência", "Serviço / Discriminação", "Origem", "Valor Total", "Status", "Ações"].map((c, i) => (
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 5 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
@@ -861,6 +886,15 @@ export default function NfServicoPage() {
                       <td style={{ padding: "10px 12px", overflow: "hidden" }}>
                         <div style={{ fontSize: 13, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.prestador_nome}>{nf.prestador_nome}</div>
                         {nf.prestador_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{nf.prestador_cnpj}</div>}
+                      </td>
+                      {/* Tomador */}
+                      <td style={{ padding: "10px 12px", overflow: "hidden" }}>
+                        {nf.tomador_nome ? (
+                          <>
+                            <div style={{ fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.tomador_nome}>{nf.tomador_nome}</div>
+                            {nf.tomador_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{nf.tomador_cnpj}</div>}
+                          </>
+                        ) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}
                       </td>
                       {/* Competência */}
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>
@@ -1012,6 +1046,30 @@ export default function NfServicoPage() {
                     <div>
                       <label style={lbl}>Chave NFS-e (opcional)</label>
                       <input value={cab.chave_nfse} onChange={e => setCab(p=>({...p,chave_nfse:e.target.value.replace(/\D/g,"")}))} maxLength={44} placeholder="44 dígitos" style={{ ...inp, fontFamily: "monospace", fontSize: 12 }} />
+                    </div>
+                  </div>
+
+                  <div style={{ height: 1, background: "var(--bg-tag)", margin: "18px 0" }} />
+
+                  {/* Tomador do Serviço */}
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Tomador do Serviço (Destinatário)</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                    <div>
+                      <label style={lbl}>Tomador — do cadastro</label>
+                      <select value={cab.tomador_id} onChange={e => onTomadorChange(e.target.value)} style={inp}>
+                        <option value="">Selecionar do cadastro…</option>
+                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Nome do Tomador</label>
+                      <input value={cab.tomador_nome} onChange={e => setCab(p=>({...p,tomador_nome:e.target.value}))} placeholder="Razão social ou nome" style={inp} />
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14, marginBottom: 14 }}>
+                    <div>
+                      <label style={lbl}>CNPJ / CPF do Tomador</label>
+                      <input value={cab.tomador_cnpj} onChange={e => setCab(p=>({...p,tomador_cnpj:e.target.value}))} placeholder="00.000.000/0001-00" style={inp} />
                     </div>
                   </div>
 

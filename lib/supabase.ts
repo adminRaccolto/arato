@@ -1329,6 +1329,9 @@ export type NfServico = {
   prestador_id?: string;
   prestador_nome: string;
   prestador_cnpj?: string;
+  tomador_id?: string;        // FK pessoas — tomador do serviço (nossa fazenda ou cliente)
+  tomador_nome?: string;
+  tomador_cnpj?: string;
   municipio_prestacao?: string;
   data_prestacao: string;
   competencia?: string;           // YYYY-MM
