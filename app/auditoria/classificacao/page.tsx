@@ -70,121 +70,146 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
   const rodarAuditoria = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
+    setInconsistencias([]);
     const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId];
 
-    // 1. Carrega regras ativas com NCM
-    const { data: regrasRaw } = await supabase
-      .from("regras_classificacao_nf")
-      .select("id, ncm, nome_regra, categoria, operacao_gerencial_id")
-      .in("fazenda_id", ids)
-      .eq("ativo", true)
-      .not("ncm", "is", null);
+    try {
+      // 1. Carrega regras ativas com NCM
+      const { data: regrasRaw } = await supabase
+        .from("regras_classificacao_nf")
+        .select("id, ncm, nome_regra, categoria, operacao_gerencial_id")
+        .in("fazenda_id", ids)
+        .eq("ativo", true)
+        .not("ncm", "is", null);
 
-    if (!regrasRaw || regrasRaw.length === 0) { setInconsistencias([]); setLoading(false); return; }
+      if (!regrasRaw || regrasRaw.length === 0) { setLoading(false); return; }
 
-    // Monta mapa NCM → regra (normaliza NCM: remove pontos para comparação)
-    const regraMap = new Map<string, RegraMap>();
-    for (const r of regrasRaw) {
-      regraMap.set((r.ncm as string).replace(/\./g, ""), r as RegraMap);
-    }
-
-    // 2. Carrega OGs esperadas para enriquecer o mapa
-    const ogIds = regrasRaw.map(r => r.operacao_gerencial_id).filter(Boolean) as string[];
-    const ogMap = new Map<string, { descricao: string; classificacao: string }>();
-    if (ogIds.length > 0) {
-      const { data: ogsRaw } = await supabase
-        .from("operacoes_gerenciais").select("id, descricao, classificacao").in("id", ogIds);
-      for (const og of ogsRaw ?? []) ogMap.set(og.id, og);
-    }
-
-    // 3. Carrega itens de NF com NCM (últimos 365 dias)
-    const umAnoAtras = new Date(); umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
-    const { data: itensRaw } = await supabase
-      .from("nf_entrada_itens")
-      .select(`id, ncm, descricao_produto, tipo_apropiacao, insumo_id, operacao_gerencial_id,
-               nf_entradas!inner(numero, data_emissao, emitente_nome, fazenda_id)`)
-      .in("nf_entradas.fazenda_id", ids)
-      .not("ncm", "is", null)
-      .gte("nf_entradas.data_emissao", umAnoAtras.toISOString().slice(0, 10))
-      .limit(2000);
-
-    if (!itensRaw || itensRaw.length === 0) { setInconsistencias([]); setLoading(false); return; }
-
-    // 4. Carrega insumos para saber categoria real dos itens de estoque
-    const insumoIds = [...new Set(itensRaw.map((i: { insumo_id?: string }) => i.insumo_id).filter(Boolean))] as string[];
-    const insumoMap = new Map<string, { nome: string; categoria?: string }>();
-    if (insumoIds.length > 0) {
-      const { data: insumosRaw } = await supabase
-        .from("insumos").select("id, nome, categoria").in("id", insumoIds);
-      for (const ins of insumosRaw ?? []) insumoMap.set(ins.id, ins);
-    }
-
-    // 5. Carrega OGs reais dos itens
-    const ogReaisIds = [...new Set(itensRaw.map((i: { operacao_gerencial_id?: string }) => i.operacao_gerencial_id).filter(Boolean))] as string[];
-    const ogReaisMap = new Map<string, { descricao: string; classificacao: string }>();
-    if (ogReaisIds.length > 0) {
-      const { data: ogReaisRaw } = await supabase
-        .from("operacoes_gerenciais").select("id, descricao, classificacao").in("id", ogReaisIds);
-      for (const og of ogReaisRaw ?? []) ogReaisMap.set(og.id, og);
-    }
-
-    // 6. Cruza e detecta inconsistências
-    const resultado: InconsistenciaItem[] = [];
-    for (const item of itensRaw as Record<string, unknown>[]) {
-      const ncmNorm = ((item.ncm as string) ?? "").replace(/\./g, "");
-      const regra = regraMap.get(ncmNorm);
-      if (!regra) continue; // NCM sem regra → ignora
-
-      const nf = (item.nf_entradas as Record<string, string>) ?? {};
-      const insumo = item.insumo_id ? insumoMap.get(item.insumo_id as string) : undefined;
-      const ogReal = item.operacao_gerencial_id ? ogReaisMap.get(item.operacao_gerencial_id as string) : undefined;
-      const ogEsperada = regra.operacao_gerencial_id ? (ogMap.get(regra.operacao_gerencial_id) ?? null) : null;
-
-      const base: Omit<InconsistenciaItem, "tipo_inconsistencia"> = {
-        item_id:              item.id as string,
-        nf_numero:            nf.numero,
-        nf_data:              nf.data_emissao,
-        emitente:             nf.emitente_nome,
-        descricao_produto:    item.descricao_produto as string,
-        ncm:                  item.ncm as string,
-        tipo_apropiacao:      item.tipo_apropiacao as string,
-        insumo_nome:          insumo?.nome,
-        insumo_categoria:     insumo?.categoria,
-        og_real_id:           item.operacao_gerencial_id as string | undefined,
-        og_real_descricao:    ogReal?.descricao,
-        og_real_classif:      ogReal?.classificacao,
-        regra_nome:           regra.nome_regra,
-        categoria_esperada:   regra.categoria,
-        og_esperada_id:       regra.operacao_gerencial_id,
-        og_esperada_descricao:ogEsperada?.descricao,
-        og_esperada_classif:  ogEsperada?.classificacao,
-      };
-
-      // Caso 1: item direto com OG esperada na regra — compara OGs diretamente
-      if (item.tipo_apropiacao === "direto" && regra.operacao_gerencial_id) {
-        if (!item.operacao_gerencial_id) {
-          resultado.push({ ...base, tipo_inconsistencia: "sem_og_direto" });
-        } else if (item.operacao_gerencial_id !== regra.operacao_gerencial_id) {
-          resultado.push({ ...base, tipo_inconsistencia: "og_diferente" });
-        }
-        continue;
+      const regraMap = new Map<string, RegraMap>();
+      for (const r of regrasRaw) {
+        regraMap.set((r.ncm as string).replace(/\./g, ""), r as RegraMap);
       }
 
-      // Caso 2: item de estoque com categoria na regra — compara categoria do insumo
-      if (item.tipo_apropiacao === "estoque" && regra.categoria && insumo?.categoria) {
-        if (insumo.categoria !== regra.categoria) {
-          resultado.push({ ...base, tipo_inconsistencia: "categoria_errada" });
+      // 2. OGs esperadas
+      const ogIds = regrasRaw.map(r => r.operacao_gerencial_id).filter(Boolean) as string[];
+      const ogMap = new Map<string, { descricao: string; classificacao: string }>();
+      if (ogIds.length > 0) {
+        const { data: ogsRaw } = await supabase
+          .from("operacoes_gerenciais").select("id, descricao, classificacao").in("id", ogIds);
+        for (const og of ogsRaw ?? []) ogMap.set(og.id, og);
+      }
+
+      // 3. Busca IDs das NFs das fazendas (últimos 365 dias) — filtro seguro sem depender de join PostgREST
+      const umAnoAtras = new Date(); umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+      const dataCorte = umAnoAtras.toISOString().slice(0, 10);
+
+      const { data: nfsRaw } = await supabase
+        .from("nf_entradas")
+        .select("id, numero, data_emissao, emitente_nome")
+        .in("fazenda_id", ids)
+        .gte("data_emissao", dataCorte);
+
+      if (!nfsRaw || nfsRaw.length === 0) { setLoading(false); return; }
+
+      const nfIds = nfsRaw.map(n => n.id);
+      const nfInfoMap = new Map<string, { numero: string; data_emissao: string; emitente_nome: string }>(
+        nfsRaw.map(n => [n.id, n])
+      );
+
+      // 4. Carrega itens de NF com paginação (1000/página)
+      const PAGE = 1000;
+      let allItens: Record<string, unknown>[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error } = await supabase
+          .from("nf_entrada_itens")
+          .select("id, ncm, descricao_produto, tipo_apropiacao, insumo_id, operacao_gerencial_id, nf_entrada_id")
+          .in("nf_entrada_id", nfIds)
+          .not("ncm", "is", null)
+          .range(from, from + PAGE - 1);
+        if (error) break;
+        allItens = allItens.concat((page ?? []) as Record<string, unknown>[]);
+        if (!page || page.length < PAGE) break;
+      }
+
+      if (allItens.length === 0) { setLoading(false); return; }
+
+      // 5. Carrega insumos
+      const insumoIds = [...new Set(allItens.map(i => i.insumo_id as string).filter(Boolean))];
+      const insumoMap = new Map<string, { nome: string; categoria?: string }>();
+      if (insumoIds.length > 0) {
+        const { data: insumosRaw } = await supabase
+          .from("insumos").select("id, nome, categoria").in("id", insumoIds);
+        for (const ins of insumosRaw ?? []) insumoMap.set(ins.id, ins);
+      }
+
+      // 6. Carrega OGs reais dos itens
+      const ogReaisIds = [...new Set(allItens.map(i => i.operacao_gerencial_id as string).filter(Boolean))];
+      const ogReaisMap = new Map<string, { descricao: string; classificacao: string }>();
+      if (ogReaisIds.length > 0) {
+        const { data: ogReaisRaw } = await supabase
+          .from("operacoes_gerenciais").select("id, descricao, classificacao").in("id", ogReaisIds);
+        for (const og of ogReaisRaw ?? []) ogReaisMap.set(og.id, og);
+      }
+
+      // 7. Cruza e detecta inconsistências
+      const resultado: InconsistenciaItem[] = [];
+      for (const item of allItens) {
+        const ncmNorm = ((item.ncm as string) ?? "").replace(/\./g, "");
+        const regra = regraMap.get(ncmNorm);
+        if (!regra) continue;
+
+        const nf = nfInfoMap.get(item.nf_entrada_id as string) ?? { numero: "—", data_emissao: "", emitente_nome: "—" };
+        const insumo = item.insumo_id ? insumoMap.get(item.insumo_id as string) : undefined;
+        const ogReal = item.operacao_gerencial_id ? ogReaisMap.get(item.operacao_gerencial_id as string) : undefined;
+        const ogEsperada = regra.operacao_gerencial_id ? (ogMap.get(regra.operacao_gerencial_id) ?? null) : null;
+
+        const base: Omit<InconsistenciaItem, "tipo_inconsistencia"> = {
+          item_id:               item.id as string,
+          nf_numero:             nf.numero,
+          nf_data:               nf.data_emissao,
+          emitente:              nf.emitente_nome,
+          descricao_produto:     item.descricao_produto as string,
+          ncm:                   item.ncm as string,
+          tipo_apropiacao:       item.tipo_apropiacao as string,
+          insumo_nome:           insumo?.nome,
+          insumo_categoria:      insumo?.categoria,
+          og_real_id:            item.operacao_gerencial_id as string | undefined,
+          og_real_descricao:     ogReal?.descricao,
+          og_real_classif:       ogReal?.classificacao,
+          regra_nome:            regra.nome_regra,
+          categoria_esperada:    regra.categoria,
+          og_esperada_id:        regra.operacao_gerencial_id,
+          og_esperada_descricao: ogEsperada?.descricao,
+          og_esperada_classif:   ogEsperada?.classificacao,
+        };
+
+        if (item.tipo_apropiacao === "direto" && regra.operacao_gerencial_id) {
+          if (!item.operacao_gerencial_id) {
+            resultado.push({ ...base, tipo_inconsistencia: "sem_og_direto" });
+          } else if (item.operacao_gerencial_id !== regra.operacao_gerencial_id) {
+            resultado.push({ ...base, tipo_inconsistencia: "og_diferente" });
+          }
+          continue;
+        }
+
+        if (item.tipo_apropiacao === "estoque" && regra.categoria && insumo?.categoria) {
+          if (insumo.categoria !== regra.categoria) {
+            resultado.push({ ...base, tipo_inconsistencia: "categoria_errada" });
+          }
         }
       }
-    }
 
-    setInconsistencias(resultado);
-    setLoading(false);
+      setInconsistencias(resultado);
+    } finally {
+      setLoading(false);
+    }
   }, [fazendaId, fazendaIds]);
 
   async function corrigirOG(itemId: string, novaOgId: string) {
     if (!novaOgId) return;
+    // Corrige o item de NF
     await supabase.from("nf_entrada_itens").update({ operacao_gerencial_id: novaOgId }).eq("id", itemId);
+    // Propaga para lançamentos financeiros gerados por este item
+    await supabase.from("lancamentos").update({ operacao_gerencial_id: novaOgId }).eq("nf_entrada_item_id", itemId);
     setInconsistencias(p => p.filter(x => x.item_id !== itemId));
     setCorrigindo(null);
   }
