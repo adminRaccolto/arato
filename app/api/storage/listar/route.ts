@@ -50,7 +50,13 @@ export async function GET(req: NextRequest) {
   }));
 
   // Uso de storage da conta — lê pacote diretamente de contas.pacote
-  const STORAGE_GB: Record<string, number> = { essencial: 0, gestao: 1, performance: 3 };
+  function resolverGb(pacote: string | null | undefined): number {
+    if (pacote === "essencial") return 0;       // único caso sem storage
+    if (!pacote)                return 1;       // NULL = conta criada antes do campo → 1 GB
+    if (pacote.includes("performance")) return 3;
+    if (pacote.includes("gestao"))      return 1;
+    return 1; // qualquer outro plano pago → pelo menos 1 GB
+  }
 
   let usado_bytes = 0;
   let cota_bytes  = 0;
@@ -61,13 +67,13 @@ export async function GET(req: NextRequest) {
     .eq("id", perfil.conta_id).single();
 
   usado_bytes = Number((conta as { storage_usado_bytes?: number } | null)?.storage_usado_bytes ?? 0);
-  const pacote = (conta as { pacote?: string } | null)?.pacote ?? "essencial";
+  const pacote = (conta as { pacote?: string | null } | null)?.pacote;
   const statusConta = (conta as { status?: string } | null)?.status ?? "trial";
 
   // Contas canceladas perdem acesso ao storage
   if (statusConta !== "cancelado") {
-    plano_id  = pacote;
-    cota_bytes = (STORAGE_GB[pacote] ?? 0) * 1024 * 1024 * 1024;
+    plano_id  = pacote ?? "trial";
+    cota_bytes = resolverGb(pacote) * 1024 * 1024 * 1024;
   }
 
   return NextResponse.json({ data: docs, usado_bytes, cota_bytes, plano_id });

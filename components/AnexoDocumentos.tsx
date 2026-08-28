@@ -115,7 +115,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
     }
   }
 
-  const semStorage = planId === "essencial";
+  const semStorage = cotaBytes === 0;
   const cotaPct    = cotaBytes > 0 ? Math.min(100, (usadoBytes / cotaBytes) * 100) : 0;
   const cotaCheia  = cotaBytes > 0 && usadoBytes >= cotaBytes;
 
