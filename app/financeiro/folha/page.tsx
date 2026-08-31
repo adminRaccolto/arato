@@ -169,7 +169,7 @@ type Aba = "processamento" | "adiantamentos" | "gratificacoes";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaPagamentoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
   const [aba, setAba]             = useState<Aba>("processamento");
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState("");
@@ -208,9 +208,13 @@ export default function FolhaPagamentoPage() {
     if (!fazendaId) return;
     setLoading(true);
     try {
+      // Busca folhas via API route (service_role_key — evita qualquer bloqueio de RLS ou JWT)
+      const { data: { session } } = await supabase.auth.getSession();
+      const tkn = session?.access_token ?? "";
+
       const [
         { data: funcs },
-        { data: fols },
+        folhasRes,
         { data: adis },
         { data: prems },
         { data: emps },
@@ -220,10 +224,11 @@ export default function FolhaPagamentoPage() {
           .select("id,nome,funcao,salario_base,tipo,empresa_id,produtor_id,ativo")
           .eq("fazenda_id", fazendaId)
           .order("nome"),
-        supabase.from("folha_pagamento")
-          .select("*")
-          .eq("fazenda_id", fazendaId)
-          .order("competencia", { ascending: false }),
+        fetch("/api/folha/salvar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${tkn}` },
+          body: JSON.stringify({ operacao: "listar_folhas", fazenda_id: fazendaId }),
+        }).then(r => r.json()).catch(() => ({ ok: false, data: [], error: "Erro de rede" })),
         supabase.from("adiantamentos_salario")
           .select("*, funcionarios(nome)")
           .eq("fazenda_id", fazendaId)
@@ -235,11 +240,13 @@ export default function FolhaPagamentoPage() {
           .select("id,nome_fantasia,razao_social")
           .eq("fazenda_id", fazendaId)
           .order("nome_fantasia"),
-        supabase.from("produtores")
-          .select("id,nome")
-          .eq("fazenda_id", fazendaId)
-          .order("nome"),
+        contaId
+          ? supabase.from("produtores").select("id,nome").eq("conta_id", contaId).order("nome")
+          : Promise.resolve({ data: [] }),
       ]);
+
+      if (!folhasRes.ok) setMsg(`Erro ao carregar folhas: ${folhasRes.error ?? "desconhecido"}`);
+
       // Mapa empresa_id → nome
       const eMap: Record<string, string> = {};
       (emps ?? []).forEach((e: any) => { eMap[e.id] = e.nome_fantasia || e.razao_social || e.id; });
@@ -256,18 +263,21 @@ export default function FolhaPagamentoPage() {
       const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
 
-      // Folhas com nome do empregador resolvido
-      const folhasComNome = (fols ?? []).map((f: any) => ({
+      // Folhas via API route
+      const fols: any[] = folhasRes.data ?? [];
+      const folhasComNome = fols.map((f: any) => ({
         ...f,
         empresa_nome: f.empresa_id ? (eMap[f.empresa_id] ?? "Empresa não encontrada") : undefined,
       }));
       setFolhas(folhasComNome);
       setAdiantamentos((adis ?? []).filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
       setPremiacoes((prems ?? []).filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
+    } catch (e: any) {
+      setMsg(`Erro ao carregar: ${e.message}`);
     } finally {
       setLoading(false);
     }
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

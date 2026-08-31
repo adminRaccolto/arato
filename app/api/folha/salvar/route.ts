@@ -7,6 +7,7 @@ export async function POST(req: Request) {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -18,7 +19,18 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { operacao, ...payload } = body as { operacao: "upsert_folha" | "delete_funcionarios" | "insert_funcionarios" | "update_folha" | "fechar_folha" | "delete_folha" } & Record<string, unknown>;
+    const { operacao, ...payload } = body as { operacao: "upsert_folha" | "delete_funcionarios" | "insert_funcionarios" | "update_folha" | "fechar_folha" | "delete_folha" | "listar_folhas" } & Record<string, unknown>;
+
+    if (operacao === "listar_folhas") {
+      const { fazenda_id } = payload as { fazenda_id: string };
+      const { data, error } = await sb
+        .from("folha_pagamento")
+        .select("*")
+        .eq("fazenda_id", fazenda_id)
+        .order("competencia", { ascending: false });
+      if (error) throw error;
+      return NextResponse.json({ ok: true, data: data ?? [] });
+    }
 
     if (operacao === "upsert_folha") {
       // Busca folha existente
