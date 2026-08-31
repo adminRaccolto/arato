@@ -10938,3 +10938,32 @@ ALTER TABLE funcionarios
   ADD COLUMN IF NOT EXISTS outros_beneficios numeric(12,2) DEFAULT 0;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 213 — cessão para múltiplos fornecedores ───────────────
+-- Adiciona suporte a múltiplos beneficiários por cessão de recebível.
+-- Os campos legados (cessao_fornecedor_id, cessao_data, etc.) ficam para
+-- compatibilidade; o novo campo cessao_beneficiarios é a fonte de verdade.
+
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS cessao_beneficiarios jsonb DEFAULT '[]'::jsonb;
+
+-- Migração automática de contratos com cessão simples (campo legado → array)
+UPDATE contratos
+SET cessao_beneficiarios = jsonb_build_array(
+  jsonb_build_object(
+    'fornecedor_id', cessao_fornecedor_id,
+    'fornecedor_nome', COALESCE(cessao_fornecedor_nome, ''),
+    'data', COALESCE(cessao_data, ''),
+    'obs',  COALESCE(cessao_obs, '')
+  )
+)
+WHERE dado_em_cessao = true
+  AND cessao_fornecedor_id IS NOT NULL
+  AND (cessao_beneficiarios IS NULL OR cessao_beneficiarios = '[]'::jsonb);
+
+-- Adiciona fornecedor_id e pedido_compra_id em cada débito de cessão
+ALTER TABLE contrato_cessao_debitos
+  ADD COLUMN IF NOT EXISTS fornecedor_id    uuid,
+  ADD COLUMN IF NOT EXISTS pedido_compra_id uuid;
+
+NOTIFY pgrst, 'reload schema';

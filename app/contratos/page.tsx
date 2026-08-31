@@ -492,10 +492,7 @@ export default function Contratos() {
     observacao: "",
     // cessão
     dado_em_cessao: false,
-    cessao_fornecedor_id: "",
-    cessao_fornecedor_nome: "",
-    cessao_data: "",
-    cessao_obs: "",
+    cessao_beneficiarios: [] as CessaoBenef[],
     // triangulação cooperativa
     is_triangulacao: false,
     comprador_final_id: "",
@@ -553,10 +550,13 @@ export default function Contratos() {
   }, [itens[0]?.produto, fC.produtor_id, fC.venda_a_ordem, modalContrato]);
 
   // ── modal cessão ─────────────────────────────────────────────
-  type LancItem = { id: string; descricao: string; data_vencimento: string; valor: number; status: string };
+  type CessaoBenef = { key: string; fornecedor_id: string; fornecedor_nome: string; data: string; obs: string; };
+  type LancItem = { id: string; descricao: string; data_vencimento: string; valor: number; status: string; pedido_compra_id?: string; pc_numero?: string; };
   const [modalCessao,      setModalCessao]      = useState(false);
   const [cessaoLancs,      setCessaoLancs]      = useState<LancItem[]>([]);
-  const [cessaoSelecionados, setCessaoSelecionados] = useState<Record<string, number>>({}); // lancamento_id → valor_cessao
+  // lancamento_id → { valor, fornId }
+  const [cessaoSelecionados, setCessaoSelecionados] = useState<Record<string, {valor:number; fornId:string}>>({});
+  const [cessaoBenefAtivo,   setCessaoBenefAtivo]   = useState<string>(""); // fornecedor_id sendo vinculado no modal
 
   // ── IA — Extração de Contrato de Venda (Add-on ia_contrato_venda) ──────────
   const [iaVendaExtraindo, setIaVendaExtraindo] = useState(false);
@@ -868,12 +868,19 @@ export default function Contratos() {
       deposito_fiscal: c.deposito_fiscal ?? false,
       observacao_interna: c.observacao_interna ?? "",
       observacao: c.observacao ?? "",
-      // cessão
+      // cessão — converte legado (campo único) para o novo formato (lista)
       dado_em_cessao: c.dado_em_cessao ?? false,
-      cessao_fornecedor_id: c.cessao_fornecedor_id ?? "",
-      cessao_fornecedor_nome: c.cessao_fornecedor_nome ?? "",
-      cessao_data: c.cessao_data ?? "",
-      cessao_obs: c.cessao_obs ?? "",
+      cessao_beneficiarios: (() => {
+        if (Array.isArray(c.cessao_beneficiarios) && c.cessao_beneficiarios.length > 0) {
+          return (c.cessao_beneficiarios as Array<{fornecedor_id:string;fornecedor_nome:string;data?:string;obs?:string}>).map((b, i) => ({
+            key: `k${i}${b.fornecedor_id}`, fornecedor_id: b.fornecedor_id, fornecedor_nome: b.fornecedor_nome, data: b.data ?? "", obs: b.obs ?? ""
+          })) as CessaoBenef[];
+        }
+        if (c.cessao_fornecedor_id) {
+          return [{ key: "k0", fornecedor_id: c.cessao_fornecedor_id, fornecedor_nome: c.cessao_fornecedor_nome ?? "", data: c.cessao_data ?? "", obs: c.cessao_obs ?? "" }] as CessaoBenef[];
+        }
+        return [] as CessaoBenef[];
+      })(),
       pdf_url: c.pdf_url ?? undefined,
       pdf_nome: c.pdf_nome ?? undefined,
       // triangulação
@@ -895,8 +902,8 @@ export default function Contratos() {
     // carrega débitos vinculados
     try {
       const debs = await listarCessaoDebitos(c.id);
-      const sel: Record<string, number> = {};
-      for (const d of debs) sel[d.lancamento_id] = d.valor_cessao;
+      const sel: Record<string, {valor:number; fornId:string}> = {};
+      for (const d of debs) sel[d.lancamento_id] = { valor: d.valor_cessao, fornId: (d as Record<string,unknown>).fornecedor_id as string ?? "" };
       setCessaoSelecionados(sel);
     } catch { setCessaoSelecionados({}); }
     // contrato existente: natureza já salva — marca como "manual" para o useEffect não sobrescrever
@@ -1038,15 +1045,16 @@ export default function Contratos() {
         status: editContrato?.status ?? "aberto",
         // PDF do contrato físico
         ...(fC.pdf_url ? { pdf_url: fC.pdf_url, pdf_nome: fC.pdf_nome } : {}),
-        // cessão — só inclui no payload se o usuário marcou o checkbox
-        // (evita erro de coluna inexistente antes da migration 78 ser executada)
-        ...(fC.dado_em_cessao ? {
-          dado_em_cessao: true,
-          cessao_fornecedor_id: fC.cessao_fornecedor_id || undefined,
-          cessao_fornecedor_nome: fC.cessao_fornecedor_nome || undefined,
-          cessao_data: fC.cessao_data || undefined,
-          cessao_obs: fC.cessao_obs || undefined,
-        } : {}),
+        // cessão — múltiplos beneficiários (Migration 213)
+        dado_em_cessao: fC.dado_em_cessao && fC.cessao_beneficiarios.length > 0,
+        ...(fC.dado_em_cessao && fC.cessao_beneficiarios.length > 0 ? {
+          cessao_beneficiarios: fC.cessao_beneficiarios.map(b => ({ fornecedor_id: b.fornecedor_id, fornecedor_nome: b.fornecedor_nome, data: b.data || undefined, obs: b.obs || undefined })),
+          // mantém campo legado com o primeiro beneficiário para compatibilidade
+          cessao_fornecedor_id: fC.cessao_beneficiarios[0]?.fornecedor_id || undefined,
+          cessao_fornecedor_nome: fC.cessao_beneficiarios[0]?.fornecedor_nome || undefined,
+          cessao_data: fC.cessao_beneficiarios[0]?.data || undefined,
+          cessao_obs: fC.cessao_beneficiarios[0]?.obs || undefined,
+        } : { cessao_beneficiarios: [] }),
         // triangulação cooperativa
         ...(fC.is_triangulacao ? {
           is_triangulacao: true,
@@ -1087,7 +1095,7 @@ export default function Contratos() {
       })));
       // salva débitos de cessão se houver
       if (fC.dado_em_cessao && Object.keys(cessaoSelecionados).length > 0) {
-        await salvarCessaoDebitos(salvo.id, fidContrato, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
+        await salvarCessaoDebitos(salvo.id, fidContrato, Object.entries(cessaoSelecionados).map(([lancamento_id, { valor, fornId }]) => ({ lancamento_id, valor_cessao: valor, fornecedor_id: fornId || undefined })));
       }
       // num_lancamento + CR via API route (service_role_key bypassa RLS / JWT expirado)
       // valorTotal: preferência itensCalc; fallback para preco×quantidade_sc do cabeçalho
@@ -1129,21 +1137,31 @@ export default function Contratos() {
     finally { setSalvando(false); }
   };
 
-  // ── cessão: abre modal de débitos ───────────────────────────────
-  const abrirModalCessao = async () => {
-    if (!fC.cessao_fornecedor_id || !fazendaId) return;
+  // ── cessão: abre modal de débitos para um beneficiário específico ────────────
+  const abrirModalCessao = async (fornId: string) => {
+    if (!fornId || !fazendaId) return;
+    setCessaoBenefAtivo(fornId);
     try {
       const { data } = await supabase
         .from("lancamentos")
-        .select("id, descricao, data_vencimento, valor, status")
+        .select("id, descricao, data_vencimento, valor, status, pedido_compra_id, pedidos_compra(numero, nr_pedido)")
         .in("fazenda_id", fazendaIds)
         .eq("tipo", "pagar")
-        .eq("pessoa_id", fC.cessao_fornecedor_id)
+        .eq("pessoa_id", fornId)
         .in("status", ["em_aberto", "parcial"])
         .order("data_vencimento", { ascending: true });
-      setCessaoLancs((data ?? []) as LancItem[]);
+      const lancs: LancItem[] = (data ?? []).map((r: Record<string, unknown>) => {
+        const pc = r.pedidos_compra as Record<string, unknown> | null;
+        return {
+          id: r.id as string, descricao: r.descricao as string ?? "",
+          data_vencimento: r.data_vencimento as string ?? "",
+          valor: Number(r.valor ?? 0), status: r.status as string ?? "",
+          pedido_compra_id: r.pedido_compra_id as string ?? undefined,
+          pc_numero: pc ? String(pc.numero ?? pc.nr_pedido ?? "") : undefined,
+        };
+      });
+      setCessaoLancs(lancs);
     } catch {
-      // fallback: mostra sem filtro por pessoa
       setCessaoLancs([]);
     }
     setModalCessao(true);
@@ -2797,61 +2815,67 @@ export default function Contratos() {
                       <input
                         type="checkbox"
                         checked={fC.dado_em_cessao}
-                        onChange={e => setFC(p=>({...p, dado_em_cessao:e.target.checked, cessao_fornecedor_id:"", cessao_fornecedor_nome:""}))}
+                        onChange={e => setFC(p=>({...p, dado_em_cessao:e.target.checked, cessao_beneficiarios: e.target.checked ? p.cessao_beneficiarios : []}))}
                       />
                       <span style={{ fontSize:13, fontWeight:600, color: fC.dado_em_cessao ? "#111111" : "#444" }}>Dado em Cessão</span>
-                      <span style={{ fontSize:11, color:"var(--text-3)", fontWeight:400 }}>— o recebível deste contrato será cedido a um fornecedor</span>
+                      <span style={{ fontSize:11, color:"var(--text-3)", fontWeight:400 }}>— o recebível será cedido a um ou mais fornecedores</span>
                     </label>
 
                     {fC.dado_em_cessao && (
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                        <div>
-                          <label style={lbl}>Fornecedor que recebe a cessão *</label>
-                          <select
-                            style={{ ...inp, color: fC.cessao_fornecedor_id ? "var(--text-1)" : "var(--text-3)" }}
-                            value={fC.cessao_fornecedor_id}
-                            onChange={e => {
-                              const nome = pessoas.find(p=>p.id===e.target.value)?.nome ?? "";
-                              setFC(p=>({...p, cessao_fornecedor_id:e.target.value, cessao_fornecedor_nome:nome}));
-                            }}
-                          >
-                            <option value="">— selecione o fornecedor —</option>
-                            {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label style={lbl}>Data da Cessão</label>
-                          <input type="date" style={inp} value={fC.cessao_data} onChange={e => setFC(p=>({...p,cessao_data:e.target.value}))} />
-                        </div>
-                        <div style={{ gridColumn:"1/-1" }}>
-                          <label style={lbl}>Observação da Cessão</label>
-                          <input style={inp} value={fC.cessao_obs} onChange={e => setFC(p=>({...p,cessao_obs:e.target.value}))} placeholder="Ex: quitação barter safra 25/26..." />
-                        </div>
-                        <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                          <div>
-                            <span style={{ fontSize:12, color:"var(--text-2)" }}>
-                              Débitos vinculados: <strong>{Object.keys(cessaoSelecionados).length}</strong>
-                              {Object.keys(cessaoSelecionados).length > 0 && (
-                                <span style={{ marginLeft:8, color:"#111111" }}>
-                                  Total: R$ {Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}
+                      <div>
+                        {/* Lista de beneficiários */}
+                        {fC.cessao_beneficiarios.map((benef, bi) => {
+                          const debsBenef = Object.entries(cessaoSelecionados).filter(([, v]) => v.fornId === benef.fornecedor_id);
+                          const totalBenef = debsBenef.reduce((s, [, v]) => s + v.valor, 0);
+                          return (
+                            <div key={benef.key} style={{ border:"0.5px solid var(--border-table)", borderRadius:8, padding:"10px 12px", marginBottom:10, background:"var(--bg-page)" }}>
+                              <div style={{ display:"grid", gridTemplateColumns:"1fr 160px auto", gap:8, alignItems:"end" }}>
+                                <div>
+                                  <label style={lbl}>Fornecedor beneficiário {fC.cessao_beneficiarios.length > 1 ? `(${bi+1})` : ""} *</label>
+                                  <select
+                                    style={{ ...inp, color: benef.fornecedor_id ? "var(--text-1)" : "var(--text-3)" }}
+                                    value={benef.fornecedor_id}
+                                    onChange={e => {
+                                      const nome = pessoas.find(p=>p.id===e.target.value)?.nome ?? "";
+                                      setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.map((b, i) => i===bi ? { ...b, fornecedor_id:e.target.value, fornecedor_nome:nome } : b) }));
+                                    }}
+                                  >
+                                    <option value="">— selecione o fornecedor —</option>
+                                    {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={lbl}>Data da Cessão</label>
+                                  <input type="date" style={inp} value={benef.data} onChange={e => setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.map((b, i) => i===bi ? { ...b, data:e.target.value } : b) }))} />
+                                </div>
+                                <button type="button" onClick={() => {
+                                  setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.filter((_, i) => i !== bi) }));
+                                  setCessaoSelecionados(prev => { const n={...prev}; Object.keys(n).filter(k => n[k].fornId === benef.fornecedor_id).forEach(k => delete n[k]); return n; });
+                                }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, color:"#E24B4A", padding:"0 4px", alignSelf:"flex-end", marginBottom:2 }}>×</button>
+                              </div>
+                              <div style={{ marginTop:8 }}>
+                                <label style={lbl}>Observação</label>
+                                <input style={inp} value={benef.obs} onChange={e => setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.map((b, i) => i===bi ? { ...b, obs:e.target.value } : b) }))} placeholder="Ex: quitação barter safra 25/26..." />
+                              </div>
+                              <div style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                                <span style={{ fontSize:11, color:"var(--text-2)" }}>
+                                  Débitos vinculados: <strong>{debsBenef.length}</strong>
+                                  {debsBenef.length > 0 && <span style={{ marginLeft:6, color:"#111" }}>— Total: R$ {totalBenef.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>}
                                 </span>
-                              )}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            disabled={!fC.cessao_fornecedor_id}
-                            onClick={abrirModalCessao}
-                            style={{
-                              padding:"6px 14px", border:"0.5px solid #111111", borderRadius:7,
-                              background: fC.cessao_fornecedor_id ? "#EEEEEE" : "var(--bg-page)",
-                              color: fC.cessao_fornecedor_id ? "#111111" : "var(--text-muted)",
-                              fontSize:12, fontWeight:600, cursor: fC.cessao_fornecedor_id ? "pointer" : "not-allowed",
-                            }}
-                          >
-                            Vincular Débitos CP →
-                          </button>
-                        </div>
+                                <button type="button" disabled={!benef.fornecedor_id}
+                                  onClick={() => abrirModalCessao(benef.fornecedor_id)}
+                                  style={{ padding:"5px 12px", border:"0.5px solid #111", borderRadius:6, background: benef.fornecedor_id ? "#EEEEEE" : "var(--bg-page)", color: benef.fornecedor_id ? "#111" : "var(--text-muted)", fontSize:11, fontWeight:600, cursor: benef.fornecedor_id ? "pointer" : "not-allowed" }}>
+                                  Vincular Débitos CP / PC →
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <button type="button"
+                          onClick={() => setFC(p => ({ ...p, cessao_beneficiarios: [...p.cessao_beneficiarios, { key:`k${Date.now()}`, fornecedor_id:"", fornecedor_nome:"", data:"", obs:"" }] }))}
+                          style={{ padding:"6px 14px", border:"0.5px dashed var(--border-table)", borderRadius:7, background:"transparent", color:"#1A4870", fontSize:12, fontWeight:600, cursor:"pointer", width:"100%" }}>
+                          + Adicionar fornecedor beneficiário
+                        </button>
                       </div>
                     )}
                   </div>
@@ -3203,89 +3227,152 @@ export default function Contratos() {
           </div>
         </div>
       )}
-      {/* ── Modal Cessão: Vincular Débitos ── */}
-      {modalCessao && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <div style={{ background:"var(--bg-card)", borderRadius:14, width:"100%", maxWidth:640, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding:"20px 24px 16px", borderBottom:"0.5px solid var(--border-table)" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                <div>
-                  <h2 style={{ margin:0, fontSize:16, fontWeight:700 }}>Vincular Débitos à Cessão</h2>
-                  <p style={{ margin:"4px 0 0", fontSize:12, color:"#666" }}>
-                    Selecione as Contas a Pagar do fornecedor <strong>{fC.cessao_fornecedor_nome}</strong> que serão quitadas por este contrato.
-                  </p>
-                </div>
-                <button onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
-              </div>
-              <div style={{ display:"flex", gap:16, marginTop:10, fontSize:12 }}>
-                <span>Valor do Contrato: <strong style={{ color:"#111111" }}>R$ {valorFinanceiro.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
-                <span>Total Cedido: <strong style={{ color: Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0) > valorFinanceiro ? "#E24B4A" : "#16A34A" }}>R$ {Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
-              </div>
-            </div>
+      {/* ── Modal Cessão: Vincular Débitos CP / Pedido de Compra ── */}
+      {modalCessao && (() => {
+        const fornNome = fC.cessao_beneficiarios.find(b => b.fornecedor_id === cessaoBenefAtivo)?.fornecedor_nome ?? cessaoBenefAtivo;
+        // Separa: com PC e sem PC
+        const comPC = cessaoLancs.filter(l => l.pedido_compra_id);
+        const semPC = cessaoLancs.filter(l => !l.pedido_compra_id);
+        // Agrupa CPs por PC
+        const porPC = comPC.reduce<Record<string, {pcNumero:string; lancs:LancItem[]}>>((acc, l) => {
+          const pcId = l.pedido_compra_id!;
+          if (!acc[pcId]) acc[pcId] = { pcNumero: l.pc_numero ?? pcId.slice(0,8), lancs: [] };
+          acc[pcId].lancs.push(l);
+          return acc;
+        }, {});
+        const totalBenef = Object.entries(cessaoSelecionados).filter(([,v])=>v.fornId===cessaoBenefAtivo).reduce((s,[,v])=>s+v.valor,0);
 
-            <div style={{ flex:1, overflowY:"auto", padding:"0 24px" }}>
-              {cessaoLancs.length === 0 ? (
-                <div style={{ textAlign:"center", padding:"40px 0", color:"var(--text-3)", fontSize:13 }}>
-                  Nenhum CP em aberto encontrado para este fornecedor.<br />
-                  <span style={{ fontSize:11 }}>Verifique se o fornecedor está vinculado aos lançamentos em CP.</span>
-                </div>
-              ) : (
-                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
-                  <thead>
-                    <tr style={{ borderBottom:"0.5px solid var(--border-table)", color:"#666", textAlign:"left" }}>
-                      <th style={{ padding:"10px 8px 8px" }}>✓</th>
-                      <th style={{ padding:"10px 8px 8px" }}>Descrição</th>
-                      <th style={{ padding:"10px 8px 8px", textAlign:"right" }}>Vencimento</th>
-                      <th style={{ padding:"10px 8px 8px", textAlign:"right" }}>Valor Total</th>
-                      <th style={{ padding:"10px 8px 8px", textAlign:"right" }}>Valor Cessão</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cessaoLancs.map(l => {
-                      const sel = l.id in cessaoSelecionados;
-                      const valCessao = cessaoSelecionados[l.id] ?? l.valor;
-                      return (
-                        <tr key={l.id} style={{ borderBottom:"0.5px solid var(--bg-tag)", background: sel ? "#EEEEEE" : "transparent" }}>
-                          <td style={{ padding:"8px" }}>
-                            <input type="checkbox" checked={sel}
-                              onChange={e => {
-                                if (e.target.checked) setCessaoSelecionados(p => ({ ...p, [l.id]: l.valor }));
-                                else setCessaoSelecionados(p => { const n={...p}; delete n[l.id]; return n; });
-                              }} />
-                          </td>
-                          <td style={{ padding:"8px", color:"var(--text-1)" }}>{l.descricao}</td>
-                          <td style={{ padding:"8px", textAlign:"right", color:"#666" }}>
-                            {l.data_vencimento ? l.data_vencimento.split("T")[0].split("-").reverse().join("/") : "—"}
-                          </td>
-                          <td style={{ padding:"8px", textAlign:"right", fontWeight:600, color:"var(--text-1)" }}>
-                            R$ {l.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
-                          </td>
-                          <td style={{ padding:"8px" }}>
-                            {sel ? (
-                              <InputMonetario min="0" max={l.valor}
-                                value={valCessao}
-                                onChange={v => setCessaoSelecionados(p => ({ ...p, [l.id]: v }))}
-                                style={{ ...inp, textAlign:"right", width:110, padding:"4px 6px" }}
-                              />
-                            ) : (
-                              <span style={{ color:"#ccc" }}>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+        const renderRow = (l: LancItem) => {
+          const sel = l.id in cessaoSelecionados && cessaoSelecionados[l.id].fornId === cessaoBenefAtivo;
+          const valCessao = sel ? cessaoSelecionados[l.id].valor : l.valor;
+          return (
+            <tr key={l.id} style={{ borderBottom:"0.5px solid var(--bg-tag)", background: sel ? "#EDF4FB" : "transparent" }}>
+              <td style={{ padding:"7px 8px" }}>
+                <input type="checkbox" checked={sel}
+                  onChange={e => {
+                    if (e.target.checked) setCessaoSelecionados(p => ({ ...p, [l.id]: { valor: l.valor, fornId: cessaoBenefAtivo } }));
+                    else setCessaoSelecionados(p => { const n={...p}; delete n[l.id]; return n; });
+                  }} />
+              </td>
+              <td style={{ padding:"7px 8px", color:"var(--text-1)", fontSize:12 }}>{l.descricao}</td>
+              <td style={{ padding:"7px 8px", textAlign:"right", color:"#666", fontSize:12 }}>
+                {l.data_vencimento ? l.data_vencimento.split("T")[0].split("-").reverse().join("/") : "—"}
+              </td>
+              <td style={{ padding:"7px 8px", textAlign:"right", fontWeight:600, color:"var(--text-1)", fontSize:12 }}>
+                R$ {l.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
+              </td>
+              <td style={{ padding:"7px 8px" }}>
+                {sel ? (
+                  <InputMonetario min="0" max={l.valor} value={valCessao}
+                    onChange={v => setCessaoSelecionados(p => ({ ...p, [l.id]: { valor: v, fornId: cessaoBenefAtivo } }))}
+                    style={{ ...inp, textAlign:"right", width:100, padding:"3px 6px", fontSize:12 }} />
+                ) : <span style={{ color:"#ccc", fontSize:12 }}>—</span>}
+              </td>
+            </tr>
+          );
+        };
 
-            <div style={{ padding:"16px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:10 }}>
-              <button style={btnR} onClick={() => setModalCessao(false)}>Fechar</button>
-              <button style={btnV} onClick={() => setModalCessao(false)}>Confirmar Vínculos</button>
+        return (
+          <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+            <div style={{ background:"var(--bg-card)", borderRadius:14, width:"100%", maxWidth:700, maxHeight:"88vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
+              {/* cabeçalho */}
+              <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                  <div>
+                    <h2 style={{ margin:0, fontSize:16, fontWeight:700 }}>Vincular Débitos à Cessão</h2>
+                    <p style={{ margin:"4px 0 0", fontSize:12, color:"#666" }}>
+                      Fornecedor: <strong>{fornNome}</strong> — selecione as CPs ou Pedidos de Compra que serão quitados.
+                    </p>
+                  </div>
+                  <button onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
+                </div>
+                <div style={{ display:"flex", gap:16, marginTop:10, fontSize:12 }}>
+                  <span>Valor do Contrato: <strong style={{ color:"#111" }}>R$ {valorFinanceiro.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+                  <span>Cedido (este fornecedor): <strong style={{ color: totalBenef > valorFinanceiro ? "#E24B4A" : "#16A34A" }}>R$ {totalBenef.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+                </div>
+              </div>
+
+              {/* corpo */}
+              <div style={{ flex:1, overflowY:"auto", padding:"0 24px" }}>
+                {cessaoLancs.length === 0 ? (
+                  <div style={{ textAlign:"center", padding:"40px 0", color:"var(--text-3)", fontSize:13 }}>
+                    Nenhuma CP em aberto encontrada para este fornecedor.<br />
+                    <span style={{ fontSize:11 }}>Verifique se o fornecedor está vinculado a lançamentos em CP.</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* ── Pedidos de Compra ── */}
+                    {Object.keys(porPC).length > 0 && (
+                      <div style={{ marginTop:16, marginBottom:8 }}>
+                        <div style={{ fontSize:11, fontWeight:700, color:"var(--text-2)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Pedidos de Compra</div>
+                        {Object.entries(porPC).map(([pcId, { pcNumero, lancs }]) => {
+                          const todosSelPc = lancs.every(l => cessaoSelecionados[l.id]?.fornId === cessaoBenefAtivo);
+                          const totalPc = lancs.reduce((s,l)=>s+l.valor,0);
+                          return (
+                            <div key={pcId} style={{ border:"0.5px solid #B0CEEA", borderRadius:8, marginBottom:10, overflow:"hidden" }}>
+                              {/* header do PC */}
+                              <div style={{ background:"#EDF4FB", padding:"8px 12px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                                <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", fontWeight:600, fontSize:13 }}>
+                                  <input type="checkbox" checked={todosSelPc}
+                                    onChange={e => {
+                                      if (e.target.checked) setCessaoSelecionados(p => { const n={...p}; lancs.forEach(l => { n[l.id] = { valor:l.valor, fornId:cessaoBenefAtivo }; }); return n; });
+                                      else setCessaoSelecionados(p => { const n={...p}; lancs.forEach(l => delete n[l.id]); return n; });
+                                    }} />
+                                  Pedido de Compra #{pcNumero}
+                                </label>
+                                <span style={{ fontSize:12, color:"#1A4870" }}>Total: R$ {totalPc.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+                              </div>
+                              {/* CPs do pedido */}
+                              <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                                <thead>
+                                  <tr style={{ borderBottom:"0.5px solid var(--border-table)", color:"#666", textAlign:"left" }}>
+                                    <th style={{ padding:"6px 8px", width:28 }}>✓</th>
+                                    <th style={{ padding:"6px 8px" }}>Descrição</th>
+                                    <th style={{ padding:"6px 8px", textAlign:"right" }}>Vencimento</th>
+                                    <th style={{ padding:"6px 8px", textAlign:"right" }}>Valor</th>
+                                    <th style={{ padding:"6px 8px", textAlign:"right" }}>Cessão</th>
+                                  </tr>
+                                </thead>
+                                <tbody>{lancs.map(renderRow)}</tbody>
+                              </table>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* ── CPs avulsas (sem PC) ── */}
+                    {semPC.length > 0 && (
+                      <div style={{ marginTop:16 }}>
+                        {Object.keys(porPC).length > 0 && (
+                          <div style={{ fontSize:11, fontWeight:700, color:"var(--text-2)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>CPs avulsas (sem Pedido de Compra)</div>
+                        )}
+                        <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                          <thead>
+                            <tr style={{ borderBottom:"0.5px solid var(--border-table)", color:"#666", textAlign:"left" }}>
+                              <th style={{ padding:"8px", width:28 }}>✓</th>
+                              <th style={{ padding:"8px" }}>Descrição</th>
+                              <th style={{ padding:"8px", textAlign:"right" }}>Vencimento</th>
+                              <th style={{ padding:"8px", textAlign:"right" }}>Valor Total</th>
+                              <th style={{ padding:"8px", textAlign:"right" }}>Valor Cessão</th>
+                            </tr>
+                          </thead>
+                          <tbody>{semPC.map(renderRow)}</tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div style={{ padding:"14px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:10 }}>
+                <button style={btnR} onClick={() => setModalCessao(false)}>Fechar</button>
+                <button style={btnV} onClick={() => setModalCessao(false)}>Confirmar Vínculos</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Modal Encerramento em Lote ─────────────────────────────────────── */}
       {modalLote && (

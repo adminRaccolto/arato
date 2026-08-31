@@ -433,10 +433,12 @@ export type Contrato = {
   ie_id?: string | null;
   // Cessão — produtor cede o recebível a um fornecedor para quitar débito
   dado_em_cessao?: boolean;
-  cessao_fornecedor_id?: string;   // FK pessoas.id
-  cessao_fornecedor_nome?: string; // nome do fornecedor (desnormalizado)
-  cessao_data?: string;            // data em que a cessão foi formalizada
-  cessao_obs?: string;
+  cessao_fornecedor_id?: string;   // FK pessoas.id (legado — campo único)
+  cessao_fornecedor_nome?: string; // legado
+  cessao_data?: string;            // legado
+  cessao_obs?: string;             // legado
+  // Novo: múltiplos beneficiários da cessão (substitui os campos legados)
+  cessao_beneficiarios?: Array<{ fornecedor_id: string; fornecedor_nome: string; data?: string; obs?: string }>;
   // Triangulação Cooperativa — comprador fiscal ≠ comprador econômico
   is_triangulacao?: boolean;       // true = cooperativa faz a intermediação fiscal
   comprador_final_id?: string;     // FK pessoas — trading/destino final do grão

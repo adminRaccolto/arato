@@ -1004,7 +1004,7 @@ export async function listarCessaoDebitos(contrato_id: string): Promise<(Contrat
   });
 }
 
-export async function salvarCessaoDebitos(contrato_id: string, fazenda_id: string, debitos: { lancamento_id: string; valor_cessao: number; obs?: string }[]): Promise<void> {
+export async function salvarCessaoDebitos(contrato_id: string, fazenda_id: string, debitos: { lancamento_id: string; valor_cessao: number; fornecedor_id?: string; pedido_compra_id?: string; obs?: string }[]): Promise<void> {
   await supabase.from("contrato_cessao_debitos").delete().eq("contrato_id", contrato_id);
   if (debitos.length === 0) return;
   const { error } = await supabase.from("contrato_cessao_debitos").insert(debitos.map(d => ({ ...d, contrato_id, fazenda_id })));
