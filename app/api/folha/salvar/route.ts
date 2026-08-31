@@ -147,6 +147,62 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    if (operacao === "listar_adi_prem") {
+      const { fazenda_id } = payload as { fazenda_id: string };
+      const [{ data: adis, error: adiErr }, { data: prems, error: premErr }] = await Promise.all([
+        sb.from("adiantamentos_salario").select("*, funcionarios(nome)").eq("fazenda_id", fazenda_id).order("data", { ascending: false }),
+        sb.from("funcionarios_premiacoes").select("*, funcionarios(nome)").eq("fazenda_id", fazenda_id),
+      ]);
+      if (adiErr) throw adiErr;
+      if (premErr) throw premErr;
+      return NextResponse.json({ ok: true, adis: adis ?? [], prems: prems ?? [] });
+    }
+
+    if (operacao === "salvar_adiantamento") {
+      const { fazenda_id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
+      const { data: lanc, error: lancErr } = await sb.from("lancamentos").insert({
+        fazenda_id, tipo: "pagar", natureza: "real",
+        descricao: `Adiantamento — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
+        valor, moeda: "BRL", status: "em_aberto",
+        categoria: "Pessoal / Adiantamentos",
+        data_vencimento: data, data_lancamento: data,
+      }).select("id").single();
+      if (lancErr) throw lancErr;
+      const { error: adiErr } = await sb.from("adiantamentos_salario").insert({
+        fazenda_id, funcionario_id, data, valor,
+        competencia_ref: competencia_ref || null,
+        descricao: descricao || null,
+        lancamento_id: lanc?.id ?? null,
+        status: "pendente",
+      });
+      if (adiErr) throw adiErr;
+      return NextResponse.json({ ok: true });
+    }
+
+    if (operacao === "cancelar_adiantamento") {
+      const { id } = payload as { id: string };
+      const { error } = await sb.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+
+    if (operacao === "salvar_premiacao") {
+      const { fazenda_id, funcionario_id, mes_referencia, descricao, valor } = payload as any;
+      const { error } = await sb.from("funcionarios_premiacoes").insert({
+        fazenda_id, funcionario_id, mes_referencia, descricao,
+        valor, lancado_financeiro: false,
+      });
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+
+    if (operacao === "excluir_premiacao") {
+      const { id } = payload as { id: string };
+      const { error } = await sb.from("funcionarios_premiacoes").delete().eq("id", id);
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ error: "operacao inválida" }, { status: 400 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : JSON.stringify(err);

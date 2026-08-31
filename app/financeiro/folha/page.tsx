@@ -212,11 +212,16 @@ export default function FolhaPagamentoPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const tkn = session?.access_token ?? "";
 
+      const apiPost = (body: object) => fetch("/api/folha/salvar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tkn}` },
+        body: JSON.stringify(body),
+      }).then(r => r.json()).catch(() => ({ ok: false, error: "Erro de rede" }));
+
       const [
         { data: funcs },
         folhasRes,
-        { data: adis },
-        { data: prems },
+        adiPremRes,
         { data: emps },
         { data: prods },
       ] = await Promise.all([
@@ -224,18 +229,8 @@ export default function FolhaPagamentoPage() {
           .select("id,nome,funcao,salario_base,tipo,empresa_id,produtor_id,ativo")
           .eq("fazenda_id", fazendaId)
           .order("nome"),
-        fetch("/api/folha/salvar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${tkn}` },
-          body: JSON.stringify({ operacao: "listar_folhas", fazenda_id: fazendaId }),
-        }).then(r => r.json()).catch(() => ({ ok: false, data: [], error: "Erro de rede" })),
-        supabase.from("adiantamentos_salario")
-          .select("*, funcionarios(nome)")
-          .eq("fazenda_id", fazendaId)
-          .order("data", { ascending: false }),
-        supabase.from("funcionarios_premiacoes")
-          .select("*, funcionarios(nome)")
-          .eq("fazenda_id", fazendaId),
+        apiPost({ operacao: "listar_folhas", fazenda_id: fazendaId }),
+        apiPost({ operacao: "listar_adi_prem", fazenda_id: fazendaId }),
         supabase.from("empresas")
           .select("id,nome_fantasia,razao_social")
           .eq("fazenda_id", fazendaId)
@@ -246,6 +241,7 @@ export default function FolhaPagamentoPage() {
       ]);
 
       if (!folhasRes.ok) setMsg(`Erro ao carregar folhas: ${folhasRes.error ?? "desconhecido"}`);
+      if (!adiPremRes.ok) setMsg(`Erro ao carregar adiantamentos: ${adiPremRes.error ?? "desconhecido"}`);
 
       // Mapa empresa_id → nome
       const eMap: Record<string, string> = {};
@@ -270,8 +266,11 @@ export default function FolhaPagamentoPage() {
         empresa_nome: f.empresa_id ? (eMap[f.empresa_id] ?? "Empresa não encontrada") : undefined,
       }));
       setFolhas(folhasComNome);
-      setAdiantamentos((adis ?? []).filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
-      setPremiacoes((prems ?? []).filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
+
+      const adis: any[] = adiPremRes.adis ?? [];
+      const prems: any[] = adiPremRes.prems ?? [];
+      setAdiantamentos(adis.filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
+      setPremiacoes(prems.filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
     } catch (e: any) {
       setMsg(`Erro ao carregar: ${e.message}`);
     } finally {
@@ -498,30 +497,16 @@ export default function FolhaPagamentoPage() {
     }
     setSaving(true);
     try {
-      // Gera CP imediato
-      const { data: lanc } = await supabase.from("lancamentos").insert({
-        fazenda_id: fazendaId,
-        tipo: "pagar",
-        descricao: `Adiantamento — ${funcionarios.find(f=>f.id===adiEdit.funcionario_id)?.nome ?? ""}${adiEdit.descricao ? ` — ${adiEdit.descricao}` : ""}`,
-        valor: adiEdit.valor,
-        moeda: "BRL",
-        status: "em_aberto",
-        categoria: "Pessoal / Adiantamentos",
-        data_vencimento: adiEdit.data,
-        data_lancamento: adiEdit.data,
-      }).select("id").single();
-
-      await supabase.from("adiantamentos_salario").insert({
+      await apiFolha({
+        operacao: "salvar_adiantamento",
         fazenda_id: fazendaId,
         funcionario_id: adiEdit.funcionario_id,
         data: adiEdit.data,
         valor: adiEdit.valor,
         competencia_ref: adiEdit.competencia_ref || null,
         descricao: adiEdit.descricao || null,
-        lancamento_id: lanc?.id ?? null,
-        status: "pendente",
+        funcionario_nome: funcionarios.find(f => f.id === adiEdit.funcionario_id)?.nome ?? "",
       });
-
       setMsg("Adiantamento registrado e CP gerado.");
       setModalAdi(false);
       setAdiEdit({});
@@ -535,8 +520,12 @@ export default function FolhaPagamentoPage() {
 
   async function cancelarAdiantamento(id: string) {
     if (!confirm("Cancelar este adiantamento?")) return;
-    await supabase.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
-    carregar();
+    try {
+      await apiFolha({ operacao: "cancelar_adiantamento", id });
+      carregar();
+    } catch (e: any) {
+      setMsg("Erro: " + e.message);
+    }
   }
 
   // ─── Premiação — salvar ───────────────────────────────────────
@@ -546,13 +535,13 @@ export default function FolhaPagamentoPage() {
     }
     setSaving(true);
     try {
-      await supabase.from("funcionarios_premiacoes").insert({
+      await apiFolha({
+        operacao: "salvar_premiacao",
         fazenda_id: fazendaId,
         funcionario_id: premEdit.funcionario_id,
         mes_referencia: premEdit.mes_referencia,
         descricao: premEdit.descricao,
         valor: premEdit.valor,
-        lancado_financeiro: false,
       });
       setMsg("Gratificação registrada.");
       setModalPrem(false);
@@ -567,8 +556,12 @@ export default function FolhaPagamentoPage() {
 
   async function excluirPremiacao(id: string) {
     if (!confirm("Excluir esta gratificação?")) return;
-    await supabase.from("funcionarios_premiacoes").delete().eq("id", id);
-    carregar();
+    try {
+      await apiFolha({ operacao: "excluir_premiacao", id });
+      carregar();
+    } catch (e: any) {
+      setMsg("Erro: " + e.message);
+    }
   }
 
   // ─── Campos editáveis na folha ────────────────────────────────
