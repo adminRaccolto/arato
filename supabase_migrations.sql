@@ -10884,3 +10884,16 @@ CREATE POLICY contas_bpo ON contas FOR SELECT
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 209 — Níveis de usuário BPO ──────────────────────────────
+-- Adiciona bpo_nivel em perfis para controle de permissões dos usuários BPO.
+-- Valores: 'admin' (gerencia usuários) | 'operacional' | 'consultor' (somente leitura)
+
+ALTER TABLE perfis
+  ADD COLUMN IF NOT EXISTS bpo_nivel text CHECK (bpo_nivel IN ('admin', 'operacional', 'consultor'));
+
+-- Usuários BPO existentes recebem nível admin (retrocompatibilidade)
+UPDATE perfis SET bpo_nivel = 'admin'
+WHERE role = 'bpo' AND bpo_nivel IS NULL;
+
+NOTIFY pgrst, 'reload schema';
