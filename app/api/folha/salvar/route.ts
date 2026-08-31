@@ -7,7 +7,6 @@ export async function POST(req: Request) {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -19,8 +18,9 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { operacao, ...payload } = body as { operacao: "upsert_folha" | "delete_funcionarios" | "insert_funcionarios" | "update_folha" | "fechar_folha" | "delete_folha" | "listar_folhas" } & Record<string, unknown>;
+    const { operacao, ...payload } = body as { operacao: string } & Record<string, unknown>;
 
+    // ─── listar_folhas — inclui contagem de funcionários por folha ───────────
     if (operacao === "listar_folhas") {
       const { fazenda_id } = payload as { fazenda_id: string };
       const { data, error } = await sb
@@ -29,11 +29,28 @@ export async function POST(req: Request) {
         .eq("fazenda_id", fazenda_id)
         .order("competencia", { ascending: false });
       if (error) throw error;
-      return NextResponse.json({ ok: true, data: data ?? [] });
+
+      // Conta funcionários por folha em uma única query
+      const folhaIds = (data ?? []).map((f: any) => f.id);
+      let countMap: Record<string, number> = {};
+      if (folhaIds.length > 0) {
+        const { data: counts } = await sb
+          .from("folha_funcionarios")
+          .select("folha_id")
+          .in("folha_id", folhaIds);
+        (counts ?? []).forEach((row: any) => {
+          countMap[row.folha_id] = (countMap[row.folha_id] ?? 0) + 1;
+        });
+      }
+      const result = (data ?? []).map((f: any) => ({
+        ...f,
+        num_funcionarios: countMap[f.id] ?? 0,
+      }));
+      return NextResponse.json({ ok: true, data: result });
     }
 
+    // ─── upsert_folha ─────────────────────────────────────────────────────────
     if (operacao === "upsert_folha") {
-      // Busca folha existente
       const { fazenda_id, empresa_id, competencia, ...dados } = payload as {
         fazenda_id: string; empresa_id: string | null; competencia: string;
         valor_bruto: number; valor_liquido: number; inss_patronal: number; fgts_total: number; obs?: string;
@@ -55,6 +72,7 @@ export async function POST(req: Request) {
       }
     }
 
+    // ─── update_folha ─────────────────────────────────────────────────────────
     if (operacao === "update_folha") {
       const { id, ...dados } = payload as { id: string } & Record<string, unknown>;
       const { error } = await sb.from("folha_pagamento").update(dados).eq("id", id);
@@ -62,6 +80,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── delete_funcionarios ──────────────────────────────────────────────────
     if (operacao === "delete_funcionarios") {
       const { folha_id } = payload as { folha_id: string };
       const { error } = await sb.from("folha_funcionarios").delete().eq("folha_id", folha_id);
@@ -69,6 +88,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── insert_funcionarios ──────────────────────────────────────────────────
     if (operacao === "insert_funcionarios") {
       const { rows } = payload as { rows: unknown[] };
       if (rows.length) {
@@ -78,6 +98,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── fechar_folha ─────────────────────────────────────────────────────────
     if (operacao === "fechar_folha") {
       const { id, fazenda_id, empresa_id, competencia } = payload as {
         id: string; fazenda_id: string; empresa_id: string | null; competencia: string;
@@ -125,12 +146,20 @@ export async function POST(req: Request) {
         }
       }
 
-      // Marca adiantamentos do mês como descontados
-      await sb.from("adiantamentos_salario")
-        .update({ status: "descontado" })
-        .eq("fazenda_id", fazenda_id)
-        .eq("competencia_ref", competencia)
-        .eq("status", "pendente");
+      // Marca como "descontado" SOMENTE os adiantamentos cujo funcionário
+      // tem adiantamento > 0 na folha — evita marcar adiantamentos não incluídos.
+      const funcIdsComAdiantamento = (itens ?? [])
+        .filter((it: any) => (it.adiantamento ?? 0) > 0 && it.funcionario_id)
+        .map((it: any) => it.funcionario_id as string);
+
+      if (funcIdsComAdiantamento.length > 0) {
+        await sb.from("adiantamentos_salario")
+          .update({ status: "descontado" })
+          .eq("fazenda_id", fazenda_id)
+          .eq("competencia_ref", competencia)
+          .eq("status", "pendente")
+          .in("funcionario_id", funcIdsComAdiantamento);
+      }
 
       // Atualiza status da folha
       const { error } = await sb.from("folha_pagamento").update({ status: "fechado" }).eq("id", id);
@@ -139,6 +168,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── delete_folha ─────────────────────────────────────────────────────────
     if (operacao === "delete_folha") {
       const { id } = payload as { id: string };
       await sb.from("folha_funcionarios").delete().eq("folha_id", id);
@@ -147,17 +177,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── listar_funcionarios_folha — com vínculo atual do funcionário ─────────
     if (operacao === "listar_funcionarios_folha") {
       const { folha_id } = payload as { folha_id: string };
       const { data, error } = await sb
         .from("folha_funcionarios")
-        .select("*")
+        .select("*, funcionarios(empresa_id, produtor_id)")
         .eq("folha_id", folha_id)
         .order("nome_funcionario");
       if (error) throw error;
-      return NextResponse.json({ ok: true, data: data ?? [] });
+
+      // Enriquece: usa vínculo salvo na folha; se NULL (folhas antigas), usa o atual do funcionário
+      const enriched = (data ?? []).map((i: any) => ({
+        ...i,
+        empresa_id:  i.empresa_id  ?? i.funcionarios?.empresa_id  ?? null,
+        produtor_id: i.produtor_id ?? i.funcionarios?.produtor_id ?? null,
+        funcionarios: undefined,
+      }));
+      return NextResponse.json({ ok: true, data: enriched });
     }
 
+    // ─── listar_adi_prem ──────────────────────────────────────────────────────
     if (operacao === "listar_adi_prem") {
       const { fazenda_id } = payload as { fazenda_id: string };
       const [{ data: adis, error: adiErr }, { data: prems, error: premErr }] = await Promise.all([
@@ -169,6 +209,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, adis: adis ?? [], prems: prems ?? [] });
     }
 
+    // ─── salvar_adiantamento ──────────────────────────────────────────────────
     if (operacao === "salvar_adiantamento") {
       const { fazenda_id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
       const { data: lanc, error: lancErr } = await sb.from("lancamentos").insert({
@@ -190,6 +231,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── cancelar_adiantamento ────────────────────────────────────────────────
     if (operacao === "cancelar_adiantamento") {
       const { id } = payload as { id: string };
       const { error } = await sb.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
@@ -197,6 +239,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── salvar_premiacao ─────────────────────────────────────────────────────
     if (operacao === "salvar_premiacao") {
       const { fazenda_id, funcionario_id, mes_referencia, descricao, valor } = payload as any;
       const { error } = await sb.from("funcionarios_premiacoes").insert({
@@ -207,6 +250,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── excluir_premiacao ────────────────────────────────────────────────────
     if (operacao === "excluir_premiacao") {
       const { id } = payload as { id: string };
       const { error } = await sb.from("funcionarios_premiacoes").delete().eq("id", id);

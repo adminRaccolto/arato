@@ -259,7 +259,7 @@ export default function FolhaPagamentoPage() {
       const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
 
-      // Folhas via API route
+      // Folhas via API route (já vêm com num_funcionarios)
       const fols: any[] = folhasRes.data ?? [];
       const folhasComNome = fols.map((f: any) => ({
         ...f,
@@ -473,7 +473,19 @@ export default function FolhaPagamentoPage() {
   }
 
   async function fecharFolha(folha: Folha) {
-    if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? Isso irá gerar os lançamentos de CP.`)) return;
+    // Verifica adiantamentos pendentes para esta competência que podem não estar na folha
+    const adisPendentesComp = adiantamentos.filter(
+      a => a.competencia_ref === folha.competencia && a.status === "pendente"
+    );
+    if (adisPendentesComp.length > 0) {
+      const nomes = adisPendentesComp.map(a => `${a.funcionario_nome ?? "funcionário"} (${a.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`).join(", ");
+      const ok = confirm(
+        `⚠️ Atenção: há ${adisPendentesComp.length} adiantamento(s) pendente(s) para ${nomeMes(folha.competencia)} que podem não estar incluídos no cálculo desta folha:\n\n${nomes}\n\nSe esses adiantamentos foram lançados DEPOIS de salvar a folha, cancele agora, abra a folha, salve novamente e então feche.\n\nDeseja fechar mesmo assim (sem garantia de desconto)?`
+      );
+      if (!ok) return;
+    } else {
+      if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? Isso irá gerar os lançamentos de CP.`)) return;
+    }
     setSaving(true);
     try {
       // Tudo via API route com service_role_key para evitar RLS 42501
@@ -678,7 +690,7 @@ export default function FolhaPagamentoPage() {
                             ? <span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{f.empresa_nome}</span>
                             : <span style={{ fontSize:11, color:"#888" }}>Sem empregador</span>}
                         </td>
-                        <td style={S.td}>{f.funcionarios?.length ?? "—"}</td>
+                        <td style={S.td}>{(f as any).num_funcionarios ?? "—"}</td>
                         <td style={{ ...S.td, fontWeight:700, color:"#0B2D50", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_bruto)}</td>
                         <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_liquido)}</td>
                         <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_patronal??0)}</td>

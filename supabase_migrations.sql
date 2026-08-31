@@ -10910,3 +10910,19 @@ CREATE INDEX IF NOT EXISTS idx_folha_func_empresa  ON folha_funcionarios(empresa
 CREATE INDEX IF NOT EXISTS idx_folha_func_produtor ON folha_funcionarios(produtor_id) WHERE produtor_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 211 — corrigir salario_liquido para incluir complemento_salarial ──
+-- O campo GENERATED ALWAYS não incluía complemento_salarial, causando divergência
+-- entre o valor calculado no TypeScript e o valor armazenado no banco.
+
+ALTER TABLE folha_funcionarios DROP COLUMN IF EXISTS salario_liquido;
+
+ALTER TABLE folha_funcionarios
+  ADD COLUMN salario_liquido numeric(14,2) GENERATED ALWAYS AS (
+    salario_bruto
+    - inss_trabalhador - irrf - adiantamento - outros_descontos
+    + vale_transporte + vale_refeicao + outros_beneficios
+    + COALESCE(complemento_salarial, 0)
+  ) STORED;
+
+NOTIFY pgrst, 'reload schema';
