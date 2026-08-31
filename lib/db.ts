@@ -815,12 +815,12 @@ export async function confirmarPagamentoBordero(
 
 /** Cancela um borderô pendente: remove vínculo dos lançamentos e exclui o lote. */
 export async function cancelarBordero(lote_id: string): Promise<void> {
-  // Remove lote_id dos lançamentos que ainda não foram baixados
+  // Remove lote_id de TODOS os lançamentos do borderô (sem reverter status dos baixados).
+  // Isso é necessário para que o DELETE em pagamento_lotes não viole a FK.
   const { error: ue } = await supabase
     .from("lancamentos")
     .update({ lote_id: null })
-    .eq("lote_id", lote_id)
-    .neq("status", "baixado");
+    .eq("lote_id", lote_id);
   if (ue) throw ue;
 
   // Exclui os itens

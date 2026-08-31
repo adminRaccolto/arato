@@ -1391,6 +1391,39 @@ function ContasPagarInner() {
                         const itensB   = b.itens ?? [];
                         const totalB   = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
                         const dtPago   = b.data_pagamento ? new Date(b.data_pagamento + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+
+                        // Borderô com 1 único título: exibe como linha simples (sem cabeçalho de grupo)
+                        if (itensB.length === 1) {
+                          const item = itensB[0];
+                          const lanc = item.lancamento as { numero?: number; descricao?: string; valor?: number; data_vencimento?: string; categoria?: string } | undefined;
+                          return (
+                            <tr key={`bdp-s-${b.id}`} style={{ background: "#F0FDF4", borderLeft: "3px solid #22C55E", borderBottom: "0.5px solid #22C55E20" }}>
+                              <td style={{ padding: "9px 6px", textAlign: "center" }}>
+                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22C55E", display: "inline-block" }} />
+                              </td>
+                              <td style={{ padding: "9px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{lanc?.numero ?? "—"}</td>
+                              <td colSpan={2} style={{ padding: "9px 8px", fontSize: 13, color: "var(--text-1)", fontWeight: 500 }}>
+                                <div>{lanc?.descricao ?? b.descricao ?? "—"}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Pago em {dtPago}{b.conta_bancaria ? ` · ${b.conta_bancaria}` : ""}</div>
+                              </td>
+                              <td colSpan={99} style={{ padding: "9px 8px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+                                  {lanc?.categoria && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{lanc.categoria}</span>}
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>
+                                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                                  </span>
+                                  <button
+                                    onClick={() => estornarBorderoPago(b)}
+                                    style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>
+                                    ↩ Estornar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        // Borderô com múltiplos títulos: exibe como grupo expansível
                         const expanded = expandedBordPagos.has(b.id);
                         const toggleExp = () => setExpandedBordPagos(prev => {
                           const next = new Set(prev);
@@ -1409,7 +1442,7 @@ function ContasPagarInner() {
                                   <span style={{ fontSize: 11, color: "#166534" }}>Pago em {dtPago}</span>
                                   {b.conta_bancaria && <span style={{ fontSize: 10, color: "#166534", background: "#DCFCE7", borderRadius: 4, padding: "1px 6px" }}>{b.conta_bancaria}</span>}
                                   <span style={{ fontSize: 11, background: "#fff", color: "#166534", border: "0.5px solid #22C55E60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
-                                    {itensB.length} título{itensB.length !== 1 ? "s" : ""}
+                                    {itensB.length} títulos
                                   </span>
                                   <span style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginLeft: 4 }}>
                                     {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}

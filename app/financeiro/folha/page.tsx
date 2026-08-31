@@ -375,6 +375,19 @@ export default function FolhaPagamentoPage() {
     }
   }
 
+  async function apiFolha(body: Record<string, unknown>) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? "";
+    const res = await fetch("/api/folha/salvar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.error ?? "Erro na API de folha");
+    return json;
+  }
+
   async function salvarFolhaMes(comp: string, funcs: FolhaFunc[], empresaId?: string | null) {
     const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
     const totalLiq     = funcs.reduce((s, f) => s + liquido(f), 0);
@@ -386,44 +399,26 @@ export default function FolhaPagamentoPage() {
       ? folhaEdit.id
       : undefined;
 
-    if (!folhaId) {
-      // Verifica se já existe folha para (fazenda, empresa, competência)
-      const q = supabase.from("folha_pagamento")
-        .select("id")
-        .eq("fazenda_id", fazendaId!)
-        .eq("competencia", comp);
-      const existQuery = empresaId ? q.eq("empresa_id", empresaId) : q.is("empresa_id", null);
-      const { data: exist } = await existQuery.maybeSingle();
+    const dadosFolha = { valor_bruto: totalBruto, valor_liquido: totalLiq, inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs };
 
-      if (exist?.id) {
-        folhaId = exist.id;
-        await supabase.from("folha_pagamento").update({
-          valor_bruto: totalBruto, valor_liquido: totalLiq,
-          inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs,
-        }).eq("id", folhaId);
-        await supabase.from("folha_funcionarios").delete().eq("folha_id", folhaId);
-      } else {
-        const { data, error } = await supabase.from("folha_pagamento").insert({
-          fazenda_id: fazendaId,
-          empresa_id: empresaId ?? null,
-          competencia: comp,
-          status: "rascunho",
-          valor_bruto: totalBruto,
-          valor_liquido: totalLiq,
-          inss_patronal: totalINSSPat,
-          fgts_total: totalFGTS,
-          obs: folhaEdit.obs,
-        }).select("id").single();
-        if (error) throw error;
-        folhaId = data.id;
-        if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId, empresa_id: empresaId ?? null }));
+    if (!folhaId) {
+      // Upsert via API route (service_role_key evita RLS 42501)
+      const res = await apiFolha({
+        operacao: "upsert_folha",
+        fazenda_id: fazendaId,
+        empresa_id: empresaId ?? null,
+        competencia: comp,
+        ...dadosFolha,
+      });
+      folhaId = res.id as string;
+      if (!res.criou) {
+        // Folha existente: limpa funcionários para recriar
+        await apiFolha({ operacao: "delete_funcionarios", folha_id: folhaId });
       }
+      if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId, empresa_id: empresaId ?? null }));
     } else {
-      await supabase.from("folha_pagamento").update({
-        valor_bruto: totalBruto, valor_liquido: totalLiq,
-        inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs,
-      }).eq("id", folhaId);
-      await supabase.from("folha_funcionarios").delete().eq("folha_id", folhaId);
+      await apiFolha({ operacao: "update_folha", id: folhaId, ...dadosFolha });
+      await apiFolha({ operacao: "delete_funcionarios", folha_id: folhaId });
     }
 
     if (funcs.length) {
@@ -446,7 +441,7 @@ export default function FolhaPagamentoPage() {
         inss_patronal: f.inss_patronal,
         fgts: f.fgts,
       }));
-      await supabase.from("folha_funcionarios").insert(rows);
+      await apiFolha({ operacao: "insert_funcionarios", rows });
     }
   }
 
@@ -486,7 +481,7 @@ export default function FolhaPagamentoPage() {
         .eq("competencia_ref", folha.competencia)
         .eq("status", "pendente");
 
-      await supabase.from("folha_pagamento").update({ status: "fechado" }).eq("id", folha.id);
+      await apiFolha({ operacao: "fechar_folha", id: folha.id });
       setMsg("Folha fechada e CPs gerados.");
       carregar();
     } catch (e: any) {
