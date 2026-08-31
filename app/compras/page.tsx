@@ -720,7 +720,7 @@ export default function ComprasPage() {
         : x));
       setModalNovoInsumo(null);
     } catch (e) {
-      alert("Erro ao criar insumo: " + (e instanceof Error ? e.message : String(e)));
+      alert("Erro ao criar insumo: " + (e instanceof Error ? e.message : ((e as any)?.message ?? JSON.stringify(e))));
     } finally {
       setSalvandoInsumo(false);
     }
@@ -2328,7 +2328,7 @@ export default function ComprasPage() {
               <div>
                 <label style={lbl}>Unidade *</label>
                 <select style={inp} value={novoInsumoForm.unidade} onChange={e => setNovoInsumoForm(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                  {(["kg","g","L","mL","sc","t","ton","un","m","m2","cx","pc","par","outros"] as Insumo["unidade"][]).map(u => <option key={u} value={u}>{u}</option>)}
+                  {(["kg","g","L","mL","sc","t","un","m","m2","cx","pc","par","outros"] as Insumo["unidade"][]).map(u => <option key={u} value={u}>{u === "t" ? "t (tonelada)" : u}</option>)}
                 </select>
               </div>
             </div>
