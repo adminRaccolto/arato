@@ -6,7 +6,7 @@ import InputNumerico from "../../../components/InputNumerico";
 import {
   listarContratosFinanceiros, listarContratosFinanceirosDaConta, criarContratoFinanceiro, atualizarContratoFinanceiro, excluirContratoFinanceiro,
   listarParcelasLiberacao, criarParcelaLiberacao, excluirParcelaLiberacao,
-  listarParcelasPagamento, salvarParcelasPagamento, baixarLancamento,
+  listarParcelasPagamento, salvarParcelasPagamento, baixarLancamento, reabrirLancamento,
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
   listarAditivos, criarAditivo, excluirAditivo,
@@ -866,6 +866,27 @@ export default function ContratosFinanceiros() {
       setBaixaPErro(e instanceof Error ? e.message : "Erro ao registrar pagamento.");
     } finally {
       setBaixandoP(false);
+    }
+  }
+
+  async function reabrirParcela(p: ParcelaPagamento) {
+    if (!confirm("Reabrir esta parcela? O lançamento de CP voltará para 'Em aberto'.")) return;
+    try {
+      if (p.lancamento_id) {
+        await reabrirLancamento(p.lancamento_id);
+      }
+      const hoje = new Date().toISOString().slice(0, 10);
+      const novoStatus = p.data_vencimento < hoje ? "vencido" : "em_aberto";
+      const { error } = await supabase
+        .from("parcelas_pagamento")
+        .update({ status: novoStatus, data_pagamento: null })
+        .eq("id", p.id);
+      if (error) throw error;
+      setParcelasPagamento(prev => prev.map(x =>
+        x.id === p.id ? { ...x, status: novoStatus as any, data_pagamento: undefined } : x
+      ));
+    } catch (e) {
+      alert("Erro ao reabrir parcela: " + (e instanceof Error ? e.message : String(e)));
     }
   }
 
@@ -1928,7 +1949,12 @@ export default function ContratosFinanceiros() {
                                         <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
                                       </td>
                                       <td style={{ padding: "4px 8px", textAlign: "center" }}>
-                                        {p.status !== "pago" && (
+                                        {p.status === "pago" ? (
+                                          <button
+                                            style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "0.5px solid #888", background: "#F4F6FA", color: "#555", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                                            onClick={() => reabrirParcela(p)}
+                                          >↩ Reabrir</button>
+                                        ) : (
                                           <button
                                             style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", color: "#1A4870", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                                             onClick={() => {
