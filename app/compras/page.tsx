@@ -753,6 +753,7 @@ export default function ComprasPage() {
 
   const salvar = async () => {
     if (!fazendaId) return;
+    if (!f.operacao) { setErroModal("Operação Gerencial"); return; }
     if (!f.fornecedor_id && !f.contato_fornecedor.trim()) { setErroModal("Fornecedor"); return; }
     setErroModal(""); setSalvando(true); setErro(null);
     let barterContratoGerado: string | null = null;
@@ -1434,7 +1435,7 @@ export default function ComprasPage() {
                 {/* Linha 1: Operação + Safra + Pedido + Datas */}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                   <div>
-                    <label style={lbl}>Operação</label>
+                    <label style={lbl}>Operação Gerencial *</label>
                     <SearchableSelect
                       value={f.operacao}
                       onChange={id => {

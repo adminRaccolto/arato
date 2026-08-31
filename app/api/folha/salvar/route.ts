@@ -67,9 +67,60 @@ export async function POST(req: Request) {
     }
 
     if (operacao === "fechar_folha") {
-      const { id } = payload as { id: string };
+      const { id, fazenda_id, empresa_id, competencia } = payload as {
+        id: string; fazenda_id: string; empresa_id: string | null; competencia: string;
+      };
+
+      // Busca funcionários da folha
+      const { data: itens, error: itErr } = await sb
+        .from("folha_funcionarios").select("*").eq("folha_id", id);
+      if (itErr) throw itErr;
+
+      const hoje = new Date().toISOString().slice(0, 10);
+      const vencimento = `${competencia}-05`;
+      const nomeMesLabel = (() => {
+        const [ano, mes] = competencia.split("-");
+        const n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+        return `${n[parseInt(mes)-1]}/${ano}`;
+      })();
+
+      // Gera CP por funcionário via service_role_key (evita RLS 42501)
+      for (const it of (itens ?? [])) {
+        const liq = Math.max(0, Math.round((
+          it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento
+          - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios
+          + (it.complemento_salarial ?? 0)
+        ) * 100) / 100);
+
+        const { data: lancamento } = await sb.from("lancamentos").insert({
+          fazenda_id,
+          empresa_id: empresa_id ?? null,
+          tipo: "pagar",
+          descricao: `Salário ${nomeMesLabel} — ${it.nome_funcionario}`,
+          valor: liq,
+          moeda: "BRL",
+          status: "em_aberto",
+          categoria: "Pessoal / Salários",
+          data_vencimento: vencimento,
+          data_lancamento: hoje,
+        }).select("id").single();
+
+        if (lancamento?.id) {
+          await sb.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
+        }
+      }
+
+      // Marca adiantamentos do mês como descontados
+      await sb.from("adiantamentos_salario")
+        .update({ status: "descontado" })
+        .eq("fazenda_id", fazenda_id)
+        .eq("competencia_ref", competencia)
+        .eq("status", "pendente");
+
+      // Atualiza status da folha
       const { error } = await sb.from("folha_pagamento").update({ status: "fechado" }).eq("id", id);
       if (error) throw error;
+
       return NextResponse.json({ ok: true });
     }
 

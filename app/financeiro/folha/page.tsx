@@ -15,12 +15,14 @@ interface Funcionario {
   ativo?: boolean;
   empresa_id?: string | null;
   empresa_nome?: string;
+  produtor_id?: string | null;
 }
 interface FolhaFunc {
   id?: string;
   folha_id?: string;
   funcionario_id?: string;
   empresa_id?: string | null;
+  produtor_id?: string | null;
   nome_funcionario: string;
   cargo: string;
   salario_base: number;           // base pura (carteira) — base dos encargos
@@ -177,6 +179,7 @@ export default function FolhaPagamentoPage() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [folhas,       setFolhas]       = useState<Folha[]>([]);
   const [empresasMap,  setEmpresasMap]  = useState<Record<string, string>>({});
+  const [produtoresMap, setProdutoresMap] = useState<Record<string, string>>({});
   const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
   const [premiacoes,   setPremiacoes]   = useState<Premiacao[]>([]);
 
@@ -211,9 +214,10 @@ export default function FolhaPagamentoPage() {
         { data: adis },
         { data: prems },
         { data: emps },
+        { data: prods },
       ] = await Promise.all([
         supabase.from("funcionarios")
-          .select("id,nome,funcao,salario_base,tipo,empresa_id,ativo")
+          .select("id,nome,funcao,salario_base,tipo,empresa_id,produtor_id,ativo")
           .eq("fazenda_id", fazendaId)
           .order("nome"),
         supabase.from("folha_pagamento")
@@ -231,11 +235,19 @@ export default function FolhaPagamentoPage() {
           .select("id,nome_fantasia,razao_social")
           .eq("fazenda_id", fazendaId)
           .order("nome_fantasia"),
+        supabase.from("produtores")
+          .select("id,nome")
+          .eq("fazenda_id", fazendaId)
+          .order("nome"),
       ]);
       // Mapa empresa_id → nome
       const eMap: Record<string, string> = {};
       (emps ?? []).forEach((e: any) => { eMap[e.id] = e.nome_fantasia || e.razao_social || e.id; });
       setEmpresasMap(eMap);
+      // Mapa produtor_id → nome
+      const pMap: Record<string, string> = {};
+      (prods ?? []).forEach((p: any) => { pMap[p.id] = p.nome; });
+      setProdutoresMap(pMap);
 
       // Todos os funcionários ativos com nome do empregador resolvido
       const funcsLista = (funcs ?? [])
@@ -305,6 +317,7 @@ export default function FolhaPagamentoPage() {
         return recalc({
           funcionario_id: f.id,
           empresa_id: f.empresa_id ?? null,
+          produtor_id: f.produtor_id ?? null,
           nome_funcionario: f.nome,
           cargo: f.funcao ?? "",
           salario_base: base,
@@ -425,6 +438,8 @@ export default function FolhaPagamentoPage() {
       const rows = funcs.map(f => ({
         folha_id: folhaId,
         funcionario_id: f.funcionario_id ?? null,
+        empresa_id: f.empresa_id ?? null,
+        produtor_id: f.produtor_id ?? null,
         nome_funcionario: f.nome_funcionario,
         cargo: f.cargo,
         salario_bruto: f.salario_bruto,
@@ -449,39 +464,14 @@ export default function FolhaPagamentoPage() {
     if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? Isso irá gerar os lançamentos de CP.`)) return;
     setSaving(true);
     try {
-      // Busca itens
-      const { data: itens } = await supabase
-        .from("folha_funcionarios").select("*").eq("folha_id", folha.id);
-      // Gera CP por funcionário
-      for (const it of (itens ?? [])) {
-        const liq = Math.max(0,
-          it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento
-          - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios
-        );
-        const { data: lancamento } = await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId,
-          empresa_id: folha.empresa_id ?? null,
-          tipo: "pagar",
-          descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
-          valor: liq,
-          moeda: "BRL",
-          status: "em_aberto",
-          categoria: "Pessoal / Salários",
-          data_vencimento: `${folha.competencia}-05`,
-          data_lancamento: new Date().toISOString().slice(0,10),
-        }).select("id").single();
-        if (lancamento?.id) {
-          await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
-        }
-      }
-      // Marca adiantamentos do mês como descontados
-      await supabase.from("adiantamentos_salario")
-        .update({ status: "descontado" })
-        .eq("fazenda_id", fazendaId)
-        .eq("competencia_ref", folha.competencia)
-        .eq("status", "pendente");
-
-      await apiFolha({ operacao: "fechar_folha", id: folha.id });
+      // Tudo via API route com service_role_key para evitar RLS 42501
+      await apiFolha({
+        operacao: "fechar_folha",
+        id: folha.id,
+        fazenda_id: fazendaId,
+        empresa_id: folha.empresa_id ?? null,
+        competencia: folha.competencia,
+      });
       setMsg("Folha fechada e CPs gerados.");
       carregar();
     } catch (e: any) {
@@ -898,7 +888,9 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, minWidth:120 }}>
                                   {f.empresa_id
                                     ? <span style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{empresasMap[f.empresa_id] ?? "Empresa"}</span>
-                                    : <span style={{ fontSize:11, color:"#aaa" }}>Sem vínculo</span>}
+                                    : f.produtor_id
+                                      ? <span style={{ fontSize:11, fontWeight:600, color:"#16A34A", background:"#DCFCE7", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{produtoresMap[f.produtor_id] ?? "Produtor"}</span>
+                                      : <span style={{ fontSize:11, color:"#aaa" }}>Sem vínculo</span>}
                                 </td>
                                 <td style={{ ...S.td, fontWeight:600, minWidth:160 }}>{f.nome_funcionario}</td>
                                 <td style={S.td}>

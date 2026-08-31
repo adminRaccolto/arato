@@ -10897,3 +10897,16 @@ UPDATE perfis SET bpo_nivel = 'admin'
 WHERE role = 'bpo' AND bpo_nivel IS NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 210 — empresa_id e produtor_id em folha_funcionarios ──────
+-- Persiste o vínculo do funcionário na folha para exibição correta do campo
+-- "Vínculo" no grid mesmo após recarregar folhas existentes do banco.
+
+ALTER TABLE folha_funcionarios
+  ADD COLUMN IF NOT EXISTS empresa_id  uuid REFERENCES empresas(id)   ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_folha_func_empresa  ON folha_funcionarios(empresa_id)  WHERE empresa_id  IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_folha_func_produtor ON folha_funcionarios(produtor_id) WHERE produtor_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
