@@ -297,13 +297,16 @@ export default function FolhaPagamentoPage() {
   async function abrirFolha(folha?: Folha) {
     if (!fazendaId) return;
     if (folha) {
-      // Carregar itens existentes
-      const { data: itens } = await supabase
-        .from("folha_funcionarios")
-        .select("*")
-        .eq("folha_id", folha.id)
-        .order("nome_funcionario");
-      const funcsCarregados = (itens ?? []).map((i: any) => ({
+      // Carregar itens existentes via API route (service_role — bypass RLS)
+      const { data: { session } } = await supabase.auth.getSession();
+      const tkn = session?.access_token ?? "";
+      const res = await fetch("/api/folha/salvar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tkn}` },
+        body: JSON.stringify({ operacao: "listar_funcionarios_folha", folha_id: folha.id }),
+      }).then(r => r.json()).catch(() => ({ ok: false, data: [] }));
+      const itens: any[] = res.data ?? [];
+      const funcsCarregados = itens.map((i: any) => ({
         ...i,
         salario_base: (i.salario_bruto ?? 0) - (i.gratificacao ?? 0),
         complemento_salarial: i.complemento_salarial ?? 0,

@@ -147,6 +147,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    if (operacao === "listar_funcionarios_folha") {
+      const { folha_id } = payload as { folha_id: string };
+      const { data, error } = await sb
+        .from("folha_funcionarios")
+        .select("*")
+        .eq("folha_id", folha_id)
+        .order("nome_funcionario");
+      if (error) throw error;
+      return NextResponse.json({ ok: true, data: data ?? [] });
+    }
+
     if (operacao === "listar_adi_prem") {
       const { fazenda_id } = payload as { fazenda_id: string };
       const [{ data: adis, error: adiErr }, { data: prems, error: premErr }] = await Promise.all([
