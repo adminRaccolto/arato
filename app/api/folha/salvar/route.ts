@@ -314,6 +314,24 @@ export async function POST(req: Request) {
     // ─── cancelar_adiantamento ────────────────────────────────────────────────
     if (operacao === "cancelar_adiantamento") {
       const { id } = payload as { id: string };
+      // Busca lancamento_id vinculado antes de cancelar
+      const { data: adi } = await sb
+        .from("adiantamentos_salario")
+        .select("lancamento_id")
+        .eq("id", id)
+        .single();
+      // Exclui o CP se não estiver baixado
+      if (adi?.lancamento_id) {
+        const { data: lanc } = await sb
+          .from("lancamentos")
+          .select("status")
+          .eq("id", adi.lancamento_id)
+          .single();
+        if (lanc?.status === "baixado") {
+          throw new Error("Não é possível cancelar: o CP do adiantamento já foi baixado em borderô. Estorne o borderô primeiro.");
+        }
+        await sb.from("lancamentos").delete().eq("id", adi.lancamento_id);
+      }
       const { error } = await sb.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
       if (error) throw error;
       return NextResponse.json({ ok: true });

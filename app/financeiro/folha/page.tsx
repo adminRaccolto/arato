@@ -306,12 +306,22 @@ export default function FolhaPagamentoPage() {
         body: JSON.stringify({ operacao: "listar_funcionarios_folha", folha_id: folha.id }),
       }).then(r => r.json()).catch(() => ({ ok: false, data: [] }));
       const itens: any[] = res.data ?? [];
-      const funcsCarregados = itens.map((i: any) => ({
-        ...i,
-        salario_base: (i.salario_bruto ?? 0) - (i.gratificacao ?? 0),
-        complemento_salarial: i.complemento_salarial ?? 0,
-        gratificacao: i.gratificacao ?? 0,
-      }));
+      const funcsCarregados = itens.map((i: any) => {
+        const base: FolhaFunc = {
+          ...i,
+          salario_base: (i.salario_bruto ?? 0) - (i.gratificacao ?? 0),
+          complemento_salarial: i.complemento_salarial ?? 0,
+          gratificacao: i.gratificacao ?? 0,
+        };
+        // Para rascunho: sempre herda adiantamentos pendentes da competência
+        if (folha.status === "rascunho") {
+          const adi = adiantamentos
+            .filter(a => a.competencia_ref === folha.competencia && a.status === "pendente" && a.funcionario_id === i.funcionario_id)
+            .reduce((s, a) => s + a.valor, 0);
+          base.adiantamento = adi;
+        }
+        return base;
+      });
       setFolhaEdit({ ...folha, funcionarios: funcsCarregados });
       setSelecionados(new Set(funcsCarregados.map((_, i) => i)));
     } else {
@@ -699,12 +709,12 @@ export default function FolhaPagamentoPage() {
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                 <div>
                   <label style={S.label}>De</label>
-                  <input type="month" value={fComp} onChange={e=>{ setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
+                  <input type="month" value={fComp} onChange={e=>{ if (!e.target.value) return; setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 <span style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>até</span>
                 <div>
                   <label style={S.label}>Até</label>
-                  <input type="month" value={fCompAte} onChange={e=>setFCompAte(e.target.value < fComp ? fComp : e.target.value)} style={{ ...S.inp, width: 140 }} />
+                  <input type="month" value={fCompAte} onChange={e=>{ if (!e.target.value) return; setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 {fCompAte > fComp && (
                   <span style={{ fontSize: 11, color: "#C9921B", background: "#FBF3E0", borderRadius: 4, padding: "3px 8px", marginBottom: 4, fontWeight: 600 }}>
@@ -942,7 +952,7 @@ export default function FolhaPagamentoPage() {
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                       <thead>
                         <tr>
-                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Líquido"].map(h=>(
+                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Sal. Líquido"].map(h=>(
                             <th key={h} style={S.th}>{h}</th>
                           ))}
                         </tr>
@@ -969,9 +979,8 @@ export default function FolhaPagamentoPage() {
                                       : <span style={{ fontSize:11, color:"#aaa" }}>Sem vínculo</span>}
                                 </td>
                                 <td style={{ ...S.td, fontWeight:600, minWidth:160 }}>{f.nome_funcionario}</td>
-                                <td style={S.td}>
-                                  <input type="number" value={f.salario_base} onChange={e=>setFuncField(idx,"salario_base",parseFloat(e.target.value)||0)}
-                                    style={{ ...S.inp, width:100, textAlign:"right" }} />
+                                <td style={{ ...S.td, fontVariantNumeric:"tabular-nums", color:"#555", textAlign:"right" }}>
+                                  {moeda(f.salario_base)}
                                 </td>
                                 <td style={S.td}>
                                   <input type="number" value={f.gratificacao} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)}

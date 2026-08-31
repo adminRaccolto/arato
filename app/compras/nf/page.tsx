@@ -3265,9 +3265,20 @@ export default function NfCompraPage() {
                         <label style={lbl}>Depósito de destino (onde o insumo será armazenado)</label>
                         <select value={cab.deposito_destino_id} onChange={e => setCab(p=>({...p,deposito_destino_id:e.target.value}))} style={inp}>
                           <option value="">Selecionar depósito…</option>
-                          {wDepositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
-                            <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
-                          ))}
+                          {wDepositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).length > 0 && (
+                            <optgroup label="Depósitos Próprios">
+                              {wDepositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
+                                <option key={d.id} value={d.id}>{d.nome}</option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {wDepositos.filter(d => ["terceiro","armazem_terceiro"].includes(d.tipo)).length > 0 && (
+                            <optgroup label="Depósitos de Terceiro">
+                              {wDepositos.filter(d => ["terceiro","armazem_terceiro"].includes(d.tipo)).map(d => (
+                                <option key={d.id} value={d.id}>{d.nome}</option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
                       </div>
                     </div>
