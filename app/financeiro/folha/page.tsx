@@ -538,18 +538,34 @@ export default function FolhaPagamentoPage() {
       setMsg("Preencha funcionário, data e valor."); return;
     }
     setSaving(true);
+    const funcionario_nome = funcionarios.find(f => f.id === adiEdit.funcionario_id)?.nome ?? "";
     try {
-      await apiFolha({
-        operacao: "salvar_adiantamento",
-        fazenda_id: fazendaId,
-        funcionario_id: adiEdit.funcionario_id,
-        data: adiEdit.data,
-        valor: adiEdit.valor,
-        competencia_ref: adiEdit.competencia_ref || null,
-        descricao: adiEdit.descricao || null,
-        funcionario_nome: funcionarios.find(f => f.id === adiEdit.funcionario_id)?.nome ?? "",
-      });
-      setMsg("Adiantamento registrado e CP gerado.");
+      if (adiEdit.id) {
+        // Edição de adiantamento existente
+        await apiFolha({
+          operacao: "editar_adiantamento",
+          id: adiEdit.id,
+          funcionario_id: adiEdit.funcionario_id,
+          data: adiEdit.data,
+          valor: adiEdit.valor,
+          competencia_ref: adiEdit.competencia_ref || null,
+          descricao: adiEdit.descricao || null,
+          funcionario_nome,
+        });
+        setMsg("Adiantamento atualizado.");
+      } else {
+        await apiFolha({
+          operacao: "salvar_adiantamento",
+          fazenda_id: fazendaId,
+          funcionario_id: adiEdit.funcionario_id,
+          data: adiEdit.data,
+          valor: adiEdit.valor,
+          competencia_ref: adiEdit.competencia_ref || null,
+          descricao: adiEdit.descricao || null,
+          funcionario_nome,
+        });
+        setMsg("Adiantamento registrado e CP gerado.");
+      }
       setModalAdi(false);
       setAdiEdit({});
       carregar();
@@ -577,15 +593,28 @@ export default function FolhaPagamentoPage() {
     }
     setSaving(true);
     try {
-      await apiFolha({
-        operacao: "salvar_premiacao",
-        fazenda_id: fazendaId,
-        funcionario_id: premEdit.funcionario_id,
-        mes_referencia: premEdit.mes_referencia,
-        descricao: premEdit.descricao,
-        valor: premEdit.valor,
-      });
-      setMsg("Gratificação registrada.");
+      if (premEdit.id) {
+        // Edição de gratificação existente
+        await apiFolha({
+          operacao: "editar_premiacao",
+          id: premEdit.id,
+          funcionario_id: premEdit.funcionario_id,
+          mes_referencia: premEdit.mes_referencia,
+          descricao: premEdit.descricao,
+          valor: premEdit.valor,
+        });
+        setMsg("Gratificação atualizada.");
+      } else {
+        await apiFolha({
+          operacao: "salvar_premiacao",
+          fazenda_id: fazendaId,
+          funcionario_id: premEdit.funcionario_id,
+          mes_referencia: premEdit.mes_referencia,
+          descricao: premEdit.descricao,
+          valor: premEdit.valor,
+        });
+        setMsg("Gratificação registrada.");
+      }
       setModalPrem(false);
       setPremEdit({});
       carregar();
@@ -781,10 +810,11 @@ export default function FolhaPagamentoPage() {
                             {ADI_LABEL[a.status]}
                           </span>
                         </td>
-                        <td style={S.td}>
-                          {a.status === "pendente" && (
+                        <td style={{ ...S.td, whiteSpace:"nowrap" }}>
+                          {a.status === "pendente" && (<>
+                            <button onClick={()=>{ setAdiEdit({ id: a.id, funcionario_id: a.funcionario_id, data: a.data, valor: a.valor, competencia_ref: a.competencia_ref, descricao: a.descricao }); setModalAdi(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
                             <button onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</button>
-                          )}
+                          </>)}
                         </td>
                       </tr>
                     ))}
@@ -834,10 +864,11 @@ export default function FolhaPagamentoPage() {
                             ? <span style={{ fontSize:11, color:"#16A34A", fontWeight:700 }}>✓ Sim</span>
                             : <span style={{ fontSize:11, color:"#888" }}>Pendente</span>}
                         </td>
-                        <td style={S.td}>
-                          {!p.lancado_financeiro && (
+                        <td style={{ ...S.td, whiteSpace:"nowrap" }}>
+                          {!p.lancado_financeiro && (<>
+                            <button onClick={()=>{ setPremEdit({ id: p.id, funcionario_id: p.funcionario_id, mes_referencia: p.mes_referencia, descricao: p.descricao, valor: p.valor }); setModalPrem(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
                             <button onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</button>
-                          )}
+                          </>)}
                         </td>
                       </tr>
                     ))}
@@ -1075,7 +1106,7 @@ export default function FolhaPagamentoPage() {
         <div style={S.overlay} onClick={()=>setModalAdi(false)}>
           <div style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Novo Adiantamento Salarial</h2>
+              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{adiEdit.id ? "Editar Adiantamento" : "Novo Adiantamento Salarial"}</h2>
               <button onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>O CP é gerado automaticamente na data do adiantamento.</p>
@@ -1111,7 +1142,7 @@ export default function FolhaPagamentoPage() {
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <button onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving?"Salvando...":"Registrar e Gerar CP"}</button>
+              <button onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar e Gerar CP"}</button>
             </div>
           </div>
         </div>
@@ -1122,7 +1153,7 @@ export default function FolhaPagamentoPage() {
         <div style={S.overlay} onClick={()=>setModalPrem(false)}>
           <div style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Nova Gratificação</h2>
+              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{premEdit.id ? "Editar Gratificação" : "Nova Gratificação"}</h2>
               <button onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>A gratificação é incluída no bruto do mês de referência e será carregada ao criar a folha.</p>
@@ -1153,7 +1184,7 @@ export default function FolhaPagamentoPage() {
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <button onClick={()=>setModalPrem(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving?"Salvando...":"Salvar Gratificação"}</button>
+              <button onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving ? "Salvando..." : premEdit.id ? "Salvar Alterações" : "Salvar Gratificação"}</button>
             </div>
           </div>
         </div>

@@ -288,6 +288,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── editar_adiantamento ──────────────────────────────────────────────────
+    if (operacao === "editar_adiantamento") {
+      const { id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
+      // Atualiza o registro de adiantamento
+      const { error: adiErr } = await sb.from("adiantamentos_salario").update({
+        funcionario_id, data, valor,
+        competencia_ref: competencia_ref || null,
+        descricao: descricao || null,
+      }).eq("id", id);
+      if (adiErr) throw adiErr;
+      // Atualiza o lançamento vinculado se existir
+      const { data: adi } = await sb.from("adiantamentos_salario").select("lancamento_id").eq("id", id).single();
+      if (adi?.lancamento_id) {
+        await sb.from("lancamentos").update({
+          valor,
+          descricao: `Adiantamento — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
+          data_vencimento: data,
+          data_lancamento: data,
+        }).eq("id", adi.lancamento_id);
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // ─── cancelar_adiantamento ────────────────────────────────────────────────
     if (operacao === "cancelar_adiantamento") {
       const { id } = payload as { id: string };
@@ -303,6 +326,16 @@ export async function POST(req: Request) {
         fazenda_id, funcionario_id, mes_referencia, descricao,
         valor, lancado_financeiro: false,
       });
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+
+    // ─── editar_premiacao ─────────────────────────────────────────────────────
+    if (operacao === "editar_premiacao") {
+      const { id, funcionario_id, mes_referencia, descricao, valor } = payload as any;
+      const { error } = await sb.from("funcionarios_premiacoes").update({
+        funcionario_id, mes_referencia, descricao, valor,
+      }).eq("id", id);
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }
