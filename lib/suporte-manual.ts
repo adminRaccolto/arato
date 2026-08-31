@@ -2571,4 +2571,141 @@ Dois bugs corrigidos:
    - Após o primeiro salvamento, o ID da folha não era atualizado no estado interno
    - No segundo salvar, o sistema interpretava como "nova folha" e criava um duplicado
    - Corrigido: após o INSERT da folha, o id gerado é imediatamente gravado no estado — salvamentos subsequentes fazem UPDATE na folha existente
+
+---
+
+## ATUALIZAÇÃO — Folha de Pagamento: adiantamento, benefícios e outros descontos
+
+**Módulo:** Financeiro → Folha de Pagamento
+**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento**
+
+### Coluna Adiantamento — herança automática
+
+O campo **Adiantamento** da folha é preenchido automaticamente ao processar a folha, herdando os valores lançados na aba **Adiantamentos** (dentro da própria tela de Folha de Pagamento).
+
+**Como funciona:**
+- Abra **Folha de Pagamento → aba Adiantamentos** e registre os adiantamentos pagos no mês (com ou sem competência de referência)
+- Ao clicar em **Processar Folha**, o sistema busca adiantamentos com status "pendente" para cada funcionário e preenche o campo automaticamente
+- O campo continua editável caso precise corrigir manualmente
+- O valor do adiantamento é deduzido do salário líquido automaticamente
+- Ao fechar a folha (**Fechar Folha**), os adiantamentos vinculados mudam para status "descontado"
+
+**Regra de correspondência:**
+- Inclui adiantamentos sem competência de referência (campo em branco) — vale para qualquer folha
+- Inclui adiantamentos com competência igual ao mês da folha (ex: "2026-08" para agosto)
+- Adiantamentos de outros meses **não** são incluídos automaticamente
+
+### Coluna Outros Descontos — justificativa obrigatória
+
+O campo **Outros Descontos** aceita um valor em reais e exige uma **justificativa** que aparece diretamente na linha da tabela.
+
+**Como usar:**
+1. No campo de valor, informe o desconto em reais
+2. No campo de texto abaixo (placeholder "Justificativa..."), descreva o desconto — ex: "Adiantamento de combustível", "Desconto uniforme", "Empréstimo pessoal"
+3. A justificativa fica gravada na folha e aparece no recibo do funcionário
+
+**Quando a folha está fechada:** ambos os campos ficam somente leitura (não é possível editar).
+
+### Coluna Benefícios — vem do cadastro do funcionário
+
+Os benefícios mensais (**Vale Transporte**, **Vale Refeição/Alimentação**, **Outros Benefícios**) são cadastrados uma única vez no perfil do funcionário e propagados automaticamente para toda folha mensal.
+
+**Como cadastrar benefícios de um funcionário:**
+1. Vá em **Cadastros → Funcionários**
+2. Abra o funcionário e clique em **✏ Editar**
+3. Na aba **Remuneração**, role até a seção **Benefícios mensais**
+4. Preencha: Vale Transporte, Vale Refeição/Alimentação, Outros Benefícios
+5. Clique em **Salvar Funcionário**
+
+**Regra importante:** benefícios **não geram lançamento financeiro** — são um crédito ao funcionário no demonstrativo da folha. O CP correspondente (ex: fornecedor de VR) é lançado separadamente em Contas a Pagar.
+
+**Na folha:** os benefícios aparecem como somente leitura com a nota "(do cadastro)". Para alterar o valor, edite o cadastro do funcionário.
+
+---
+
+## ATUALIZAÇÃO — Cessão de Recebível: múltiplos fornecedores e vínculo com Pedido de Compra
+
+**Módulo:** Comercial → Contratos de Grãos
+**Seção:** Aba Adicionais → Cessão de Recebível
+
+### O que é Cessão de Recebível
+
+Quando o produtor cede o valor a receber de um contrato de grãos para quitar débitos com fornecedores — em vez de receber o dinheiro, o comprador paga diretamente ao fornecedor do produtor.
+
+### Múltiplos fornecedores beneficiários
+
+A cessão agora suporta **N fornecedores** beneficiários em um único contrato.
+
+**Como usar:**
+1. No modal de contrato (aba **Principal** → seção **Cessão de Recebível**), marque o checkbox **Dado em Cessão**
+2. Clique em **+ Adicionar fornecedor beneficiário** para cada credor
+3. Para cada beneficiário, preencha:
+   - **Fornecedor** — selecione do cadastro de Pessoas
+   - **Data da Cessão** — data de formalização
+   - **Observação** — ex: "quitação barter safra 25/26"
+4. Para remover um beneficiário, clique no **×** na linha correspondente
+
+### Vincular Débitos CP / Pedido de Compra
+
+Cada beneficiário tem seu próprio botão **Vincular Débitos CP / PC →**.
+
+**Como usar:**
+1. Selecione o fornecedor beneficiário e clique em **Vincular Débitos CP / PC →**
+2. O modal abre mostrando todas as CPs em aberto daquele fornecedor, organizadas em duas seções:
+
+   **Pedidos de Compra (seção superior):**
+   - CPs originadas de Pedidos de Compra aparecem agrupadas pelo número do pedido
+   - Checkbox **Selecionar tudo** no header do grupo seleciona todas as CPs do pedido de uma vez
+   - O total do pedido é exibido no header do grupo
+
+   **CPs avulsas (seção inferior):**
+   - CPs sem vínculo com Pedido de Compra aparecem individualmente
+
+3. Para cada CP selecionada, o campo **Valor Cessão** é preenchido com o valor total da CP (editável — pode ser um valor parcial)
+4. Clique em **Confirmar Vínculos**
+
+**Total cedido:** o cabeçalho do modal mostra o valor total cedido para aquele fornecedor vs. o valor total do contrato — um alerta vermelho aparece se ultrapassar.
+
+### Encerramento e baixa automática
+
+Ao encerrar o contrato, o sistema pergunta:
+- Quantos CPs estão vinculados à cessão
+- O valor total que será baixado automaticamente
+
+Ao confirmar o encerramento, todas as CPs vinculadas são baixadas automaticamente com a observação "Baixa automática por cessão de crédito — Contrato NNN".
+
+---
+
+## ATUALIZAÇÃO — NF de Remessa (CFOP 5.905 / 6.905): fluxo em 2 etapas
+
+**Módulo:** Compras & Estoque → NF de Entrada
+**Fluxo:** NF Entrada → Emitir NF Remessa → Fiscal → NF-e Emitidas
+
+Quando uma NF de Entrada registra insumos que chegaram via remessa logística (armazém de terceiro), é possível emitir a NF de Remessa correspondente — a nota que formaliza o retorno ou reenvio da mercadoria.
+
+### Fluxo em 2 etapas
+
+**Etapa 1 — Criar rascunho:**
+1. Em **Compras & Estoque → NF de Entrada**, localize a NF desejada
+2. Clique no menu de ações (⋯) e selecione **Emitir NF Remessa**
+3. O sistema abre a tela **Fiscal → NF-e Emitidas** em modo "NF de Remessa" com:
+   - CFOP 6.905 (ou 5.905, conforme UF) preenchido automaticamente
+   - Natureza da operação e observações preenchidas
+   - Itens pré-carregados da NF de Entrada (apenas itens destinados ao estoque/maquinário)
+4. Preencha o **Destinatário** (campo obrigatório)
+5. Clique em **○ Salvar Rascunho** — a nota é salva com status "Rascunho" **sem** envio à SEFAZ
+
+**Etapa 2 — Transmitir:**
+1. Acesse **Fiscal → NF-e Emitidas**
+2. Localize a nota com badge **Rascunho** (badge azul escuro)
+3. Clique no botão **▶ Transmitir →**
+4. O modal reabre com os dados pré-carregados — revise e clique em **Emitir NF-e**
+5. O sistema assina e transmite à SEFAZ normalmente
+
+**Identificação no grid:**
+- Rascunhos têm badge "Rascunho" em azul escuro e botão "▶ Transmitir →"
+- NFs em digitação normais (sem rascunho) têm botão "⟳ Consultar SEFAZ"
+
+**Vínculo automático:** após a autorização SEFAZ, o sistema registra automaticamente o vínculo entre a NF de Remessa emitida e a NF de Entrada de origem na tabela de controle logístico.
 `;
+
