@@ -438,7 +438,8 @@ export default function FolhaPagamentoPage() {
       const rows = funcs.map(f => ({
         folha_id: folhaId,
         funcionario_id: f.funcionario_id ?? null,
-        // empresa_id e produtor_id adicionados após Migration 210
+        empresa_id: f.empresa_id ?? null,
+        produtor_id: f.produtor_id ?? null,
         nome_funcionario: f.nome_funcionario,
         cargo: f.cargo,
         salario_bruto: f.salario_bruto,
