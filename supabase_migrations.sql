@@ -10820,3 +10820,9 @@ NOTIFY pgrst, 'reload schema';
 INSERT INTO bancos (codigo_compe, nome, nome_curto, cnpj, ispb)
 VALUES ('133', 'Banco Cresol Cooperativo S.A.', 'Cresol', '81723108000100', '81723108')
 ON CONFLICT (codigo_compe) DO NOTHING;
+
+-- ─── Migration Seção 207 — empresa_id em nf_servicos ─────────────────────────
+ALTER TABLE nf_servicos
+  ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES empresas(id);
+
+NOTIFY pgrst, 'reload schema';

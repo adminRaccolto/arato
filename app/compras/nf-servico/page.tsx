@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import type { Pessoa, CentroCusto, AnoSafra } from "../../../lib/supabase";
-import { listarPessoas, listarCentrosCustoGeral, listarAnosSafra, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
+import type { Pessoa, CentroCusto, AnoSafra, Empresa } from "../../../lib/supabase";
+import { listarPessoas, listarCentrosCustoGeral, listarAnosSafra, listarOperacoesGerenciaisAtivas, listarEmpresasDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 
@@ -93,6 +93,7 @@ interface NfServico {
   centro_custo_id?: string;
   ano_safra_id?: string;
   pedido_compra_id?: string;
+  empresa_id?: string;
   data_vencimento_cp?: string;
   status: "digitando" | "pendente" | "processada" | "cancelada";
   origem: "manual" | "xml" | "api";
@@ -119,6 +120,7 @@ const CAB_VAZIO = () => ({
   valor_inss: "0", valor_ir: "0", valor_outras_retencoes: "0",
   operacao_gerencial_id: "", centro_custo_id: "",
   ano_safra_id: "", pedido_compra_id: "",
+  empresa_id: "",
   data_vencimento_cp: "", observacao: "",
 });
 
@@ -134,6 +136,7 @@ export default function NfServicoPage() {
   const [opsGer,   setOpsGer]   = useState<OpGerencial[]>([]);
   const [anos,     setAnos]     = useState<AnoSafra[]>([]);
   const [pedidos,  setPedidos]  = useState<PedidoMin[]>([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
 
   const [busca,          setBusca]          = useState("");
   const [filtroStatus,   setFiltroStatus]   = useState("");
@@ -247,6 +250,9 @@ export default function NfServicoPage() {
         setFazendas((data ?? []) as Array<{id:string;nome:string}>);
       } catch {}
     }
+
+    // Empresas (Tomador de Serviço — para vincular ao CP)
+    listarEmpresasDaConta(fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []).then(setEmpresas).catch(() => {});
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -353,6 +359,7 @@ export default function NfServicoPage() {
       centro_custo_id:        nf.centro_custo_id ?? "",
       ano_safra_id:           nf.ano_safra_id ?? "",
       pedido_compra_id:       nf.pedido_compra_id ?? "",
+      empresa_id:             nf.empresa_id ?? "",
       data_vencimento_cp:     nf.data_vencimento_cp ?? "",
       observacao:             nf.observacao ?? "",
     });
@@ -425,6 +432,7 @@ export default function NfServicoPage() {
       centro_custo_id:       cab.centro_custo_id       || undefined,
       ano_safra_id:          cab.ano_safra_id           || undefined,
       pedido_compra_id:      cab.pedido_compra_id       || undefined,
+      empresa_id:            cab.empresa_id || undefined,
       data_vencimento_cp:    cab.data_vencimento_cp     || undefined,
       status,
       origem:                "manual" as const,
@@ -460,6 +468,7 @@ export default function NfServicoPage() {
           operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
           centro_custo_id:       cab.centro_custo_id       || undefined,
           ano_safra_id:          cab.ano_safra_id           || undefined,
+          empresa_id:            cab.empresa_id             || undefined,
         };
 
         let primeiroLancId: string | null = null;
@@ -1290,6 +1299,17 @@ export default function NfServicoPage() {
                       <input type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                     </div>
                   </div>
+
+                  {empresas.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={lbl}>Empresa Tomadora (para vínculo na CP)</label>
+                      <select value={cab.empresa_id} onChange={e => setCab(p=>({...p,empresa_id:e.target.value}))} style={inp}>
+                        <option value="">Sem vínculo de empresa</option>
+                        {empresas.map(e => <option key={e.id} value={e.id}>{e.nome || e.razao_social}</option>)}
+                      </select>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Define qual empresa contratou o serviço — aparece no CP em Financeiro → Empresas</div>
+                    </div>
+                  )}
 
                   {/* ── Parcelamento ── */}
                   <div style={{ marginBottom: 14 }}>

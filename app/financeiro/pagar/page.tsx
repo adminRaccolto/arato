@@ -12,7 +12,7 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, type VeiculoUnificado } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, type VeiculoUnificado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -326,6 +326,9 @@ function ContasPagarInner() {
   // Borderôs pendentes
   const [borderosPendentes,  setBorderosPendentes]  = useState<PagamentoLote[]>([]);
   const [expandedBorderos,   setExpandedBorderos]   = useState<Set<string>>(new Set());
+  // Borderôs pagos (aba Baixados)
+  const [borderosPagos,      setBorderosPagos]      = useState<PagamentoLote[]>([]);
+  const [expandedBordPagos,  setExpandedBordPagos]  = useState<Set<string>>(new Set());
   const [modalConfirmar,     setModalConfirmar]     = useState<PagamentoLote | null>(null);
   const [modalVerBordero,    setModalVerBordero]    = useState<PagamentoLote | null>(null);
   const [confirmData,       setConfirmData]       = useState(TODAY);
@@ -484,12 +487,14 @@ function ContasPagarInner() {
     setErro(null);
     try {
       const fids = fazendaIds?.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
-      const [dados, borderos] = await Promise.all([
+      const [dados, borderos, bordPagos] = await Promise.all([
         listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "pagar", fazendaId),
         fids.length ? listarBorderosPendentes(fids, "pagar") : Promise.resolve([]),
+        fids.length ? listarBorderosPagos(fids, "pagar") : Promise.resolve([]),
       ]);
       setLancamentos(dados);
       setBorderosPendentes(borderos);
+      setBorderosPagos(bordPagos);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message
         : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message)
@@ -544,7 +549,7 @@ function ContasPagarInner() {
       if (filtro === "aberto")   return (isReal || l.natureza === "previsao") && sEfet !== "baixado" && l.moeda !== "barter" && (l.data_vencimento ?? periodoInicio) >= periodoInicio;
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
       if (filtro === "vencendo") return isReal && sEfet === "vencendo";
-      if (filtro === "baixado")  return isReal && sEfet === "baixado";
+      if (filtro === "baixado")  return isReal && (sEfet === "baixado" || sEfet === "parcial") && !l.lote_id;
       if (filtro === "barter")              return isReal && l.moeda === "barter";
       if (filtro === "previsao")            return l.natureza === "previsao";
       if (filtro === "contrato_financeiro") return isReal && l.origem_lancamento === "contrato_financeiro";
@@ -594,6 +599,8 @@ function ContasPagarInner() {
       && l.origem_lancamento !== "compra_terra"  // Compra de terra não emite NF
       && !categoriasSemNF.includes(l.categoria ?? "");
     if (precisaNF) { setAlertaNF(l); return; }
+    // Recarrega contas para incluir qualquer conta criada após o mount
+    listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
     setModalBaixa(l);
     const saldoRestante = paraBRL(l) - (l.valor_pago ?? 0);
     setBaixa({
@@ -817,7 +824,19 @@ function ContasPagarInner() {
       await cancelarBordero(b.id);
       await carregar();
     } catch (e: unknown) {
-      alert("Erro: " + (e instanceof Error ? e.message : String(e)));
+      const msg = e instanceof Error ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message) : JSON.stringify(e);
+      alert("Erro ao cancelar borderô: " + msg);
+    }
+  };
+
+  const estornarBorderoPago = async (b: PagamentoLote) => {
+    if (!confirm(`Estornar borderô "${b.descricao}"?\n\nTodos os títulos voltarão para "Em aberto" e o borderô será excluído.\nPara alterar um título, estorne o borderô, faça a correção e crie um novo borderô.`)) return;
+    try {
+      await estornarBordero(b.id);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message) : JSON.stringify(e);
+      alert("Erro ao estornar borderô: " + msg);
     }
   };
 
@@ -1177,7 +1196,7 @@ function ContasPagarInner() {
                 {([
                   { key: "aberto",   label: "Em aberto",  count: lancOperPeriodo.filter(l => statusEfetivo(l) !== "baixado" && l.moeda !== "barter").length, cor: "#60A5FA", activeBg: "rgba(59,130,246,0.15)",  activeBorder: "rgba(59,130,246,0.4)"  },
                   { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                 cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",   activeBorder: "rgba(239,68,68,0.4)"   },
-                  { key: "baixado",  label: "Baixados",   count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
+                  { key: "baixado",  label: "Baixados",   count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && (l.status === "baixado" || l.status === "parcial")).length + borderosPagos.length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#555555", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
                   { key: "previsao",            label: "Previsões",           count: lancamentos.filter(l => l.natureza === "previsao").length,                                                                           cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
                   { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#444444", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
@@ -1367,7 +1386,77 @@ function ContasPagarInner() {
                           </>
                         );
                       })}
-                      {filtrados.length === 0 ? (
+                      {/* ── Borderôs pagos — só na aba Baixados ── */}
+                      {filtro === "baixado" && borderosPagos.map(b => {
+                        const itensB   = b.itens ?? [];
+                        const totalB   = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
+                        const dtPago   = b.data_pagamento ? new Date(b.data_pagamento + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+                        const expanded = expandedBordPagos.has(b.id);
+                        const toggleExp = () => setExpandedBordPagos(prev => {
+                          const next = new Set(prev);
+                          expanded ? next.delete(b.id) : next.add(b.id);
+                          return next;
+                        });
+                        return (
+                          <>
+                            <tr key={`bdp-hdr-${b.id}`} style={{ background: "#F0FDF4", borderLeft: "3px solid #22C55E", borderBottom: "0.5px solid #22C55E30", cursor: "pointer" }} onClick={toggleExp}>
+                              <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                                <span style={{ fontSize: 10, background: "#22C55E", color: "#fff", borderRadius: 4, padding: "2px 5px", fontWeight: 700 }}>BDR</span>
+                              </td>
+                              <td colSpan={4} style={{ padding: "10px 8px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>{b.descricao || "Borderô"}</span>
+                                  <span style={{ fontSize: 11, color: "#166534" }}>Pago em {dtPago}</span>
+                                  {b.conta_bancaria && <span style={{ fontSize: 10, color: "#166534", background: "#DCFCE7", borderRadius: 4, padding: "1px 6px" }}>{b.conta_bancaria}</span>}
+                                  <span style={{ fontSize: 11, background: "#fff", color: "#166534", border: "0.5px solid #22C55E60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
+                                    {itensB.length} título{itensB.length !== 1 ? "s" : ""}
+                                  </span>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginLeft: 4 }}>
+                                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                                  </span>
+                                  <span style={{ fontSize: 11, color: "#16A34A", marginLeft: 4 }}>{expanded ? "▲ recolher" : "▼ ver títulos"}</span>
+                                </div>
+                              </td>
+                              <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => estornarBorderoPago(b)}
+                                    style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>
+                                    ↩ Estornar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {expanded && itensB.map((item, idx) => {
+                              const lanc = item.lancamento as { numero?: number; descricao?: string; valor?: number; data_vencimento?: string; categoria?: string } | undefined;
+                              const desc = lanc?.descricao ?? "—";
+                              const num  = lanc?.numero ?? null;
+                              return (
+                                <tr key={`bdp-item-${item.id}`} style={{ background: idx % 2 === 0 ? "#F7FEF9" : "#ECFDF5", borderLeft: "3px solid #22C55E40", borderBottom: "0.5px solid #22C55E20" }}>
+                                  <td style={{ padding: "7px 6px", textAlign: "center" }}>
+                                    <span style={{ fontSize: 9, color: "#22C55E" }}>└</span>
+                                  </td>
+                                  <td style={{ padding: "7px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{num ?? "—"}</td>
+                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)" }}>{desc}</td>
+                                  <td colSpan={99} style={{ padding: "7px 8px" }}>
+                                    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                        {lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                                      </span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>
+                                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago ?? 0)}
+                                      </span>
+                                      {lanc?.categoria && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{lanc.categoria}</span>}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </>
+                        );
+                      })}
+
+                      {filtrados.length === 0 && (filtro !== "baixado" || borderosPagos.length === 0) ? (
                         <tr><td colSpan={19} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
                       ) : filtrados.map((l, li) => {
                         const isPrevisao = l.natureza === "previsao";

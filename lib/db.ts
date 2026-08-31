@@ -815,7 +815,7 @@ export async function confirmarPagamentoBordero(
 
 /** Cancela um borderô pendente: remove vínculo dos lançamentos e exclui o lote. */
 export async function cancelarBordero(lote_id: string): Promise<void> {
-  // Remove lote_id dos lançamentos
+  // Remove lote_id dos lançamentos que ainda não foram baixados
   const { error: ue } = await supabase
     .from("lancamentos")
     .update({ lote_id: null })
@@ -829,6 +829,36 @@ export async function cancelarBordero(lote_id: string): Promise<void> {
   // Exclui o lote
   const { error: de } = await supabase.from("pagamento_lotes").delete().eq("id", lote_id);
   if (de) throw de;
+}
+
+/** Estorna um borderô já confirmado/pago: reverte os lançamentos para em_aberto e exclui o lote. */
+export async function estornarBordero(lote_id: string): Promise<void> {
+  // Reverte todos os lançamentos baixados via este borderô
+  const { error: ue } = await supabase
+    .from("lancamentos")
+    .update({ status: "em_aberto", lote_id: null, valor_pago: null, data_baixa: null, conta_bancaria: null })
+    .eq("lote_id", lote_id)
+    .eq("status", "baixado");
+  if (ue) throw ue;
+
+  // Exclui os itens e o lote
+  await supabase.from("pagamento_lote_itens").delete().eq("lote_id", lote_id);
+  const { error: de } = await supabase.from("pagamento_lotes").delete().eq("id", lote_id);
+  if (de) throw de;
+}
+
+/** Lista borderôs já pagos/confirmados de um conjunto de fazendas. */
+export async function listarBorderosPagos(fazenda_ids: string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase
+    .from("pagamento_lotes")
+    .select("*, itens:pagamento_lote_itens(*, lancamento:lancamentos(numero, descricao, pessoa_id, valor, data_vencimento, categoria))")
+    .in("fazenda_id", fazenda_ids)
+    .eq("tipo", tipo)
+    .eq("status", "pago")
+    .order("data_pagamento", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function listarPagamentoLotes(fazenda_id: string, tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
