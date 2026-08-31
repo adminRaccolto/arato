@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarEmpresasDaConta, listarEmpresaLancamentos, criarEmpresaLancamento, atualizarEmpresaLancamento, excluirEmpresaLancamento, baixarEmpresaLancamento, listarPessoasDaConta, listarContasBancariasDaConta } from "../../../lib/db";
+import { listarEmpresasDaConta, listarEmpresaLancamentos, criarEmpresaLancamento, atualizarEmpresaLancamento, excluirEmpresaLancamento, baixarEmpresaLancamento, listarContasBancariasDaConta } from "../../../lib/db";
 import type { EmpresaLancamento, Empresa, Pessoa } from "../../../lib/supabase";
 
 // ─── Categorias empresariais ─────────────────────────────────
@@ -99,11 +99,13 @@ export default function EmpresaPagarPage() {
     setLoading(true);
     try {
       // Carrega empresas/pessoas/contas independente dos lançamentos
-      const [emps, pess, conts] = await Promise.all([
+      const [emps, conts] = await Promise.all([
         listarEmpresasDaConta(fazendaIds),
-        listarPessoasDaConta(fazendaIds[0] ?? ""),
         listarContasBancariasDaConta(fazendaIds[0]),
       ]);
+      // Query direta para pessoas — usa fazendaIds completo, sem resolução interna
+      const { data: pessData } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).order("nome_razao_social");
+      const pess = pessData ?? [];
       setEmpresas(emps);
       setPessoas(pess as Pessoa[]);
       setContas(conts as ContaBancariaMin[]);
