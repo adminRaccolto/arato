@@ -168,6 +168,63 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ─── reabrir_folha ────────────────────────────────────────────────────────
+    // Reverte em cascata: exclui CPs gerados, restaura adiantamentos, volta para rascunho.
+    if (operacao === "reabrir_folha") {
+      const { id, fazenda_id, competencia } = payload as {
+        id: string; fazenda_id: string; competencia: string;
+      };
+
+      // Busca linhas da folha
+      const { data: itens, error: itErr } = await sb
+        .from("folha_funcionarios")
+        .select("id, funcionario_id, cp_lancamento_id")
+        .eq("folha_id", id);
+      if (itErr) throw itErr;
+
+      const cpIds = (itens ?? []).map((i: any) => i.cp_lancamento_id).filter(Boolean) as string[];
+
+      // Bloqueia se qualquer CP já foi baixado
+      if (cpIds.length > 0) {
+        const { data: baixados } = await sb
+          .from("lancamentos")
+          .select("id, status, descricao")
+          .in("id", cpIds)
+          .eq("status", "baixado");
+        if ((baixados ?? []).length > 0) {
+          const nomes = (baixados ?? []).map((l: any) => l.descricao).join("; ");
+          throw new Error(`Não é possível reabrir: os seguintes CPs já foram baixados em borderô — ${nomes}. Estorne o borderô primeiro.`);
+        }
+
+        // Exclui CPs em aberto / vencidos gerados pela folha
+        await sb.from("lancamentos").delete().in("id", cpIds);
+      }
+
+      // Limpa cp_lancamento_id nas linhas da folha
+      await sb.from("folha_funcionarios")
+        .update({ cp_lancamento_id: null })
+        .eq("folha_id", id);
+
+      // Reverte adiantamentos "descontado" → "pendente" para os funcionários da folha
+      const funcIds = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];
+      if (funcIds.length > 0) {
+        await sb.from("adiantamentos_salario")
+          .update({ status: "pendente" })
+          .eq("fazenda_id", fazenda_id)
+          .eq("competencia_ref", competencia)
+          .eq("status", "descontado")
+          .in("funcionario_id", funcIds);
+      }
+
+      // Volta status para rascunho
+      const { error } = await sb.from("folha_pagamento")
+        .update({ status: "rascunho" })
+        .eq("id", id);
+      if (error) throw error;
+
+      return NextResponse.json({ ok: true });
+    }
+
     // ─── delete_folha ─────────────────────────────────────────────────────────
     if (operacao === "delete_folha") {
       const { id } = payload as { id: string };

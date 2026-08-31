@@ -506,6 +506,33 @@ export default function FolhaPagamentoPage() {
   }
 
   // ─── Adiantamento — salvar ────────────────────────────────────
+  async function reabrirFolha() {
+    if (!fazendaId || !folhaEdit.id || !folhaEdit.competencia) return;
+    if (!confirm(
+      `Reabrir a folha de ${nomeMes(folhaEdit.competencia)}?\n\n` +
+      `Isso irá:\n• Excluir os CPs gerados (salários a pagar)\n` +
+      `• Reverter adiantamentos de "Descontado" para "Pendente"\n` +
+      `• Colocar a folha de volta em Rascunho para edição\n\n` +
+      `Atenção: se algum CP já foi baixado em borderô, a operação será bloqueada.`
+    )) return;
+    setSaving(true);
+    try {
+      await apiFolha({
+        operacao: "reabrir_folha",
+        id: folhaEdit.id,
+        fazenda_id: fazendaId,
+        competencia: folhaEdit.competencia,
+      });
+      setFolhaEdit(p => ({ ...p, status: "rascunho" }));
+      setMsg("Folha reaberta. Edite e feche novamente quando estiver pronto.");
+      carregar();
+    } catch (e: any) {
+      setMsg("Erro: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function salvarAdiantamento() {
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
       setMsg("Preencha funcionário, data e valor."); return;
@@ -1026,9 +1053,18 @@ export default function FolhaPagamentoPage() {
               </div>
             )}
 
-            <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              <button onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</button>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
+              {folhaEdit.id && folhaEdit.status === "fechado" ? (
+                <button onClick={reabrirFolha} style={{ ...S.btn("#FBF3E0","#C9921B"), border:"1px solid #C9921B" }} disabled={saving}>
+                  {saving ? "Abrindo..." : "↩ Reabrir Folha"}
+                </button>
+              ) : <span />}
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+                {folhaEdit.status !== "fechado" && (
+                  <button onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</button>
+                )}
+              </div>
             </div>
           </div>
         </div>
