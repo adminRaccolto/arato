@@ -1963,6 +1963,14 @@ function CadastrosInner() {
   const abrirModalFunc = async (f?: Funcionario) => {
     setEditFunc(f ?? null);
     setAbaFunc("dados");
+    // Garante que empresas esteja carregada (pode não ter sido se a aba Empresas não foi visitada)
+    if (empresas.length === 0 && fazendaId) {
+      const ids = fazendas.length > 0 ? fazendas.map(fz => fz.id!) : [fazendaId];
+      const resultados = await Promise.all(ids.map(id => listarEmpresas(id).catch(() => [] as Empresa[])));
+      const todas = resultados.flat();
+      const seen = new Set<string>();
+      setEmpresas(todas.filter(e => { const k = (e.cpf_cnpj ?? "").replace(/\D/g, "") || e.id; if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")));
+    }
     setFFunc(f ? {
       nome: f.nome, cpf: f.cpf ?? "", rg: f.rg ?? "", data_nascimento: f.data_nascimento ?? "",
       pis_nis: f.pis_nis ?? "", ctps_numero: f.ctps_numero ?? "", ctps_serie: f.ctps_serie ?? "", ctps_uf: f.ctps_uf ?? "",
