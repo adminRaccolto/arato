@@ -92,9 +92,10 @@ export async function POST(req: Request) {
           + (it.complemento_salarial ?? 0)
         ) * 100) / 100);
 
-        const { data: lancamento } = await sb.from("lancamentos").insert({
+        const { data: lancamento, error: lancErr } = await sb.from("lancamentos").insert({
           fazenda_id,
           empresa_id: empresa_id ?? null,
+          natureza: "real",
           tipo: "pagar",
           descricao: `Salário ${nomeMesLabel} — ${it.nome_funcionario}`,
           valor: liq,
@@ -104,6 +105,8 @@ export async function POST(req: Request) {
           data_vencimento: vencimento,
           data_lancamento: hoje,
         }).select("id").single();
+
+        if (lancErr) throw new Error(`CP ${it.nome_funcionario}: ${lancErr.message}`);
 
         if (lancamento?.id) {
           await sb.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);

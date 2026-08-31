@@ -1409,14 +1409,55 @@ function ContasPagarInner() {
                           ? (lancSingle?.descricao ?? b.descricao ?? "Borderô")
                           : (b.descricao || "Borderô");
 
-                        // Todos os borderôs usam o mesmo formato BDR — sempre identificável.
-                        // 1 título: não expansível (info já está no cabeçalho).
-                        // N títulos: expansível com ▲/▼.
+                        // Borderô de 1 título → linha normal com botão Estornar (sem bloco verde)
+                        // Borderô de N títulos → bloco verde expansível com todos os títulos
+                        if (isSingle) {
+                          const vencOrig = lancSingle?.data_vencimento
+                            ? new Date(lancSingle.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+                          return (
+                            <tr key={`bdr-${b.id}`} style={{ borderBottom: "0.5px solid var(--border-table)" }}>
+                              <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                                {/* sem checkbox — é borderô */}
+                              </td>
+                              <td style={{ padding: "10px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>
+                                {lancSingle?.numero ?? "—"}
+                              </td>
+                              <td colSpan={2} style={{ padding: "10px 8px" }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{headerDesc}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                                  {b.conta_bancaria ?? ""}
+                                </div>
+                              </td>
+                              <td style={{ padding: "10px 8px" }}>
+                                <div style={{ fontSize: 12, color: "var(--text-2)" }}>{lancSingle?.categoria ?? "—"}</div>
+                              </td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)" }}>—</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{vencOrig}</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{dtPago}</td>
+                              <td style={{ padding: "10px 8px", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+                                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                              </td>
+                              <td style={{ padding: "10px 8px", fontSize: 11, color: "var(--text-3)" }}>BRL</td>
+                              <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
+                                  <span style={{ fontSize: 9, background: "#DCFCE7", color: "#166534", borderRadius: 4, padding: "2px 5px", fontWeight: 700, border: "0.5px solid #22C55E60" }}>BDR</span>
+                                  <button
+                                    onClick={() => estornarBorderoPago(b)}
+                                    style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>
+                                    ↩ Estornar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        // Multi-título: bloco verde expansível
                         return (
                           <React.Fragment key={`bdr-${b.id}`}>
                             <tr
-                              style={{ background: "#F0FDF4", borderLeft: "3px solid #22C55E", borderBottom: "0.5px solid #22C55E30", cursor: isSingle ? "default" : "pointer" }}
-                              onClick={isSingle ? undefined : toggleExp}
+                              style={{ background: "#F0FDF4", borderLeft: "3px solid #22C55E", borderBottom: "0.5px solid #22C55E30", cursor: "pointer" }}
+                              onClick={toggleExp}
                             >
                               <td style={{ padding: "10px 6px", textAlign: "center" }}>
                                 <span style={{ fontSize: 10, background: "#22C55E", color: "#fff", borderRadius: 4, padding: "2px 5px", fontWeight: 700 }}>BDR</span>
@@ -1426,17 +1467,13 @@ function ContasPagarInner() {
                                   <span style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>{headerDesc}</span>
                                   <span style={{ fontSize: 11, color: "#166534" }}>Pago em {dtPago}</span>
                                   {b.conta_bancaria && <span style={{ fontSize: 10, color: "#166534", background: "#DCFCE7", borderRadius: 4, padding: "1px 6px" }}>{b.conta_bancaria}</span>}
-                                  {!isSingle && (
-                                    <span style={{ fontSize: 11, background: "#fff", color: "#166534", border: "0.5px solid #22C55E60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
-                                      {itensB.length} títulos
-                                    </span>
-                                  )}
+                                  <span style={{ fontSize: 11, background: "#fff", color: "#166534", border: "0.5px solid #22C55E60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
+                                    {itensB.length} títulos
+                                  </span>
                                   <span style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginLeft: 4 }}>
                                     {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
                                   </span>
-                                  {!isSingle && (
-                                    <span style={{ fontSize: 11, color: "#16A34A", marginLeft: 4 }}>{expanded ? "▲ recolher" : "▼ ver títulos"}</span>
-                                  )}
+                                  <span style={{ fontSize: 11, color: "#16A34A", marginLeft: 4 }}>{expanded ? "▲ recolher" : "▼ ver títulos"}</span>
                                 </div>
                               </td>
                               <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
@@ -1449,8 +1486,7 @@ function ContasPagarInner() {
                                 </div>
                               </td>
                             </tr>
-                            {/* Itens expandidos — só para borderôs com múltiplos títulos */}
-                            {!isSingle && expanded && itensB.map((item, idx) => {
+                            {expanded && itensB.map((item, idx) => {
                               const lanc = item.lancamento as { numero?: number; descricao?: string; valor?: number; data_vencimento?: string; categoria?: string } | undefined;
                               return (
                                 <tr key={`bdp-item-${item.id}`} style={{ background: idx % 2 === 0 ? "#F7FEF9" : "#ECFDF5", borderLeft: "3px solid #22C55E40", borderBottom: "0.5px solid #22C55E20" }}>
