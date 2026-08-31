@@ -140,7 +140,18 @@ export default function FolhaEmpresaPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId || !empresaSel) return;
     setLoading(true);
+    const fids = fazendaIds?.length ? fazendaIds : [fazendaId];
     try {
+      // Resolver todos os IDs de empresa para o CNPJ selecionado (multi-fazenda)
+      const empSel = empresas.find(e => e.id === empresaSel);
+      const cnpj = (empSel?.cpf_cnpj ?? "").replace(/\D/g, "");
+      let empresaIds = [empresaSel];
+      if (cnpj) {
+        const { data: empsDB } = await supabase.from("empresas").select("id,cpf_cnpj").in("fazenda_id", fids);
+        const matched = (empsDB ?? []).filter(e => (e.cpf_cnpj ?? "").replace(/\D/g, "") === cnpj).map(e => e.id);
+        if (matched.length > 0) empresaIds = matched;
+      }
+
       const [
         { data: funcs },
         { data: fols },
@@ -148,23 +159,23 @@ export default function FolhaEmpresaPage() {
         { data: prems },
       ] = await Promise.all([
         supabase.from("funcionarios")
-          .select("id,nome,cargo,salario_base,tipo")
-          .eq("fazenda_id", fazendaId)
-          .eq("empresa_id", empresaSel)
+          .select("id,nome,cargo,salario_base,tipo,vale_transporte,vale_refeicao,outros_beneficios")
+          .in("fazenda_id", fids)
+          .in("empresa_id", empresaIds)
           .eq("ativo", true)
           .order("nome"),
         supabase.from("folha_pagamento")
           .select("*")
-          .eq("fazenda_id", fazendaId)
-          .eq("empresa_id", empresaSel)
+          .in("fazenda_id", fids)
+          .in("empresa_id", empresaIds)
           .order("competencia", { ascending: false }),
         supabase.from("adiantamentos_salario")
           .select("*, funcionarios(nome)")
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fids)
           .order("data", { ascending: false }),
         supabase.from("funcionarios_premiacoes")
           .select("*, funcionarios(nome)")
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fids)
           .order("mes_referencia", { ascending: false }),
       ]);
       const funcsLista = funcs ?? [];
@@ -176,7 +187,7 @@ export default function FolhaEmpresaPage() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, empresaSel]);
+  }, [fazendaId, fazendaIds, empresaSel, empresas]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -192,7 +203,7 @@ export default function FolhaEmpresaPage() {
         const base = f.salario_base ?? 0;
         const grat = premsComp.filter(p => p.funcionario_id === f.id).reduce((s, p) => s + p.valor, 0);
         const adi  = adisComp.filter(a => a.funcionario_id === f.id).reduce((s, a) => s + a.valor, 0);
-        return recalc({ funcionario_id: f.id, nome_funcionario: f.nome, cargo: f.cargo ?? "", salario_base: base, gratificacao: grat, salario_bruto: base+grat, inss_trabalhador: 0, irrf: 0, adiantamento: adi, outros_descontos: 0, desc_outros_descontos: "", vale_transporte: 0, vale_refeicao: 0, outros_beneficios: 0, inss_patronal: 0, fgts: 0 });
+        return recalc({ funcionario_id: f.id, nome_funcionario: f.nome, cargo: f.cargo ?? "", salario_base: base, gratificacao: grat, salario_bruto: base+grat, inss_trabalhador: 0, irrf: 0, adiantamento: adi, outros_descontos: 0, desc_outros_descontos: "", vale_transporte: (f as any).vale_transporte ?? 0, vale_refeicao: (f as any).vale_refeicao ?? 0, outros_beneficios: (f as any).outros_beneficios ?? 0, inss_patronal: 0, fgts: 0 });
       });
       setFolhaEdit({ competencia: fComp, status: "rascunho", empresa_id: empresaSel, funcionarios: funcs });
     }
