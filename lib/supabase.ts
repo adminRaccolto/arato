@@ -937,6 +937,10 @@ export type Funcionario = {
   salario_base?: number;
   complemento_salarial?: number;
   piso_categoria?: number;
+  // Benefícios (vêm do cadastro; propagados para a folha)
+  vale_transporte?: number;
+  vale_refeicao?: number;
+  outros_beneficios?: number;
   // Encargos (%)
   fgts_pct?: number;
   inss_empregador_pct?: number;

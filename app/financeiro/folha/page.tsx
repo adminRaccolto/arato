@@ -11,6 +11,10 @@ interface Funcionario {
   funcao?: string;
   cargo?: string;
   salario_base?: number;
+  complemento_salarial?: number;
+  vale_transporte?: number;
+  vale_refeicao?: number;
+  outros_beneficios?: number;
   tipo?: string;
   ativo?: boolean;
   empresa_id?: string | null;
@@ -226,7 +230,7 @@ export default function FolhaPagamentoPage() {
         { data: prods },
       ] = await Promise.all([
         supabase.from("funcionarios")
-          .select("id,nome,funcao,salario_base,tipo,empresa_id,produtor_id,ativo")
+          .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
           .eq("fazenda_id", fazendaId)
           .order("nome"),
         apiPost({ operacao: "listar_folhas", fazenda_id: fazendaId }),
@@ -313,12 +317,16 @@ export default function FolhaPagamentoPage() {
           complemento_salarial: i.complemento_salarial ?? 0,
           gratificacao: i.gratificacao ?? 0,
         };
-        // Para rascunho: sempre herda adiantamentos pendentes da competência
+        // Para rascunho: herda adiantamentos pendentes — inclui os sem competência_ref
         if (folha.status === "rascunho") {
           const adi = adiantamentos
-            .filter(a => a.competencia_ref === folha.competencia && a.status === "pendente" && a.funcionario_id === i.funcionario_id)
+            .filter(a =>
+              (!a.competencia_ref || a.competencia_ref === folha.competencia) &&
+              a.status === "pendente" &&
+              a.funcionario_id === i.funcionario_id
+            )
             .reduce((s, a) => s + a.valor, 0);
-          base.adiantamento = adi;
+          if (adi > 0) base.adiantamento = adi;  // mantém valor manual se não houver pendentes
         }
         return base;
       });
@@ -326,7 +334,10 @@ export default function FolhaPagamentoPage() {
       setSelecionados(new Set(funcsCarregados.map((_, i) => i)));
     } else {
       // Nova folha — pré-preenche com funcionários ativos
-      const adisComp = adiantamentos.filter(a => a.competencia_ref === fComp && a.status === "pendente");
+      // Inclui adiantamentos sem competência_ref (null) — debitam na próxima folha
+      const adisComp = adiantamentos.filter(
+        a => (!a.competencia_ref || a.competencia_ref === fComp) && a.status === "pendente"
+      );
       const premsComp = premiacoes.filter(p => p.mes_referencia === fComp);
       const funcs: FolhaFunc[] = funcionarios.map(f => {
         const base = f.salario_base ?? 0;
@@ -350,7 +361,9 @@ export default function FolhaPagamentoPage() {
           irrf: 0,
           adiantamento: adi,
           outros_descontos: 0, desc_outros_descontos: "",
-          vale_transporte: 0, vale_refeicao: 0, outros_beneficios: 0,
+          vale_transporte: f.vale_transporte ?? 0,
+          vale_refeicao: f.vale_refeicao ?? 0,
+          outros_beneficios: f.outros_beneficios ?? 0,
           inss_patronal: 0, fgts: 0,
         });
       });
@@ -962,6 +975,7 @@ export default function FolhaPagamentoPage() {
                           const liq = liquido(f);
                           const expanded = funcExpand.has(idx);
                           const sel = selecionados.has(idx);
+                          const isFechado = folhaEdit.status === "fechado";
                           return (
                             <>
                               <tr key={idx} style={{ background: !sel ? "#F9F9F9" : idx%2===0?"#fff":"#FAFBFD", opacity: sel ? 1 : 0.45 }}>
@@ -989,18 +1003,44 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(f.salario_bruto)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_trabalhador)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.irrf)}</td>
+                                {/* ── Adiantamento — editável (herda da aba Adiantamentos) ── */}
                                 <td style={S.td}>
-                                  <input type="number" value={f.adiantamento} onChange={e=>setFuncField(idx,"adiantamento",parseFloat(e.target.value)||0)}
-                                    style={{ ...S.inp, width:90, textAlign:"right", borderColor: f.adiantamento > 0 ? "#EF9F27" : "#DDE2EE" }} />
+                                  {isFechado ? (
+                                    <span style={{ fontVariantNumeric:"tabular-nums", color: f.adiantamento > 0 ? "#C9921B" : "#888" }}>{moeda(f.adiantamento)}</span>
+                                  ) : (
+                                    <>
+                                      <input type="number" value={f.adiantamento} onChange={e=>setFuncField(idx,"adiantamento",parseFloat(e.target.value)||0)}
+                                        style={{ ...S.inp, width:90, textAlign:"right", borderColor: f.adiantamento > 0 ? "#EF9F27" : "#DDE2EE" }} />
+                                      {f.adiantamento > 0 && (
+                                        <div style={{ fontSize:9, color:"#C9921B", marginTop:1 }}>auto ↑ adi.</div>
+                                      )}
+                                    </>
+                                  )}
                                 </td>
+                                {/* ── Outros Descontos — com justificativa inline ── */}
                                 <td style={S.td}>
-                                  <input type="number" value={f.outros_descontos} onChange={e=>setFuncField(idx,"outros_descontos",parseFloat(e.target.value)||0)}
-                                    style={{ ...S.inp, width:80, textAlign:"right" }} />
+                                  {isFechado ? (
+                                    <div>
+                                      <span style={{ fontVariantNumeric:"tabular-nums", color:"#555" }}>{moeda(f.outros_descontos)}</span>
+                                      {f.desc_outros_descontos && <div style={{ fontSize:9, color:"#888", marginTop:1 }}>{f.desc_outros_descontos}</div>}
+                                    </div>
+                                  ) : (
+                                    <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                                      <input type="number" value={f.outros_descontos} onChange={e=>setFuncField(idx,"outros_descontos",parseFloat(e.target.value)||0)}
+                                        style={{ ...S.inp, width:80, textAlign:"right" }} />
+                                      <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)}
+                                        placeholder="Justificativa..." style={{ ...S.inp, width:80, fontSize:10, padding:"1px 4px" }} />
+                                    </div>
+                                  )}
                                 </td>
+                                {/* ── Benefícios — vem do cadastro do funcionário ── */}
                                 <td style={S.td}>
-                                  <input type="number" value={f.vale_transporte+f.vale_refeicao+f.outros_beneficios}
-                                    onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)}
-                                    style={{ ...S.inp, width:80, textAlign:"right" }} />
+                                  <div style={{ fontVariantNumeric:"tabular-nums", color:"#16A34A", fontWeight:600 }}>
+                                    {moeda(f.vale_transporte + f.vale_refeicao + f.outros_beneficios)}
+                                  </div>
+                                  {!isFechado && (
+                                    <div style={{ fontSize:9, color:"#888", marginTop:1 }}>do cadastro</div>
+                                  )}
                                 </td>
                                 <td style={{ ...S.td, fontWeight:700, color: liq >= 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(liq)}</td>
                               </tr>
@@ -1009,20 +1049,23 @@ export default function FolhaPagamentoPage() {
                                   <td colSpan={13} style={{ padding:"12px 16px 16px 44px" }}>
                                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div>
-                                        <label style={S.label}>Vale Transporte</label>
-                                        <input type="number" value={f.vale_transporte} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} />
+                                        <label style={S.label}>Vale Transporte <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
+                                        <span style={{ fontSize:13, color:"#16A34A", fontWeight:600 }}>{moeda(f.vale_transporte)}</span>
                                       </div>
                                       <div>
-                                        <label style={S.label}>Vale Refeição</label>
-                                        <input type="number" value={f.vale_refeicao} onChange={e=>setFuncField(idx,"vale_refeicao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} />
+                                        <label style={S.label}>Vale Refeição <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
+                                        <span style={{ fontSize:13, color:"#16A34A", fontWeight:600 }}>{moeda(f.vale_refeicao)}</span>
                                       </div>
                                       <div>
-                                        <label style={S.label}>Outros Benefícios</label>
-                                        <input type="number" value={f.outros_beneficios} onChange={e=>setFuncField(idx,"outros_beneficios",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} />
+                                        <label style={S.label}>Outros Benefícios <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
+                                        <span style={{ fontSize:13, color:"#16A34A", fontWeight:600 }}>{moeda(f.outros_beneficios)}</span>
                                       </div>
                                       <div>
-                                        <label style={S.label}>Outros Descontos (descrição)</label>
-                                        <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descrição..." />
+                                        <label style={S.label}>Outros Descontos (justificativa)</label>
+                                        {isFechado
+                                          ? <span style={{ fontSize:13, color:"#555" }}>{f.desc_outros_descontos || "—"}</span>
+                                          : <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descreva o desconto..." />
+                                        }
                                       </div>
                                       <div>
                                         <label style={S.label}>INSS Patronal</label>

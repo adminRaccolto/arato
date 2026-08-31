@@ -418,6 +418,7 @@ function CadastrosInner() {
     tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
     funcao: "", data_admissao: "", data_demissao: "", ativo: true,
     salario_base: "", complemento_salarial: "", piso_categoria: "",
+    vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
     fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
     provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
     banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
@@ -1970,6 +1971,9 @@ function CadastrosInner() {
       salario_base: f.salario_base ? String(f.salario_base) : "",
       complemento_salarial: f.complemento_salarial ? String(f.complemento_salarial) : "",
       piso_categoria: f.piso_categoria ? String(f.piso_categoria) : "",
+      vale_transporte: f.vale_transporte ? String(f.vale_transporte) : "",
+      vale_refeicao: f.vale_refeicao ? String(f.vale_refeicao) : "",
+      outros_beneficios: f.outros_beneficios ? String(f.outros_beneficios) : "",
       fgts_pct: String(f.fgts_pct ?? 8), inss_empregador_pct: String(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)),
       sat_rat_pct: String(f.sat_rat_pct ?? 1), sistema_s_pct: String(f.sistema_s_pct ?? (f.usar_funrural ? 0.2 : 5.8)),
       provisao_13_pct: String(f.provisao_13_pct ?? 8.33), provisao_ferias_pct: String(f.provisao_ferias_pct ?? 11.11),
@@ -1982,6 +1986,7 @@ function CadastrosInner() {
       tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
       funcao: "", data_admissao: "", data_demissao: "", ativo: true,
       salario_base: "", complemento_salarial: "", piso_categoria: "",
+      vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
       fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
       provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
       banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
@@ -2009,6 +2014,9 @@ function CadastrosInner() {
       salario_base: fFunc.salario_base ? Number(fFunc.salario_base) : undefined,
       complemento_salarial: fFunc.complemento_salarial ? Number(fFunc.complemento_salarial) : undefined,
       piso_categoria: fFunc.piso_categoria ? Number(fFunc.piso_categoria) : undefined,
+      vale_transporte: fFunc.vale_transporte ? Number(fFunc.vale_transporte) : undefined,
+      vale_refeicao: fFunc.vale_refeicao ? Number(fFunc.vale_refeicao) : undefined,
+      outros_beneficios: fFunc.outros_beneficios ? Number(fFunc.outros_beneficios) : undefined,
       fgts_pct: Number(fFunc.fgts_pct) || 8,
       inss_empregador_pct: Number(fFunc.inss_empregador_pct) || (fFunc.usar_funrural ? 1.5 : 20),
       sat_rat_pct: Number(fFunc.sat_rat_pct) || 1,
@@ -9752,6 +9760,30 @@ function CadastrosInner() {
                       {" "}(R$ {R(sal)} base + R$ {R(comp)} complemento) — encargos incidem somente sobre R$ {R(sal)}
                     </div>
                   )}
+                </div>
+
+                <div style={{ background: "#F0FAF4", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#15803D", marginBottom: 10 }}>Benefícios mensais <span style={{ fontWeight: 400, color: "#888" }}>— propagados automaticamente para a folha</span></div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                    <div>
+                      <label style={lbl}>Vale Transporte (R$)</label>
+                      <InputMonetario style={inp} value={fFunc.vale_transporte} onChange={v => setFFunc(p => ({ ...p, vale_transporte: String(v) }))} placeholder="0,00" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Vale Refeição / Alimentação (R$)</label>
+                      <InputMonetario style={inp} value={fFunc.vale_refeicao} onChange={v => setFFunc(p => ({ ...p, vale_refeicao: String(v) }))} placeholder="0,00" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Outros Benefícios (R$)</label>
+                      <InputMonetario style={inp} value={fFunc.outros_beneficios} onChange={v => setFFunc(p => ({ ...p, outros_beneficios: String(v) }))} placeholder="0,00" />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#16A34A", marginTop: 8 }}>
+                    Benefícios não geram lançamento financeiro — aparecem na folha como crédito ao funcionário e no custo estimado abaixo.
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 4 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
                       <input type="checkbox" checked={fFunc.usar_funrural} onChange={e => {

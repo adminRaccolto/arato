@@ -10926,3 +10926,15 @@ ALTER TABLE folha_funcionarios
   ) STORED;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 212 — benefícios no cadastro de funcionários ────────────
+-- Adiciona vale_transporte, vale_refeicao e outros_beneficios à tabela funcionarios.
+-- Esses valores são propagados automaticamente para a folha ao processar,
+-- evitando digitação repetitiva e garantindo consistência entre meses.
+
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS vale_transporte   numeric(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS vale_refeicao     numeric(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS outros_beneficios numeric(12,2) DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';
