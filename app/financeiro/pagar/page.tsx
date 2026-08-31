@@ -760,7 +760,9 @@ function ContasPagarInner() {
 
   // ── Pagamento em Lote (Borderô) ───────────────────────────
 
-  const itensLote = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado" && !l.lote_id);
+  // Usa lancamentos (lista completa) para que títulos de fornecedores diferentes
+  // possam ser agrupados num mesmo borderô, mesmo com filtro de coluna ativo.
+  const itensLote = lancamentos.filter(l => selecionados.has(l.id) && l.status !== "baixado" && !l.lote_id);
   const totalLote = itensLote.reduce((s, l) => s + paraBRL(l), 0);
 
   const toggleSel = (id: string) =>
@@ -1558,13 +1560,16 @@ function ContasPagarInner() {
                                 </div>
                               ) : <span style={{ color: "#1E3A5F", fontSize: 11 }}>—</span>}
                             </td>
-                            {/* Vencimento */}
+                            {/* Data: mostra data_baixa para pagos, data_vencimento para os demais */}
                             <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
                               <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>
-                                {l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
-                                {fmtData(l.data_vencimento)}
+                                {sEfet !== "baixado" && l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
+                                {fmtData(sEfet === "baixado" ? (l.data_baixa ?? l.data_vencimento) : l.data_vencimento)}
                               </div>
-                              {relativo && <div style={{ fontSize: 9, color: relativo.cor, fontWeight: 700, marginTop: 1 }}>{relativo.txt}</div>}
+                              {sEfet === "baixado"
+                                ? <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>Pago</div>
+                                : relativo && <div style={{ fontSize: 9, color: relativo.cor, fontWeight: 700, marginTop: 1 }}>{relativo.txt}</div>
+                              }
                             </td>
                             {/* Valor */}
                             <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
