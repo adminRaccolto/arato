@@ -354,7 +354,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const prevQtdTransfRef   = useRef<number>(0);
 
   const pathname = usePathname();
-  const { fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente, anoSafraVigenteDesc } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, signOut, userRole, raccotloGestor, isBpo, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente, anoSafraVigenteDesc } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -504,7 +504,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   // Verifica se algum link dentro de um subgroup está ativo
   const subgroupAtivo = (sg: NavSubgroup) => sg.children.some(c => isAtivo(c.path));
 
-  const isRaccotloStaff = ["raccotlo","raccotlo_gestor","raccotlo_seletor","raccotlo_operacional"].includes(userRole ?? "");
+  const isRaccotloStaff = ["raccotlo","raccotlo_gestor","raccotlo_seletor","raccotlo_operacional","bpo"].includes(userRole ?? "");
 
   // Sempre exibe contaNome (conta) ou nomeProdutor (AuthProvider) como identidade principal
   // fazenda?.nome é último recurso (exibia "Fazenda Frei Galvão" quando produtor não tinha join)
@@ -684,7 +684,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
           <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.1)" }} />
 
-          {userRole === "raccotlo" && fazendaId && nomeProdutor && (
+          {(userRole === "raccotlo" || isBpo) && fazendaId && nomeProdutor && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {logoCliente
                 ? <img src={logoCliente} alt="" style={{ height: 24, width: 24, objectFit: "contain", borderRadius: 4, border: "0.5px solid rgba(255,255,255,0.15)" }} />
@@ -965,6 +965,38 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               {qtdPendencias}
             </span>
           </Link>
+        )}
+
+        {/* BPO: botão de administração próprio */}
+        {userRole === "bpo" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+            <Link
+              href="/bpo/admin"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "4px 12px", borderRadius: 5, textDecoration: "none",
+                background: pathname.startsWith("/bpo/admin") ? "rgba(201,146,27,0.25)" : "rgba(201,146,27,0.12)",
+                color: "#FCD34D", fontWeight: pathname.startsWith("/bpo/admin") ? 700 : 600,
+                fontSize: 13, whiteSpace: "nowrap",
+                border: "0.5px solid rgba(201,146,27,0.35)",
+              }}
+            >
+              ⚙ Admin BPO
+            </Link>
+            <Link
+              href="/bpo/seletor-cliente"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "4px 10px", borderRadius: 5, textDecoration: "none",
+                background: pathname.startsWith("/bpo/seletor") ? "rgba(255,255,255,0.12)" : "transparent",
+                color: "rgba(255,255,255,0.55)", fontWeight: 400,
+                fontSize: 12, whiteSpace: "nowrap",
+                border: "0.5px solid rgba(255,255,255,0.18)",
+              }}
+            >
+              Trocar cliente
+            </Link>
+          </div>
         )}
 
         {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (

@@ -19,16 +19,28 @@ export async function GET(req: Request) {
   const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
   let isSuperadmin = isRaccoltoEmail;
   let permittedContaIds: string[] | null = null; // null = sem restrição
+  let bpoParceiroId: string | null = null;
 
   if (!isRaccoltoEmail) {
-    const { data: perfil } = await sb.from("perfis").select("role").eq("user_id", user.id).single();
+    const { data: perfil } = await sb.from("perfis").select("role, parceiro_id").eq("user_id", user.id).single();
     const raccotloRoles = ["raccotlo", "raccotlo_gestor", "raccotlo_seletor", "raccotlo_operacional"];
-    if (!raccotloRoles.includes(perfil?.role ?? "")) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    const isBpo = perfil?.role === "bpo";
+    if (!raccotloRoles.includes(perfil?.role ?? "") && !isBpo) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
     isSuperadmin = perfil?.role === "raccotlo";
+    if (isBpo && perfil?.parceiro_id) bpoParceiroId = perfil.parceiro_id;
   }
 
-  // Verifica restrição por conta para usuários não-superadmin
-  if (!isSuperadmin) {
+  // BPO: filtra apenas clientes do parceiro via contas.parceiro_id
+  if (bpoParceiroId) {
+    const { data: contasBpo } = await sb.from("contas").select("id").eq("parceiro_id", bpoParceiroId);
+    permittedContaIds = (contasBpo ?? []).map((c: { id: string }) => c.id);
+    if (permittedContaIds.length === 0) return NextResponse.json({ clientes: [] });
+  }
+
+  // Verifica restrição por conta para usuários não-superadmin raccotlo
+  if (!isSuperadmin && !bpoParceiroId) {
     const { data: permRows } = await sb
       .from("raccotlo_usuario_contas")
       .select("conta_id")
@@ -38,12 +50,14 @@ export async function GET(req: Request) {
     }
   }
 
-  // Busca fazendas com raccolto_acesso=true, já com conta e produtor
+  // Busca fazendas com raccolto_acesso=true (ou conta gerida por BPO), já com conta e produtor
   let fazQuery = sb
     .from("fazendas")
     .select("id, nome, municipio, estado, area_total_ha, conta_id, produtor_id")
-    .eq("raccolto_acesso", true)
     .order("nome");
+
+  // BPO não exige raccolto_acesso — vê todas as fazendas dos seus clientes
+  if (!bpoParceiroId) fazQuery = fazQuery.eq("raccolto_acesso", true);
 
   if (permittedContaIds !== null) {
     fazQuery = fazQuery.in("conta_id", permittedContaIds);

@@ -10826,3 +10826,61 @@ ALTER TABLE nf_servicos
   ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES empresas(id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 208 — Arquitetura BPO (Parceiros) ───────────────────────
+-- Empresas de BPO têm ambiente próprio de gestão de clientes no Arato,
+-- separado dos usuários Raccolto internos.
+-- Fluxo: parceiro.id → contas.parceiro_id → perfis.parceiro_id (usuários do BPO)
+
+-- 1. Tabela de parceiros BPO
+CREATE TABLE IF NOT EXISTS parceiros (
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome        text NOT NULL,
+  cnpj        text,
+  email_admin text,
+  ativo       boolean NOT NULL DEFAULT true,
+  obs         text,
+  created_at  timestamptz DEFAULT now()
+);
+
+-- Seed inicial vazio — Raccolto cadastra via painel /admin/parceiros
+
+-- 2. Vincula parceiro às contas de cliente que ele gerencia
+ALTER TABLE contas
+  ADD COLUMN IF NOT EXISTS parceiro_id uuid REFERENCES parceiros(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_contas_parceiro ON contas(parceiro_id) WHERE parceiro_id IS NOT NULL;
+
+-- 3. Vincula parceiro aos usuários BPO (controla quais clientes eles veem)
+ALTER TABLE perfis
+  ADD COLUMN IF NOT EXISTS parceiro_id uuid REFERENCES parceiros(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_perfis_parceiro ON perfis(parceiro_id) WHERE parceiro_id IS NOT NULL;
+
+-- 4. RLS para parceiros — somente raccotlo lê/escreve
+ALTER TABLE parceiros ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY parceiros_raccotlo ON parceiros FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM perfis p
+      WHERE p.user_id = auth.uid()
+        AND p.role IN ('raccotlo', 'raccotlo_gestor')
+    )
+  );
+
+-- 5. RLS para contas — BPO vê somente contas do seu parceiro
+-- (raccotlo já tem bypass via policy separada — adicionar OR para BPO)
+-- Nota: a policy existente de contas para raccotlo permanece inalterada.
+-- Criamos uma policy adicional para role = 'bpo'.
+CREATE POLICY contas_bpo ON contas FOR SELECT
+  USING (
+    parceiro_id IN (
+      SELECT p.parceiro_id FROM perfis p
+      WHERE p.user_id = auth.uid()
+        AND p.role = 'bpo'
+        AND p.parceiro_id IS NOT NULL
+    )
+  );
+
+NOTIFY pgrst, 'reload schema';

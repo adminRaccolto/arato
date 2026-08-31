@@ -18,7 +18,7 @@ export async function OPTIONS(req: Request) {
   return new Response(null, { status: 204, headers: corsHeaders(req) });
 }
 
-async function autorizado(req: Request): Promise<{ ok: boolean; motivo: string }> {
+async function autorizado(req: Request): Promise<{ ok: boolean; motivo: string; parceiroId?: string }> {
   // Opção 1 — chave estática (integrações externas)
   const secret = process.env.ADMIN_ONBOARDING_SECRET;
   if (secret && req.headers.get("x-admin-key") === secret) return { ok: true, motivo: "admin-key" };
@@ -40,10 +40,11 @@ async function autorizado(req: Request): Promise<{ ok: boolean; motivo: string }
     if (uErr) console.log("[admin-auth] cookie getUser error:", uErr.message);
     if (user) {
       const { data: perfil } = await supabaseAdmin
-        .from("perfis").select("role").eq("user_id", user.id).single();
+        .from("perfis").select("role, parceiro_id").eq("user_id", user.id).single();
       console.log("[admin-auth] cookie user:", user.email, "role:", perfil?.role);
       if (perfil?.role === "raccotlo") return { ok: true, motivo: "cookie" };
-      return { ok: false, motivo: `role='${perfil?.role}' não é raccotlo (cookie user: ${user.email})` };
+      if (perfil?.role === "bpo" && perfil?.parceiro_id) return { ok: true, motivo: "cookie-bpo", parceiroId: perfil.parceiro_id };
+      return { ok: false, motivo: `role='${perfil?.role}' não autorizado (cookie user: ${user.email})` };
     }
   } catch (e) { console.log("[admin-auth] cookie error:", String(e)); }
 
@@ -56,11 +57,12 @@ async function autorizado(req: Request): Promise<{ ok: boolean; motivo: string }
   if (error || !user) return { ok: false, motivo: `Bearer inválido: ${error?.message}` };
 
   const { data: perfil } = await supabaseAdmin
-    .from("perfis").select("role").eq("user_id", user.id).single();
+    .from("perfis").select("role, parceiro_id").eq("user_id", user.id).single();
 
   console.log("[admin-auth] bearer user:", user.email, "role:", perfil?.role);
   if (perfil?.role === "raccotlo") return { ok: true, motivo: "bearer" };
-  return { ok: false, motivo: `role='${perfil?.role}' não é raccotlo (bearer user: ${user.email})` };
+  if (perfil?.role === "bpo" && perfil?.parceiro_id) return { ok: true, motivo: "bearer-bpo", parceiroId: perfil.parceiro_id };
+  return { ok: false, motivo: `role='${perfil?.role}' não autorizado (bearer user: ${user.email})` };
 }
 
 export async function POST(req: Request) {
@@ -71,6 +73,10 @@ export async function POST(req: Request) {
   }
   try {
     const body = await req.json();
+    // BPO: injeta parceiro_id automaticamente (o usuário BPO não pode escolher)
+    if (auth.parceiroId) {
+      body.parceiro_id = auth.parceiroId;
+    }
     const result = await criarClienteCompleto(body);
     return NextResponse.json(result, { headers: corsHeaders(req) });
   } catch (err) {

@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
   { type: "link",    id: "padroes",   label: "Padrões do Sistema",     icon: "⊞",  path: "/admin/padroes"  },
   { type: "divider", label: "Acesso" },
   { type: "link",    id: "usuarios",  label: "Usuários & Permissões",  icon: "🔑", path: "/admin/usuarios" },
+  { type: "link",    id: "parceiros", label: "Parceiros BPO",          icon: "🤝", path: "/admin/parceiros" },
   { type: "link",    id: "logs",      label: "Logs do Sistema",        icon: "📋", path: "/admin/logs"     },
   { type: "divider", label: "Sistema" },
   { type: "link",    id: "identidade",label: "Identidade Arato",       icon: "🎨", path: "/admin/identidade" },

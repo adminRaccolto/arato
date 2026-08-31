@@ -24,8 +24,10 @@ type AuthCtx = {
   contaNome:              string | null;   // nome da conta/cliente (exibido no TopNav)
   nomeUsuario:            string | null;
   emailUsuario:           string | null;
-  userRole:               string | null;   // 'client' | 'raccotlo' | null
+  userRole:               string | null;   // 'client' | 'raccotlo' | 'bpo' | null
   raccotloGestor:         boolean;         // true = gestor (admin+clientes); false = operacional (só clientes)
+  isBpo:                  boolean;         // true = usuário de empresa BPO parceira
+  parceiroId:             string | null;   // ID do parceiro BPO do usuário
   nomeFazendaSelecionada: string | null;
   nomeProdutor:           string | null;   // nome do produtor/agricultor (exibido no topo)
   logoCliente:            string | null;   // logo da conta (por cliente SaaS)
@@ -64,6 +66,8 @@ const Ctx = createContext<AuthCtx>({
   emailUsuario:           null,
   userRole:               null,
   raccotloGestor:         true,
+  isBpo:                  false,
+  parceiroId:             null,
   nomeFazendaSelecionada: null,
   nomeProdutor:           null,
   logoCliente:            null,
@@ -99,6 +103,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [emailUsuario,           setEmailUsuario]           = useState<string | null>(null);
   const [userRole,               setUserRole]               = useState<string | null>(null);
   const [raccotloGestor,         setRaccotloGestor]         = useState<boolean>(true);
+  const [isBpo,                  setIsBpo]                  = useState<boolean>(false);
+  const [parceiroId,             setParceiroId]             = useState<string | null>(null);
   const [nomeFazendaSelecionada, setNomeFazendaSelecionada] = useState<string | null>(null);
   const [nomeProdutor,           setNomeProdutor]           = useState<string | null>(null);
   const [onboardingAtivo,        setOnboardingAtivo]        = useState<boolean>(false);
@@ -155,8 +161,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setNomeFazendaSelecionada(null);
     setNomeProdutor(null);
     setLogoCliente(null);
-    router.push("/seletor-cliente");
-  }, [router]);
+    // BPO vai ao seu seletor próprio; raccotlo ao padrão
+    router.push(isBpo ? "/bpo/seletor-cliente" : "/seletor-cliente");
+  }, [router, isBpo]);
 
   useEffect(() => {
     async function init() {
@@ -195,7 +202,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data: perfil } = await supabase
         .from("perfis")
-        .select("fazenda_id, conta_id, nome, role")
+        .select("fazenda_id, conta_id, nome, role, parceiro_id")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -227,9 +234,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const isGestor = role === "raccotlo" || role === "raccotlo_gestor";
       setRaccotloGestor(isGestor);
 
-      if (isRaccotloAny) {
+      // BPO — parceiro com seletor de clientes próprio (similar ao raccotlo, mas escopo limitado)
+      const isBpoRole = role === "bpo";
+      const dbParceiroId = (perfil as { parceiro_id?: string } | null)?.parceiro_id ?? null;
+      setIsBpo(isBpoRole);
+      setParceiroId(dbParceiroId);
 
-        // Usuário interno — usa fazenda salva no localStorage (persiste entre sessões)
+      if (isRaccotloAny || isBpoRole) {
+        const seletorPath = isBpoRole ? "/bpo/seletor-cliente" : "/seletor-cliente";
+
+        // Usuário interno/BPO — usa fazenda salva no localStorage (persiste entre sessões)
         const savedId           = localStorage.getItem("raccotlo_fazenda_id");
         const savedNome         = localStorage.getItem("raccotlo_fazenda_nome");
         const savedProdutorNome = localStorage.getItem("raccotlo_produtor_nome");
@@ -266,15 +280,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           // Sem farm selecionada: rotas de gestão interna são livres; rotas de dados do cliente requerem farm
           const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-          const rotasLivres = [
-            "/raccotlo", "/seletor-cliente", "/admin",
-            "/configuracoes", "/cadastros", "/bi",
-          ];
+          const rotasLivres = isBpoRole
+            ? ["/bpo", "/login"]
+            : ["/raccotlo", "/seletor-cliente", "/admin", "/configuracoes", "/cadastros", "/bi"];
           if (!rotasLivres.some(r => pathname.startsWith(r))) {
-            router.push(role === "raccotlo_seletor" ? "/seletor-cliente" : "/raccotlo");
+            router.push(role === "raccotlo_seletor" ? "/seletor-cliente" : seletorPath);
           }
         }
-        // raccotlo não tem restrições de módulo
+        // raccotlo/bpo não têm restrições de módulo por grupo
         setPermissoes({});
         return;
       }
@@ -540,9 +553,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [fazendaId]);
 
   const podeAcessar = useCallback((modulo: string) => {
-    const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor"].includes(userRole ?? "");
-    if (isAnyRaccotlo) return true;               // raccotlo staff vê tudo
-    if (modulo === "conf_raccotlo") return false;  // clientes bloqueados de páginas raccotlo
+    const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "");
+    if (isAnyRaccotlo && modulo !== "conf_raccotlo") return true; // raccotlo/bpo vêem tudo (exceto páginas internas raccotlo)
+    if (modulo === "conf_raccotlo") return false;  // clientes e BPO bloqueados de páginas raccotlo
     const p = permissoes[modulo] as unknown;
     if (p === undefined) return true;              // não configurado = permitido por padrão
     if (Array.isArray(p)) {
@@ -559,10 +572,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return (p as string) === "escrita";
   }, [permissoes]);
 
-  // raccotlo tem acesso irrestrito a tudo; clientes verificam add-on + permissão de grupo
+  // raccotlo/bpo têm acesso irrestrito a tudo; clientes verificam add-on + permissão de grupo
   const podeAcessarPlano = useCallback((modulo: string) => {
-    // Raccotlo staff tem acesso irrestrito — inclusive ao visualizar contexto de cliente
-    if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") return true;
+    // Raccotlo staff e BPO têm acesso irrestrito — inclusive ao visualizar contexto de cliente
+    if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional" || userRole === "bpo") return true;
 
     // Override explícito false bloqueia o cliente (mas não raccotlo, já tratado acima)
     if (contaModulosOverrides[modulo] === false) return false;
@@ -615,6 +628,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, emailUsuario, userRole, raccotloGestor,
+      isBpo, parceiroId,
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,

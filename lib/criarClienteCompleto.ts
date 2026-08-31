@@ -18,6 +18,7 @@ export interface CriarClientePayload {
   user_email: string;
   user_senha: string;
   onboarding_ativo?: boolean;
+  parceiro_id?: string;   // BPO: vínculo à empresa parceira
 }
 
 export interface CriarClienteResult {
@@ -42,6 +43,7 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
     fazenda_nome, fazenda_municipio, fazenda_estado, fazenda_area,
     user_nome, user_email, user_senha,
     onboarding_ativo = true,
+    parceiro_id,
   } = payload;
 
   const supabase = adminClient();
@@ -49,6 +51,7 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
   // ── 0. Criar conta (tenant raiz) ──
   const insertConta: Record<string, unknown> = { nome, tipo: tipo === "pj" ? "pj" : "pf" };
   try { insertConta.onboarding_ativo = onboarding_ativo; } catch { /* coluna pode não existir */ }
+  if (parceiro_id) insertConta.parceiro_id = parceiro_id;
 
   const { data: conta, error: contaErr } = await supabase
     .from("contas")

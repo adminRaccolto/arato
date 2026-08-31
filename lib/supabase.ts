@@ -9,6 +9,16 @@ export const supabase = createBrowserClient(url, key);
 // Tipos do banco (espelham as tabelas abaixo)
 // ————————————————————————————————————————
 
+export type Parceiro = {
+  id: string;
+  nome: string;
+  cnpj?: string;
+  email_admin?: string;
+  ativo: boolean;
+  obs?: string;
+  created_at?: string;
+};
+
 export type Conta = {
   id: string;
   nome: string;
@@ -26,6 +36,8 @@ export type Conta = {
   obs_admin?: string;
   email_contato?: string;
   telefone?: string;
+  // ── BPO ──
+  parceiro_id?: string;        // FK parceiros — se gerida por BPO
 };
 
 export type Fazenda = {
