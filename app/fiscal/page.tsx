@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor, ProdutorIE, Pessoa } from "../../lib/supabase";
@@ -545,7 +545,10 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
       </thead>
       <tbody>
         {notas.map(nota => {
-          const cs = corStatus(nota.status);
+          const isRascunho = nota.status === "em_digitacao" && (nota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
+          const cs = isRascunho
+            ? { bg: "#E8EBF2", color: "#1A4870", label: "Rascunho", icone: "○" }
+            : corStatus(nota.status);
           const exp = expandida === nota.id;
           return (
             <Fragment key={nota.id}>
@@ -660,9 +663,26 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                             </button>
                         </>
                       )}
-                      {nota.status === "em_digitacao" && onConsultarSefaz && (
-                        <button onClick={(e) => { e.stopPropagation(); onConsultarSefaz(nota); }} style={{ padding: "5px 12px", border: "0.5px solid #EF9F27", borderRadius: 6, background: "#FAEEDA", color: "#633806", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>⟳ Consultar SEFAZ</button>
-                      )}
+                      {nota.status === "em_digitacao" && (() => {
+                        const isRascunho = (nota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
+                        if (isRascunho && onRetransmitir) {
+                          return (
+                            <button onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
+                              style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                              ▶ Transmitir →
+                            </button>
+                          );
+                        }
+                        if (!isRascunho && onConsultarSefaz) {
+                          return (
+                            <button onClick={(e) => { e.stopPropagation(); onConsultarSefaz(nota); }}
+                              style={{ padding: "5px 12px", border: "0.5px solid #EF9F27", borderRadius: 6, background: "#FAEEDA", color: "#633806", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                              ⟳ Consultar SEFAZ
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </td>
                 </tr>
@@ -681,6 +701,10 @@ function FiscalInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const abaParam = searchParams.get("aba") as Aba | null;
+  const modoParam = searchParams.get("modo");
+  const nfEntradaIdParam = searchParams.get("nf_entrada_id");
+  // Estado do modo "emitir remessa" (navegado de NF de Entrada)
+  const [remessaModo, setRemessaModo] = useState<{ nf_entrada_id: string; nf_numero?: string; nf_emitente?: string } | null>(null);
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
   const [danfeCfg, setDanfeCfg] = useState<DanfeCfg>({});
   const [carregando, setCarregando] = useState(true);
@@ -692,6 +716,64 @@ function FiscalInner() {
   useEffect(() => {
     if (abaParam) setAba(abaParam);
   }, [abaParam]);
+
+  // Pre-fill modal quando navegado de "Emitir NF Remessa" em NF de Entrada
+  useEffect(() => {
+    if (modoParam !== "remessa" || !nfEntradaIdParam || !fazendaId) return;
+    (async () => {
+      const [{ data: nf }, itensEntrada] = await Promise.all([
+        supabase.from("nf_entradas").select("*").eq("id", nfEntradaIdParam).single(),
+        listarNfEntradaItens(nfEntradaIdParam).catch(() => [] as import("../../lib/supabase").NfEntradaItem[]),
+      ]);
+      // Detecta UF emitente via config fiscal
+      const { data: fmods } = await supabase
+        .from("configuracoes_modulo")
+        .select("modulo, config")
+        .eq("fazenda_id", fazendaId)
+        .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
+      const ufEmit = ((fmods?.[0]?.config ?? {}) as Record<string, string>).uf ?? "MT";
+      // Detentor do grão é o emitente da NF de compra; UF do armazém onde vai remeter
+      // Default 6.905 (interestadual) — usuário pode mudar no campo CFOP
+      const cfop = "6.905";
+      const natRemessa = NATUREZAS_VENDA.find(n => n.codigo === "6.905")!;
+      const hoje = new Date().toISOString().slice(0, 10);
+      const agora = new Date().toTimeString().slice(0, 8);
+      setFVenda(p => ({
+        ...p,
+        cfop,
+        natureza_texto: natRemessa.descricao,
+        observacao: natRemessa.obs,
+        data_emissao: hoje,
+        data_saida: hoje,
+        hora_saida: agora,
+      }));
+      // Pré-popula itens de estoque da NF de entrada
+      const estoqueItens = itensEntrada.filter(
+        (i) => !i.tipo_apropiacao || i.tipo_apropiacao === "estoque" || i.tipo_apropiacao === "maquinario",
+      );
+      if (estoqueItens.length > 0) {
+        setNfeItens(estoqueItens.map((i, idx) => ({
+          id: String(idx),
+          tipo_item: "Produto" as const,
+          item: (i as any).descricao_produto ?? (i as any).produto_nome ?? "Produto",
+          ncm: (i as any).ncm ?? "1201.90.00",
+          quantidade: String((i as any).quantidade ?? 0),
+          unidade: ((i as any).unidade_nf ?? (i as any).unidade ?? "sc") as string,
+          valor_unitario: String(((i as any).valor_unitario ?? 0).toFixed(2)).replace(".", ","),
+          cclass_trib: "041",
+          valor_total: (i as any).valor_total ?? 0,
+          valor_financeiro: (i as any).valor_total ?? 0,
+        })));
+      }
+      setRemessaModo({
+        nf_entrada_id: nfEntradaIdParam,
+        nf_numero: String((nf as any)?.numero ?? ""),
+        nf_emitente: (nf as any)?.emitente_nome ?? "",
+      });
+      setModalVenda(true);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoParam, nfEntradaIdParam, fazendaId]);
 
   // Filtro de status — aba Notas de Venda
   const [filtroStatusVenda, setFiltroStatusVenda] = useState<string | null>(null);
@@ -1081,6 +1163,68 @@ function FiscalInner() {
     setModalVenda(true);
   }
 
+  // Salvar rascunho — grava no DB sem chamar SEFAZ
+  const salvarRascunho = async () => {
+    if (!fVenda.destinatario) { alert("Informe o Destinatário antes de salvar o rascunho."); return; }
+    if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
+    let itensPayload = nfeItens.map(i => ({
+      descricao: i.item, ncm: i.ncm, cfop: fVenda.cfop,
+      unidade: i.unidade.toUpperCase(), quantidade: Number(i.quantidade),
+      valor_unitario: desmascarar(i.valor_unitario),
+    }));
+    if (itensPayload.length === 0 && fVenda.quantidade && fVenda.valorUnitario) {
+      const ncmDesc = NCM_OPTIONS.find(o => o.codigo === fVenda.ncm)?.descricao ?? "Produto Rural";
+      itensPayload = [{ descricao: ncmDesc, ncm: fVenda.ncm, cfop: fVenda.cfop, unidade: fVenda.unidade.toUpperCase(), quantidade: Number(fVenda.quantidade), valor_unitario: desmascarar(fVenda.valorUnitario) }];
+    }
+    const valorTotal = Math.round(itensPayload.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0) * 100) / 100;
+    const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop);
+    setSalvando(true);
+    try {
+      await criarNotaFiscal({
+        fazenda_id: fazendaId!,
+        numero: proximoNumero(),
+        serie: fVenda.serie || "1",
+        tipo: "saida",
+        cfop: fVenda.cfop,
+        natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
+        destinatario: fVenda.destinatario,
+        cnpj_destinatario: fVenda.cnpj || undefined,
+        valor_total: valorTotal,
+        data_emissao: fVenda.data_emissao || TODAY,
+        status: "em_digitacao",
+        observacao: fVenda.observacao || undefined,
+        auto: false,
+        itens_json: itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100 })),
+        dados_nf_json: {
+          modulo_key: moduloKeyAtivo,
+          rascunho: true,
+          nf_entrada_id: remessaModo?.nf_entrada_id ?? undefined,
+          dest_ie: fVenda.dest_ie || undefined,
+          dest_endereco: fVenda.dest_endereco || undefined,
+          dest_numero: fVenda.dest_numero || undefined,
+          dest_bairro: fVenda.dest_bairro || undefined,
+          dest_cidade: fVenda.dest_cidade || undefined,
+          dest_uf: fVenda.dest_uf || undefined,
+          dest_cep: fVenda.dest_cep || undefined,
+          dest_municipio_ibge: fVenda.dest_municipio_ibge || undefined,
+          frete_conta: fVenda.frete_conta,
+        },
+      });
+      await carregar();
+      const hoje = new Date().toISOString().slice(0, 10);
+      const agora = new Date().toTimeString().slice(0, 8);
+      setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
+      setNfeItens([]);
+      setTabNFe("produtor");
+      setRetransmitindoNota(null);
+      setRemessaModo(null);
+      setModalVenda(false);
+      alert("✓ Rascunho salvo. Selecione a nota no grid e clique 'Transmitir →' para enviar à SEFAZ.");
+    } catch (e: unknown) {
+      alert("Erro ao salvar rascunho: " + (e instanceof Error ? e.message : String(e)));
+    } finally { setSalvando(false); }
+  };
+
   // Emitir NF-e de Venda — build → sign → transmit SEFAZ
   const emitirVenda = async () => {
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
@@ -1252,6 +1396,30 @@ function FiscalInner() {
         }),
       });
 
+      // Se era uma NF de Remessa (originada de NF de Entrada), salva vínculo
+      const nfEntradaOrigem = remessaModo?.nf_entrada_id
+        ?? ((retransmitindoNota?.dados_nf_json as Record<string,unknown>)?.nf_entrada_id as string | undefined);
+      if (resultado.sucesso && nfEntradaOrigem) {
+        try {
+          await criarNfRemessaLogistica({
+            fazenda_id: fazendaId!,
+            nf_entrada_id: nfEntradaOrigem,
+            nf_remessa_chave: resultado.chave ?? undefined,
+            nf_remessa_numero: resultado.numero ?? undefined,
+            nf_remessa_protocolo: resultado.protocolo ?? undefined,
+            nf_remessa_data: fVenda.data_emissao || TODAY,
+            cfop_remessa: fVenda.cfop.replace(".", "") || "6905",
+            cfop_retorno: fVenda.cfop === "5.905" ? "5906" : "6906",
+            destinatario_nome: fVenda.destinatario,
+            destinatario_uf: fVenda.dest_uf || undefined,
+            valor_total: valorTotal,
+            natureza_remessa: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
+            observacao: fVenda.observacao || undefined,
+            status: "emitida",
+          });
+        } catch { /* não bloqueia o fluxo */ }
+      }
+
       await carregar();
 
       const hoje = new Date().toISOString().slice(0,10);
@@ -1259,6 +1427,8 @@ function FiscalInner() {
       setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
       setNfeItens([]);
       setTabNFe("produtor");
+      setRetransmitindoNota(null);
+      setRemessaModo(null);
       setModalVenda(false);
       if (modoContingencia) {
         alert(`⚡ NF-e emitida em CONTINGÊNCIA (SVC-AN)\nNúmero: ${resultado.numero ?? proximoNumero()}\n\nA nota deve ser transmitida à SEFAZ em até 168 horas.\nAcesse a aba "Contingência" para transmitir o lote.`);
@@ -2290,18 +2460,35 @@ function FiscalInner() {
                 </div>
               </div>
 
-              {/* Banner de retransmissão */}
-              {retransmitindoNota && (
-                <div style={{ background: "#FEF3C7", borderBottom: "0.5px solid #D97706", padding: "7px 16px", fontSize: 12, color: "#92400E", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  <span style={{ fontWeight: 700 }}>↺ Retransmissão — NF-e {retransmitindoNota.numero} (Série {retransmitindoNota.serie})</span>
-                  <span>Dados pré-carregados. Corrija o que precisar e clique "Emitir NF-e".</span>
-                  {((retransmitindoNota.dados_nf_json as Record<string,unknown>)?.sefaz_erro as string) && (
-                    <span style={{ marginLeft: "auto", fontFamily: "monospace", fontSize: 11, color: "#7C2D12" }}>
-                      {(retransmitindoNota.dados_nf_json as Record<string,unknown>).sefaz_erro as string}
-                    </span>
-                  )}
+              {/* Banner de remessa (originada de NF de Entrada) */}
+              {remessaModo && !retransmitindoNota && (
+                <div style={{ background: "#D5E8F5", borderBottom: "0.5px solid #1A4870", padding: "7px 16px", fontSize: 12, color: "#0B2D50", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontWeight: 700 }}>📦 NF de Remessa</span>
+                  <span>
+                    Originada da NF de Entrada{remessaModo.nf_numero ? ` Nº ${remessaModo.nf_numero}` : ""}
+                    {remessaModo.nf_emitente ? ` — ${remessaModo.nf_emitente}` : ""}.
+                    Informe o Destinatário (armazém / depósito) e clique "Salvar Rascunho" ou "Emitir NF-e".
+                  </span>
                 </div>
               )}
+
+              {/* Banner de retransmissão */}
+              {retransmitindoNota && (() => {
+                const isRasc = (retransmitindoNota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
+                return (
+                  <div style={{ background: isRasc ? "#D5E8F5" : "#FEF3C7", borderBottom: `0.5px solid ${isRasc ? "#1A4870" : "#D97706"}`, padding: "7px 16px", fontSize: 12, color: isRasc ? "#0B2D50" : "#92400E", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontWeight: 700 }}>
+                      {isRasc ? "▶ Transmitir Rascunho" : "↺ Retransmissão"} — NF-e {retransmitindoNota.numero} (Série {retransmitindoNota.serie})
+                    </span>
+                    <span>{isRasc ? "Dados pré-carregados. Clique Emitir NF-e para transmitir à SEFAZ." : "Dados pré-carregados. Corrija o que precisar e clique Emitir NF-e."}</span>
+                    {!isRasc && ((retransmitindoNota.dados_nf_json as Record<string,unknown>)?.sefaz_erro as string) && (
+                      <span style={{ marginLeft: "auto", fontFamily: "monospace", fontSize: 11, color: "#7C2D12" }}>
+                        {(retransmitindoNota.dados_nf_json as Record<string,unknown>).sefaz_erro as string}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Abas */}
               <div style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
@@ -2743,9 +2930,14 @@ function FiscalInner() {
 
               {/* Barra de ações */}
               <div style={{ background: "#E8EBF2", borderTop: "1px solid #C8CDD8", padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
-                <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
+                <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setRemessaModo(null); setModalVenda(false); }}
                   style={{ padding: "7px 18px", border: "0.5px solid #C8CDD8", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
+                </button>
+                {/* Salvar Rascunho — grava sem transmitir à SEFAZ */}
+                <button onClick={salvarRascunho} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                  style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: fVenda.destinatario && moduloKeyAtivo && !salvando ? 1 : 0.5 }}>
+                  {salvando ? "⟳ Salvando…" : "○ Salvar Rascunho"}
                 </button>
                 <button onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
                   style={{ padding: "7px 20px", background: fVenda.destinatario && moduloKeyAtivo && !salvando ? "#111111" : "var(--text-muted)", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
