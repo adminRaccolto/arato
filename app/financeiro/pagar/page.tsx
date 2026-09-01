@@ -385,8 +385,9 @@ function ContasPagarInner() {
     { key: "venc_orig",  label: "Venc. Original" },
     { key: "valor",      label: "Valor", fixo: true },
     { key: "dt_pgto",    label: "Dt. Pgto" },
-    { key: "valor_pago", label: "Valor Pago" },
-    { key: "moeda",      label: "Moeda" },
+    { key: "valor_pago",    label: "Valor Pago" },
+    { key: "saldo_devedor", label: "Saldo Devedor" },
+    { key: "moeda",         label: "Moeda" },
     { key: "conta",      label: "Conta" },
     { key: "produtor",   label: "Produtor" },
     { key: "num_nf",     label: "Nº NF" },
@@ -400,7 +401,7 @@ function ContasPagarInner() {
   const colWKey = `cp_col_widths_${emailUsuario ?? "default"}`;
   const { w: cw, startResize } = useColumnResize({
     fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
-    vencimento: 90, venc_orig: 90, valor: 110, dt_pgto: 85, valor_pago: 100,
+    vencimento: 90, venc_orig: 90, valor: 110, dt_pgto: 85, valor_pago: 100, saldo_devedor: 110,
     moeda: 65, conta: 110, produtor: 110, num_nf: 90, origem: 90, obs: 160,
   }, colWKey);
   const [fFornecedor, setFFornecedor] = useState("");
@@ -1278,8 +1279,8 @@ function ContasPagarInner() {
                         <th style={{ ...thS(cw("vencimento"), "center"), width: cw("vencimento"), position: "relative", userSelect: "none" }}>Vencimento ↑<ResizeHandle onMouseDown={startResize("vencimento")} /></th>
                         <th style={{ ...thS(cw("valor"), "right"), width: cw("valor"), position: "relative", userSelect: "none" }}>Valor<ResizeHandle onMouseDown={startResize("valor")} /></th>
                         {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
-                          const TH_LABELS: Record<string, string> = { operacao: "Operação", safra: "Safra", ciclo: "Ciclo", venc_orig: "Venc. Original", dt_pgto: "Dt. Pgto", valor_pago: "Valor Pago", moeda: "Moeda", conta: "Conta", produtor: "Produtor", num_nf: "Nº NF", origem: "Origem", obs: "Observação" };
-                          const TH_ALIGN: Record<string, "left"|"center"|"right"> = { venc_orig: "center", dt_pgto: "center", valor_pago: "right", moeda: "center", num_nf: "center", origem: "center" };
+                          const TH_LABELS: Record<string, string> = { operacao: "Operação", safra: "Safra", ciclo: "Ciclo", venc_orig: "Venc. Original", dt_pgto: "Dt. Pgto", valor_pago: "Valor Pago", saldo_devedor: "Saldo Devedor", moeda: "Moeda", conta: "Conta", produtor: "Produtor", num_nf: "Nº NF", origem: "Origem", obs: "Observação" };
+                          const TH_ALIGN: Record<string, "left"|"center"|"right"> = { venc_orig: "center", dt_pgto: "center", valor_pago: "right", saldo_devedor: "right", moeda: "center", num_nf: "center", origem: "center" };
                           const align = TH_ALIGN[k] ?? "left";
                           return <th key={k} style={{ ...thS(cw(k), align), width: cw(k), position: "relative", userSelect: "none" }}>{TH_LABELS[k]}<ResizeHandle onMouseDown={startResize(k)} /></th>;
                         })}
@@ -1605,7 +1606,20 @@ function ContasPagarInner() {
                               if (k === "ciclo") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ciclo_id ? cicloDesc : "—"}</td>;
                               if (k === "venc_orig") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 10, fontStyle: "italic", color: "var(--text-3)" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>;
                               if (k === "dt_pgto") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa)}</td>;
-                              if (k === "valor_pago") return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>{l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0 ? <div><span style={{ color: "var(--text-2)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span><div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div><div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}><div style={{ height: 3, borderRadius: 2, background: "#111111", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} /></div></div> : l.valor_pago != null && l.valor_pago > 0 ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span> : <span style={{ color: "#1E3A5F" }}>—</span>}</td>;
+                              if (k === "valor_pago") return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>{l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0 ? <div><span style={{ color: "#22C55E", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span><div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div><div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}><div style={{ height: 3, borderRadius: 2, background: "#22C55E", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} /></div></div> : l.valor_pago != null && l.valor_pago > 0 ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span> : <span style={{ color: "#1E3A5F" }}>—</span>}</td>;
+              if (k === "saldo_devedor") {
+                if (l.status === "parcial" && l.valor_pago != null) {
+                  const saldo = paraBRL(l) - l.valor_pago;
+                  const pct   = Math.round((saldo / paraBRL(l)) * 100);
+                  return <td key={k} style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                    <div style={{ display: "inline-block", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "3px 8px", textAlign: "right" }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(saldo)}</div>
+                      <div style={{ fontSize: 9, color: "#8B5E14" }}>{pct}% em aberto</div>
+                    </div>
+                  </td>;
+                }
+                return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, color: "#1E3A5F" }}>—</td>;
+              }
                               if (k === "moeda") return <td key={k} style={{ padding: "8px 8px", textAlign: "center" }}><span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "#F0F0F0" : l.moeda === "barter" ? "#F0F0F0" : "var(--bg-input)", color: l.moeda === "USD" ? "#555555" : l.moeda === "barter" ? "#555555" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)" }}>{l.moeda === "barter" ? "Barter" : (l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `${l.moeda}→${l.moeda_pagamento}` : l.moeda)}</span></td>;
                               if (k === "conta") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "—"}</td>;
                               if (k === "produtor") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.produtor_id ? prod : "—"}</td>;
