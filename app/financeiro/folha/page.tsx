@@ -676,7 +676,8 @@ export default function FolhaPagamentoPage() {
   }
 
   // ─── Derived ─────────────────────────────────────────────────
-  const folhasFiltradas = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte);
+  const folhasFiltradas   = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte);
+  const folhasForaPeriodo = folhas.filter(f => f.competencia < fComp || f.competencia > fCompAte);
   const totalBrutoFolhaEdit   = folhaEdit.funcionarios?.reduce((s,f)=>s+f.salario_bruto,0)??0;
   const totalLiqFolhaEdit     = folhaEdit.funcionarios?.reduce((s,f)=>s+liquido(f),0)??0;
   const totalINSSPatFolhaEdit  = folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_patronal,0)??0;
@@ -742,12 +743,29 @@ export default function FolhaPagamentoPage() {
               </div>
             </div>
 
+            {/* Aviso de folhas fora do período filtrado */}
+            {folhasForaPeriodo.length > 0 && (
+              <div style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 8, padding: "10px 16px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <span style={{ fontSize: 12, color: "#92400E", fontWeight: 600 }}>
+                  ⚠ {folhasForaPeriodo.length} folha{folhasForaPeriodo.length > 1 ? "s" : ""} fora do período filtrado:
+                  {" "}{folhasForaPeriodo.map(f => nomeMes(f.competencia)).join(", ")}
+                </span>
+                <button onClick={() => {
+                  const todas = folhas.map(f => f.competencia).sort();
+                  if (todas.length) { setFComp(todas[0]); setFCompAte(todas[todas.length - 1]); }
+                }} style={{ fontSize: 11, color: "#92400E", background: "#FDE68A", border: "0.5px solid #F0C060", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  Ver todas
+                </button>
+              </div>
+            )}
+
             {loading ? (
               <div style={{ textAlign:"center", padding:40, color:"#888" }}>Carregando...</div>
             ) : folhasFiltradas.length === 0 ? (
               <div style={{ ...S.card, padding: 32, textAlign: "center", color: "#888" }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
                 <div>Nenhuma folha para {fComp === fCompAte ? nomeMes(fComp) : `${nomeMes(fComp)} – ${nomeMes(fCompAte)}`}.</div>
+                {folhasForaPeriodo.length > 0 && <div style={{ fontSize: 12, color: "#C9921B", marginTop: 4 }}>Ajuste o filtro acima para ver as folhas de outros meses.</div>}
                 <button onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop: 12 }}>Criar Folha</button>
               </div>
             ) : (
