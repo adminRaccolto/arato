@@ -1627,17 +1627,11 @@ function ContasPagarInner() {
                               if (k === "ciclo") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ciclo_id ? cicloDesc : "—"}</td>;
                               if (k === "venc_orig") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 10, fontStyle: "italic", color: "var(--text-3)" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>;
                               if (k === "dt_pgto") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa)}</td>;
-                              if (k === "valor_pago") return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>{l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0 ? <div><span style={{ color: "#22C55E", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span><div style={{ fontSize: 9, color: "var(--text-muted)" }}>de {fmtBRL(paraBRL(l))}</div><div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 2 }}><div style={{ height: 3, borderRadius: 2, background: "#22C55E", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} /></div></div> : l.valor_pago != null && l.valor_pago > 0 ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span> : <span style={{ color: "#1E3A5F" }}>—</span>}</td>;
+                              if (k === "valor_pago") return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{l.valor_pago != null && l.valor_pago > 0 ? <span style={{ color: "#22C55E", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span> : <span style={{ color: "#1E3A5F" }}>—</span>}</td>;
               if (k === "saldo_devedor") {
                 if (l.status === "parcial" && l.valor_pago != null) {
                   const saldo = paraBRL(l) - l.valor_pago;
-                  const pct   = Math.round((saldo / paraBRL(l)) * 100);
-                  return <td key={k} style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
-                    <div style={{ display: "inline-block", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "3px 8px", textAlign: "right" }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(saldo)}</div>
-                      <div style={{ fontSize: 9, color: "#8B5E14" }}>{pct}% em aberto</div>
-                    </div>
-                  </td>;
+                  return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", fontWeight: 600, color: "#C9921B" }}>{fmtBRL(saldo)}</td>;
                 }
                 return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, color: "#1E3A5F" }}>—</td>;
               }
