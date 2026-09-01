@@ -1245,7 +1245,7 @@ function ContasReceberInner() {
             <div style={{ background: "var(--bg-card)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
               <span>Valor original: <strong style={{ color: "#111111" }}>{fmtBRL(valorTotal)}</strong></span>
               {jaPago > 0 && <span>Já recebido: <strong style={{ color: "#16A34A" }}>{fmtBRL(jaPago)}</strong></span>}
-              {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#C9921B" }}>{fmtBRL(valorOrig)}</strong></span>}
+              {jaPago > 0 && <span style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "2px 8px" }}>Saldo a receber: <strong style={{ color: "#C9921B", fontSize: 13 }}>{fmtBRL(valorOrig)}</strong></span>}
               <span>Vencimento: <strong>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
               {modalBaixa.moeda === "USD" && <span style={{ color: "#7A4300" }}>Venda em {fmtUSD(modalBaixa.valor)}</span>}
             </div>

@@ -1752,13 +1752,21 @@ function ContasPagarInner() {
                   )}
                 </div>
 
-                {/* Valor pago (se parcial) */}
+                {/* Valor pago / saldo remanescente (se parcial) */}
                 {l.status === "parcial" && l.valor_pago != null && (
-                  <div style={{ background: "var(--bg-input)", borderRadius: 6, padding: "6px 10px" }}>
-                    <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Valor pago</div>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{fmtBRL(l.valor_pago)} <span style={{ fontWeight: 400, color: "var(--text-3)", fontSize: 11 }}>de {fmtBRL(valorBRL)}</span></div>
-                    <div style={{ height: 4, borderRadius: 2, background: "var(--border-table)", marginTop: 4 }}>
-                      <div style={{ height: 4, borderRadius: 2, background: "#22C55E", width: `${Math.min(100, (l.valor_pago / valorBRL) * 100)}%` }} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div style={{ background: "var(--bg-input)", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Pago</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#22C55E" }}>{fmtBRL(l.valor_pago)}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-3)" }}>de {fmtBRL(valorBRL)}</div>
+                      <div style={{ height: 4, borderRadius: 2, background: "var(--border-table)", marginTop: 4 }}>
+                        <div style={{ height: 4, borderRadius: 2, background: "#22C55E", width: `${Math.min(100, (l.valor_pago / valorBRL) * 100)}%` }} />
+                      </div>
+                    </div>
+                    <div style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#8B5E14", marginBottom: 2, fontWeight: 600 }}>Saldo devedor</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#C9921B" }}>{fmtBRL(valorBRL - l.valor_pago)}</div>
+                      <div style={{ fontSize: 10, color: "#8B5E14", marginTop: 2 }}>{Math.round(((valorBRL - l.valor_pago) / valorBRL) * 100)}% em aberto</div>
                     </div>
                   </div>
                 )}
@@ -2115,7 +2123,7 @@ function ContasPagarInner() {
             <div style={{ background: "var(--border-row)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap", border: "0.5px solid var(--border)" }}>
               <span>Valor original: <strong style={{ color: "#EF4444" }}>{fmtBRL(valorTotal)}</strong></span>
               {jaPago > 0 && <span>Já pago: <strong style={{ color: "#22C55E" }}>{fmtBRL(jaPago)}</strong></span>}
-              {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#555555" }}>{fmtBRL(valorOrig)}</strong></span>}
+              {jaPago > 0 && <span style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "2px 8px" }}>Saldo devedor: <strong style={{ color: "#C9921B", fontSize: 13 }}>{fmtBRL(valorOrig)}</strong></span>}
               <span>Vencimento: <strong style={{ color: "var(--text-1)" }}>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
             </div>
 
