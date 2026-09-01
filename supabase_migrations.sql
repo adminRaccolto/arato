@@ -10967,3 +10967,106 @@ ALTER TABLE contrato_cessao_debitos
   ADD COLUMN IF NOT EXISTS pedido_compra_id uuid;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration Seção 220 — Monitor de Auditoria ─────────────────────────────
+-- Tabela de auditoria com triggers automáticos nas tabelas críticas.
+-- Captura INSERT/UPDATE/DELETE com snapshot antes/depois e usuário auth.
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id                uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id        uuid,
+  tabela            text        NOT NULL,
+  registro_id       text,
+  acao              text        NOT NULL CHECK (acao IN ('INSERT','UPDATE','DELETE','LOGIN','CUSTOM')),
+  dados_antes       jsonb,
+  dados_depois      jsonb,
+  campos_alterados  text[],
+  usuario_app       text,
+  created_at        timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS audit_log_fazenda_idx    ON audit_log(fazenda_id);
+CREATE INDEX IF NOT EXISTS audit_log_tabela_idx     ON audit_log(tabela);
+CREATE INDEX IF NOT EXISTS audit_log_acao_idx       ON audit_log(acao);
+CREATE INDEX IF NOT EXISTS audit_log_created_idx    ON audit_log(created_at DESC);
+
+-- RLS: cada fazenda só vê seus próprios logs
+ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS audit_log_select ON audit_log;
+CREATE POLICY audit_log_select ON audit_log FOR SELECT
+  USING (
+    fazenda_id IN (
+      SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'
+    )
+  );
+
+-- Função trigger de auditoria
+CREATE OR REPLACE FUNCTION fn_audit_log()
+RETURNS trigger AS $$
+DECLARE
+  faz_id   uuid   := NULL;
+  reg_id   text   := NULL;
+  campos   text[] := NULL;
+  old_json jsonb;
+  new_json jsonb;
+  uid_app  text;
+BEGIN
+  old_json := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN row_to_json(OLD)::jsonb ELSE NULL END;
+  new_json := CASE WHEN TG_OP IN ('UPDATE','INSERT') THEN row_to_json(NEW)::jsonb ELSE NULL END;
+
+  -- Extrair fazenda_id e id do registro
+  BEGIN
+    faz_id := COALESCE(new_json->>'fazenda_id', old_json->>'fazenda_id')::uuid;
+    reg_id := COALESCE(new_json->>'id', old_json->>'id');
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  -- Usuário autenticado via JWT (PostgREST) ou fallback
+  BEGIN
+    uid_app := current_setting('request.jwt.claims', true)::json->>'sub';
+  EXCEPTION WHEN OTHERS THEN
+    uid_app := current_setting('app.current_user', true);
+  END;
+
+  -- Campos alterados em UPDATE (exclui timestamps)
+  IF TG_OP = 'UPDATE' THEN
+    SELECT array_agg(key ORDER BY key) INTO campos
+    FROM (
+      SELECT key FROM jsonb_each(new_json)
+      WHERE new_json->key IS DISTINCT FROM old_json->key
+        AND key NOT IN ('updated_at','created_at')
+    ) t;
+  END IF;
+
+  INSERT INTO audit_log
+    (fazenda_id, tabela, registro_id, acao, dados_antes, dados_depois, campos_alterados, usuario_app)
+  VALUES
+    (faz_id, TG_TABLE_NAME, reg_id, TG_OP, old_json, new_json, campos,
+     NULLIF(COALESCE(uid_app, current_user), 'postgres'));
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Aplicar trigger nas tabelas críticas
+DROP TRIGGER IF EXISTS audit_lancamentos           ON lancamentos;
+DROP TRIGGER IF EXISTS audit_folha_pagamento       ON folha_pagamento;
+DROP TRIGGER IF EXISTS audit_folha_funcionarios    ON folha_funcionarios;
+DROP TRIGGER IF EXISTS audit_contratos             ON contratos;
+DROP TRIGGER IF EXISTS audit_contratos_financeiros ON contratos_financeiros;
+DROP TRIGGER IF EXISTS audit_romaneios             ON romaneios;
+DROP TRIGGER IF EXISTS audit_pedidos_compra        ON pedidos_compra;
+
+CREATE TRIGGER audit_lancamentos           AFTER INSERT OR UPDATE OR DELETE ON lancamentos           FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+CREATE TRIGGER audit_folha_pagamento       AFTER INSERT OR UPDATE OR DELETE ON folha_pagamento       FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+CREATE TRIGGER audit_folha_funcionarios    AFTER INSERT OR UPDATE OR DELETE ON folha_funcionarios    FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+CREATE TRIGGER audit_contratos             AFTER INSERT OR UPDATE OR DELETE ON contratos             FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+CREATE TRIGGER audit_contratos_financeiros AFTER INSERT OR UPDATE OR DELETE ON contratos_financeiros FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+CREATE TRIGGER audit_romaneios             AFTER INSERT OR UPDATE OR DELETE ON romaneios             FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+CREATE TRIGGER audit_pedidos_compra        AFTER INSERT OR UPDATE OR DELETE ON pedidos_compra        FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+
+NOTIFY pgrst, 'reload schema';

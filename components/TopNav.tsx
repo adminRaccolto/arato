@@ -288,7 +288,8 @@ const NAV: NavItem[] = [
       { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade", moduleId: "conf_contabilidade" },
 
       { type: "divider", label: "Usuários" },
-      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/configuracoes/usuarios", moduleId: "usuarios" },
+      { id: "conf-usuarios",    label: "Usuários & Permissões",  path: "/configuracoes/usuarios",   moduleId: "usuarios" },
+      { id: "conf-auditoria",   label: "Monitor de Auditoria",   path: "/configuracoes/auditoria"                        },
 
       { type: "divider", label: "Raccolto" },
       { id: "conf-integracoes", label: "Integrações",          path: "/configuracoes/integracoes", moduleId: "conf_raccotlo" },
