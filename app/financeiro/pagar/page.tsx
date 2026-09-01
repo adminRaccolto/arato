@@ -588,6 +588,27 @@ function ContasPagarInner() {
     });
   }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValorMin, fValorMax, fEmpresa, anosSafra, produtores, ogMap, pessoas, contas]);
 
+  // ── Contagens de lançamentos ocultos (para avisos) ─────────
+  const ocultosEmpresa = useMemo(() =>
+    lancamentos.filter(l => !!l.empresa_id).length,
+  [lancamentos]);
+
+  const ocultosForaPeriodo = useMemo(() =>
+    filtro !== "aberto" ? 0 :
+    lancamentos.filter(l => {
+      const sEfet = statusEfetivo(l);
+      const isReal = (l.natureza ?? "real") === "real";
+      return (isReal || l.natureza === "previsao") && sEfet !== "baixado" && l.moeda !== "barter"
+        && (l.data_vencimento ?? periodoInicio) < periodoInicio && !l.empresa_id;
+    }).length,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [lancamentos, filtro, periodoInicio]);
+
+  const ocultosLoteId = useMemo(() =>
+    filtro !== "baixado" ? 0 :
+    lancamentos.filter(l => (l.natureza ?? "real") === "real" && (l.status === "baixado" || l.status === "parcial") && !!l.lote_id).length,
+  [lancamentos, filtro]);
+
   // ── Baixar ─────────────────────────────────────────────────
 
   const abrirBaixa = (l: Lancamento) => {
@@ -1670,6 +1691,27 @@ function ContasPagarInner() {
                   </table>
                 )}
               </div>
+
+              {/* ── Banners de lançamentos ocultos ── */}
+              {(ocultosEmpresa > 0 || ocultosForaPeriodo > 0 || ocultosLoteId > 0) && (
+                <div style={{ padding: "6px 16px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 10, flexWrap: "wrap", background: "#FFFBEB" }}>
+                  {ocultosEmpresa > 0 && (
+                    <a href="/empresas/pagar" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#92400E", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "4px 10px", textDecoration: "none", fontWeight: 600 }}>
+                      ⚠ {ocultosEmpresa} lançamento{ocultosEmpresa > 1 ? "s" : ""} de empresa oculto{ocultosEmpresa > 1 ? "s" : ""} — ver em Empresas → CP
+                    </a>
+                  )}
+                  {ocultosForaPeriodo > 0 && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#92400E", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "4px 10px", fontWeight: 600 }}>
+                      ⚠ {ocultosForaPeriodo} lançamento{ocultosForaPeriodo > 1 ? "s" : ""} em aberto anterior{ocultosForaPeriodo > 1 ? "es" : ""} ao período — ver aba Vencidos
+                    </span>
+                  )}
+                  {ocultosLoteId > 0 && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#92400E", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "4px 10px", fontWeight: 600 }}>
+                      ⚠ {ocultosLoteId} pagamento{ocultosLoteId > 1 ? "s" : ""} dentro de borderô{ocultosLoteId > 1 ? "s" : ""} — expanda o borderô acima para ver
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-3)", background: "var(--bg-nav)" }}>
                 <span>CP automáticas: <strong style={{ color: "#555555" }}>{lancamentos.filter(l => l.auto).length}</strong></span>
