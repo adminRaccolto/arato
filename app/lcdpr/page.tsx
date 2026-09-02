@@ -66,6 +66,17 @@ interface EntradaLCDPR {
   despesa: number;
   origem: "auto" | "manual" | "importado";
   lancId?: string;
+  fazenda_id?: string;
+}
+
+interface FazLcdpr {
+  id: string;
+  nome: string;
+  cpf_cnpj_fiscal: string;
+  nirf: string;
+  municipio: string;
+  uf: string;
+  area_total_ha: number;
 }
 
 interface ImportRow {
@@ -105,6 +116,12 @@ export default function LCDPR() {
   const [importLoading, setImportLoading] = useState(false);
   const [importFeedback, setImportFeedback] = useState("");
 
+  // Exportação — filtros
+  const [fazDados, setFazDados] = useState<FazLcdpr[]>([]);
+  const [cpfFiltro, setCpfFiltro] = useState("todos");
+  const [modoExport, setModoExport] = useState<"anual" | "mensal">("anual");
+  const [mesExport, setMesExport] = useState(new Date().getMonth() + 1);
+
   // ── Carga principal ────────────────────────────────────────────────────────
   useEffect(() => {
     const ids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
@@ -116,12 +133,17 @@ export default function LCDPR() {
     );
     Promise.all([
       // Lança de TODAS as fazendas da conta (LCDPR é por CPF, não por fazenda)
-      Promise.all(ids.map(fid => listarLancamentos(fid))).then(all => all.flat()),
+      Promise.all(ids.map(fid =>
+        listarLancamentos(fid).then(l => l.map(x => ({ ...x, __fid: fid })))
+      )).then(all => all.flat()),
       // Baixas do Apoio Financeiro — excluídas do LCDPR
       sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids),
       // OGs para resolução de código LCDPR
       listarOperacoesGerenciaisAtivasDaConta(undefined, fazendaId),
-    ]).then(([lans, { data: apoioBaixas }, ogsData]) => {
+      // Dados das fazendas para filtro por CPF/produtor
+      sb.from("fazendas").select("id, nome, cpf_cnpj_fiscal, nirf, municipio, uf, area_total_ha").in("id", ids),
+    ]).then(([lans, { data: apoioBaixas }, ogsData, { data: fazRows }]) => {
+      setFazDados((fazRows ?? []) as FazLcdpr[]);
       setOgs(ogsData);
       const map = new Map(ogsData.map(og => [og.id, og]));
       setOgMap(map);
@@ -147,12 +169,13 @@ export default function LCDPR() {
           data: l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "",
           historico: l.descricao ?? "",
           doc: l.tipo_documento_lcdpr ?? "OUTROS",
-          cpf_cnpj: "",
+          cpf_cnpj: (l as any).cpf_cnpj ?? "",
           codigo,
           receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor ?? 0) : 0,
           despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor ?? 0) : 0,
           origem: "auto",
           lancId: l.id,
+          fazenda_id: (l as any).__fid ?? (l as any).fazenda_id ?? "",
         };
       });
       items.sort((a, b) => a.data.localeCompare(b.data));
@@ -290,6 +313,98 @@ export default function LCDPR() {
     const total = entradas.filter(e => e.codigo === c.cod).reduce((s, e) => s + e.receita + e.despesa, 0);
     return { ...c, total, tipo: c.cod.startsWith("1") ? "receita" : "despesa" };
   }).filter(c => c.total > 0);
+
+  // ── Produtores únicos por CPF para o filtro de exportação ────────────────
+  const produtoresLcdpr = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of fazDados) {
+      if (f.cpf_cnpj_fiscal && !map.has(f.cpf_cnpj_fiscal)) {
+        map.set(f.cpf_cnpj_fiscal, f.nome);
+      }
+    }
+    return Array.from(map.entries()).map(([cpf, nome]) => ({ cpf, nome }));
+  }, [fazDados]);
+
+  // ── Entradas filtradas para exportação ────────────────────────────────────
+  const entradasExport = useMemo(() => {
+    let e = entradas;
+    if (cpfFiltro !== "todos") {
+      const fazIds = new Set(fazDados.filter(f => f.cpf_cnpj_fiscal === cpfFiltro).map(f => f.id));
+      e = e.filter(x => fazIds.has(x.fazenda_id ?? ""));
+    }
+    if (modoExport === "mensal") {
+      const mm = String(mesExport).padStart(2, "0");
+      e = e.filter(x => x.data.slice(0, 7) === `${anoSel}-${mm}`);
+    }
+    return e;
+  }, [entradas, cpfFiltro, fazDados, modoExport, mesExport, anoSel]);
+
+  // ── Gerador do layout oficial LCDPR (.txt pipe-delimited) ─────────────────
+  const gerarLCDPROficial = () => {
+    const fmtDt = (iso: string) => {
+      if (!iso || iso.length < 10) return "00000000";
+      const [y, m, d] = iso.split("-");
+      return `${d}${m}${y}`;
+    };
+
+    const mm = String(mesExport).padStart(2, "0");
+    const dtIni = modoExport === "anual" ? `0101${anoSel}` : `01${mm}${anoSel}`;
+    const lastDay = new Date(anoSel, mesExport, 0).getDate();
+    const dtFin = modoExport === "anual"
+      ? `3112${anoSel}`
+      : `${String(lastDay).padStart(2, "0")}${mm}${anoSel}`;
+
+    // Produtor selecionado
+    const fazSel = cpfFiltro !== "todos"
+      ? fazDados.find(f => f.cpf_cnpj_fiscal === cpfFiltro)
+      : fazDados.find(f => f.cpf_cnpj_fiscal);
+    const cpfProd = (fazSel?.cpf_cnpj_fiscal ?? "").replace(/\D/g, "");
+    const nomeProd = (fazSel?.nome ?? "PRODUTOR RURAL").toUpperCase();
+    const municipio = (fazSel?.municipio ?? "").toUpperCase();
+    const uf = (fazSel?.uf ?? "").toUpperCase();
+
+    const fazsFiltradas = cpfFiltro !== "todos"
+      ? fazDados.filter(f => f.cpf_cnpj_fiscal === cpfFiltro)
+      : fazDados;
+
+    // Bloco 0
+    const b0: string[] = [
+      `|0000|LCDPR|0003|${dtIni}|${dtFin}|${cpfProd}|${nomeProd}|${municipio}|${uf}|N||Arato RacTech|2.0.0|`,
+      `|0001|0|`,
+      `|0010|${cpfProd}|${nomeProd}|${anoSel}|`,
+    ];
+    b0.push(`|0990|${b0.length + 1}|`);
+
+    // Bloco LC
+    const bLC: string[] = [`|LC01|0|`];
+    for (const f of fazsFiltradas) {
+      const area = (f.area_total_ha ?? 0).toFixed(2);
+      bLC.push(`|LC10|1|${f.nirf ?? ""}||${f.nome.toUpperCase()}|${(f.municipio ?? "").toUpperCase()}|${(f.uf ?? "").toUpperCase()}|${area}|||${cpfProd}||`);
+    }
+    for (const e of entradasExport) {
+      const dt = fmtDt(e.data);
+      const hist = e.historico.slice(0, 60).toUpperCase().replace(/\|/g, " ");
+      const cpfCnpj = (e.cpf_cnpj ?? "").replace(/\D/g, "");
+      bLC.push(`|LC20|${dt}|${e.codigo}|${hist}|${e.doc}|${cpfCnpj}|${e.receita.toFixed(2)}|${e.despesa.toFixed(2)}|`);
+    }
+    bLC.push(`|LC99|${bLC.length + 1}|`);
+
+    // Bloco 9
+    const b9: string[] = [`|9001|0|`];
+    b9.push(`|9990|${b9.length + 1}|`);
+    const totalLinhas = b0.length + bLC.length + b9.length + 1;
+    b9.push(`|9999|${totalLinhas}|`);
+
+    const content = [...b0, ...bLC, ...b9].join("\r\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const suffix = modoExport === "mensal" ? `${anoSel}_${mm}` : String(anoSel);
+    a.download = `LCDPR_${suffix}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // ── Plano: OGs agrupadas por código ──────────────────────────────────────
   const ogsPorCodigo = useMemo(() => {
@@ -805,69 +920,156 @@ export default function LCDPR() {
             {/* ══════════════ ABA: EXPORTAÇÃO ══════════════ */}
             {aba === "exportacao" && (
               <div style={{ padding: 28 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                  {/* Coluna esquerda — filtros e ações */}
                   <div>
-                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Arquivo LCDPR para entrega à Receita Federal</div>
-                    <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.8, marginBottom: 20 }}>
-                      O LCDPR deve ser entregue anualmente até <strong>30 de junho</strong> do ano seguinte, através do programa <strong>ReceitaNet</strong> ou via portal e-CAC.
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 16, fontSize: 14 }}>Filtros de exportação</div>
+
+                    {/* Filtro Produtor / CPF */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={lblS}>Produtor / CPF</label>
+                      <select
+                        value={cpfFiltro}
+                        onChange={e => setCpfFiltro(e.target.value)}
+                        style={inpS}
+                      >
+                        <option value="todos">Consolidado — todas as fazendas</option>
+                        {produtoresLcdpr.map(p => (
+                          <option key={p.cpf} value={p.cpf}>
+                            {p.cpf} — {p.nome}
+                          </option>
+                        ))}
+                      </select>
+                      {produtoresLcdpr.length === 0 && (
+                        <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>
+                          Configure o CPF/CNPJ fiscal em Cadastros → Fazendas para filtrar por produtor.
+                        </div>
+                      )}
                     </div>
-                    {[
-                      { label: "Prazo de entrega",       val: `30/06/${anoSel + 1}` },
-                      { label: "Período apurado",        val: `01/01/${anoSel} a 31/12/${anoSel}` },
-                      { label: "Lançamentos no período", val: `${entradas.length} registros` },
-                      { label: "Total receitas",         val: fmtBRL(totalReceitas) },
-                      { label: "Total despesas",         val: fmtBRL(totalDespesas) },
-                    ].map((r, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "0.5px solid var(--border-row)" }}>
-                        <span style={{ fontSize: 12, color: "var(--text-2)" }}>{r.label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{r.val}</span>
+
+                    {/* Modo: Anual / Mensal */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={lblS}>Período</label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        {(["anual", "mensal"] as const).map(m => (
+                          <button
+                            key={m}
+                            onClick={() => setModoExport(m)}
+                            style={{
+                              padding: "7px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8,
+                              background: modoExport === m ? "#1A4870" : "var(--bg-card)",
+                              color: modoExport === m ? "#fff" : "var(--text-1)",
+                              fontWeight: modoExport === m ? 600 : 400,
+                              cursor: "pointer", fontSize: 13, textTransform: "capitalize",
+                            }}
+                          >{m === "anual" ? "Anual" : "Mensal"}</button>
+                        ))}
                       </div>
-                    ))}
-                    <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
+                    </div>
+
+                    {/* Seletor de mês (apenas no modo mensal) */}
+                    {modoExport === "mensal" && (
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={lblS}>Competência (mês)</label>
+                        <select value={mesExport} onChange={e => setMesExport(Number(e.target.value))} style={inpS}>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                            <option key={m} value={m}>
+                              {new Date(anoSel, m - 1, 1).toLocaleString("pt-BR", { month: "long" })} / {anoSel}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Resumo do período selecionado */}
+                    <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "12px 14px", border: "0.5px solid var(--border-table)", marginBottom: 20 }}>
+                      {[
+                        { label: "Período", val: modoExport === "anual" ? `01/01/${anoSel} a 31/12/${anoSel}` : `${new Date(anoSel, mesExport - 1, 1).toLocaleString("pt-BR", { month: "long" })} de ${anoSel}` },
+                        { label: "Lançamentos", val: `${entradasExport.length} registros` },
+                        { label: "Total receitas", val: fmtBRL(entradasExport.reduce((s, e) => s + e.receita, 0)) },
+                        { label: "Total despesas", val: fmtBRL(entradasExport.reduce((s, e) => s + e.despesa, 0)) },
+                        { label: "Prazo entrega", val: `30/06/${anoSel + 1}` },
+                      ].map((r, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: i < 4 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <span style={{ fontSize: 12, color: "var(--text-2)" }}>{r.label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{r.val}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Botões de exportação */}
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button
+                        onClick={gerarLCDPROficial}
+                        style={{ ...btnPrimario, background: "#1A4870", display: "flex", alignItems: "center", gap: 6 }}
+                      >
+                        ⬇ Layout Oficial .txt
+                      </button>
                       <button
                         onClick={() => {
+                          const sfx = modoExport === "mensal" ? `${anoSel}_${String(mesExport).padStart(2,"0")}` : String(anoSel);
                           let csv = "DATA;CODIGO;HISTORICO;DOCUMENTO;CPF_CNPJ;RECEITA;DESPESA\n";
-                          entradas.forEach(e => {
+                          entradasExport.forEach(e => {
                             csv += `${e.data};${e.codigo};"${e.historico}";${e.doc};${e.cpf_cnpj};${e.receita.toFixed(2)};${e.despesa.toFixed(2)}\n`;
                           });
                           const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement("a"); a.href = url;
-                          a.download = `LCDPR_${anoSel}.csv`; a.click();
+                          a.download = `LCDPR_${sfx}.csv`; a.click();
+                          URL.revokeObjectURL(url);
                         }}
-                        style={btnPrimario}
-                      >⬇ Exportar CSV</button>
+                        style={{ ...btnPrimario, background: "#555" }}
+                      >⬇ CSV</button>
                       <button
                         onClick={async () => {
                           const XLSX = await import("xlsx");
-                          const dados = entradas.map(e => ({
+                          const sfx = modoExport === "mensal" ? `${anoSel}_${String(mesExport).padStart(2,"0")}` : String(anoSel);
+                          const dados = entradasExport.map(e => ({
                             Data: e.data, Código: e.codigo, "Desc. Código": MAP_CODIGO.get(e.codigo) ?? "",
                             Histórico: e.historico, Documento: e.doc, "CPF/CNPJ": e.cpf_cnpj,
                             "Receita (R$)": e.receita, "Despesa (R$)": e.despesa,
                           }));
                           const ws = XLSX.utils.json_to_sheet(dados);
                           const wb = XLSX.utils.book_new();
-                          XLSX.utils.book_append_sheet(wb, ws, `LCDPR ${anoSel}`);
-                          XLSX.writeFile(wb, `LCDPR_${anoSel}.xlsx`);
+                          XLSX.utils.book_append_sheet(wb, ws, `LCDPR ${sfx}`);
+                          XLSX.writeFile(wb, `LCDPR_${sfx}.xlsx`);
                         }}
                         style={{ ...btnPrimario, background: "#111111" }}
-                      >⬇ Exportar Excel</button>
+                      >⬇ Excel</button>
                     </div>
                   </div>
-                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "18px 20px" }}>
-                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Quem é obrigado a entregar?</div>
-                    {["Produtor rural Pessoa Física", "Receita bruta rural acima de R$ 56.112,00 no ano", "Ou que tenha optado pela escrituração pelo Livro Caixa", "Cônjuge que exerce atividade rural em separado"].map((t, i) => (
-                      <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, fontSize: 12 }}>
-                        <span style={{ color: "#1A5C38", flexShrink: 0 }}>✓</span>
-                        <span style={{ color: "#444" }}>{t}</span>
+
+                  {/* Coluna direita — info layout oficial */}
+                  <div>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Sobre o layout oficial (.txt)</div>
+                      <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.8, marginBottom: 12 }}>
+                        O arquivo gerado segue o <strong>Leiaute 3 do LCDPR</strong> (IN RFB 1.848/2018), formato pipe-delimited, compatível com importação direta no <strong>PGE da Receita Federal</strong>.
                       </div>
-                    ))}
-                    <div style={{ borderTop: "0.5px solid var(--border-table)", marginTop: 14, paddingTop: 14 }}>
-                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Categorias LCDPR</div>
-                      {TODOS_CODIGOS.map(c => (
-                        <div key={c.cod} style={{ display: "flex", gap: 8, marginBottom: 5, fontSize: 11 }}>
-                          <span style={{ fontWeight: 700, color: c.cod.startsWith("1") ? "#1A5C38" : "#E24B4A", flexShrink: 0, width: 28 }}>{c.cod}</span>
-                          <span style={{ color: "#444" }}>{c.desc}</span>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 8, fontSize: 12 }}>Registros gerados</div>
+                      {[
+                        { reg: "0000", desc: "Abertura do arquivo" },
+                        { reg: "0001", desc: "Abertura Bloco 0" },
+                        { reg: "0010", desc: "Exercício / CPF" },
+                        { reg: "0990", desc: "Encerramento Bloco 0" },
+                        { reg: "LC01", desc: "Abertura Bloco LC" },
+                        { reg: "LC10", desc: "Imóvel rural (por fazenda)" },
+                        { reg: `LC20 ×${entradasExport.length}`, desc: "Lançamentos caixa" },
+                        { reg: "LC99", desc: "Encerramento Bloco LC" },
+                        { reg: "9001/9990/9999", desc: "Encerramento arquivo" },
+                      ].map((r, i) => (
+                        <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 11 }}>
+                          <span style={{ fontWeight: 700, color: "#1A4870", minWidth: 80, fontFamily: "monospace" }}>{r.reg}</span>
+                          <span style={{ color: "var(--text-2)" }}>{r.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "18px 20px" }}>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Quem deve entregar</div>
+                      {["Produtor rural Pessoa Física", "Receita bruta rural acima de R$ 56.112,00", "Optante pela escrituração pelo Livro Caixa", "Cônjuge com atividade rural em separado"].map((t, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7, fontSize: 12 }}>
+                          <span style={{ color: "#1A5C38", flexShrink: 0 }}>✓</span>
+                          <span style={{ color: "var(--text-2)" }}>{t}</span>
                         </div>
                       ))}
                     </div>
