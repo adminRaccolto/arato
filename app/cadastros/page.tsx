@@ -409,6 +409,7 @@ function CadastrosInner() {
 
   // ── Funcionários ──
   const [funcs, setFuncs]                   = useState<Funcionario[]>([]);
+  const [buscaFunc, setBuscaFunc]           = useState("");
   const [modalFunc, setModalFunc]           = useState(false);
   const [editFunc, setEditFunc]             = useState<Funcionario | null>(null);
   const [abaFunc, setAbaFunc]               = useState<"dados"|"remuneracao"|"premiacoes"|"ferias">("dados");
@@ -5501,6 +5502,13 @@ function CadastrosInner() {
                     Funcionários <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({funcs.filter(f => f.ativo).length} ativos)</span>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="search"
+                      placeholder="Buscar por nome, função ou área…"
+                      value={buscaFunc}
+                      onChange={e => setBuscaFunc(e.target.value)}
+                      style={{ ...inp, width: 260, fontSize: 12, padding: "6px 10px" }}
+                    />
                     <button style={btnV} onClick={() => abrirModalFunc()}>+ Novo</button>
                   </div>
                 </div>
@@ -5508,7 +5516,14 @@ function CadastrosInner() {
                   <TH cols={["Nome", "Vínculo", "Função", "Admissão", "Salário Base", "Custo Total Est.", "Status", ""]} />
                   <tbody>
                     {funcs.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum funcionário cadastrado</td></tr>}
-                    {funcs.map((f, i) => {
+                    {funcs.filter(f => {
+                      if (!buscaFunc.trim()) return true;
+                      const q = buscaFunc.toLowerCase();
+                      return f.nome.toLowerCase().includes(q) ||
+                        (f.funcao ?? "").toLowerCase().includes(q) ||
+                        f.tipo.toLowerCase().includes(q) ||
+                        (f.area_trabalho ?? "").toLowerCase().includes(q);
+                    }).map((f, i) => {
                       const corVinc: Record<string, [string,string]> = { clt: ["#E8E8E8","#0D0D0D"], diarista: ["#FAEEDA","#633806"], empreiteiro: ["#E6F1FB","#0C447C"], outro: ["#F1EFE8","var(--text-2)"] };
                       const [bg, cl] = corVinc[f.tipo] ?? ["#F1EFE8","var(--text-2)"];
                       const sal = f.salario_base ?? 0;
