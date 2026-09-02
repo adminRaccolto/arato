@@ -11082,7 +11082,7 @@ ALTER TABLE movimentacoes_estoque
   ADD COLUMN IF NOT EXISTS variedade     text,
   ADD COLUMN IF NOT EXISTS lote_semente  text;
 
-ALTER TABLE transferencia_estoque_itens
+ALTER TABLE transferencias_estoque_itens
   ADD COLUMN IF NOT EXISTS variedade     text,
   ADD COLUMN IF NOT EXISTS lote_semente  text;
 
