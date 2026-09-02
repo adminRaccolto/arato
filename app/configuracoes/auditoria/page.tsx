@@ -164,13 +164,32 @@ function ExpandedDetail({ entry }: { entry: AuditEntry }) {
   return <div style={{ fontSize: 11, color: "#9CA3AF", padding: "8px 0" }}>Sem detalhes disponíveis.</div>;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+
 // ── Página principal ────────────────────────────────────────────────────────
 export default function AuditoriaPage() {
   const [logs, setLogs]         = useState<AuditEntry[]>([]);
   const [loading, setLoading]   = useState(true);
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
   const [pagina, setPagina]     = useState(0);
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   const PAGE = 100;
+
+  // Carrega mapa UUID→nome para resolver registros já gravados como UUID
+  useEffect(() => {
+    sb.from("perfis").select("user_id, nome").then(({ data }) => {
+      if (!data) return;
+      const m: Record<string, string> = {};
+      data.forEach(p => { if (p.user_id && p.nome) m[p.user_id] = p.nome; });
+      setUsersMap(m);
+    });
+  }, []);
+
+  const resolveUser = (uid: string | null) => {
+    if (!uid) return null;
+    if (UUID_RE.test(uid)) return usersMap[uid] ?? uid.slice(0, 8) + "…";
+    return uid;
+  };
 
   // Filtros
   const hoje = new Date().toISOString().slice(0, 10);
@@ -379,11 +398,12 @@ export default function AuditoriaPage() {
                             ) : <span style={{ color: "#D1D5DB" }}>—</span>}
                           </td>
                           <td style={{ padding: "9px 8px", color: "#555", fontSize: 11, whiteSpace: "nowrap" }}>
-                            {l.usuario_app ? (
-                              <span title={l.usuario_app} style={{ fontSize: 10 }}>
-                                {l.usuario_app.length > 30 ? l.usuario_app.slice(0, 28) + "…" : l.usuario_app}
-                              </span>
-                            ) : <span style={{ color: "#D1D5DB", fontSize: 10 }}>Sistema</span>}
+                            {(() => {
+                              const nome = resolveUser(l.usuario_app);
+                              return nome
+                                ? <span title={l.usuario_app ?? undefined} style={{ fontSize: 10 }}>{nome}</span>
+                                : <span style={{ color: "#D1D5DB", fontSize: 10 }}>Sistema</span>;
+                            })()}
                           </td>
                           <td style={{ padding: "9px 8px", textAlign: "center" }}>
                             {l.registro_id && (

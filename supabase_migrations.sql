@@ -11087,3 +11087,65 @@ ALTER TABLE transferencias_estoque_itens
   ADD COLUMN IF NOT EXISTS lote_semente  text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 222 — Fix fn_audit_log: gravar nome do usuário em vez do UUID
+CREATE OR REPLACE FUNCTION fn_audit_log()
+RETURNS trigger AS $$
+DECLARE
+  faz_id   uuid   := NULL;
+  reg_id   text   := NULL;
+  campos   text[] := NULL;
+  old_json jsonb;
+  new_json jsonb;
+  uid_raw  text;
+  uid_app  text;
+BEGIN
+  old_json := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN row_to_json(OLD)::jsonb ELSE NULL END;
+  new_json := CASE WHEN TG_OP IN ('UPDATE','INSERT') THEN row_to_json(NEW)::jsonb ELSE NULL END;
+
+  BEGIN
+    faz_id := COALESCE(new_json->>'fazenda_id', old_json->>'fazenda_id')::uuid;
+    reg_id := COALESCE(new_json->>'id', old_json->>'id');
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  BEGIN
+    uid_raw := current_setting('request.jwt.claims', true)::json->>'sub';
+  EXCEPTION WHEN OTHERS THEN
+    BEGIN uid_raw := current_setting('app.current_user', true);
+    EXCEPTION WHEN OTHERS THEN uid_raw := NULL; END;
+  END;
+
+  -- Resolver UUID → nome do usuário via tabela perfis
+  BEGIN
+    IF uid_raw IS NOT NULL AND uid_raw ~ '^[0-9a-f]{8}-[0-9a-f]{4}-' THEN
+      SELECT COALESCE(nome, uid_raw) INTO uid_app
+      FROM perfis WHERE user_id = uid_raw::uuid LIMIT 1;
+      uid_app := COALESCE(uid_app, uid_raw);
+    ELSE
+      uid_app := uid_raw;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    uid_app := uid_raw;
+  END;
+
+  IF TG_OP = 'UPDATE' THEN
+    SELECT array_agg(key ORDER BY key) INTO campos
+    FROM (
+      SELECT key FROM jsonb_each(new_json)
+      WHERE new_json->key IS DISTINCT FROM old_json->key
+        AND key NOT IN ('updated_at','created_at')
+    ) t;
+  END IF;
+
+  INSERT INTO audit_log
+    (fazenda_id, tabela, registro_id, acao, dados_antes, dados_depois, campos_alterados, usuario_app)
+  VALUES
+    (faz_id, TG_TABLE_NAME, reg_id, TG_OP, old_json, new_json, campos,
+     NULLIF(COALESCE(uid_app, current_user), 'postgres'));
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+NOTIFY pgrst, 'reload schema';
