@@ -1197,6 +1197,245 @@ Vá em **Ajuda → Suporte IA** — o chat fica disponível em qualquer tela.
       },
     ],
   },
+  // ── FASE 9 — RH e Folha de Pagamento ─────────────────────
+  {
+    id: "fase-9",
+    numero: 9,
+    titulo: "RH e Folha de Pagamento",
+    subtitulo: "Funcionários, premiações, folha mensal e classificação de custos",
+    modulos: [
+      {
+        id: "mod-9-1",
+        numero: 1,
+        titulo: "Cadastro de Funcionários",
+        descricao: "Entenda como o campo Área de Trabalho define onde o custo de RH vai no DRE",
+        icone: "👷",
+        cor: "#1A4870",
+        licoes: [
+          {
+            id: "lc-9-1-1",
+            titulo: "Área de Trabalho: Operacional vs Administrativo",
+            duracao: "4 min",
+            tipo: "leitura",
+            conteudo: `
+## Por que a Área de Trabalho importa
+
+Quando você cadastra um funcionário no Arato, um campo define onde o custo de salário e prêmio vai aparecer no DRE:
+
+| Área de Trabalho | Onde vai no DRE | Código OG | Exemplo |
+|---|---|---|---|
+| **Operacional** | CPV — Custo de Produção | 2.01.01.10 | Tratorista, Operador de Máquina, Turma de campo |
+| **Administrativo** | DGA — Desp. Gerais e Administrativas | 2.01.02.01.03 | Contador, Gestor, Assistente de escritório |
+
+### Por que isso importa
+
+O DRE agrícola separa o custo de **produzir** (CPV) do custo de **administrar** (DGA). Sem essa separação, o custo de mão de obra vai para o lugar errado e a margem por safra fica distorcida.
+
+### O que acontece automaticamente
+
+Ao processar a folha mensal ou registrar uma premiação, o Arato:
+1. Lê a Área de Trabalho do funcionário
+2. Busca a Operação Gerencial correta (OG)
+3. Cria o CP já vinculado ao DRE
+
+Você não precisa vincular manualmente — o sistema faz isso.
+
+### Como configurar
+
+Cadastros → Funcionários → abrir o funcionário → campo **Área de Trabalho** → selecionar Operacional ou Administrativo → Salvar Funcionário.
+
+> **Dica:** Funcionários novos herdam "Operacional" como padrão. Revise os administrativos para classificar corretamente.
+`,
+            dica: "Confira a Área de Trabalho de cada funcionário para garantir que o DRE reflita a realidade."
+          },
+          {
+            id: "lc-9-1-2",
+            titulo: "Registrando Premiações e Gratificações",
+            duracao: "3 min",
+            tipo: "pratica",
+            conteudo: `
+## Como registrar uma premiação
+
+Cadastros → Funcionários → abrir o funcionário → aba **Prêmios** → **+ Registrar Premiação**
+
+### Campos
+
+| Campo | O que preencher |
+|---|---|
+| **Mês de referência** | Mês e Ano da competência (ex: Agosto / 2026) |
+| **Descrição** | Motivo (ex: Prêmio de produtividade safra soja 25/26) |
+| **Valor (R$)** | Valor bruto da gratificação |
+| **Data de pagamento** | Quando será pago (define o vencimento do CP) |
+
+### O que acontece automaticamente
+
+Ao salvar, o Arato:
+1. Registra a premiação na ficha do funcionário
+2. Cria um **lançamento em Contas a Pagar** com a OG correta (PRÊMIO FUNCIONÁRIOS - FAZ ou ADM)
+3. Define o vencimento conforme a data de pagamento informada
+
+### Onde fica o CP gerado
+
+Financeiro → CP → filtrar por categoria "Premiação / Gratificação" ou buscar pelo nome do funcionário.
+`,
+            dica: "A data de pagamento define o vencimento do CP — se não preenchida, o Arato usa o dia 05 do mês de referência."
+          },
+        ],
+      },
+      {
+        id: "mod-9-2",
+        numero: 2,
+        titulo: "Folha Mensal",
+        descricao: "Processe a folha de pagamento e entenda os encargos gerados",
+        icone: "📋",
+        cor: "#16A34A",
+        licoes: [
+          {
+            id: "lc-9-2-1",
+            titulo: "Processando a Folha Mensal",
+            duracao: "5 min",
+            tipo: "pratica",
+            conteudo: `
+## Processar Folha Mensal — passo a passo
+
+Financeiro → Folha de Pagamento → selecionar o mês de competência → botão **Processar Folha**
+
+### O que o processamento faz
+
+Para cada funcionário ativo com salário cadastrado, o Arato:
+1. Calcula o salário bruto (salário base + complemento)
+2. Cria um CP **Salário — [Nome]** com vencimento no dia 05 do mês
+3. Vincula à OG correta (Operacional → CPV / Administrativo → DGA)
+
+> **Atenção:** Encargos trabalhistas (FGTS, INSS, IRRF, SAT/RAT, Sistema S) são lançados manualmente via guias — o processamento automático cobre apenas o salário líquido a pagar ao funcionário.
+
+### Proteção contra duplicata
+
+O sistema verifica se já existe CP para aquele funcionário naquele mês antes de criar. Processar duas vezes o mesmo mês **não gera duplicatas**.
+
+### Como ver o custo total de RH
+
+Financeiro → Fluxo de Caixa → filtrar por categoria "SALÁRIOS" ou "RH"
+Relatórios → DRE Agrícola → linha CPV → Recursos Humanos / linha DGA → RH Administrativo
+
+### Mês de referência vs competência
+
+- **Referência:** mês em que o trabalho foi feito (ex: agosto/2026)
+- **Vencimento do CP:** dia 05 do mês seguinte (ex: 05/09/2026)
+
+O Arato usa o padrão trabalhista CLT (pagamento até o 5º dia útil do mês seguinte).
+`,
+            dica: "Processe a folha sempre no primeiro dia do mês seguinte — o Arato garante que não haverá duplicatas."
+          },
+        ],
+      },
+    ],
+  },
+
+  // ── FASE 10 — LCDPR e Escrituração Fiscal ─────────────────
+  {
+    id: "fase-10",
+    numero: 10,
+    titulo: "LCDPR e Escrituração Fiscal",
+    subtitulo: "Livro Caixa Digital do Produtor Rural — como exportar e enviar",
+    modulos: [
+      {
+        id: "mod-10-1",
+        numero: 1,
+        titulo: "Entendendo o LCDPR",
+        descricao: "O que é o Livro Caixa Digital e por que ele é obrigatório para produtores rurais PF",
+        icone: "📒",
+        cor: "#C9921B",
+        licoes: [
+          {
+            id: "lc-10-1-1",
+            titulo: "O que é o LCDPR",
+            duracao: "5 min",
+            tipo: "leitura",
+            conteudo: `
+## LCDPR — Livro Caixa Digital do Produtor Rural
+
+O LCDPR (Instrução Normativa RFB 1.848/2018) é a obrigação acessória do **produtor rural pessoa física** que ultrapassa R$ 3,6 milhões de receita bruta anual.
+
+### Quem precisa entregar
+
+- Produtor rural **pessoa física (CPF)** com receita > R$ 3,6 MM/ano
+- Prazo: até **31 de março** do ano seguinte (mesmo prazo do IRPF)
+- Transmissão via **PGE (Programa Gerador de Escrituração)** da Receita Federal
+
+### O que o Arato faz automaticamente
+
+1. Classifica cada lançamento como \`entidade_contabil = "pf"\` quando a fazenda está vinculada a um Produtor PF
+2. Registra o **tipo de documento LCDPR** em cada CP/CR (Recibo, NF, Boleto, PIX, etc.)
+3. Exporta o arquivo no **Leiaute 3** (pipe-delimited .txt) pronto para importar no PGE
+
+### Estrutura hierárquica no LCDPR
+
+\`\`\`
+CPF do Produtor
+  └── Fazenda (NIRF)
+        └── Lançamentos (LC20) — entradas e saídas do período
+\`\`\`
+
+O LCDPR consolida **por CPF** — um produtor com 3 fazendas tem 1 arquivo LCDPR com todas as fazendas.
+
+### Tipos de operação LCDPR (campo Tipo Documento)
+
+| Código | Operação |
+|---|---|
+| 1 | Receita da atividade rural |
+| 2 | Receita fora da atividade rural |
+| 3 | Despesa da atividade rural |
+| 4 | Imposto de renda retido na fonte |
+| 5 | Investimento |
+| 6 | Financiamento |
+`,
+            dica: "O CPF fiscal da fazenda é herdado do Produtor vinculado — mantenha o campo Produtor preenchido na fazenda."
+          },
+          {
+            id: "lc-10-1-2",
+            titulo: "Exportando o LCDPR pelo Arato",
+            duracao: "4 min",
+            tipo: "pratica",
+            conteudo: `
+## Como exportar o LCDPR
+
+Fiscal → LCDPR → aba **Exportação**
+
+### Passo a passo
+
+1. **Selecione o Produtor** no dropdown — o sistema lista todos os CPFs vinculados às suas fazendas
+2. **Escolha o período:**
+   - *Anual* — selecione o ano (ex: 2026) — exporta todos os meses
+   - *Mensal* — selecione o mês para verificação parcial
+3. Veja o **resumo** (quantos lançamentos, valor total de receitas e despesas)
+4. Clique **Exportar Leiaute Oficial (.txt)** — baixa o arquivo no formato Leiaute 3 da IN 1.848/2018
+
+### O que o arquivo contém
+
+- Registro 0000 — identificação do arquivo
+- Registro 0010 — dados do produtor (CPF, nome, ano)
+- Registros LC01 / LC10 — dados de cada fazenda (NIRF, município, UF, área)
+- Registros LC20 — cada lançamento (data, valor, tipo de documento, histórico)
+- Registros de encerramento (LC99, 9001, 9990, 9999)
+
+### Importar no PGE
+
+1. Abra o PGE (Programa Gerador de Escrituração) da Receita Federal
+2. Menu Arquivo → Importar → selecione o .txt exportado pelo Arato
+3. Valide e transmite via e-CAC
+
+### Lançamentos que entram no LCDPR
+
+Apenas lançamentos com \`entidade_contabil = "pf"\` e \`status = "baixado"\` são incluídos.
+Lançamentos em aberto (não baixados) **não entram** — baixe os CPs/CRs antes de exportar.
+`,
+            dica: "Baixe todos os CPs e CRs do período antes de exportar — só lançamentos 'baixados' entram no LCDPR."
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 // ── Helpers ─────────────────────────────────────────────────
