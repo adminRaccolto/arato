@@ -933,6 +933,7 @@ export type Funcionario = {
   ctps_serie?: string;
   ctps_uf?: string;
   tipo: "clt" | "diarista" | "empreiteiro" | "outro";
+  area_trabalho?: "operacional" | "administrativo";
   funcao?: string;
   data_admissao?: string;
   data_demissao?: string;

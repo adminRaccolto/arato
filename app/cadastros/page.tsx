@@ -416,6 +416,7 @@ function CadastrosInner() {
     nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
     ctps_numero: "", ctps_serie: "", ctps_uf: "",
     tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
+    area_trabalho: "operacional" as Funcionario["area_trabalho"],
     funcao: "", data_admissao: "", data_demissao: "", ativo: true,
     salario_base: "", complemento_salarial: "", piso_categoria: "",
     vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
@@ -1983,6 +1984,7 @@ function CadastrosInner() {
       nome: f.nome, cpf: f.cpf ?? "", rg: f.rg ?? "", data_nascimento: f.data_nascimento ?? "",
       pis_nis: f.pis_nis ?? "", ctps_numero: f.ctps_numero ?? "", ctps_serie: f.ctps_serie ?? "", ctps_uf: f.ctps_uf ?? "",
       tipo: f.tipo, tipo_vinculo_esocial: f.tipo_vinculo_esocial ?? "",
+      area_trabalho: f.area_trabalho ?? "operacional",
       funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
       salario_base: f.salario_base ? String(f.salario_base) : "",
       complemento_salarial: f.complemento_salarial ? String(f.complemento_salarial) : "",
@@ -2000,6 +2002,7 @@ function CadastrosInner() {
       nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
       ctps_numero: "", ctps_serie: "", ctps_uf: "",
       tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
+      area_trabalho: "operacional" as Funcionario["area_trabalho"],
       funcao: "", data_admissao: "", data_demissao: "", ativo: true,
       salario_base: "", complemento_salarial: "", piso_categoria: "",
       vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
@@ -2024,6 +2027,7 @@ function CadastrosInner() {
       pis_nis: fFunc.pis_nis || undefined, ctps_numero: fFunc.ctps_numero || undefined,
       ctps_serie: fFunc.ctps_serie || undefined, ctps_uf: fFunc.ctps_uf || undefined,
       tipo: fFunc.tipo, tipo_vinculo_esocial: fFunc.tipo_vinculo_esocial || undefined,
+      area_trabalho: fFunc.area_trabalho ?? "operacional",
       funcao: fFunc.funcao || undefined,
       data_admissao: fFunc.data_admissao || undefined, data_demissao: fFunc.data_demissao || undefined,
       ativo: fFunc.ativo,
@@ -2073,6 +2077,11 @@ function CadastrosInner() {
     const mesRef = fPremiacao.mes_referencia; // YYYY-MM
     const dataVenc = fPremiacao.data_pagamento || (mesRef ? `${mesRef}-05` : new Date().toISOString().slice(0, 10));
     const dataHoje = new Date().toISOString().slice(0, 10);
+    // Determina o código OG conforme área de trabalho do funcionário
+    const isAdm = editFunc.area_trabalho === "administrativo";
+    const ogCode = isAdm ? "2.01.02.01.03.004" : "2.01.01.10.004";
+    const { data: ogData } = await supabase
+      .from("operacoes_gerenciais").select("id").eq("fazenda_id", fazIdEff!).eq("classificacao", ogCode).maybeSingle();
     const p = await criarPremiacao({
       funcionario_id: editFunc.id, fazenda_id: (fazIdEff)!,
       mes_referencia: mesRef,
@@ -2080,13 +2089,13 @@ function CadastrosInner() {
       descricao: fPremiacao.descricao, valor: Number(fPremiacao.valor),
       lancado_financeiro: true,
     });
-    // Lança automaticamente em Contas a Pagar
+    // Lança automaticamente em Contas a Pagar com OG vinculada
     await criarLancamento({
       fazenda_id: (fazIdEff)!,
       tipo: "pagar",
       moeda: "BRL",
       descricao: `Premiação — ${editFunc.nome} — ${fPremiacao.descricao}`,
-      categoria: "Premiação / Gratificação",
+      categoria: isAdm ? "PRÊMIO FUNCIONÁRIOS - ADM" : "PRÊMIO FUNCIONÁRIOS - FAZ",
       valor: Number(fPremiacao.valor),
       data_lancamento: dataHoje,
       data_vencimento: dataVenc,
@@ -2094,6 +2103,7 @@ function CadastrosInner() {
       auto: false,
       origem_lancamento: "manual",
       funcionario_id: editFunc.id,
+      operacao_gerencial_id: ogData?.id ?? undefined,
     });
     setPremiacoes(prev => [p, ...prev]);
     setModalPremiacao(false);
@@ -9758,6 +9768,16 @@ function CadastrosInner() {
                   </select>
                 </div>
                 <div><label style={lbl}>Função / Cargo</label><input style={inp} value={fFunc.funcao} onChange={e => setFFunc(p => ({ ...p, funcao: e.target.value }))} placeholder="Operador de máquina, tratorista…" /></div>
+                <div>
+                  <label style={lbl}>Área de Trabalho *</label>
+                  <select style={{ ...inp, background: fFunc.area_trabalho === "administrativo" ? "#EBF3FE" : "#F0FBF0" }} value={fFunc.area_trabalho ?? "operacional"} onChange={e => setFFunc(p => ({ ...p, area_trabalho: e.target.value as Funcionario["area_trabalho"] }))}>
+                    <option value="operacional">Operacional (Campo / Fazenda)</option>
+                    <option value="administrativo">Administrativo (Escritório / Gestão)</option>
+                  </select>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
+                    {fFunc.area_trabalho === "administrativo" ? "OG: 2.01.02.01.03 — DGA (Desp. Administrativas)" : "OG: 2.01.01.10 — CPV (Custo de Produção)"}
+                  </div>
+                </div>
                 <div><label style={lbl}>Data de admissão</label><input style={inp} type="date" value={fFunc.data_admissao} onChange={e => setFFunc(p => ({ ...p, data_admissao: e.target.value }))} /></div>
                 <div><label style={lbl}>Data de demissão</label><input style={inp} type="date" value={fFunc.data_demissao} onChange={e => setFFunc(p => ({ ...p, data_demissao: e.target.value }))} /></div>
                 <div style={{ gridColumn: "1/-1" }}>

@@ -1572,7 +1572,7 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
     const sal = Number(f.salario_base);
 
     // FAZ = funcionários da fazenda, ADM = administrativos
-    const prefixo = f.tipo_contrato === "clt_adm" ? "2.01.02.01.03" : "2.01.01.10";
+    const prefixo = f.area_trabalho === "administrativo" ? "2.01.02.01.03" : "2.01.01.10";
     const dataComp = `${anoMes}-01`;
 
     // Apenas salário — FGTS, INSS, Sistema S, SAT/RAT e provisões são lançados manualmente via guias
