@@ -17,7 +17,7 @@ import {
   listarContratosFinanceiros,
   listarBombas, criarBomba, atualizarBomba, excluirBomba,
   listarFuncionarios, criarFuncionario, atualizarFuncionario, excluirFuncionario,
-  listarPremiacoesFuncionario, criarPremiacao, excluirPremiacao,
+  listarPremiacoesFuncionario, criarPremiacao, excluirPremiacao, criarLancamento,
   listarFeriasFuncionario, salvarFeriasGozo, sincronizarPeriodosFerias, processarFolhaMensal,
   listarGrupos, criarGrupo, atualizarGrupo, excluirGrupo,
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
@@ -2070,12 +2070,30 @@ function CadastrosInner() {
     if (!fPremiacao.valor) erros.push("Valor");
     if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
     setErroModal("");
+    const mesRef = fPremiacao.mes_referencia; // YYYY-MM
+    const dataVenc = fPremiacao.data_pagamento || (mesRef ? `${mesRef}-05` : new Date().toISOString().slice(0, 10));
+    const dataHoje = new Date().toISOString().slice(0, 10);
     const p = await criarPremiacao({
       funcionario_id: editFunc.id, fazenda_id: (fazIdEff)!,
-      mes_referencia: fPremiacao.mes_referencia,
+      mes_referencia: mesRef,
       data_pagamento: fPremiacao.data_pagamento || undefined,
       descricao: fPremiacao.descricao, valor: Number(fPremiacao.valor),
-      lancado_financeiro: false,
+      lancado_financeiro: true,
+    });
+    // Lança automaticamente em Contas a Pagar
+    await criarLancamento({
+      fazenda_id: (fazIdEff)!,
+      tipo: "pagar",
+      moeda: "BRL",
+      descricao: `Premiação — ${editFunc.nome} — ${fPremiacao.descricao}`,
+      categoria: "Premiação / Gratificação",
+      valor: Number(fPremiacao.valor),
+      data_lancamento: dataHoje,
+      data_vencimento: dataVenc,
+      status: "em_aberto",
+      auto: false,
+      origem_lancamento: "manual",
+      funcionario_id: editFunc.id,
     });
     setPremiacoes(prev => [p, ...prev]);
     setModalPremiacao(false);
@@ -9988,7 +10006,31 @@ function CadastrosInner() {
       {modalPremiacao && (
         <Modal titulo="Registrar Premiação" onClose={() => setModalPremiacao(false)} width={500}>
           <div style={{ display: "grid", gap: 14 }}>
-            <div><label style={lbl}>Mês de referência</label><input style={inp} type="month" value={fPremiacao.mes_referencia} onChange={e => setFPremiacao(p => ({ ...p, mes_referencia: e.target.value }))} /></div>
+            <div>
+              <label style={lbl}>Mês de referência</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <select style={inp} value={fPremiacao.mes_referencia.split("-")[1] ?? ""} onChange={e => {
+                  const mes = e.target.value;
+                  const ano = fPremiacao.mes_referencia.split("-")[0] || new Date().getFullYear().toString();
+                  setFPremiacao(p => ({ ...p, mes_referencia: mes && ano ? `${ano}-${mes}` : "" }));
+                }}>
+                  <option value="">Mês</option>
+                  {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m,i) => (
+                    <option key={m} value={m}>{["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][i]}</option>
+                  ))}
+                </select>
+                <select style={inp} value={fPremiacao.mes_referencia.split("-")[0] ?? ""} onChange={e => {
+                  const ano = e.target.value;
+                  const mes = fPremiacao.mes_referencia.split("-")[1] || "";
+                  setFPremiacao(p => ({ ...p, mes_referencia: mes && ano ? `${ano}-${mes}` : "" }));
+                }}>
+                  <option value="">Ano</option>
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i).map(a => (
+                    <option key={a} value={String(a)}>{a}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <div><label style={lbl}>Descrição *</label><input style={inp} value={fPremiacao.descricao} onChange={e => setFPremiacao(p => ({ ...p, descricao: e.target.value }))} placeholder="Prêmio produtividade, gratificação safra…" /></div>
             <div><label style={lbl}>Valor (R$) *</label><InputMonetario style={inp} value={fPremiacao.valor} onChange={v => setFPremiacao(p => ({ ...p, valor: String(v) }))} /></div>
             <div><label style={lbl}>Data de pagamento</label><input style={inp} type="date" value={fPremiacao.data_pagamento} onChange={e => setFPremiacao(p => ({ ...p, data_pagamento: e.target.value }))} /></div>
