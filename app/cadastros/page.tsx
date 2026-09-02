@@ -1091,16 +1091,24 @@ function CadastrosInner() {
     setEditFaz(f ?? null);
     setTabFaz("geral");
     setCepAutoOk(false);
-    setFFaz(f ? {
-      nome: f.nome, municipio: f.municipio, estado: f.estado,
-      area: String(f.area_total_ha), cnpj: f.cnpj ?? "",
-      produtor_id: f.produtor_id ?? "", empresa_id: f.empresa_id ?? "",
-      cep: f.cep ?? "", logradouro: f.logradouro ?? "",
-      numero_end: f.numero_end ?? "", complemento: f.complemento ?? "",
-      bairro: f.bairro ?? "",
-      entidade_contabil: (f.entidade_contabil as "pf" | "pj") ?? "pf",
-      cpf_cnpj_fiscal: f.cpf_cnpj_fiscal ?? "",
-    } : _fFazVazio());
+    if (f) {
+      // Deriva CPF fiscal do produtor se não estiver preenchido no banco
+      const prodDaFaz = produtores.find(x => x.id === f.produtor_id);
+      const cpfFiscalDeriv = f.cpf_cnpj_fiscal ?? prodDaFaz?.cpf_cnpj ?? "";
+      const entidadeDeriv = (f.entidade_contabil as "pf" | "pj") ?? (prodDaFaz?.tipo === "pj" ? "pj" : "pf");
+      setFFaz({
+        nome: f.nome, municipio: f.municipio, estado: f.estado,
+        area: String(f.area_total_ha), cnpj: f.cnpj ?? "",
+        produtor_id: f.produtor_id ?? "", empresa_id: f.empresa_id ?? "",
+        cep: f.cep ?? "", logradouro: f.logradouro ?? "",
+        numero_end: f.numero_end ?? "", complemento: f.complemento ?? "",
+        bairro: f.bairro ?? "",
+        entidade_contabil: entidadeDeriv,
+        cpf_cnpj_fiscal: cpfFiscalDeriv,
+      });
+    } else {
+      setFFaz(_fFazVazio());
+    }
     // Carrega matrículas da fazenda para edição inline
     if (f) {
       const mats = matriculas[f.id] ?? [];
@@ -7185,6 +7193,10 @@ function CadastrosInner() {
                           produtor_id: pid,
                           empresa_id: empId,
                           ...(prod?.cpf_cnpj ? { cnpj: prod.cpf_cnpj } : {}),
+                          // Auto-deriva CPF/CNPJ fiscal do produtor selecionado
+                          ...(prod?.cpf_cnpj ? { cpf_cnpj_fiscal: prod.cpf_cnpj } : {}),
+                          // Entidade contábil derivada do tipo do produtor
+                          entidade_contabil: prod?.tipo === "pj" ? "pj" : "pf",
                         }));
                       }}
                       placeholder="Selecione…"
@@ -7210,8 +7222,23 @@ function CadastrosInner() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ ...lbl, color: "#1A4870" }}>{fFaz.entidade_contabil === "pf" ? "CPF do titular fiscal (LCDPR)" : "CNPJ da entidade fiscal (SPED)"}</label>
-                      <input style={inp} value={fFaz.cpf_cnpj_fiscal} onChange={e => setFFaz(p => ({ ...p, cpf_cnpj_fiscal: e.target.value }))} placeholder={fFaz.entidade_contabil === "pf" ? "000.000.000-00" : "00.000.000/0000-00"} />
+                      <label style={{ ...lbl, color: "#1A4870" }}>
+                        {fFaz.entidade_contabil === "pf" ? "CPF do titular fiscal (LCDPR)" : "CNPJ da entidade fiscal (SPED)"}
+                        {fFaz.produtor_id && fFaz.cpf_cnpj_fiscal && (
+                          <span style={{ marginLeft: 6, fontSize: 10, color: "#1A5C38", fontWeight: 600 }}>↑ do produtor</span>
+                        )}
+                      </label>
+                      <input
+                        style={{
+                          ...inp,
+                          ...(fFaz.produtor_id && fFaz.cpf_cnpj_fiscal
+                            ? { background: "#EAF3DE", borderColor: "#16A34A", color: "#14532D" }
+                            : {}),
+                        }}
+                        value={fFaz.cpf_cnpj_fiscal}
+                        onChange={e => setFFaz(p => ({ ...p, cpf_cnpj_fiscal: e.target.value }))}
+                        placeholder={fFaz.entidade_contabil === "pf" ? "000.000.000-00" : "00.000.000/0000-00"}
+                      />
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: "#1A4870", marginTop: 10, lineHeight: 1.5 }}>
