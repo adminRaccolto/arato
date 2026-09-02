@@ -206,6 +206,8 @@ export type MovimentacaoEstoque = {
   deposito_id?: string;
   observacao?: string;
   usuario_nome?: string;
+  variedade?: string | null;
+  lote_semente?: string | null;
   auto: boolean;
   created_at?: string;
 };
@@ -1127,6 +1129,8 @@ export type TransferenciaEstoqueItem = {
   unidade_medida: string;
   custo_unitario?: number | null;
   valor_total?: number;
+  variedade?: string | null;
+  lote_semente?: string | null;
   created_at?: string;
 };
 
@@ -1305,6 +1309,8 @@ export type NfEntradaItem = {
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  variedade?: string | null;      // cultivar / variedade da semente
+  lote_semente?: string | null;   // número do lote da semente
   tipo_apropiacao: "estoque" | "maquinario" | "direto" | "terceiro" | "vef" | "remessa";
   centro_custo_id?: string;
   operacao_gerencial_id?: string;   // preenchido para itens direto — base da auditoria NCM×OG

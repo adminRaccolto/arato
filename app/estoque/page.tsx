@@ -118,6 +118,8 @@ interface ItemRascunho {
   centro_custo_id: string;
   operacao_gerencial_id: string;
   alerta_preco: boolean;
+  variedade: string;
+  lote_semente: string;
 }
 
 // ── Unidade de medida — normalização e conversões comuns ──
@@ -234,7 +236,7 @@ function parsearXmlNfe(xml: string): { numero: string; serie: string; chave: str
         valor_unitario: vUni,
         valor_total:    parseFloat(prod.querySelector("vProd")?.textContent ?? "0"),
         tipo_apropiacao,
-        insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false,
+        insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false, variedade: "", lote_semente: "",
       });
     });
 
@@ -281,7 +283,7 @@ export default function Estoque() {
 
   // modal movimentação manual
   const [modalMov, setModalMov]   = useState(false);
-  const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "" });
+  const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
 
   // relatórios
   const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos">("saldos");
@@ -383,6 +385,8 @@ export default function Estoque() {
       qtd, fMov.deposito_id || undefined, fMov.data, fMov.observacao || undefined,
       fMov.tipo === "ajuste" ? qtdNova : undefined,
       nomeUsuario ?? undefined,
+      fMov.variedade || undefined,
+      fMov.lote_semente || undefined,
     );
     const tipoLabel = fMov.tipo === "ajuste" ? "Ajuste de estoque" : fMov.tipo === "entrada" ? "Entrada" : "Saída";
     registrarLog(fazendaId!, "insert", "estoque",
@@ -392,7 +396,7 @@ export default function Estoque() {
     const [ins2, movs] = await Promise.all([listarInsumos(fazendaId!), listarMovimentacoes(fazendaId!)]);
     setInsumos(ins2); setMovs(movs);
     setModalMov(false);
-    setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "" });
+    setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
   });
 
   // ── Relatório histórico ──
@@ -556,12 +560,12 @@ export default function Estoque() {
     });
     setNfCriada(nf);
     if (itensNf.length === 0) {
-      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false }]);
+      setItensNf([{ key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false, variedade: "", lote_semente: "" }]);
     }
     setModalNf("passo2");
   });
 
-  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false }]);
+  const adicionarItemNf = () => setItensNf(p => [...p, { key: crypto.randomUUID(), descricao_produto: "", ncm: "", cfop: "1102", unidade: "UN", quantidade: 1, quantidade_nf: 1, fator_conversao: 1, valor_unitario: 0, valor_total: 0, tipo_apropiacao: "estoque", insumo_id: "", deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "", operacao_gerencial_id: "", alerta_preco: false, variedade: "", lote_semente: "" }]);
 
   const atualizarItem = (key: string, patch: Partial<ItemRascunho>) => {
     setItensNf(p => p.map(i => {
@@ -652,6 +656,8 @@ export default function Estoque() {
         tipo_apropiacao: item.tipo_apropiacao, alerta_preco: item.alerta_preco,
         centro_custo_id: item.centro_custo_id || undefined,
         operacao_gerencial_id: item.operacao_gerencial_id || undefined,
+        variedade: item.variedade || undefined,
+        lote_semente: item.lote_semente || undefined,
       });
     }
     // Buscar itens salvos (com id completo) e processar
@@ -1034,6 +1040,8 @@ export default function Estoque() {
                           <td style={{ padding: "10px 14px" }}>
                             <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{ins?.nome ?? "—"}</div>
                             {ins && <div style={{ fontSize: 11, color: "#444" }}>{CAT_META[ins.categoria]?.label ?? ins.categoria}</div>}
+                            {m.variedade && <div style={{ fontSize: 11, color: "var(--text-3)" }}>Var.: {m.variedade}</div>}
+                            {m.lote_semente && <div style={{ fontSize: 11, color: "var(--text-3)" }}>Lote: {m.lote_semente}</div>}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {isAdj
@@ -1836,6 +1844,21 @@ export default function Estoque() {
                 <label style={lbl}>Data *</label>
                 <input style={inp} type="date" value={fMov.data} onChange={e => setFMov(p => ({ ...p, data: e.target.value }))} />
               </div>
+              {/* Variedade + Lote — só para sementes */}
+              {fMov.insumo_id && insumos.find(x => x.id === fMov.insumo_id)?.categoria === "semente" && (
+                <>
+                  <div>
+                    <label style={lbl}>Variedade / Cultivar</label>
+                    <input style={inp} placeholder="Ex: TMG 7062 IPRO" value={fMov.variedade}
+                      onChange={e => setFMov(p => ({ ...p, variedade: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Lote</label>
+                    <input style={inp} placeholder="Ex: L2025-001" value={fMov.lote_semente}
+                      onChange={e => setFMov(p => ({ ...p, lote_semente: e.target.value }))} />
+                  </div>
+                </>
+              )}
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={{ ...lbl, color: isAjuste ? "#C9921B" : undefined }}>
                   {isAjuste ? "Justificativa do ajuste *" : "Observação"}
@@ -2235,6 +2258,26 @@ export default function Estoque() {
                         </div>
                       )}
                     </>
+                    );
+                  })()}
+
+                  {/* Variedade + Lote — aparece quando insumo é semente */}
+                  {item.insumo_id && (() => {
+                    const insCat = insumos.find(x => x.id === item.insumo_id)?.categoria;
+                    if (insCat !== "semente") return null;
+                    return (
+                      <>
+                        <div>
+                          <label style={lbl}>Variedade / Cultivar</label>
+                          <input style={inp} placeholder="Ex: TMG 7062 IPRO" value={item.variedade}
+                            onChange={e => atualizarItem(item.key, { variedade: e.target.value })} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Lote</label>
+                          <input style={inp} placeholder="Ex: L2025-001" value={item.lote_semente}
+                            onChange={e => atualizarItem(item.key, { lote_semente: e.target.value })} />
+                        </div>
+                      </>
                     );
                   })()}
 

@@ -11070,3 +11070,20 @@ CREATE TRIGGER audit_romaneios             AFTER INSERT OR UPDATE OR DELETE ON r
 CREATE TRIGGER audit_pedidos_compra        AFTER INSERT OR UPDATE OR DELETE ON pedidos_compra        FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 221 — Controle de Lote de Sementes
+-- Adiciona variedade e lote_semente em NF de entrada, movimentações e transferências
+
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS variedade     text,
+  ADD COLUMN IF NOT EXISTS lote_semente  text;
+
+ALTER TABLE movimentacoes_estoque
+  ADD COLUMN IF NOT EXISTS variedade     text,
+  ADD COLUMN IF NOT EXISTS lote_semente  text;
+
+ALTER TABLE transferencia_estoque_itens
+  ADD COLUMN IF NOT EXISTS variedade     text,
+  ADD COLUMN IF NOT EXISTS lote_semente  text;
+
+NOTIFY pgrst, 'reload schema';

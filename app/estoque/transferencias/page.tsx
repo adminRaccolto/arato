@@ -20,6 +20,8 @@ interface ItemForm {
   quantidade: string;
   unidade_medida: string;
   custo_unitario: string;
+  variedade: string;
+  lote_semente: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -102,7 +104,7 @@ export default function TransferenciasEstoquePage() {
     observacao: "",
   });
   const [itens, setItens] = useState<ItemForm[]>([
-    { insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "" },
+    { insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" },
   ]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -203,7 +205,7 @@ export default function TransferenciasEstoquePage() {
 
   // ── Itens form helpers ─────────────────────────────────────────────────────
   function addItem() {
-    setItens(prev => [...prev, { insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "" }]);
+    setItens(prev => [...prev, { insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
   }
   function removeItem(i: number) {
     setItens(prev => prev.filter((_, idx) => idx !== i));
@@ -240,6 +242,8 @@ export default function TransferenciasEstoquePage() {
         quantidade:     parseFloat(it.quantidade.replace(",", ".")),
         unidade_medida: it.unidade_medida,
         custo_unitario: it.custo_unitario ? parseFloat(it.custo_unitario.replace(",", ".")) : null,
+        variedade:      it.variedade || null,
+        lote_semente:   it.lote_semente || null,
       }));
       const res = await acao("salvar", undefined, {
         numero,
@@ -297,7 +301,7 @@ export default function TransferenciasEstoquePage() {
 
   function resetForm() {
     setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), entradaAutomatica: true, observacao: "" });
-    setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "" }]);
+    setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
   }
 
@@ -615,7 +619,7 @@ export default function TransferenciasEstoquePage() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["Insumo *","Qtd *","Unidade","Custo Unit. (R$)","Valor Total",""].map(h => (
+                      {["Insumo *","Qtd *","Unidade","Custo Unit. (R$)","Valor Total","Variedade","Lote",""].map(h => (
                         <th key={h} style={{ ...th, fontSize: 11 }}>{h}</th>
                       ))}
                     </tr>
@@ -626,6 +630,7 @@ export default function TransferenciasEstoquePage() {
                       const qtd = parseFloat(it.quantidade.replace(",", ".")) || 0;
                       const custo = parseFloat(it.custo_unitario.replace(",", ".")) || (insumoSel?.custo_medio ?? 0);
                       const total = qtd * custo;
+                      const isSemente = insumoSel?.categoria === "semente";
                       return (
                         <tr key={i}>
                           <td style={td}>
@@ -649,6 +654,16 @@ export default function TransferenciasEstoquePage() {
                           </td>
                           <td style={{ ...td, fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
                             {total > 0 ? fmtBRL(total) : "—"}
+                          </td>
+                          <td style={td}>
+                            {isSemente
+                              ? <input type="text" value={it.variedade} onChange={e => updateItem(i, "variedade", e.target.value)} placeholder="Ex: TMG 7062" style={{ ...inp, width: 120 }} />
+                              : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
+                          </td>
+                          <td style={td}>
+                            {isSemente
+                              ? <input type="text" value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} placeholder="Ex: L2025-001" style={{ ...inp, width: 100 }} />
+                              : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
                           </td>
                           <td style={td}>
                             {itens.length > 1 && (

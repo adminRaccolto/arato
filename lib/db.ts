@@ -404,6 +404,8 @@ export async function criarMovimentacaoManual(
   observacao?: string,
   quantidade_nova?: number,    // para ajuste de saldo: valor absoluto desejado
   usuario_nome?: string,
+  variedade?: string,
+  lote_semente?: string,
 ): Promise<void> {
   const { data: ins, error: insErr } = await supabase.from("insumos").select("id, nome, estoque").eq("id", insumo_id).single();
   if (!ins || insErr) throw new Error("Insumo não encontrado");
@@ -426,6 +428,8 @@ export async function criarMovimentacaoManual(
     quantidade: tipo === "ajuste" ? delta : Math.abs(delta),
     data, deposito_id: deposito_id ?? null,
     observacao, auto: false, usuario_nome: usuario_nome ?? null,
+    variedade: variedade || null,
+    lote_semente: lote_semente || null,
   });
 }
 
