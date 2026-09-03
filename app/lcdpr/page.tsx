@@ -79,6 +79,7 @@ interface FazLcdpr {
   id: string;
   nome: string;
   produtor_id: string | null;
+  cpf_cnpj_fiscal: string | null; // vínculo direto fazenda → CPF fiscal
   nirf: string;
   municipio: string;
   uf: string;
@@ -125,7 +126,7 @@ export default function LCDPR() {
   // Exportação — filtros
   const [fazDados, setFazDados] = useState<FazLcdpr[]>([]);
   const [produtoresDados, setProdutoresDados] = useState<ProdutorLcdpr[]>([]);
-  const [produtorFiltro, setProdutorFiltro] = useState("todos"); // "todos" | produtor.id
+  const [produtorFiltro, setProdutorFiltro] = useState("todos"); // "todos" | CPF string
   const [modoExport, setModoExport] = useState<"anual" | "mensal">("anual");
   const [mesExport, setMesExport] = useState(new Date().getMonth() + 1);
 
@@ -147,8 +148,8 @@ export default function LCDPR() {
       sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids),
       // OGs para resolução de código LCDPR
       listarOperacoesGerenciaisAtivasDaConta(undefined, fazendaId),
-      // Dados das fazendas (com produtor_id — FK para produtores)
-      sb.from("fazendas").select("id, nome, produtor_id, nirf, municipio, uf, area_total_ha").in("id", ids),
+      // Dados das fazendas: produtor_id (FK) + cpf_cnpj_fiscal (vínculo direto ao CPF)
+      sb.from("fazendas").select("id, nome, produtor_id, cpf_cnpj_fiscal, nirf, municipio, uf, area_total_ha").in("id", ids),
       // Produtores da conta — fonte primária do CPF para o LCDPR
       contaId ? listarProdutoresDaConta(contaId) : Promise.resolve([]),
     ]).then(([lans, { data: apoioBaixas }, ogsData, { data: fazRows }, prodRows]) => {
@@ -324,16 +325,34 @@ export default function LCDPR() {
     return { ...c, total, tipo: c.cod.startsWith("1") ? "receita" : "despesa" };
   }).filter(c => c.total > 0);
 
-  // ── Produtores disponíveis para o filtro de exportação ───────────────────
-  // Fonte: tabela produtores (não fazendas) — LCDPR é por CPF do produtor
-  const produtoresLcdpr = produtoresDados;
+  // ── Produtores disponíveis — deduplicados por CPF ────────────────────────
+  // Mesmo CPF pode ter dois nomes no cadastro (ex: "DIRCEU" e "DIRCEU E OUTROS").
+  // Para o LCDPR o que importa é o CPF único — consolidamos em um único entry por CPF.
+  const produtoresLcdpr = useMemo(() => {
+    const map = new Map<string, string>(); // cpf_cnpj → nome (primeiro encontrado)
+    // Primeiro: produtores cadastrados
+    for (const p of produtoresDados) {
+      if (p.cpf_cnpj && !map.has(p.cpf_cnpj)) map.set(p.cpf_cnpj, p.nome);
+    }
+    // Segundo: fazendas com cpf_cnpj_fiscal preenchido mas sem produtor cadastrado
+    for (const f of fazDados) {
+      if (f.cpf_cnpj_fiscal && !map.has(f.cpf_cnpj_fiscal)) map.set(f.cpf_cnpj_fiscal, f.nome);
+    }
+    return Array.from(map.entries()).map(([cpf, nome]) => ({ cpf, nome }));
+  }, [produtoresDados, fazDados]);
 
   // ── Entradas filtradas para exportação ────────────────────────────────────
   const entradasExport = useMemo(() => {
     let e = entradas;
     if (produtorFiltro !== "todos") {
-      // Filtra pelas fazendas vinculadas ao produtor selecionado
-      const fazIds = new Set(fazDados.filter(f => f.produtor_id === produtorFiltro).map(f => f.id));
+      // Produtores com esse CPF (pode haver duplicatas de nome)
+      const idsComCpf = new Set(produtoresDados.filter(p => p.cpf_cnpj === produtorFiltro).map(p => p.id));
+      // Fazendas que pertencem a esse CPF — via cpf_cnpj_fiscal (vínculo direto)
+      // ou via produtor_id → cpf_cnpj (FK), caso cpf_cnpj_fiscal não esteja preenchido
+      const fazIds = new Set(fazDados.filter(f =>
+        f.cpf_cnpj_fiscal === produtorFiltro ||
+        (f.produtor_id && idsComCpf.has(f.produtor_id))
+      ).map(f => f.id));
       e = e.filter(x => fazIds.has(x.fazenda_id ?? ""));
     }
     if (modoExport === "mensal") {
@@ -341,7 +360,7 @@ export default function LCDPR() {
       e = e.filter(x => x.data.slice(0, 7) === `${anoSel}-${mm}`);
     }
     return e;
-  }, [entradas, produtorFiltro, fazDados, modoExport, mesExport, anoSel]);
+  }, [entradas, produtorFiltro, produtoresDados, fazDados, modoExport, mesExport, anoSel]);
 
   // ── Gerador do layout oficial LCDPR (.txt pipe-delimited) ─────────────────
   const gerarLCDPROficial = () => {
@@ -358,15 +377,17 @@ export default function LCDPR() {
       ? `3112${anoSel}`
       : `${String(lastDay).padStart(2, "0")}${mm}${anoSel}`;
 
-    // Produtor selecionado — CPF vem da tabela produtores, não da fazenda
-    const prodSel = produtorFiltro !== "todos"
-      ? produtoresDados.find(p => p.id === produtorFiltro)
-      : produtoresDados[0];
-    const cpfProd = (prodSel?.cpf_cnpj ?? "").replace(/\D/g, "");
-    const nomeProd = (prodSel?.nome ?? "PRODUTOR RURAL").toUpperCase();
+    // CPF do produtor selecionado — produtorFiltro já É o CPF ("todos" = primeiro)
+    const cpfSel = produtorFiltro !== "todos" ? produtorFiltro : (produtoresLcdpr[0]?.cpf ?? "");
+    const cpfProd = cpfSel.replace(/\D/g, "");
+    const nomeProd = (produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "PRODUTOR RURAL").toUpperCase();
 
+    const idsComCpf = new Set(produtoresDados.filter(p => p.cpf_cnpj === cpfSel).map(p => p.id));
     const fazsFiltradas = produtorFiltro !== "todos"
-      ? fazDados.filter(f => f.produtor_id === produtorFiltro)
+      ? fazDados.filter(f =>
+          f.cpf_cnpj_fiscal === cpfSel ||
+          (f.produtor_id && idsComCpf.has(f.produtor_id))
+        )
       : fazDados;
     const municipio = (fazsFiltradas[0]?.municipio ?? "").toUpperCase();
     const uf = (fazsFiltradas[0]?.uf ?? "").toUpperCase();
@@ -939,8 +960,8 @@ export default function LCDPR() {
                       >
                         <option value="todos">Consolidado — todos os produtores</option>
                         {produtoresLcdpr.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.cpf_cnpj} — {p.nome}
+                          <option key={p.cpf} value={p.cpf}>
+                            {p.cpf} — {p.nome}
                           </option>
                         ))}
                       </select>
