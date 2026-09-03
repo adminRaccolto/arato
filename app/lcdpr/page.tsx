@@ -342,25 +342,17 @@ export default function LCDPR() {
   }, [produtoresDados, fazDados]);
 
   // ── Entradas filtradas para exportação ────────────────────────────────────
+  // Lançamentos NÃO são filtrados por fazenda — no Arato o CP/CR é por conta,
+  // não por fazenda. O filtro de CPF afeta apenas o cabeçalho do arquivo e
+  // os registros LC10 (imóveis rurais). Todos os lançamentos PF da conta
+  // (entidade_contabil = 'pf', já filtrado no load) entram no LCDPR.
   const entradasExport = useMemo(() => {
-    let e = entradas;
-    if (produtorFiltro !== "todos") {
-      // Produtores com esse CPF (pode haver duplicatas de nome)
-      const idsComCpf = new Set(produtoresDados.filter(p => p.cpf_cnpj === produtorFiltro).map(p => p.id));
-      // Fazendas que pertencem a esse CPF — via cpf_cnpj_fiscal (vínculo direto)
-      // ou via produtor_id → cpf_cnpj (FK), caso cpf_cnpj_fiscal não esteja preenchido
-      const fazIds = new Set(fazDados.filter(f =>
-        f.cpf_cnpj_fiscal === produtorFiltro ||
-        (f.produtor_id && idsComCpf.has(f.produtor_id))
-      ).map(f => f.id));
-      e = e.filter(x => fazIds.has(x.fazenda_id ?? ""));
-    }
     if (modoExport === "mensal") {
       const mm = String(mesExport).padStart(2, "0");
-      e = e.filter(x => x.data.slice(0, 7) === `${anoSel}-${mm}`);
+      return entradas.filter(x => x.data.slice(0, 7) === `${anoSel}-${mm}`);
     }
-    return e;
-  }, [entradas, produtorFiltro, produtoresDados, fazDados, modoExport, mesExport, anoSel]);
+    return entradas;
+  }, [entradas, modoExport, mesExport, anoSel]);
 
   // ── Gerador do layout oficial LCDPR (.txt pipe-delimited) ─────────────────
   const gerarLCDPROficial = () => {
@@ -382,6 +374,7 @@ export default function LCDPR() {
     const cpfProd = cpfSel.replace(/\D/g, "");
     const nomeProd = (produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "PRODUTOR RURAL").toUpperCase();
 
+    // LC10: lista as fazendas do produtor selecionado (somente informativo)
     const idsComCpf = new Set(produtoresDados.filter(p => p.cpf_cnpj === cpfSel).map(p => p.id));
     const fazsFiltradas = produtorFiltro !== "todos"
       ? fazDados.filter(f =>
@@ -389,6 +382,8 @@ export default function LCDPR() {
           (f.produtor_id && idsComCpf.has(f.produtor_id))
         )
       : fazDados;
+    // Se nenhuma fazenda vinculada ao CPF, usa todas (LC10 será a lista completa)
+    const fazsParaLC10 = fazsFiltradas.length > 0 ? fazsFiltradas : fazDados;
     const municipio = (fazsFiltradas[0]?.municipio ?? "").toUpperCase();
     const uf = (fazsFiltradas[0]?.uf ?? "").toUpperCase();
 
@@ -402,7 +397,7 @@ export default function LCDPR() {
 
     // Bloco LC
     const bLC: string[] = [`|LC01|0|`];
-    for (const f of fazsFiltradas) {
+    for (const f of fazsParaLC10) {
       const area = (f.area_total_ha ?? 0).toFixed(2);
       bLC.push(`|LC10|1|${f.nirf ?? ""}||${f.nome.toUpperCase()}|${(f.municipio ?? "").toUpperCase()}|${(f.uf ?? "").toUpperCase()}|${area}|||${cpfProd}||`);
     }
@@ -970,6 +965,9 @@ export default function LCDPR() {
                           Cadastre produtores em Cadastros → Produtores para filtrar por CPF.
                         </div>
                       )}
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 6, lineHeight: 1.5 }}>
+                        O CPF selecionado aparece no cabeçalho do arquivo (registros 0000/0010). Os lançamentos são da conta inteira — no Arato, CP/CR não são registrados por fazenda.
+                      </div>
                     </div>
 
                     {/* Modo: Anual / Mensal */}
