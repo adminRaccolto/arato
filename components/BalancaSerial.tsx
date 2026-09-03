@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useAuth } from "./AuthProvider";
 
 // ── Parser Toledo PRIX ────────────────────────────────────────────────────────
 // Suporta: "P  0012345", "ST,GS,  +0012345 kg", número isolado ≥ 100
@@ -51,16 +52,23 @@ interface Props {
 }
 
 // marcaProp só vem via prop quando é um card de teste na página de Integrações.
-// Nos romaneios nenhuma prop é passada — o widget lê do localStorage.
+// Nos romaneios nenhuma prop é passada — o widget lê do localStorage por conta.
 export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: marcaExplicita }: Props) {
-  const [marca] = useState<MarcaBalanca>(() => {
-    // Prop explícita (cards de teste) tem prioridade
-    if (marcaExplicita) return marcaExplicita;
-    if (typeof window === "undefined") return "toledo";
-    const salva = localStorage.getItem("balanca_marca") as MarcaBalanca | null;
-    return (salva && MARCA_CONFIG[salva]) ? salva : "toledo";
-  });
-  const [modo, setModo] = useState<Modo>(() => MARCA_CONFIG[marca].defaultModo);
+  const { contaId } = useAuth();
+  // Chave isolada por conta — evita que config de um cliente afete outro
+  const lsKey = `balanca_marca_${contaId ?? "default"}`;
+
+  const [marca, setMarca] = useState<MarcaBalanca>(marcaExplicita ?? "toledo");
+  const [modo,  setModo]  = useState<Modo>("bridge");
+
+  // Lê configuração correta do localStorage quando contaId estiver disponível
+  useEffect(() => {
+    if (marcaExplicita) { setMarca(marcaExplicita); setModo(MARCA_CONFIG[marcaExplicita].defaultModo); return; }
+    const salva = localStorage.getItem(lsKey) as MarcaBalanca | null;
+    const m = (salva && MARCA_CONFIG[salva]) ? salva : "toledo";
+    setMarca(m);
+    setModo(MARCA_CONFIG[m].defaultModo);
+  }, [lsKey, marcaExplicita]);
   const [conectada, setConectada] = useState(false);
   const [pesoAtual, setPesoAtual] = useState<number | null>(null);
   const [status,    setStatus]    = useState<string>("");

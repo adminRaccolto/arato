@@ -862,14 +862,16 @@ export default function IntegracoesPage() {
   const [loading,  setLoading]  = useState(true);
   const [modal,    setModal]    = useState<IntegracaoCatalogo | null>(null);
 
-  // Balança ativa — configurada na implantação
-  const [marcaAtiva, setMarcaAtiva] = useState<MarcaBalanca>(() => {
-    if (typeof window === "undefined") return "toledo";
-    return (localStorage.getItem("balanca_marca") as MarcaBalanca) || "toledo";
-  });
+  // Balança ativa — configurada por conta (chave isolada no localStorage)
+  const lsKeyBalanca = `balanca_marca_${contaId ?? "default"}`;
+  const [marcaAtiva, setMarcaAtiva] = useState<MarcaBalanca>("toledo");
+  useEffect(() => {
+    const salva = localStorage.getItem(lsKeyBalanca) as MarcaBalanca | null;
+    if (salva && ["toledo","capital"].includes(salva)) setMarcaAtiva(salva);
+  }, [lsKeyBalanca]);
   function salvarMarcaAtiva(m: MarcaBalanca) {
     setMarcaAtiva(m);
-    localStorage.setItem("balanca_marca", m);
+    localStorage.setItem(lsKeyBalanca, m);
   }
 
   // Sieg — config vinda do configuracoes_modulo
