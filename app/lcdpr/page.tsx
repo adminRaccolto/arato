@@ -33,8 +33,8 @@ const CODIGOS_LCDPR = {
   ],
 } as const;
 
-const TODOS_CODIGOS = [...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa];
-const MAP_CODIGO    = new Map(TODOS_CODIGOS.map(c => [c.cod, c.desc]));
+const TODOS_CODIGOS = [...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa] as { cod: string; desc: string }[];
+const MAP_CODIGO    = new Map<string, string>(TODOS_CODIGOS.map(c => [c.cod, c.desc]));
 
 // Tipos de documento LC20 — códigos oficiais (2 dígitos)
 const TIPO_DOC_LABEL: Record<string, string> = {
