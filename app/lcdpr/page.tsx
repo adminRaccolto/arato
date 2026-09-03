@@ -445,8 +445,9 @@ export default function LCDPR() {
     const blob = new Blob(["﻿" + content], { type: "text/plain;charset=utf-8" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    const suf  = modoExport === "mensal" ? `${anoSel}_${mm}` : String(anoSel);
-    a.href = url; a.download = `LCDPR_${cpfSel || "TODOS"}_${suf}.txt`;
+    const nomeArq = nomeProd.replace(/[^A-Z0-9 ]/g, "").trim();
+    const comp    = modoExport === "mensal" ? `COMP ${mm}-${anoSel}` : `COMP ${anoSel}`;
+    a.href = url; a.download = `LCDPR_${nomeArq}_${cpfSel || "TODOS"}_${comp}.txt`;
     a.click(); URL.revokeObjectURL(url);
   };
 
