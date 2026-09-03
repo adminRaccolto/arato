@@ -6096,3 +6096,143 @@ export async function atualizarNfRemessaLogistica(
     .eq("id", id);
   if (error) throw error;
 }
+
+// ════════════════════════════════════════════════════════════
+// CARTÕES DE CRÉDITO
+// ════════════════════════════════════════════════════════════
+
+import type { CartaoCredito, FaturaCartao } from "./supabase";
+
+export async function listarCartoesDaConta(contaId: string): Promise<CartaoCredito[]> {
+  const { data, error } = await supabase
+    .from("cartoes_credito")
+    .select("*")
+    .eq("conta_id", contaId)
+    .eq("ativo", true)
+    .order("titular");
+  if (error) throw error;
+  return (data ?? []) as CartaoCredito[];
+}
+
+export async function criarCartao(cartao: Omit<CartaoCredito, "id" | "created_at">): Promise<CartaoCredito> {
+  const { data, error } = await supabase
+    .from("cartoes_credito")
+    .insert(cartao)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as CartaoCredito;
+}
+
+export async function atualizarCartao(id: string, dados: Partial<CartaoCredito>): Promise<void> {
+  const { error } = await supabase.from("cartoes_credito").update(dados).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirCartao(id: string): Promise<void> {
+  const { error } = await supabase.from("cartoes_credito").update({ ativo: false }).eq("id", id);
+  if (error) throw error;
+}
+
+// Calcula a competência (mes/ano) de uma fatura dado o cartão e a data da compra
+export function competenciaFatura(cartao: CartaoCredito, dataCompra: string): { mes: number; ano: number } {
+  const d = new Date(dataCompra + "T12:00:00");
+  const dia = d.getDate();
+  if (dia <= cartao.dia_fechamento) {
+    return { mes: d.getMonth() + 1, ano: d.getFullYear() };
+  }
+  // passou do fechamento → próxima fatura
+  const prox = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return { mes: prox.getMonth() + 1, ano: prox.getFullYear() };
+}
+
+// Datas de fechamento e vencimento para uma competência
+function datasCompetencia(cartao: CartaoCredito, mes: number, ano: number) {
+  const anoFech = ano;
+  const mesFech = mes;
+  const diaFech = Math.min(cartao.dia_fechamento, new Date(anoFech, mesFech, 0).getDate());
+  const dataFechamento = `${anoFech}-${String(mesFech).padStart(2,"0")}-${String(diaFech).padStart(2,"0")}`;
+
+  // Vencimento = dia_vencimento do mês seguinte
+  const mesVenc = mes === 12 ? 1 : mes + 1;
+  const anoVenc = mes === 12 ? ano + 1 : ano;
+  const diaVenc = Math.min(cartao.dia_vencimento, new Date(anoVenc, mesVenc, 0).getDate());
+  const dataVencimento = `${anoVenc}-${String(mesVenc).padStart(2,"0")}-${String(diaVenc).padStart(2,"0")}`;
+  return { dataFechamento, dataVencimento };
+}
+
+// Obtém ou cria a fatura do mês correto e adiciona o valor ao total
+export async function vincularLancamentoFatura(
+  lancamentoId: string,
+  cartao: CartaoCredito,
+  dataCompra: string,
+  valor: number,
+  contaId: string,
+  fazendaId: string,
+): Promise<FaturaCartao> {
+  const { mes, ano } = competenciaFatura(cartao, dataCompra);
+  const { dataFechamento, dataVencimento } = datasCompetencia(cartao, mes, ano);
+
+  // Upsert da fatura
+  const { data: fatura, error: errFatura } = await supabase
+    .from("faturas_cartao")
+    .upsert(
+      { cartao_id: cartao.id, conta_id: contaId, fazenda_id: fazendaId, mes, ano, data_fechamento: dataFechamento, data_vencimento: dataVencimento },
+      { onConflict: "cartao_id,mes,ano", ignoreDuplicates: false }
+    )
+    .select()
+    .single();
+  if (errFatura) throw errFatura;
+
+  // Atualiza valor_total somando o valor deste lançamento
+  const { error: errUpd } = await supabase.rpc("incrementar_fatura_cartao", {
+    p_fatura_id: fatura.id,
+    p_valor: valor,
+  }).throwOnError();
+  // Se a função RPC não existir, faz update manual
+  if (errUpd) {
+    await supabase
+      .from("faturas_cartao")
+      .update({ valor_total: (fatura.valor_total ?? 0) + valor })
+      .eq("id", fatura.id);
+  }
+
+  // Vincula o lançamento à fatura
+  await supabase
+    .from("lancamentos")
+    .update({ cartao_id: cartao.id, fatura_cartao_id: fatura.id })
+    .eq("id", lancamentoId);
+
+  return fatura as FaturaCartao;
+}
+
+export async function listarFaturasDaConta(contaId: string): Promise<FaturaCartao[]> {
+  const { data, error } = await supabase
+    .from("faturas_cartao")
+    .select("*, cartao:cartoes_credito(*)")
+    .eq("conta_id", contaId)
+    .order("ano", { ascending: false })
+    .order("mes", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as FaturaCartao[];
+}
+
+export async function listarLancamentosDaFatura(faturaId: string) {
+  const { data, error } = await supabase
+    .from("lancamentos")
+    .select("*")
+    .eq("fatura_cartao_id", faturaId)
+    .order("data_baixa");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function fecharFatura(faturaId: string): Promise<void> {
+  const { error } = await supabase.from("faturas_cartao").update({ status: "fechada" }).eq("id", faturaId);
+  if (error) throw error;
+}
+
+export async function reabrirFatura(faturaId: string): Promise<void> {
+  const { error } = await supabase.from("faturas_cartao").update({ status: "aberta" }).eq("id", faturaId);
+  if (error) throw error;
+}

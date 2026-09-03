@@ -160,6 +160,12 @@ const NAV: NavItem[] = [
         ],
       },
       {
+        type: "subgroup", id: "sg-cartoes", label: "Cartões de Crédito", moduleId: "fin_pagar",
+        children: [
+          { id: "fin-cartoes", label: "Faturas e Conciliação", path: "/financeiro/cartoes", moduleId: "fin_pagar" },
+        ],
+      },
+      {
         type: "subgroup", id: "sg-tesouraria", label: "Tesouraria", moduleId: "fin_tesouraria",
         children: [
           { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria", path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },

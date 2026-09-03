@@ -97,7 +97,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "benfeitorias" | "bens" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas" | "imoveis_urbanos";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "benfeitorias" | "bens" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas" | "imoveis_urbanos" | "cartoes_credito";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -134,6 +134,7 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "historico_fiscal",     label: "Histórico Fiscal (CFOPs)" },
     { key: "formas_pagamento",     label: "Formas de Pagamento"  },
     { key: "contas_bancarias",     label: "Contas Bancárias"     },
+    { key: "cartoes_credito",      label: "Cartões de Crédito"   },
   ]},
 ];
 
@@ -6012,6 +6013,13 @@ function CadastrosInner() {
           )}
 
           {/* ══════════════════════════════════════════════════════════════════
+              ABA — CARTÕES DE CRÉDITO
+          ══════════════════════════════════════════════════════════════════ */}
+          {aba === "cartoes_credito" && (
+            <CartoesCreditoCadastro contaId={contaId ?? ""} fazendaId={fazendaId ?? ""} />
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════════
               ABA — IMÓVEIS URBANOS
           ══════════════════════════════════════════════════════════════════ */}
           {aba === "imoveis_urbanos" && (
@@ -10709,6 +10717,172 @@ function CadastrosInner() {
         );
       })()}
 
+    </div>
+  );
+}
+
+// ─── Cadastro de Cartões de Crédito (componente inline) ──────────────────────
+const BANDEIRAS = ["visa","master","elo","amex","hipercard","outros"] as const;
+const BANDEIRA_LBL: Record<string, string> = { visa:"Visa", master:"Mastercard", elo:"Elo", amex:"American Express", hipercard:"Hipercard", outros:"Outros" };
+
+type FCartao = {
+  titular: string; banco: string; bandeira: string;
+  numero_final: string; dia_fechamento: string; dia_vencimento: string; limite: string; observacao: string;
+};
+const FCAR_VAZIO: FCartao = { titular:"", banco:"", bandeira:"visa", numero_final:"", dia_fechamento:"15", dia_vencimento:"5", limite:"", observacao:"" };
+
+function CartoesCreditoCadastro({ contaId, fazendaId }: { contaId: string; fazendaId: string }) {
+  const [cartoes, setCartoes]       = useState<import("../../lib/supabase").CartaoCredito[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [modal,   setModal]         = useState(false);
+  const [editId,  setEditId]        = useState<string | null>(null);
+  const [form,    setForm]          = useState<FCartao>(FCAR_VAZIO);
+  const [salvando,setSalvando]      = useState(false);
+
+  const carregar = () => {
+    if (!contaId) return;
+    setLoading(true);
+    import("../../lib/db").then(({ listarCartoesDaConta }) =>
+      listarCartoesDaConta(contaId).then(setCartoes).finally(() => setLoading(false))
+    );
+  };
+  useEffect(carregar, [contaId]);
+
+  const salvar = async () => {
+    if (!form.titular || !form.bandeira) return;
+    setSalvando(true);
+    try {
+      const { criarCartao, atualizarCartao } = await import("../../lib/db");
+      const payload = {
+        conta_id: contaId, fazenda_id: fazendaId || null,
+        titular: form.titular, banco: form.banco || null, bandeira: form.bandeira as any,
+        numero_final: form.numero_final || null,
+        dia_fechamento: parseInt(form.dia_fechamento) || 15,
+        dia_vencimento: parseInt(form.dia_vencimento) || 5,
+        limite: parseFloat(form.limite.replace(/\./g,"").replace(",",".")) || null,
+        ativo: true, observacao: form.observacao || null,
+      };
+      if (editId) await atualizarCartao(editId, payload);
+      else await criarCartao(payload);
+      setModal(false); setEditId(null); setForm(FCAR_VAZIO);
+      carregar();
+    } finally { setSalvando(false); }
+  };
+
+  const excluir = async (id: string) => {
+    if (!confirm("Inativar este cartão?")) return;
+    const { excluirCartao } = await import("../../lib/db");
+    await excluirCartao(id);
+    carregar();
+  };
+
+  const inp: React.CSSProperties = { width:"100%", padding:"7px 10px", border:"0.5px solid var(--border-table)", borderRadius:8, fontSize:13, color:"var(--text-1)", background:"var(--bg-input)", boxSizing:"border-box" };
+  const lbl: React.CSSProperties = { fontSize:11, color:"var(--text-2)", marginBottom:4, display:"block" };
+  const btnV: React.CSSProperties = { padding:"7px 18px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
+  const btnX: React.CSSProperties = { padding:"5px 12px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"var(--bg-card)", color:"var(--text-1)", cursor:"pointer", fontSize:12 };
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+        <div>
+          <div style={{ fontWeight:600, fontSize:14, color:"var(--text-1)" }}>Cartões de Crédito <span style={{ fontSize:11, color:"var(--text-2)", fontWeight:400 }}>({cartoes.length} cadastrado{cartoes.length !== 1 ? "s" : ""})</span></div>
+          <div style={{ fontSize:11, color:"#666", marginTop:2 }}>Cartões utilizados nas Contas a Pagar. Faturas geradas automaticamente ao realizar baixas.</div>
+        </div>
+        <button style={btnV} onClick={() => { setEditId(null); setForm(FCAR_VAZIO); setModal(true); }}>+ Novo Cartão</button>
+      </div>
+
+      {loading ? (
+        <div style={{ padding:32, textAlign:"center", color:"var(--text-2)" }}>Carregando…</div>
+      ) : cartoes.length === 0 ? (
+        <div style={{ padding:48, textAlign:"center", color:"var(--text-3)" }}>
+          <div style={{ fontSize:32, marginBottom:8 }}>💳</div>
+          <div style={{ fontWeight:600, color:"var(--text-1)" }}>Nenhum cartão cadastrado</div>
+          <div style={{ fontSize:12, marginTop:4 }}>Cadastre os cartões para utilizá-los nas baixas de CP.</div>
+        </div>
+      ) : (
+        <div style={{ border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+            <thead>
+              <tr style={{ background:"var(--bg-page)" }}>
+                {["Titular","Bandeira","Banco","Número","Fecha dia","Vence dia","Limite",""].map((h,i) => (
+                  <th key={i} style={{ padding:"9px 12px", textAlign:"left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cartoes.map((c,i) => (
+                <tr key={c.id} style={{ borderBottom: i < cartoes.length-1 ? "0.5px solid var(--border-row)" : "none" }}>
+                  <td style={{ padding:"9px 12px", fontWeight:600, color:"var(--text-1)" }}>{c.titular}</td>
+                  <td style={{ padding:"9px 12px" }}>
+                    <span style={{ fontSize:11, padding:"2px 8px", borderRadius:5, fontWeight:600, background:"#EEF4FF", color:"#1e40af" }}>{BANDEIRA_LBL[c.bandeira]}</span>
+                  </td>
+                  <td style={{ padding:"9px 12px", color:"var(--text-2)" }}>{c.banco || "—"}</td>
+                  <td style={{ padding:"9px 12px", fontFamily:"monospace", color:"var(--text-2)" }}>{c.numero_final ? `••••${c.numero_final}` : "—"}</td>
+                  <td style={{ padding:"9px 12px", textAlign:"center" }}>{c.dia_fechamento}</td>
+                  <td style={{ padding:"9px 12px", textAlign:"center" }}>{c.dia_vencimento}</td>
+                  <td style={{ padding:"9px 12px", color:"var(--text-2)" }}>{c.limite ? c.limite.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}) : "—"}</td>
+                  <td style={{ padding:"9px 10px", textAlign:"right" }}>
+                    <button style={btnX} onClick={() => { setEditId(c.id); setForm({ titular:c.titular, banco:c.banco??""  , bandeira:c.bandeira, numero_final:c.numero_final??"", dia_fechamento:String(c.dia_fechamento), dia_vencimento:String(c.dia_vencimento), limite:c.limite ? String(c.limite) : "", observacao:c.observacao??"" }); setModal(true); }}>Editar</button>
+                    <button style={{ ...btnX, marginLeft:6, color:"#E24B4A" }} onClick={() => excluir(c.id)}>Inativar</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modal && (
+        <div style={{ position:"fixed", inset:0, background:"#0005", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:"var(--bg-card)", borderRadius:14, padding:28, width:520, boxShadow:"0 8px 40px #0003" }}>
+            <div style={{ fontWeight:700, fontSize:16, color:"var(--text-1)", marginBottom:20 }}>{editId ? "Editar Cartão" : "Novo Cartão de Crédito"}</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={lbl}>Titular do cartão *</label>
+                <input style={inp} value={form.titular} onChange={e => setForm(p=>({...p, titular:e.target.value}))} placeholder="Nome completo como no cartão" />
+              </div>
+              <div>
+                <label style={lbl}>Bandeira *</label>
+                <select style={inp} value={form.bandeira} onChange={e => setForm(p=>({...p, bandeira:e.target.value}))}>
+                  {BANDEIRAS.map(b => <option key={b} value={b}>{BANDEIRA_LBL[b]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Banco emissor</label>
+                <input style={inp} value={form.banco} onChange={e => setForm(p=>({...p, banco:e.target.value}))} placeholder="Ex: Sicoob, Itaú, Sicredi" />
+              </div>
+              <div>
+                <label style={lbl}>Últimos 4 dígitos</label>
+                <input style={inp} maxLength={4} value={form.numero_final} onChange={e => setForm(p=>({...p, numero_final:e.target.value.replace(/\D/g,"").slice(0,4)}))} placeholder="0000" />
+              </div>
+              <div>
+                <label style={lbl}>Limite (R$)</label>
+                <input style={inp} value={form.limite} onChange={e => setForm(p=>({...p, limite:e.target.value}))} placeholder="Opcional" />
+              </div>
+              <div>
+                <label style={lbl}>Dia de fechamento da fatura *</label>
+                <input style={inp} type="number" min={1} max={31} value={form.dia_fechamento} onChange={e => setForm(p=>({...p, dia_fechamento:e.target.value}))} />
+              </div>
+              <div>
+                <label style={lbl}>Dia de vencimento (mês seguinte) *</label>
+                <input style={inp} type="number" min={1} max={31} value={form.dia_vencimento} onChange={e => setForm(p=>({...p, dia_vencimento:e.target.value}))} />
+              </div>
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={lbl}>Observação</label>
+                <input style={inp} value={form.observacao} onChange={e => setForm(p=>({...p, observacao:e.target.value}))} placeholder="Opcional" />
+              </div>
+            </div>
+            <div style={{ fontSize:11, color:"var(--text-2)", background:"var(--bg-page)", borderRadius:8, padding:"8px 12px", marginTop:14, lineHeight:1.6 }}>
+              💡 Exemplo: fecha dia <strong>15</strong> → vence dia <strong>5</strong> do mês seguinte.<br />
+              Compra feita até dia 15 entra na fatura do mês atual; depois do dia 15 vai para a próxima.
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:20 }}>
+              <button onClick={() => { setModal(false); setEditId(null); }} style={{ padding:"8px 18px", border:"0.5px solid var(--border-table)", borderRadius:8, background:"var(--bg-card)", color:"var(--text-1)", cursor:"pointer", fontSize:13 }}>Cancelar</button>
+              <button onClick={salvar} disabled={!form.titular || salvando} style={{ ...btnV, opacity: (!form.titular||salvando) ? 0.5 : 1 }}>{salvando ? "Salvando…" : editId ? "Salvar alterações" : "Cadastrar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

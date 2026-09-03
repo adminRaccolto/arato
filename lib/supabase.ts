@@ -304,6 +304,8 @@ export type Lancamento = {
   numero?: number;                    // Número sequencial de lançamento (GENERATED ALWAYS AS IDENTITY)
   conciliado?: boolean;               // true = vinculado a uma linha OFX na Conciliação
   empresa_id?: string;                // FK empresas.id — vínculo com empresa não-rural (transportadora, trading, etc.)
+  cartao_id?: string;                 // FK cartoes_credito.id — quando pago via cartão de crédito
+  fatura_cartao_id?: string;          // FK faturas_cartao.id — fatura à qual este lançamento pertence
   created_at?: string;
 };
 
@@ -2707,4 +2709,38 @@ export type CctPagamento = {
   status: "pendente" | "pago" | "atrasado";
   data_pagamento?: string | null;
   observacao?: string | null;
+};
+
+// ── Cartões de Crédito ────────────────────────────────────────────────────────
+export type CartaoCredito = {
+  id: string;
+  conta_id: string;
+  fazenda_id?: string | null;
+  titular: string;
+  banco?: string | null;
+  bandeira: "visa" | "master" | "elo" | "amex" | "hipercard" | "outros";
+  numero_final?: string | null;
+  dia_fechamento: number;
+  dia_vencimento: number;
+  limite?: number | null;
+  ativo: boolean;
+  observacao?: string | null;
+  created_at: string;
+};
+
+export type FaturaCartao = {
+  id: string;
+  cartao_id: string;
+  conta_id?: string | null;
+  fazenda_id?: string | null;
+  mes: number;
+  ano: number;
+  data_fechamento: string;
+  data_vencimento: string;
+  valor_total: number;
+  status: "aberta" | "fechada" | "paga";
+  lancamento_cp_id?: string | null;
+  created_at: string;
+  // joins
+  cartao?: CartaoCredito;
 };

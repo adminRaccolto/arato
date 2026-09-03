@@ -12,8 +12,8 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, type VeiculoUnificado } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa } from "../../../lib/supabase";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, listarCartoesDaConta, vincularLancamentoFatura, type VeiculoUnificado } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa, CartaoCredito } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -343,7 +343,10 @@ function ContasPagarInner() {
     salvar_class: false,
     ano_safra_id: "", ciclo_id: "",
     nova_data_vencimento: "",   // reprogramação do saldo em pagamento parcial
+    forma_pagamento: "PIX",     // forma de pagamento na baixa
+    cartao_id: "",              // quando forma_pagamento = Cartão de Crédito
   });
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([]);
   const [form, setForm] = useState({
     moeda: "BRL" as Moeda,
     pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "",
@@ -458,6 +461,7 @@ function ContasPagarInner() {
     listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     carregarOps();
     listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
+    if (contaId) listarCartoesDaConta(contaId).then(setCartoes).catch(() => {});
     listarProdutoresDaConta(contaId ?? "", fazendaId ?? undefined).then(setProdutores).catch(() => {});
     if (fazendaId) {
       // Carrega anos safra de TODAS as fazendas da conta para que o lookup no grid funcione
@@ -631,6 +635,7 @@ function ContasPagarInner() {
       conta: l.conta_bancaria ?? "",
       obs: l.observacao ?? "",
       multa_valor: "", juros_valor: "", desconto_valor: "",
+      forma_pagamento: "conta", cartao_id: "",
       pessoa_id: l.pessoa_id ?? "",
       operacao_gerencial_id: l.operacao_gerencial_id ?? "",
       og_busca: "",
@@ -644,12 +649,15 @@ function ContasPagarInner() {
   const confirmarBaixa = async () => {
     if (!modalBaixa) return;
     if (modalBaixa.moeda !== "barter" && !baixa.valorMask) return;
-    if (modalBaixa.moeda !== "barter" && !baixa.conta) { alert("Selecione a conta bancária de pagamento."); return; }
+    const isCartao = baixa.forma_pagamento === "Cartão de Crédito";
+    if (modalBaixa.moeda !== "barter" && !isCartao && !baixa.conta) { alert("Selecione a conta bancária de pagamento."); return; }
+    if (isCartao && !baixa.cartao_id) { alert("Selecione o cartão de crédito."); return; }
     const valorPago = modalBaixa.moeda === "barter" ? 0 : desmascarar(baixa.valorMask);
     try {
       setSalvando(true);
+      // Cartão de crédito: baixa sem débitar conta bancária (conta vazia)
       await baixarLancamento(
-        modalBaixa.id, valorPago, baixa.data, modalBaixa.moeda === "barter" ? "" : baixa.conta,
+        modalBaixa.id, valorPago, baixa.data, isCartao ? "" : baixa.conta,
         {
           pessoa_id:               baixa.pessoa_id || undefined,
           operacao_gerencial_id:   baixa.operacao_gerencial_id || undefined,
@@ -659,6 +667,13 @@ function ContasPagarInner() {
           desconto_valor:          desmascarar(baixa.desconto_valor) || undefined,
         }
       );
+      // Se cartão de crédito: vincula à fatura do mês
+      if (isCartao && baixa.cartao_id && fazendaId && contaId) {
+        const cartaoSel = cartoes.find(c => c.id === baixa.cartao_id);
+        if (cartaoSel) {
+          await vincularLancamentoFatura(modalBaixa.id, cartaoSel, baixa.data, valorPago, contaId, fazendaId);
+        }
+      }
       // Salvar classificação automática para o fornecedor
       if (baixa.salvar_class && baixa.pessoa_id && baixa.operacao_gerencial_id) {
         await supabase.from("pessoas")
@@ -2012,6 +2027,7 @@ function ContasPagarInner() {
                   valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
                   data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
                   multa_valor: "", juros_valor: "", desconto_valor: "",
+                  forma_pagamento: "conta", cartao_id: "",
                   pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
                   og_busca: "", salvar_class: false,
                   ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
@@ -2037,6 +2053,7 @@ function ContasPagarInner() {
                     valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
                     data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
                     multa_valor: "", juros_valor: "", desconto_valor: "",
+                    forma_pagamento: "conta", cartao_id: "",
                     pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
                     og_busca: "", salvar_class: false,
                     ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
@@ -2318,16 +2335,38 @@ function ContasPagarInner() {
                       <input style={inp} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
                     </div>
                     <div>
-                      <label style={lbl}>Conta bancária <span style={{ color: "#E24B4A" }}>*</span></label>
-                      <select style={{ ...inp, borderColor: !baixa.conta ? "#E24B4A" : undefined }} value={baixa.conta} onChange={e => setBaixa(p => ({ ...p, conta: e.target.value }))}>
-                        <option value="">— Selecionar conta —</option>
-                        {contas.map(c => {
-                          const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
-                          return <option key={c.id} value={c.id}>{label}</option>;
-                        })}
-                        {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
+                      <label style={lbl}>Forma de pagamento</label>
+                      <select style={inp} value={baixa.forma_pagamento} onChange={e => setBaixa(p => ({ ...p, forma_pagamento: e.target.value, cartao_id: "" }))}>
+                        {["PIX","TED","DOC","Boleto","Dinheiro","Cheque","Cartão de Crédito","Débito Automático","Outros"].map(f => <option key={f}>{f}</option>)}
                       </select>
                     </div>
+                    {baixa.forma_pagamento === "Cartão de Crédito" ? (
+                      <div>
+                        <label style={lbl}>Cartão de crédito <span style={{ color: "#E24B4A" }}>*</span></label>
+                        <select style={{ ...inp, borderColor: !baixa.cartao_id ? "#E24B4A" : undefined }} value={baixa.cartao_id} onChange={e => setBaixa(p => ({ ...p, cartao_id: e.target.value }))}>
+                          <option value="">— Selecionar cartão —</option>
+                          {cartoes.map(c => <option key={c.id} value={c.id}>{c.titular} — {c.bandeira.toUpperCase()} {c.numero_final ? `••••${c.numero_final}` : ""}{c.banco ? ` (${c.banco})` : ""}</option>)}
+                          {cartoes.length === 0 && <option disabled>Cadastre cartões em Financeiro › Cartões de Crédito</option>}
+                        </select>
+                        {baixa.cartao_id && (() => {
+                          const c = cartoes.find(x => x.id === baixa.cartao_id);
+                          if (!c) return null;
+                          return <div style={{ fontSize: 10, color: "#1A5C38", marginTop: 4 }}>💳 Fatura fecha dia {c.dia_fechamento} · vence dia {c.dia_vencimento} do mês seguinte</div>;
+                        })()}
+                      </div>
+                    ) : (
+                      <div>
+                        <label style={lbl}>Conta bancária <span style={{ color: "#E24B4A" }}>*</span></label>
+                        <select style={{ ...inp, borderColor: !baixa.conta ? "#E24B4A" : undefined }} value={baixa.conta} onChange={e => setBaixa(p => ({ ...p, conta: e.target.value }))}>
+                          <option value="">— Selecionar conta —</option>
+                          {contas.map(c => {
+                            const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                            return <option key={c.id} value={c.id}>{label}</option>;
+                          })}
+                          {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
+                        </select>
+                      </div>
+                    )}
                     <div style={{ gridColumn: "1/-1" }}>
                       <label style={lbl}>Observação</label>
                       <input style={inp} placeholder="Opcional" value={baixa.obs} onChange={e => setBaixa(p => ({ ...p, obs: e.target.value }))} />

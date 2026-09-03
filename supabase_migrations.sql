@@ -11096,3 +11096,61 @@ ALTER TABLE funcionarios
 NOTIFY pgrst, 'reload schema';
 
   
+
+-- Seção 230 — Cartões de Crédito
+-- Tabela de cartões cadastrados
+CREATE TABLE IF NOT EXISTS cartoes_credito (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id          uuid REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id        uuid REFERENCES fazendas(id) ON DELETE SET NULL,
+  titular           varchar(200) NOT NULL,
+  banco             varchar(100),
+  bandeira          varchar(30) NOT NULL DEFAULT 'visa', -- visa|master|elo|amex|hipercard|outros
+  numero_final      varchar(4),
+  dia_fechamento    int NOT NULL DEFAULT 15,  -- dia do mês que fecha a fatura
+  dia_vencimento    int NOT NULL DEFAULT 5,   -- dia do mês seguinte que vence
+  limite            numeric(15,2),
+  ativo             boolean NOT NULL DEFAULT true,
+  observacao        text,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+-- Fatura gerada automaticamente por cartão + competência (mês/ano)
+CREATE TABLE IF NOT EXISTS faturas_cartao (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cartao_id         uuid NOT NULL REFERENCES cartoes_credito(id) ON DELETE CASCADE,
+  conta_id          uuid REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id        uuid REFERENCES fazendas(id) ON DELETE SET NULL,
+  mes               int  NOT NULL,  -- 1-12: mês de competência da fatura
+  ano               int  NOT NULL,
+  data_fechamento   date NOT NULL,
+  data_vencimento   date NOT NULL,
+  valor_total       numeric(15,2) NOT NULL DEFAULT 0,
+  status            varchar(20) NOT NULL DEFAULT 'aberta', -- aberta|fechada|paga
+  lancamento_cp_id  uuid REFERENCES lancamentos(id) ON DELETE SET NULL, -- CP gerada para pagar a fatura
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(cartao_id, mes, ano)
+);
+
+-- Colunas na tabela lancamentos para vincular ao cartão
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS cartao_id       uuid REFERENCES cartoes_credito(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS fatura_cartao_id uuid REFERENCES faturas_cartao(id) ON DELETE SET NULL;
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_lancamentos_cartao_id        ON lancamentos(cartao_id);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_fatura_cartao_id ON lancamentos(fatura_cartao_id);
+CREATE INDEX IF NOT EXISTS idx_faturas_cartao_cartao_id     ON faturas_cartao(cartao_id);
+CREATE INDEX IF NOT EXISTS idx_cartoes_credito_conta_id     ON cartoes_credito(conta_id);
+
+-- RLS
+ALTER TABLE cartoes_credito ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faturas_cartao  ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "cartoes_credito_conta" ON cartoes_credito
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+CREATE POLICY "faturas_cartao_conta" ON faturas_cartao
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
