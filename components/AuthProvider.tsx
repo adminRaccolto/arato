@@ -554,8 +554,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const podeAcessar = useCallback((modulo: string) => {
     const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "");
-    if (isAnyRaccotlo && modulo !== "conf_raccotlo") return true; // raccotlo/bpo vêem tudo (exceto páginas internas raccotlo)
-    if (modulo === "conf_raccotlo") return false;  // clientes e BPO bloqueados de páginas raccotlo
+    if (isAnyRaccotlo) return true; // raccotlo/bpo vêem tudo, inclusive conf_raccotlo
+    if (modulo === "conf_raccotlo") return false;  // clientes bloqueados de páginas raccotlo
     const p = permissoes[modulo] as unknown;
     if (p === undefined) return true;              // não configurado = permitido por padrão
     if (Array.isArray(p)) {
