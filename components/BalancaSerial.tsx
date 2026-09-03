@@ -76,6 +76,14 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
 
   useEffect(() => {
     setTemSerial(typeof window !== "undefined" && "serial" in navigator);
+    // Cleanup ao desmontar: fecha conexões abertas
+    return () => {
+      ativoRef.current = false;
+      wsRef.current?.close();
+      wsRef.current = null;
+      portRef.current?.close().catch(() => {});
+      portRef.current = null;
+    };
   }, []);
 
   // ── Modo Bridge (RJ45 via bridge.exe local) ───────────────────
@@ -129,7 +137,10 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const port = await (navigator as any).serial.requestPort();
-      await port.open({ baudRate: cfg.baud, dataBits: 8, stopBits: 1, parity: "none" });
+      // Abre apenas se a porta não estiver já aberta (evita "The port is open")
+      if (!port.readable) {
+        await port.open({ baudRate: cfg.baud, dataBits: 8, stopBits: 1, parity: "none" });
+      }
       portRef.current  = port;
       ativoRef.current = true;
       setConectada(true);
