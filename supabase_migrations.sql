@@ -11154,3 +11154,9 @@ CREATE POLICY "cartoes_credito_conta" ON cartoes_credito
 CREATE POLICY "faturas_cartao_conta" ON faturas_cartao
   USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+-- ═══════════════════════════════════════════════════════════════
+-- Seção 231: processado_por em nf_entradas e nf_servicos
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS processado_por text;
+ALTER TABLE nf_servicos ADD COLUMN IF NOT EXISTS processado_por text;

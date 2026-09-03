@@ -99,6 +99,7 @@ interface NfServico {
   origem: "manual" | "xml" | "api";
   observacao?: string;
   lancamento_id?: string;
+  processado_por?: string;
   created_at?: string;
 }
 
@@ -128,7 +129,7 @@ const CAB_VAZIO = () => ({
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfServicoPage() {
-  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, podeAcessarPlano, nomeUsuario } = useAuth();
 
   const [nfs,      setNfs]      = useState<NfServico[]>([]);
   const [pessoas,  setPessoas]  = useState<Pessoa[]>([]);
@@ -437,6 +438,7 @@ export default function NfServicoPage() {
       status,
       origem:                "manual" as const,
       observacao:            cab.observacao || undefined,
+      processado_por:        status === "processada" ? (nomeUsuario ?? undefined) : undefined,
     };
 
     setSaving(true);
@@ -865,7 +867,7 @@ export default function NfServicoPage() {
                       }}
                     />
                   </th>
-                  {["Nº / Série", "Prestador", "Tomador", "Competência", "Serviço / Discriminação", "Origem", "Valor Total", "Status", "Ações"].map((c, i) => (
+                  {["Nº / Série", "Prestador", "Tomador", "Competência", "Serviço / Discriminação", "Origem", "Valor Total", "Status", "Processado por", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "8px 12px", textAlign: i >= 5 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
@@ -937,6 +939,12 @@ export default function NfServicoPage() {
                       </td>
                       {/* Status */}
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                      {/* Processado por */}
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                        {nf.processado_por
+                          ? <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{nf.processado_por}</span>
+                          : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>—</span>}
+                      </td>
                       {/* Ações */}
                       <td style={{ padding: "10px 12px" }}>
                         <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", alignItems: "center" }}>

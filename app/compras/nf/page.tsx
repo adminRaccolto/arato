@@ -220,7 +220,7 @@ const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: strin
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfCompraPage() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, nomeUsuario } = useAuth();
   const router = useRouter();
 
   // Dados mestre
@@ -1028,6 +1028,29 @@ export default function NfCompraPage() {
       const regraHeader = aplicarRegraClassificacao(regrasClass, cnpj, xNome, "", "", "");
       setSugestaoNome(regraHeader?.nome ?? null);
 
+      // Pagamento — <pag><detPag><tPag>
+      const TPAG_MAP: Record<string, string> = {
+        "01": "Dinheiro", "02": "Cheque", "03": "Cartão de Crédito",
+        "04": "Cartão de Débito", "05": "Crédito Loja",
+        "14": "Duplicata / Boleto", "15": "Boleto Bancário",
+        "17": "PIX", "18": "Transferência Bancária",
+        "90": "Sem Pagamento", "99": "Outros",
+      };
+      const tPagEl  = doc.querySelector("pag detPag tPag") ?? doc.getElementsByTagName("tPag")[0];
+      const tPagCod = tPagEl?.textContent ?? "";
+      const formaPagXml = TPAG_MAP[tPagCod] || (tPagCod ? `Cód ${tPagCod}` : "");
+
+      // Vencimento — <cobr><dup> (1ª duplicata) ou <cobr><fat>
+      const cobr     = doc.querySelector("cobr") ?? doc.getElementsByTagName("cobr")[0];
+      const dupEl    = cobr?.querySelector("dup") ?? cobr?.getElementsByTagName("dup")[0];
+      const fatEl    = cobr?.querySelector("fat") ?? cobr?.getElementsByTagName("fat")[0];
+      const dVencRaw = dupEl?.querySelector("dVenc")?.textContent
+                    ?? dupEl?.getElementsByTagName("dVenc")[0]?.textContent
+                    ?? fatEl?.querySelector("dVenc")?.textContent
+                    ?? fatEl?.getElementsByTagName("dVenc")[0]?.textContent
+                    ?? "";
+      const vencISO = dVencRaw ? dVencRaw.substring(0, 10) : "";
+
       const pessoaAutoId = pessoaPorCnpj(cnpj);
       setCab(p => ({
         ...p,
@@ -1051,6 +1074,9 @@ export default function NfCompraPage() {
         // aplica sugestão apenas se o campo ainda não foi preenchido
         operacao_gerencial_id: regraHeader?.operacao_gerencial_id ?? p.operacao_gerencial_id,
         centro_custo_id:       regraHeader?.centro_custo_id       ?? p.centro_custo_id,
+        // Pagamento extraído do XML
+        forma_pagamento:   formaPagXml  || p.forma_pagamento,
+        data_vencimento_cp: vencISO     || p.data_vencimento_cp,
       }));
 
       // Verifica se o DOMParser retornou um erro de parse
@@ -1401,7 +1427,7 @@ export default function NfCompraPage() {
       );
 
       // 3. Marcar como processada
-      await atualizarNfEntrada(nfEdit.id, { status: "processada" });
+      await atualizarNfEntrada(nfEdit.id, { status: "processada", processado_por: nomeUsuario ?? undefined });
 
       await carregar();
       setWizard(false);
@@ -2262,7 +2288,7 @@ export default function NfCompraPage() {
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Manifest.", "Ações"].map((c, i) => (
+                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "8px 12px", textAlign: i >= 8 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
@@ -2315,6 +2341,11 @@ export default function NfCompraPage() {
                         )}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                        {nf.processado_por
+                          ? <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{nf.processado_por}</span>
+                          : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>—</span>}
+                      </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         {nf.origem === "sieg" ? (() => {
                           const isBusy  = siegBusy[nf.id];

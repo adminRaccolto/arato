@@ -1230,6 +1230,7 @@ export type NfEntrada = {
   valor_difal?: number;
   valor_desconto?: number;
   xml_storage_path?: string;
+  processado_por?: string;
   created_at?: string;
 };
 
@@ -1386,6 +1387,7 @@ export type NfServico = {
   origem: "manual" | "xml" | "api";
   observacao?: string;
   lancamento_id?: string;
+  processado_por?: string;
   created_at?: string;
 };
 
