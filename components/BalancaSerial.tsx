@@ -1,195 +1,280 @@
 "use client";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthProvider";
 
-// ── Parser Toledo PRIX ────────────────────────────────────────────────────────
-// Suporta: "P  0012345", "ST,GS,  +0012345 kg", número isolado ≥ 100
+// ── Parsers ───────────────────────────────────────────────────────────────────
 function parseToledo(linha: string): number | null {
-  const limpa = linha.replace(/[\x00-\x1F\x7F]/g, " ").trim();
-  if (!limpa) return null;
-  const m1 = limpa.match(/[+-]?\d+[\.,]?\d*\s*kg/i);
+  const l = linha.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+  if (!l) return null;
+  const m1 = l.match(/[+-]?\d+[\.,]?\d*\s*kg/i);
   if (m1) { const v = parseFloat(m1[0].replace(/kg/i,"").replace(",",".").trim()); return isFinite(v) && v > 0 ? v : null; }
-  const m2 = limpa.match(/^P\s+0*(\d+)/i);
+  const m2 = l.match(/^P\s+0*(\d+)/i);
   if (m2) { const v = parseInt(m2[1], 10); return v > 0 ? v : null; }
-  const m3 = limpa.match(/^[+-]?\s*0*(\d{3,7}[\.,]?\d*)\s*$/);
+  const m3 = l.match(/^[+-]?\s*0*(\d{3,7}[\.,]?\d*)\s*$/);
   if (m3) { const v = parseFloat(m3[1].replace(",",".")); return isFinite(v) && v >= 100 ? v : null; }
   return null;
 }
-
-// ── Parser Capital Balancas ───────────────────────────────────────────────────
-// Saída típica: "G 00012345\r\n" ou "B 00012345\r\n" (G/B = estável, M/N = instável)
-// Também suporta: "      12345\r\n" (somente números, direita-alinhado)
-// Ref: protocolo M1 Capital Balancas - RS-232 saída contínua
 function parseCapital(linha: string): number | null {
-  const limpa = linha.replace(/[\x00-\x1F\x7F]/g, " ").trim();
-  if (!limpa) return null;
-  // Formato com indicador de estabilidade: G 00012345 ou B 00012345
-  const m1 = limpa.match(/^[GBSsgbs]\s+0*(\d+[\.,]?\d*)/);
+  const l = linha.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+  if (!l) return null;
+  const m1 = l.match(/^[GBSsgbs]\s+0*(\d+[\.,]?\d*)/);
   if (m1) { const v = parseFloat(m1[1].replace(",",".")); return isFinite(v) && v > 0 ? v : null; }
-  // Formato com kg explícito
-  const m2 = limpa.match(/[+-]?\d+[\.,]?\d*\s*kg/i);
+  const m2 = l.match(/[+-]?\d+[\.,]?\d*\s*kg/i);
   if (m2) { const v = parseFloat(m2[0].replace(/kg/i,"").replace(",",".").trim()); return isFinite(v) && v > 0 ? v : null; }
-  // Formato numérico puro (peso direto)
-  const m3 = limpa.match(/^[+-]?\s*0*(\d{3,7}[\.,]?\d*)\s*$/);
+  const m3 = l.match(/^[+-]?\s*0*(\d{3,7}[\.,]?\d*)\s*$/);
   if (m3) { const v = parseFloat(m3[1].replace(",",".")); return isFinite(v) && v >= 100 ? v : null; }
   return null;
 }
 
-// ── Configuração por marca ────────────────────────────────────────────────────
+// ── Config por marca ──────────────────────────────────────────────────────────
 const MARCA_CONFIG = {
   toledo:  { label: "Toledo PRIX",      baud: 9600, defaultModo: "bridge" as const, parser: parseToledo  },
   capital: { label: "Capital Balancas", baud: 9600, defaultModo: "serial" as const, parser: parseCapital },
 } as const;
-
 export type MarcaBalanca = keyof typeof MARCA_CONFIG;
-
 type Modo = "bridge" | "serial";
 
+// ── Singleton de conexão serial ───────────────────────────────────────────────
+// Sobrevive à navegação entre páginas (remontagens do componente).
+// Cada "slot" é identificado pela lsKey (conta-isolada).
+type PesoCb = (kg: number | null) => void;
+interface SlotSerial {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  port: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  reader: ReadableStreamDefaultReader<string> | null;
+  marca: MarcaBalanca;
+  pesoAtual: number | null;
+  ativo: boolean;
+  assinantes: Set<PesoCb>;
+}
+interface SlotBridge {
+  ws: WebSocket;
+  pesoAtual: number | null;
+  ativo: boolean;
+  assinantes: Set<PesoCb>;
+}
+const slotsSerial: Record<string, SlotSerial> = {};
+const slotsBridge: Record<string, SlotBridge> = {};
+
+async function abrirSerial(key: string, marca: MarcaBalanca, pedirNovo: boolean): Promise<SlotSerial> {
+  await fecharSerial(key);
+  const cfg = MARCA_CONFIG[marca];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigator as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let port: any;
+  if (pedirNovo) {
+    port = await nav.serial.requestPort();
+  } else {
+    const ports = await nav.serial.getPorts();
+    if (!ports.length) throw Object.assign(new Error("Nenhuma porta autorizada"), { name: "NotFoundError" });
+    port = ports[0];
+  }
+  if (!port.readable) {
+    await port.open({ baudRate: cfg.baud, dataBits: 8, stopBits: 1, parity: "none" });
+  }
+  const slot: SlotSerial = { port, reader: null, marca, pesoAtual: null, ativo: true, assinantes: new Set() };
+  slotsSerial[key] = slot;
+
+  // Loop de leitura em background — não bloqueia o componente
+  (async () => {
+    const decoder = new TextDecoderStream();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (port.readable as any).pipeTo(decoder.writable).catch(() => {});
+    const reader = decoder.readable.getReader();
+    slot.reader = reader;
+    let buf = "";
+    while (slot.ativo) {
+      try {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += value;
+        const linhas = buf.split(/\r?\n/);
+        buf = linhas.pop() ?? "";
+        for (const linha of linhas) {
+          const p = cfg.parser(linha);
+          if (p !== null) { slot.pesoAtual = p; slot.assinantes.forEach(fn => fn(p)); }
+        }
+      } catch { break; }
+    }
+    try { reader.releaseLock(); } catch { /* */ }
+    slot.reader = null;
+  })();
+
+  return slot;
+}
+
+async function fecharSerial(key: string) {
+  const slot = slotsSerial[key];
+  if (!slot) return;
+  slot.ativo = false;
+  slot.assinantes.forEach(fn => fn(null));
+  try { await slot.reader?.cancel(); } catch { /* */ }
+  try { slot.reader?.releaseLock(); } catch { /* */ }
+  slot.reader = null;
+  try { await slot.port?.close(); } catch { /* */ }
+  delete slotsSerial[key];
+}
+
+function abrirBridge(key: string): SlotBridge {
+  fecharBridge(key);
+  const ws = new WebSocket("ws://localhost:8765");
+  const slot: SlotBridge = { ws, pesoAtual: null, ativo: true, assinantes: new Set() };
+  slotsBridge[key] = slot;
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data as string);
+      if (msg.tipo === "peso" && typeof msg.kg === "number") {
+        slot.pesoAtual = msg.kg;
+        slot.assinantes.forEach(fn => fn(msg.kg));
+      }
+    } catch { /* */ }
+  };
+  ws.onclose = () => {
+    if (slot.ativo) { slot.assinantes.forEach(fn => fn(null)); delete slotsBridge[key]; }
+  };
+  ws.onerror = () => {
+    slot.assinantes.forEach(fn => fn(null));
+  };
+  return slot;
+}
+
+function fecharBridge(key: string) {
+  const slot = slotsBridge[key];
+  if (!slot) return;
+  slot.ativo = false;
+  slot.ws.close();
+  delete slotsBridge[key];
+}
+
+// ── Componente ────────────────────────────────────────────────────────────────
 interface Props {
   onCapturarBruto: (kg: number) => void;
   onCapturarTara:  (kg: number) => void;
-  marca?: MarcaBalanca;
+  marca?: MarcaBalanca; // prop explícita: cards de teste na pág de Integrações
 }
 
-// marcaProp só vem via prop quando é um card de teste na página de Integrações.
-// Nos romaneios nenhuma prop é passada — o widget lê do localStorage por conta.
 export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: marcaExplicita }: Props) {
   const { contaId } = useAuth();
-  // Chave isolada por conta — evita que config de um cliente afete outro
   const lsKey = `balanca_marca_${contaId ?? "default"}`;
 
-  const [marca, setMarca] = useState<MarcaBalanca>(marcaExplicita ?? "toledo");
-  const [modo,  setModo]  = useState<Modo>("bridge");
-
-  // Lê configuração correta do localStorage quando contaId estiver disponível
-  useEffect(() => {
-    if (marcaExplicita) { setMarca(marcaExplicita); setModo(MARCA_CONFIG[marcaExplicita].defaultModo); return; }
-    const salva = localStorage.getItem(lsKey) as MarcaBalanca | null;
-    const m = (salva && MARCA_CONFIG[salva]) ? salva : "toledo";
-    setMarca(m);
-    setModo(MARCA_CONFIG[m].defaultModo);
-  }, [lsKey, marcaExplicita]);
+  const [marca,     setMarca]     = useState<MarcaBalanca>(marcaExplicita ?? "toledo");
+  const [modo,      setModo]      = useState<Modo>("bridge");
   const [conectada, setConectada] = useState(false);
   const [pesoAtual, setPesoAtual] = useState<number | null>(null);
   const [status,    setStatus]    = useState<string>("");
   const [erro,      setErro]      = useState<string | null>(null);
   const [temSerial, setTemSerial] = useState(false);
 
-  const cfg = MARCA_CONFIG[marca];
+  // Callback de peso — wrapping em useCallback para estabilidade na Set de assinantes
+  const onPeso = useCallback((kg: number | null) => {
+    setPesoAtual(kg);
+    if (kg === null) { setConectada(false); setStatus(""); }
+  }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const portRef  = useRef<any>(null);
-  const wsRef    = useRef<WebSocket | null>(null);
-  const ativoRef = useRef(false);
-
+  // Mount: lê config, subscreve slot existente ou tenta auto-connect
   useEffect(() => {
     setTemSerial(typeof window !== "undefined" && "serial" in navigator);
-    // Cleanup ao desmontar: fecha conexões abertas
-    return () => {
-      ativoRef.current = false;
-      wsRef.current?.close();
-      wsRef.current = null;
-      portRef.current?.close().catch(() => {});
-      portRef.current = null;
-    };
-  }, []);
 
-  // ── Modo Bridge (RJ45 via bridge.exe local) ───────────────────
-  const conectarBridge = useCallback(() => {
-    setErro(null);
-    setStatus("Conectando ao bridge…");
-    const ws = new WebSocket("ws://localhost:8765");
-    wsRef.current  = ws;
-    ativoRef.current = true;
-
-    ws.onopen = () => {
-      setConectada(true);
-      setStatus("Aguardando leitura…");
-    };
-    ws.onmessage = e => {
-      try {
-        const msg = JSON.parse(e.data as string);
-        if (msg.tipo === "peso" && typeof msg.kg === "number") {
-          setPesoAtual(msg.kg);
-          setStatus("");
-        }
-        if (msg.tipo === "status") setStatus(msg.msg);
-      } catch { /* ignora */ }
-    };
-    ws.onerror = () => {
-      setErro("Não foi possível conectar ao bridge. Verifique se o bridge.exe está rodando no PC da balança.");
-      setConectada(false);
-      setStatus("");
-    };
-    ws.onclose = () => {
-      if (ativoRef.current) {
-        setErro("Conexão com o bridge encerrada.");
-        setConectada(false);
-      }
-    };
-  }, []);
-
-  const desconectarBridge = useCallback(() => {
-    ativoRef.current = false;
-    wsRef.current?.close();
-    wsRef.current = null;
-    setConectada(false);
-    setPesoAtual(null);
-    setStatus("");
-    setErro(null);
-  }, []);
-
-  // ── Modo Serial (USB direto) ──────────────────────────────────
-  const conectarSerial = useCallback(async () => {
-    setErro(null);
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const port = await (navigator as any).serial.requestPort();
-      // Abre apenas se a porta não estiver já aberta (evita "The port is open")
-      if (!port.readable) {
-        await port.open({ baudRate: cfg.baud, dataBits: 8, stopBits: 1, parity: "none" });
-      }
-      portRef.current  = port;
-      ativoRef.current = true;
-      setConectada(true);
-      setStatus("Aguardando leitura…");
-
-      const decoder = new TextDecoderStream();
-      (port.readable as ReadableStream).pipeTo(decoder.writable).catch(() => {});
-      const reader = decoder.readable.getReader();
-      let buf = "";
-      while (ativoRef.current) {
-        try {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += value;
-          const linhas = buf.split(/\r?\n/);
-          buf = linhas.pop() ?? "";
-          for (const l of linhas) { const p = cfg.parser(l); if (p !== null) { setPesoAtual(p); setStatus(""); } }
-        } catch { break; }
-      }
-      reader.releaseLock();
-    } catch (e: unknown) {
-      const err = e as { name?: string; message?: string };
-      if (err?.name !== "NotFoundError") setErro("Erro: " + (err?.message ?? String(e)));
+    // Determina marca a usar
+    let m: MarcaBalanca;
+    if (marcaExplicita) {
+      m = marcaExplicita;
+    } else {
+      const salva = localStorage.getItem(lsKey) as MarcaBalanca | null;
+      m = (salva && MARCA_CONFIG[salva]) ? salva : "toledo";
     }
-  }, [cfg]);
+    setMarca(m);
+    setModo(MARCA_CONFIG[m].defaultModo);
 
-  const desconectarSerial = useCallback(async () => {
-    ativoRef.current = false;
-    try { await portRef.current?.close(); } catch { /* ignora */ }
-    portRef.current = null;
+    const modoEfetivo = MARCA_CONFIG[m].defaultModo;
+
+    // ── Slot serial já ativo? Subscreve sem reabrir porta ────────────────────
+    if (modoEfetivo === "serial" && slotsSerial[lsKey]) {
+      const s = slotsSerial[lsKey];
+      s.assinantes.add(onPeso);
+      setConectada(true);
+      setPesoAtual(s.pesoAtual);
+      setStatus("Aguardando leitura…");
+      return () => { slotsSerial[lsKey]?.assinantes.delete(onPeso); };
+    }
+    if (modoEfetivo === "bridge" && slotsBridge[lsKey]) {
+      const s = slotsBridge[lsKey];
+      s.assinantes.add(onPeso);
+      setConectada(true);
+      setPesoAtual(s.pesoAtual);
+      setStatus("Aguardando leitura…");
+      return () => { slotsBridge[lsKey]?.assinantes.delete(onPeso); };
+    }
+
+    // ── Auto-connect serial (porta já autorizada, sem diálogo) ───────────────
+    if (modoEfetivo === "serial" && !marcaExplicita && typeof window !== "undefined" && "serial" in navigator) {
+      abrirSerial(lsKey, m, false)
+        .then(s => {
+          s.assinantes.add(onPeso);
+          setConectada(true);
+          setStatus("Aguardando leitura…");
+          setErro(null);
+        })
+        .catch(() => { /* sem porta autorizada — aguarda clique */ });
+    }
+
+    return () => {
+      slotsSerial[lsKey]?.assinantes.delete(onPeso);
+      slotsBridge[lsKey]?.assinantes.delete(onPeso);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lsKey]);
+
+  // ── Ações manuais ────────────────────────────────────────────────────────────
+  const conectar = useCallback(async () => {
+    setErro(null);
+    setStatus("Conectando…");
+    if (modo === "bridge") {
+      try {
+        const s = abrirBridge(lsKey);
+        s.assinantes.add(onPeso);
+        await new Promise<void>((res, rej) => {
+          const t = setTimeout(() => rej(new Error("Timeout")), 4000);
+          s.ws.onopen = () => { clearTimeout(t); setConectada(true); setStatus("Aguardando leitura…"); res(); };
+          s.ws.onerror = () => { clearTimeout(t); rej(new Error("Falha ao conectar ao bridge")); };
+        });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setErro(msg.includes("Timeout") || msg.includes("Falha")
+          ? "Bridge não encontrado. Verifique se o bridge.exe está rodando no PC da balança."
+          : msg);
+        setStatus("");
+        fecharBridge(lsKey);
+      }
+    } else {
+      try {
+        const s = await abrirSerial(lsKey, marca, true);
+        s.assinantes.add(onPeso);
+        setConectada(true);
+        setStatus("Aguardando leitura…");
+      } catch (e: unknown) {
+        const err = e as { name?: string; message?: string };
+        if (err?.name !== "NotFoundError") setErro("Erro: " + (err?.message ?? String(e)));
+        setStatus("");
+      }
+    }
+  }, [modo, lsKey, marca, onPeso]);
+
+  const desconectar = useCallback(async () => {
+    if (modo === "bridge") fecharBridge(lsKey);
+    else await fecharSerial(lsKey);
     setConectada(false);
     setPesoAtual(null);
     setStatus("");
-  }, []);
+    setErro(null);
+  }, [modo, lsKey]);
 
-  const conectar    = modo === "bridge" ? conectarBridge    : conectarSerial;
-  const desconectar = modo === "bridge" ? desconectarBridge : desconectarSerial;
+  const cfg = MARCA_CONFIG[marca];
 
   return (
     <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
-
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -204,14 +289,15 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
           </span>
         </div>
 
-        {/* Seletor de modo */}
+        {/* Seletor de modo — só quando desconectada */}
         {!conectada && (
           <div style={{ display: "flex", gap: 4, background: "var(--bg-tag)", borderRadius: 8, padding: 3 }}>
             {([["bridge", "RJ45 (Bridge)"], ["serial", "USB Serial"]] as [Modo, string][]).map(([m, label]) => (
               <button key={m} type="button" onClick={() => { setModo(m); setErro(null); }}
                 disabled={m === "serial" && !temSerial}
                 style={{
-                  fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "none", cursor: m === "serial" && !temSerial ? "not-allowed" : "pointer",
+                  fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "none",
+                  cursor: m === "serial" && !temSerial ? "not-allowed" : "pointer",
                   background: modo === m ? "#fff" : "transparent",
                   color: modo === m ? "#111111" : "var(--text-3)",
                   boxShadow: modo === m ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
@@ -223,7 +309,6 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
           </div>
         )}
 
-        {/* Conectar / Desconectar */}
         {!conectada ? (
           <button type="button" onClick={conectar}
             style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 7, background: "#111111", color: "#fff", border: "none", cursor: "pointer" }}>
@@ -249,7 +334,6 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
           </div>
           <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>kg</div>
         </div>
-
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <button type="button" disabled={!conectada || pesoAtual == null}
             onClick={() => pesoAtual != null && onCapturarBruto(pesoAtual)}
