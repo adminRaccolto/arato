@@ -183,6 +183,8 @@ interface ItemRascunho {
   // Resolução via princípio ativo
   pa_nome?: string;
   pa_auto?: boolean;
+  // Sementes — múltiplos lotes
+  lotes_semente: { numero: string; quantidade_kg?: number }[];
   // Apropriação
   tipo_apropiacao: NfEntradaItem["tipo_apropiacao"];
   deposito_id: string;
@@ -200,6 +202,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   conversao_key: "",
   quantidade: 0, valor_unitario: 0, fator_conversao: 1,
   insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
+  lotes_semente: [],
   tipo_apropiacao: "estoque",
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
 });
@@ -795,6 +798,7 @@ export default function NfCompraPage() {
             tipo_apropiacao: i.tipo_apropiacao,
             deposito_id: i.deposito_id ?? "", bomba_id: i.bomba_id ?? "",
             maquina_id: i.maquina_id ?? "", centro_custo_id: i.centro_custo_id ?? "",
+            lotes_semente: Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome: i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto: !!i.principio_ativo_id,
           };
@@ -968,6 +972,7 @@ export default function NfCompraPage() {
             bomba_id:           i.bomba_id            ?? "",
             maquina_id:         i.maquina_id          ?? "",
             centro_custo_id:    i.centro_custo_id     ?? "",
+            lotes_semente:      Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto:  !!i.principio_ativo_id,
           };
@@ -1156,6 +1161,7 @@ export default function NfCompraPage() {
             valor_unitario: vUnCom,
             fator_conversao: fatorDeriv,
             insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
+            lotes_semente: [],
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
             deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
@@ -1388,6 +1394,8 @@ export default function NfCompraPage() {
           valor_total:         it.valor_total,
           tipo_apropiacao:     tipoAprp,
           centro_custo_id:     it.centro_custo_id || undefined,
+          lotes_semente:       it.lotes_semente?.length ? it.lotes_semente : undefined,
+          lote_semente:        it.lotes_semente?.length === 1 ? it.lotes_semente[0].numero : undefined,
           alerta_preco:        false,
         };
         await criarNfEntradaItem(itemPayload);
@@ -3795,6 +3803,61 @@ export default function NfCompraPage() {
                         {it.conversao_key === "bag→kg" && it.quantidade <= 0 && (
                           <div style={{ padding: "5px 12px", background: "#FEF3CD", borderTop: "0.5px solid #F6C87A", fontSize: 11, color: "#7A5A12" }}>
                             ⚠️ Informe o peso total em kg no campo de conversão.
+                          </div>
+                        )}
+                        {/* Lotes de semente — aparece somente quando insumo é semente */}
+                        {tipo === "insumos" && insumos.find(i => i.id === it.insumo_id)?.categoria === "semente" && (
+                          <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "8px 12px", background: "#F6F9F6" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "#1A5C38" }}>🌱 Lotes de Semente</span>
+                              <button
+                                onClick={() => setItem(it.key, { lotes_semente: [...it.lotes_semente, { numero: "", quantidade_kg: undefined }] })}
+                                style={{ fontSize: 11, padding: "2px 10px", borderRadius: 5, border: "0.5px solid #16A34A", background: "#E8F5E9", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}
+                              >+ Lote</button>
+                              {it.lotes_semente.length === 0 && (
+                                <span style={{ fontSize: 11, color: "var(--text-3)", fontStyle: "italic" }}>Adicione ao menos um lote para rastreabilidade</span>
+                              )}
+                            </div>
+                            {it.lotes_semente.map((lote, li) => (
+                              <div key={li} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
+                                <input
+                                  placeholder="Nº do lote (ex: LS2025-001)"
+                                  value={lote.numero}
+                                  onChange={e => {
+                                    const novos = it.lotes_semente.map((l, i) => i === li ? { ...l, numero: e.target.value } : l);
+                                    setItem(it.key, { lotes_semente: novos });
+                                  }}
+                                  style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 2 }}
+                                />
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  placeholder="Qtd kg (opcional)"
+                                  value={lote.quantidade_kg ?? ""}
+                                  onChange={e => {
+                                    const v = parseFloat(e.target.value) || undefined;
+                                    const novos = it.lotes_semente.map((l, i) => i === li ? { ...l, quantidade_kg: v } : l);
+                                    setItem(it.key, { lotes_semente: novos });
+                                  }}
+                                  style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}
+                                />
+                                <button
+                                  onClick={() => setItem(it.key, { lotes_semente: it.lotes_semente.filter((_, i) => i !== li) })}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15 }}
+                                >×</button>
+                              </div>
+                            ))}
+                            {it.lotes_semente.length > 1 && (() => {
+                              const totalLotes = it.lotes_semente.reduce((s, l) => s + (l.quantidade_kg ?? 0), 0);
+                              const qtdTotal = it.quantidade;
+                              const diff = Math.abs(totalLotes - qtdTotal);
+                              return totalLotes > 0 && diff > 0.01 ? (
+                                <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>
+                                  ⚠️ Total dos lotes: {totalLotes.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg — Qtd do item: {qtdTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg (divergência de {diff.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg)
+                                </div>
+                              ) : null;
+                            })()}
                           </div>
                         )}
                       </div>

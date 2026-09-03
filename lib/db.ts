@@ -2136,6 +2136,9 @@ export async function processarNfEntrada(
       if ((movExiste ?? 0) > 0) continue;
 
       // Insere movimento ANTES de atualizar custo_medio (inclui esta entrada no cálculo dos 6 meses)
+      const loteMovStr = Array.isArray(item.lotes_semente) && item.lotes_semente.length > 0
+        ? (item.lotes_semente.length === 1 ? item.lotes_semente[0].numero : item.lotes_semente.map(l => l.numero).filter(Boolean).join(", "))
+        : (item.lote_semente ?? null);
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id:          item.insumo_id,
         fazenda_id,
@@ -2147,6 +2150,7 @@ export async function processarNfEntrada(
         auto:               true,
         deposito_id:        item.deposito_id ?? null,
         nf_entrada_item_id: item.id,
+        lote_semente:       loteMovStr,
       });
       await creditarInsumo(item.insumo_id, item.quantidade, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
     }

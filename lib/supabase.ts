@@ -1314,7 +1314,8 @@ export type NfEntradaItem = {
   valor_unitario: number;
   valor_total: number;
   variedade?: string | null;      // cultivar / variedade da semente
-  lote_semente?: string | null;   // número do lote da semente
+  lote_semente?: string | null;   // número do lote da semente (legado — único)
+  lotes_semente?: { numero: string; quantidade_kg?: number }[] | null; // múltiplos lotes por item
   tipo_apropiacao: "estoque" | "maquinario" | "direto" | "terceiro" | "vef" | "remessa";
   centro_custo_id?: string;
   operacao_gerencial_id?: string;   // preenchido para itens direto — base da auditoria NCM×OG

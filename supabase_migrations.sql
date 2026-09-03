@@ -11160,3 +11160,15 @@ CREATE POLICY "faturas_cartao_conta" ON faturas_cartao
 -- ═══════════════════════════════════════════════════════════════
 ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS processado_por text;
 ALTER TABLE nf_servicos ADD COLUMN IF NOT EXISTS processado_por text;
+
+-- ═══════════════════════════════════════════════════════════════
+-- Seção 232: Múltiplos lotes de semente por item de NF
+-- ═══════════════════════════════════════════════════════════════
+-- Adiciona suporte a múltiplos lotes de semente por item de NF de entrada.
+-- O campo lote_semente original (string única) é mantido para compatibilidade.
+-- lotes_semente é um array JSONB: [{numero: string, quantidade_kg?: number}]
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS lotes_semente JSONB DEFAULT NULL;
+
+COMMENT ON COLUMN nf_entrada_itens.lotes_semente IS
+  'Array de lotes de semente: [{numero: text, quantidade_kg: numeric}]. Sobrepõe lote_semente quando preenchido.';

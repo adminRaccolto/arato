@@ -142,7 +142,8 @@ function ContasReceberInner() {
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
   const [allOgs,       setAllOgs]       = useState<OperacaoGerencial[]>([]);
   const [empresas,     setEmpresas]     = useState<Empresa[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [loading,      setLoading]      = useState(true);
+  const [atualizando,  setAtualizando]  = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>(() => {
@@ -339,8 +340,9 @@ function ContasReceberInner() {
     listarTalhoes(fid).then(setTalhoes).catch(() => {});
   }, [fid]);
 
-  async function carregar() {
-    setLoading(true);
+  async function carregar(isPrimeiro?: boolean) {
+    const semDados = isPrimeiro ?? (lancamentos.length === 0);
+    if (semDados) setLoading(true); else setAtualizando(true);
     setErro(null);
     try {
       const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "receber", fazendaId);
@@ -352,6 +354,7 @@ function ContasReceberInner() {
       setErro(msg || "Erro ao carregar");
     } finally {
       setLoading(false);
+      setAtualizando(false);
     }
   }
 
@@ -359,7 +362,7 @@ function ContasReceberInner() {
   async function confirmarPrevisao(l: Lancamento) {
     if (!confirm(`Confirmar "${l.descricao}" como Conta a Receber real?`)) return;
     await supabase.from("lancamentos").update({ natureza: "real" }).eq("id", l.id);
-    await carregar();
+    setLancamentos(prev => prev.map(x => x.id === l.id ? { ...x, natureza: "real" } : x));
   }
 
   // ── Métricas ───────────────────────────────────────────────
@@ -769,7 +772,10 @@ function ContasReceberInner() {
         <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid var(--border)", padding: "16px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Contas a Receber</h1>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>
+                Contas a Receber
+                {atualizando && <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)", marginLeft: 10 }}>Atualizando…</span>}
+              </h1>
               <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-3)" }}>Vendas de grãos, serviços, arrendamentos e outros recebimentos</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -816,7 +822,7 @@ function ContasReceberInner() {
           {erro && (
             <div style={{ background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#EF4444", display: "flex", gap: 8 }}>
               <span>✕</span><span>{erro}</span>
-              <button onClick={carregar} style={{ marginLeft: "auto", fontSize: 11, color: "#EF4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
+              <button onClick={() => carregar()} style={{ marginLeft: "auto", fontSize: 11, color: "#EF4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
             </div>
           )}
 
