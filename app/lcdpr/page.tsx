@@ -4,7 +4,7 @@ import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import { useAuth } from "../../components/AuthProvider";
-import { listarLancamentos, listarOperacoesGerenciaisAtivasDaConta, atualizarOperacaoGerencial } from "../../lib/db";
+import { listarLancamentos, listarOperacoesGerenciaisAtivasDaConta, atualizarOperacaoGerencial, listarProdutoresDaConta } from "../../lib/db";
 import type { Lancamento, OperacaoGerencial } from "../../lib/supabase";
 import { createBrowserClient } from "@supabase/ssr";
 import PlanoGate from "../../components/PlanoGate";
@@ -69,10 +69,16 @@ interface EntradaLCDPR {
   fazenda_id?: string;
 }
 
+interface ProdutorLcdpr {
+  id: string;
+  nome: string;
+  cpf_cnpj: string;
+}
+
 interface FazLcdpr {
   id: string;
   nome: string;
-  cpf_cnpj_fiscal: string;
+  produtor_id: string | null;
   nirf: string;
   municipio: string;
   uf: string;
@@ -93,7 +99,7 @@ interface ImportRow {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function LCDPR() {
-  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
 
   const [aba, setAba]           = useState<AbaLCDPR>("livro");
   const [anoSel, setAnoSel]     = useState(new Date().getFullYear());
@@ -118,7 +124,8 @@ export default function LCDPR() {
 
   // Exportação — filtros
   const [fazDados, setFazDados] = useState<FazLcdpr[]>([]);
-  const [cpfFiltro, setCpfFiltro] = useState("todos");
+  const [produtoresDados, setProdutoresDados] = useState<ProdutorLcdpr[]>([]);
+  const [produtorFiltro, setProdutorFiltro] = useState("todos"); // "todos" | produtor.id
   const [modoExport, setModoExport] = useState<"anual" | "mensal">("anual");
   const [mesExport, setMesExport] = useState(new Date().getMonth() + 1);
 
@@ -140,10 +147,13 @@ export default function LCDPR() {
       sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids),
       // OGs para resolução de código LCDPR
       listarOperacoesGerenciaisAtivasDaConta(undefined, fazendaId),
-      // Dados das fazendas para filtro por CPF/produtor
-      sb.from("fazendas").select("id, nome, cpf_cnpj_fiscal, nirf, municipio, uf, area_total_ha").in("id", ids),
-    ]).then(([lans, { data: apoioBaixas }, ogsData, { data: fazRows }]) => {
+      // Dados das fazendas (com produtor_id — FK para produtores)
+      sb.from("fazendas").select("id, nome, produtor_id, nirf, municipio, uf, area_total_ha").in("id", ids),
+      // Produtores da conta — fonte primária do CPF para o LCDPR
+      contaId ? listarProdutoresDaConta(contaId) : Promise.resolve([]),
+    ]).then(([lans, { data: apoioBaixas }, ogsData, { data: fazRows }, prodRows]) => {
       setFazDados((fazRows ?? []) as FazLcdpr[]);
+      setProdutoresDados((prodRows ?? []).map(p => ({ id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj ?? "" })).filter(p => p.cpf_cnpj));
       setOgs(ogsData);
       const map = new Map(ogsData.map(og => [og.id, og]));
       setOgMap(map);
@@ -181,7 +191,7 @@ export default function LCDPR() {
       items.sort((a, b) => a.data.localeCompare(b.data));
       setEntradas(items);
     }).finally(() => setLoading(false));
-  }, [fazendaId, fazendaIds?.join(","), anoSel]);
+  }, [fazendaId, fazendaIds?.join(","), contaId, anoSel]);
 
   // ── Manual ────────────────────────────────────────────────────────────────
   const adicionarManual = () => {
@@ -314,22 +324,16 @@ export default function LCDPR() {
     return { ...c, total, tipo: c.cod.startsWith("1") ? "receita" : "despesa" };
   }).filter(c => c.total > 0);
 
-  // ── Produtores únicos por CPF para o filtro de exportação ────────────────
-  const produtoresLcdpr = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const f of fazDados) {
-      if (f.cpf_cnpj_fiscal && !map.has(f.cpf_cnpj_fiscal)) {
-        map.set(f.cpf_cnpj_fiscal, f.nome);
-      }
-    }
-    return Array.from(map.entries()).map(([cpf, nome]) => ({ cpf, nome }));
-  }, [fazDados]);
+  // ── Produtores disponíveis para o filtro de exportação ───────────────────
+  // Fonte: tabela produtores (não fazendas) — LCDPR é por CPF do produtor
+  const produtoresLcdpr = produtoresDados;
 
   // ── Entradas filtradas para exportação ────────────────────────────────────
   const entradasExport = useMemo(() => {
     let e = entradas;
-    if (cpfFiltro !== "todos") {
-      const fazIds = new Set(fazDados.filter(f => f.cpf_cnpj_fiscal === cpfFiltro).map(f => f.id));
+    if (produtorFiltro !== "todos") {
+      // Filtra pelas fazendas vinculadas ao produtor selecionado
+      const fazIds = new Set(fazDados.filter(f => f.produtor_id === produtorFiltro).map(f => f.id));
       e = e.filter(x => fazIds.has(x.fazenda_id ?? ""));
     }
     if (modoExport === "mensal") {
@@ -337,7 +341,7 @@ export default function LCDPR() {
       e = e.filter(x => x.data.slice(0, 7) === `${anoSel}-${mm}`);
     }
     return e;
-  }, [entradas, cpfFiltro, fazDados, modoExport, mesExport, anoSel]);
+  }, [entradas, produtorFiltro, fazDados, modoExport, mesExport, anoSel]);
 
   // ── Gerador do layout oficial LCDPR (.txt pipe-delimited) ─────────────────
   const gerarLCDPROficial = () => {
@@ -354,18 +358,18 @@ export default function LCDPR() {
       ? `3112${anoSel}`
       : `${String(lastDay).padStart(2, "0")}${mm}${anoSel}`;
 
-    // Produtor selecionado
-    const fazSel = cpfFiltro !== "todos"
-      ? fazDados.find(f => f.cpf_cnpj_fiscal === cpfFiltro)
-      : fazDados.find(f => f.cpf_cnpj_fiscal);
-    const cpfProd = (fazSel?.cpf_cnpj_fiscal ?? "").replace(/\D/g, "");
-    const nomeProd = (fazSel?.nome ?? "PRODUTOR RURAL").toUpperCase();
-    const municipio = (fazSel?.municipio ?? "").toUpperCase();
-    const uf = (fazSel?.uf ?? "").toUpperCase();
+    // Produtor selecionado — CPF vem da tabela produtores, não da fazenda
+    const prodSel = produtorFiltro !== "todos"
+      ? produtoresDados.find(p => p.id === produtorFiltro)
+      : produtoresDados[0];
+    const cpfProd = (prodSel?.cpf_cnpj ?? "").replace(/\D/g, "");
+    const nomeProd = (prodSel?.nome ?? "PRODUTOR RURAL").toUpperCase();
 
-    const fazsFiltradas = cpfFiltro !== "todos"
-      ? fazDados.filter(f => f.cpf_cnpj_fiscal === cpfFiltro)
+    const fazsFiltradas = produtorFiltro !== "todos"
+      ? fazDados.filter(f => f.produtor_id === produtorFiltro)
       : fazDados;
+    const municipio = (fazsFiltradas[0]?.municipio ?? "").toUpperCase();
+    const uf = (fazsFiltradas[0]?.uf ?? "").toUpperCase();
 
     // Bloco 0
     const b0: string[] = [
@@ -927,22 +931,22 @@ export default function LCDPR() {
 
                     {/* Filtro Produtor / CPF */}
                     <div style={{ marginBottom: 14 }}>
-                      <label style={lblS}>Produtor / CPF</label>
+                      <label style={lblS}>Produtor Rural (CPF)</label>
                       <select
-                        value={cpfFiltro}
-                        onChange={e => setCpfFiltro(e.target.value)}
+                        value={produtorFiltro}
+                        onChange={e => setProdutorFiltro(e.target.value)}
                         style={inpS}
                       >
-                        <option value="todos">Consolidado — todas as fazendas</option>
+                        <option value="todos">Consolidado — todos os produtores</option>
                         {produtoresLcdpr.map(p => (
-                          <option key={p.cpf} value={p.cpf}>
-                            {p.cpf} — {p.nome}
+                          <option key={p.id} value={p.id}>
+                            {p.cpf_cnpj} — {p.nome}
                           </option>
                         ))}
                       </select>
                       {produtoresLcdpr.length === 0 && (
                         <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>
-                          Configure o CPF/CNPJ fiscal em Cadastros → Fazendas para filtrar por produtor.
+                          Cadastre produtores em Cadastros → Produtores para filtrar por CPF.
                         </div>
                       )}
                     </div>
