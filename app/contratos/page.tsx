@@ -1901,7 +1901,7 @@ export default function Contratos() {
                                       )}
                                       <div style={{ marginTop:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                                         <span style={{ fontSize:11, color:"var(--text-2)" }}>{c.romaneios.length} romaneio(s) · {(c.entregue_sc??0).toLocaleString("pt-BR")} sc expedidas · saldo {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc</span>
-                                        <button onClick={e => { e.stopPropagation(); setFRom(p=>({...p,contratoId:c.id})); setModalRomaneio(true); }}
+                                        <button onClick={e => { e.stopPropagation(); setFRom({ ...ROM_VAZIO(), contratoId: c.id }); setModalRomaneio(true); }}
                                           style={{ fontSize:11, padding:"5px 12px", border:"0.5px solid #111111", borderRadius:6, background:"#E8E8E8", color:"#0D0D0D", cursor:"pointer", fontWeight:600 }}>
                                           + Lançar Romaneio
                                         </button>
@@ -3219,7 +3219,14 @@ export default function Contratos() {
 
             <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:8 }}>
               <button style={btnR} onClick={() => { setModalRomaneio(false); setEditRomaneio(null); setFRom(ROM_VAZIO()); }}>Cancelar</button>
-              <button onClick={gerarRomaneio} disabled={salvando||!contratoSel||!fRom.placa||plCalc<=0}
+              <button onClick={gerarRomaneio}
+                disabled={salvando||!contratoSel||!fRom.placa||plCalc<=0}
+                title={
+                  !contratoSel ? "Selecione o contrato" :
+                  !fRom.placa  ? "Informe a placa do caminhão" :
+                  plCalc<=0    ? (fRom.pesoEstimado ? "Informe o peso estimado (kg)" : "Informe o Peso Bruto e a Tara — o Peso Líquido deve ser maior que zero") :
+                  undefined
+                }
                 style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1, background: fRom.pesoEstimado ? "#C9921B" : undefined }}>
                 {salvando ? "Salvando…" : editRomaneio ? "Salvar Alterações" : "Confirmar Pesagem"}
               </button>
