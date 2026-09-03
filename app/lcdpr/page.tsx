@@ -314,7 +314,9 @@ export default function LCDPR() {
     setFManual({ data: hoje(), historico: "", tipoDoc: "07", cpfCnpj: "", codigo: "101", valor: 0, tipo: "receita" });
   };
 
-  const removerLancamento = (id: string) => setEntradas(prev => prev.filter(e => e.id !== id));
+  const removerLancamento  = (id: string) => setEntradas(prev => prev.filter(e => e.id !== id));
+  const atualizarTipoDoc   = (id: string, tipoDoc: string) =>
+    setEntradas(prev => prev.map(e => e.id === id ? { ...e, tipoDoc } : e));
 
   const salvarCodigoOG = async (ogId: string, codigo: string | null) => {
     setSavingOgIds(prev => new Set(prev).add(ogId));
@@ -638,7 +640,21 @@ export default function LCDPR() {
                                   <div style={{ fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.historico}</div>
                                   <div style={{ fontSize: 10, color: "#999" }}>{MAP_CODIGO.get(e.codigo)}</div>
                                 </td>
-                                <td style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-2)" }}>{TIPO_DOC_LABEL[e.tipoDoc] ?? e.tipoDoc}</td>
+                                <td style={{ padding: "4px 8px" }}>
+                                  <select
+                                    value={e.tipoDoc}
+                                    onChange={ev => atualizarTipoDoc(e.id, ev.target.value)}
+                                    style={{ fontSize: 11, padding: "3px 5px", border: "0.5px solid var(--border-table)", borderRadius: 5, color: "var(--text-1)", background: "var(--bg-card)", maxWidth: 150 }}
+                                  >
+                                    <option value="01">01 — NF / NF-e</option>
+                                    <option value="02">02 — Recibo</option>
+                                    <option value="03">03 — Folha de Pagamento</option>
+                                    <option value="04">04 — DARF / GPS</option>
+                                    <option value="05">05 — Extrato</option>
+                                    <option value="06">06 — Contrato</option>
+                                    <option value="07">07 — Outros</option>
+                                  </select>
+                                </td>
                                 <td style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{e.cpfCnpj || "—"}</td>
                                 <td style={{ padding: "8px 12px", textAlign: "right", color: e.receita > 0 ? "#1A5C38" : "#ccc", fontWeight: e.receita > 0 ? 600 : 400, fontVariantNumeric: "tabular-nums" }}>
                                   {e.receita > 0 ? fmtBRL(e.receita) : "—"}
@@ -649,9 +665,11 @@ export default function LCDPR() {
                                 <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, fontVariantNumeric: "tabular-nums", color: saldo >= 0 ? "var(--text-1)" : "#E24B4A" }}>
                                   {fmtBRL(saldo)}
                                 </td>
-                                <td style={{ padding: "8px 6px" }}>
-                                  {e.origem !== "auto" && (
+                                <td style={{ padding: "8px 6px", textAlign: "center" }}>
+                                  {e.origem !== "auto" ? (
                                     <button onClick={() => removerLancamento(e.id)} style={{ fontSize: 11, padding: "2px 7px", borderRadius: 6, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>✕</button>
+                                  ) : (
+                                    <span title="Originado de baixa financeira — não pode ser excluído" style={{ fontSize: 14, cursor: "default", opacity: 0.35 }}>🔒</span>
                                   )}
                                 </td>
                               </tr>
