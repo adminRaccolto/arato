@@ -52,6 +52,7 @@ const NAV: NavItem[] = [
       { id: "prod-aerea",         label: "Aplicação Aérea",                 path: "/lavoura/aerea"                            },
       { id: "prod-trat-semente",  label: "Tratamento de Sementes",          path: "/lavoura/tratamento-sementes"              },
       { type: "divider", label: "Monitoramento" },
+      { id: "prod-mapa",          label: "Mapa de Talhões",                  path: "/mapa"                                     },
       { id: "prod-recomendacoes", label: "Recomendações Agronômicas",       path: "/lavoura/recomendacoes"                    },
       { id: "prod-pragas",        label: "Pragas & Doenças",                path: "/lavoura/pragas"                           },
       { id: "prod-pluviometria",  label: "Pluviometria",                    path: "/lavoura/pluviometria"                     },
@@ -117,11 +118,15 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro", panel: true, minStep: 6,
     children: [
-      { type: "divider", label: "Movimentações" },
+      { type: "divider", label: "Atividade Rural (Produtor)" },
       { id: "fin-pagar",           label: "Contas a Pagar",               path: "/financeiro/pagar",                moduleId: "fin_pagar"      },
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
       { id: "fin-adiantamentos",   label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos",        moduleId: "fin_pagar"      },
       { id: "fin-folha",           label: "Folha de Pagamento",           path: "/financeiro/folha"                                            },
+      { type: "divider", label: "Empresa (CNPJ)" },
+      { id: "fin-emp-pagar",       label: "Contas a Pagar — Empresa",    path: "/empresas/pagar",                  moduleId: "fin_pagar"      },
+      { id: "fin-emp-receber",     label: "Contas a Receber — Empresa",  path: "/empresas/receber",                moduleId: "fin_receber"    },
+      { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha"                                             },
       { id: "fin-cartoes",         label: "Cartões de Crédito",           path: "/financeiro/cartoes",              moduleId: "fin_pagar"      },
       { type: "divider", label: "Tesouraria" },
       { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria",     path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },
@@ -428,10 +433,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   };
 
   const grupoAtivo = (item: Extract<NavItem, { type: "group" }>) => {
-    if (item.id === "producao")      return pathname.startsWith("/lavoura") || pathname.startsWith("/algodao") || pathname === "/estoque/romaneio-entrada";
+    if (item.id === "producao")      return pathname.startsWith("/lavoura") || pathname.startsWith("/algodao") || pathname === "/estoque/romaneio-entrada" || pathname === "/mapa";
     if (item.id === "suprimentos")   return pathname.startsWith("/compras") || (pathname.startsWith("/estoque") && pathname !== "/estoque/romaneio-entrada") || pathname === "/financeiro/pendencias-nf" || pathname === "/fiscal/manifestacao";
     if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || pathname.startsWith("/transporte");
-    if (item.id === "financeiro")    return pathname.startsWith("/financeiro");
+    if (item.id === "financeiro")    return pathname.startsWith("/financeiro") || pathname.startsWith("/empresas");
     if (item.id === "fiscal")        return pathname === "/fiscal" || pathname.startsWith("/fiscal") || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias";
     if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios");
     if (item.id === "configuracoes") return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin") || pathname === "/cadastros" || pathname.startsWith("/cadastros");

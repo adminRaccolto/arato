@@ -637,6 +637,7 @@ export default function Dashboard() {
     { label: "Contratos Grãos",  link: "/contratos",           cor: "#C9921B", sigla: "CG" },
     { label: "Estoque",          link: "/estoque",             cor: "var(--text-2)", sigla: "ES" },
     { label: "Lavoura",          link: "/lavoura",             cor: "#16A34A", sigla: "LV" },
+    { label: "Mapa de Talhões",  link: "/mapa",                cor: "#1A4870", sigla: "MP" },
     { label: "Relatórios",       link: "/relatorios",          cor: "#444444", sigla: "RL" },
   ];
 

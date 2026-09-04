@@ -1775,14 +1775,8 @@ export default function Arrendamentos() {
                     <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Venc. Milho</th>
                   </>}
                   {selArrGerador.forma_pagamento === "brl" && <>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Soja sc/ha</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Cotação soja</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Valor Soja</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Venc. Soja</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Milho sc/ha</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Cotação milho</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Valor Milho</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Venc. Milho</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#1A4870", borderBottom: "0.5px solid var(--border)" }}>Valor R$/safra</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#1A4870", borderBottom: "0.5px solid var(--border)" }}>Vencimento</th>
                   </>}
                 </tr>
               </thead>
@@ -1839,41 +1833,13 @@ export default function Arrendamentos() {
                       </>}
 
                       {selArrGerador.forma_pagamento === "brl" && <>
-                        {/* Bloco Soja */}
-                        <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <InputMonetario style={inpSm} value={cfg.sc_soja_ha} placeholder="0,00"
-                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_soja_ha: String(v) } : c))} />
+                        <td style={{ padding: "6px 8px" }}>
+                          <InputMonetario style={inpSm} placeholder="R$/safra" value={cfg.valor_brl}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, valor_brl: String(v) } : c))} />
                         </td>
-                        <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_soja}
-                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_soja: String(v) } : c))} />
-                        </td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", background: "#FAFEF8" }}>
-                          {totalSoja > 0 && precoSojaN > 0
-                            ? <span style={{ fontWeight: 600, fontSize: 12, color: "#14532D" }}>{fmtR(totalSoja * precoSojaN)}</span>
-                            : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{totalSoja > 0 ? `${fmtN(totalSoja,1)} sc` : "—"}</span>}
-                        </td>
-                        <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <input style={inpSm} type="date" value={cfg.dt_venc_soja}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, dt_venc_soja: e.target.value } : c))} />
-                        </td>
-                        {/* Bloco Milho */}
-                        <td style={{ padding: "6px 8px", background: "#EBF3FC" }}>
-                          <InputNumerico style={inpSm} decimais={4} placeholder="0" value={cfg.sc_milho_ha}
-                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_milho_ha: v } : c))} />
-                        </td>
-                        <td style={{ padding: "6px 8px", background: "#EBF3FC" }}>
-                          <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_milho}
-                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_milho: String(v) } : c))} />
-                        </td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", background: "#EBF3FC" }}>
-                          {totalMilho > 0 && precoMilhoN > 0
-                            ? <span style={{ fontWeight: 600, fontSize: 12, color: "#0C447C" }}>{fmtR(totalMilho * precoMilhoN)}</span>
-                            : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{totalMilho > 0 ? `${fmtN(totalMilho,1)} sc` : "—"}</span>}
-                        </td>
-                        <td style={{ padding: "6px 8px", background: "#EBF3FC" }}>
-                          <input style={inpSm} type="date" value={cfg.dt_venc_milho}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, dt_venc_milho: e.target.value } : c))} />
+                        <td style={{ padding: "6px 8px" }}>
+                          <input style={inpSm} type="date" value={cfg.dt_venc_brl}
+                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, dt_venc_brl: e.target.value } : c))} />
                         </td>
                       </>}
                     </tr>

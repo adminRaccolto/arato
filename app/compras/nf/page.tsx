@@ -1420,10 +1420,10 @@ export default function NfCompraPage() {
           tipoEntrada:         nfEdit.tipo_entrada,
           anoSafraId:          nfEdit.ano_safra_id,
           cicloId:             nfEdit.ciclo_id,
-          operacaoGerencialId: nfEdit.operacao_gerencial_id,
-          centroCustoId:       nfEdit.centro_custo_id,
-          pedidoCompraId:      nfEdit.pedido_compra_id || undefined,
-          produtorId:          nfEdit.produtor_id || undefined,
+          operacaoGerencialId: cab.operacao_gerencial_id || nfEdit.operacao_gerencial_id || undefined,
+          centroCustoId:       cab.centro_custo_id    || nfEdit.centro_custo_id    || undefined,
+          pedidoCompraId:      cab.pedido_compra_id   || nfEdit.pedido_compra_id   || undefined,
+          produtorId:          cab.produtor_id        || nfEdit.produtor_id        || undefined,
           maquinaId:           maquinaIdDominante,
           parcelas: (nfCondicao === "prazo" && nfParcelas.length > 1)
             ? nfParcelas.map(p => ({

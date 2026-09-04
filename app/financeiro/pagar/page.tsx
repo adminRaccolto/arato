@@ -671,6 +671,7 @@ function ContasPagarInner() {
           ciclo_id:                baixa.ciclo_id || undefined,
           observacao:              baixa.obs || undefined,
           desconto_valor:          desmascarar(baixa.desconto_valor) || undefined,
+          nova_data_vencimento:    baixa.nova_data_vencimento || undefined,
         }
       );
       // Se cartão de crédito: vincula à fatura do mês
@@ -1693,11 +1694,11 @@ function ContasPagarInner() {
                             {/* Data: mostra data_baixa para pagos, data_vencimento para os demais */}
                             <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
                               <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>
-                                {sEfet !== "baixado" && l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
-                                {fmtData(sEfet === "baixado" ? (l.data_baixa ?? l.data_vencimento) : l.data_vencimento)}
+                                {sEfet !== "baixado" && sEfet !== "parcial" && l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
+                                {fmtData((sEfet === "baixado" || sEfet === "parcial") ? (l.data_baixa ?? l.data_vencimento) : l.data_vencimento)}
                               </div>
-                              {sEfet === "baixado"
-                                ? <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>Pago</div>
+                              {(sEfet === "baixado" || sEfet === "parcial")
+                                ? <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sEfet === "parcial" ? "Parcial" : "Pago"}</div>
                                 : relativo && <div style={{ fontSize: 9, color: relativo.cor, fontWeight: 700, marginTop: 1 }}>{relativo.txt}</div>
                               }
                             </td>

@@ -666,61 +666,43 @@ export async function baixarLancamento(
     juros_valor?: number;
     desconto_valor?: number;
     salvar_classificacao?: boolean;
+    nova_data_vencimento?: string;
   }
 ): Promise<void> {
-  // Lê valores atuais + vínculo com contrato financeiro para sincronizar parcelas_pagamento
-  const { data: atual } = await supabase
-    .from("lancamentos")
-    .select("valor, cotacao_usd, moeda, valor_pago, contrato_financeiro_id, data_vencimento")
-    .eq("id", id)
-    .single();
-
-  const cotacao      = (atual?.cotacao_usd as number | null) ?? 5.12;
-  const valorTotal   = atual?.moeda === "USD" ? (atual.valor ?? 0) * cotacao : (atual?.valor ?? 0);
-  const jaRPago      = (atual?.valor_pago as number | null) ?? 0;
-  const novoTotal    = jaRPago + valor_pago_agora;
-  const desconto     = extras?.desconto_valor ?? 0;
-  // Tolerância de R$0,01 para evitar problemas de arredondamento.
-  // Desconto reduz o valor devido — inclui no cálculo para evitar falso "parcial".
-  const novoStatus   = novoTotal + desconto >= valorTotal - 0.01 ? "baixado" : "parcial";
-
-  const patch: Record<string, unknown> = { status: novoStatus, valor_pago: novoTotal, data_baixa, conta_bancaria };
-  if (extras?.pessoa_id)             patch.pessoa_id = extras.pessoa_id;
-  if (extras?.operacao_gerencial_id) patch.operacao_gerencial_id = extras.operacao_gerencial_id;
-  if (extras?.ano_safra_id)          patch.ano_safra_id = extras.ano_safra_id;
-  if (extras?.ciclo_id)              patch.ciclo_id = extras.ciclo_id;
-  if (extras?.observacao)            patch.observacao = extras.observacao;
-  const { error } = await supabase.from("lancamentos").update(patch).eq("id", id);
-  if (error) throw error;
-
-  const patchParcela = { status: novoStatus === "baixado" ? "pago" : "parcial", data_pagamento: data_baixa };
-
-  // Sincroniza via lancamento_id (vínculo direto)
-  await supabase.from("parcelas_pagamento").update(patchParcela).eq("lancamento_id", id);
-
-  // Fallback via contrato_financeiro_id + data_vencimento
-  // (cobre parcelas criadas sem lancamento_id, pagas via CP)
-  if (atual?.contrato_financeiro_id && atual?.data_vencimento) {
-    await supabase
-      .from("parcelas_pagamento")
-      .update(patchParcela)
-      .eq("contrato_id", atual.contrato_financeiro_id)
-      .eq("data_vencimento", atual.data_vencimento)
-      .neq("status", "pago");
-  }
+  // Usa API route com service_role_key — imune a JWT expirado e RLS silenciosa
+  const res = await fetch("/api/financeiro/baixar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      acao:                  "baixar",
+      lancamento_id:         id,
+      valor_pago_agora,
+      data_baixa,
+      conta_bancaria,
+      pessoa_id:             extras?.pessoa_id,
+      operacao_gerencial_id: extras?.operacao_gerencial_id,
+      ano_safra_id:          extras?.ano_safra_id,
+      ciclo_id:              extras?.ciclo_id,
+      observacao:            extras?.observacao,
+      desconto_valor:        extras?.desconto_valor,
+      nova_data_vencimento:  extras?.nova_data_vencimento,
+    }),
+  });
+  const json = await res.json() as { ok: boolean; error?: string };
+  if (!json.ok) throw new Error(json.error ?? "Erro ao baixar lançamento");
 }
 
 /**
  * Reabre um lançamento baixado, voltando ao status em_aberto ou vencido.
  */
 export async function reabrirLancamento(id: string): Promise<void> {
-  const { data: l } = await supabase.from("lancamentos").select("data_vencimento").eq("id", id).single();
-  const hoje = new Date().toISOString().slice(0, 10);
-  const novoStatus = l?.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
-  const { error } = await supabase.from("lancamentos").update({
-    status: novoStatus, data_baixa: null, valor_pago: null, lote_id: null,
-  }).eq("id", id);
-  if (error) throw error;
+  const res = await fetch("/api/financeiro/baixar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ acao: "reabrir", lancamento_id: id }),
+  });
+  const json = await res.json() as { ok: boolean; error?: string };
+  if (!json.ok) throw new Error(json.error ?? "Erro ao reabrir lançamento");
 }
 
 /**
