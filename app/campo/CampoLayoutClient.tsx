@@ -23,6 +23,19 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
   const [fazendas, setFazendas] = useState<FazendaOp[]>([]);
   const [showSwitch, setShowSwitch] = useState(false);
 
+  // Aguarda autenticação — AuthProvider já redireciona para /login se não houver sessão
+  if (userRole === null) {
+    return (
+      <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#111111" }}>
+        <div style={{ textAlign: "center", color: "#B0C8E0" }}>
+          <img src="/Arato_BRANCO.png" alt="Arato" style={{ height: 32, marginBottom: 24, opacity: 0.7 }} />
+          <div style={{ width: 28, height: 28, border: "3px solid #333", borderTopColor: "#B0C8E0", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      </div>
+    );
+  }
+
   // SW registrado globalmente no layout raiz com scope "/" — não registrar aqui novamente
 
   const carregarFazendas = useCallback(async () => {
