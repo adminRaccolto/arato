@@ -223,16 +223,23 @@ export default function FolhaPagamentoPage() {
       }).then(r => r.json()).catch(() => ({ ok: false, error: "Erro de rede" }));
 
       const [
-        { data: funcs },
+        funcsRes,
         folhasRes,
         adiPremRes,
         { data: emps },
         { data: prods },
       ] = await Promise.all([
-        supabase.from("funcionarios")
-          .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
-          .eq("fazenda_id", fazendaId)
-          .order("nome"),
+        // Busca funcionários de todas as fazendas da conta (não só da fazenda ativa)
+        // para capturar empregados de empresas registradas em outras fazendas do mesmo grupo
+        contaId
+          ? supabase.from("funcionarios")
+              .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo,fazendas!inner(conta_id)")
+              .eq("fazendas.conta_id", contaId)
+              .order("nome")
+          : supabase.from("funcionarios")
+              .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
+              .eq("fazenda_id", fazendaId)
+              .order("nome"),
         apiPost({ operacao: "listar_folhas", fazenda_id: fazendaId }),
         apiPost({ operacao: "listar_adi_prem", fazenda_id: fazendaId }),
         supabase.from("empresas")
@@ -243,6 +250,7 @@ export default function FolhaPagamentoPage() {
           ? supabase.from("produtores").select("id,nome").eq("conta_id", contaId).order("nome")
           : Promise.resolve({ data: [] }),
       ]);
+      const { data: funcs } = funcsRes as { data: any[] | null };
 
       if (!folhasRes.ok) setMsg(`Erro ao carregar folhas: ${folhasRes.error ?? "desconhecido"}`);
       if (!adiPremRes.ok) setMsg(`Erro ao carregar adiantamentos: ${adiPremRes.error ?? "desconhecido"}`);
