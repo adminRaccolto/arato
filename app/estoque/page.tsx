@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
@@ -286,7 +286,7 @@ export default function Estoque() {
   const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
 
   // relatórios
-  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos">("saldos");
+  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos"|"auditoria">("saldos");
   const [relInsumoId, setRelInsumoId] = useState("");
   const [_depAberto, _setDepAberto]   = useState<Set<string>>(new Set());
   const [filtroDepProdutos, setFiltroDepProdutos] = useState<Set<string>>(new Set());
@@ -303,6 +303,82 @@ export default function Estoque() {
   const [kardexMovs, setKardexMovs]         = useState<MovimentacaoEstoque[]>([]);
   const [kardexMovsAntes, setKardexMovsAntes] = useState<MovimentacaoEstoque[]>([]); // movs antes do período → saldo inicial real
   const [kardexBuscando, setKardexBuscando] = useState(false);
+
+  // auditoria de saldo
+  type AuditoriaItem = {
+    insumo: Insumo;
+    totalEntradas: number;
+    totalSaidas: number;
+    saldoMov: number;          // Σ movimentações
+    saldoCampo: number;        // insumos.estoque
+    divergencia: number;       // saldoCampo − saldoMov
+    movimentos: MovimentacaoEstoque[];
+    diagnostico: string;
+  };
+  const [auditoriaDados, setAuditoriaDados] = useState<AuditoriaItem[]>([]);
+  const [auditoriaCarregando, setAuditoriaCarregando] = useState(false);
+  const [auditoriaExpandido, setAuditoriaExpandido] = useState<Set<string>>(new Set());
+
+  async function carregarAuditoria() {
+    if (!fazendaId) return;
+    setAuditoriaCarregando(true);
+    try {
+      const { data: todos } = await supabase
+        .from("movimentacoes_estoque")
+        .select("*")
+        .eq("fazenda_id", fazendaId)
+        .order("data", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      const movPorInsumo = new Map<string, MovimentacaoEstoque[]>();
+      for (const m of todos ?? []) {
+        if (!m.insumo_id) continue;
+        if (!movPorInsumo.has(m.insumo_id)) movPorInsumo.set(m.insumo_id, []);
+        movPorInsumo.get(m.insumo_id)!.push(m as MovimentacaoEstoque);
+      }
+
+      const resultado: AuditoriaItem[] = [];
+      for (const ins of insumos) {
+        const movs = movPorInsumo.get(ins.id) ?? [];
+        let totalEntradas = 0, totalSaidas = 0;
+        for (const m of movs) {
+          if (m.tipo === "saida") totalSaidas += Math.abs(m.quantidade ?? 0);
+          else totalEntradas += m.quantidade ?? 0; // entrada ou ajuste (delta pode ser neg)
+        }
+        const saldoMov = totalEntradas - totalSaidas;
+        const saldoCampo = ins.estoque ?? 0;
+        const divergencia = saldoCampo - saldoMov;
+
+        if (Math.abs(divergencia) < 0.001) continue; // sem divergência — não lista
+
+        // Diagnóstico automático
+        let diagnostico = "";
+        if (movs.length === 0 && Math.abs(divergencia) > 0) {
+          diagnostico = "Saldo definido no cadastro sem nenhuma movimentação registrada.";
+        } else if (divergencia > 0 && movs.length > 0) {
+          // Tem mais no campo do que nas movimentações — provável saldo inicial não rastreado
+          diagnostico = `Saldo positivo não rastreado de ${fmtNum(divergencia)} ${ins.unidade}. Provavelmente definido no cadastro ou via atualização direta sem movimento.`;
+        } else if (divergencia < 0) {
+          diagnostico = `Saldo negativo não rastreado de ${fmtNum(Math.abs(divergencia))} ${ins.unidade}. Saída registrada no campo sem movimento correspondente — possível bug em alguma operação de baixa.`;
+        }
+
+        resultado.push({ insumo: ins, totalEntradas, totalSaidas, saldoMov, saldoCampo, divergencia, movimentos: movs, diagnostico });
+      }
+
+      // Ordena por divergência absoluta decrescente
+      resultado.sort((a, b) => Math.abs(b.divergencia) - Math.abs(a.divergencia));
+      setAuditoriaDados(resultado);
+    } catch (e) { setErro((e as Error).message); }
+    setAuditoriaCarregando(false);
+  }
+
+  // Dispara quando entra na aba auditoria
+  useEffect(() => {
+    if (aba === "relatorios" && relTipo === "auditoria" && insumos.length > 0 && auditoriaDados.length === 0 && !auditoriaCarregando) {
+      carregarAuditoria();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aba, relTipo, insumos]);
 
   // reconciliação de saldo
   const [modalReconciliar, setModalReconciliar] = useState(false);
@@ -1194,7 +1270,7 @@ export default function Estoque() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Sub-abas — scroll horizontal no mobile */}
               <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
-                {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["depositos","Saldo por Depósito"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
+                {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["depositos","Saldo por Depósito"],["posicao","Posição Financeira"],["auditoria","🔍 Auditoria de Saldo"]] as [typeof relTipo, string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#111111" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
                 ))}
               </div>
@@ -1770,6 +1846,168 @@ export default function Estoque() {
               })()}
 
               {/* Posição Financeira */}
+              {relTipo === "auditoria" && (() => {
+                if (auditoriaCarregando) return (
+                  <div style={{ textAlign: "center", padding: 48, color: "var(--text-2)" }}>Analisando movimentações…</div>
+                );
+                return (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Auditoria de Saldo de Estoque</div>
+                        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>
+                          Compara <strong>insumos.estoque</strong> (campo) com <strong>Σ movimentações</strong> (histórico real). Mostra apenas insumos com divergência.
+                        </div>
+                      </div>
+                      <button style={btnE} onClick={() => { setAuditoriaDados([]); carregarAuditoria(); }}>↻ Reanalisar</button>
+                    </div>
+
+                    {auditoriaDados.length === 0 ? (
+                      <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 12, padding: "28px 20px", textAlign: "center" }}>
+                        <div style={{ fontSize: 32, marginBottom: 10 }}>✅</div>
+                        <div style={{ fontWeight: 700, color: "#166534", fontSize: 15 }}>Nenhuma divergência encontrada</div>
+                        <div style={{ fontSize: 13, color: "#166534", marginTop: 6 }}>O campo estoque bate com a soma das movimentações em todos os itens.</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 10, padding: "10px 16px", marginBottom: 14, fontSize: 13, color: "#92400E" }}>
+                          ⚠ {auditoriaDados.length} item{auditoriaDados.length > 1 ? "s" : ""} com divergência. Clique em qualquer linha para ver o kardex auditado e o diagnóstico.
+                        </div>
+
+                        {/* Tabela resumo */}
+                        <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                              <tr style={{ background: "var(--bg-page)" }}>
+                                {["Item","Unid.","Σ Entradas","Σ Saídas","Saldo (mov.)","Estoque (campo)","Divergência","Diagnóstico"].map((c, i) => (
+                                  <th key={i} style={{ padding: "8px 12px", textAlign: i <= 1 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {auditoriaDados.map((a, idx) => {
+                                const exp = auditoriaExpandido.has(a.insumo.id);
+                                const causa = a.movimentos.length === 0 ? "Sem movimentos"
+                                  : a.divergencia > 0 ? "Saldo inicial fantasma"
+                                  : "Saída sem movimento";
+                                const corDiv = a.divergencia > 0 ? "#E24B4A" : "#EF9F27";
+                                return (
+                                  <React.Fragment key={a.insumo.id}>
+                                    <tr
+                                      onClick={() => setAuditoriaExpandido(prev => { const s = new Set(prev); s.has(a.insumo.id) ? s.delete(a.insumo.id) : s.add(a.insumo.id); return s; })}
+                                      style={{ borderBottom: "0.5px solid var(--border-row)", cursor: "pointer", background: exp ? "#FFF9F0" : "transparent" }}
+                                    >
+                                      <td style={{ padding: "10px 12px" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>{exp ? "▼" : "▶"}</span>
+                                          <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{a.insumo.nome}</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)", fontSize: 12 }}>{a.insumo.unidade}</td>
+                                      <td style={{ padding: "10px 12px", textAlign: "right", color: "#166534", fontWeight: 600 }}>{fmtNum(a.totalEntradas)}</td>
+                                      <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A", fontWeight: 600 }}>{fmtNum(a.totalSaidas)}</td>
+                                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "var(--text-1)" }}>{fmtNum(a.saldoMov)}</td>
+                                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: corDiv }}>{fmtNum(a.saldoCampo)}</td>
+                                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: corDiv }}>
+                                        {a.divergencia > 0 ? "+" : ""}{fmtNum(a.divergencia)}
+                                      </td>
+                                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                                        <span style={{ fontSize: 10, background: a.divergencia > 0 ? "#FEE2E2" : "#FEF3C7", color: a.divergencia > 0 ? "#991B1B" : "#92400E", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
+                                          {causa}
+                                        </span>
+                                      </td>
+                                    </tr>
+
+                                    {/* Detalhe expandido — kardex + diagnóstico */}
+                                    {exp && (
+                                      <tr style={{ background: "#FFFBF0" }}>
+                                        <td colSpan={8} style={{ padding: "14px 20px" }}>
+                                          {/* Diagnóstico */}
+                                          <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#92400E" }}>
+                                            <strong>Diagnóstico:</strong> {a.diagnostico}
+                                          </div>
+
+                                          {/* Kardex auditado com saldo acumulado */}
+                                          {a.movimentos.length === 0 ? (
+                                            <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>
+                                              Nenhuma movimentação registrada. O saldo de {fmtNum(a.saldoCampo)} {a.insumo.unidade} foi definido diretamente no cadastro do insumo.
+                                            </div>
+                                          ) : (() => {
+                                            // Kardex passo a passo
+                                            let saldoAcum = 0;
+                                            const linhas = a.movimentos.map(m => {
+                                              const delta = m.tipo === "saida" ? -Math.abs(m.quantidade ?? 0) : (m.quantidade ?? 0);
+                                              saldoAcum += delta;
+                                              return { m, delta, saldoAcum };
+                                            });
+                                            // Saldo final das movimentações vs campo
+                                            const saldoFinalMov = saldoAcum;
+                                            const divergenciaFinal = a.saldoCampo - saldoFinalMov;
+                                            return (
+                                              <div style={{ overflowX: "auto" }}>
+                                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                                  <thead>
+                                                    <tr style={{ background: "var(--bg-page)" }}>
+                                                      {["Data","Tipo","Motivo","Δ Quantidade","Saldo Acum. (mov.)","Obs."].map((c, i) => (
+                                                        <th key={i} style={{ padding: "6px 10px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                                                      ))}
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    {linhas.map(({ m, delta, saldoAcum: sa }, li) => (
+                                                      <tr key={m.id ?? li} style={{ borderBottom: li < linhas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                                                        <td style={{ padding: "6px 10px", color: "var(--text-2)" }}>{m.data?.split("-").reverse().join("/") ?? "—"}</td>
+                                                        <td style={{ padding: "6px 10px" }}>
+                                                          <span style={{ fontSize: 10, background: m.tipo === "entrada" ? "#D1FAE5" : m.tipo === "saida" ? "#FEE2E2" : "#FEF3C7", color: m.tipo === "entrada" ? "#065F46" : m.tipo === "saida" ? "#7F1D1D" : "#92400E", padding: "1px 6px", borderRadius: 5, fontWeight: 600 }}>
+                                                            {m.tipo === "entrada" ? "▲ Entrada" : m.tipo === "saida" ? "▼ Saída" : "↕ Ajuste"}
+                                                          </span>
+                                                        </td>
+                                                        <td style={{ padding: "6px 10px", color: "var(--text-2)" }}>{m.motivo ?? "—"}</td>
+                                                        <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600, color: delta >= 0 ? "#166534" : "#E24B4A" }}>
+                                                          {delta >= 0 ? "+" : ""}{fmtNum(delta)} {a.insumo.unidade}
+                                                        </td>
+                                                        <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "var(--text-1)" }}>
+                                                          {fmtNum(sa)} {a.insumo.unidade}
+                                                        </td>
+                                                        <td style={{ padding: "6px 10px", color: "var(--text-3)", maxWidth: 240, whiteSpace: "normal" }}>{m.observacao ?? "—"}</td>
+                                                      </tr>
+                                                    ))}
+                                                    {/* Linha de divergência */}
+                                                    <tr style={{ background: "#FFF9F0", borderTop: "2px solid #FCD34D" }}>
+                                                      <td colSpan={3} style={{ padding: "8px 10px", fontWeight: 700, color: "#92400E", fontSize: 12 }}>Campo insumos.estoque (atual)</td>
+                                                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: divergenciaFinal !== 0 ? "#E24B4A" : "#166534" }}>
+                                                        {divergenciaFinal > 0 ? "+" : ""}{fmtNum(divergenciaFinal)} {a.insumo.unidade}
+                                                        {divergenciaFinal !== 0 && <span style={{ fontWeight: 400, color: "var(--text-2)", marginLeft: 6 }}>(não rastreado)</span>}
+                                                      </td>
+                                                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: divergenciaFinal !== 0 ? "#E24B4A" : "#166534" }}>
+                                                        {fmtNum(a.saldoCampo)} {a.insumo.unidade}
+                                                      </td>
+                                                      <td />
+                                                    </tr>
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            );
+                                          })()}
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div style={{ fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: "12px 16px" }}>
+                          <strong>Próximos passos:</strong> Se o diagnóstico for <em>Saldo inicial fantasma</em>, o valor foi definido no cadastro sem movimento — pode ser corrigido com um ajuste manual em <strong>± Movimentar</strong>. Se for <em>Saída sem movimento</em>, há um bug no código de baixa — revisar a rota ou função que processou a operação.
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+
               {relTipo === "posicao" && (() => {
                 const porCategoria = Object.entries(
                   insumos.reduce((acc, i) => {
