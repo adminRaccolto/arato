@@ -259,7 +259,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [qrDataUrl,        setQrDataUrl]        = useState("");
   const [showPalette,      setShowPalette]      = useState(false);
   const [currentPalette,   setCurrentPalette]   = useState("default");
-  const palRef = useRef<HTMLDivElement>(null);
+  const [showBell,         setShowBell]         = useState(false);
+  const [desatualizado,    setDesatualizado]    = useState(false);
+  const palRef  = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
+  const versaoInicial = useRef<string | null>(null);
   const lastPendenciasMs   = useRef<number>(0);
   const lastTransfMs       = useRef<number>(0);
   const prevQtdTransfRef   = useRef<number>(0);
@@ -340,6 +344,34 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     const { data } = supabase.storage.from("logos").getPublicUrl("arato.png");
     if (data?.publicUrl) setLogoArato(data.publicUrl);
   }, []);
+
+  // Verificação de nova versão — polling a cada 3 minutos
+  useEffect(() => {
+    async function checarVersao() {
+      try {
+        const r = await fetch("/api/version", { cache: "no-store" });
+        const { deploymentId } = await r.json() as { deploymentId: string };
+        if (!versaoInicial.current) {
+          versaoInicial.current = deploymentId;
+        } else if (deploymentId !== versaoInicial.current) {
+          setDesatualizado(true);
+        }
+      } catch { /* ignora falha de rede */ }
+    }
+    checarVersao();
+    const id = setInterval(checarVersao, 3 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Fechar dropdown do sino ao clicar fora
+  useEffect(() => {
+    if (!showBell) return;
+    const handler = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setShowBell(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showBell]);
 
   useEffect(() => {
     if (!showQr || qrDataUrl) return;
@@ -627,18 +659,54 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             >
               📱
             </button>
-            <a
-              href="/pendencias/operacionais"
-              title={qtdTransferencias > 0 ? `${qtdTransferencias} solicitação(ões) de transferência pendente(s)` : "Transferências"}
-              style={{ position: "relative", background: qtdTransferencias > 0 ? "rgba(220,38,38,0.15)" : "var(--bg-input)", border: `0.5px solid ${qtdTransferencias > 0 ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28, textDecoration: "none" }}
-            >
-              🔔
-              {qtdTransferencias > 0 && (
-                <span style={{ position: "absolute", top: -4, right: -4, background: "#DC2626", color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
-                  {qtdTransferencias > 9 ? "9+" : qtdTransferencias}
-                </span>
+            <div ref={bellRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowBell(v => !v)}
+                title={desatualizado ? "Nova versão disponível" : qtdTransferencias > 0 ? `${qtdTransferencias} solicitação(ões) pendente(s)` : "Notificações"}
+                style={{ position: "relative", background: desatualizado || qtdTransferencias > 0 ? "rgba(220,38,38,0.15)" : "var(--bg-input)", border: `0.5px solid ${desatualizado || qtdTransferencias > 0 ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28 }}
+              >
+                🔔
+                {(desatualizado || qtdTransferencias > 0) && (
+                  <span style={{ position: "absolute", top: -4, right: -4, background: "#DC2626", color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
+                    {(desatualizado ? 1 : 0) + qtdTransferencias > 9 ? "9+" : (desatualizado ? 1 : 0) + qtdTransferencias}
+                  </span>
+                )}
+              </button>
+              {showBell && (
+                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-modal)", minWidth: 240, zIndex: 9999, overflow: "hidden" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", padding: "8px 14px 6px", borderBottom: "0.5px solid var(--border)" }}>Notificações</div>
+                  {desatualizado && (
+                    <div style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--border)", background: "rgba(201,146,27,0.06)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 16 }}>🔄</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Nova versão disponível</span>
+                      </div>
+                      <button
+                        onClick={() => { setDesatualizado(false); setShowBell(false); window.location.reload(); }}
+                        style={{ width: "100%", padding: "6px 12px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Atualizar agora
+                      </button>
+                    </div>
+                  )}
+                  {qtdTransferencias > 0 ? (
+                    <a
+                      href="/pendencias/operacionais"
+                      onClick={() => setShowBell(false)}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", textDecoration: "none", color: "var(--text-1)" }}
+                    >
+                      <span style={{ background: "#DC2626", color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{qtdTransferencias > 9 ? "9+" : qtdTransferencias}</span>
+                      <span style={{ fontSize: 12, fontWeight: 500 }}>Solicitação(ões) de transferência pendente(s)</span>
+                    </a>
+                  ) : !desatualizado ? (
+                    <div style={{ padding: "14px", fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>Sem notificações</div>
+                  ) : null}
+                  <div style={{ borderTop: "0.5px solid var(--border)", padding: "8px 14px" }}>
+                    <a href="/pendencias/operacionais" onClick={() => setShowBell(false)} style={{ fontSize: 11, color: "var(--text-3)", textDecoration: "none" }}>Ver todas as pendências →</a>
+                  </div>
+                </div>
               )}
-            </a>
+            </div>
             {/* ── Seletor de Paleta ── */}
             <div ref={palRef} style={{ position: "relative" }}>
               <button

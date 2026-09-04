@@ -447,10 +447,11 @@ function ConciliacaoInner() {
     setSalvando(true);
     const ids = Array.from(lancsSel);
 
-    // Lançamentos a baixar (ainda não estão baixados)
+    // Lançamentos a baixar (somente os que ainda não foram baixados nem parcialmente pagos)
+    // "parcial" = já tem valor_pago registrado; conciliar apenas vincula o OFX, não reprocessa baixa
     const paraBaixar = ids
       .map(id => lancamentos.find(x => x.id === id))
-      .filter(l => l && l.status !== "baixado") as Lancamento[];
+      .filter(l => l && l.status !== "baixado" && l.status !== "parcial") as Lancamento[];
 
     // Atualiza estado local imediatamente (optimistic)
     if (paraBaixar.length > 0) {
@@ -628,7 +629,7 @@ function ConciliacaoInner() {
     if (contaSel && l.conta_bancaria && l.conta_bancaria !== contaSel) return false;
 
     // Filtro de status
-    if (filtroLancStatus === "aberto" && !["aberto", "vencido", "em_aberto"].includes(l.status)) return false;
+    if (filtroLancStatus === "aberto" && !["aberto", "vencido", "em_aberto", "parcial"].includes(l.status)) return false;
     if (filtroLancStatus === "baixado" && l.status !== "baixado") return false;
     if (filtroLancStatus === "parcial" && !ehParcial(l)) return false;
 

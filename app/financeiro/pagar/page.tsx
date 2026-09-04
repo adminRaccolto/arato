@@ -776,7 +776,7 @@ function ContasPagarInner() {
   };
 
   const reabrirLote = async () => {
-    const ids = filtrados.filter(l => selecionados.has(l.id) && l.status === "baixado").map(l => l.id);
+    const ids = filtrados.filter(l => selecionados.has(l.id) && (l.status === "baixado" || l.status === "parcial")).map(l => l.id);
     if (!ids.length) return;
     if (!confirm(`Reabrir ${ids.length} título${ids.length > 1 ? "s" : ""} pago${ids.length > 1 ? "s" : ""}?\n\nOs dados de pagamento serão apagados.`)) return;
     try {
@@ -998,6 +998,32 @@ function ContasPagarInner() {
             novas.push(criado);
           }
           setLancamentos(prev => [...novas, ...prev]);
+        } else if (form.condicao === "prazo" && parcelas.length > 0) {
+          // Usuário converteu o título para parcelamento: exclui o lançamento original e cria as novas parcelas
+          await excluirLancamento(editandoId);
+          const agrupador = Date.now().toString(36);
+          const total = parcelas.length;
+          const novas: Lancamento[] = [];
+          for (let i = 0; i < total; i++) {
+            const p = parcelas[i];
+            const criado = await criarLancamento({
+              ...patch,
+              fazenda_id:      fid!,
+              tipo:            "pagar",
+              status:          "em_aberto",
+              auto:            false,
+              data_lancamento: TODAY,
+              data_vencimento: p.data,
+              valor:           desmascarar(p.valorMask),
+              ano_safra_id:    p.ano_safra_id ?? (patch.ano_safra_id ?? undefined),
+              ciclo_id:        p.ciclo_id    ?? (patch.ciclo_id    ?? undefined),
+              num_parcela:     i + 1,
+              total_parcelas:  total,
+              agrupador,
+            } as Omit<Lancamento, "id" | "created_at">);
+            novas.push(criado);
+          }
+          setLancamentos(prev => [...novas, ...prev.filter(x => x.id !== editandoId)]);
         } else {
           const res = await fetch("/api/financeiro/lancamentos", {
             method: "PATCH",
@@ -1907,7 +1933,7 @@ function ContasPagarInner() {
                 {!isPrevisao && l.moeda !== "barter" && l.status !== "baixado" && !l.lote_id && (
                   <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#C9921B", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>↓ Baixar</button>
                 )}
-                {l.status === "baixado" && !l.lote_id && (
+                {(l.status === "baixado" || l.status === "parcial") && !l.lote_id && (
                   <button onClick={() => { setPopover(null); reabrirUm(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↺ Reabrir</button>
                 )}
                 {l.lote_id && (
