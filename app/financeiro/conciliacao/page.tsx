@@ -73,6 +73,8 @@ interface FormTesouraria {
   data: string;
   tipo_op: string;  // id da operação de tesouraria (padrão ou custom)
   og_id: string;    // operacao_gerencial_id para vínculo fiscal
+  conta_origem: string;
+  conta_destino: string;
 }
 
 interface OpTesouraria {
@@ -217,7 +219,7 @@ function ConciliacaoInner() {
 
   // Tesouraria inline
   const [modalTes, setModalTes]   = useState<LinhaOFX | null>(null);
-  const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", tipo_op: "__taxa__", og_id: "" });
+  const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", tipo_op: "__taxa__", og_id: "", conta_origem: "", conta_destino: "" });
   const [savingTes, setSavingTes] = useState(false);
   const [opsCustom, setOpsCustom] = useState<OpTesouraria[]>([]);
   const [ogsDisponiveis, setOgsDisponiveis] = useState<OgMin[]>([]);
@@ -507,8 +509,72 @@ function ConciliacaoInner() {
 
     const todasOps: OpTesouraria[] = [...OPS_TESOURARIA_PADRAO, ...opsCustom];
     const opSel = todasOps.find(o => o.id === fTes.tipo_op);
-    // Vínculo fiscal: preferência ao og_id selecionado manualmente; fallback ao da operação custom
     const ogId = fTes.og_id || opSel?.operacao_gerencial_id || null;
+    const isTransf = fTes.tipo_op === "__transferencia__";
+
+    // ── Transferência entre contas: cria CP na origem e CR no destino ──────
+    if (isTransf) {
+      if (!fTes.conta_origem || !fTes.conta_destino) {
+        alert("Selecione a conta de origem e a conta de destino.");
+        setSavingTes(false);
+        return;
+      }
+      const origemNome  = contas.find(c => c.id === fTes.conta_origem)?.nome ?? fTes.conta_origem;
+      const destinoNome = contas.find(c => c.id === fTes.conta_destino)?.nome ?? fTes.conta_destino;
+      const base = {
+        fazenda_id: fazendaId,
+        valor: fTes.valor || modalTes.valor,
+        valor_pago: fTes.valor || modalTes.valor,
+        data_lancamento: fTes.data || modalTes.data,
+        data_vencimento: fTes.data || modalTes.data,
+        data_baixa: fTes.data || modalTes.data,
+        status: "baixado" as const,
+        categoria: "Transferência entre Contas",
+        operacao_gerencial_id: ogId,
+        origem_lancamento: "tesouraria",
+      };
+      const { data: rows, error } = await supabase
+        .from("lancamentos")
+        .insert([
+          { ...base, tipo: "pagar"   as const, descricao: `Transferência → ${destinoNome}`, conta_bancaria: fTes.conta_origem },
+          { ...base, tipo: "receber" as const, descricao: `Transferência ← ${origemNome}`,  conta_bancaria: fTes.conta_destino },
+        ])
+        .select();
+
+      if (error || !rows?.length) {
+        alert("Erro ao salvar transferência: " + (error?.message ?? "erro desconhecido"));
+        setSavingTes(false);
+        return;
+      }
+
+      setLancamentos(prev => [...(rows as Lancamento[]), ...prev]);
+
+      // Vincula a linha OFX ao lançamento da conta corrente selecionada
+      const lancToLink = rows.find(r => r.conta_bancaria === contaSel) ?? rows[0];
+      const ids = [lancToLink.id];
+      const desc = lancToLink.descricao as string;
+      const novasLinhas = extrato.linhas.map(l =>
+        l.id === modalTes.id
+          ? { ...l, conciliado: true, lancamento_id: lancToLink.id, lancamento_ids: ids, lancamento_desc: desc, lancamento_valor: fTes.valor || modalTes.valor }
+          : l
+      );
+      const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
+      persistExtrato(
+        { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
+        { conciliarIds: ids },
+      );
+      if (fazendaId) {
+        supabase.from("conciliacao_pendencias")
+          .update({ status: "resolvido", lancamento_id: lancToLink.id })
+          .eq("fazenda_id", fazendaId).eq("fitid", modalTes.id);
+        registrarHistorico(modalTes, "conciliado", ids, desc);
+      }
+      setModalTes(null);
+      setSavingTes(false);
+      return;
+    }
+
+    // ── Demais operações: cria um único lançamento ─────────────────────────
     const { data: novoLanc, error } = await supabase
       .from("lancamentos")
       .insert({
@@ -533,10 +599,8 @@ function ConciliacaoInner() {
       return;
     }
 
-    // Atualizar estado local
     setLancamentos(prev => [novoLanc as Lancamento, ...prev]);
 
-    // Vincular linha OFX
     const ids = [novoLanc.id];
     const desc = fTes.descricao || modalTes.descricao;
     const novasLinhas = extrato.linhas.map(l =>
@@ -583,7 +647,6 @@ function ConciliacaoInner() {
   // ── Abrir modal tesouraria ─────────────────────────────────────────────────
   function abrirTesouraria(linha: LinhaOFX) {
     setModalTes(linha);
-    // Pré-selecionar operação mais provável pelo tipo OFX
     const opPadrao = linha.tipo === "credito" ? "__resgate__" : "__taxa__";
     setFTes({
       descricao: linha.descricao,
@@ -592,6 +655,9 @@ function ConciliacaoInner() {
       data: linha.data,
       tipo_op: opPadrao,
       og_id: "",
+      // Pré-preenche a conta corrente selecionada no lado correto da transferência
+      conta_origem: linha.tipo === "debito" ? (contaSel || "") : "",
+      conta_destino: linha.tipo === "credito" ? (contaSel || "") : "",
     });
   }
 
@@ -719,21 +785,42 @@ function ConciliacaoInner() {
             </div>
 
             <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</label>
-                  <select value={fTes.tipo} onChange={e => setFTes(f => ({ ...f, tipo: e.target.value as "pagar"|"receber" }))}
-                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
-                    <option value="pagar">Conta a Pagar (saída)</option>
-                    <option value="receber">Conta a Receber (entrada)</option>
-                  </select>
+              {fTes.tipo_op === "__transferencia__" ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Conta Origem (débito)</label>
+                    <select value={fTes.conta_origem} onChange={e => setFTes(f => ({ ...f, conta_origem: e.target.value }))}
+                      style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${fTes.conta_origem ? "#1A4870" : "#E24B4A"}`, borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                      <option value="">— Selecione —</option>
+                      {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Conta Destino (crédito)</label>
+                    <select value={fTes.conta_destino} onChange={e => setFTes(f => ({ ...f, conta_destino: e.target.value }))}
+                      style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${fTes.conta_destino ? "#16A34A" : "#E24B4A"}`, borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                      <option value="">— Selecione —</option>
+                      {contas.filter(c => c.id !== fTes.conta_origem).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Valor</label>
-                  <input type="number" step="0.01" value={fTes.valor} onChange={e => setFTes(f => ({ ...f, valor: parseFloat(e.target.value) || 0 }))}
-                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</label>
+                    <select value={fTes.tipo} onChange={e => setFTes(f => ({ ...f, tipo: e.target.value as "pagar"|"receber" }))}
+                      style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                      <option value="pagar">Conta a Pagar (saída)</option>
+                      <option value="receber">Conta a Receber (entrada)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Valor</label>
+                    <input type="number" step="0.01" value={fTes.valor} onChange={e => setFTes(f => ({ ...f, valor: parseFloat(e.target.value) || 0 }))}
+                      style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Descrição</label>
@@ -805,7 +892,7 @@ function ConciliacaoInner() {
                   style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button onClick={salvarTesouraria} disabled={savingTes || !fTes.descricao || fTes.valor <= 0}
+                <button onClick={salvarTesouraria} disabled={savingTes || fTes.valor <= 0 || (fTes.tipo_op === "__transferencia__" ? (!fTes.conta_origem || !fTes.conta_destino) : !fTes.descricao)}
                   style={{ flex: 2, padding: "9px", border: "none", borderRadius: 8, background: savingTes ? "#999" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingTes ? "default" : "pointer" }}>
                   {savingTes ? "Salvando..." : "✓ Salvar e Conciliar"}
                 </button>
