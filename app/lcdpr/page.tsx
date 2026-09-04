@@ -157,6 +157,7 @@ export default function LCDPR() {
   const [produtorFiltro, setProdutorFiltro] = useState("todos");
   const [modoExport, setModoExport]         = useState<"anual" | "mensal">("anual");
   const [mesExport, setMesExport]           = useState(new Date().getMonth() + 1);
+  const [formatoExport, setFormatoExport]   = useState<"txt" | "xlsx" | "pdf">("txt");
 
   // ── Carga principal ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -190,7 +191,12 @@ export default function LCDPR() {
       const apoioIds = new Set((apoioBaixas ?? []).map((b: any) => b.lancamento_id));
 
       const filtrados = lans.filter((l: Lancamento) => {
-        if (l.status !== "baixado") return false;
+        // Inclui baixados + previsões vinculadas a NF-e ou NFS-e (comprovam a transação)
+        const temNF = (l as any).nfe_numero
+          || l.origem_lancamento === "nf_entrada"
+          || l.origem_lancamento === "nf_servico";
+        const incluir = l.status === "baixado" || ((l as any).natureza === "previsao" && temNF);
+        if (!incluir) return false;
         if (apoioIds.has(l.id)) return false;
         if ((l as any).entidade_contabil && (l as any).entidade_contabil !== "pf") return false;
         const dt = (l as any).data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
@@ -449,6 +455,65 @@ export default function LCDPR() {
     const comp    = modoExport === "mensal" ? `COMP ${mm}-${anoSel}` : `COMP ${anoSel}`;
     a.href = url; a.download = `LCDPR_${nomeArq}_${cpfSel || "TODOS"}_${comp}.txt`;
     a.click(); URL.revokeObjectURL(url);
+  };
+
+  const gerarXLSX = async () => {
+    const XLSX = await import("xlsx");
+    const cpfSel = produtorFiltro !== "todos" ? produtorFiltro : (produtoresLcdpr[0]?.cpf ?? "");
+    const nomeProd = produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "PRODUTOR RURAL";
+    const nomeArq  = nomeProd.toUpperCase().replace(/[^A-Z0-9 ]/g, "").trim();
+    const mm       = String(mesExport).padStart(2, "0");
+    const comp     = modoExport === "mensal" ? `COMP ${mm}-${anoSel}` : `COMP ${anoSel}`;
+    const periodo  = modoExport === "mensal"
+      ? new Date(anoSel, mesExport - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })
+      : String(anoSel);
+
+    const cabecalho = [["LCDPR — Livro Caixa e Escrituração Rural"], [`Produtor: ${nomeProd} — CPF: ${fmtCPF(cpfSel)}`], [`Período: ${periodo}`], []];
+    const header    = ["Data", "Histórico", "Tipo Doc.", "CPF/CNPJ Parte", "Código LCDPR", "Descrição Código", "Receitas (R$)", "Despesas (R$)"];
+    const rows = entradasExport.map(e => [
+      fmtData(e.data),
+      e.historico,
+      TIPO_DOC_LABEL[e.tipoDoc] ?? e.tipoDoc,
+      e.cpfCnpj,
+      e.codigo,
+      MAP_CODIGO.get(e.codigo) ?? "",
+      e.receita > 0 ? e.receita : "",
+      e.despesa > 0 ? e.despesa : "",
+    ]);
+    const totalRec  = entradasExport.reduce((s, e) => s + e.receita, 0);
+    const totalDesp = entradasExport.reduce((s, e) => s + e.despesa, 0);
+    const rodape    = [["", "", "", "", "", "TOTAL", totalRec, totalDesp]];
+
+    const ws = XLSX.utils.aoa_to_sheet([...cabecalho, header, ...rows, [], ...rodape]);
+    ws["!cols"] = [{ wch: 12 }, { wch: 45 }, { wch: 22 }, { wch: 18 }, { wch: 8 }, { wch: 35 }, { wch: 14 }, { wch: 14 }];
+
+    // Aba de resumo mensal
+    const resumoHeader = ["Mês", "Receitas (R$)", "Despesas (R$)", "Resultado (R$)"];
+    const mesesResumoXlsx = Array.from({ length: 12 }, (_, i) => {
+      const mes = i + 1;
+      const mm2 = String(mes).padStart(2, "0");
+      const itens = entradas.filter(e => e.data.slice(0, 7) === `${anoSel}-${mm2}`);
+      const rec = itens.reduce((s, e) => s + e.receita, 0);
+      const dep = itens.reduce((s, e) => s + e.despesa, 0);
+      return [new Date(anoSel, i, 1).toLocaleString("pt-BR", { month: "long" }), rec || "", dep || "", (rec - dep) || ""];
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet([resumoHeader, ...mesesResumoXlsx]);
+    ws2["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
+    XLSX.utils.book_append_sheet(wb, ws2, "Resumo Mensal");
+    XLSX.writeFile(wb, `LCDPR_${nomeArq}_${cpfSel || "TODOS"}_${comp}.xlsx`);
+  };
+
+  const imprimirPDF = () => {
+    window.print();
+  };
+
+  const exportar = () => {
+    if (formatoExport === "txt")  gerarLCDPR();
+    else if (formatoExport === "xlsx") gerarXLSX();
+    else imprimirPDF();
   };
 
   // ── Helper: tabela de OGs ─────────────────────────────────────────────────
@@ -1026,12 +1091,24 @@ export default function LCDPR() {
                       ))}
                     </div>
 
-                    <button onClick={gerarLCDPR}
-                      style={{ width: "100%", padding: "11px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13, letterSpacing: 0.3 }}>
-                      ⬇ Gerar LCDPR.txt (Leiaute 3)
-                    </button>
-                    <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-3)", textAlign: "center", lineHeight: 1.5 }}>
-                      Compatível com PGE da Receita Federal<br />
+                    {/* Seletor de formato + botão exportar */}
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Gerar em:</label>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select value={formatoExport} onChange={e => setFormatoExport(e.target.value as "txt" | "xlsx" | "pdf")}
+                          style={{ flex: 1, padding: "9px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-1)", background: "var(--bg-input)" }}>
+                          <option value="txt">TXT — Leiaute 3 (PGE Receita Federal)</option>
+                          <option value="xlsx">XLSX — Planilha Excel</option>
+                          <option value="pdf">PDF — Impressão</option>
+                        </select>
+                        <button onClick={exportar}
+                          style={{ padding: "9px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
+                          ⬇ Gerar
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", lineHeight: 1.5 }}>
+                      {formatoExport === "txt" && <>Compatível com PGE da Receita Federal<br /></>}
                       Prazo de entrega: <strong>30/04/{anoSel + 1}</strong>
                     </div>
                   </div>

@@ -417,8 +417,7 @@ function ContasPagarInner() {
   const [fConta,      setFConta]      = useState("");
   const [fProdutor,   setFProdutor]   = useState("");
   const [fObs,        setFObs]        = useState("");
-  const [fValorMin,   setFValorMin]   = useState("");
-  const [fValorMax,   setFValorMax]   = useState("");
+  const [fValor,      setFValor]      = useState("");
   const [fEmpresa,    setFEmpresa]    = useState("");
 
   // Gera/atualiza grid quando os parâmetros de prazo mudam
@@ -588,12 +587,11 @@ function ContasPagarInner() {
       if (fConta      && !contaNomeRes.toLowerCase().includes(fConta.toLowerCase())) return false;
       if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))            return false;
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
-      if (fValorMin   && paraBRL(l) < desmascarar(fValorMin))                                  return false;
-      if (fValorMax   && paraBRL(l) > desmascarar(fValorMax))                                  return false;
+      if (fValor) { const v = desmascarar(fValor); if (v > 0 && Math.abs(paraBRL(l) - v) > 0.005) return false; }
       if (l.empresa_id) return false; // lançamentos empresa → /empresas/pagar
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValorMin, fValorMax, fEmpresa, anosSafra, produtores, ogMap, pessoas, contas]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValor, fEmpresa, anosSafra, produtores, ogMap, pessoas, contas]);
 
   // ── Contagens de lançamentos ocultos (para avisos) ─────────
   const ocultosEmpresa = useMemo(() =>
@@ -1114,12 +1112,26 @@ function ContasPagarInner() {
     }
   };
 
-  const hasColFilter = fFornecedor || fOperacao || fSafra || fVencDe || fVencAte || fMoedaOrig || fConta || fProdutor || fObs;
+  const hasColFilter = fFornecedor || fOperacao || fSafra || fVencDe || fVencAte || fMoedaOrig || fConta || fProdutor || fObs || fValor;
 
   const limparFiltrosColunas = () => {
     setFFornecedor(""); setFOperacao(""); setFSafra(""); setFVencDe(""); setFVencAte("");
-    setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs(""); setFEmpresa("");
+    setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs(""); setFEmpresa(""); setFValor("");
   };
+
+  const borderosFiltrados = useMemo(() =>
+    !fFornecedor
+      ? borderosPendentes
+      : borderosPendentes.filter(b =>
+          (b.descricao ?? "").toLowerCase().includes(fFornecedor.toLowerCase()) ||
+          (b.itens ?? []).some(item => {
+            const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+            const pessoaNome = lanc?.pessoa_id ? (pessoas.find(p => p.id === lanc.pessoa_id)?.nome ?? "") : "";
+            const desc = lanc?.descricao ?? (item as any).lancamento?.descricao ?? "";
+            return [pessoaNome, desc].join(" ").toLowerCase().includes(fFornecedor.toLowerCase());
+          })
+        ),
+  [borderosPendentes, fFornecedor, lancamentos, pessoas]);
 
   const disabled = salvando || (!form.pessoa_id && !form.descricao.trim()) || !form.vencimento
     || (form.moeda !== "barter" && !form.valorMask)
@@ -1339,8 +1351,7 @@ function ContasPagarInner() {
                         <td></td>
                         <td style={{ padding: "3px 6px" }}>
                           <div style={{ display: "flex", gap: 2 }}>
-                            <input style={{ ...inpF, width: "50%" }} placeholder="De" value={fValorMin} onChange={e => setFValorMin(e.target.value.replace(/[^\d,]/g, ""))} title="Valor mínimo" />
-                            <input style={{ ...inpF, width: "50%" }} placeholder="Até" value={fValorMax} onChange={e => setFValorMax(e.target.value.replace(/[^\d,]/g, ""))} title="Valor máximo" />
+                            <input style={{ ...inpF, width: "100%" }} placeholder="Valor exato" value={fValor} onChange={e => setFValor(e.target.value.replace(/[^\d,]/g, ""))} title="Filtrar por valor exato" />
                           </div>
                         </td>
                         {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
@@ -1357,7 +1368,7 @@ function ContasPagarInner() {
                     </thead>
                     <tbody>
                       {/* ── Borderôs pendentes no topo da grid ── */}
-                      {borderosPendentes.map(b => {
+                      {borderosFiltrados.map(b => {
                         const itensB   = b.itens ?? [];
                         const totalB   = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
                         const dtCriac  = b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "—";
