@@ -324,6 +324,11 @@ function ContasPagarInner() {
   const [loteDesc,          setLoteDesc]          = useState("");
   const [loteSalvando,      setLoteSalvando]      = useState(false);
   const [loteErro,          setLoteErro]          = useState("");
+  const [modalBaixaLote,    setModalBaixaLote]    = useState(false);
+  const [baixaLoteData,     setBaixaLoteData]     = useState(new Date().toISOString().slice(0, 10));
+  const [baixaLoteConta,    setBaixaLoteConta]    = useState("");
+  const [baixaLoteSalvando, setBaixaLoteSalvando] = useState(false);
+  const [baixaLoteErro,     setBaixaLoteErro]     = useState("");
   // Borderôs pendentes
   const [borderosPendentes,  setBorderosPendentes]  = useState<PagamentoLote[]>([]);
   const [expandedBorderos,   setExpandedBorderos]   = useState<Set<string>>(new Set());
@@ -828,6 +833,29 @@ function ContasPagarInner() {
       console.error("criarBordero:", e);
     } finally {
       setLoteSalvando(false);
+    }
+  };
+
+  const baixarEmLote = async () => {
+    if (!fazendaId || itensLote.length === 0 || !baixaLoteData) return;
+    setBaixaLoteSalvando(true); setBaixaLoteErro("");
+    try {
+      await Promise.all(itensLote.map(l =>
+        supabase.from("lancamentos").update({
+          status: "baixado",
+          data_baixa: baixaLoteData,
+          valor_pago: paraBRL(l),
+          conta_bancaria: baixaLoteConta || l.conta_bancaria || null,
+        }).eq("id", l.id)
+      ));
+      setSelecionados(new Set());
+      setModalBaixaLote(false);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBaixaLoteErro(msg || "Erro ao baixar títulos");
+    } finally {
+      setBaixaLoteSalvando(false);
     }
   };
 
@@ -2128,12 +2156,20 @@ function ContasPagarInner() {
             {itensLote.length > 0 && <>&nbsp;·&nbsp;<strong>{fmtBRL(totalLote)}</strong></>}
           </span>
           {itensLote.length > 0 && (
-          <button
-            onClick={() => { setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
-            style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-          >
-            Criar Borderô ›
-          </button>
+          <>
+            <button
+              onClick={() => { setBaixaLoteData(new Date().toISOString().slice(0, 10)); setBaixaLoteConta(""); setBaixaLoteErro(""); setModalBaixaLote(true); }}
+              style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              ✓ Baixar ({itensLote.length})
+            </button>
+            <button
+              onClick={() => { setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
+              style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              Criar Borderô ›
+            </button>
+          </>
           )}
           {qtdBaixados > 0 && (
             <button
@@ -2466,6 +2502,71 @@ function ContasPagarInner() {
         </div>
         );
       })()}
+
+      {/* ── Modal Baixar em Lote ─────────────────────────────── */}
+      {modalBaixaLote && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 540, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>✓ Baixar em Lote</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total {fmtBRL(totalLote)}</div>
+              </div>
+              <button onClick={() => setModalBaixaLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do pagamento *</label>
+                  <input type="date" style={{ ...inp }} value={baixaLoteData} onChange={e => setBaixaLoteData(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta bancária</label>
+                  <select style={{ ...inp }} value={baixaLoteConta} onChange={e => setBaixaLoteConta(e.target.value)}>
+                    <option value="">— Manter conta do título —</option>
+                    {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-stripe)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
+                  <span>Título</span><span>Vencimento</span><span style={{ textAlign: "right" }}>Valor</span>
+                </div>
+                {itensLote.map((l, i) => (
+                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "8px 12px", borderTop: i > 0 ? "0.5px solid var(--bg-input)" : "none", fontSize: 12, alignItems: "center" }}>
+                    <span style={{ color: "var(--text-1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exibirFornecedor(l.descricao)}</span>
+                    <span style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
+                    <span style={{ fontWeight: 600, color: "#EF4444", textAlign: "right", whiteSpace: "nowrap" }}>{exibirValor(l)}</span>
+                  </div>
+                ))}
+                <div style={{ background: "var(--bg-stripe)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#EF4444" }}>{fmtBRL(totalLote)}</span>
+                </div>
+              </div>
+
+              {baixaLoteErro && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", fontSize: 12, color: "#791F1F" }}>
+                  {baixaLoteErro}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setModalBaixaLote(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button
+                  onClick={baixarEmLote}
+                  disabled={baixaLoteSalvando || !baixaLoteData}
+                  style={{ padding: "8px 22px", background: baixaLoteSalvando ? "#999" : "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: baixaLoteSalvando ? "default" : "pointer" }}
+                >
+                  {baixaLoteSalvando ? "Baixando…" : `✓ Confirmar Baixa (${itensLote.length} título${itensLote.length !== 1 ? "s" : ""})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal Criar Borderô ──────────────────────────────── */}
       {modalLote && (
