@@ -3227,7 +3227,7 @@ export default function Contratos() {
                   plCalc<=0    ? (fRom.pesoEstimado ? "Informe o peso estimado (kg)" : "Informe o Peso Bruto e a Tara — o Peso Líquido deve ser maior que zero") :
                   undefined
                 }
-                style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1, background: fRom.pesoEstimado ? "#C9921B" : undefined }}>
+                style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1, background: fRom.pesoEstimado ? "#C9921B" : "#1A5CB8" }}>
                 {salvando ? "Salvando…" : editRomaneio ? "Salvar Alterações" : "Confirmar Pesagem"}
               </button>
             </div>

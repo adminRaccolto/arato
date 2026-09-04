@@ -89,6 +89,15 @@ const CLASSE_COMMODITY: Record<string, CommodityClass> = {
 const getClasse = (produto: string): CommodityClass =>
   CLASSE_COMMODITY[produto] ?? { umidade_padrao: 14, impureza_padrao: 1, avariados_padrao: 8, kg_saca: 60 };
 
+function nomeProdutoParaClasse(nome: string): string {
+  const n = nome.toLowerCase();
+  if (n.includes("algodão") || n.includes("algodao")) return "algodao";
+  if (n.includes("trigo")) return "trigo";
+  if (n.includes("sorgo")) return "sorgo";
+  if (n.includes("milho")) return (n.includes("safrinha") || n.includes("2ª") || n.includes("2a")) ? "milho2" : "milho";
+  return "soja";
+}
+
 const calcDescUmid  = (pl: number, u: number, uPad: number) => u > uPad ? +(pl * (u - uPad) / (100 - uPad)).toFixed(2) : 0;
 const calcDescImp   = (pl: number, i: number, iPad: number) => i > iPad ? +(pl * (i - iPad) / 100).toFixed(2)          : 0;
 const calcDescAvar  = (pl: number, a: number, aPad: number) => a > aPad ? +(pl * (a - aPad) / 100).toFixed(2)          : 0;
@@ -170,6 +179,11 @@ export default function ColheitaPage() {
   const [formColheita, setFormColheita] = useState({ ...COLHEITA_VAZIO });
   const [formRomaneio, setFormRomaneio] = useState({ ...ROMANEIO_VAZIO });
   const [insumoIdFinal, setInsumoIdFinal] = useState("");
+  const [insumoIdColheita, setInsumoIdColheita] = useState("");
+  const [filtroTipoDeposito, setFiltroTipoDeposito] = useState<"todos"|"proprio"|"terceiro">("todos");
+  const [modalPesagemAvulsa, setModalPesagemAvulsa] = useState(false);
+  const [formPesagemAvulsa, setFormPesagemAvulsa] = useState({ data: hoje(), placa: "", produto: "", peso_bruto_kg: 0, tara_kg: 0, umidade_pct: 0, motorista: "", destino: "", obs: "" });
+  const [romParaImprimir, setRomParaImprimir] = useState<{ rom: ColheitaRomaneio; col: ColheitaComRomaneios } | null>(null);
   // Culturas para pré-seleção automática do produto na finalização
 
   // ── Carregamento ──────────────────────────────────────────
@@ -414,6 +428,12 @@ export default function ColheitaPage() {
               ⚖ Romaneio de Entrada
             </Link>
             <button
+              onClick={() => { setFormPesagemAvulsa({ data: hoje(), placa: "", produto: "", peso_bruto_kg: 0, tara_kg: 0, umidade_pct: 0, motorista: "", destino: "", obs: "" }); setModalPesagemAvulsa(true); }}
+              style={{ background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #FDE9BB", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              ⚖ Pesagem Avulsa
+            </button>
+            <button
               onClick={abrirModalColheita}
               style={{
                 background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8,
@@ -647,7 +667,11 @@ export default function ColheitaPage() {
                                   </td>
                                   <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#111111" }}>{fmt(rom.peso_classificado_kg, 1)} kg</td>
                                   <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{fmt(rom.sacas, 2)} sc</td>
-                                  <td style={{ padding: "8px 12px" }}>
+                                  <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                                    <button onClick={() => setRomParaImprimir({ rom, col })} title="Imprimir romaneio"
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "#1A5CB8", fontSize: 13, marginRight: 4 }}>
+                                      🖨️
+                                    </button>
                                     <button
                                       onClick={() => removerRomaneio(rom.id, col.id)}
                                       style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14 }}
@@ -722,8 +746,33 @@ export default function ColheitaPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <label>
                   <div style={lbStyle}>Produto *</div>
-                  <select value={formColheita.produto} onChange={e => setFormColheita(f => ({ ...f, produto: e.target.value }))} style={inpStyle}>
-                    {Object.entries(PRODUTOS_PADRAO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                  <select
+                    value={insumoIdColheita || formColheita.produto}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const ins = insumos.find(i => i.id === val);
+                      if (ins) {
+                        setInsumoIdColheita(val);
+                        setFormColheita(f => ({ ...f, produto: nomeProdutoParaClasse(ins.nome) }));
+                      } else {
+                        setInsumoIdColheita("");
+                        setFormColheita(f => ({ ...f, produto: val }));
+                      }
+                    }}
+                    style={inpStyle}
+                  >
+                    {insumos.length > 0 ? (
+                      <>
+                        <optgroup label="Produtos cadastrados">
+                          {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+                        </optgroup>
+                        <optgroup label="Padrão (classificação)">
+                          {Object.entries(PRODUTOS_PADRAO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                        </optgroup>
+                      </>
+                    ) : (
+                      Object.entries(PRODUTOS_PADRAO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)
+                    )}
                   </select>
                 </label>
                 <label>
@@ -744,14 +793,35 @@ export default function ColheitaPage() {
                 </label>
               </div>
 
-              {/* Depósito destino */}
-              <label>
-                <div style={lbStyle}>Depósito / Armazém de destino</div>
+              {/* Armazém de destino */}
+              <div>
+                <div style={lbStyle}>Armazém de destino</div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  {(["todos", "proprio", "terceiro"] as const).map(tp => (
+                    <button key={tp} type="button" onClick={() => setFiltroTipoDeposito(tp)} style={{
+                      padding: "4px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: "0.5px solid",
+                      background: filtroTipoDeposito === tp ? "#1A5CB8" : "transparent",
+                      color: filtroTipoDeposito === tp ? "#fff" : "var(--text-2)",
+                      borderColor: filtroTipoDeposito === tp ? "#1A5CB8" : "var(--border-table)",
+                    }}>
+                      {tp === "todos" ? "Todos" : tp === "proprio" ? "Próprio" : "Terceiro"}
+                    </button>
+                  ))}
+                </div>
                 <select value={formColheita.deposito_id ?? ""} onChange={e => setFormColheita(f => ({ ...f, deposito_id: e.target.value }))} style={inpStyle}>
                   <option value="">Selecione o armazém...</option>
-                  {depositos.map(d => <option key={d.id} value={d.id}>{d.nome} ({d.tipo})</option>)}
+                  {depositos
+                    .filter(d => {
+                      if (filtroTipoDeposito === "proprio")   return ["armazem_fazenda", "almoxarifado"].includes(d.tipo);
+                      if (filtroTipoDeposito === "terceiro")  return ["armazem_terceiro", "terceiro"].includes(d.tipo);
+                      return ["armazem_fazenda", "almoxarifado", "armazem_terceiro", "terceiro"].includes(d.tipo);
+                    })
+                    .map(d => {
+                      const tipoLabel = d.tipo === "armazem_fazenda" ? "próprio" : d.tipo === "almoxarifado" ? "almoxarifado" : d.tipo === "armazem_terceiro" ? "armazém 3°" : "3° parceiro";
+                      return <option key={d.id} value={d.id}>{d.nome} ({tipoLabel})</option>;
+                    })}
                 </select>
-              </label>
+              </div>
 
               {/* Observação */}
               <label>
@@ -1144,6 +1214,184 @@ export default function ColheitaPage() {
           </div>
         </div>
       )}
+      {/* ── Modal Imprimir Romaneio ── */}
+      {romParaImprimir && (() => {
+        const { rom, col } = romParaImprimir;
+        const produto = PRODUTOS_PADRAO[col.produto]?.label ?? col.produto;
+        return (
+          <>
+            <style>{`@media print { body * { visibility: hidden; } #rom-print-area, #rom-print-area * { visibility: visible; } #rom-print-area { position: fixed; left: 0; top: 0; width: 100%; padding: 24px; background: #fff; } }`}</style>
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+                <div style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text-1)" }}>Romaneio de Colheita</h2>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => window.print()} style={{ background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Imprimir</button>
+                    <button onClick={() => setRomParaImprimir(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+                  </div>
+                </div>
+                <div id="rom-print-area" style={{ padding: 24, fontFamily: "monospace", fontSize: 13, color: "#000" }}>
+                  <div style={{ textAlign: "center", marginBottom: 16 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>ROMANEIO DE COLHEITA</div>
+                    <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>Nº {rom.numero || "—"}</div>
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
+                    <tbody>
+                      {[
+                        ["Produto",        produto],
+                        ["Variedade",      col.variedade || "—"],
+                        ["Data",           rom.data],
+                        ["Placa",          rom.placa],
+                      ].map(([k, v]) => (
+                        <tr key={k} style={{ borderBottom: "0.5px solid #ddd" }}>
+                          <td style={{ padding: "5px 8px", fontWeight: 600, width: "40%" }}>{k}</td>
+                          <td style={{ padding: "5px 8px" }}>{v}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pesagem</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
+                    <tbody>
+                      {[
+                        ["Peso Bruto",     `${fmt(rom.peso_bruto_kg, 0)} kg`],
+                        ["Tara",           `${fmt(rom.tara_kg, 0)} kg`],
+                        ["Peso Líquido",   `${fmt(rom.peso_liquido_kg, 0)} kg`],
+                      ].map(([k, v]) => (
+                        <tr key={k} style={{ borderBottom: "0.5px solid #ddd" }}>
+                          <td style={{ padding: "5px 8px", fontWeight: 600, width: "40%" }}>{k}</td>
+                          <td style={{ padding: "5px 8px" }}>{v}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
+                    <tbody>
+                      {[
+                        ["Umidade",        `${fmt(rom.umidade_pct ?? 0, 1)}%  (desc: ${fmt(rom.desconto_umidade_kg ?? 0, 1)} kg)`],
+                        ["Impureza",       `${fmt(rom.impureza_pct ?? 0, 1)}%  (desc: ${fmt(rom.desconto_impureza_kg ?? 0, 1)} kg)`],
+                        ["Avariados",      `${fmt(rom.avariados_pct ?? 0, 1)}%  (desc: ${fmt(rom.desconto_avariados_kg ?? 0, 1)} kg)`],
+                        ["Peso Classif.",  `${fmt(rom.peso_classificado_kg ?? 0, 1)} kg`],
+                        ["Sacas",          `${fmt(rom.sacas ?? 0, 2)} sc`],
+                      ].map(([k, v]) => (
+                        <tr key={k} style={{ borderBottom: "0.5px solid #ddd" }}>
+                          <td style={{ padding: "5px 8px", fontWeight: 600, width: "40%" }}>{k}</td>
+                          <td style={{ padding: "5px 8px" }}>{v}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ marginTop: 32, borderTop: "1px solid #000", paddingTop: 8, textAlign: "center", fontSize: 12, color: "#555" }}>
+                    Assinatura do motorista / responsável
+                  </div>
+                  <div style={{ marginTop: 4, textAlign: "center", fontSize: 10, color: "#888" }}>Emitido via RacTech</div>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* ── Modal Pesagem Avulsa ── */}
+      {modalPesagemAvulsa && (() => {
+        const pl = Math.max(0, formPesagemAvulsa.peso_bruto_kg - formPesagemAvulsa.tara_kg);
+        const sacas = +(pl / 60).toFixed(2);
+        return (
+          <>
+            {/* print CSS — mostra só a área de impressão */}
+            <style>{`@media print { body * { visibility: hidden; } #avulsa-print-area, #avulsa-print-area * { visibility: visible; } #avulsa-print-area { position: fixed; left: 0; top: 0; width: 100%; padding: 24px; background: #fff; } }`}</style>
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 500, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+                <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Pesagem Avulsa</h2>
+                  <button onClick={() => setModalPesagemAvulsa(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+                </div>
+                <div style={{ padding: "16px 24px 8px", fontSize: 12, color: "#7A5200", background: "#FBF3E0", borderBottom: "0.5px solid #FDE9BB" }}>
+                  ⚠️ Pesagem avulsa gera apenas um romaneio para impressão — não impacta estoque, contratos nem lançamentos financeiros.
+                </div>
+                <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <label><div style={lbStyle}>Data *</div>
+                      <input type="date" value={formPesagemAvulsa.data} onChange={e => setFormPesagemAvulsa(f => ({ ...f, data: e.target.value }))} style={inpStyle} /></label>
+                    <label><div style={lbStyle}>Placa *</div>
+                      <input value={formPesagemAvulsa.placa} onChange={e => setFormPesagemAvulsa(f => ({ ...f, placa: e.target.value.toUpperCase() }))} style={inpStyle} placeholder="ABC-1234" /></label>
+                  </div>
+                  <label><div style={lbStyle}>Produto *</div>
+                    <input value={formPesagemAvulsa.produto} onChange={e => setFormPesagemAvulsa(f => ({ ...f, produto: e.target.value }))} style={inpStyle} placeholder="Ex: Soja, Milho..." /></label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    <label><div style={lbStyle}>Peso Bruto (kg) *</div>
+                      <InputNumerico decimais={0} value={formPesagemAvulsa.peso_bruto_kg || ""} onChange={v => setFormPesagemAvulsa(f => ({ ...f, peso_bruto_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} /></label>
+                    <label><div style={lbStyle}>Tara (kg) *</div>
+                      <InputNumerico decimais={0} value={formPesagemAvulsa.tara_kg || ""} onChange={v => setFormPesagemAvulsa(f => ({ ...f, tara_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} /></label>
+                    <label><div style={lbStyle}>Peso Líquido (kg)</div>
+                      <div style={{ ...inpStyle, background: "#E8E8E8", display: "flex", alignItems: "center", fontWeight: 600 }}>{fmt(pl, 0)}</div></label>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <label><div style={lbStyle}>Umidade %</div>
+                      <InputNumerico decimais={1} value={formPesagemAvulsa.umidade_pct || ""} onChange={v => setFormPesagemAvulsa(f => ({ ...f, umidade_pct: parseFloat(v) || 0 }))} style={inpStyle} min={0} max={40} /></label>
+                    <label><div style={lbStyle}>Sacas estimadas (60 kg)</div>
+                      <div style={{ ...inpStyle, background: "#E8E8E8", display: "flex", alignItems: "center", fontWeight: 600 }}>{fmt(sacas, 2)} sc</div></label>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <label><div style={lbStyle}>Motorista</div>
+                      <input value={formPesagemAvulsa.motorista} onChange={e => setFormPesagemAvulsa(f => ({ ...f, motorista: e.target.value }))} style={inpStyle} placeholder="Nome do motorista" /></label>
+                    <label><div style={lbStyle}>Destino</div>
+                      <input value={formPesagemAvulsa.destino} onChange={e => setFormPesagemAvulsa(f => ({ ...f, destino: e.target.value }))} style={inpStyle} placeholder="Armazém / comprador" /></label>
+                  </div>
+                  <label><div style={lbStyle}>Observações</div>
+                    <textarea value={formPesagemAvulsa.obs} onChange={e => setFormPesagemAvulsa(f => ({ ...f, obs: e.target.value }))} style={{ ...inpStyle, height: 56, resize: "vertical" }} placeholder="Observações livres" /></label>
+
+                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 4 }}>
+                    <button onClick={() => setModalPesagemAvulsa(false)} style={btnCancelStyle}>Fechar</button>
+                    <button
+                      disabled={!formPesagemAvulsa.placa || !formPesagemAvulsa.produto || pl <= 0}
+                      onClick={() => window.print()}
+                      style={{ ...btnPrimStyle, opacity: !formPesagemAvulsa.placa || !formPesagemAvulsa.produto || pl <= 0 ? 0.5 : 1 }}
+                    >
+                      🖨️ Gerar Romaneio
+                    </button>
+                  </div>
+                </div>
+                {/* Área de impressão (hidden na tela, visível no print) */}
+                <div id="avulsa-print-area" style={{ display: "none" }}>
+                  <div style={{ textAlign: "center", marginBottom: 16 }}>
+                    <div style={{ fontWeight: 700, fontSize: 18 }}>ROMANEIO DE PESAGEM AVULSA</div>
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16, fontFamily: "monospace", fontSize: 13 }}>
+                    <tbody>
+                      {[
+                        ["Produto",       formPesagemAvulsa.produto],
+                        ["Data",          formPesagemAvulsa.data],
+                        ["Placa",         formPesagemAvulsa.placa],
+                        ["Motorista",     formPesagemAvulsa.motorista || "—"],
+                        ["Destino",       formPesagemAvulsa.destino || "—"],
+                        ["Peso Bruto",    `${fmt(formPesagemAvulsa.peso_bruto_kg, 0)} kg`],
+                        ["Tara",          `${fmt(formPesagemAvulsa.tara_kg, 0)} kg`],
+                        ["Peso Líquido",  `${fmt(pl, 0)} kg`],
+                        ["Umidade",       formPesagemAvulsa.umidade_pct > 0 ? `${fmt(formPesagemAvulsa.umidade_pct, 1)}%` : "—"],
+                        ["Sacas est.",    `${fmt(sacas, 2)} sc`],
+                        ["Observações",   formPesagemAvulsa.obs || "—"],
+                      ].map(([k, v]) => (
+                        <tr key={k} style={{ borderBottom: "0.5px solid #ccc" }}>
+                          <td style={{ padding: "5px 8px", fontWeight: 600, width: "35%" }}>{k}</td>
+                          <td style={{ padding: "5px 8px" }}>{v}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ marginTop: 40, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+                    <div style={{ borderTop: "1px solid #000", paddingTop: 6, textAlign: "center", fontSize: 12 }}>Assinatura do motorista</div>
+                    <div style={{ borderTop: "1px solid #000", paddingTop: 6, textAlign: "center", fontSize: 12 }}>Responsável pelo recebimento</div>
+                  </div>
+                  <div style={{ marginTop: 16, textAlign: "center", fontSize: 10, color: "#888" }}>Pesagem avulsa — documento não fiscal — Emitido via RacTech</div>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
     </div>
   );
 }
