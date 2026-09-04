@@ -258,9 +258,10 @@ function ConciliacaoInner() {
     if (exR.data) {
       const lista = exR.data as unknown as Extrato[];
       setExtratos(lista);
-      if (searchParams.get("pendentes") === "true") {
-        const primeiroPend = lista.find(e => e.pendentes > 0);
-        if (primeiroPend) { setExtrato(primeiroPend); setFiltroPend(true); }
+      const primeiroPend = lista.find(e => e.pendentes > 0);
+      if (primeiroPend) {
+        setExtrato(primeiroPend);
+        if (searchParams.get("pendentes") === "true") setFiltroPend(true);
       }
     }
   }, [fazendaId, fazendaIds, contaId, searchParams]);
