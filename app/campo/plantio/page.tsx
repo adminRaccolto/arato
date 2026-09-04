@@ -5,7 +5,8 @@ import { supabase } from "../../../lib/supabase";
 import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
-type Ciclo  = { id: string; cultura: string; ano_safra?: { ano: string } };
+type Ciclo   = { id: string; cultura: string; ano_safra?: { descricao: string } };
+type Insumo  = { id: string; nome: string; unidade_medida?: string };
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "13px 14px", border: "0.5px solid var(--border-table)",
@@ -19,11 +20,13 @@ export default function CampoPlantioPage() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro]       = useState("");
 
-  const [talhoes, setTalhoes] = useState<Talhao[]>([]);
-  const [ciclos,  setCiclos]  = useState<Ciclo[]>([]);
+  const [talhoes,  setTalhoes]  = useState<Talhao[]>([]);
+  const [ciclos,   setCiclos]   = useState<Ciclo[]>([]);
+  const [sementes, setSementes] = useState<Insumo[]>([]);
 
   const [fTalhao,   setFTalhao]   = useState("");
   const [fCiclo,    setFCiclo]    = useState("");
+  const [fSemente,  setFSemente]  = useState("");   // insumo_id da semente
   const [fData,     setFData]     = useState(() => new Date().toISOString().split("T")[0]);
   const [fVaridade, setFVaridade] = useState("");
   const [fArea,     setFArea]     = useState("");
@@ -33,34 +36,46 @@ export default function CampoPlantioPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
 
-    // Offline: usa cache salvo na última sessão com internet
     if (!navigator.onLine) {
       const talCache = lerCache<Talhao[]>(`talhoes_${fazendaId}`);
       const cicCache = lerCache<Ciclo[]>(`ciclos_${fazendaId}`);
+      const semCache = lerCache<Insumo[]>(`sementes_${fazendaId}`);
       if (talCache) setTalhoes(talCache);
       if (cicCache) setCiclos(cicCache);
+      if (semCache) setSementes(semCache);
       return;
     }
 
-    const [{ data: tal }, { data: cic }] = await Promise.all([
+    const [{ data: tal }, { data: cic }, { data: sem }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(ano)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("insumos").select("id, nome, unidade_medida").eq("fazenda_id", fazendaId).in("categoria", ["semente", "inoculante"]).order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
     const cicRes = (cic ?? []) as Ciclo[];
+    const semRes = (sem ?? []) as Insumo[];
     setTalhoes(talRes);
     setCiclos(cicRes);
+    setSementes(semRes);
     salvarCache(`talhoes_${fazendaId}`, talRes);
     salvarCache(`ciclos_${fazendaId}`, cicRes);
+    salvarCache(`sementes_${fazendaId}`, semRes);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // Preenche área automaticamente ao selecionar talhão
   function handleTalhao(id: string) {
     setFTalhao(id);
     const t = talhoes.find(t => t.id === id);
     if (t?.area_ha) setFArea(String(t.area_ha));
+  }
+
+  function handleSemente(id: string) {
+    setFSemente(id);
+    if (id) {
+      const sem = sementes.find(s => s.id === id);
+      if (sem) setFVaridade(sem.nome);
+    }
   }
 
   async function salvar() {
@@ -76,6 +91,7 @@ export default function CampoPlantioPage() {
         ciclo_id:      fCiclo,
         talhao_id:     fTalhao,
         data_plantio:  fData,
+        insumo_id:     fSemente || null,
         variedade:     fVaridade.trim() || null,
         area_ha:       area,
         dose_kg_ha:    dose || null,
@@ -92,7 +108,6 @@ export default function CampoPlantioPage() {
 
       const { error } = await supabase.from("plantios").insert(payload);
       if (error) {
-        // Fallback offline se a rede falhar mesmo online
         adicionarNaFila({ tipo: "plantio", fazenda_id: fazendaId, payload });
         setEtapa("ok");
         setSalvando(false);
@@ -104,7 +119,8 @@ export default function CampoPlantioPage() {
   }
 
   function novoRegistro() {
-    setFTalhao(""); setFCiclo(""); setFData(new Date().toISOString().split("T")[0]);
+    setFTalhao(""); setFCiclo(""); setFSemente("");
+    setFData(new Date().toISOString().split("T")[0]);
     setFVaridade(""); setFArea(""); setFDose(""); setFObs("");
     setErro(""); setSalvando(false); setEtapa("form");
   }
@@ -163,7 +179,7 @@ export default function CampoPlantioPage() {
           <option value="">Selecione o ciclo...</option>
           {ciclos.map(c => (
             <option key={c.id} value={c.id}>
-              {c.cultura} {(c.ano_safra as unknown as { ano: string } | null)?.ano ?? ""}
+              {c.cultura} {(c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? ""}
             </option>
           ))}
         </select>
@@ -173,6 +189,17 @@ export default function CampoPlantioPage() {
       <div>
         <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", display: "block", marginBottom: 6 }}>Data do Plantio *</label>
         <input type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
+      </div>
+
+      {/* Semente do estoque */}
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
+          Semente {sementes.length === 0 && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(cadastre insumos de semente para selecionar)</span>}
+        </label>
+        <select value={fSemente} onChange={e => handleSemente(e.target.value)} style={inp}>
+          <option value="">— Sem vínculo com estoque —</option>
+          {sementes.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+        </select>
       </div>
 
       {/* Variedade + Área */}
