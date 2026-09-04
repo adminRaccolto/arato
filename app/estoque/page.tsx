@@ -304,6 +304,69 @@ export default function Estoque() {
   const [kardexMovsAntes, setKardexMovsAntes] = useState<MovimentacaoEstoque[]>([]); // movs antes do período → saldo inicial real
   const [kardexBuscando, setKardexBuscando] = useState(false);
 
+  // reconciliação de saldo
+  const [modalReconciliar, setModalReconciliar] = useState(false);
+  type ReconcItem = { id: string; nome: string; unidade: string; saldoAtual: number; saldoMov: number; dif: number };
+  const [reconcItens, setReconcItens] = useState<ReconcItem[]>([]);
+  const [reconcBuscando, setReconcBuscando] = useState(false);
+  const [reconcAplicando, setReconcAplicando] = useState(false);
+
+  async function verificarReconciliacao() {
+    if (!fazendaId) return;
+    setReconcBuscando(true);
+    try {
+      // Busca todos os movimentos da fazenda
+      const { data: movimentos } = await supabase
+        .from("movimentacoes_estoque")
+        .select("insumo_id, tipo, quantidade")
+        .eq("fazenda_id", fazendaId);
+
+      // Soma por insumo
+      const saldoMov = new Map<string, number>();
+      for (const m of movimentos ?? []) {
+        if (!m.insumo_id) continue;
+        const atual = saldoMov.get(m.insumo_id) ?? 0;
+        if (m.tipo === "saida") {
+          saldoMov.set(m.insumo_id, atual - Math.abs(m.quantidade ?? 0));
+        } else {
+          // entrada ou ajuste (ajuste pode ser negativo como delta)
+          saldoMov.set(m.insumo_id, atual + (m.quantidade ?? 0));
+        }
+      }
+
+      // Compara com insumos.estoque
+      const discrepantes: ReconcItem[] = [];
+      for (const ins of insumos) {
+        const saldoAtual = ins.estoque ?? 0;
+        const saldoCalculado = saldoMov.get(ins.id) ?? 0;
+        const dif = saldoAtual - saldoCalculado;
+        if (Math.abs(dif) > 0.0001) {
+          discrepantes.push({ id: ins.id, nome: ins.nome, unidade: ins.unidade ?? "", saldoAtual, saldoMov: saldoCalculado, dif });
+        }
+      }
+
+      setReconcItens(discrepantes);
+      setModalReconciliar(true);
+    } catch (e) { alert((e as Error).message); }
+    setReconcBuscando(false);
+  }
+
+  async function aplicarReconciliacao() {
+    if (!reconcItens.length) return;
+    setReconcAplicando(true);
+    try {
+      for (const item of reconcItens) {
+        await supabase.from("insumos").update({ estoque: item.saldoMov }).eq("id", item.id);
+      }
+      // Recarrega
+      const ins = await listarInsumos(fazendaId!);
+      setInsumos(ins);
+      setModalReconciliar(false);
+      setReconcItens([]);
+    } catch (e) { alert((e as Error).message); }
+    setReconcAplicando(false);
+  }
+
   // modal NF Entrada — passo 1: dados da NF / passo 2: itens
   const [modalNf, setModalNf] = useState<"off" | "passo1" | "passo2">("off");
   const [nfMode, setNfMode]   = useState<"xml" | "manual" | "chave">("manual");
@@ -773,6 +836,7 @@ export default function Estoque() {
                     </button>
                   )}
                   <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { setModalMov(true); }}>± Movimentar</button>
+                  <button style={{ ...btnE }} onClick={verificarReconciliacao} disabled={reconcBuscando} title="Compara insumos.estoque com a soma das movimentações e corrige divergências">{reconcBuscando ? "Verificando…" : "🔧 Reconciliar"}</button>
                   <button style={{ ...btnV }} onClick={() => { setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: 0, deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
                 </div>
               </div>
@@ -2452,6 +2516,61 @@ export default function Estoque() {
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
             <button style={btnR} onClick={() => setModalDetalheNf(null)}>Fechar</button>
           </div>
+        </Modal>
+      )}
+
+      {/* Modal Reconciliar Saldos */}
+      {modalReconciliar && (
+        <Modal titulo="Reconciliar Saldos de Estoque" subtitulo="Comparação entre o campo estoque e a soma das movimentações registradas" width={720} onClose={() => setModalReconciliar(false)}>
+          {reconcItens.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px 0" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+              <div style={{ fontWeight: 700, color: "#166534" }}>Todos os saldos estão corretos!</div>
+              <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 6 }}>O campo estoque de cada insumo bate com a soma das movimentações.</div>
+              <div style={{ marginTop: 20 }}>
+                <button style={btnR} onClick={() => setModalReconciliar(false)}>Fechar</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#92400E" }}>
+                ⚠ {reconcItens.length} item{reconcItens.length > 1 ? "s" : ""} com saldo divergente. O campo <strong>estoque</strong> não bate com a soma das movimentações. Clique em <strong>Corrigir</strong> para ajustar o campo para o valor calculado pelas movimentações.
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-page)" }}>
+                      {["Item", "Unid.", "Estoque atual (campo)", "Σ Movimentações", "Diferença"].map((c, i) => (
+                        <th key={i} style={{ padding: "8px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reconcItens.map((r, i) => (
+                      <tr key={r.id} style={{ borderBottom: i < reconcItens.length - 1 ? "0.5px solid var(--border-row)" : "none", background: Math.abs(r.dif) > 100 ? "#FFF5F5" : "transparent" }}>
+                        <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)" }}>{r.nome}</td>
+                        <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--text-2)" }}>{r.unidade}</td>
+                        <td style={{ padding: "9px 12px", textAlign: "right", color: "#E24B4A", fontWeight: 600 }}>{fmtNum(r.saldoAtual)}</td>
+                        <td style={{ padding: "9px 12px", textAlign: "right", color: "#166534", fontWeight: 600 }}>{fmtNum(r.saldoMov)}</td>
+                        <td style={{ padding: "9px 12px", textAlign: "right", color: r.dif > 0 ? "#E24B4A" : "#166534", fontWeight: 700 }}>
+                          {r.dif > 0 ? "+" : ""}{fmtNum(r.dif)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 12, background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px" }}>
+                <strong>Causa comum:</strong> insumo cadastrado com estoque inicial preenchido manualmente sem gerar movimentação de entrada. A correção ajusta o campo para corresponder ao histórico real de movimentações.
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                <button style={btnR} onClick={() => setModalReconciliar(false)}>Cancelar</button>
+                <button style={{ ...btnV, background: "#E24B4A" }} onClick={aplicarReconciliacao} disabled={reconcAplicando}>
+                  {reconcAplicando ? "Corrigindo…" : `Corrigir ${reconcItens.length} item${reconcItens.length > 1 ? "s" : ""}`}
+                </button>
+              </div>
+            </>
+          )}
         </Modal>
       )}
 
