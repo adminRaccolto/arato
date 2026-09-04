@@ -319,7 +319,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
               .maybeSingle()
           : Promise.resolve({ data: null, error: null }),
         supabase.from("usuarios")
-          .select("grupo_id, grupos_usuarios(permissoes)")
+          .select("grupo_id, grupos_usuarios(nome, permissoes)")
           .eq("auth_user_id", user.id)
           .maybeSingle(),
         cid
@@ -344,16 +344,25 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Processa permissões
+      // Processa permissões e detecta grupo Operador de Campo
       if (usuarioRes.status === "fulfilled") {
         try {
           const usuarioData = usuarioRes.value.data;
-          const perms = (
-            (Array.isArray(usuarioData?.grupos_usuarios)
+          const grupoData = (
+            Array.isArray(usuarioData?.grupos_usuarios)
               ? usuarioData?.grupos_usuarios[0]
-              : usuarioData?.grupos_usuarios) as { permissoes?: Record<string, string> } | null
-          )?.permissoes ?? {};
+              : usuarioData?.grupos_usuarios
+          ) as { nome?: string; permissoes?: Record<string, string> } | null;
+          const perms = grupoData?.permissoes ?? {};
           setPermissoes(perms as Record<string, ModuloPermissao>);
+
+          // Se o grupo é "Operador de Campo", forçar role = campo independente do perfil.role
+          const nomeGrupo = (grupoData?.nome ?? "").toLowerCase();
+          if (nomeGrupo.includes("campo") && role !== "campo") {
+            setUserRole("campo");
+            const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+            if (!pathname.startsWith("/campo")) router.push("/campo");
+          }
         } catch {
           setPermissoes({});
         }
@@ -388,15 +397,20 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const { data } = await supabase
               .from("usuarios")
-              .select("grupo_id, grupos_usuarios(permissoes)")
+              .select("grupo_id, grupos_usuarios(nome, permissoes)")
               .eq("auth_user_id", user.id)
               .maybeSingle();
-            const perms = (
-              (Array.isArray(data?.grupos_usuarios)
+            const grupoRt = (
+              Array.isArray(data?.grupos_usuarios)
                 ? data?.grupos_usuarios[0]
-                : data?.grupos_usuarios) as { permissoes?: Record<string, string> } | null
-            )?.permissoes ?? {};
+                : data?.grupos_usuarios
+            ) as { nome?: string; permissoes?: Record<string, string> } | null;
+            const perms = grupoRt?.permissoes ?? {};
             setPermissoes(perms as Record<string, ModuloPermissao>);
+            // Detecta mudança para grupo Operador de Campo em tempo real
+            if ((grupoRt?.nome ?? "").toLowerCase().includes("campo")) {
+              setUserRole("campo");
+            }
           } catch { /* silent */ }
         })
         .subscribe();
