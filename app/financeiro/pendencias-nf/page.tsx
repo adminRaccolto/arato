@@ -61,6 +61,14 @@ export default function PendenciasNfPage() {
   const [nomeRegra,  setNomeRegra]    = useState("");
   const [criandoRegra, setCriandoRegra] = useState(false);
 
+  // Modal vincular a previsão
+  type Previsao = { id: string; descricao: string; valor: number; data_vencimento: string; origem_lancamento?: string; pessoa_nome?: string };
+  const [modalVincular,   setModalVincular]   = useState<NfComItens | null>(null);
+  const [previsoes,       setPrevisoes]       = useState<Previsao[]>([]);
+  const [previsaoSel,     setPrevisaoSel]     = useState<string>("");
+  const [buscaPrevisao,   setBuscaPrevisao]   = useState("");
+  const [vinculando,      setVinculando]      = useState(false);
+
   // Dados auxiliares
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
@@ -197,6 +205,71 @@ export default function PendenciasNfPage() {
     setCriandoRegra(false);
     setModalRegra(null);
     setNomeRegra("");
+  }
+
+  // ── Vincular a previsão ──────────────────────────────
+
+  async function abrirVincular(nf: NfComItens) {
+    setModalVincular(nf);
+    setPrevisaoSel("");
+    setBuscaPrevisao("");
+    const { data } = await supabase
+      .from("lancamentos")
+      .select("id, descricao, valor, data_vencimento, origem_lancamento, pessoa:pessoas(nome)")
+      .in("fazenda_id", fazendaIds)
+      .eq("tipo", "pagar")
+      .eq("natureza", "previsao")
+      .neq("status", "cancelado")
+      .order("data_vencimento", { ascending: true });
+    setPrevisoes(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (data ?? []).map((l: any) => ({
+        id:               l.id as string,
+        descricao:        l.descricao as string,
+        valor:            l.valor as number,
+        data_vencimento:  l.data_vencimento as string,
+        origem_lancamento:l.origem_lancamento as string | undefined,
+        pessoa_nome:      Array.isArray(l.pessoa) ? (l.pessoa[0]?.nome as string | undefined) : (l.pessoa?.nome as string | undefined),
+      }))
+    );
+  }
+
+  async function confirmarVinculo() {
+    if (!modalVincular || !previsaoSel) return;
+    setVinculando(true);
+    const nf = modalVincular;
+
+    // 1. Previsão vira CP real
+    await supabase.from("lancamentos").update({
+      natureza:     "real",
+      status:       "em_aberto",
+      valor:        nf.valor_total ?? 0,
+      nfe_numero:   nf.numero ?? null,
+      chave_xml:    nf.chave_acesso ?? null,
+    }).eq("id", previsaoSel);
+
+    // 2. Cancela a CP auto-criada pelo SIEG (se existia e é diferente)
+    if (nf.cp_id && nf.cp_id !== previsaoSel) {
+      await supabase.from("lancamentos").update({ status: "cancelado" }).eq("id", nf.cp_id);
+    }
+
+    // 3. Atualiza a NF — vinculada e classificada
+    await supabase.from("nf_importadas_sieg").update({
+      lancamento_id:   previsaoSel,
+      cp_id:           previsaoSel,
+      status:          "classificada",
+      classificada_em: new Date().toISOString(),
+    }).eq("id", nf.id);
+
+    // 4. Classifica todos os itens pendentes da NF
+    await supabase.from("nf_importada_itens_sieg")
+      .update({ status_item: "classificado" })
+      .eq("nf_id", nf.id)
+      .eq("status_item", "pendente");
+
+    setVinculando(false);
+    setModalVincular(null);
+    carregarNfs();
   }
 
   // ── Helpers ───────────────────────────────────────────
@@ -358,12 +431,20 @@ export default function PendenciasNfPage() {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 {modal.status === "pendente" && (
-                  <button
-                    onClick={() => ignorarNf(modal.id)}
-                    style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Ignorar NF
-                  </button>
+                  <>
+                    <button
+                      onClick={() => { setModal(null); abrirVincular(modal); }}
+                      style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      📎 Vincular a Previsão
+                    </button>
+                    <button
+                      onClick={() => ignorarNf(modal.id)}
+                      style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Ignorar NF
+                    </button>
+                  </>
                 )}
                 <button onClick={() => setModal(null)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Fechar
@@ -498,6 +579,115 @@ export default function PendenciasNfPage() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Vincular a Previsão ── */}
+      {modalVincular && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(660px, 97vw)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}>
+
+            {/* Header */}
+            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>📎 Vincular NF a Previsão</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
+                NF {modalVincular.numero}/{modalVincular.serie} · {modalVincular.nome_emitente} · {(modalVincular.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </div>
+            </div>
+
+            {/* Explicação */}
+            <div style={{ padding: "12px 24px", background: "#EFF6FF", borderBottom: "0.5px solid #BFDBFE", fontSize: 12, color: "#1D4ED8" }}>
+              Selecione um lançamento de <strong>previsão</strong> para confirmar com os dados desta NF. O lançamento será convertido em CP real e a CP gerada automaticamente pelo SIEG será cancelada.
+            </div>
+
+            {/* Busca */}
+            <div style={{ padding: "12px 24px 0" }}>
+              <input
+                value={buscaPrevisao}
+                onChange={e => setBuscaPrevisao(e.target.value)}
+                placeholder="Filtrar por descrição ou fornecedor…"
+                style={{ width: "100%", padding: "8px 12px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Lista de previsões */}
+            <div style={{ flex: 1, overflow: "auto", padding: "12px 24px" }}>
+              {previsoes.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 32, color: "var(--text-3)", fontSize: 13 }}>
+                  Nenhuma previsão (lançamento com natureza=previsão) encontrada.
+                  <br />Crie previsões a partir de Pedidos de Compra ou manualmente em Contas a Pagar.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {previsoes
+                    .filter(p => !buscaPrevisao || [p.descricao, p.pessoa_nome ?? ""].join(" ").toLowerCase().includes(buscaPrevisao.toLowerCase()))
+                    .map(p => {
+                      const sel = previsaoSel === p.id;
+                      const diffVal = modalVincular.valor_total && Math.abs((modalVincular.valor_total - p.valor) / p.valor) > 0.1;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => setPrevisaoSel(p.id)}
+                          style={{
+                            border: `0.5px solid ${sel ? "#1A4870" : "var(--border)"}`,
+                            borderRadius: 9,
+                            padding: "12px 16px",
+                            cursor: "pointer",
+                            background: sel ? "#D5E8F5" : "var(--bg-card)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
+                          <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${sel ? "#1A4870" : "var(--border)"}`, background: sel ? "#1A4870" : "transparent", flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {p.descricao}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                              {p.pessoa_nome && <span>👤 {p.pessoa_nome}</span>}
+                              {p.origem_lancamento && <span>Origem: {p.origem_lancamento.replace(/_/g, " ")}</span>}
+                              <span>Vence: {p.data_vencimento ? new Date(p.data_vencimento + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</span>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: diffVal ? "#C9921B" : "var(--text-1)" }}>
+                              {p.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </div>
+                            {diffVal && (
+                              <div style={{ fontSize: 10, color: "#C9921B" }}>⚠ valor difere da NF</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setModalVincular(null)}
+                style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarVinculo}
+                disabled={!previsaoSel || vinculando}
+                style={{
+                  padding: "8px 22px", borderRadius: 7, border: "none",
+                  background: !previsaoSel ? "var(--border)" : "#1A4870",
+                  color: !previsaoSel ? "var(--text-muted)" : "#fff",
+                  fontSize: 13, fontWeight: 600, cursor: !previsaoSel ? "not-allowed" : "pointer",
+                }}
+              >
+                {vinculando ? "Vinculando…" : "📎 Confirmar Vínculo"}
+              </button>
             </div>
           </div>
         </div>

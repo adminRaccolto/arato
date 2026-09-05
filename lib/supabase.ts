@@ -2170,6 +2170,7 @@ export type NfImportadaSieg = {
   status: "pendente" | "classificada" | "ignorada" | "erro";
   pessoa_id?: string;
   cp_id?: string;
+  lancamento_id?: string;   // FK lancamentos.id — vínculo com previsão convertida em CP real
   classificada_em?: string;
   classificada_por?: string;
   obs?: string;
