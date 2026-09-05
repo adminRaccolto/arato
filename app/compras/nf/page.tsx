@@ -207,7 +207,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
 });
 
-type Etapa = "origem" | "cabecalho" | "itens";
+type Etapa = "cabecalho" | "itens";
 type OrigEscolha = "manual" | "xml" | "sieg" | "leitor";
 type TipoEntrada = "insumos" | "pecas" | "vef" | "remessa" | "custo_direto";
 
@@ -289,7 +289,7 @@ export default function NfCompraPage() {
 
   // Wizard
   const [wizard,  setWizard]  = useState(false);
-  const [etapa,   setEtapa]   = useState<Etapa>("origem");
+  const [etapa,   setEtapa]   = useState<Etapa>("cabecalho");
   const [orig,    setOrig]    = useState<OrigEscolha>("manual");
   const [tipo,    setTipo]    = useState<TipoEntrada>("insumos");
   const [saving,  setSaving]  = useState(false);
@@ -848,7 +848,7 @@ export default function NfCompraPage() {
   // ── Abrir wizard novo ──────────────────────────────────────
   async function abrirNovo() {
     setNfEdit(null);
-    setEtapa("origem");
+    setEtapa("cabecalho");
     setOrig("manual");
     setTipo("insumos");
     setCab({
@@ -2654,17 +2654,17 @@ export default function NfCompraPage() {
                   {nfEdit ? `NF ${nfEdit.numero}/${nfEdit.serie}` : "Nova NF de Compra"}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
-                  {etapa === "origem" ? "Passo 1 — Origem" : etapa === "cabecalho" ? "Passo 2 — Cabeçalho" : "Passo 3 — Itens & Processamento"}
+                  {etapa === "cabecalho" ? "Passo 1 — Cabeçalho" : "Passo 2 — Itens & Processamento"}
                 </div>
               </div>
               {/* Stepper */}
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                {(["origem", "cabecalho", "itens"] as Etapa[]).map((e, i) => (
+                {(["cabecalho", "itens"] as Etapa[]).map((e, i) => (
                   <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: etapa === e ? "#1A5C38" : etapa > e ? "#E8E8E8" : "var(--bg-page)", color: etapa === e ? "#fff" : etapa > e ? "#111111" : "var(--text-muted)" }}>
                       {i + 1}
                     </div>
-                    {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}
+                    {i < 1 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}
                   </div>
                 ))}
               </div>
@@ -2674,167 +2674,147 @@ export default function NfCompraPage() {
             <div style={{ padding: "16px 20px" }}>
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{err}</div>}
 
-              {/* ─── ETAPA 1: ORIGEM ─────────────────────────── */}
-              {etapa === "origem" && (
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)", marginBottom: 16 }}>Como deseja lançar a nota fiscal?</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 24 }}>
-                    {([
-                      { v: "manual", icon: "✏️", title: "Manual",           desc: "Digite os dados diretamente" },
-                      { v: "xml",    icon: "📄", title: "XML",              desc: "Importe o arquivo XML da NF-e" },
-                      { v: "leitor", icon: "▌▌ ▌▌▌▌", title: "Leitor de Chave", desc: "Escaneie o código de barras do DANFE ou digite a chave de acesso" },
-                      { v: "sieg",   icon: "🔗", title: "Sieg / API",       desc: "Consulte pelo número de chave via integração Sieg" },
-                    ] as { v: OrigEscolha; icon: string; title: string; desc: string }[]).map(({ v, icon, title, desc }) => (
-                      <button
-                        key={v}
-                        onClick={() => { setOrig(v); setLeitorChave(""); setLeitorErro(null); if (v === "leitor") setTimeout(() => leitorRef.current?.focus(), 50); }}
-                        style={{ padding: "20px 16px", border: `2px solid ${orig === v ? "#1A5C38" : "var(--border-table)"}`, borderRadius: 12, background: orig === v ? "#E8F5E9" : "var(--bg-card)", cursor: "pointer", textAlign: "center" }}
-                      >
-                        <div style={{ fontSize: v === "leitor" ? 18 : 28, marginBottom: 8, fontFamily: v === "leitor" ? "monospace" : "inherit", letterSpacing: v === "leitor" ? 2 : 0 }}>{icon}</div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>{title}</div>
-                        <div style={{ fontSize: 12, color: "#666" }}>{desc}</div>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Upload XML */}
-                  {orig === "xml" && (
-                    <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-                      <label style={lbl}>Arquivo XML da NF-e</label>
-                      <input
-                        ref={xmlInputRef} type="file" accept=".xml"
-                        onChange={e => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = ev => parsearXml(ev.target?.result as string);
-                          reader.readAsText(f);
-                        }}
-                        style={{ display: "block", fontSize: 13 }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Leitor de Chave de Acesso (código de barras → SEFAZ) */}
-                  {orig === "leitor" && (
-                    <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-                      <label style={lbl}>Chave de Acesso — 44 dígitos</label>
-                      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 10 }}>
-                        Aponte o leitor de código de barras para o DANFE. O sistema consulta a SEFAZ automaticamente ao completar os 44 dígitos.
-                      </div>
-                      <div style={{ position: "relative" }}>
-                        <input
-                          ref={leitorRef}
-                          value={leitorChave.replace(/(\d{9})(?=\d)/g, "$1 ").replace(/(\d{8})\s(\d{9})(?=\d)/g, "$1 $2 ").trim()}
-                          onChange={e => {
-                            const digits = e.target.value.replace(/\D/g, "").substring(0, 44);
-                            setLeitorChave(digits);
-                            setLeitorErro(null);
-                            if (digits.length === 44) {
-                              setLeitorLoading(true);
-                              fetch("/api/nfe/xml-por-chave", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
-                              }).then(r => r.json()).then(json => {
-                                if (!json.ok || !json.xmlCompleto) { setLeitorErro(json.erro ?? "Não foi possível obter o XML da SEFAZ."); return; }
-                                parsearXml(json.xmlCompleto);
-                                setOrig("xml"); // após parsear, exibe feedback do modo XML
-                              }).catch(() => setLeitorErro("Erro de rede ao consultar a SEFAZ."))
-                                .finally(() => setLeitorLoading(false));
-                            }
-                          }}
-                          onPaste={e => {
-                            const digits = e.clipboardData.getData("text").replace(/\D/g, "").substring(0, 44);
-                            if (digits.length === 44) {
-                              e.preventDefault();
-                              setLeitorChave(digits);
-                              setLeitorErro(null);
-                              setLeitorLoading(true);
-                              fetch("/api/nfe/xml-por-chave", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
-                              }).then(r => r.json()).then(json => {
-                                if (!json.ok || !json.xmlCompleto) { setLeitorErro(json.erro ?? "Não foi possível obter o XML."); return; }
-                                parsearXml(json.xmlCompleto);
-                                setOrig("xml");
-                              }).catch(() => setLeitorErro("Erro de rede ao consultar a SEFAZ."))
-                                .finally(() => setLeitorLoading(false));
-                            }
-                          }}
-                          disabled={leitorLoading}
-                          placeholder="Posicione o cursor aqui e escaneie o código de barras…"
-                          style={{ ...inp, fontFamily: "monospace", fontSize: 14, letterSpacing: "0.06em", paddingRight: 110 }}
-                          autoComplete="off"
-                          autoFocus
-                        />
-                        <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: leitorChave.length === 44 ? "#16A34A" : "#888" }}>
-                          {leitorLoading ? "Consultando SEFAZ…" : `${leitorChave.length}/44`}
-                        </span>
-                      </div>
-                      {/* Barra de progresso */}
-                      <div style={{ marginTop: 6, height: 3, background: "#EEE", borderRadius: 2, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${(leitorChave.length / 44) * 100}%`, background: leitorChave.length === 44 ? "#16A34A" : "#1A4870", transition: "width 0.1s" }} />
-                      </div>
-                      {leitorErro && (
-                        <div style={{ marginTop: 10, padding: "9px 12px", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, fontSize: 12, color: "#E24B4A" }}>
-                          {leitorErro}
-                          {leitorErro.includes("Certificado") && (
-                            <div style={{ marginTop: 4, color: "#555" }}>Configure o certificado A1 em <strong>Configurações → Parâmetros do Sistema → Fiscal</strong>.</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Sieg */}
-                  {orig === "sieg" && (
-                    <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-                      <label style={lbl}>Chave de Acesso (44 dígitos)</label>
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <input
-                          value={siegChave} onChange={e => setSiegChave(e.target.value.replace(/\D/g, ""))}
-                          placeholder="00000000000000000000000000000000000000000000"
-                          maxLength={44} style={{ ...inp, flex: 1, fontFamily: "monospace", fontSize: 12 }}
-                        />
-                        <button onClick={buscarSieg} disabled={siegLoading} style={{ ...btnV, whiteSpace: "nowrap" }}>
-                          {siegLoading ? "Buscando…" : "Consultar"}
-                        </button>
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>
-                        Integração com Sieg, Arquivei ou qualquer gestor fiscal via API /api/sieg
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tipo de entrada */}
-                  <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Tipo de entrada</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      {(Object.entries(TIPO_LABELS) as [TipoEntrada, typeof TIPO_LABELS[TipoEntrada]][]).map(([v, meta]) => (
-                        <button
-                          key={v}
-                          onClick={() => setTipo(v)}
-                          style={{ padding: "14px 16px", border: `2px solid ${tipo === v ? "#111111" : "var(--border-table)"}`, borderRadius: 10, background: tipo === v ? meta.cor : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{meta.label}</div>
-                          <div style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.5 }}>{meta.desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button style={btnR} onClick={() => setWizard(false)}>Cancelar</button>
-                    <button style={btnV} onClick={() => setEtapa("cabecalho")}>Próximo →</button>
-                  </div>
-                </div>
-              )}
-
-              {/* ─── ETAPA 2: CABEÇALHO ──────────────────────── */}
+              {/* ─── ETAPA 1: CABEÇALHO ──────────────────────── */}
               {etapa === "cabecalho" && (
                 <div>
+
+                  {/* ── Barra compacta: Como lançar + Tipo de entrada ── */}
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                    <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+                      {/* Como lançar */}
+                      <div style={{ flex: "1 1 auto" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>Como lançar</div>
+                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                          {([
+                            { v: "manual", label: "✏ Manual" },
+                            { v: "xml",    label: "📄 XML" },
+                            { v: "leitor", label: "▌▌ Chave / Leitor" },
+                            { v: "sieg",   label: "🔗 Sieg / API" },
+                          ] as { v: OrigEscolha; label: string }[]).map(({ v, label }) => (
+                            <button key={v}
+                              onClick={() => { setOrig(v); setLeitorChave(""); setLeitorErro(null); if (v === "leitor") setTimeout(() => leitorRef.current?.focus(), 50); }}
+                              style={{ padding: "5px 12px", border: `1.5px solid ${orig === v ? "#1A5C38" : "var(--border-table)"}`, borderRadius: 6, background: orig === v ? "#E8F5E9" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: orig === v ? 700 : 400, color: orig === v ? "#1A5C38" : "var(--text-2)", whiteSpace: "nowrap" }}>
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Tipo de entrada */}
+                      <div style={{ flex: "1 1 200px" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>Tipo de Entrada</div>
+                        <select value={tipo} onChange={e => setTipo(e.target.value as TipoEntrada)}
+                          style={{ ...inp, fontWeight: 600, background: TIPO_LABELS[tipo]?.cor ?? "var(--bg-input)" }}>
+                          {(Object.entries(TIPO_LABELS) as [TipoEntrada, typeof TIPO_LABELS[TipoEntrada]][]).map(([v, meta]) => (
+                            <option key={v} value={v}>{meta.label}</option>
+                          ))}
+                        </select>
+                        {TIPO_LABELS[tipo] && (
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{TIPO_LABELS[tipo].desc}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Painel de input por origem (colapsável) */}
+                    {orig === "xml" && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
+                        <label style={lbl}>Arquivo XML da NF-e</label>
+                        <input ref={xmlInputRef} type="file" accept=".xml"
+                          onChange={e => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            const reader = new FileReader();
+                            reader.onload = ev => parsearXml(ev.target?.result as string);
+                            reader.readAsText(f);
+                          }}
+                          style={{ display: "block", fontSize: 13 }}
+                        />
+                      </div>
+                    )}
+
+                    {orig === "leitor" && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
+                        <label style={lbl}>Chave de Acesso — 44 dígitos (escaneie ou digite)</label>
+                        <div style={{ position: "relative" }}>
+                          <input
+                            ref={leitorRef}
+                            value={leitorChave.replace(/(\d{9})(?=\d)/g, "$1 ").replace(/(\d{8})\s(\d{9})(?=\d)/g, "$1 $2 ").trim()}
+                            onChange={e => {
+                              const digits = e.target.value.replace(/\D/g, "").substring(0, 44);
+                              setLeitorChave(digits);
+                              setLeitorErro(null);
+                              if (digits.length === 44) {
+                                setLeitorLoading(true);
+                                fetch("/api/nfe/xml-por-chave", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
+                                }).then(r => r.json()).then(json => {
+                                  if (!json.ok || !json.xmlCompleto) { setLeitorErro(json.erro ?? "Não foi possível obter o XML da SEFAZ."); return; }
+                                  parsearXml(json.xmlCompleto);
+                                  setOrig("xml");
+                                }).catch(() => setLeitorErro("Erro de rede ao consultar a SEFAZ."))
+                                  .finally(() => setLeitorLoading(false));
+                              }
+                            }}
+                            onPaste={e => {
+                              const digits = e.clipboardData.getData("text").replace(/\D/g, "").substring(0, 44);
+                              if (digits.length === 44) {
+                                e.preventDefault();
+                                setLeitorChave(digits);
+                                setLeitorErro(null);
+                                setLeitorLoading(true);
+                                fetch("/api/nfe/xml-por-chave", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
+                                }).then(r => r.json()).then(json => {
+                                  if (!json.ok || !json.xmlCompleto) { setLeitorErro(json.erro ?? "Não foi possível obter o XML."); return; }
+                                  parsearXml(json.xmlCompleto);
+                                  setOrig("xml");
+                                }).catch(() => setLeitorErro("Erro de rede ao consultar a SEFAZ."))
+                                  .finally(() => setLeitorLoading(false));
+                              }
+                            }}
+                            disabled={leitorLoading}
+                            placeholder="Posicione o cursor aqui e escaneie…"
+                            style={{ ...inp, fontFamily: "monospace", fontSize: 13, letterSpacing: "0.05em", paddingRight: 100 }}
+                            autoComplete="off"
+                            autoFocus
+                          />
+                          <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: leitorChave.length === 44 ? "#16A34A" : "#888" }}>
+                            {leitorLoading ? "Consultando…" : `${leitorChave.length}/44`}
+                          </span>
+                        </div>
+                        <div style={{ marginTop: 4, height: 3, background: "#EEE", borderRadius: 2, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${(leitorChave.length / 44) * 100}%`, background: leitorChave.length === 44 ? "#16A34A" : "#1A4870", transition: "width 0.1s" }} />
+                        </div>
+                        {leitorErro && (
+                          <div style={{ marginTop: 8, padding: "8px 12px", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, fontSize: 12, color: "#E24B4A" }}>
+                            {leitorErro}
+                            {leitorErro.includes("Certificado") && (
+                              <div style={{ marginTop: 4, color: "#555" }}>Configure o certificado A1 em <strong>Configurações → Parâmetros do Sistema → Fiscal</strong>.</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {orig === "sieg" && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
+                        <label style={lbl}>Chave de Acesso Sieg (44 dígitos)</label>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <input value={siegChave} onChange={e => setSiegChave(e.target.value.replace(/\D/g, ""))}
+                            placeholder="00000000000000000000000000000000000000000000"
+                            maxLength={44} style={{ ...inp, flex: 1, fontFamily: "monospace", fontSize: 12 }}
+                          />
+                          <button onClick={buscarSieg} disabled={siegLoading} style={{ ...btnV, whiteSpace: "nowrap" }}>
+                            {siegLoading ? "Buscando…" : "Consultar"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* ── Vínculo com Pedido de Compra — ao topo ── */}
                   <div style={{ background: cab.pedido_compra_id ? "#E8F5E9" : "var(--bg-page)", border: `0.5px solid ${cab.pedido_compra_id ? "#86EFAC" : "var(--border-table)"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
@@ -3384,17 +3364,14 @@ export default function NfCompraPage() {
                     <textarea value={cab.observacao} onChange={e => setCab(p=>({...p,observacao:e.target.value}))} rows={2} style={{ ...inp, resize: "vertical" }} />
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <button style={btnR} onClick={() => setEtapa("origem")}>← Voltar</button>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button style={btnR} onClick={() => setWizard(false)}>Cancelar</button>
-                      <button style={btnV} onClick={async () => {
-                        const nf = await salvarRascunho();
-                        if (nf) setEtapa("itens");
-                      }}>
-                        Próximo: Itens →
-                      </button>
-                    </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                    <button style={btnR} onClick={() => setWizard(false)}>Cancelar</button>
+                    <button style={btnV} onClick={async () => {
+                      const nf = await salvarRascunho();
+                      if (nf) setEtapa("itens");
+                    }}>
+                      Próximo: Itens →
+                    </button>
                   </div>
                 </div>
               )}
@@ -3425,8 +3402,8 @@ export default function NfCompraPage() {
                       </div>
                       <div style={{ fontSize: 12, color: "#791F1F" }}>
                         Isso pode ocorrer por encoding inválido, XML compactado ou NF-e de serviço (sem linha de produtos).
-                        Tente: (1) voltar ao Passo 1 e recarregar o XML, (2) adicionar os itens manualmente abaixo, ou
-                        (3) buscar via Chave de Acesso no Passo 1.
+                        Tente: (1) voltar ao Cabeçalho e recarregar o XML, (2) adicionar os itens manualmente abaixo, ou
+                        (3) buscar via Chave de Acesso no Cabeçalho.
                       </div>
                     </div>
                   )}
@@ -3434,7 +3411,7 @@ export default function NfCompraPage() {
                   {!xmlSemItens && itens.length === 1 && !itens[0].descricao_nf && itens[0].valor_total === 0 && nfEdit?.chave_acesso && nfEdit?.chave_acesso.replace(/\D/g,"").length === 44 && (
                     <div style={{ background: "#FFF8E6", border: "0.5px solid #F0C040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, color: "#7A5500" }}>
-                        Nenhum item carregado. Volte ao Passo 1 e importe o XML ou busque via Leitor de Chave.
+                        Nenhum item carregado. Volte ao Cabeçalho e importe o XML ou busque via Leitor de Chave.
                       </span>
                       {nfEdit?.origem === "sieg" && (
                         <button onClick={resyncWizard} disabled={wizardResyncando}
