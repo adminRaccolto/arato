@@ -1262,9 +1262,9 @@ function ContasPagarInner() {
                   const lc = lastCascadeRef.current;
                   // Garante que fazendaId sempre esteja definido para que o CascadeSelector
                   // carregue os anos safra imediatamente sem exigir seleção manual
-                  setCascade({ ...lc, fazendaId: lc.fazendaId || fazendaId || "" });
+                  setCascade({ ...lc, fazendaId: lc.fazendaId || fazendaId || "", anoSafraId: lc.anoSafraId || anoSafraVigenteId || "" });
                   setModalTab("principal");
-                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId ?? anoSafraVigenteId ?? "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: lc.talhaoId ?? "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "", empresa_id: "" });
+                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId || anoSafraVigenteId || "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "", empresa_id: "" });
                   setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true);
                 }}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -2815,15 +2815,16 @@ function ContasPagarInner() {
                     </div>
                   )}
 
-                  {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+                  {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo (sem Talhão em CP direto) */}
                   <CascadeSelector
                     contaId={contaId}
                     fazendaIdFallback={fazendaId}
                     fazendaRequired={false}
+                    levels={["produtor", "fazenda", "anoSafra", "ciclo"]}
                     values={cascade}
                     onChange={next => {
                       setCascade(next);
-                      setForm(p => ({ ...p, produtor_id: next.produtorId ?? "", ano_safra_id: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));
+                      setForm(p => ({ ...p, produtor_id: next.produtorId ?? "", ano_safra_id: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "" }));
                     }}
                   />
 
@@ -2842,10 +2843,17 @@ function ContasPagarInner() {
                       <SelectBusca
                         value={form.operacao_gerencial_id}
                         onChange={id => {
-                          const op = opGerenciais.find(o => o.id === id);
+                          const op = [...opGerenciais, ...allOgs].find(o => o.id === id);
                           setForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : p.categoria }));
                         }}
-                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        options={(() => {
+                          const base = opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }));
+                          if (form.operacao_gerencial_id && !opGerenciais.find(o => o.id === form.operacao_gerencial_id)) {
+                            const missing = allOgs.find(o => o.id === form.operacao_gerencial_id);
+                            if (missing) base.unshift({ value: missing.id, label: `${missing.classificacao} — ${missing.descricao}`, group: (missing.classificacao ?? "").split(".").slice(0, 3).join(".") });
+                          }
+                          return base;
+                        })()}
                         placeholder="— Selecionar operação —"
                         style={inp}
                       />
