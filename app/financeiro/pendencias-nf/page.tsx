@@ -109,13 +109,13 @@ export default function PendenciasNfPage() {
       .order("numero_item");
     const itens = (data ?? []) as NfImportadaItemSieg[];
 
-    // Pré-preenche com o que já está classificado
+    // Pré-preenche com classificação existente ou sugestão IA (para itens pendentes)
     const init: Record<string, ItemClassif> = {};
     for (const it of itens) {
       init[it.id] = {
-        insumo_id:      it.insumo_id      ?? "",
-        categoria:      it.categoria      ?? "",
-        centro_custo_id:it.centro_custo_id ?? "",
+        insumo_id:       it.insumo_id       ?? "",
+        categoria:       it.categoria       ?? "",
+        centro_custo_id: it.centro_custo_id ?? "",
       };
     }
     setClassif(init);
@@ -400,16 +400,31 @@ export default function PendenciasNfPage() {
                             <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>
                               {item.numero_item}. {item.descricao}
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3, display: "flex", gap: 12 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3, display: "flex", gap: 12, flexWrap: "wrap" }}>
                               {item.ncm  && <span>NCM: {item.ncm}</span>}
                               {item.cfop && <span>CFOP: {item.cfop}</span>}
                               <span>{item.quantidade} {item.unidade} × {fmt(item.valor_unitario ?? 0)} = <strong>{fmt(item.valor_total ?? 0)}</strong></span>
                             </div>
+                            {item.ia_motivo && (
+                              <div style={{ marginTop: 5, fontSize: 11, color: item.ia_classificado ? "#1D4ED8" : "#92400E", background: item.ia_classificado ? "#EFF6FF" : "#FFFBEB", padding: "3px 8px", borderRadius: 6, display: "inline-block" }}>
+                                {item.ia_classificado ? "✨ IA:" : "💡 Sugestão IA:"} {item.ia_motivo}
+                              </div>
+                            )}
                           </div>
-                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                             {item.classificado_automaticamente && (
                               <span style={{ fontSize: 10, color: "#111111", background: "#E8E8E8", padding: "2px 7px", borderRadius: 8, border: "0.5px solid #93C5FD" }}>
-                                🤖 Auto
+                                🤖 Regra
+                              </span>
+                            )}
+                            {item.ia_classificado && (
+                              <span title={item.ia_motivo ?? ""} style={{ fontSize: 10, color: "#1E40AF", background: "#DBEAFE", padding: "2px 7px", borderRadius: 8, border: "0.5px solid #93C5FD", cursor: "help" }}>
+                                ✨ IA {item.ia_confianca === "alta" ? "↑" : "~"}
+                              </span>
+                            )}
+                            {!item.ia_classificado && item.ia_motivo && item.status_item === "pendente" && (
+                              <span title={`Sugestão IA (${item.ia_confianca}): ${item.ia_motivo}`} style={{ fontSize: 10, color: "#92400E", background: "#FEF3C7", padding: "2px 7px", borderRadius: 8, border: "0.5px solid #FCD34D", cursor: "help" }}>
+                                💡 Sugestão IA
                               </span>
                             )}
                             <span style={{

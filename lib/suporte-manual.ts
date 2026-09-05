@@ -2721,7 +2721,7 @@ Quando uma NF de Entrada registra insumos que chegaram via remessa logística (a
 
 ## MÓDULO — FOLHA DE PAGAMENTO (PRODUTOR RURAL)
 
-**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento** (`/financeiro/folha`)
+**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento** (/financeiro/folha)
 
 ### O que faz
 Registra e controla a folha de pagamento dos funcionários vinculados às fazendas do produtor rural (CPF). Permite lançamento com competência corrente ou retroativa, replicação para competências futuras e gera Contas a Pagar automaticamente no Financeiro.
@@ -2778,13 +2778,13 @@ Após salvar uma folha, dentro do modal aberto:
 
 ## MÓDULO — FOLHA DE PAGAMENTO — EMPRESA
 
-**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento — Empresa** (`/empresas/folha`)
+**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento — Empresa** (/empresas/folha)
 
 ### O que faz
 Registra e controla a folha de pagamento dos funcionários de **empresas com CNPJ** (PJ) do grupo. Funciona de forma análoga à folha do produtor rural, mas separada para gestão de pessoal da pessoa jurídica.
 
 ### Diferença em relação à Folha do Produtor
-| Folha do Produtor (`/financeiro/folha`) | Folha da Empresa (`/empresas/folha`) |
+| Folha do Produtor (/financeiro/folha) | Folha da Empresa (/empresas/folha) |
 |---|---|
 | Funcionários vinculados a **fazendas** | Funcionários vinculados a **empresas (CNPJ)** |
 | Produtor rural — CPF | Empresa — CNPJ |

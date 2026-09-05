@@ -15,6 +15,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse }     from "next/server";
 import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv } from "../../../../lib/sieg";
+import { classificarItemNF } from "../../../../lib/ai-classificador";
 
 export const runtime = "nodejs";
 
@@ -56,8 +57,15 @@ async function syncFazenda(
   fazendaId: string,
   _apiKey: string,  // mantido por compatibilidade — credenciais lidas do env
   cnpjs: string[]
-): Promise<{ importadas: number; classificadas: number; pendentes: number; erros: number }> {
+): Promise<{ importadas: number; classificadas: number; pendentes: number; ia_classificadas: number; erros: number }> {
   const siegCreds = credenciaisEnv();
+
+  // Conta da fazenda (para OGs e para o classificador IA)
+  let contaId: string | null = null;
+  try {
+    const { data: faz } = await db.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+    contaId = faz?.conta_id ?? null;
+  } catch { /* segue sem conta_id */ }
 
   // Última data importada (ou 30 dias atrás)
   const { data: last } = await db
@@ -81,7 +89,7 @@ async function syncFazenda(
     .eq("ativo", true);
   const regras = (regrasRaw ?? []) as Regra[];
 
-  let importadas = 0, classificadas = 0, pendentes = 0, erros = 0;
+  let importadas = 0, classificadas = 0, pendentes = 0, ia_classificadas = 0, erros = 0;
 
   for (const cnpj of cnpjs) {
     let xmls: string[] = [];
@@ -185,12 +193,42 @@ async function syncFazenda(
 
       if (nfErr || !nfReg) { erros++; continue; }
 
-      // Insere itens + tenta classificar
+      // Insere itens + tenta classificar (regra estática → IA → pendente)
       let todosOk = nfe.itens.length > 0;
 
       for (const item of nfe.itens) {
         const regra = matchRegra(regras, nfe.cnpj_emitente, item.ncm, item.descricao);
-        if (!regra) todosOk = false;
+
+        // Quando nenhuma regra estática bate, tenta IA
+        let iaResult = null;
+        if (!regra) {
+          try {
+            iaResult = await classificarItemNF(
+              db, contaId, fazendaId,
+              {
+                descricao:      item.descricao,
+                ncm:            item.ncm      || null,
+                cfop:           item.cfop     || null,
+                valor_unitario: item.valor_unitario,
+                valor_total:    item.valor_total,
+                quantidade:     item.quantidade,
+                unidade:        item.unidade  || null,
+              },
+              {
+                cnpj_emitente: nfe.cnpj_emitente,
+                nome_emitente: nfe.nome_emitente,
+                natureza:      nfe.natureza,
+              }
+            );
+          } catch (e) {
+            console.warn("[sieg-ia] classificação IA falhou para item:", item.descricao, e);
+          }
+        }
+
+        // Auto-classifica se regra ou IA com alta/media confiança
+        const iaOk       = !!iaResult && iaResult.confianca !== "baixa";
+        const itemOk     = !!regra || iaOk;
+        if (!itemOk) todosOk = false;
 
         await db.from("nf_importada_itens_sieg").insert({
           nf_id:                        nfReg.id,
@@ -203,12 +241,18 @@ async function syncFazenda(
           unidade:                      item.unidade  || null,
           valor_unitario:               item.valor_unitario,
           valor_total:                  item.valor_total,
-          insumo_id:                    regra?.insumo_id       ?? null,
-          categoria:                    regra?.categoria       ?? null,
+          // Classificação: regra tem prioridade, depois IA
+          insumo_id:                    regra?.insumo_id       ?? (iaResult?.insumo_id ?? null),
+          og_id:                        iaResult?.og_id        ?? null,
+          categoria:                    regra?.categoria       ?? (iaResult?.categoria ?? null),
           centro_custo_id:              regra?.centro_custo_id ?? null,
           classificado_automaticamente: !!regra,
           regra_id:                     regra?.id              ?? null,
-          status_item:                  regra ? "classificado" : "pendente",
+          // Rastro de auditoria IA
+          ia_classificado:              !regra && iaOk,
+          ia_confianca:                 iaResult?.confianca    ?? null,
+          ia_motivo:                    iaResult?.motivo       ?? null,
+          status_item:                  itemOk ? "classificado" : "pendente",
         });
 
         if (regra) {
@@ -217,6 +261,8 @@ async function syncFazenda(
             qtd_aplicacoes:   (regra.qtd_aplicacoes ?? 0) + 1,
           }).eq("id", regra.id);
         }
+
+        if (!regra && iaOk) ia_classificadas++;
       }
 
       const statusFinal = todosOk ? "classificada" : "pendente";
@@ -228,7 +274,7 @@ async function syncFazenda(
     }
   }
 
-  return { importadas, classificadas, pendentes, erros };
+  return { importadas, classificadas, pendentes, ia_classificadas, erros };
 }
 
 // ── Handler HTTP ──────────────────────────────────────────────
@@ -263,7 +309,7 @@ export async function GET(req: NextRequest) {
   // API key global (env) ou por fazenda (config)
   const globalKey = process.env.SIEG_API_KEY ?? "";
 
-  const resumo: Record<string, { importadas: number; classificadas: number; pendentes: number; erros: number }> = {};
+  const resumo: Record<string, { importadas: number; classificadas: number; ia_classificadas: number; pendentes: number; erros: number }> = {};
 
   for (const row of cfgList) {
     const fazendaId = row.fazenda_id as string;
@@ -280,16 +326,17 @@ export async function GET(req: NextRequest) {
   const tot = (k: keyof typeof resumo[string]) =>
     Object.values(resumo).reduce((s, r) => s + r[k], 0);
 
-  console.log(`[sieg-sync] ${Object.keys(resumo).length} fazendas — importadas=${tot("importadas")} classificadas=${tot("classificadas")} pendentes=${tot("pendentes")} erros=${tot("erros")}`);
+  console.log(`[sieg-sync] ${Object.keys(resumo).length} fazendas — importadas=${tot("importadas")} classificadas=${tot("classificadas")} ia=${tot("ia_classificadas")} pendentes=${tot("pendentes")} erros=${tot("erros")}`);
 
   return NextResponse.json({
-    ok:           true,
-    msg:          `${tot("importadas")} NF(s) importada(s): ${tot("classificadas")} classificadas, ${tot("pendentes")} pendentes, ${tot("erros")} erros`,
-    fazendas:     Object.keys(resumo).length,
-    importadas:   tot("importadas"),
-    classificadas: tot("classificadas"),
-    pendentes:    tot("pendentes"),
-    erros:        tot("erros"),
-    detalhe:      resumo,
+    ok:              true,
+    msg:             `${tot("importadas")} NF(s) importada(s): ${tot("classificadas")} classificadas (${tot("ia_classificadas")} via IA), ${tot("pendentes")} pendentes, ${tot("erros")} erros`,
+    fazendas:        Object.keys(resumo).length,
+    importadas:      tot("importadas"),
+    classificadas:   tot("classificadas"),
+    ia_classificadas: tot("ia_classificadas"),
+    pendentes:       tot("pendentes"),
+    erros:           tot("erros"),
+    detalhe:         resumo,
   });
 }

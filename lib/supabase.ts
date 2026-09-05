@@ -2194,6 +2194,11 @@ export type NfImportadaItemSieg = {
   centro_custo_id?: string;
   classificado_automaticamente?: boolean;
   regra_id?: string;
+  og_id?: string;
+  // Rastro de auditoria IA
+  ia_classificado?: boolean;
+  ia_confianca?: "alta" | "media" | "baixa";
+  ia_motivo?: string;
   status_item: "pendente" | "classificado" | "sem_match" | "ignorado";
 };
 

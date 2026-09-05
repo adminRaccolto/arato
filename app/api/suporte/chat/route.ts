@@ -52,12 +52,12 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 
 ### Financeiro
 - **Fluxo de Caixa**: realizado + projetado, conciliação OFX
-- **Contas a Pagar — Produtor** (`/financeiro/pagar`): lançamentos do produtor rural (CPF); abas de status: Aberto / Vencido / Vencendo / Baixado / **Parcial** (badge amarelo — baixa parcial) / Barter / Previsão / Todos; lançamento direto sem talhão obrigatório; safra vigente pré-selecionada; borderô; LCDPR
-- **Contas a Receber** (`/financeiro/receber`): parcelas, borderô, reprogramação de vencimento
-- **Contas a Pagar — Empresa** (`/empresas/pagar`): CP de empresas com CNPJ próprio (PJ), mesmo fluxo do produtor
-- **Contas a Receber — Empresa** (`/empresas/receber`): CR de empresas com CNPJ próprio
-- **Folha de Pagamento — Produtor** (`/financeiro/folha`): funcionários vinculados às fazendas do produtor; competência mensal (pode ser retroativa — selecione DE/ATÉ ao criar); salário base + benefícios automáticos; replicar folha para N competências futuras (1–12 meses)
-- **Folha de Pagamento — Empresa** (`/empresas/folha`): funcionários de empresas (CNPJ); mesmas funcionalidades de competência retroativa e replicar folha
+- **Contas a Pagar — Produtor** (/financeiro/pagar): lançamentos do produtor rural (CPF); abas de status: Aberto / Vencido / Vencendo / Baixado / **Parcial** (badge amarelo — baixa parcial) / Barter / Previsão / Todos; lançamento direto sem talhão obrigatório; safra vigente pré-selecionada; borderô; LCDPR
+- **Contas a Receber** (/financeiro/receber): parcelas, borderô, reprogramação de vencimento
+- **Contas a Pagar — Empresa** (/empresas/pagar): CP de empresas com CNPJ próprio (PJ), mesmo fluxo do produtor
+- **Contas a Receber — Empresa** (/empresas/receber): CR de empresas com CNPJ próprio
+- **Folha de Pagamento — Produtor** (/financeiro/folha): funcionários vinculados às fazendas do produtor; competência mensal (pode ser retroativa — selecione DE/ATÉ ao criar); salário base + benefícios automáticos; replicar folha para N competências futuras (1–12 meses)
+- **Folha de Pagamento — Empresa** (/empresas/folha): funcionários de empresas (CNPJ); mesmas funcionalidades de competência retroativa e replicar folha
 - **Contratos Financeiros**: custeio/investimento/CPR/EGF, amortização SAC/PRICE/BULLET, aditivos
 - **Tesouraria**: mútuo entre empresas, taxas bancárias
 - **Seguros**: apólices, prêmios, sinistros
@@ -187,7 +187,7 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 - Custo de arrendamento aparece automaticamente no DRE da safra
 
 ### Fluxo 8: Folha de Pagamento — Produtor Rural
-- **Acesso:** Financeiro → Folha de Pagamento (`/financeiro/folha`)
+- **Acesso:** Financeiro → Folha de Pagamento (/financeiro/folha)
 - **Pré-requisito:** funcionários cadastrados em **Cadastros → Funcionários**, vinculados a fazendas da conta
 - A tela exibe as folhas existentes; por padrão mostra a competência do mês atual
 - **Nova folha (competência corrente):** clique em **+ Nova Folha** → os campos **DE (mês/ano)** e **ATÉ (mês/ano)** aparecem editáveis → confirme a competência e clique em salvar
@@ -199,7 +199,7 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 - As CPs de folha são lançadas automaticamente no Financeiro com a origem "folha"
 
 ### Fluxo 9: Folha de Pagamento — Empresa
-- **Acesso:** Financeiro → Folha de Pagamento — Empresa (`/empresas/folha`)
+- **Acesso:** Financeiro → Folha de Pagamento — Empresa (/empresas/folha)
 - Funciona igual ao Fluxo 8, mas para funcionários de **empresas com CNPJ** (PJ)
 - Funcionários são vinculados à empresa, não à fazenda do produtor
 - **Competência:** ao criar nova folha, o campo de competência é editável (inclusive retroativa)
@@ -248,7 +248,7 @@ Vá em **BI → Posição de Grãos** (ou **Relatórios → BI de Grãos**). O p
 Vá em **Lavoura → Colheita → + Novo Romaneio**. Selecione o ciclo e talhão. Informe: peso bruto (kg), tara (kg) — o líquido é calculado. Na aba **Classificação**, preencha umidade (%), impureza (%), chochamento (%), ardidos, avariados. O sistema aplica os descontos ABIOVE e calcula as sacas líquidas que entram no estoque.
 
 **"Como lançar a folha de pagamento dos funcionários?"**
-Para o **produtor rural (CPF)**: vá em **Financeiro → Folha de Pagamento**. A tela mostra as folhas existentes. Clique em **+ Nova Folha**, confirme a competência (mês/ano) e os funcionários vinculados às fazendas aparecem automaticamente com salários e benefícios. Ajuste o que precisar e clique em **Salvar Folha**. Para **empresas (CNPJ)**: vá em **Financeiro → Folha de Pagamento — Empresa** (`/empresas/folha`) — o fluxo é idêntico.
+Para o **produtor rural (CPF)**: vá em **Financeiro → Folha de Pagamento**. A tela mostra as folhas existentes. Clique em **+ Nova Folha**, confirme a competência (mês/ano) e os funcionários vinculados às fazendas aparecem automaticamente com salários e benefícios. Ajuste o que precisar e clique em **Salvar Folha**. Para **empresas (CNPJ)**: vá em **Financeiro → Folha de Pagamento — Empresa** (/empresas/folha) — o fluxo é idêntico.
 
 **"Como lançar folha de pagamento com competência retroativa?"**
 No modal de nova folha (**+ Nova Folha**), os campos **DE (mês/ano)** e **ATÉ (mês/ano)** ficam editáveis. Altere para o período desejado (ex: janeiro/2026 a março/2026) e salve — o sistema cria uma folha para cada mês do intervalo automaticamente.
