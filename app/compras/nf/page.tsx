@@ -2449,6 +2449,10 @@ export default function NfCompraPage() {
                                 {aberto && (
                                   <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 140, overflow: "hidden" }}
                                     onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
+                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                      Editar NF
+                                    </button>
                                     {nf.tipo_entrada === "insumos" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
                                         style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
@@ -3613,7 +3617,14 @@ export default function NfCompraPage() {
                                     </div>
                                   ) : (
                                     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                      <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
+                                      <select value={it.insumo_id} onChange={e => {
+                                          const nid = e.target.value;
+                                          const ins = insumos.find(i => i.id === nid);
+                                          const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
+                                            ? [{ numero: "", quantidade_kg: undefined }]
+                                            : it.lotes_semente;
+                                          setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes });
+                                        }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
                                         <option value="">— catálogo —</option>
                                         {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                                       </select>
@@ -3628,7 +3639,14 @@ export default function NfCompraPage() {
                               ) : (
                                 /* Sem CC (nenhum): só insumo do catálogo */
                                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                  <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
+                                  <select value={it.insumo_id} onChange={e => {
+                                      const nid = e.target.value;
+                                      const ins = insumos.find(i => i.id === nid);
+                                      const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
+                                        ? [{ numero: "", quantidade_kg: undefined }]
+                                        : it.lotes_semente;
+                                      setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes });
+                                    }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
                                     <option value="">— catálogo —</option>
                                     {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                                   </select>
@@ -3806,7 +3824,10 @@ export default function NfCompraPage() {
                           </div>
                         )}
                         {/* Lotes de semente — aparece somente quando insumo é semente */}
-                        {tipo === "insumos" && insumos.find(i => i.id === it.insumo_id)?.categoria === "semente" && (
+                        {tipo === "insumos" && insumos.find(i => i.id === it.insumo_id)?.categoria === "semente" && (() => {
+                          const unidadeItem = insumos.find(i => i.id === it.insumo_id)?.unidade ?? "kg";
+                          const labelQtd = String(unidadeItem).toLowerCase() === "bag" ? "Qtd (bags)" : "Peso (kg)";
+                          return (
                           <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "8px 12px", background: "#F6F9F6" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                               <span style={{ fontSize: 11, fontWeight: 600, color: "#1A5C38" }}>🌱 Lotes de Semente</span>
@@ -3814,14 +3835,24 @@ export default function NfCompraPage() {
                                 onClick={() => setItem(it.key, { lotes_semente: [...it.lotes_semente, { numero: "", quantidade_kg: undefined }] })}
                                 style={{ fontSize: 11, padding: "2px 10px", borderRadius: 5, border: "0.5px solid #16A34A", background: "#E8F5E9", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}
                               >+ Lote</button>
-                              {it.lotes_semente.length === 0 && (
-                                <span style={{ fontSize: 11, color: "var(--text-3)", fontStyle: "italic" }}>Adicione ao menos um lote para rastreabilidade</span>
-                              )}
+                              <span style={{ fontSize: 10, color: "var(--text-3)" }}>
+                                {it.lotes_semente.length === 0
+                                  ? "Adicione ao menos um lote para rastreabilidade"
+                                  : `${it.lotes_semente.length} lote${it.lotes_semente.length > 1 ? "s" : ""}`}
+                              </span>
                             </div>
+                            {it.lotes_semente.length > 0 && (
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 14px auto 26px", gap: "0 6px", marginBottom: 4, padding: "0 2px" }}>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>Nº do Lote</span>
+                                <span />
+                                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>{labelQtd}</span>
+                                <span />
+                              </div>
+                            )}
                             {it.lotes_semente.map((lote, li) => (
                               <div key={li} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
                                 <input
-                                  placeholder="Nº do lote (ex: LS2025-001)"
+                                  placeholder="Ex: LS2025-001"
                                   value={lote.numero}
                                   onChange={e => {
                                     const novos = it.lotes_semente.map((l, i) => i === li ? { ...l, numero: e.target.value } : l);
@@ -3829,11 +3860,12 @@ export default function NfCompraPage() {
                                   }}
                                   style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 2 }}
                                 />
+                                <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>—</span>
                                 <input
                                   type="number"
                                   min={0}
                                   step={0.01}
-                                  placeholder="Qtd kg (opcional)"
+                                  placeholder={labelQtd}
                                   value={lote.quantidade_kg ?? ""}
                                   onChange={e => {
                                     const v = parseFloat(e.target.value) || undefined;
@@ -3844,7 +3876,7 @@ export default function NfCompraPage() {
                                 />
                                 <button
                                   onClick={() => setItem(it.key, { lotes_semente: it.lotes_semente.filter((_, i) => i !== li) })}
-                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15 }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15, flexShrink: 0 }}
                                 >×</button>
                               </div>
                             ))}
@@ -3854,12 +3886,13 @@ export default function NfCompraPage() {
                               const diff = Math.abs(totalLotes - qtdTotal);
                               return totalLotes > 0 && diff > 0.01 ? (
                                 <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>
-                                  ⚠️ Total dos lotes: {totalLotes.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg — Qtd do item: {qtdTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg (divergência de {diff.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg)
+                                  ⚠️ Total dos lotes: {totalLotes.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} — Qtd do item: {qtdTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} (divergência de {diff.toLocaleString("pt-BR", { maximumFractionDigits: 2 })})
                                 </div>
                               ) : null;
                             })()}
                           </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     );
                     })}
