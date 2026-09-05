@@ -2402,42 +2402,8 @@ export default function NfCompraPage() {
                             </a>
                           )}
 
-                          {/* Editar (não-sieg, não-processada) */}
-                          {nf.status !== "processada" && nf.status !== "cancelada" && nf.origem !== "sieg" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600, whiteSpace: "nowrap" }}>
-                              Editar
-                            </button>
-                          )}
-
-                          {/* Processar (pendente) */}
-                          {nf.status === "pendente" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 9px", border: "none", borderRadius: 6, background: "#1A5C38", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
-                              Proc
-                            </button>
-                          )}
-
-                          {/* Reparar — repopula destinatário + itens via XML SEFAZ */}
-                          {nf.status === "pendente" && !!nf.chave_acesso && !nf.nome_destinatario && (
-                            <button
-                              onClick={() => repararNf(nf)}
-                              disabled={reparando.has(nf.id)}
-                              title="Buscar XML na SEFAZ e preencher destinatário + itens"
-                              style={{ padding: "4px 8px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", cursor: reparando.has(nf.id) ? "default" : "pointer", fontSize: 11, color: "#C9921B", fontWeight: 600, whiteSpace: "nowrap", opacity: reparando.has(nf.id) ? 0.6 : 1 }}>
-                              {reparando.has(nf.id) ? "…" : "Reparar"}
-                            </button>
-                          )}
-
-                          {/* Re-import. (sieg pendente) */}
-                          {nf.origem === "sieg" && nf.status === "pendente" && (
-                            <button onClick={() => reimportarNf(nf)} disabled={siegReimporting[nf.id]}
-                              title="Re-importar do SIEG"
-                              style={{ padding: "4px 8px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 14, color: "#111111", fontWeight: 400, opacity: siegReimporting[nf.id] ? 0.5 : 1, lineHeight: 1 }}>
-                              {siegReimporting[nf.id] ? "⏳" : "↻"}
-                            </button>
-                          )}
-
-                          {/* ⋮ dropdown — ações secundárias para processadas */}
-                          {nf.status === "processada" && (() => {
+                          {/* ⋮ dropdown — todas as ações secundárias */}
+                          {nf.status !== "cancelada" && (() => {
                             const aberto = acaoDropdown === nf.id;
                             return (
                               <div style={{ position: "relative" }}>
@@ -2447,32 +2413,68 @@ export default function NfCompraPage() {
                                   ⋮
                                 </button>
                                 {aberto && (
-                                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 140, overflow: "hidden" }}
+                                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 160, overflow: "hidden" }}
                                     onClick={e => e.stopPropagation()}>
-                                    <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
-                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
-                                      Editar NF
-                                    </button>
-                                    {nf.tipo_entrada === "insumos" && (
+
+                                    {/* Pendente: processar + editar + reparar + reimport */}
+                                    {nf.status === "pendente" && (
+                                      <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "#1A5C38", cursor: "pointer", fontSize: 12, color: "#fff", fontWeight: 700, textAlign: "left" }}>
+                                        Processar NF
+                                      </button>
+                                    )}
+                                    {nf.status !== "processada" && nf.origem !== "sieg" && (
+                                      <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                        Editar NF
+                                      </button>
+                                    )}
+                                    {nf.status === "pendente" && !!nf.chave_acesso && !nf.nome_destinatario && (
+                                      <button onClick={() => { setAcaoDropdown(null); repararNf(nf); }}
+                                        disabled={reparando.has(nf.id)}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: reparando.has(nf.id) ? "default" : "pointer", fontSize: 12, color: "#C9921B", fontWeight: 600, textAlign: "left", opacity: reparando.has(nf.id) ? 0.6 : 1 }}>
+                                        {reparando.has(nf.id) ? "Reparando…" : "Reparar via SEFAZ"}
+                                      </button>
+                                    )}
+                                    {nf.origem === "sieg" && nf.status === "pendente" && (
+                                      <button onClick={() => { setAcaoDropdown(null); reimportarNf(nf); }}
+                                        disabled={siegReimporting[nf.id]}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 12, color: "#555", fontWeight: 600, textAlign: "left", opacity: siegReimporting[nf.id] ? 0.5 : 1 }}>
+                                        {siegReimporting[nf.id] ? "Re-importando…" : "↻ Re-importar SIEG"}
+                                      </button>
+                                    )}
+
+                                    {/* Processada: editar + devolver + remessa + reclassificar + estornar */}
+                                    {nf.status === "processada" && (
+                                      <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                        Editar NF
+                                      </button>
+                                    )}
+                                    {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
                                         style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
                                         Devolver
                                       </button>
                                     )}
-                                    {nf.tipo_entrada === "insumos" && (
+                                    {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
                                       <button onClick={() => { setAcaoDropdown(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nf.id}`); }}
                                         style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
                                         Emitir NF Remessa
                                       </button>
                                     )}
-                                    <button onClick={() => { setAcaoDropdown(null); abrirReclassificar(nf); }}
-                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#7B4A00", fontWeight: 600, textAlign: "left" }}>
-                                      Reclassificar
-                                    </button>
-                                    <button onClick={() => { setAcaoDropdown(null); estornarNFClick(nf); }}
-                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
-                                      Estornar
-                                    </button>
+                                    {nf.status === "processada" && (
+                                      <button onClick={() => { setAcaoDropdown(null); abrirReclassificar(nf); }}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#7B4A00", fontWeight: 600, textAlign: "left" }}>
+                                        Reclassificar
+                                      </button>
+                                    )}
+                                    {nf.status === "processada" && (
+                                      <button onClick={() => { setAcaoDropdown(null); estornarNFClick(nf); }}
+                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
+                                        Estornar
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </div>
