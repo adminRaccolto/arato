@@ -173,7 +173,7 @@ type Aba = "processamento" | "adiantamentos" | "gratificacoes";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaPagamentoPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, fazendaIds = [] } = useAuth();
   const [aba, setAba]             = useState<Aba>("processamento");
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState("");
@@ -207,6 +207,15 @@ export default function FolhaPagamentoPage() {
   const [modalPrem,  setModalPrem]  = useState(false);
   const [premEdit,   setPremEdit]   = useState<Partial<Premiacao>>({});
 
+  // modal replicar
+  const [modalRep,   setModalRep]   = useState(false);
+  const [repFolha,   setRepFolha]   = useState<Folha | null>(null);
+  const [repNMeses,  setRepNMeses]  = useState(1);
+
+  // competência interna do modal (nova folha — permite retroativo sem mexer no filtro externo)
+  const [modalCompDe,  setModalCompDe]  = useState(compAtual());
+  const [modalCompAte, setModalCompAte] = useState(compAtual());
+
   // ─── Carregar ───────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -229,17 +238,16 @@ export default function FolhaPagamentoPage() {
         { data: emps },
         { data: prods },
       ] = await Promise.all([
-        // Busca funcionários de todas as fazendas da conta (não só da fazenda ativa)
-        // para capturar empregados de empresas registradas em outras fazendas do mesmo grupo
-        contaId
-          ? supabase.from("funcionarios")
-              .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo,fazendas!inner(conta_id)")
-              .eq("fazendas.conta_id", contaId)
-              .order("nome")
-          : supabase.from("funcionarios")
-              .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
-              .eq("fazenda_id", fazendaId)
-              .order("nome"),
+        // Busca funcionários de todas as fazendas da conta via fazendaIds (join !inner
+        // filtrado por conta_id falha silenciosamente no Supabase JS — usar in() diretamente)
+        (() => {
+          const fids = fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+          return supabase.from("funcionarios")
+            .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
+            .in("fazenda_id", fids)
+            .eq("ativo", true)
+            .order("nome");
+        })(),
         apiPost({ operacao: "listar_folhas", fazenda_id: fazendaId }),
         apiPost({ operacao: "listar_adi_prem", fazenda_id: fazendaId }),
         supabase.from("empresas")
@@ -288,7 +296,7 @@ export default function FolhaPagamentoPage() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, contaId]);
+  }, [fazendaId, contaId, fazendaIds.join(",")]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -384,6 +392,8 @@ export default function FolhaPagamentoPage() {
       });
       setFolhaEdit({ competencia: fComp, status: "rascunho", funcionarios: funcs });
       setSelecionados(new Set(funcs.map((_, i) => i)));
+      setModalCompDe(fComp);
+      setModalCompAte(fCompAte);
     }
     setAbaModal("funcionarios");
     setFuncExpand(new Set());
@@ -410,7 +420,7 @@ export default function FolhaPagamentoPage() {
           if (!grupos.has(key)) grupos.set(key, []);
           grupos.get(key)!.push(f);
         }
-        const meses = monthsInRange(fComp, fCompAte);
+        const meses = monthsInRange(modalCompDe, modalCompAte);
         let total = 0;
         for (const comp of meses) {
           for (const [empresaId, gFuncs] of grupos) {
@@ -667,6 +677,49 @@ export default function FolhaPagamentoPage() {
   }
 
   // ─── Campos editáveis na folha ────────────────────────────────
+  async function replicarFolha() {
+    if (!repFolha || !fazendaId) return;
+    setSaving(true);
+    try {
+      const res = await apiFolha({ operacao: "listar_funcionarios_folha", folha_id: repFolha.id });
+      const funcsBase: any[] = (res.data ?? []).map((i: any) => ({
+        funcionario_id: i.funcionario_id, empresa_id: i.empresa_id, produtor_id: i.produtor_id,
+        nome_funcionario: i.nome_funcionario, cargo: i.cargo,
+        salario_bruto: i.salario_bruto, complemento_salarial: i.complemento_salarial ?? 0,
+        gratificacao: i.gratificacao, inss_trabalhador: i.inss_trabalhador, irrf: i.irrf,
+        adiantamento: 0, outros_descontos: 0, desc_outros_descontos: "",
+        vale_transporte: i.vale_transporte, vale_refeicao: i.vale_refeicao,
+        outros_beneficios: i.outros_beneficios, inss_patronal: i.inss_patronal, fgts: i.fgts,
+      }));
+      const [ano, mes] = repFolha.competencia.split("-").map(Number);
+      const criadas: string[] = [];
+      for (let i = 1; i <= repNMeses; i++) {
+        const dt = new Date(ano, mes - 1 + i, 1);
+        const novaComp = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
+        const novaRes = await apiFolha({
+          operacao: "upsert_folha",
+          fazenda_id: fazendaId,
+          empresa_id: repFolha.empresa_id ?? null,
+          competencia: novaComp,
+          valor_bruto: repFolha.valor_bruto, valor_liquido: repFolha.valor_liquido,
+          inss_patronal: repFolha.inss_patronal, fgts_total: repFolha.fgts_total,
+        });
+        if (!novaRes.criou) {
+          criadas.push(`${nomeMes(novaComp)} (já existe — atualizada)`);
+        } else {
+          criadas.push(nomeMes(novaComp));
+        }
+        await apiFolha({ operacao: "delete_funcionarios", folha_id: novaRes.id });
+        if (funcsBase.length) {
+          await apiFolha({ operacao: "insert_funcionarios", rows: funcsBase.map((f: any) => ({ ...f, folha_id: novaRes.id })) });
+        }
+      }
+      setMsg(`Replicado para: ${criadas.join(", ")}.`);
+      setModalRep(false); carregar();
+    } catch (e: any) { setMsg("Erro: " + e.message); }
+    finally { setSaving(false); }
+  }
+
   function setFuncField(idx: number, field: keyof FolhaFunc, val: number | string) {
     setFolhaEdit(prev => {
       const funcs = [...prev.funcionarios];
@@ -952,6 +1005,41 @@ export default function FolhaPagamentoPage() {
               <button onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
 
+            {/* Competência — editável para nova folha (retroativa), somente leitura para existente) */}
+            <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
+              {folhaEdit.id ? (
+                <>
+                  <div>
+                    <div style={{ ...S.label, marginBottom:2 }}>Competência</div>
+                    <span style={{ fontSize:14, fontWeight:700, color:"#0B2D50" }}>{nomeMes(folhaEdit.competencia ?? "")}</span>
+                  </div>
+                  {folhaEdit.empresa_id && (
+                    <div>
+                      <div style={{ ...S.label, marginBottom:2 }}>Empregador</div>
+                      <span style={{ fontSize:13, color:"#555" }}>{empresasMap[folhaEdit.empresa_id] ?? "—"}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div>
+                    <div style={{ ...S.label, marginBottom:2 }}>Competência — de</div>
+                    <input type="month" value={modalCompDe} onChange={e => { setModalCompDe(e.target.value); if (e.target.value > modalCompAte) setModalCompAte(e.target.value); }} style={{ ...S.inp, fontSize:13 }} />
+                  </div>
+                  <div>
+                    <div style={{ ...S.label, marginBottom:2 }}>Até</div>
+                    <input type="month" value={modalCompAte} min={modalCompDe} onChange={e => setModalCompAte(e.target.value)} style={{ ...S.inp, fontSize:13 }} />
+                  </div>
+                  {modalCompAte > modalCompDe && (
+                    <span style={{ fontSize:11, fontWeight:700, color:"#C9921B", background:"#FBF3E0", borderRadius:4, padding:"3px 10px", marginTop:16 }}>
+                      {monthsInRange(modalCompDe, modalCompAte).length} meses
+                    </span>
+                  )}
+                </>
+              )}
+              {folhaEdit.status && <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[folhaEdit.status], background:ST_COLOR[folhaEdit.status]+"18", borderRadius:4, padding:"3px 10px", marginTop: folhaEdit.id ? 0 : 16 }}>{ST_LABEL[folhaEdit.status]}</span>}
+            </div>
+
             {/* Sub-abas */}
             <div style={{ display:"flex", gap:0, borderBottom:"0.5px solid #DDE2EE", marginBottom:16 }}>
               {([["funcionarios","Funcionários"],["resumo","Resumo"]] as const).map(([k,l])=>(
@@ -1163,17 +1251,65 @@ export default function FolhaPagamentoPage() {
             )}
 
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              {folhaEdit.id && folhaEdit.status === "fechado" ? (
-                <button onClick={reabrirFolha} style={{ ...S.btn("#FBF3E0","#C9921B"), border:"1px solid #C9921B" }} disabled={saving}>
-                  {saving ? "Abrindo..." : "↩ Reabrir Folha"}
-                </button>
-              ) : <span />}
+              <div style={{ display:"flex", gap:8 }}>
+                {folhaEdit.id && folhaEdit.status === "fechado" && (
+                  <button onClick={reabrirFolha} style={{ ...S.btn("#FBF3E0","#C9921B"), border:"1px solid #C9921B" }} disabled={saving}>
+                    {saving ? "Abrindo..." : "↩ Reabrir Folha"}
+                  </button>
+                )}
+                {folhaEdit.id && (
+                  <button onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>
+                    ↻ Replicar Folha
+                  </button>
+                )}
+              </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
                 {folhaEdit.status !== "fechado" && (
                   <button onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ MODAL REPLICAR ══════════════ */}
+      {modalRep && repFolha && (
+        <div style={S.overlay} onClick={()=>setModalRep(false)}>
+          <div style={{ ...S.modal, width:"min(96vw,440px)" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Replicar Folha</h2>
+              <button onClick={()=>setModalRep(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+            </div>
+            <p style={{ fontSize:13, color:"#555", marginTop:-8, marginBottom:16 }}>
+              Copia a estrutura da folha de <strong>{nomeMes(repFolha.competencia)}</strong>{repFolha.empresa_id ? ` (${empresasMap[repFolha.empresa_id] ?? "empresa"})` : ""} para as próximas competências como rascunho. Adiantamentos zerados.
+            </p>
+            <div style={{ marginBottom:20 }}>
+              <label style={S.label}>Replicar para as próximas</label>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <input type="number" min={1} max={12} value={repNMeses} onChange={e=>setRepNMeses(Math.min(12,Math.max(1,parseInt(e.target.value)||1)))} style={{ ...S.inp, width:80, textAlign:"center", fontSize:16, fontWeight:700 }} />
+                <span style={{ fontSize:13, color:"#555" }}>competência{repNMeses>1?"s":""}</span>
+              </div>
+            </div>
+            {repNMeses > 0 && (() => {
+              const [ano, mes] = repFolha.competencia.split("-").map(Number);
+              const meses = Array.from({ length: repNMeses }, (_, i) => {
+                const dt = new Date(ano, mes - 1 + i + 1, 1);
+                return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
+              });
+              return (
+                <div style={{ background:"#F0F7FF", borderRadius:8, padding:"10px 14px", marginBottom:20, border:"0.5px solid #C5DCF5" }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"#1A4870", marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Competências que serão criadas</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                    {meses.map(m => <span key={m} style={{ fontSize:12, fontWeight:600, background:"#1A4870", color:"#fff", borderRadius:4, padding:"3px 10px" }}>{nomeMes(m)}</span>)}
+                  </div>
+                </div>
+              );
+            })()}
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
+              <button onClick={()=>setModalRep(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button onClick={replicarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Replicando...":"Replicar"}</button>
             </div>
           </div>
         </div>
