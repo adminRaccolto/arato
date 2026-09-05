@@ -20,7 +20,7 @@ interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?:
 
 // ── Tipos ────────────────────────────────────────────────────
 type Moeda  = "BRL" | "USD" | "barter";
-type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "barter" | "previsao" | "contrato_financeiro" | "compra_terra" | "todos";
+type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "parcial" | "barter" | "previsao" | "contrato_financeiro" | "compra_terra" | "todos";
 
 // ── Constantes ────────────────────────────────────────────────
 const TODAY       = new Date().toISOString().split("T")[0];
@@ -167,7 +167,7 @@ function ContasPagarInner() {
   const [erro,     setErro]     = useState<string | null>(null);
   const [filtro,   setFiltro]   = useState<Filtro>(() => {
     const f = searchParams.get("filtro") as Filtro | null;
-    const valid: Filtro[] = ["aberto","vencido","vencendo","baixado","barter","previsao","contrato_financeiro","todos"];
+    const valid: Filtro[] = ["aberto","vencido","vencendo","baixado","parcial","barter","previsao","contrato_financeiro","todos"];
     return f && valid.includes(f) ? f : "aberto";
   });
 
@@ -562,6 +562,7 @@ function ContasPagarInner() {
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
       if (filtro === "vencendo") return isReal && sEfet === "vencendo";
       if (filtro === "baixado")  return isReal && (sEfet === "baixado" || sEfet === "parcial") && !l.lote_id;
+      if (filtro === "parcial")  return isReal && l.status === "parcial";
       if (filtro === "barter")              return isReal && l.moeda === "barter";
       if (filtro === "previsao")            return l.natureza === "previsao";
       if (filtro === "contrato_financeiro") return isReal && l.origem_lancamento === "contrato_financeiro";
@@ -1309,6 +1310,7 @@ function ContasPagarInner() {
                   { key: "aberto",   label: "Em aberto",  count: lancamentos.filter(l => l.moeda !== "barter" && (l.natureza === "previsao" || (l.natureza ?? "real") === "real") && statusEfetivo(l) !== "baixado" && (l.data_vencimento ?? periodoInicio) >= periodoInicio).length, cor: "#60A5FA", activeBg: "rgba(59,130,246,0.15)",  activeBorder: "rgba(59,130,246,0.4)"  },
                   { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                 cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",   activeBorder: "rgba(239,68,68,0.4)"   },
                   { key: "baixado",  label: "Baixados",   count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && (l.status === "baixado" || l.status === "parcial")).length + borderosPagos.length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
+                  { key: "parcial",  label: "Parcial",    count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "parcial").length, cor: "#F59E0B", activeBg: "rgba(245,158,11,0.12)", activeBorder: "rgba(245,158,11,0.4)" },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#555555", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
                   { key: "previsao",            label: "Previsões",           count: lancamentos.filter(l => l.natureza === "previsao").length,                                                                           cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
                   { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#444444", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
