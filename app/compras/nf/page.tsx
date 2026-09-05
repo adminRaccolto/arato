@@ -2459,7 +2459,7 @@ export default function NfCompraPage() {
                                         Devolver
                                       </button>
                                     )}
-                                    {(nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas" || nf.tipo_entrada === "custo_direto") && (
+                                    {nf.tipo_entrada === "insumos" && (
                                       <button onClick={() => { setAcaoDropdown(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nf.id}`); }}
                                         style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
                                         Emitir NF Remessa
