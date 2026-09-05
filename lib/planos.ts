@@ -54,7 +54,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
       "fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
       "contratos","expedicao","arrendamento",
       "compras","nf_entrada","nf_servico",
-      "fin_contratos","fin_tesouraria","fin_seguros",
+      "fin_contratos","fin_tesouraria","fin_seguros","apoio_financeiro",
       "transporte","usuarios",
     ],
     features_marketing: [
@@ -84,7 +84,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
       "fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
       "contratos","expedicao","arrendamento",
       "compras","nf_entrada","nf_servico",
-      "fin_contratos","fin_tesouraria","fin_seguros",
+      "fin_contratos","fin_tesouraria","fin_seguros","apoio_financeiro",
       "transporte","usuarios",
       "fiscal_nfe","fiscal_sped","automacoes","whatsapp_agente",
     ],
