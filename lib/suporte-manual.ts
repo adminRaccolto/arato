@@ -622,8 +622,17 @@ Mesma regra da CP: se o campo de cotação não estiver informado, aparece "⚠ 
 ### O que faz
 Gerencia todas as despesas da fazenda: insumos, combustível, frete, arrendamento, manutenção, impostos, parcelas de financiamento, etc.
 
-### Filtros de status
-- aberto, vencido, vencendo (próx. 7 dias), baixado, barter, previsão, todos
+### Abas de status (filtros rápidos)
+- **Aberto** — em aberto e dentro do prazo
+- **Vencido** — passou da data de vencimento sem pagamento
+- **Vencendo** — vence nos próximos 7 dias
+- **Baixado** — pago integralmente
+- **Parcial** — baixa parcial registrada (valor pago < valor total); badge amarelo; o saldo restante ainda está em aberto. Use esta aba para localizar e quitar o restante das contas parcialmente pagas
+- **Barter** — lançamentos em sacas (moeda barter)
+- **Previsão** — lançamentos marcados como previsão (não impactam o caixa real)
+- **Todos** — todos os status
+
+> **Nota:** ao lançar CP diretamente (sem origem de NF), o campo **Talhão** não é exibido — não é necessário para lançamentos diretos. O campo **Ano Safra** é pré-preenchido automaticamente com a **safra vigente** no momento do lançamento. A Operação Gerencial salva originalmente em uma CP sempre é exibida corretamente ao editar, mesmo que não esteja na lista filtrada.
 
 ### Categorias de CP
 - **Insumos:** Sementes, Fertilizantes, Defensivos Agrícolas, Inoculante, Adjuvante, Herbicida, Fungicida, Inseticida, Nematicida, Outros Insumos
@@ -2707,5 +2716,104 @@ Quando uma NF de Entrada registra insumos que chegaram via remessa logística (a
 - NFs em digitação normais (sem rascunho) têm botão "⟳ Consultar SEFAZ"
 
 **Vínculo automático:** após a autorização SEFAZ, o sistema registra automaticamente o vínculo entre a NF de Remessa emitida e a NF de Entrada de origem na tabela de controle logístico.
+
+---
+
+## MÓDULO — FOLHA DE PAGAMENTO (PRODUTOR RURAL)
+
+**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento** (`/financeiro/folha`)
+
+### O que faz
+Registra e controla a folha de pagamento dos funcionários vinculados às fazendas do produtor rural (CPF). Permite lançamento com competência corrente ou retroativa, replicação para competências futuras e gera Contas a Pagar automaticamente no Financeiro.
+
+### Pré-requisito
+Funcionários devem estar cadastrados em **Cadastros → Funcionários** com vínculo a pelo menos uma fazenda da conta. Cada funcionário tem: nome, função, salário base, vale-transporte, vale-refeição, outros benefícios, tipo (CLT/PJ/autônomo) e flag "ativo".
+
+### Como acessar e visualizar
+- A tela exibe as folhas cadastradas por competência
+- Seletores de mês/ano permitem navegar entre competências
+- Cada linha da lista representa uma folha de um período; clique em **Abrir** para ver os funcionários e valores
+
+### Como criar uma nova folha
+
+**Competência corrente (mês atual):**
+1. Clique em **+ Nova Folha**
+2. O modal abre com os campos **DE (mês/ano)** e **ATÉ (mês/ano)** mostrando a competência atual
+3. Os funcionários ativos das fazendas da conta carregam automaticamente com salário base e benefícios do cadastro
+4. Ajuste valores individualmente se necessário (campos editáveis diretamente na tabela)
+5. Use **+ Adicionar funcionário manualmente** para incluir alguém não cadastrado ou com valor diferente
+6. Clique em **Salvar Folha**
+
+**Competência retroativa (meses anteriores):**
+1. Clique em **+ Nova Folha**
+2. No modal, altere os campos **DE** e **ATÉ** para o período desejado (ex: Jan/2026 a Mar/2026)
+3. O sistema cria automaticamente uma folha para cada mês no intervalo
+4. Ajuste os funcionários e valores, depois salve
+
+### Replicar folha para meses futuros
+Após salvar uma folha, dentro do modal aberto:
+1. Clique em **↻ Replicar Folha** (botão no rodapé)
+2. O modal de replicação abre — selecione para quantas competências posteriores quer replicar: **1 a 12 meses**
+3. Chips mostram um preview dos meses que serão criados
+4. Clique em **Confirmar** — o sistema duplica a folha com os mesmos funcionários e valores para cada mês seguinte
+5. Folhas já existentes no período são ignoradas (sem duplicação)
+
+### O que é automático
+- Funcionários e benefícios carregados do cadastro (salário base, VT, VR, outros)
+- CPs de folha lançadas no Financeiro com origem "folha" para cada competência salva
+- Ao replicar: cada mês gera sua própria CP no Financeiro
+
+### Editar uma folha existente
+1. Na lista, clique em **Abrir** na folha desejada
+2. Clique em **✏ Editar** no modal para habilitar a edição
+3. Ajuste funcionários, valores e benefícios
+4. Clique em **Salvar alterações**
+
+### Erros comuns
+- **"Nenhum funcionário"**: verifique se há funcionários com flag "ativo = sim" vinculados às fazendas da conta em **Cadastros → Funcionários**
+- **"Folha já existe para esta competência"**: o sistema bloqueia duplicação da mesma competência — use **Abrir** para editar a existente
+- **"Replicar não aparece"**: o botão ↻ Replicar Folha só aparece depois de salvar — salve a folha primeiro
+
+---
+
+## MÓDULO — FOLHA DE PAGAMENTO — EMPRESA
+
+**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento — Empresa** (`/empresas/folha`)
+
+### O que faz
+Registra e controla a folha de pagamento dos funcionários de **empresas com CNPJ** (PJ) do grupo. Funciona de forma análoga à folha do produtor rural, mas separada para gestão de pessoal da pessoa jurídica.
+
+### Diferença em relação à Folha do Produtor
+| Folha do Produtor (`/financeiro/folha`) | Folha da Empresa (`/empresas/folha`) |
+|---|---|
+| Funcionários vinculados a **fazendas** | Funcionários vinculados a **empresas (CNPJ)** |
+| Produtor rural — CPF | Empresa — CNPJ |
+| Aparece em Financeiro → seção Atividade Rural | Aparece em Financeiro → seção Empresa (CNPJ) |
+
+### Como criar uma nova folha (Empresa)
+
+1. Clique em **+ Nova Folha**
+2. O modal abre com o campo de **competência** editável (mês/ano)
+   - Para competência corrente: mantenha o mês atual
+   - Para competência retroativa: altere para o período desejado
+3. Os funcionários da empresa carregam automaticamente com salário base e benefícios
+4. Ajuste valores individualmente se necessário
+5. Adicione funcionários avulsos com **+ Adicionar funcionário manualmente**
+6. Clique em **Salvar Folha**
+
+### Replicar folha (Empresa)
+Mesmo fluxo da folha do produtor:
+1. Após salvar, clique em **↻ Replicar Folha**
+2. Selecione N meses (1 a 12)
+3. Confirme — folha duplicada para cada competência futura
+
+### O que é automático
+- Funcionários e benefícios carregados do cadastro de funcionários vinculados à empresa
+- CPs lançadas no Financeiro com origem "folha" para cada competência
+
+### Erros comuns
+- **"Nenhum funcionário"**: verifique se há funcionários com tipo de vínculo "empresa" e flag "ativo = sim" em **Cadastros → Funcionários**, com a empresa correta selecionada
+- **"Competência retroativa não funciona"**: ao criar nova folha, o campo de competência é editável — altere para o mês desejado antes de clicar em Salvar
 `;
+
 

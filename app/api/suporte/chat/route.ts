@@ -52,7 +52,12 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 
 ### Financeiro
 - **Fluxo de Caixa**: realizado + projetado, conciliação OFX
-- **Contas a Pagar / Receber**: parcelas, baixa em lote (borderô), LCDPR
+- **Contas a Pagar — Produtor** (`/financeiro/pagar`): lançamentos do produtor rural (CPF); abas de status: Aberto / Vencido / Vencendo / Baixado / **Parcial** (badge amarelo — baixa parcial) / Barter / Previsão / Todos; lançamento direto sem talhão obrigatório; safra vigente pré-selecionada; borderô; LCDPR
+- **Contas a Receber** (`/financeiro/receber`): parcelas, borderô, reprogramação de vencimento
+- **Contas a Pagar — Empresa** (`/empresas/pagar`): CP de empresas com CNPJ próprio (PJ), mesmo fluxo do produtor
+- **Contas a Receber — Empresa** (`/empresas/receber`): CR de empresas com CNPJ próprio
+- **Folha de Pagamento — Produtor** (`/financeiro/folha`): funcionários vinculados às fazendas do produtor; competência mensal (pode ser retroativa — selecione DE/ATÉ ao criar); salário base + benefícios automáticos; replicar folha para N competências futuras (1–12 meses)
+- **Folha de Pagamento — Empresa** (`/empresas/folha`): funcionários de empresas (CNPJ); mesmas funcionalidades de competência retroativa e replicar folha
 - **Contratos Financeiros**: custeio/investimento/CPR/EGF, amortização SAC/PRICE/BULLET, aditivos
 - **Tesouraria**: mútuo entre empresas, taxas bancárias
 - **Seguros**: apólices, prêmios, sinistros
@@ -140,8 +145,13 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 - **Origens do CP:** manual (Financeiro → CP → + Novo) | SIEG automático | arrendamento em R$ | contrato financeiro SAC/PRICE
 - **Alerta automático:** 7 dias, 3 dias e 1 dia antes do vencimento por e-mail
 - **Baixa individual:** Financeiro → CP → Baixar → data pagamento + conta bancária
+- **Baixa parcial:** ao informar valor pago menor que o total → status muda para **"parcial"** (badge amarelo) → saldo restante permanece no mesmo registro → aba **Parcial** filtra todos esses lançamentos → clique novamente em Baixar para quitar o saldo
+- **Aba Parcial:** aba dedicada nos filtros de status da tela de CP (entre Baixados e Barter) — mostra apenas lançamentos com baixa parcial ainda em aberto
 - **Borderô (baixa em lote):** vários CP do mesmo banco e data → selecionar todos → Baixar em Lote
 - **Conciliação OFX:** Financeiro → Fluxo de Caixa → Importar OFX → sistema concilia automaticamente
+- **Lançamento direto em CP (sem NF):** talhão não é obrigatório; a safra vigente no momento do lançamento é pré-selecionada automaticamente — o usuário pode alterar se necessário
+- **Seletor em cascata no modal CP:** Produtor → Fazenda → Ano Safra → Ciclo (talhão não é exibido no lançamento direto de CP)
+- **Operação Gerencial (OG):** ao editar um CP já salvo, a OG original é sempre exibida mesmo que não esteja na lista filtrada — o sistema a busca e exibe corretamente
 - **Anexar documento no CP:** ao criar ou editar um CP, clique na aba **Obs/Anexo** dentro do modal → campo "Anexar NF (PDF ou XML)" → selecione o arquivo (PDF, XML, PNG ou JPG) → o arquivo é enviado ao Supabase Storage e o link é salvo junto ao lançamento. Para ver o documento depois, abra o CP e vá à aba Obs/Anexo.
 - **Campos do modal CP – aba Principal:** Produtor, Fazenda, Ano Safra, Ciclo, Moeda, Operação Gerencial, Fornecedor/Credor, Nº Documento, Série, Tipo Doc LCDPR, Descrição, Vencimento, Forma de Pagamento (PIX/Boleto/TED/Débito/Dinheiro), Conta Pagamento, Valor Total, Condição de Pagamento (à vista ou parcelado), Centro de Custo
 - **Campos do modal CP – aba Obs/Anexo:** Observação (máx 100 caracteres) + campo de upload de arquivo (PDF/XML/PNG/JPG)
@@ -175,6 +185,26 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 - Alerta de vencimento: 15 dias e 1 dia antes
 - Ver vencimentos em: **Comercial → Arrendamentos → aba Próximos Vencimentos**
 - Custo de arrendamento aparece automaticamente no DRE da safra
+
+### Fluxo 8: Folha de Pagamento — Produtor Rural
+- **Acesso:** Financeiro → Folha de Pagamento (`/financeiro/folha`)
+- **Pré-requisito:** funcionários cadastrados em **Cadastros → Funcionários**, vinculados a fazendas da conta
+- A tela exibe as folhas existentes; por padrão mostra a competência do mês atual
+- **Nova folha (competência corrente):** clique em **+ Nova Folha** → os campos **DE (mês/ano)** e **ATÉ (mês/ano)** aparecem editáveis → confirme a competência e clique em salvar
+- **Competência retroativa:** no modal de nova folha, altere os campos DE e ATÉ para o período desejado (ex: jan/2026 a mar/2026) → o sistema cria uma folha para cada mês do intervalo
+- Os funcionários da fazenda carregam automaticamente com salário base e benefícios (vale-transporte, vale-refeição, outros) configurados no cadastro
+- Ajuste valores individuais diretamente na tabela do modal (editável)
+- Adicione funcionários avulsos com **+ Adicionar funcionário manualmente**
+- **Replicar folha:** após salvar, clique em **↻ Replicar Folha** no rodapé do modal → selecione para quantas competências posteriores deseja replicar (1 a 12 meses) → o sistema duplica a folha com os mesmos funcionários e valores para cada mês seguinte
+- As CPs de folha são lançadas automaticamente no Financeiro com a origem "folha"
+
+### Fluxo 9: Folha de Pagamento — Empresa
+- **Acesso:** Financeiro → Folha de Pagamento — Empresa (`/empresas/folha`)
+- Funciona igual ao Fluxo 8, mas para funcionários de **empresas com CNPJ** (PJ)
+- Funcionários são vinculados à empresa, não à fazenda do produtor
+- **Competência:** ao criar nova folha, o campo de competência é editável (inclusive retroativa)
+- **Replicar folha:** mesmo botão **↻ Replicar Folha** → selecionar N meses (1–12)
+- Útil para gestão separada de folha PJ (empresa) vs. folha do produtor rural (CPF)
 
 ## Perguntas frequentes — respostas diretas
 
@@ -216,6 +246,18 @@ Vá em **BI → Posição de Grãos** (ou **Relatórios → BI de Grãos**). O p
 
 **"Como lançar a colheita e fazer o romaneio?"**
 Vá em **Lavoura → Colheita → + Novo Romaneio**. Selecione o ciclo e talhão. Informe: peso bruto (kg), tara (kg) — o líquido é calculado. Na aba **Classificação**, preencha umidade (%), impureza (%), chochamento (%), ardidos, avariados. O sistema aplica os descontos ABIOVE e calcula as sacas líquidas que entram no estoque.
+
+**"Como lançar a folha de pagamento dos funcionários?"**
+Para o **produtor rural (CPF)**: vá em **Financeiro → Folha de Pagamento**. A tela mostra as folhas existentes. Clique em **+ Nova Folha**, confirme a competência (mês/ano) e os funcionários vinculados às fazendas aparecem automaticamente com salários e benefícios. Ajuste o que precisar e clique em **Salvar Folha**. Para **empresas (CNPJ)**: vá em **Financeiro → Folha de Pagamento — Empresa** (`/empresas/folha`) — o fluxo é idêntico.
+
+**"Como lançar folha de pagamento com competência retroativa?"**
+No modal de nova folha (**+ Nova Folha**), os campos **DE (mês/ano)** e **ATÉ (mês/ano)** ficam editáveis. Altere para o período desejado (ex: janeiro/2026 a março/2026) e salve — o sistema cria uma folha para cada mês do intervalo automaticamente.
+
+**"Como replicar uma folha de pagamento para os próximos meses?"**
+Abra a folha já salva e clique em **↻ Replicar Folha** (botão no rodapé do modal). Selecione para quantas competências posteriores quer replicar (1 a 12 meses). O sistema duplica a folha com os mesmos funcionários e valores para cada mês seguinte.
+
+**"O que é a aba 'Parcial' em Contas a Pagar?"**
+A aba **Parcial** filtra os lançamentos com baixa parcial — foram pagos com valor menor que o total. Esses lançamentos têm status "parcial" (badge amarelo) e não aparecem nem em "Abertos" nem em "Baixados". Use essa aba para localizar e quitar o saldo restante. Para dar baixa parcial: no ícone de baixa (✓), informe um valor pago menor que o total — o sistema calcula e registra o saldo automaticamente.
 
 **"Como pagar um lote de contas (borderô)?"**
 Em **Financeiro → Contas a Pagar**, marque os checkboxes de todos os lançamentos que quer pagar (mesmo banco, mesma data). Aparecerá o botão **Baixar em Lote** no topo. Informe a data de pagamento e a conta bancária — o sistema baixa todos de uma vez.
