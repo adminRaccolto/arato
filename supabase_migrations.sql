@@ -11172,3 +11172,31 @@ ALTER TABLE nf_entrada_itens
 
 COMMENT ON COLUMN nf_entrada_itens.lotes_semente IS
   'Array de lotes de semente: [{numero: text, quantidade_kg: numeric}]. Sobrepõe lote_semente quando preenchido.';
+
+-- ═══════════════════════════════════════════════════════════════
+-- Seção 233: RLS simulacoes por conta_id
+-- Simulações eram visíveis apenas ao usuário que criou (policy antiga
+-- usava user_id). Corrige para visibilidade por conta — todos os
+-- usuários do cliente veem e gerenciam as mesmas simulações.
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE simulacoes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "simulacoes_select" ON simulacoes;
+DROP POLICY IF EXISTS "simulacoes_insert" ON simulacoes;
+DROP POLICY IF EXISTS "simulacoes_update" ON simulacoes;
+DROP POLICY IF EXISTS "simulacoes_delete" ON simulacoes;
+
+-- Política única por conta_id (ou raccotlo vê tudo)
+CREATE POLICY "simulacoes_conta"
+  ON simulacoes
+  FOR ALL
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  )
+  WITH CHECK (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+NOTIFY pgrst, 'reload schema';
