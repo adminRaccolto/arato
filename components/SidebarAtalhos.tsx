@@ -46,6 +46,7 @@ export const CATALOGO_ATALHOS: ItemAtalho[] = [
 
 const STORAGE_KEY    = "arato-atalhos-v2";   // array de ids
 const STORAGE_EXPAND = "arato-sidebar-exp";  // "1" | "0"
+const STORAGE_VIS    = "arato-sidebar-vis";  // "1" | "0" — ativa ou oculta
 
 const DEFAULTS = ["cp", "cr", "nf", "contratos", "estoque", "plantio"];
 
@@ -71,6 +72,7 @@ export default function SidebarAtalhos() {
   const [modal,      setModal]      = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [montado,    setMontado]    = useState(false);
+  const [ativada,    setAtivada]    = useState(true);
   const sideRef  = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +85,8 @@ export default function SidebarAtalhos() {
     setAtalhos(lerAtalhos());
     const exp = localStorage.getItem(STORAGE_EXPAND);
     setExpandida(exp === "1");
+    const vis = localStorage.getItem(STORAGE_VIS);
+    setAtivada(vis !== "0");
   }, []);
 
   // Clique fora do modal fecha — verifica sideRef E modalRef
@@ -101,17 +105,38 @@ export default function SidebarAtalhos() {
   // CSS variable --sidebar-w: empurra o conteúdo da página para a direita
   useEffect(() => {
     const show =
-      montado &&
+      montado && ativada &&
       !pathname?.startsWith("/app/campo") &&
       !pathname?.startsWith("/login") &&
       !pathname?.startsWith("/admin");
     document.documentElement.style.setProperty("--sidebar-w", show ? W + "px" : "0px");
-  }, [montado, pathname, W]);
+  }, [montado, ativada, pathname, W]);
 
   if (!montado) return null;
 
   // Não mostrar em páginas do app campo (mobile) nem login
   if (pathname?.startsWith("/app/campo") || pathname?.startsWith("/login") || pathname?.startsWith("/admin")) return null;
+
+  // Sidebar desativada — mostra aba mínima para reativar
+  if (!ativada) {
+    return (
+      <button
+        onClick={() => { setAtivada(true); try { localStorage.setItem(STORAGE_VIS, "1"); } catch { /* noop */ } }}
+        title="Mostrar barra de atalhos"
+        style={{
+          position: "fixed", left: 0, top: "50%", transform: "translateY(-50%)",
+          zIndex: 300, width: 14, height: 52,
+          background: "var(--bg-card)", border: "0.5px solid var(--border-table)",
+          borderLeft: "none", borderRadius: "0 8px 8px 0",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          color: "var(--text-3)", fontSize: 9, padding: 0,
+          boxShadow: "2px 0 8px rgba(0,0,0,0.08)",
+        }}
+      >
+        ▶
+      </button>
+    );
+  }
 
   const itensAtuais = atalhos.map(id => CATALOGO_ATALHOS.find(i => i.id === id)).filter(Boolean) as ItemAtalho[];
 
@@ -214,20 +239,38 @@ export default function SidebarAtalhos() {
           })}
         </div>
 
-        {/* Rodapé: botão configurar */}
-        <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "8px 0", flexShrink: 0 }}>
+        {/* Rodapé: configurar + ocultar */}
+        <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "4px 0", flexShrink: 0 }}>
+          {/* Botão configurar atalhos */}
           <button onClick={abrirModal} title="Configurar atalhos"
             style={{
               width: "100%", display: "flex", alignItems: "center",
               gap: expandida ? 10 : 0, justifyContent: expandida ? "flex-start" : "center",
-              padding: expandida ? "7px 14px" : "7px 0",
+              padding: expandida ? "6px 14px" : "6px 0",
               background: "none", border: "none", cursor: "pointer",
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-page)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
           >
-            <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0, width: 24, textAlign: "center" }}>⚙️</span>
+            <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0, width: 24, textAlign: "center" }}>⚙️</span>
             {expandida && <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Configurar atalhos</span>}
+          </button>
+
+          {/* Botão ocultar barra */}
+          <button
+            onClick={() => { setAtivada(false); try { localStorage.setItem(STORAGE_VIS, "0"); } catch { /* noop */ } }}
+            title="Ocultar barra de atalhos"
+            style={{
+              width: "100%", display: "flex", alignItems: "center",
+              gap: expandida ? 10 : 0, justifyContent: expandida ? "flex-start" : "center",
+              padding: expandida ? "6px 14px" : "6px 0",
+              background: "none", border: "none", cursor: "pointer",
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-page)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+          >
+            <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0, width: 24, textAlign: "center", opacity: 0.55 }}>✕</span>
+            {expandida && <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>Ocultar barra</span>}
           </button>
         </div>
       </div>
