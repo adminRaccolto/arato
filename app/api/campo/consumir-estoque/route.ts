@@ -19,23 +19,36 @@ interface ConsumoItem {
   observacao?: string;
 }
 
+interface Payload {
+  itens: ConsumoItem[];
+  // Dados para gerar o lançamento CP obrigatório
+  ciclo_id?: string;
+  descricao_lancamento: string;   // ex: "Pulverização — Herbicida"
+  categoria_lancamento: string;   // ex: "Insumos — Defensivos"
+}
+
 // POST /api/campo/consumir-estoque
-// Registra saída de estoque para operações do campo app (plantio, pulv, adubação).
+// Registra saída de estoque + cria lançamento CP para operações do campo app.
 // Usa service_role_key — imune a JWT expirado e RLS.
 export async function POST(req: NextRequest) {
   try {
-    const { itens } = await req.json() as { itens: ConsumoItem[] };
+    const body = await req.json() as Payload;
+    const { itens, ciclo_id, descricao_lancamento, categoria_lancamento } = body;
     if (!itens?.length) return NextResponse.json({ ok: true, baixados: 0 });
 
     const supabase = sb();
 
     let baixados = 0;
+    let custoTotal = 0;
     const erros: string[] = [];
+    // fazenda_id é o mesmo para todos os itens da operação
+    const fazenda_id = itens[0].fazenda_id;
+    const data = itens[0].data;
 
     for (const item of itens) {
       if (!item.insumo_id || item.quantidade <= 0) continue;
 
-      // Busca estoque atual
+      // Busca estoque e custo atual
       const { data: ins, error: insErr } = await supabase
         .from("insumos")
         .select("id, estoque, custo_medio, valor_unitario")
@@ -50,37 +63,58 @@ export async function POST(req: NextRequest) {
       const estoqueAtual = ins.estoque ?? 0;
       const custoUnit = ins.custo_medio ?? ins.valor_unitario ?? 0;
       const novoEstoque = Math.max(0, estoqueAtual - item.quantidade);
+      const custoItem = custoUnit * item.quantidade;
+      custoTotal += custoItem;
 
-      // Atualiza estoque (ou depende de trigger — faz os dois por segurança)
+      // Atualiza estoque
       await supabase
         .from("insumos")
         .update({ estoque: novoEstoque })
         .eq("id", item.insumo_id);
 
-      // Registra movimentação
+      // Registra movimentação de saída
       const { error: movErr } = await supabase.from("movimentacoes_estoque").insert({
-        insumo_id:              item.insumo_id,
-        fazenda_id:             item.fazenda_id,
-        tipo:                   "saida",
-        motivo:                 "baixa_uso",
-        quantidade:             item.quantidade,
+        insumo_id:               item.insumo_id,
+        fazenda_id:              item.fazenda_id,
+        tipo:                    "saida",
+        motivo:                  "baixa_uso",
+        quantidade:              item.quantidade,
         custo_unitario_na_baixa: custoUnit,
-        data:                   item.data,
-        operacao:               item.operacao,
-        talhao:                 item.talhao_nome ?? null,
-        safra:                  item.safra_descricao ?? null,
-        observacao:             item.observacao ?? null,
-        auto:                   true,
+        data:                    item.data,
+        operacao:                item.operacao,
+        talhao:                  item.talhao_nome ?? null,
+        safra:                   item.safra_descricao ?? null,
+        observacao:              item.observacao ?? null,
+        auto:                    true,
       });
 
       if (movErr) {
-        erros.push(`insumo ${item.insumo_id}: ${movErr.message}`);
+        erros.push(`estoque ${item.insumo_id}: ${movErr.message}`);
       } else {
         baixados++;
       }
     }
 
-    return NextResponse.json({ ok: true, baixados, erros });
+    // Lançamento CP obrigatório — criado independente do custo calculado
+    // (mesmo sem custo_medio/valor_unitario, registra o lançamento com valor 0
+    //  para que o operador preencha o valor correto no financeiro)
+    const { error: lancErr } = await supabase.from("lancamentos").insert({
+      fazenda_id,
+      tipo:            "pagar",
+      moeda:           "BRL",
+      descricao:       descricao_lancamento,
+      categoria:       categoria_lancamento,
+      data_lancamento: new Date().toISOString().slice(0, 10),
+      data_vencimento: data,
+      valor:           custoTotal,
+      safra_id:        ciclo_id ?? null,
+      status:          "em_aberto",
+      auto:            true,
+    });
+
+    if (lancErr) erros.push(`lançamento: ${lancErr.message}`);
+
+    return NextResponse.json({ ok: true, baixados, custo_total: custoTotal, erros });
   } catch (e) {
     return NextResponse.json({ erro: String(e) }, { status: 500 });
   }

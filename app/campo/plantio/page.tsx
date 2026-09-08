@@ -115,23 +115,22 @@ export default function CampoPlantioPage() {
         return;
       }
 
-      // Baixa estoque da semente se vinculada e com dose + área informadas
-      if (fSemente && dose > 0 && area > 0) {
-        const talhaoNome = talhoes.find(t => t.id === fTalhao)?.nome;
-        const cicloDesc  = ciclos.find(c => c.id === fCiclo)?.cultura;
+      // Baixa estoque + lançamento CP obrigatório
+      {
+        const talhaoNome  = talhoes.find(t => t.id === fTalhao)?.nome;
+        const cicloDesc   = ciclos.find(c => c.id === fCiclo)?.cultura;
+        const sementeNome = sementes.find(s => s.id === fSemente)?.nome ?? "Semente";
+        const itens = fSemente && dose > 0 && area > 0
+          ? [{ insumo_id: fSemente, fazenda_id: fazendaId, quantidade: dose * area, data: fData, operacao: "plantio", talhao_nome: talhaoNome, safra_descricao: cicloDesc }]
+          : [];
         await fetch("/api/campo/consumir-estoque", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            itens: [{
-              insumo_id:       fSemente,
-              fazenda_id:      fazendaId,
-              quantidade:      dose * area,
-              data:            fData,
-              operacao:        "plantio",
-              talhao_nome:     talhaoNome,
-              safra_descricao: cicloDesc,
-            }],
+            itens,
+            ciclo_id:             fCiclo || undefined,
+            descricao_lancamento: `Plantio — ${sementeNome}${fVaridade ? ` (${fVaridade})` : ""}${talhaoNome ? ` · ${talhaoNome}` : ""}`,
+            categoria_lancamento: "Insumos — Sementes",
           }),
         });
       }

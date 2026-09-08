@@ -167,23 +167,30 @@ export default function CampoPulverizacaoPage() {
       const { error: e2 } = await supabase.from("pulverizacao_itens").insert(itens);
       if (e2) throw new Error(e2.message);
 
-      // Baixa estoque dos produtos vinculados ao estoque
-      const itensBaixa = itensPayload
-        .filter(i => i.insumo_id && i.total_consumido > 0)
-        .map(i => ({
-          insumo_id:       i.insumo_id!,
-          fazenda_id:      fazendaId,
-          quantidade:      i.total_consumido,
-          data:            fData,
-          operacao:        "pulverizacao",
-          talhao_nome:     talhoes.find(t => t.id === fTalhao)?.nome,
-          safra_descricao: ciclos.find(c => c.id === fCiclo)?.cultura,
-        }));
-      if (itensBaixa.length > 0) {
+      // Baixa estoque + lançamento CP obrigatório
+      {
+        const talhaoNome  = talhoes.find(t => t.id === fTalhao)?.nome;
+        const tipoLabel   = TIPO_OPTS.find(t => t.v === fTipo)?.label ?? fTipo;
+        const itensBaixa  = itensPayload
+          .filter(i => i.insumo_id && i.total_consumido > 0)
+          .map(i => ({
+            insumo_id:       i.insumo_id!,
+            fazenda_id:      fazendaId,
+            quantidade:      i.total_consumido,
+            data:            fData,
+            operacao:        "pulverizacao",
+            talhao_nome:     talhaoNome,
+            safra_descricao: ciclos.find(c => c.id === fCiclo)?.cultura,
+          }));
         await fetch("/api/campo/consumir-estoque", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ itens: itensBaixa }),
+          body: JSON.stringify({
+            itens:                itensBaixa,
+            ciclo_id:             fCiclo || undefined,
+            descricao_lancamento: `Pulverização — ${tipoLabel}${talhaoNome ? ` · ${talhaoNome}` : ""}`,
+            categoria_lancamento: "Insumos — Defensivos",
+          }),
         });
       }
 

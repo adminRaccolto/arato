@@ -3413,14 +3413,13 @@ export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoB
       });
     }
   }
-  if (adubacao.custo_total && adubacao.custo_total > 0) {
-    await supabase.from("lancamentos").insert({
-      fazenda_id: adubacao.fazenda_id, tipo: "pagar",
-      descricao: `Adubação de Base — ${adubacao.area_ha} ha`,
-      valor: adubacao.custo_total, data_vencimento: adubacao.data_aplicacao,
-      status: "pendente", categoria: "Insumos — Fertilizantes",
-    });
-  }
+  // Lançamento CP obrigatório — sempre criado
+  await supabase.from("lancamentos").insert({
+    fazenda_id: adubacao.fazenda_id, tipo: "pagar",
+    descricao: `Adubação de Base — ${adubacao.area_ha} ha`,
+    valor: adubacao.custo_total ?? 0, data_vencimento: adubacao.data_aplicacao,
+    status: "pendente", categoria: "Insumos — Fertilizantes",
+  });
 }
 
 export async function listarPlantios(fazenda_id: string): Promise<Plantio[]> {
@@ -3488,8 +3487,8 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
     }
   }
 
-  // Lançamento CP custo de sementes
-  if (custo > 0) {
+  // Lançamento CP obrigatório — sempre criado (valor 0 se custo_sementes não configurado)
+  {
     const { data: lanc } = await supabase.from("lancamentos").insert({
       fazenda_id: plantio.fazenda_id,
       tipo: "pagar", moeda: "BRL",
@@ -3591,20 +3590,18 @@ export async function processarPulverizacao(
   // Atualiza custo_total na pulverização
   await supabase.from("pulverizacoes").update({ custo_total: custoTotal }).eq("id", pulv.id);
 
-  // Lançamento CP
-  if (custoTotal > 0) {
-    await supabase.from("lancamentos").insert({
-      fazenda_id: pulv.fazenda_id,
-      tipo: "pagar", moeda: "BRL",
-      descricao: `Pulverização — ${TIPO_PULV_LABEL[pulv.tipo] ?? pulv.tipo}`,
-      categoria: "Insumos — Defensivos",
-      data_lancamento: new Date().toISOString().slice(0, 10),
-      data_vencimento: pulv.data_inicio,
-      valor: custoTotal,
-      safra_id: pulv.ciclo_id,
-      status: "em_aberto", auto: true,
-    });
-  }
+  // Lançamento CP obrigatório — sempre criado
+  await supabase.from("lancamentos").insert({
+    fazenda_id: pulv.fazenda_id,
+    tipo: "pagar", moeda: "BRL",
+    descricao: `Pulverização — ${TIPO_PULV_LABEL[pulv.tipo] ?? pulv.tipo}`,
+    categoria: "Insumos — Defensivos",
+    data_lancamento: new Date().toISOString().slice(0, 10),
+    data_vencimento: pulv.data_inicio,
+    valor: custoTotal,
+    safra_id: pulv.ciclo_id,
+    status: "em_aberto", auto: true,
+  });
 }
 
 const TIPO_PULV_LABEL: Record<string, string> = {
