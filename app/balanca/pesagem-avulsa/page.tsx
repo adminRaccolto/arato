@@ -403,50 +403,172 @@ export default function PesagemAvulsa() {
     const fmtNum  = (v: number | null) =>
       v == null ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
+    // bloco do ticket — reutilizado em cada via
+    const via = (label: string) => `
+<div class="ticket">
+  <div class="center bold lg">${fazenda}</div>
+  <div class="center sub">TICKET DE PESAGEM AVULSA · <span style="font-size:9px;color:#888">${label}</span></div>
+  <hr>
+  <div class="center bold num">Nº ${num}</div>
+  <div class="center" style="margin-top:4px"><span class="badge">${tipo}</span></div>
+  <hr>
+  <div class="row"><span class="label">Placa:</span><span class="bold">${p.placa ?? "—"}</span></div>
+  <div class="row"><span class="label">Motorista:</span><span>${p.motorista ?? "—"}</span></div>
+  <div class="row"><span class="label">Produto:</span><span>${p.produto ?? "—"}</span></div>
+  <div class="row"><span class="label">Forn./Cliente:</span><span>${p.fornecedor_cliente ?? "—"}</span></div>
+  <hr>
+  <div class="row"><span class="label">Tara:</span><span class="bold">${fmtNum(p.peso_tara_kg)} kg</span></div>
+  <div class="row small"><span>Data/Hora:</span><span>${fmtFull(p.data_tara)}</span></div>
+  <div class="row small"><span>Operador:</span><span>${p.usuario_tara ?? "—"}</span></div>
+  <div style="margin-top:4px"></div>
+  <div class="row"><span class="label">Bruto:</span><span class="bold">${fmtNum(p.peso_bruto_kg)} kg</span></div>
+  <div class="row small"><span>Data/Hora:</span><span>${fmtFull(p.data_bruto)}</span></div>
+  <div class="row small"><span>Operador:</span><span>${p.usuario_bruto ?? "—"}</span></div>
+  <hr>
+  <div class="center" style="margin:6px 0 2px;font-size:11px;font-weight:bold">PESO LÍQUIDO</div>
+  <div class="center xl">${fmtNum(p.peso_liquido_kg)} kg</div>
+  <hr>
+  ${p.observacao ? `<div style="font-size:10px;margin-bottom:4px"><span class="label">Obs:</span> ${p.observacao}</div><hr>` : ""}
+  <div class="center small" style="margin-top:4px">${new Date().toLocaleString("pt-BR")}</div>
+</div>`;
+
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
 <title>Ticket ${num}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Courier New',monospace;font-size:12px;color:#111;background:#fff;width:80mm;padding:6mm}
+  body{font-family:'Courier New',monospace;font-size:12px;color:#111;background:#fff}
+  .page{display:flex;flex-direction:column;align-items:center;padding:10mm 0;gap:0}
+  .ticket{width:80mm;padding:6mm;border:0.5px solid #ccc}
+  .cut{width:80mm;text-align:center;font-size:9px;color:#aaa;padding:4px 0;letter-spacing:2px;border-top:1px dashed #bbb;border-bottom:1px dashed #bbb;margin:2mm 0}
   .center{text-align:center}
   .bold{font-weight:bold}
-  .lg{font-size:18px}
-  .xl{font-size:28px;font-weight:bold;letter-spacing:1px}
-  hr{border:none;border-top:1px dashed #555;margin:6px 0}
+  .lg{font-size:16px}
+  .num{font-size:14px;letter-spacing:2px}
+  .sub{font-size:9px;margin-top:2px}
+  .xl{font-size:26px;font-weight:bold;letter-spacing:1px}
+  hr{border:none;border-top:1px dashed #555;margin:5px 0}
   .row{display:flex;justify-content:space-between;padding:2px 0}
   .label{color:#555}
-  .badge{display:inline-block;border:1px solid #111;padding:2px 8px;font-weight:bold;font-size:11px;letter-spacing:1px}
-  @media print{@page{margin:0;size:80mm auto}body{width:80mm}}
+  .small{font-size:10px;color:#555}
+  .badge{display:inline-block;border:1px solid #111;padding:2px 8px;font-weight:bold;font-size:10px;letter-spacing:1px}
+  @media print{
+    @page{margin:0;size:A4 portrait}
+    body{width:210mm}
+    .page{padding:8mm 0}
+    .no-print{display:none}
+  }
 </style></head><body>
-<div class="center bold lg">${fazenda}</div>
-<div class="center" style="font-size:10px;margin-top:2px">TICKET DE PESAGEM AVULSA</div>
-<hr>
-<div class="center bold" style="font-size:14px;letter-spacing:2px">Nº ${num}</div>
-<div class="center" style="margin-top:4px"><span class="badge">${tipo}</span></div>
-<hr>
-<div class="row"><span class="label">Placa:</span><span class="bold">${p.placa ?? "—"}</span></div>
-<div class="row"><span class="label">Motorista:</span><span>${p.motorista ?? "—"}</span></div>
-<div class="row"><span class="label">Produto:</span><span>${p.produto ?? "—"}</span></div>
-<div class="row"><span class="label">Forn./Cliente:</span><span>${p.fornecedor_cliente ?? "—"}</span></div>
-<hr>
-<div class="row"><span class="label">Tara:</span><span class="bold">${fmtNum(p.peso_tara_kg)} kg</span></div>
-<div class="row" style="font-size:10px;color:#555"><span>Data/Hora:</span><span>${fmtFull(p.data_tara)}</span></div>
-<div class="row" style="font-size:10px;color:#555"><span>Operador:</span><span>${p.usuario_tara ?? "—"}</span></div>
-<div style="margin-top:4px"></div>
-<div class="row"><span class="label">Bruto:</span><span class="bold">${fmtNum(p.peso_bruto_kg)} kg</span></div>
-<div class="row" style="font-size:10px;color:#555"><span>Data/Hora:</span><span>${fmtFull(p.data_bruto)}</span></div>
-<div class="row" style="font-size:10px;color:#555"><span>Operador:</span><span>${p.usuario_bruto ?? "—"}</span></div>
-<hr>
-<div class="center" style="margin:6px 0 2px;font-size:11px;font-weight:bold">PESO LÍQUIDO</div>
-<div class="center xl">${fmtNum(p.peso_liquido_kg)} kg</div>
-<hr>
-${p.observacao ? `<div style="font-size:10px;margin-bottom:4px"><span class="label">Obs:</span> ${p.observacao}</div><hr>` : ""}
-<div class="center" style="font-size:10px;color:#555;margin-top:4px">${new Date().toLocaleString("pt-BR")}</div>
-<div style="height:8mm"></div>
+<div class="page">
+  ${via("1ª VIA — MOTORISTA")}
+  <div class="cut">✂ &nbsp; RECORTE &nbsp; ✂</div>
+  ${via("2ª VIA — ESTABELECIMENTO")}
+</div>
+<div class="no-print" style="text-align:center;margin:12px;font-size:12px;color:#666">
+  <button onclick="window.print()" style="padding:8px 20px;font-size:13px;cursor:pointer">🖨 Imprimir</button>
+</div>
 </body></html>`;
 
-    const w = window.open("", "_blank", "width=360,height=600,toolbar=0,menubar=0,scrollbars=1");
+    const w = window.open("", "_blank", "width=480,height=820,toolbar=0,menubar=0,scrollbars=1");
     if (!w) { alert("Permita pop-ups para imprimir o ticket."); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
+  const imprimirRomaneio = (p: Pesagem) => {
+    const fazenda = nomeFazendaSelecionada ?? "Balança";
+    const num     = p.id.slice(-8).toUpperCase();
+    const fmtFull = (s: string | null) =>
+      !s ? "—" : new Date(s).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const fmtNum  = (v: number | null) =>
+      v == null ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    const hoje    = new Date().toLocaleDateString("pt-BR");
+
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Romaneio ${num}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:14mm 16mm}
+  h1{font-size:20px;font-weight:bold;text-align:center;letter-spacing:1px}
+  .sub{text-align:center;font-size:10px;color:#555;margin-top:2px;margin-bottom:10px}
+  .linha-horiz{border:none;border-top:1px solid #000;margin:8px 0}
+  .linha-dupla{border-top:3px double #000;margin:8px 0}
+  table.dados{width:100%;border-collapse:collapse;margin:10px 0}
+  table.dados td{padding:5px 8px;font-size:12px;vertical-align:top}
+  table.dados td.lbl{font-weight:bold;width:38%;color:#333}
+  table.dados td.val{border-bottom:1px solid #ccc}
+  table.pesos{width:100%;border-collapse:collapse;margin:10px 0}
+  table.pesos th{background:#333;color:#fff;padding:6px 10px;font-size:11px;text-align:left}
+  table.pesos td{padding:7px 10px;border-bottom:1px solid #ddd;font-size:12px}
+  table.pesos td.right{text-align:right;font-weight:bold}
+  .liquido-box{border:2px solid #111;padding:12px 16px;margin:14px 0;text-align:center;border-radius:4px}
+  .liquido-label{font-size:11px;font-weight:bold;color:#555;letter-spacing:1px}
+  .liquido-val{font-size:28px;font-weight:bold;letter-spacing:1px;margin-top:4px}
+  .assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:30px}
+  .ass-box{border-top:1px solid #333;padding-top:6px;text-align:center;font-size:10px;color:#555}
+  .rodape{margin-top:20px;font-size:9px;color:#aaa;text-align:center}
+  @media print{@page{margin:0;size:A4 portrait}body{padding:10mm 12mm}.no-print{display:none}}
+</style></head><body>
+
+<h1>${fazenda}</h1>
+<div class="sub">ROMANEIO DE PESAGEM · Nº ${num}</div>
+<hr class="linha-dupla">
+
+<table class="dados">
+  <tr><td class="lbl">Data de emissão:</td><td class="val">${hoje}</td>
+      <td class="lbl">Tipo de pesagem:</td><td class="val">${TIPO_LABEL[p.tipo]}</td></tr>
+  <tr><td class="lbl">Placa do veículo:</td><td class="val">${p.placa ?? "—"}</td>
+      <td class="lbl">Motorista:</td><td class="val">${p.motorista ?? "—"}</td></tr>
+  <tr><td class="lbl">Produto / Mercadoria:</td><td class="val">${p.produto ?? "—"}</td>
+      <td class="lbl">Forn. / Cliente:</td><td class="val">${p.fornecedor_cliente ?? "—"}</td></tr>
+  ${p.observacao ? `<tr><td class="lbl">Observações:</td><td class="val" colspan="3">${p.observacao}</td></tr>` : ""}
+</table>
+
+<hr class="linha-horiz">
+
+<table class="pesos">
+  <thead>
+    <tr>
+      <th>Pesagem</th><th>Peso</th><th>Data / Hora</th><th>Operador</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tara (veículo vazio)</td>
+      <td class="right">${fmtNum(p.peso_tara_kg)} kg</td>
+      <td>${fmtFull(p.data_tara)}</td>
+      <td>${p.usuario_tara ?? "—"}</td>
+    </tr>
+    <tr>
+      <td>Bruto (veículo carregado)</td>
+      <td class="right">${fmtNum(p.peso_bruto_kg)} kg</td>
+      <td>${fmtFull(p.data_bruto)}</td>
+      <td>${p.usuario_bruto ?? "—"}</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="liquido-box">
+  <div class="liquido-label">PESO LÍQUIDO (BRUTO − TARA)</div>
+  <div class="liquido-val">${fmtNum(p.peso_liquido_kg)} kg</div>
+  ${p.peso_liquido_kg != null ? `<div style="font-size:11px;color:#555;margin-top:4px">${(p.peso_liquido_kg / 60).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})} sacas de 60 kg &nbsp;·&nbsp; ${(p.peso_liquido_kg / 1000).toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} t</div>` : ""}
+</div>
+
+<div class="assinaturas">
+  <div class="ass-box">Motorista / Transportador<br><br></div>
+  <div class="ass-box">Responsável pelo Recebimento<br><br></div>
+</div>
+
+<div class="rodape">Documento gerado em ${new Date().toLocaleString("pt-BR")} · RacTech — Sistema de Gestão Agrícola</div>
+
+<div class="no-print" style="text-align:center;margin:16px">
+  <button onclick="window.print()" style="padding:8px 20px;font-size:13px;cursor:pointer">🖨 Imprimir Romaneio</button>
+</div>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=820,height=900,toolbar=0,menubar=0,scrollbars=1");
+    if (!w) { alert("Permita pop-ups para imprimir o romaneio."); return; }
     w.document.write(html);
     w.document.close();
     w.focus();
@@ -645,13 +767,22 @@ ${p.observacao ? `<div style="font-size:10px;margin-bottom:4px"><span class="lab
                           </td>
                           <td style={{ padding: "9px 12px" }}>
                             {p.status === "finalizado" && (
-                              <button
-                                onClick={() => imprimirTicket(p)}
-                                title="Imprimir ticket"
-                                style={{ padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}
-                              >
-                                🖨️ Ticket
-                              </button>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
+                                <button
+                                  onClick={() => imprimirTicket(p)}
+                                  title="Imprimir ticket em 2 vias"
+                                  style={{ padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
+                                >
+                                  🖨️ Ticket
+                                </button>
+                                <button
+                                  onClick={() => imprimirRomaneio(p)}
+                                  title="Imprimir romaneio A4"
+                                  style={{ padding: "5px 10px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#EEF4FF", color: "#1A4870", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
+                                >
+                                  📋 Romaneio
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>

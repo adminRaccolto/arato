@@ -214,6 +214,7 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Usuários" },
       { id: "conf-usuarios",        label: "Usuários e Permissões",      path: "/configuracoes/usuarios",                             moduleId: "usuarios"          },
       { id: "conf-auditoria",       label: "Auditoria",                  path: "/configuracoes/auditoria"                                                           },
+      { id: "conf-atualizacoes",    label: "🆕 Central de Atualizações", path: "/atualizacoes"                                                                      },
       { type: "divider", label: "Raccolto" },
       { id: "conf-integracoes",     label: "Integrações",                path: "/configuracoes/integracoes",                          moduleId: "conf_raccotlo" },
       { id: "conf-bot",             label: "Bot IA — WhatsApp",          path: "/configuracoes/bot",                                  moduleId: "conf_raccotlo" },
