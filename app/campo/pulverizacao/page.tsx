@@ -66,7 +66,7 @@ export default function CampoPulverizacaoPage() {
       supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade_medida, valor_unitario, custo_medio")
         .eq("fazenda_id", fazendaId)
-        .in("categoria", ["defensivo", "fertilizante"])
+        .in("categoria", ["defensivo", "fertilizante", "micronutriente", "biologico", "inoculante"])
         .order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];

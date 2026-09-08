@@ -5,7 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
-type Ciclo   = { id: string; cultura: string; ano_safra?: { ano: string } };
+type Ciclo   = { id: string; cultura: string; ano_safra?: { descricao: string } };
 type Deposito = { id: string; nome: string };
 
 const CULTURA_PRODUTO: Record<string, string> = {
@@ -53,7 +53,7 @@ export default function CampoColheitaPage() {
 
     const [{ data: tal }, { data: cic }, { data: dep }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(ano)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("depositos").select("id, nome").eq("fazenda_id", fazendaId).order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
@@ -176,7 +176,7 @@ export default function CampoColheitaPage() {
           <option value="">Selecione o ciclo...</option>
           {ciclos.map(c => (
             <option key={c.id} value={c.id}>
-              {c.cultura} {(c.ano_safra as unknown as { ano: string } | null)?.ano ?? ""}
+              {c.cultura} {(c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? ""}
             </option>
           ))}
         </select>
