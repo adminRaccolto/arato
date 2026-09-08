@@ -200,7 +200,8 @@ export default function AuditoriaPage() {
   const [fAte,    setFAte]    = useState(hoje);
   const [fTabela, setFTabela] = useState("");
   const [fAcao,   setFAcao]   = useState("");
-  const [fBusca,  setFBusca]  = useState("");
+  const [fBusca,        setFBusca]        = useState("");
+  const [ocultarSistema, setOcultarSistema] = useState(true);
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -231,17 +232,20 @@ export default function AuditoriaPage() {
   useEffect(() => { carregar(); }, [carregar]);
 
   const logsFiltrados = useMemo(() => {
-    if (!fBusca) return logs;
-    const q = fBusca.toLowerCase();
-    return logs.filter(l =>
-      (l.tabela ?? "").includes(q) ||
-      (l.acao ?? "").toLowerCase().includes(q) ||
-      (l.registro_id ?? "").includes(q) ||
-      (l.usuario_app ?? "").toLowerCase().includes(q) ||
-      JSON.stringify(l.dados_depois ?? {}).toLowerCase().includes(q) ||
-      JSON.stringify(l.dados_antes ?? {}).toLowerCase().includes(q)
-    );
-  }, [logs, fBusca]);
+    return logs.filter(l => {
+      if (ocultarSistema && (l.usuario_app === "Sistema" || l.usuario_app === null)) return false;
+      if (!fBusca) return true;
+      const q = fBusca.toLowerCase();
+      return (
+        (l.tabela ?? "").includes(q) ||
+        (l.acao ?? "").toLowerCase().includes(q) ||
+        (l.registro_id ?? "").includes(q) ||
+        (l.usuario_app ?? "").toLowerCase().includes(q) ||
+        JSON.stringify(l.dados_depois ?? {}).toLowerCase().includes(q) ||
+        JSON.stringify(l.dados_antes ?? {}).toLowerCase().includes(q)
+      );
+    });
+  }, [logs, fBusca, ocultarSistema]);
 
   // Stat cards
   const hojeStr = hoje;
@@ -331,6 +335,11 @@ export default function AuditoriaPage() {
             <input placeholder="Buscar em dados, ID, usuário…" value={fBusca} onChange={e => setFBusca(e.target.value)}
               style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, color: "#333", width: "100%", boxSizing: "border-box" }} />
           </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap", userSelect: "none" }}>
+            <input type="checkbox" checked={ocultarSistema} onChange={e => setOcultarSistema(e.target.checked)}
+              style={{ width: 14, height: 14, accentColor: "#1A4870", cursor: "pointer" }} />
+            <span style={{ fontSize: 12, color: "#555" }}>Ocultar Sistema</span>
+          </label>
           <button onClick={() => { setFDe(new Date(Date.now() - 7*86400000).toISOString().slice(0,10)); setFAte(hoje); setFTabela(""); setFAcao(""); setFBusca(""); }}
             style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 12px", fontSize: 12, color: "#666", background: "#F9FAFB", cursor: "pointer" }}>
             Limpar
