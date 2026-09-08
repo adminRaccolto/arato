@@ -11249,4 +11249,36 @@ ALTER TABLE nf_importada_itens_sieg
   ADD COLUMN IF NOT EXISTS ia_confianca      text    CHECK (ia_confianca IN ('alta','media','baixa')),
   ADD COLUMN IF NOT EXISTS ia_motivo         text;
 
+-- ═══════════════════════════════════════════════════════════════
+-- Seção 235: pesagens_avulsas — Balança / Pesagem Avulsa
+-- Controle de tickets em 2 tempos: tara (1ª pesagem) → bruto (2ª pesagem)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS pesagens_avulsas (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id        uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  conta_id          uuid REFERENCES contas(id) ON DELETE SET NULL,
+  tipo              text NOT NULL DEFAULT 'neutra' CHECK (tipo IN ('neutra','entrada','saida')),
+  status            text NOT NULL DEFAULT 'aguardando_bruto' CHECK (status IN ('aguardando_bruto','finalizado','cancelado')),
+  placa             text,
+  motorista         text,
+  produto           text,
+  fornecedor_cliente text,
+  peso_tara_kg      numeric(12,2),
+  peso_bruto_kg     numeric(12,2),
+  peso_liquido_kg   numeric(12,2),
+  data_tara         timestamptz DEFAULT now(),
+  data_bruto        timestamptz,
+  usuario_tara      text,
+  usuario_bruto     text,
+  observacao        text,
+  created_at        timestamptz DEFAULT now()
+);
+
+ALTER TABLE pesagens_avulsas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_pesagens" ON pesagens_avulsas;
+CREATE POLICY "allow_all_pesagens" ON pesagens_avulsas FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_pesagens_fazenda ON pesagens_avulsas(fazenda_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pesagens_status  ON pesagens_avulsas(fazenda_id, status);
+
 NOTIFY pgrst, 'reload schema';

@@ -112,6 +112,8 @@ const NAV: NavItem[] = [
       { id: "transp-cte",             label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",           moduleId: "transporte" },
       { id: "transp-mdfe",            label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",          moduleId: "transporte" },
       { id: "transp-cadastros",       label: "Transportadoras / Veículos",        path: "/transporte/cadastros",     moduleId: "transporte" },
+      { type: "divider", label: "Balança" },
+      { id: "com-pesagem-avulsa",     label: "Pesagem Avulsa",                    path: "/balanca/pesagem-avulsa"                           },
     ],
   },
 
@@ -435,7 +437,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const grupoAtivo = (item: Extract<NavItem, { type: "group" }>) => {
     if (item.id === "producao")      return pathname.startsWith("/lavoura") || pathname.startsWith("/algodao") || pathname === "/estoque/romaneio-entrada" || pathname === "/mapa";
     if (item.id === "suprimentos")   return pathname.startsWith("/compras") || (pathname.startsWith("/estoque") && pathname !== "/estoque/romaneio-entrada") || pathname === "/financeiro/pendencias-nf" || pathname === "/fiscal/manifestacao";
-    if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || pathname.startsWith("/transporte");
+    if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || pathname.startsWith("/transporte") || pathname.startsWith("/balanca");
     if (item.id === "financeiro")    return pathname.startsWith("/financeiro") || pathname.startsWith("/empresas");
     if (item.id === "fiscal")        return pathname === "/fiscal" || pathname.startsWith("/fiscal") || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias";
     if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios");
