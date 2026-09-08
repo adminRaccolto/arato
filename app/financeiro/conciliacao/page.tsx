@@ -719,8 +719,12 @@ function ConciliacaoInner() {
 
   const lancFiltrados = lancamentos.filter(l => {
     // Filtro por conta bancária selecionada no header:
-    // mostra lançamentos da conta OU sem conta (ainda não baixados — disponíveis para vincular)
-    if (contaSel && l.conta_bancaria && l.conta_bancaria !== contaSel) return false;
+    // - baixados/parciais: só mostrar se conta_bancaria === contaSel (já pagos por esse banco)
+    // - em aberto: sempre mostrar (ainda não pagos, podem ser conciliados agora)
+    if (contaSel) {
+      const pago = l.status === "baixado" || ehParcial(l);
+      if (pago && l.conta_bancaria !== contaSel) return false;
+    }
 
     // Filtro de status
     if (filtroLancStatus === "aberto" && !["aberto", "vencido", "em_aberto", "parcial"].includes(l.status)) return false;

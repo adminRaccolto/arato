@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import TopNav from "@/components/TopNav";
+import { useAuth } from "@/components/AuthProvider";
 
 const sb = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -168,6 +169,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
 
 // ── Página principal ────────────────────────────────────────────────────────
 export default function AuditoriaPage() {
+  const { fazendaIds, fazendaId } = useAuth();
   const [logs, setLogs]         = useState<AuditEntry[]>([]);
   const [loading, setLoading]   = useState(true);
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
@@ -177,13 +179,14 @@ export default function AuditoriaPage() {
 
   // Carrega mapa UUID→nome para resolver registros já gravados como UUID
   useEffect(() => {
-    sb.from("perfis").select("user_id, nome").then(({ data }) => {
+    if (!fazendaId) return;
+    sb.from("perfis").select("user_id, nome").in("fazenda_id", fazendaIds).then(({ data }) => {
       if (!data) return;
       const m: Record<string, string> = {};
       data.forEach(p => { if (p.user_id && p.nome) m[p.user_id] = p.nome; });
       setUsersMap(m);
     });
-  }, []);
+  }, [fazendaId, fazendaIds]);
 
   const resolveUser = (uid: string | null) => {
     if (!uid) return null;
@@ -200,10 +203,12 @@ export default function AuditoriaPage() {
   const [fBusca,  setFBusca]  = useState("");
 
   const carregar = useCallback(async () => {
+    if (!fazendaId) return;
     setLoading(true);
     try {
       let q = sb.from("audit_log")
         .select("*")
+        .in("fazenda_id", fazendaIds)
         .gte("created_at", fDe + "T00:00:00")
         .lte("created_at", fAte + "T23:59:59")
         .order("created_at", { ascending: false })
@@ -220,7 +225,7 @@ export default function AuditoriaPage() {
     } finally {
       setLoading(false);
     }
-  }, [fDe, fAte, fTabela, fAcao, pagina]);
+  }, [fazendaId, fazendaIds, fDe, fAte, fTabela, fAcao, pagina]);
 
   useEffect(() => { setPagina(0); }, [fDe, fAte, fTabela, fAcao]);
   useEffect(() => { carregar(); }, [carregar]);
