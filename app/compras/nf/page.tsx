@@ -3255,15 +3255,13 @@ export default function NfCompraPage() {
                           {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ? `— ${c.descricao}` : ""}</option>)}
                         </select>
                       </div>
-                      {(wProdutores.length > 0 || !!cab.produtor_id) && (
-                        <div>
-                          <label style={lbl}>Produtor *</label>
-                          <select value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value, ie_produtor: ""}))} style={inp}>
-                            <option value="">— selecionar —</option>
-                            {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                          </select>
-                        </div>
-                      )}
+                      <div>
+                        <label style={lbl}>Produtor</label>
+                        <select value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value, ie_produtor: ""}))} style={inp}>
+                          <option value="">— selecionar —</option>
+                          {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                        </select>
+                      </div>
                       {cab.produtor_id && (
                         <div>
                           <label style={lbl}>I.E. do Produtor</label>
