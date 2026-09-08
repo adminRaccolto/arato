@@ -569,8 +569,12 @@ function ContasPagarInner() {
       if (filtro === "compra_terra")        return isReal && l.origem_lancamento === "compra_terra";
       return true;
     });
-    // Ordenar por vencimento crescente
-    arr = arr.sort((a, b) => (a.data_vencimento ?? "") < (b.data_vencimento ?? "") ? -1 : 1);
+    // Baixados: ordenar por data de baixa. Demais: por vencimento.
+    arr = arr.sort((a, b) => {
+      const ka = filtro === "baixado" ? (a.data_baixa ?? a.data_vencimento ?? "") : (a.data_vencimento ?? "");
+      const kb = filtro === "baixado" ? (b.data_baixa ?? b.data_vencimento ?? "") : (b.data_vencimento ?? "");
+      return ka < kb ? -1 : 1;
+    });
     return arr;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lancamentos, filtro, TODAY, periodoInicio]);
@@ -586,8 +590,10 @@ function ContasPagarInner() {
       const ogDesc = l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria ?? "") : (l.categoria ?? "");
       if (fOperacao   && !ogDesc.toLowerCase().includes(fOperacao.toLowerCase()))               return false;
       if (fSafra      && l.ano_safra_id !== fSafra)                                            return false;
-      if (fVencDe     && (l.data_vencimento ?? "") < fVencDe)                                  return false;
-      if (fVencAte    && (l.data_vencimento ?? "") > fVencAte)                                  return false;
+      // Baixados: filtrar por data de baixa; demais: por vencimento
+      const dataRef = filtro === "baixado" ? (l.data_baixa ?? l.data_vencimento ?? "") : (l.data_vencimento ?? "");
+      if (fVencDe     && dataRef < fVencDe)                                                     return false;
+      if (fVencAte    && dataRef > fVencAte)                                                    return false;
       if (fMoedaOrig  && l.moeda !== fMoedaOrig)                                               return false;
       const contaNomeRes = contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "";
       if (fConta      && !contaNomeRes.toLowerCase().includes(fConta.toLowerCase())) return false;
@@ -2406,9 +2412,9 @@ function ContasPagarInner() {
                       <label style={lbl}>Valor pago (R$) <span style={{ color: "#E24B4A" }}>*</span></label>
                       <input style={{ ...inp, fontWeight: 600 }} type="text" inputMode="numeric" placeholder="0,00" value={baixa.valorMask}
                         onChange={e => setBaixa(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
-                      {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < valorOrig && (
+                      {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) + descV < valorOrig - 0.01 && (
                         <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 4 }}>
-                          Pagamento parcial — saldo restante: <strong>{fmtBRL(valorOrig - desmascarar(baixa.valorMask))}</strong>
+                          Pagamento parcial — saldo restante: <strong>{fmtBRL(valorCom - desmascarar(baixa.valorMask))}</strong>
                         </div>
                       )}
                     </div>

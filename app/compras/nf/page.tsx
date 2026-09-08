@@ -3255,7 +3255,7 @@ export default function NfCompraPage() {
                           {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ? `— ${c.descricao}` : ""}</option>)}
                         </select>
                       </div>
-                      {wProdutores.length > 0 && (
+                      {(wProdutores.length > 0 || !!cab.produtor_id) && (
                         <div>
                           <label style={lbl}>Produtor *</label>
                           <select value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value, ie_produtor: ""}))} style={inp}>

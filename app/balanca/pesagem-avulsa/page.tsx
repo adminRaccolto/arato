@@ -456,7 +456,7 @@ export default function PesagemAvulsa() {
         {!carregando && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 20 }}>
             {[
-              { label: "Em Andamento",     v: pesagens.filter(p => p.status === "aguardando_bruto").length, color: "#C9921B" },
+              { label: "Em Andamento",     v: pesagens.filter(p => p.status === "aguardando_bruto" || p.status === "aguardando_tara").length, color: "#C9921B" },
               { label: "Finalizadas hoje", v: pesagens.filter(p => p.status === "finalizado" && p.data_bruto?.startsWith(new Date().toISOString().slice(0,10))).length, color: "#16A34A" },
               { label: "Total hoje",       v: pesagens.filter(p => p.created_at?.startsWith(new Date().toISOString().slice(0,10))).length, color: "#1A5CB8" },
               { label: "Canceladas",       v: pesagens.filter(p => p.status === "cancelado").length, color: "#888" },
