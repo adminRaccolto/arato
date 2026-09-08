@@ -11200,3 +11200,27 @@ CREATE POLICY "simulacoes_conta"
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- Seção 234: extratos_bancarios — colunas de rastreamento de sessão
+-- Adiciona usuario_nome e ofx_storage_path para o Histórico de
+-- Conciliação por sessão com download do OFX e botão Reabrir.
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE extratos_bancarios
+  ADD COLUMN IF NOT EXISTS usuario_nome     text,
+  ADD COLUMN IF NOT EXISTS ofx_storage_path text;
+
+-- Seção 234b: nf_importadas_sieg — vínculo com previsão convertida
+-- Permite vincular uma NF importada do SIEG a um lançamento de previsão,
+-- convertendo-o em CP real durante a classificação da NF.
+ALTER TABLE nf_importadas_sieg
+  ADD COLUMN IF NOT EXISTS lancamento_id uuid REFERENCES lancamentos(id);
+
+-- Seção 234c: colunas IA para classificação automática de itens de NF
+ALTER TABLE nf_importada_itens_sieg
+  ADD COLUMN IF NOT EXISTS og_id             uuid REFERENCES operacoes_gerenciais(id),
+  ADD COLUMN IF NOT EXISTS ia_classificado   boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS ia_confianca      text    CHECK (ia_confianca IN ('alta','media','baixa')),
+  ADD COLUMN IF NOT EXISTS ia_motivo         text;
+
+NOTIFY pgrst, 'reload schema';

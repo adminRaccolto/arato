@@ -46,6 +46,20 @@ interface Extrato {
   conciliados: number;
   pendentes: number;
   linhas: LinhaOFX[];
+  usuario_nome?: string;
+  ofx_storage_path?: string;
+}
+
+interface Pendencia {
+  id: string;
+  fitid: string;
+  conta_id?: string;
+  conta_nome?: string;
+  data: string;
+  descricao: string;
+  valor: number;
+  tipo: string;
+  status: string;
 }
 
 interface HistoricoConciliacao {
@@ -178,7 +192,7 @@ export default function Conciliacao() {
 }
 
 function ConciliacaoInner() {
-  const { fazendaId, fazendaIds, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, nomeUsuario } = useAuth();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -187,8 +201,10 @@ function ConciliacaoInner() {
   const [extratos, setExtratos]       = useState<Extrato[]>([]);
   const [extrato, setExtrato]         = useState<Extrato | null>(null);
   const [loading, setLoading]         = useState(false);
-  const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico">("extrato");
+  const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico"|"inconsistencias">(() => searchParams.get("pendentes") === "true" ? "inconsistencias" : "extrato");
   const [historico, setHistorico]     = useState<HistoricoConciliacao[]>([]);
+  const [pendencias, setPendencias]   = useState<Pendencia[]>([]);
+  const [subInconsist, setSubInconsist] = useState<"com_conta"|"sem_conta"|"sem_lancamento">("com_conta");
 
   const [contaSel, setContaSel]     = useState<string>("");
   const [filtroPend, setFiltroPend] = useState(() => searchParams.get("pendentes") === "true");
@@ -230,7 +246,7 @@ function ConciliacaoInner() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lR, exR, hR, ogR, gsR] = await Promise.all([
+    const [cR, lR, exR, hR, ogR, gsR, pR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("lancamentos")
         .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
@@ -250,12 +266,18 @@ function ConciliacaoInner() {
         .or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`)
         .neq("inativo", true)
         .order("classificacao"),
+      supabase.from("conciliacao_pendencias")
+        .select("id,fitid,conta_id,conta_nome,data,descricao,valor,tipo,status")
+        .in("fazenda_id", fazendaIds)
+        .neq("status", "ignorada")
+        .order("data", { ascending: false }),
     ]);
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     if (lR.data) setLancamentos(lR.data as Lancamento[]);
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
     if (gsR.data) setOgsDisponiveis(gsR.data as OgMin[]);
+    if (pR.data) setPendencias(pR.data as Pendencia[]);
 
     if (exR.data) {
       const lista = exR.data as unknown as Extrato[];
@@ -369,6 +391,10 @@ function ConciliacaoInner() {
       linhas,
     };
 
+    // Salva OFX bruto no Storage para poder reabrir depois
+    const ofxPath = `ofx-conciliacao/${fazendaId}/${novoExtrato.id}.ofx`;
+    await supabase.storage.from("arquivos").upload(ofxPath, new Blob([texto], { type: "text/plain" }), { upsert: false });
+
     await supabase.from("extratos_bancarios").insert({
       id: novoExtrato.id, fazenda_id: fazendaId,
       conta_id: contaSel || null, conta_nome: novoExtrato.conta_nome,
@@ -376,6 +402,8 @@ function ConciliacaoInner() {
       data_inicio: dataInicio, data_fim: dataFim,
       total_linhas: linhas.length, conciliados: conciliadoN,
       pendentes: linhas.length - conciliadoN, linhas,
+      usuario_nome:    nomeUsuario ?? null,
+      ofx_storage_path: ofxPath,
     });
 
     const naoConc = linhas.filter(l => !l.conciliado);
@@ -978,13 +1006,23 @@ function ConciliacaoInner() {
           </span>
         </div>
 
-        {/* Abas: Extratos / Histórico */}
+        {/* Abas: Extratos / Inconsistências / Histórico */}
         {!extrato && (
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-            {([["extrato", "Extratos OFX"], ["historico", "Histórico de Conciliação"]] as const).map(([k, lbl]) => (
+            {([
+              ["extrato",         "Extratos OFX"],
+              ["inconsistencias", `Inconsistências${pendencias.length > 0 ? ` (${pendencias.length})` : ""}`],
+              ["historico",       `Histórico (${extratos.length})`],
+            ] as const).map(([k, lbl]) => (
               <button key={k} onClick={() => setAbaAtiva(k)}
-                style={{ padding: "6px 16px", borderRadius: 8, border: `0.5px solid ${abaAtiva === k ? "#1A5CB8" : "var(--border)"}`, background: abaAtiva === k ? "#1A5CB8" : "var(--bg-card)", color: abaAtiva === k ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: abaAtiva === k ? 700 : 400, cursor: "pointer" }}>
-                {lbl}{k === "historico" && historico.length > 0 ? ` (${historico.length})` : ""}
+                style={{
+                  padding: "6px 16px", borderRadius: 8,
+                  border: `0.5px solid ${abaAtiva === k ? (k === "inconsistencias" ? "#C9921B" : "#1A5CB8") : "var(--border)"}`,
+                  background: abaAtiva === k ? (k === "inconsistencias" ? "#C9921B" : "#1A5CB8") : "var(--bg-card)",
+                  color: abaAtiva === k ? "#fff" : "var(--text-2)",
+                  fontSize: 13, fontWeight: abaAtiva === k ? 700 : 400, cursor: "pointer",
+                }}>
+                {lbl}
               </button>
             ))}
           </div>
@@ -1039,125 +1077,183 @@ function ConciliacaoInner() {
           </div>
         )}
 
-        {/* ═══ ABA HISTÓRICO ═══ */}
-        {!extrato && abaAtiva === "historico" && (() => {
-          // Resumo por extrato_id (períodos conciliados)
-          const periodoMap = new Map<string, {
-            extrato_id: string; conta_nome: string;
-            periodo_inicio?: string; periodo_fim?: string;
-            conciliados: number; desvinculados: number;
-          }>();
-          for (const h of historico) {
-            if (!periodoMap.has(h.extrato_id)) {
-              periodoMap.set(h.extrato_id, {
-                extrato_id: h.extrato_id, conta_nome: h.conta_nome,
-                periodo_inicio: h.periodo_inicio, periodo_fim: h.periodo_fim,
-                conciliados: 0, desvinculados: 0,
-              });
-            }
-            const e = periodoMap.get(h.extrato_id)!;
-            if (h.acao === "conciliado") e.conciliados++; else e.desvinculados++;
-            // Pega o período mais amplo registrado neste extrato
-            if (h.periodo_inicio && (!e.periodo_inicio || h.periodo_inicio < e.periodo_inicio)) e.periodo_inicio = h.periodo_inicio;
-            if (h.periodo_fim    && (!e.periodo_fim    || h.periodo_fim    > e.periodo_fim))    e.periodo_fim    = h.periodo_fim;
+        {/* ═══ ABA INCONSISTÊNCIAS ═══ */}
+        {!extrato && abaAtiva === "inconsistencias" && (() => {
+          const comConta    = pendencias.filter(p => p.conta_id);
+          const semContaOFX = pendencias.filter(p => !p.conta_id);
+          const lancSemConta = lancamentos.filter(l => !l.conta_bancaria && l.status !== "cancelado");
+
+          // Agrupa OFX-com-conta por conta_nome
+          const grupos = new Map<string, { conta_nome: string; itens: Pendencia[] }>();
+          for (const p of comConta) {
+            const key = p.conta_nome ?? p.conta_id ?? "—";
+            if (!grupos.has(key)) grupos.set(key, { conta_nome: key, itens: [] });
+            grupos.get(key)!.itens.push(p);
           }
-          const periodos = Array.from(periodoMap.values()).sort((a, b) => (b.periodo_fim ?? "").localeCompare(a.periodo_fim ?? ""));
+          const gruposList = Array.from(grupos.values()).sort((a, b) => a.conta_nome.localeCompare(b.conta_nome));
 
           return (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-              {/* Resumo de Períodos */}
-              {periodos.length > 0 && (
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Períodos Conciliados</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Um registro por extrato OFX importado — período filtrado durante a conciliação</div>
-                  </div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: "var(--bg-page)" }}>
-                        {["Conta Bancária", "Período Conciliado", "Conciliadas", "Desvinculadas"].map(h => (
-                          <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {periodos.map((p, i) => (
-                        <tr key={p.extrato_id} style={{ borderBottom: i < periodos.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
-                          <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{p.conta_nome}</td>
-                          <td style={{ padding: "10px 14px" }}>
-                            {p.periodo_inicio || p.periodo_fim ? (
-                              <span style={{ fontSize: 13, color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>
-                                {fmtDt(p.periodo_inicio)} a {fmtDt(p.periodo_fim)}
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>— (extrato antigo)</span>
-                            )}
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <span style={{ padding: "3px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#DCFCE7", color: "#16A34A" }}>
-                              {p.conciliados} ✓
-                            </span>
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            {p.desvinculados > 0 ? (
-                              <span style={{ padding: "3px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "rgba(239,68,68,0.08)", color: "#E24B4A" }}>
-                                {p.desvinculados} ✗
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {/* Sub-abas */}
+              <div style={{ display: "flex", gap: 6 }}>
+                {([
+                  ["com_conta",     `OFX sem lançamento — por conta (${comConta.length})`],
+                  ["sem_conta",     `OFX sem conta bancária (${semContaOFX.length})`],
+                  ["sem_lancamento",`CP/CR sem conta bancária (${lancSemConta.length})`],
+                ] as const).map(([k, lbl]) => (
+                  <button key={k} onClick={() => setSubInconsist(k)}
+                    style={{ padding: "5px 13px", borderRadius: 7, border: `0.5px solid ${subInconsist === k ? "#C9921B" : "var(--border)"}`, background: subInconsist === k ? "#FBF3E0" : "var(--bg-card)", color: subInconsist === k ? "#92400E" : "var(--text-2)", fontSize: 12, fontWeight: subInconsist === k ? 700 : 400, cursor: "pointer" }}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
 
-              {/* Detalhe de movimentações */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Movimentações</div>
-                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Histórico individual de cada conciliação e desvinculação</div>
-                </div>
-                {historico.length === 0 ? (
-                  <div style={{ padding: "40px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-                    <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
-                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum histórico registrado</div>
-                    <div style={{ fontSize: 12 }}>O histórico é registrado automaticamente ao conciliar ou desvincular transações.</div>
+              {/* OFX sem lançamento — por conta */}
+              {subInconsist === "com_conta" && (
+                gruposList.length === 0 ? (
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Sem inconsistências com conta bancária indicada</div>
                   </div>
                 ) : (
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {gruposList.map(g => (
+                      <div key={g.conta_nome} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #F59E0B", overflow: "hidden" }}>
+                        <div style={{ padding: "10px 16px", background: "#FEF3C7", borderBottom: "0.5px solid #F59E0B", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#92400E" }}>🏦 {g.conta_nome}</div>
+                          <span style={{ fontSize: 11, background: "#F59E0B", color: "#fff", borderRadius: 8, padding: "2px 8px", fontWeight: 600 }}>{g.itens.length} sem lançamento</span>
+                        </div>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "var(--bg-page)" }}>
+                              {["Data", "Descrição no Extrato", "Valor", "Tipo", "Ação"].map(h => (
+                                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {g.itens.map((p, i) => (
+                              <tr key={p.id} style={{ borderBottom: i < g.itens.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
+                                <td style={{ padding: "8px 12px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtDt(p.data)}</td>
+                                <td style={{ padding: "8px 12px", color: "var(--text-1)", maxWidth: 400 }}>{p.descricao}</td>
+                                <td style={{ padding: "8px 12px", fontWeight: 700, whiteSpace: "nowrap", color: p.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
+                                  {p.tipo === "credito" ? "+" : "−"}{fmtBRL(p.valor)}
+                                </td>
+                                <td style={{ padding: "8px 12px" }}>
+                                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, background: p.tipo === "credito" ? "#DCFCE7" : "#FEE2E2", color: p.tipo === "credito" ? "#16A34A" : "#DC2626", fontWeight: 600 }}>
+                                    {p.tipo === "credito" ? "Crédito" : "Débito"}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "8px 12px" }}>
+                                  <button
+                                    onClick={async () => {
+                                      await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", p.id);
+                                      setPendencias(prev => prev.filter(x => x.id !== p.id));
+                                    }}
+                                    style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}
+                                  >
+                                    Ignorar
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+
+              {/* OFX sem conta bancária */}
+              {subInconsist === "sem_conta" && (
+                semContaOFX.length === 0 ? (
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Todos os extratos foram importados com conta bancária selecionada</div>
+                  </div>
+                ) : (
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                    <div style={{ padding: "10px 16px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Transações OFX sem conta bancária indicada</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Esses itens foram importados sem selecionar uma conta — impossível conciliar corretamente</div>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
-                          {["Data/Hora", "Conta", "Período Filtrado", "Transação OFX", "Valor", "Lançamento Vinculado", "Ação"].map(h => (
-                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                          {["Data", "Descrição", "Valor", "Tipo", ""].map(h => (
+                            <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {historico.map((h, i) => (
-                          <tr key={h.id} style={{ borderBottom: i < historico.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: h.acao === "desvinculado" ? "rgba(239,68,68,0.03)" : "transparent" }}>
-                            <td style={{ padding: "9px 12px", color: "var(--text-3)", fontSize: 11, whiteSpace: "nowrap" }}>
-                              {new Date(h.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        {semContaOFX.map((p, i) => (
+                          <tr key={p.id} style={{ borderBottom: i < semContaOFX.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
+                            <td style={{ padding: "8px 12px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtDt(p.data)}</td>
+                            <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{p.descricao}</td>
+                            <td style={{ padding: "8px 12px", fontWeight: 700, color: p.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
+                              {p.tipo === "credito" ? "+" : "−"}{fmtBRL(p.valor)}
                             </td>
-                            <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>{h.conta_nome}</td>
-                            <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                              {h.periodo_inicio ? `${fmtDt(h.periodo_inicio)} a ${fmtDt(h.periodo_fim)}` : "—"}
+                            <td style={{ padding: "8px 12px" }}>
+                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, background: p.tipo === "credito" ? "#DCFCE7" : "#FEE2E2", color: p.tipo === "credito" ? "#16A34A" : "#DC2626", fontWeight: 600 }}>
+                                {p.tipo === "credito" ? "Crédito" : "Débito"}
+                              </span>
                             </td>
-                            <td style={{ padding: "9px 12px", overflow: "hidden", maxWidth: 240 }}>
-                              <div style={{ fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.descricao}</div>
-                              <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{fmtDt(h.data_transacao)} · {h.fitid}</div>
+                            <td style={{ padding: "8px 12px" }}>
+                              <button
+                                onClick={async () => {
+                                  await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", p.id);
+                                  setPendencias(prev => prev.filter(x => x.id !== p.id));
+                                }}
+                                style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}
+                              >
+                                Ignorar
+                              </button>
                             </td>
-                            <td style={{ padding: "9px 12px", whiteSpace: "nowrap", fontWeight: 700, color: h.tipo === "credito" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
-                              {h.tipo === "credito" ? "+" : "−"}{fmtBRL(h.valor)}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
+
+              {/* CP/CR sem conta bancária */}
+              {subInconsist === "sem_lancamento" && (
+                lancSemConta.length === 0 ? (
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Todos os lançamentos têm conta bancária indicada</div>
+                  </div>
+                ) : (
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                    <div style={{ padding: "10px 16px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>CP/CR sem conta bancária vinculada</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Lançamentos no período que não têm conta bancária — edite-os em CP ou CR para vincular</div>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "var(--bg-page)" }}>
+                          {["Tipo", "Descrição", "Vencimento", "Valor", "Status"].map(h => (
+                            <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lancSemConta.map((l, i) => (
+                          <tr key={l.id} style={{ borderBottom: i < lancSemConta.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
+                            <td style={{ padding: "8px 12px" }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: l.tipo === "pagar" ? "#FEE2E2" : "#DCFCE7", color: l.tipo === "pagar" ? "#DC2626" : "#16A34A" }}>
+                                {l.tipo === "pagar" ? "CP" : "CR"}
+                              </span>
                             </td>
-                            <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{h.lancamento_desc || "—"}</td>
-                            <td style={{ padding: "9px 12px" }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 5, background: h.acao === "conciliado" ? "#DCFCE7" : "rgba(239,68,68,0.1)", color: h.acao === "conciliado" ? "#16A34A" : "#E24B4A", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                                {h.acao === "conciliado" ? "✓ Conciliado" : "✗ Desvinculado"}
+                            <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{l.descricao}</td>
+                            <td style={{ padding: "8px 12px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
+                            <td style={{ padding: "8px 12px", fontWeight: 700, color: l.tipo === "pagar" ? "#E24B4A" : "#16A34A" }}>{fmtBRL(l.valor)}</td>
+                            <td style={{ padding: "8px 12px" }}>
+                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, background: l.status === "baixado" ? "#DCFCE7" : "#FEF3C7", color: l.status === "baixado" ? "#16A34A" : "#92400E", fontWeight: 600 }}>
+                                {l.status}
                               </span>
                             </td>
                           </tr>
@@ -1165,8 +1261,155 @@ function ConciliacaoInner() {
                       </tbody>
                     </table>
                   </div>
-                )}
+                )
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ═══ ABA HISTÓRICO ═══ */}
+        {!extrato && abaAtiva === "historico" && (() => {
+          const [expandedHist, setExpandedHist] = React.useState<string | null>(null);
+
+          const historicoDeExtrato = (exId: string) =>
+            historico.filter(h => h.extrato_id === exId);
+
+          const baixarOFX = async (ex: Extrato) => {
+            if (!ex.ofx_storage_path) return;
+            const { data } = await supabase.storage.from("arquivos").createSignedUrl(ex.ofx_storage_path, 120);
+            if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+          };
+
+          const reabrirExtrato = (ex: Extrato) => {
+            setExtrato(ex);
+            setAbaAtiva("extrato");
+            setLinhaAtiva(null);
+            setLancsSel(new Set());
+          };
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+              {/* Header info */}
+              <div style={{ fontSize: 12, color: "var(--text-3)", padding: "4px 2px" }}>
+                {extratos.length} sessões de conciliação registradas — clique em <strong>Reabrir</strong> para re-editar uma conciliação anterior usando o OFX preservado.
               </div>
+
+              {extratos.length === 0 ? (
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+                  <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Nenhuma sessão de conciliação ainda</div>
+                  <div style={{ fontSize: 12, marginTop: 4 }}>Importe um arquivo OFX para iniciar a conciliação bancária.</div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {extratos.map(ex => {
+                    const isOpen = expandedHist === ex.id;
+                    const movs = historicoDeExtrato(ex.id);
+                    const concil  = movs.filter(m => m.acao === "conciliado").length;
+                    const desvincl = movs.filter(m => m.acao === "desvinculado").length;
+                    return (
+                      <div key={ex.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: `0.5px solid ${isOpen ? "#1A5CB8" : "var(--border)"}`, overflow: "hidden" }}>
+                        {/* Linha resumo */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 120px auto", gap: 12, padding: "12px 16px", alignItems: "center" }}>
+                          {/* Conta + período */}
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>{ex.conta_nome || "Conta não identificada"}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{fmtDt(ex.data_inicio)} a {fmtDt(ex.data_fim)}</div>
+                          </div>
+                          {/* Usuário + data importação */}
+                          <div>
+                            <div style={{ fontSize: 12, color: "var(--text-2)" }}>{ex.usuario_nome ?? "—"}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                              {new Date(ex.data_importacao + "T00:00:00").toLocaleDateString("pt-BR")}
+                              {" · "}{ex.total_linhas} transações
+                            </div>
+                          </div>
+                          {/* Conciliadas / pendentes */}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, background: "#DCFCE7", color: "#16A34A", padding: "2px 8px", borderRadius: 6, width: "fit-content" }}>
+                              {ex.conciliados} conciliadas
+                            </span>
+                            {ex.pendentes > 0 && (
+                              <span style={{ fontSize: 11, fontWeight: 700, background: "#FEE2E2", color: "#DC2626", padding: "2px 8px", borderRadius: 6, width: "fit-content" }}>
+                                {ex.pendentes} pendentes
+                              </span>
+                            )}
+                          </div>
+                          {/* OFX download */}
+                          <div>
+                            {ex.ofx_storage_path ? (
+                              <button onClick={() => baixarOFX(ex)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #1A5CB8", background: "#D5E8F5", color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                                ↓ OFX
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>sem arquivo</span>
+                            )}
+                          </div>
+                          {/* Ações */}
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <button
+                              onClick={() => reabrirExtrato(ex)}
+                              style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#92400E", cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}
+                            >
+                              Reabrir
+                            </button>
+                            {movs.length > 0 && (
+                              <button
+                                onClick={() => setExpandedHist(isOpen ? null : ex.id)}
+                                style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-3)", cursor: "pointer" }}
+                              >
+                                {isOpen ? "▲" : `▼ ${movs.length}`}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Detalhe expandido */}
+                        {isOpen && movs.length > 0 && (
+                          <div style={{ borderTop: "0.5px solid var(--border)" }}>
+                            <div style={{ padding: "8px 16px", background: "var(--bg-page)", display: "flex", gap: 16, alignItems: "center" }}>
+                              <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                Movimentações desta sessão — {concil > 0 && <span style={{ color: "#16A34A", fontWeight: 600 }}>{concil} conciliadas</span>}
+                                {concil > 0 && desvincl > 0 && " · "}
+                                {desvincl > 0 && <span style={{ color: "#E24B4A", fontWeight: 600 }}>{desvincl} desvinculadas</span>}
+                              </span>
+                            </div>
+                            <div style={{ overflowX: "auto" }}>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <thead>
+                                  <tr style={{ background: "var(--bg-page)" }}>
+                                    {["Data", "Descrição OFX", "Valor", "Lançamento", "Ação"].map(col => (
+                                      <th key={col} style={{ padding: "6px 12px", textAlign: "left", fontWeight: 600, fontSize: 10, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{col}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {movs.map((m, mi) => (
+                                    <tr key={m.id} style={{ borderBottom: mi < movs.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: m.acao === "desvinculado" ? "rgba(239,68,68,0.02)" : "transparent" }}>
+                                      <td style={{ padding: "7px 12px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtDt(m.data_transacao)}</td>
+                                      <td style={{ padding: "7px 12px", color: "var(--text-1)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.descricao}</td>
+                                      <td style={{ padding: "7px 12px", fontWeight: 700, whiteSpace: "nowrap", color: m.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
+                                        {m.tipo === "credito" ? "+" : "−"}{fmtBRL(m.valor)}
+                                      </td>
+                                      <td style={{ padding: "7px 12px", fontSize: 11, color: "var(--text-2)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.lancamento_desc || "—"}</td>
+                                      <td style={{ padding: "7px 12px" }}>
+                                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: m.acao === "conciliado" ? "#DCFCE7" : "rgba(239,68,68,0.1)", color: m.acao === "conciliado" ? "#16A34A" : "#E24B4A" }}>
+                                          {m.acao === "conciliado" ? "✓" : "✗"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })()}
