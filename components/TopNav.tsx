@@ -202,6 +202,8 @@ const NAV: NavItem[] = [
       { id: "cad-itens",            label: "Itens Gerais",               path: "/cadastros?tab=itens"                                },
       { id: "cad-depositos",        label: "Depósitos & Armazéns",       path: "/cadastros?tab=depositos"                            },
       { id: "cad-contas-bancarias", label: "Contas Bancárias",           path: "/cadastros?tab=contas_bancarias"                     },
+      { id: "cad-combustivel",      label: "Combustíveis & Bombas",      path: "/cadastros?tab=combustivel"                          },
+      { id: "cad-centros-custo",    label: "Centros de Custo",           path: "/cadastros?tab=centros_custo"                        },
       { type: "divider", label: "Sistema" },
       { id: "conf-modulos",         label: "Parâmetros Fiscais (NF-e)",  path: "/configuracoes/modulos",                              moduleId: "conf_fiscal"       },
       { id: "conf-op-fiscais",      label: "Operações Fiscais / CFOP",   path: "/configuracoes/modulos?aba=operacoes",                moduleId: "conf_fiscal"       },
