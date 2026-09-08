@@ -120,8 +120,6 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro", panel: true, minStep: 6,
     children: [
-      { type: "divider", label: "Cartões de Crédito" },
-      { id: "fin-cartoes",         label: "Cartões de Crédito",           path: "/financeiro/cartoes",              moduleId: "fin_pagar"      },
       { type: "divider", label: "Atividade Rural (Produtor)" },
       { id: "fin-pagar",           label: "Contas a Pagar",               path: "/financeiro/pagar",                moduleId: "fin_pagar"      },
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
@@ -144,6 +142,8 @@ const NAV: NavItem[] = [
       { id: "fin-posicao-banc",    label: "Posição Bancária",             path: "/financeiro/relatorios?aba=posicao",             moduleId: "fin_relatorios" },
       { id: "fin-endividamento",   label: "Endividamento",                path: "/financeiro/endividamento",                     moduleId: "fin_relatorios" },
       { id: "fin-classificacao",   label: "Gastos por Classificação",     path: "/relatorios/financeiro-classificacao",          moduleId: "fin_relatorios" },
+      { type: "divider", label: "Cartões de Crédito" },
+      { id: "fin-cartoes",         label: "Cartões de Crédito",           path: "/financeiro/cartoes",              moduleId: "fin_pagar"      },
     ],
   },
 
