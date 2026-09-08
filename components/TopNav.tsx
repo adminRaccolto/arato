@@ -593,6 +593,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         boxShadow: "0 1px 0 var(--border-table), 0 4px 24px rgba(0,0,0,0.5)",
         fontFamily: "system-ui, sans-serif",
         overflow: "visible",
+        marginLeft: "calc(-1 * var(--sidebar-w, 0px))",
+        width: "calc(100% + var(--sidebar-w, 0px))",
       }}
     >
       {/* ── Faixa 1: identidade + usuário ── */}
