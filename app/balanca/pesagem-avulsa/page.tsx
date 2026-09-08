@@ -394,6 +394,65 @@ export default function PesagemAvulsa() {
     setModalCancel(false); setCancelId(null); carregar();
   };
 
+  const imprimirTicket = (p: Pesagem) => {
+    const fazenda = nomeFazendaSelecionada ?? "Balança";
+    const num     = p.id.slice(-8).toUpperCase();
+    const tipo    = TIPO_LABEL[p.tipo].toUpperCase();
+    const fmtFull = (s: string | null) =>
+      !s ? "—" : new Date(s).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const fmtNum  = (v: number | null) =>
+      v == null ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Ticket ${num}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Courier New',monospace;font-size:12px;color:#111;background:#fff;width:80mm;padding:6mm}
+  .center{text-align:center}
+  .bold{font-weight:bold}
+  .lg{font-size:18px}
+  .xl{font-size:28px;font-weight:bold;letter-spacing:1px}
+  hr{border:none;border-top:1px dashed #555;margin:6px 0}
+  .row{display:flex;justify-content:space-between;padding:2px 0}
+  .label{color:#555}
+  .badge{display:inline-block;border:1px solid #111;padding:2px 8px;font-weight:bold;font-size:11px;letter-spacing:1px}
+  @media print{@page{margin:0;size:80mm auto}body{width:80mm}}
+</style></head><body>
+<div class="center bold lg">${fazenda}</div>
+<div class="center" style="font-size:10px;margin-top:2px">TICKET DE PESAGEM AVULSA</div>
+<hr>
+<div class="center bold" style="font-size:14px;letter-spacing:2px">Nº ${num}</div>
+<div class="center" style="margin-top:4px"><span class="badge">${tipo}</span></div>
+<hr>
+<div class="row"><span class="label">Placa:</span><span class="bold">${p.placa ?? "—"}</span></div>
+<div class="row"><span class="label">Motorista:</span><span>${p.motorista ?? "—"}</span></div>
+<div class="row"><span class="label">Produto:</span><span>${p.produto ?? "—"}</span></div>
+<div class="row"><span class="label">Forn./Cliente:</span><span>${p.fornecedor_cliente ?? "—"}</span></div>
+<hr>
+<div class="row"><span class="label">Tara:</span><span class="bold">${fmtNum(p.peso_tara_kg)} kg</span></div>
+<div class="row" style="font-size:10px;color:#555"><span>Data/Hora:</span><span>${fmtFull(p.data_tara)}</span></div>
+<div class="row" style="font-size:10px;color:#555"><span>Operador:</span><span>${p.usuario_tara ?? "—"}</span></div>
+<div style="margin-top:4px"></div>
+<div class="row"><span class="label">Bruto:</span><span class="bold">${fmtNum(p.peso_bruto_kg)} kg</span></div>
+<div class="row" style="font-size:10px;color:#555"><span>Data/Hora:</span><span>${fmtFull(p.data_bruto)}</span></div>
+<div class="row" style="font-size:10px;color:#555"><span>Operador:</span><span>${p.usuario_bruto ?? "—"}</span></div>
+<hr>
+<div class="center" style="margin:6px 0 2px;font-size:11px;font-weight:bold">PESO LÍQUIDO</div>
+<div class="center xl">${fmtNum(p.peso_liquido_kg)} kg</div>
+<hr>
+${p.observacao ? `<div style="font-size:10px;margin-bottom:4px"><span class="label">Obs:</span> ${p.observacao}</div><hr>` : ""}
+<div class="center" style="font-size:10px;color:#555;margin-top:4px">${new Date().toLocaleString("pt-BR")}</div>
+<div style="height:8mm"></div>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=360,height=600,toolbar=0,menubar=0,scrollbars=1");
+    if (!w) { alert("Permita pop-ups para imprimir o ticket."); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
   const emAndamento = pesagens.filter(p => (p.status === "aguardando_bruto" || p.status === "aguardando_tara") && (filtrTipo === "todos" || p.tipo === filtrTipo));
   const finalizadas = pesagens.filter(p => (p.status === "finalizado" || p.status === "cancelado") && (filtrTipo === "todos" || p.tipo === filtrTipo));
 
@@ -557,7 +616,7 @@ export default function PesagemAvulsa() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                        {["Tipo","Placa","Motorista","Produto","Fornec./Cliente","Tara (kg)","Bruto (kg)","Líquido (kg)","Data Tara","Data Bruto","Status","Operadores"].map(h => (
+                        {["Tipo","Placa","Motorista","Produto","Fornec./Cliente","Tara (kg)","Bruto (kg)","Líquido (kg)","Data Tara","Data Bruto","Status","Operadores",""].map(h => (
                           <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
@@ -583,6 +642,17 @@ export default function PesagemAvulsa() {
                           <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-3)" }}>
                             {p.usuario_tara  && <div>Tara: {p.usuario_tara}</div>}
                             {p.usuario_bruto && <div>Bruto: {p.usuario_bruto}</div>}
+                          </td>
+                          <td style={{ padding: "9px 12px" }}>
+                            {p.status === "finalizado" && (
+                              <button
+                                onClick={() => imprimirTicket(p)}
+                                title="Imprimir ticket"
+                                style={{ padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}
+                              >
+                                🖨️ Ticket
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
