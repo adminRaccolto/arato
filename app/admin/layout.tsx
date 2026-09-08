@@ -22,6 +22,8 @@ const NAV: NavItem[] = [
   { type: "link",    id: "planos",    label: "Planos & Preços",        icon: "💰", path: "/admin/planos"   },
   { type: "link",    id: "modulos",   label: "Módulos do Sistema",     icon: "⬡",  path: "/admin/modulos"  },
   { type: "link",    id: "padroes",   label: "Padrões do Sistema",     icon: "⊞",  path: "/admin/padroes"  },
+  { type: "divider", label: "Correções" },
+  { type: "link",    id: "cp-produtor", label: "CP sem Produtor (IA)",  icon: "🤖", path: "/admin/cp-produtor" },
   { type: "divider", label: "Acesso" },
   { type: "link",    id: "usuarios",  label: "Usuários & Permissões",  icon: "🔑", path: "/admin/usuarios" },
   { type: "link",    id: "parceiros", label: "Parceiros BPO",          icon: "🤝", path: "/admin/parceiros" },
