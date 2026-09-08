@@ -27,13 +27,18 @@ interface LancRow {
   valor: number;
   nfe_numero?: string;
   fornecedor_nome?: string;
-  // da NF vinculada (quando existir)
+  // da NF de produto vinculada
   nf_emitente?: string;
   nf_emitente_cnpj?: string;
   nf_natureza?: string;
   nf_cfop?: string;
   nf_tipo_entrada?: string;
   nf_origem?: string;
+  // da NF de serviço vinculada
+  nfs_prestador?: string;
+  nfs_prestador_cnpj?: string;
+  nfs_discriminacao?: string;
+  nfs_codigo_servico?: string;
 }
 
 interface Produtor {
@@ -59,10 +64,13 @@ async function sugerirLote(
     .join("\n");
 
   const lancStr = lancamentos.map(l => {
-    const nfInfo = l.nf_emitente
-      ? ` | NF Emitente: ${l.nf_emitente}${l.nf_emitente_cnpj ? ` (CNPJ: ${l.nf_emitente_cnpj})` : ""}${l.nf_tipo_entrada ? ` | Tipo: ${l.nf_tipo_entrada}` : ""}${l.nf_cfop ? ` | CFOP: ${l.nf_cfop}` : ""}`
+    const nfProdInfo = l.nf_emitente
+      ? ` | NF-e Emitente: ${l.nf_emitente}${l.nf_emitente_cnpj ? ` (${l.nf_emitente_cnpj})` : ""}${l.nf_tipo_entrada ? ` Tipo: ${l.nf_tipo_entrada}` : ""}${l.nf_cfop ? ` CFOP: ${l.nf_cfop}` : ""}`
       : "";
-    return `  ID: ${l.id} | Fazenda: ${l.fazenda_nome} | Data: ${l.data_vencimento} | R$ ${l.valor.toFixed(2)} | ${l.descricao} | Cat: ${l.categoria}${l.fornecedor_nome ? ` | Fornecedor: ${l.fornecedor_nome}` : ""}${l.nfe_numero ? ` | NF: ${l.nfe_numero}` : ""}${nfInfo}`;
+    const nfsInfo = l.nfs_prestador
+      ? ` | NFS-e Prestador: ${l.nfs_prestador}${l.nfs_prestador_cnpj ? ` (${l.nfs_prestador_cnpj})` : ""}${l.nfs_codigo_servico ? ` Cód: ${l.nfs_codigo_servico}` : ""}${l.nfs_discriminacao ? ` Disc: ${l.nfs_discriminacao.slice(0, 80)}` : ""}`
+      : "";
+    return `  ID: ${l.id} | Fazenda: ${l.fazenda_nome} | Data: ${l.data_vencimento} | R$ ${l.valor.toFixed(2)} | ${l.descricao} | Cat: ${l.categoria}${l.fornecedor_nome ? ` | Fornecedor: ${l.fornecedor_nome}` : ""}${l.nfe_numero ? ` | NF: ${l.nfe_numero}` : ""}${nfProdInfo}${nfsInfo}`;
   }).join("\n");
 
   const prompt = `Você é um especialista em contabilidade rural. Associe cada lançamento de CP ao produtor correto.
@@ -151,25 +159,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ atualizados: 0, mensagem: "Nenhum CP sem produtor encontrado." });
     }
 
-    // Para lançamentos sem nf_entrada_id, tenta via nf_entradas.lancamento_id
+    // IDs dos lançamentos sem nf_entrada_id direto
+    const allLancIds = (lancs as Record<string, unknown>[]).map(l => l.id as string);
     const semNfIds = (lancs as Record<string, unknown>[])
       .filter(l => !(l.nf_por_id as Record<string, unknown> | null))
       .map(l => l.id as string);
 
-    const nfPorLancId: Record<string, Record<string, unknown>> = {};
+    // Busca NF de produto via lancamento_id (reverso)
+    const nfProdPorLancId: Record<string, Record<string, unknown>> = {};
     if (semNfIds.length) {
       const { data: nfsViaLanc } = await supabase
         .from("nf_entradas")
         .select("lancamento_id, emitente_nome, emitente_cnpj, natureza, cfop, tipo_entrada, origem")
         .in("lancamento_id", semNfIds);
       (nfsViaLanc ?? []).forEach((n: Record<string, unknown>) => {
-        if (n.lancamento_id) nfPorLancId[n.lancamento_id as string] = n;
+        if (n.lancamento_id) nfProdPorLancId[n.lancamento_id as string] = n;
+      });
+    }
+
+    // Busca NF de serviço via lancamento_id (todos os lançamentos — NFS-e pode estar em qualquer um)
+    const nfServPorLancId: Record<string, Record<string, unknown>> = {};
+    if (allLancIds.length) {
+      const { data: nfsServ } = await supabase
+        .from("nf_servicos")
+        .select("lancamento_id, prestador_nome, prestador_cnpj, discriminacao, codigo_servico, origem")
+        .in("lancamento_id", allLancIds);
+      (nfsServ ?? []).forEach((n: Record<string, unknown>) => {
+        if (n.lancamento_id) nfServPorLancId[n.lancamento_id as string] = n;
       });
     }
 
     // Monta lista enriquecida
     const lista: LancRow[] = (lancs as Record<string, unknown>[]).map(l => {
-      const nf = (l.nf_por_id as Record<string, unknown> | null) ?? nfPorLancId[l.id as string];
+      const nfProd = (l.nf_por_id as Record<string, unknown> | null) ?? nfProdPorLancId[l.id as string];
+      const nfServ = nfServPorLancId[l.id as string];
       return {
         id: l.id as string,
         fazenda_id: l.fazenda_id as string,
@@ -180,12 +203,18 @@ export async function POST(req: NextRequest) {
         valor: l.valor as number,
         nfe_numero: l.nfe_numero as string | undefined,
         fornecedor_nome: (l.pessoas as { nome?: string } | null)?.nome,
-        nf_emitente: nf?.emitente_nome as string | undefined,
-        nf_emitente_cnpj: nf?.emitente_cnpj as string | undefined,
-        nf_natureza: nf?.natureza as string | undefined,
-        nf_cfop: nf?.cfop as string | undefined,
-        nf_tipo_entrada: nf?.tipo_entrada as string | undefined,
-        nf_origem: nf?.origem as string | undefined,
+        // NF de produto
+        nf_emitente: nfProd?.emitente_nome as string | undefined,
+        nf_emitente_cnpj: nfProd?.emitente_cnpj as string | undefined,
+        nf_natureza: nfProd?.natureza as string | undefined,
+        nf_cfop: nfProd?.cfop as string | undefined,
+        nf_tipo_entrada: nfProd?.tipo_entrada as string | undefined,
+        nf_origem: nfProd?.origem as string | undefined,
+        // NF de serviço
+        nfs_prestador: nfServ?.prestador_nome as string | undefined,
+        nfs_prestador_cnpj: nfServ?.prestador_cnpj as string | undefined,
+        nfs_discriminacao: nfServ?.discriminacao as string | undefined,
+        nfs_codigo_servico: nfServ?.codigo_servico as string | undefined,
       };
     });
 
