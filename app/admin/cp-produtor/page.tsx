@@ -1,11 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const sb = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase as sb } from "../../../lib/supabase";
 
 type Fazenda = { id: string; nome: string; conta_id: string };
 type Produtor = { id: string; nome: string; cpf_cnpj?: string; fazenda_id: string; fazenda_nome?: string };
