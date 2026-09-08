@@ -2,10 +2,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase as sb } from "../../../lib/supabase";
 
-type Fazenda = { id: string; nome: string; conta_id: string };
+type Conta = { id: string; nome: string; tipo: string };
 type Produtor = { id: string; nome: string; cpf_cnpj?: string; fazenda_id: string; fazenda_nome?: string };
 type Lancamento = {
   id: string;
+  fazenda_id: string;
+  fazenda_nome?: string;
   descricao: string;
   categoria: string;
   data_vencimento: string;
@@ -25,7 +27,7 @@ type Sugestao = {
 
 type LancamentoComSugestao = Lancamento & {
   sugestao?: Sugestao;
-  selecionado: string | null;   // produtor_id escolhido (pode diferir da sugestão)
+  selecionado: string | null;
   confirmado: boolean;
 };
 
@@ -44,8 +46,9 @@ const BG_CONFIANCA: Record<string, string> = {
 };
 
 export default function CpProdutorPage() {
-  const [fazendas, setFazendas] = useState<Fazenda[]>([]);
-  const [fazendaId, setFazendaId] = useState("");
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [contaId, setContaId] = useState("");
+  const [fazendaNomes, setFazendaNomes] = useState<Record<string, string>>({});
   const [produtores, setProdutores] = useState<Produtor[]>([]);
   const [lancamentos, setLancamentos] = useState<LancamentoComSugestao[]>([]);
   const [carregando, setCarregando] = useState(false);
@@ -55,45 +58,58 @@ export default function CpProdutorPage() {
   const [pagina, setPagina] = useState(0);
   const TAMANHO_LOTE = 50;
 
-  // Carrega fazendas
+  // Carrega contas (clientes)
   useEffect(() => {
-    sb.from("fazendas").select("id, nome, conta_id").order("nome")
-      .then(({ data }) => setFazendas((data ?? []) as Fazenda[]));
+    sb.from("contas").select("id, nome, tipo").order("nome")
+      .then(({ data }) => setContas((data ?? []) as Conta[]));
   }, []);
 
-  // Ao selecionar fazenda, carrega produtores e lançamentos sem produtor
-  const carregarDados = useCallback(async (fid: string) => {
-    if (!fid) return;
+  const carregarDados = useCallback(async (cid: string) => {
+    if (!cid) return;
     setCarregando(true);
     setLancamentos([]);
     setMsg("");
     setPagina(0);
 
-    const fazenda = fazendas.find(f => f.id === fid);
+    // Fazendas da conta
+    const { data: fazendas } = await sb
+      .from("fazendas")
+      .select("id, nome")
+      .eq("conta_id", cid)
+      .order("nome");
 
-    // Produtores da mesma conta
+    const fMap: Record<string, string> = {};
+    (fazendas ?? []).forEach((f: { id: string; nome: string }) => { fMap[f.id] = f.nome; });
+    setFazendaNomes(fMap);
+    const fazIds = Object.keys(fMap);
+
+    if (!fazIds.length) {
+      setMsg("Nenhuma fazenda encontrada para esta conta.");
+      setCarregando(false);
+      return;
+    }
+
+    // Produtores da conta
     const { data: prods } = await sb
       .from("produtores")
       .select("id, nome, cpf_cnpj, fazenda_id")
-      .eq("conta_id", fazenda?.conta_id ?? "")
+      .eq("conta_id", cid)
       .order("nome");
 
-    // Enriquece com nome da fazenda
-    const produtoresEnriq: Produtor[] = (prods ?? []).map(p => ({
-      ...p,
-      fazenda_nome: fazendas.find(f => f.id === p.fazenda_id)?.nome,
-    }));
-    setProdutores(produtoresEnriq);
+    setProdutores(
+      (prods ?? []).map(p => ({ ...p, fazenda_nome: fMap[p.fazenda_id] }))
+    );
 
-    // Lançamentos CP sem produtor desta fazenda
+    // CP sem produtor em qualquer fazenda da conta
     const { data: lancs, count } = await sb
       .from("lancamentos")
       .select(`
-        id, descricao, categoria, data_vencimento, data_lancamento,
+        id, fazenda_id, descricao, categoria,
+        data_vencimento, data_lancamento,
         valor, nfe_numero, pessoa_id,
         pessoas:pessoa_id ( nome )
       `, { count: "exact" })
-      .eq("fazenda_id", fid)
+      .in("fazenda_id", fazIds)
       .eq("tipo", "pagar")
       .is("produtor_id", null)
       .order("data_vencimento", { ascending: false })
@@ -101,6 +117,8 @@ export default function CpProdutorPage() {
 
     const lista: LancamentoComSugestao[] = (lancs ?? []).map((l: Record<string, unknown>) => ({
       id: l.id as string,
+      fazenda_id: l.fazenda_id as string,
+      fazenda_nome: fMap[l.fazenda_id as string],
       descricao: l.descricao as string,
       categoria: l.categoria as string,
       data_vencimento: l.data_vencimento as string,
@@ -114,15 +132,14 @@ export default function CpProdutorPage() {
     }));
 
     setLancamentos(lista);
-    setMsg(`${count ?? lista.length} lançamentos sem produtor nesta fazenda.`);
+    setMsg(`${count ?? lista.length} lançamentos CP sem produtor nesta conta.`);
     setCarregando(false);
-  }, [fazendas]);
+  }, []);
 
   useEffect(() => {
-    if (fazendaId) carregarDados(fazendaId);
-  }, [fazendaId, carregarDados]);
+    if (contaId) carregarDados(contaId);
+  }, [contaId, carregarDados]);
 
-  // Processa um lote via IA
   async function processarLoteIA() {
     const inicio = pagina * TAMANHO_LOTE;
     const lote = lancamentos.slice(inicio, inicio + TAMANHO_LOTE);
@@ -132,12 +149,12 @@ export default function CpProdutorPage() {
     setMsg(`Consultando Arato IA para ${lote.length} lançamentos...`);
 
     try {
-      const fazenda = fazendas.find(f => f.id === fazendaId);
+      const conta = contas.find(c => c.id === contaId);
       const res = await fetch("/api/admin/cp-produtor/sugerir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_nome: fazenda?.nome ?? "",
+          fazenda_nome: conta?.nome ?? "",
           lancamentos: lote.map(l => ({
             id: l.id,
             descricao: l.descricao,
@@ -147,6 +164,7 @@ export default function CpProdutorPage() {
             valor: l.valor,
             fornecedor_nome: l.fornecedor_nome,
             nfe_numero: l.nfe_numero,
+            fazenda_nome: l.fazenda_nome,
           })),
           produtores: produtores.map(p => ({
             id: p.id,
@@ -165,11 +183,7 @@ export default function CpProdutorPage() {
         prev.map(l => {
           const s = (sugestoes as Sugestao[]).find(sg => sg.lancamento_id === l.id);
           if (!s) return l;
-          return {
-            ...l,
-            sugestao: s,
-            selecionado: s.produtor_id,
-          };
+          return { ...l, sugestao: s, selecionado: s.produtor_id };
         })
       );
       setMsg(`IA processou ${lote.length} lançamentos. Revise e confirme abaixo.`);
@@ -220,7 +234,6 @@ export default function CpProdutorPage() {
       const { atualizados, erros } = await res.json();
       setMsg(`✅ ${atualizados} lançamentos atualizados.${erros?.length ? ` ⚠️ ${erros.length} erros.` : ""}`);
 
-      // Remove os salvos da lista
       const salvoIds = new Set(confirmados.map(l => l.id));
       setLancamentos(prev => prev.filter(l => !salvoIds.has(l.id)));
     } catch (err) {
@@ -230,45 +243,41 @@ export default function CpProdutorPage() {
     }
   }
 
-  const totalLote = lancamentos.slice(pagina * TAMANHO_LOTE, (pagina + 1) * TAMANHO_LOTE).length;
-  const comSugestao = lancamentos.filter(l => l.sugestao).length;
+  const loteAtual = lancamentos.slice(pagina * TAMANHO_LOTE, (pagina + 1) * TAMANHO_LOTE);
+  const comSugestao = loteAtual.filter(l => l.sugestao).length;
   const confirmados = lancamentos.filter(l => l.confirmado).length;
   const totalPaginas = Math.ceil(lancamentos.length / TAMANHO_LOTE);
-  const loteAtual = lancamentos.slice(pagina * TAMANHO_LOTE, (pagina + 1) * TAMANHO_LOTE);
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 1100 }}>
-      {/* Header */}
+    <div style={{ padding: "28px 32px", maxWidth: 1200 }}>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "#111" }}>
-          CP sem Produtor — Atribuição por IA
-        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: "#111" }}>CP sem Produtor — Atribuição por IA</div>
         <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-          Selecione uma fazenda, processe lotes com a IA, revise as sugestões e salve.
+          Selecione o cliente (conta), processe lotes com a IA, revise as sugestões e salve.
         </div>
       </div>
 
-      {/* Seletor de fazenda */}
+      {/* Seletor de conta */}
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}>
         <select
-          value={fazendaId}
-          onChange={e => setFazendaId(e.target.value)}
-          style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #DDE2EE", fontSize: 13, minWidth: 280 }}
+          value={contaId}
+          onChange={e => setContaId(e.target.value)}
+          style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #DDE2EE", fontSize: 13, minWidth: 300 }}
         >
-          <option value="">Selecione a fazenda...</option>
-          {fazendas.map(f => (
-            <option key={f.id} value={f.id}>{f.nome}</option>
+          <option value="">Selecione o cliente (conta)...</option>
+          {contas.map(c => (
+            <option key={c.id} value={c.id}>{c.nome} — {c.tipo.toUpperCase()}</option>
           ))}
         </select>
 
-        {fazendaId && !carregando && lancamentos.length > 0 && (
+        {contaId && !carregando && lancamentos.length > 0 && (
           <>
             <button
               onClick={processarLoteIA}
               disabled={processando}
               style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: processando ? "not-allowed" : "pointer", opacity: processando ? 0.7 : 1 }}
             >
-              {processando ? "Processando..." : `🤖 IA — Lote ${pagina + 1}/${totalPaginas} (${totalLote} itens)`}
+              {processando ? "Processando..." : `🤖 IA — Lote ${pagina + 1}/${totalPaginas} (${loteAtual.length} itens)`}
             </button>
 
             {comSugestao > 0 && (
@@ -314,30 +323,29 @@ export default function CpProdutorPage() {
         </div>
       )}
 
-      {/* Mensagem de status */}
+      {/* Status */}
       {msg && (
         <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#333", marginBottom: 16 }}>
           {msg}
         </div>
       )}
 
-      {carregando && (
-        <div style={{ color: "#555", fontSize: 13, padding: "20px 0" }}>Carregando...</div>
-      )}
+      {carregando && <div style={{ color: "#555", fontSize: 13, padding: "20px 0" }}>Carregando...</div>}
 
-      {/* Tabela de lançamentos */}
+      {/* Tabela */}
       {loteAtual.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "#F4F6FA", borderBottom: "1.5px solid #DDE2EE" }}>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#555" }}>Data</th>
+                <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#555" }}>Fazenda</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#555" }}>Descrição / Fornecedor</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#555" }}>Categoria</th>
                 <th style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, color: "#555" }}>Valor</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#555" }}>Sugestão IA</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#555" }}>Produtor</th>
-                <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600, color: "#555" }}>Ação</th>
+                <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600, color: "#555" }}>OK</th>
               </tr>
             </thead>
             <tbody>
@@ -352,7 +360,10 @@ export default function CpProdutorPage() {
                   <td style={{ padding: "9px 12px", color: "#555", whiteSpace: "nowrap" }}>
                     {new Date(l.data_vencimento).toLocaleDateString("pt-BR")}
                   </td>
-                  <td style={{ padding: "9px 12px", maxWidth: 220 }}>
+                  <td style={{ padding: "9px 12px", color: "#555", whiteSpace: "nowrap", fontSize: 11 }}>
+                    {l.fazenda_nome ?? "—"}
+                  </td>
+                  <td style={{ padding: "9px 12px", maxWidth: 200 }}>
                     <div style={{ fontWeight: 500, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {l.descricao}
                     </div>
@@ -364,7 +375,7 @@ export default function CpProdutorPage() {
                   <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 600, color: "#111", whiteSpace: "nowrap" }}>
                     {l.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </td>
-                  <td style={{ padding: "9px 12px" }}>
+                  <td style={{ padding: "9px 12px", maxWidth: 180 }}>
                     {l.sugestao ? (
                       <div>
                         <span style={{
@@ -386,7 +397,7 @@ export default function CpProdutorPage() {
                     <select
                       value={l.selecionado ?? ""}
                       onChange={e => alterarProdutor(l.id, e.target.value)}
-                      style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #DDE2EE", fontSize: 12, width: "100%", minWidth: 140 }}
+                      style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #DDE2EE", fontSize: 12, width: "100%", minWidth: 150 }}
                     >
                       <option value="">— selecione —</option>
                       {produtores.map(p => (
@@ -398,7 +409,7 @@ export default function CpProdutorPage() {
                   </td>
                   <td style={{ padding: "9px 12px", textAlign: "center" }}>
                     {l.confirmado ? (
-                      <span style={{ color: "#166534", fontWeight: 700, fontSize: 14 }}>✓</span>
+                      <span style={{ color: "#166534", fontWeight: 700, fontSize: 16 }}>✓</span>
                     ) : (
                       <button
                         onClick={() => confirmarIndividual(l.id)}
@@ -422,9 +433,9 @@ export default function CpProdutorPage() {
         </div>
       )}
 
-      {!carregando && fazendaId && lancamentos.length === 0 && (
+      {!carregando && contaId && lancamentos.length === 0 && (
         <div style={{ color: "#166534", fontSize: 14, padding: "20px 0" }}>
-          ✅ Todos os lançamentos desta fazenda já têm produtor vinculado.
+          ✅ Todos os lançamentos desta conta já têm produtor vinculado.
         </div>
       )}
     </div>
