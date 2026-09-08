@@ -77,6 +77,19 @@ const exibirValor = (l: Lancamento) => {
 };
 
 type OrigemLanc = "nf_entrada" | "nf_saida" | "nf_servico" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "compra_terra" | "manual";
+
+// Tipo unificado para o modal de vínculo de NF na baixa (NF-e + NFS-e)
+type NfVinculo = {
+  id: string;
+  tipo: "nf" | "nfse";
+  numero: string;
+  serie?: string;
+  emitente_nome?: string;
+  data_emissao?: string;
+  data_vencimento_cp?: string;
+  valor_total: number;
+  status?: string;
+};
 const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: string; border: string }> = {
   nf_entrada:          { label: "NF Entrada",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
   nf_saida:            { label: "NF Saída",        bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
@@ -197,26 +210,53 @@ function ContasPagarInner() {
   const [modalNovo,   setModalNovo]   = useState(false);
   const [modalTab,   setModalTab]   = useState<"principal"|"adicionais">("principal");
   const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
-  const [nfsVinculo, setNfsVinculo] = useState<NfEntrada[]>([]);
+  const [nfsVinculo, setNfsVinculo] = useState<NfVinculo[]>([]);
   const [nfsVinculoLoading, setNfsVinculoLoading] = useState(false);
   const [nfVinculoBusca, setNfVinculoBusca] = useState("");
-  const [nfVinculoSelecionada, setNfVinculoSelecionada] = useState<NfEntrada | null>(null);
+  const [nfVinculoSelecionada, setNfVinculoSelecionada] = useState<NfVinculo | null>(null);
 
   useEffect(() => {
     if (!alertaNF || !fid) return;
     setNfVinculoSelecionada(null);
     setNfVinculoBusca("");
     setNfsVinculoLoading(true);
-    supabase.from("nf_entradas")
-      .select("id,numero,serie,emitente_nome,emitente_cnpj,valor_total,data_emissao,data_vencimento_cp,status,tipo_entrada,origem")
-      .eq("fazenda_id", fid)
-      .in("status", ["pendente"])
-      .order("data_emissao", { ascending: false })
-      .limit(100)
-      .then(({ data }) => {
-        setNfsVinculo((data ?? []) as NfEntrada[]);
-        setNfsVinculoLoading(false);
-      });
+    Promise.all([
+      supabase.from("nf_entradas")
+        .select("id,numero,serie,emitente_nome,valor_total,data_emissao,data_vencimento_cp,status")
+        .eq("fazenda_id", fid).in("status", ["pendente"])
+        .order("data_emissao", { ascending: false }).limit(150),
+      supabase.from("nf_servicos")
+        .select("id,numero_nf,prestador_nome,valor_liquido,data_prestacao,data_vencimento_cp,status")
+        .eq("fazenda_id", fid).in("status", ["pendente"])
+        .order("data_prestacao", { ascending: false }).limit(50),
+    ]).then(([{ data: nfs }, { data: svcs }]) => {
+      const lista: NfVinculo[] = [
+        ...(nfs ?? []).map(n => ({
+          id: n.id as string,
+          tipo: "nf" as const,
+          numero: (n.numero ?? "") as string,
+          serie: n.serie as string | undefined,
+          emitente_nome: n.emitente_nome as string | undefined,
+          data_emissao: n.data_emissao as string | undefined,
+          data_vencimento_cp: n.data_vencimento_cp as string | undefined,
+          valor_total: (n.valor_total ?? 0) as number,
+          status: n.status as string | undefined,
+        })),
+        ...(svcs ?? []).map(s => ({
+          id: s.id as string,
+          tipo: "nfse" as const,
+          numero: (s.numero_nf ?? "") as string,
+          emitente_nome: s.prestador_nome as string | undefined,
+          data_emissao: s.data_prestacao as string | undefined,
+          data_vencimento_cp: s.data_vencimento_cp as string | undefined,
+          valor_total: (s.valor_liquido ?? 0) as number,
+          status: s.status as string | undefined,
+        })),
+      ];
+      lista.sort((a, b) => (b.data_emissao ?? "").localeCompare(a.data_emissao ?? ""));
+      setNfsVinculo(lista);
+      setNfsVinculoLoading(false);
+    });
   }, [alertaNF, fid]);
 
   // Fechar popover com Escape
@@ -2067,7 +2107,14 @@ function ContasPagarInner() {
                           <tr key={nf.id}
                             onClick={() => setNfVinculoSelecionada(sel ? null : nf)}
                             style={{ cursor: "pointer", background: sel ? "#E8E8E8" : "transparent", borderBottom: "0.5px solid #F0F2F7" }}>
-                            <td style={{ padding: "8px 10px", fontWeight: 700, color: sel ? "#0D0D0D" : "#111111" }}>{nf.numero}/{nf.serie}</td>
+                            <td style={{ padding: "8px 10px", fontWeight: 700, color: sel ? "#0D0D0D" : "#111111" }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, marginRight: 5,
+                                background: nf.tipo === "nfse" ? "#EDF2FB" : "#E8F5E9",
+                                color:      nf.tipo === "nfse" ? "#1A3A6B" : "#1A6B3C" }}>
+                                {nf.tipo === "nfse" ? "NFS-e" : "NF-e"}
+                              </span>
+                              {nf.numero}{nf.serie ? `/${nf.serie}` : ""}
+                            </td>
                             <td style={{ padding: "8px 10px", color: "var(--text-1)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nf.emitente_nome || "—"}</td>
                             <td style={{ padding: "8px 10px", textAlign: "center", color: "var(--text-2)" }}>{fmtD(nf.data_emissao)}</td>
                             <td style={{ padding: "8px 10px", textAlign: "center", color: nf.data_vencimento_cp ? "#7A4300" : "var(--text-3)", fontWeight: nf.data_vencimento_cp ? 600 : 400 }}>{fmtD(nf.data_vencimento_cp)}</td>
