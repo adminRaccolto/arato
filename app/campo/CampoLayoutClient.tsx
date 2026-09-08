@@ -52,34 +52,41 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
 
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", background: "var(--bg-page)", minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", background: "var(--bg-page)", height: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative", overflow: "hidden" }}>
 
       {/* Faixa de topo */}
-      <div style={{ background: "#111111", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0D0D0D" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ background: "#111111", color: "#fff", padding: "10px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, zIndex: 50, borderBottom: "0.5px solid #222" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
           <img
             src="/Arato_BRANCO.png"
             alt="Arato"
-            style={{ height: 26, maxWidth: 86, objectFit: "contain" }}
+            style={{ height: 22, maxWidth: 72, objectFit: "contain", flexShrink: 0 }}
           />
-          <div>
-            <div style={{ fontSize: 10, color: "#B0C8E0", letterSpacing: "0.5px", lineHeight: 1 }}>campo</div>
-            <button
-              onClick={() => fazendas.length > 1 && setShowSwitch(true)}
-              style={{
-                fontSize: 10, color: fazendas.length > 1 ? "#FDE9BB" : "#B0C8E0",
-                marginTop: 3, background: "none", border: "none", padding: 0,
-                cursor: fazendas.length > 1 ? "pointer" : "default",
-                display: "flex", alignItems: "center", gap: 4,
-              }}
-            >
-              📍 {nomeFazendaSelecionada ?? "Fazenda"}
-              {fazendas.length > 1 && <span style={{ fontSize: 9 }}>▾</span>}
-            </button>
-          </div>
+          {/* Seletor de fazenda */}
+          <button
+            onClick={() => fazendas.length > 1 && setShowSwitch(true)}
+            style={{
+              background: fazendas.length > 1 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
+              border: "0.5px solid rgba(255,255,255,0.18)",
+              borderRadius: 8,
+              padding: "6px 10px",
+              cursor: fazendas.length > 1 ? "pointer" : "default",
+              display: "flex", alignItems: "center", gap: 6,
+              minWidth: 0, maxWidth: 200,
+            }}
+          >
+            <span style={{ fontSize: 14 }}>🏡</span>
+            <div style={{ minWidth: 0, textAlign: "left" }}>
+              <div style={{ fontSize: 9, color: "#B0C8E0", letterSpacing: "0.8px", lineHeight: 1, marginBottom: 2 }}>FAZENDA ATIVA</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#FDE9BB", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 140 }}>
+                {nomeFazendaSelecionada ?? "Selecione..."}
+              </div>
+            </div>
+            {fazendas.length > 1 && <span style={{ fontSize: 11, color: "#B0C8E0", flexShrink: 0 }}>▾</span>}
+          </button>
         </div>
         {userRole !== "campo" && (
-          <Link href="/" style={{ fontSize: 11, color: "#B0C8E0", textDecoration: "none", background: "rgba(255,255,255,0.1)", padding: "5px 10px", borderRadius: 6 }}>
+          <Link href="/" style={{ fontSize: 11, color: "#B0C8E0", textDecoration: "none", background: "rgba(255,255,255,0.1)", padding: "5px 10px", borderRadius: 6, flexShrink: 0, marginLeft: 8 }}>
             ← Desktop
           </Link>
         )}
@@ -112,7 +119,7 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
       )}
 
       {/* Conteúdo */}
-      <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", paddingBottom: 80 }}>
         {children}
       </div>
 

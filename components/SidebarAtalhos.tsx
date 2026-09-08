@@ -106,7 +106,7 @@ export default function SidebarAtalhos() {
   useEffect(() => {
     const show =
       montado && ativada &&
-      !pathname?.startsWith("/app/campo") &&
+      !pathname?.startsWith("/campo") &&
       !pathname?.startsWith("/login") &&
       !pathname?.startsWith("/admin");
     document.documentElement.style.setProperty("--sidebar-w", show ? W + "px" : "0px");
@@ -114,8 +114,8 @@ export default function SidebarAtalhos() {
 
   if (!montado) return null;
 
-  // Não mostrar em páginas do app campo (mobile) nem login
-  if (pathname?.startsWith("/app/campo") || pathname?.startsWith("/login") || pathname?.startsWith("/admin")) return null;
+  // Não mostrar no App Campo (mobile), login, admin
+  if (pathname?.startsWith("/campo") || pathname?.startsWith("/login") || pathname?.startsWith("/admin")) return null;
 
   // Sidebar desativada — mostra aba visível para reativar
   if (!ativada) {

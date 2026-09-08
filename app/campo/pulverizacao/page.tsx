@@ -54,7 +54,7 @@ export default function CampoPulverizacaoPage() {
     if (!navigator.onLine) {
       const talCache = lerCache<Talhao[]>(`talhoes_${fazendaId}`);
       const cicCache = lerCache<Ciclo[]>(`ciclos_${fazendaId}`);
-      const insCache = lerCache<Insumo[]>(`insumos_pulv_${fazendaId}`);
+      const insCache = lerCache<Insumo[]>(`insumos_defensivos_${fazendaId}`);
       if (talCache) setTalhoes(talCache);
       if (cicCache) setCiclos(cicCache);
       if (insCache) setInsumos(insCache);
@@ -66,7 +66,7 @@ export default function CampoPulverizacaoPage() {
       supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade_medida, valor_unitario, custo_medio")
         .eq("fazenda_id", fazendaId)
-        .in("categoria", ["defensivo", "fertilizante", "micronutriente", "biologico", "inoculante"])
+        .in("categoria", ["defensivo"])
         .order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
@@ -75,7 +75,7 @@ export default function CampoPulverizacaoPage() {
     setTalhoes(talRes); setCiclos(cicRes); setInsumos(insRes);
     salvarCache(`talhoes_${fazendaId}`, talRes);
     salvarCache(`ciclos_${fazendaId}`, cicRes);
-    salvarCache(`insumos_pulv_${fazendaId}`, insRes);
+    salvarCache(`insumos_defensivos_${fazendaId}`, insRes);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
