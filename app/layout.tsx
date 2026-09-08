@@ -3,6 +3,7 @@ import AuthProvider from "../components/AuthProvider";
 import BannerInadimplente from "../components/BannerInadimplente";
 import VersionChecker from "../components/VersionChecker";
 import Footer from "../components/Footer";
+import SidebarAtalhos from "../components/SidebarAtalhos";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <BannerInadimplente />
           <VersionChecker />
+          <SidebarAtalhos />
           {children}
           <Footer />
         </AuthProvider>

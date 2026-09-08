@@ -629,25 +629,12 @@ export default function Dashboard() {
     cert_a1: "Certificado", contrato: "Contrato", estoque: "Estoque", fiscal: "Fiscal",
   };
 
-  const ATALHOS = [
-    { label: "Contas a Pagar",   link: "/financeiro/pagar",    cor: "#E24B4A", sigla: "CP" },
-    { label: "Contas a Receber", link: "/financeiro/receber",  cor: "#16A34A", sigla: "CR" },
-    { label: "Pedido de Compra", link: "/compras",             cor: "#111111", sigla: "PC" },
-    { label: "NF Entrada",       link: "/compras/nf",          cor: "#111111", sigla: "NF" },
-    { label: "Contratos Grãos",  link: "/contratos",           cor: "#C9921B", sigla: "CG" },
-    { label: "Estoque",          link: "/estoque",             cor: "var(--text-2)", sigla: "ES" },
-    { label: "Lavoura",          link: "/lavoura",             cor: "#16A34A", sigla: "LV" },
-    { label: "Mapa de Talhões",  link: "/mapa",                cor: "#1A4870", sigla: "MP" },
-    { label: "Relatórios",       link: "/relatorios",          cor: "#444444", sigla: "RL" },
-  ];
 
   const CSS = `
     @keyframes fadeUp   { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
     @keyframes pulso    { 0%,100% { opacity:1 } 50% { opacity:.3 } }
     @keyframes ticker   { from { transform:translateX(0) } to { transform:translateX(-50%) } }
     .al-row:hover  { background: rgba(255,255,255,0.04) !important }
-    .atalho-dark   { transition: background .15s, border-color .15s, transform .15s }
-    .atalho-dark:hover { background: var(--border) !important; transform: translateY(-1px) }
     .mkt-flash-up  { background: rgba(34,197,94,0.12) !important }
     .mkt-flash-dn  { background: rgba(239,68,68,0.12) !important }
   `;
@@ -737,19 +724,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Linha 2: atalhos rápidos (linha horizontal) */}
-          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap" }}>
-            <span style={{ fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.25)",letterSpacing:".12em",textTransform:"uppercase",marginRight:4,flexShrink:0 }}>ATALHOS</span>
-            {ATALHOS.map(a => (
-              <a key={a.link} href={a.link} className="atalho-dark"
-                style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:7,
-                  border:"0.5px solid rgba(255,255,255,0.1)",textDecoration:"none",
-                  background:"rgba(255,255,255,0.05)",flexShrink:0 }}>
-                <span style={{ width:20,height:20,borderRadius:5,background:a.cor+"22",color:a.cor,fontWeight:800,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
-                <span style={{ fontSize:12,color:"rgba(255,255,255,0.65)",fontWeight:500,whiteSpace:"nowrap" }}>{a.label}</span>
-              </a>
-            ))}
-          </div>
 
           {/* Linha 3: cotações inline */}
           {!loadPr && precos && (
