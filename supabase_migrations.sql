@@ -11202,10 +11202,36 @@ CREATE POLICY "simulacoes_conta"
 NOTIFY pgrst, 'reload schema';
 
 -- ═══════════════════════════════════════════════════════════════
--- Seção 234: extratos_bancarios — colunas de rastreamento de sessão
--- Adiciona usuario_nome e ofx_storage_path para o Histórico de
--- Conciliação por sessão com download do OFX e botão Reabrir.
+-- Seção 234: extratos_bancarios — criação + colunas de rastreamento
+-- Cria a tabela se não existir (idempotente) e adiciona as colunas
+-- usuario_nome e ofx_storage_path para o Histórico de Conciliação
+-- por sessão com download do OFX e botão Reabrir.
 -- ═══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS extratos_bancarios (
+  id               text primary key,
+  fazenda_id       uuid not null references fazendas(id) on delete cascade,
+  conta_id         uuid references contas_bancarias(id) on delete set null,
+  conta_nome       text,
+  data_importacao  date,
+  data_inicio      date,
+  data_fim         date,
+  total_linhas     int  default 0,
+  conciliados      int  default 0,
+  pendentes        int  default 0,
+  linhas           jsonb not null default '[]',
+  usuario_nome     text,
+  ofx_storage_path text,
+  created_at       timestamptz default now()
+);
+
+ALTER TABLE extratos_bancarios ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "allow_all_extratos" ON extratos_bancarios;
+CREATE POLICY "allow_all_extratos" ON extratos_bancarios FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_extratos_fazenda ON extratos_bancarios(fazenda_id, data_importacao);
+
+-- Adiciona colunas novas caso a tabela já existisse sem elas
 ALTER TABLE extratos_bancarios
   ADD COLUMN IF NOT EXISTS usuario_nome     text,
   ADD COLUMN IF NOT EXISTS ofx_storage_path text;
