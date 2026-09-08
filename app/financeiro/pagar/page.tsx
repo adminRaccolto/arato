@@ -1739,11 +1739,11 @@ function ContasPagarInner() {
                                 </div>
                               ) : <span style={{ color: "#1E3A5F", fontSize: 11 }}>—</span>}
                             </td>
-                            {/* Data: mostra data_baixa para pagos, data_vencimento para os demais */}
+                            {/* Data de vencimento original — data_baixa fica na coluna opcional DT.PGTO */}
                             <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
                               <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>
                                 {sEfet !== "baixado" && sEfet !== "parcial" && l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
-                                {fmtData((sEfet === "baixado" || sEfet === "parcial") ? (l.data_baixa ?? l.data_vencimento) : l.data_vencimento)}
+                                {fmtData(l.data_vencimento)}
                               </div>
                               {(sEfet === "baixado" || sEfet === "parcial")
                                 ? <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sEfet === "parcial" ? "Parcial" : "Pago"}</div>
