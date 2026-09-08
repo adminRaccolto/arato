@@ -214,7 +214,6 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Usuários" },
       { id: "conf-usuarios",        label: "Usuários e Permissões",      path: "/configuracoes/usuarios",                             moduleId: "usuarios"          },
       { id: "conf-auditoria",       label: "Auditoria",                  path: "/configuracoes/auditoria"                                                           },
-      { id: "conf-atualizacoes",    label: "🆕 Central de Atualizações", path: "/atualizacoes"                                                                      },
       { type: "divider", label: "Raccolto" },
       { id: "conf-integracoes",     label: "Integrações",                path: "/configuracoes/integracoes",                          moduleId: "conf_raccotlo" },
       { id: "conf-bot",             label: "Bot IA — WhatsApp",          path: "/configuracoes/bot",                                  moduleId: "conf_raccotlo" },
@@ -668,6 +667,13 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             >
               📱
             </button>
+            <a
+              href="/atualizacoes"
+              title="Central de Atualizações"
+              style={{ background: "var(--bg-input)", border: "0.5px solid rgba(255,255,255,0.12)", cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28, textDecoration: "none" }}
+            >
+              🆕
+            </a>
             <div ref={bellRef} style={{ position: "relative" }}>
               <button
                 onClick={() => setShowBell(v => !v)}

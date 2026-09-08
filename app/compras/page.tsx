@@ -13,6 +13,7 @@ import {
   listarGruposInsumoDaConta, listarPrincipiosAtivos,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
@@ -450,6 +451,33 @@ export default function ComprasPage() {
         listarPrincipiosAtivos(),
       ]);
       setPedidos(allPed);
+
+      // Carrega itens dos pedidos parcialmente entregues para calcular alertas
+      const idsParciais = allPed.filter(p => p.status === "parcialmente_entregue").map(p => p.id);
+      if (idsParciais.length > 0) {
+        const { data: itensAlert } = await supabase
+          .from("pedidos_compra_itens")
+          .select("pedido_id, quantidade, qtd_entregue, qtd_cancelada")
+          .in("pedido_id", idsParciais);
+        const totais: Record<string, { alvo: number; entregue: number; temAjuste: boolean }> = {};
+        for (const it of itensAlert ?? []) {
+          const pid = it.pedido_id as string;
+          if (!totais[pid]) totais[pid] = { alvo: 0, entregue: 0, temAjuste: false };
+          const alvo = Math.max(0, (it.quantidade ?? 0) - (it.qtd_cancelada ?? 0));
+          const entregue = it.qtd_entregue ?? 0;
+          totais[pid].alvo += alvo;
+          totais[pid].entregue += entregue;
+          if (entregue > alvo + 0.001) totais[pid].temAjuste = true;
+        }
+        const summary: Record<string, { pct: number; temAjuste: boolean }> = {};
+        for (const [id, t] of Object.entries(totais)) {
+          summary[id] = { pct: t.alvo > 0 ? (t.entregue / t.alvo) * 100 : 0, temAjuste: t.temAjuste };
+        }
+        setItensSummary(summary);
+      } else {
+        setItensSummary({});
+      }
+
       setPessoas(pes);
       // produto_agricola = o que a fazenda PRODUZ (soja, milho…) — NUNCA aparece no Pedido de Compra
       setInsumos(ins.filter(i => i.categoria !== "produto_agricola"));
@@ -1061,11 +1089,21 @@ export default function ComprasPage() {
     }
   };
 
+  // ── Alertas de entrega ───────────────────────────────────────
+  const [itensSummary, setItensSummary] = useState<Record<string, { pct: number; temAjuste: boolean }>>({});
+
   // ── Filtros da lista ──────────────────────────────────────────
   const [filtroSafra,  setFiltroSafra]  = useState("");
   const [filtroBusca,  setFiltroBusca]  = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroMoeda,  setFiltroMoeda]  = useState("");
+  const [filtroAlerta, setFiltroAlerta] = useState<"" | "finalizando" | "ajuste">("");
+
+  // ── Helpers de alerta ────────────────────────────────────────
+  const estaFinalizando = (ped: PedidoCompra) =>
+    ped.status === "parcialmente_entregue" && (itensSummary[ped.id]?.pct ?? 0) >= 80;
+  const temAjuste = (ped: PedidoCompra) =>
+    itensSummary[ped.id]?.temAjuste === true;
 
   const pedidosFiltrados = pedidos.filter(p => {
     if (filtroSafra  && p.ano_safra_id !== filtroSafra) return false;
@@ -1074,6 +1112,8 @@ export default function ComprasPage() {
       const moedaPed = p.meio_pagamento === "barter" ? "barter" : (p.cotacao_moeda ?? "R$");
       if (moedaPed !== filtroMoeda) return false;
     }
+    if (filtroAlerta === "finalizando" && !estaFinalizando(p)) return false;
+    if (filtroAlerta === "ajuste"      && !temAjuste(p))       return false;
     if (filtroBusca) {
       const q = filtroBusca.toLowerCase();
       const forn = nomePessoa(p.fornecedor_id).toLowerCase();
@@ -1088,10 +1128,13 @@ export default function ComprasPage() {
 
   // ── Stats ─────────────────────────────────────────────────────
 
-  const totalPedidos   = pedidosFiltrados.length;
-  const totalAberto    = pedidosFiltrados.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").length;
-  const valorAberto    = pedidosFiltrados.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").reduce((s, p) => s + (p.total_financeiro ?? 0), 0);
-  const totalEntregues = pedidosFiltrados.filter(p => p.status === "entregue").length;
+  const totalPedidos      = pedidosFiltrados.length;
+  const totalAberto       = pedidosFiltrados.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").length;
+  const valorAberto       = pedidosFiltrados.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").reduce((s, p) => s + (p.total_financeiro ?? 0), 0);
+  const totalEntregues    = pedidosFiltrados.filter(p => p.status === "entregue").length;
+  // Alertas — calculados sobre TODOS os pedidos (não só os filtrados)
+  const totalFinalizando  = pedidos.filter(estaFinalizando).length;
+  const totalComAjuste    = pedidos.filter(temAjuste).length;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -1142,16 +1185,33 @@ export default function ComprasPage() {
         <div style={{ padding: "18px 22px", flex: 1 }}>
 
           {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
             {[
-              { label: "Total de pedidos",   valor: String(totalPedidos),       cor: "#111111" },
-              { label: "Pedidos em aberto",  valor: String(totalAberto),        cor: "#C9921B" },
-              { label: "Valor em aberto",    valor: fmtBRL(valorAberto),        cor: "#E24B4A" },
-              { label: "Pedidos entregues",  valor: String(totalEntregues),     cor: "#16A34A" },
+              { label: "Total de pedidos",   valor: String(totalPedidos),    cor: "#111111",  alerta: "" as const },
+              { label: "Pedidos em aberto",  valor: String(totalAberto),     cor: "#C9921B",  alerta: "" as const },
+              { label: "Valor em aberto",    valor: fmtBRL(valorAberto),     cor: "#E24B4A",  alerta: "" as const },
+              { label: "Pedidos entregues",  valor: String(totalEntregues),  cor: "#16A34A",  alerta: "" as const },
+              { label: "🏁 Em finalização",  valor: String(totalFinalizando), cor: "#C9921B", alerta: "finalizando" as const, destaque: totalFinalizando > 0 },
+              { label: "⚠️ Necessita ajuste", valor: String(totalComAjuste), cor: "#E24B4A",  alerta: "ajuste" as const,     destaque: totalComAjuste > 0 },
             ].map((s, i) => (
-              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+              <div
+                key={i}
+                onClick={() => s.alerta ? setFiltroAlerta(filtroAlerta === s.alerta ? "" : s.alerta) : undefined}
+                style={{
+                  background: s.alerta && filtroAlerta === s.alerta ? (s.alerta === "finalizando" ? "#FBF3E0" : "#FCEBEB") : "var(--bg-card)",
+                  border: s.alerta && filtroAlerta === s.alerta
+                    ? `1.5px solid ${s.alerta === "finalizando" ? "#C9921B" : "#E24B4A"}`
+                    : s.alerta && (s as { destaque?: boolean }).destaque ? `0.5px solid ${s.cor}80` : "0.5px solid var(--border-table)",
+                  borderRadius: 12, padding: "14px 16px",
+                  cursor: s.alerta ? "pointer" : "default",
+                  transition: "background 0.15s, border 0.15s",
+                }}
+              >
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: s.cor }}>{s.valor}</div>
+                {s.alerta && filtroAlerta === s.alerta && (
+                  <div style={{ fontSize: 9, color: s.cor, marginTop: 3, fontWeight: 600 }}>Filtro ativo · clique para remover</div>
+                )}
               </div>
             ))}
           </div>
@@ -1190,8 +1250,8 @@ export default function ComprasPage() {
               <option value="USD">US$ (Dólar)</option>
               <option value="barter">Barter</option>
             </select>
-            {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda) && (
-              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); }}
+            {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda || filtroAlerta) && (
+              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); setFiltroAlerta(""); }}
                 style={{ padding: "7px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)" }}>
                 Limpar filtros
               </button>
@@ -1262,7 +1322,19 @@ export default function ComprasPage() {
                           })()}
                         </td>
                         <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                          <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                            <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
+                            {estaFinalizando(ped) && (
+                              <span style={{ fontSize: 9, background: "#FBF3E0", color: "#7A5200", padding: "1px 6px", borderRadius: 5, fontWeight: 700, whiteSpace: "nowrap" }}>
+                                🏁 {Math.round(itensSummary[ped.id]?.pct ?? 0)}% entregue
+                              </span>
+                            )}
+                            {temAjuste(ped) && (
+                              <span style={{ fontSize: 9, background: "#FCEBEB", color: "#791F1F", padding: "1px 6px", borderRadius: 5, fontWeight: 700, whiteSpace: "nowrap" }}>
+                                ⚠️ Saldo a ajustar
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: "6px 10px" }}>
                           <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
