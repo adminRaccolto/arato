@@ -67,6 +67,21 @@ export async function POST(req: NextRequest) {
             break;
           }
 
+          case "adubacao": {
+            const { data: adub, error: eAdub } = await supabase
+              .from("adubacoes_base")
+              .insert(op.payload)
+              .select("id")
+              .single();
+            if (eAdub) throw eAdub;
+            if (op.itens?.length && adub?.id) {
+              const itens = op.itens.map(it => ({ ...it, adubacao_id: adub.id }));
+              const { error: eItens } = await supabase.from("adubacoes_base_itens").insert(itens);
+              if (eItens) throw eItens;
+            }
+            break;
+          }
+
           default:
             throw new Error(`Tipo desconhecido: ${(op as OperacaoPendente).tipo}`);
         }

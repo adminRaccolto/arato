@@ -11,9 +11,10 @@ type FazendaOp = { id: string; nome: string };
 const NAV_ITEMS = [
   { href: "/campo",               label: "Início",   icon: "🏠" },
   { href: "/campo/plantio",       label: "Plantio",  icon: "🌱" },
+  { href: "/campo/adubacao",      label: "Adubação", icon: "🌿" },
   { href: "/campo/pulverizacao",  label: "Pulv.",    icon: "💧" },
   { href: "/campo/colheita",      label: "Colheita", icon: "🌾" },
-  { href: "/campo/abastecimento", label: "Abastecer",icon: "⛽" },
+  { href: "/campo/abastecimento", label: "Abast.",   icon: "⛽" },
   { href: "/campo/monitoramento", label: "Monitor.", icon: "🐛" },
 ];
 

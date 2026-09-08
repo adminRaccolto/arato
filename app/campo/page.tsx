@@ -14,6 +14,7 @@ type Resumo = {
 const ACOES = [
   { href: "/campo/monitoramento", label: "Monitoramento",  sub: "Pragas, doenças e invasoras", icon: "🐛", cor: "#7C2D12", bg: "#FEF2F2" },
   { href: "/campo/plantio",       label: "Plantio",        sub: "Registrar operação de plantio", icon: "🌱", cor: "#14532D", bg: "#F0FDF4" },
+  { href: "/campo/adubacao",      label: "Adubação",       sub: "Fertilizantes, micronutrientes e corretivos", icon: "🌿", cor: "#1A5C38", bg: "#ECFDF5" },
   { href: "/campo/pulverizacao",  label: "Pulverização Terrestre", sub: "Defensivos e foliares (máquina)", icon: "💧", cor: "#1E3A5F", bg: "#F2F2F2" },
   { href: "/campo/aerea",         label: "Aplicação Aérea",        sub: "Avião agrícola · Drone · Helicóptero", icon: "✈️", cor: "#0D0D0D", bg: "#E8E8E8" },
   { href: "/campo/colheita",       label: "Colheita",       sub: "Romaneio e produtividade", icon: "🌾", cor: "#7D4A00", bg: "#FFFBEB" },

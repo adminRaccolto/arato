@@ -1,7 +1,7 @@
 // Armazenamento offline para o módulo Campo
 // Usa localStorage — simples, sem dependência, suficiente para o volume esperado
 
-export type TipoOp = "plantio" | "pulverizacao" | "colheita" | "abastecimento";
+export type TipoOp = "plantio" | "pulverizacao" | "colheita" | "abastecimento" | "adubacao";
 
 export interface OperacaoPendente {
   id: string;           // UUID local (crypto.randomUUID)
