@@ -158,11 +158,34 @@ export default function DrePage() {
               : Promise.resolve([] as Ciclo[])
           )
       )
-    ).then(results => {
+    ).then(async results => {
       const all = results.flat();
-      setCiclosArr(all);
-      // Auxiliares são absorvidos automaticamente — não entram no seletor principal
-      setCiclosSel(all.filter(c => !c.is_auxiliar).map(c => c.id));
+      if (all.length === 0) { setCiclosArr([]); setCiclosSel([]); return; }
+
+      // Filtra ciclos que possuem ao menos uma operação ou contrato cadastrado.
+      // Ciclos auxiliares (absorção) são sempre mantidos pois não aparecem no seletor.
+      const ids = all.map(c => c.id);
+      const [{ data: plantiosIds }, { data: adubIds }, { data: pulvIds }, { data: contratosIds }] =
+        await Promise.all([
+          supabase.from("plantios").select("ciclo_id").in("ciclo_id", ids),
+          supabase.from("adubacoes_base").select("ciclo_id").in("ciclo_id", ids),
+          supabase.from("pulverizacoes").select("ciclo_id").in("ciclo_id", ids),
+          supabase.from("contratos").select("ciclo_id").in("ciclo_id", ids),
+        ]);
+      const comDados = new Set([
+        ...(plantiosIds  ?? []).map(r => r.ciclo_id),
+        ...(adubIds      ?? []).map(r => r.ciclo_id),
+        ...(pulvIds      ?? []).map(r => r.ciclo_id),
+        ...(contratosIds ?? []).map(r => r.ciclo_id),
+      ]);
+
+      // Se nenhum tem dados ainda (safra nova), mostra todos para não bloquear
+      const filtrados = comDados.size > 0
+        ? all.filter(c => c.is_auxiliar || comDados.has(c.id))
+        : all;
+
+      setCiclosArr(filtrados);
+      setCiclosSel(filtrados.filter(c => !c.is_auxiliar).map(c => c.id));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fids.join(","), anoLabel]);

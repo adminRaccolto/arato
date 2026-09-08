@@ -38,6 +38,38 @@ const NAV: NavItem[] = [
   { id: "inicio", label: "Início", path: "/", minStep: 0 },
 
   {
+    type: "group", id: "cadastros", label: "Cadastros", panel: true, minStep: 0,
+    children: [
+      { type: "divider", label: "Cadastros — Entidades" },
+      { id: "cad-pessoas",          label: "Pessoas e Entidades",        path: "/cadastros?tab=pessoas"                              },
+      { id: "cad-produtores",       label: "Produtores",                 path: "/cadastros?tab=produtores"                           },
+      { id: "cad-fazendas",         label: "Fazendas e Talhões",         path: "/cadastros?tab=fazendas"                             },
+      { id: "cad-funcionarios",     label: "Funcionários",               path: "/cadastros?tab=funcionarios"                         },
+      { id: "cad-empresas",         label: "Empresas",                   path: "/cadastros?tab=empresas"                             },
+      { id: "cad-imoveis-urbanos",  label: "Imóveis Urbanos",            path: "/cadastros?tab=imoveis_urbanos"                      },
+      { type: "divider", label: "Cadastros — Agrícola" },
+      { id: "cad-insumos",          label: "Catálogo de Insumos",        path: "/cadastros?tab=insumos"                              },
+      { id: "cad-produtos",         label: "Produtos Agrícolas",         path: "/cadastros?tab=produtos"                             },
+      { id: "cad-itens",            label: "Itens Gerais",               path: "/cadastros?tab=itens"                                },
+      { id: "cad-depositos",        label: "Depósitos & Armazéns",       path: "/cadastros?tab=depositos"                            },
+      { id: "cad-combustivel",      label: "Combustíveis & Bombas",      path: "/cadastros?tab=combustivel"                          },
+      { id: "cad-grupos-insumo",    label: "Grupos de Insumos",          path: "/cadastros?tab=grupos_insumo"                        },
+      { id: "cad-culturas",         label: "Culturas",                   path: "/cadastros?tab=culturas"                             },
+      { id: "cad-principios-ativos",label: "Princípios Ativos (BOT)",    path: "/cadastros?tab=principios_ativos"                    },
+      { id: "cad-unidades-medida",  label: "Unidades de Medida",         path: "/cadastros?tab=unidades_medida"                      },
+      { type: "divider", label: "Cadastros — Patrimônio" },
+      { id: "cad-maquinas",         label: "Máquinas e Veículos",        path: "/cadastros?tab=maquinas"                             },
+      { id: "cad-benfeitorias",     label: "Benfeitorias",               path: "/cadastros?tab=benfeitorias"                         },
+      { id: "cad-bens",             label: "Bens (Alienação)",           path: "/cadastros?tab=bens"                                 },
+      { type: "divider", label: "Cadastros — Financeiro" },
+      { id: "cad-contas-bancarias", label: "Contas Bancárias",           path: "/cadastros?tab=contas_bancarias"                     },
+      { id: "cad-centros-custo",    label: "Centros de Custo",           path: "/cadastros?tab=centros_custo"                        },
+      { id: "cad-historico-fiscal", label: "Histórico Fiscal (CFOPs)",   path: "/cadastros?tab=historico_fiscal"                     },
+      { id: "cad-formas-pagamento", label: "Formas de Pagamento",        path: "/cadastros?tab=formas_pagamento"                     },
+    ],
+  },
+
+  {
     type: "group", id: "producao", label: "Produção", panel: true, minStep: 3,
     children: [
       { type: "divider", label: "Planejamento" },
@@ -193,32 +225,6 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "configuracoes", label: "Configurações", panel: true, minStep: 0,
     children: [
-      { type: "divider", label: "Cadastros — Entidades" },
-      { id: "cad-pessoas",          label: "Pessoas e Entidades",        path: "/cadastros?tab=pessoas"                              },
-      { id: "cad-produtores",       label: "Produtores",                 path: "/cadastros?tab=produtores"                           },
-      { id: "cad-fazendas",         label: "Fazendas e Talhões",         path: "/cadastros?tab=fazendas"                             },
-      { id: "cad-funcionarios",     label: "Funcionários",               path: "/cadastros?tab=funcionarios"                         },
-      { id: "cad-empresas",         label: "Empresas",                   path: "/cadastros?tab=empresas"                             },
-      { id: "cad-imoveis-urbanos",  label: "Imóveis Urbanos",            path: "/cadastros?tab=imoveis_urbanos"                      },
-      { type: "divider", label: "Cadastros — Agrícola" },
-      { id: "cad-insumos",          label: "Catálogo de Insumos",        path: "/cadastros?tab=insumos"                              },
-      { id: "cad-produtos",         label: "Produtos Agrícolas",         path: "/cadastros?tab=produtos"                             },
-      { id: "cad-itens",            label: "Itens Gerais",               path: "/cadastros?tab=itens"                                },
-      { id: "cad-depositos",        label: "Depósitos & Armazéns",       path: "/cadastros?tab=depositos"                            },
-      { id: "cad-combustivel",      label: "Combustíveis & Bombas",      path: "/cadastros?tab=combustivel"                          },
-      { id: "cad-grupos-insumo",    label: "Grupos de Insumos",          path: "/cadastros?tab=grupos_insumo"                        },
-      { id: "cad-culturas",         label: "Culturas",                   path: "/cadastros?tab=culturas"                             },
-      { id: "cad-principios-ativos",label: "Princípios Ativos (BOT)",    path: "/cadastros?tab=principios_ativos"                    },
-      { id: "cad-unidades-medida",  label: "Unidades de Medida",         path: "/cadastros?tab=unidades_medida"                      },
-      { type: "divider", label: "Cadastros — Patrimônio" },
-      { id: "cad-maquinas",         label: "Máquinas e Veículos",        path: "/cadastros?tab=maquinas"                             },
-      { id: "cad-benfeitorias",     label: "Benfeitorias",               path: "/cadastros?tab=benfeitorias"                         },
-      { id: "cad-bens",             label: "Bens (Alienação)",           path: "/cadastros?tab=bens"                                 },
-      { type: "divider", label: "Cadastros — Financeiro" },
-      { id: "cad-contas-bancarias", label: "Contas Bancárias",           path: "/cadastros?tab=contas_bancarias"                     },
-      { id: "cad-centros-custo",    label: "Centros de Custo",           path: "/cadastros?tab=centros_custo"                        },
-      { id: "cad-historico-fiscal", label: "Histórico Fiscal (CFOPs)",   path: "/cadastros?tab=historico_fiscal"                     },
-      { id: "cad-formas-pagamento", label: "Formas de Pagamento",        path: "/cadastros?tab=formas_pagamento"                     },
       { type: "divider", label: "Sistema" },
       { id: "conf-modulos",         label: "Parâmetros Fiscais (NF-e)",  path: "/configuracoes/modulos",                              moduleId: "conf_fiscal"       },
       { id: "conf-op-fiscais",      label: "Operações Fiscais / CFOP",   path: "/configuracoes/modulos?aba=operacoes",                moduleId: "conf_fiscal"       },
@@ -264,7 +270,8 @@ const NAV_MODULE_MAP: Record<string, string[]> = {
   "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros", "apoio_financeiro", "fin_relatorios"],
   "fiscal":        ["fiscal_nfe", "fiscal_sped"],
   "resultados":    ["custos", "fin_relatorios", "bi"],
-  "configuracoes": ["conf_empresa", "conf_fiscal", "conf_financeiro", "conf_contabilidade", "conf_sistema", "conf_importacao", "usuarios", "logs", "cadastros"],
+  "cadastros":     ["cadastros"],
+  "configuracoes": ["conf_empresa", "conf_fiscal", "conf_financeiro", "conf_contabilidade", "conf_sistema", "conf_importacao", "usuarios", "logs"],
 };
 
 // ─── Componente ──────────────────────────────────────────────
@@ -459,7 +466,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "financeiro")    return pathname.startsWith("/financeiro") || pathname.startsWith("/empresas");
     if (item.id === "fiscal")        return pathname === "/fiscal" || pathname.startsWith("/fiscal") || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias";
     if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios");
-    if (item.id === "configuracoes") return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin") || pathname === "/cadastros" || pathname.startsWith("/cadastros");
+    if (item.id === "cadastros")     return pathname === "/cadastros" || pathname.startsWith("/cadastros");
+    if (item.id === "configuracoes") return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
     if (item.id === "ajuda")         return pathname === "/learning" || pathname === "/suporte";
     return false;
   };
