@@ -112,8 +112,9 @@ function FinanceiroRelatoriosInner() {
   const [filtro, setFiltro] = useState<FiltroFluxo>(() => {
     const hoje = new Date();
     const hojeFmt = hoje.toISOString().split("T")[0];
-    let inicio = `${anoAtual}-01-01`;
-    let fim    = `${anoAtual}-12-31`;
+    const em12m = new Date(hoje); em12m.setFullYear(em12m.getFullYear() + 1);
+    let inicio = hojeFmt;
+    let fim    = em12m.toISOString().split("T")[0];
     let tipoVis: FiltroFluxo["tipoVis"] = "ambos";
     if (tipoParam === "previsto") {
       const em6 = new Date(hoje); em6.setMonth(em6.getMonth() + 6);
@@ -169,6 +170,8 @@ function FinanceiroRelatoriosInner() {
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
+  const [mensalInicio, setMensalInicio] = useState(() => new Date().toISOString().split("T")[0]);
+  const [mensalFim,    setMensalFim]    = useState(() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().split("T")[0]; });
 
   // CP/CR — filtros (devem ficar no topo — Rules of Hooks)
   const [tipoCPCR,    setTipoCPCR]    = useState<"todos"|"receber"|"pagar">("todos");
@@ -1036,7 +1039,13 @@ function FinanceiroRelatoriosInner() {
                           {/* Produtores */}
                           {produtores.length > 0 && (
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8 }}>Produtores</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "#111111" }}>Produtores</div>
+                                <button onClick={() => setFiltro(f => ({ ...f, produtoresSel: produtores.map(p => p.id), contasSel: [] }))}
+                                  style={{ fontSize: 10, color: "#1A5CB8", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+                                  Selecionar Todos
+                                </button>
+                              </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                                 {produtores.map(p => (
                                   <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
@@ -1050,9 +1059,15 @@ function FinanceiroRelatoriosInner() {
                           )}
                           {/* Contas */}
                           <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8 }}>
-                              Contas Bancárias
-                              {filtro.produtoresSel.length > 0 && <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>(filtradas pelo produtor)</span>}
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111" }}>
+                                Contas Bancárias
+                                {filtro.produtoresSel.length > 0 && <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>(filtradas pelo produtor)</span>}
+                              </div>
+                              <button onClick={() => setFiltro(f => ({ ...f, contasSel: (f.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => c.id) }))}
+                                style={{ fontSize: 10, color: "#1A5CB8", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>
+                                Selecionar Todas
+                              </button>
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                               {(filtro.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => {
@@ -1220,7 +1235,24 @@ function FinanceiroRelatoriosInner() {
 
                     {/* ── MENSAL ── */}
                     {subAbaFluxo === "mensal" && (() => {
-                      const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+                      // Gera array dinâmico de meses no intervalo mensalInicio → mensalFim
+                      const MESES_LABELS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+                      const mensalMeses: { ym: string; label: string }[] = [];
+                      {
+                        const ymS = mensalInicio.slice(0, 7);
+                        const ymE = mensalFim.slice(0, 7);
+                        let [y, m] = ymS.split("-").map(Number);
+                        const [ey, em] = ymE.split("-").map(Number);
+                        const yStart = y;
+                        while (y < ey || (y === ey && m <= em)) {
+                          const multiYear = yStart !== ey;
+                          mensalMeses.push({ ym: `${y}-${String(m).padStart(2,"0")}`, label: MESES_LABELS[m-1] + (multiYear ? `/${String(y).slice(2)}` : "") });
+                          m++; if (m > 12) { m = 1; y++; }
+                        }
+                      }
+                      const ymToIdx = Object.fromEntries(mensalMeses.map((mm, i) => [mm.ym, i]));
+                      const ymStart = mensalInicio.slice(0, 7);
+                      const ymEnd   = mensalFim.slice(0, 7);
                       // Reutiliza as mesmas contas efetivas calculadas no Diário
                       const contasFiltProdM = filtro.produtoresSel.length > 0
                         ? contasFluxo.filter(c => c.produtor_id && filtro.produtoresSel.includes(c.produtor_id))
@@ -1229,10 +1261,11 @@ function FinanceiroRelatoriosInner() {
                         ? contasFiltProdM.filter(c => filtro.contasSel.includes(c.id))
                         : contasFiltProdM;
                       const contasEfetivasIdsM = new Set(contasEfetivasM.map(c => c.id));
-                      // Filtro base — ano + todos os filtros do painel
+                      // Filtro base — intervalo + todos os filtros do painel
                       const lanAno = lancamentos.filter(l => {
                         const dt = l.data_vencimento ?? l.data_lancamento ?? "";
-                        if (!dt.startsWith(dfcAno)) return false;
+                        const ym = dt.slice(0, 7);
+                        if (ym < ymStart || ym > ymEnd) return false;
                         if (filtro.produtoresSel.length > 0 && l.produtor_id && !filtro.produtoresSel.includes(l.produtor_id)) return false;
                         if (filtro.contasSel.length > 0 && l.conta_bancaria && !contasEfetivasIdsM.has(l.conta_bancaria)) return false;
                         return true;
@@ -1251,37 +1284,39 @@ function FinanceiroRelatoriosInner() {
                       type CellM = { real: number; prev: number; sim: number };
                       type CatRowM = { cat: string; tipo: "receber" | "pagar"; meses: CellM[] };
                       const catMapM = new Map<string, CatRowM>();
+                      const nMeses = mensalMeses.length || 1;
                       const newRow = (cat: string, tipo: "receber"|"pagar"): CatRowM =>
-                        ({ cat, tipo, meses: Array.from({ length: 12 }, () => ({ real: 0, prev: 0, sim: 0 })) });
+                        ({ cat, tipo, meses: Array.from({ length: nMeses }, () => ({ real: 0, prev: 0, sim: 0 })) });
                       // Lançamentos reais e previsões
                       for (const l of lanVis) {
                         const cat = l.categoria || "Sem categoria";
                         const key = `${l.tipo}__${cat}`;
-                        const mes = parseInt((l.data_vencimento ?? l.data_lancamento ?? "").slice(5, 7)) - 1;
-                        if (mes < 0 || mes > 11) continue;
+                        const ym = (l.data_vencimento ?? l.data_lancamento ?? "").slice(0, 7);
+                        const idx = ymToIdx[ym];
+                        if (idx === undefined) continue;
                         if (!catMapM.has(key)) catMapM.set(key, newRow(cat, l.tipo as "receber"|"pagar"));
                         const row = catMapM.get(key)!;
-                        if (l.status === "baixado") row.meses[mes].real += paraBRLRel(l, cotacaoUSD);
-                        else                        row.meses[mes].prev += paraBRLRel(l, cotacaoUSD);
+                        if (l.status === "baixado") row.meses[idx].real += paraBRLRel(l, cotacaoUSD);
+                        else                        row.meses[idx].prev += paraBRLRel(l, cotacaoUSD);
                       }
                       // Simulações
                       if (simulacoesAtivas) {
                         for (const s of simEntries.filter(x => x.ativo)) {
-                          if (!s.data.startsWith(dfcAno)) continue;
-                          const mes = parseInt(s.data.slice(5, 7)) - 1;
-                          if (mes < 0 || mes > 11) continue;
+                          const ym = s.data.slice(0, 7);
+                          const idx = ymToIdx[ym];
+                          if (idx === undefined) continue;
                           const tipo: "receber"|"pagar" = s.tipo === "entrada" ? "receber" : "pagar";
                           const cat = `◆ ${s.descricao || "Simulação"}`;
                           const key = `${tipo}__${cat}`;
                           if (!catMapM.has(key)) catMapM.set(key, newRow(cat, tipo));
-                          catMapM.get(key)!.meses[mes].sim += s.valor;
+                          catMapM.get(key)!.meses[idx].sim += s.valor;
                         }
                       }
                       const entradasM = Array.from(catMapM.values()).filter(r => r.tipo === "receber").sort((a, b) => a.cat.localeCompare(b.cat));
                       const saidasM   = Array.from(catMapM.values()).filter(r => r.tipo === "pagar").sort((a, b) => a.cat.localeCompare(b.cat));
-                      const totEntM   = MESES.map((_, i) => entradasM.reduce((s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
-                      const totSaiM   = MESES.map((_, i) => saidasM.reduce(  (s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
-                      const saldoMesM = MESES.map((_, i) => totEntM[i] - totSaiM[i]);
+                      const totEntM   = mensalMeses.map((_, i) => entradasM.reduce((s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
+                      const totSaiM   = mensalMeses.map((_, i) => saidasM.reduce(  (s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
+                      const saldoMesM = mensalMeses.map((_, i) => totEntM[i] - totSaiM[i]);
                       let _accM = 0;
                       const saldoAcM  = saldoMesM.map(v => { _accM += v; return _accM; });
                       const totEntAnual = totEntM.reduce((s, v) => s + v, 0);
@@ -1331,11 +1366,12 @@ function FinanceiroRelatoriosInner() {
                                 {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
                               </button>
                               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                <label style={{ fontSize: 12, color: "var(--text-2)" }}>Exercício:</label>
-                                <select value={dfcAno} onChange={e => setDfcAno(e.target.value)}
-                                  style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
-                                  {anosDispo.map(a => <option key={a} value={a}>{a}</option>)}
-                                </select>
+                                <span style={{ fontSize: 12, color: "var(--text-2)" }}>De</span>
+                                <input type="date" value={mensalInicio} onChange={e => setMensalInicio(e.target.value)}
+                                  style={{ padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" }} />
+                                <span style={{ fontSize: 12, color: "var(--text-2)" }}>até</span>
+                                <input type="date" value={mensalFim} onChange={e => setMensalFim(e.target.value)}
+                                  style={{ padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" }} />
                               </div>
                             </div>
                           </div>
@@ -1345,7 +1381,7 @@ function FinanceiroRelatoriosInner() {
                               { label: "Total Entradas",    v: totEntAnual },
                               { label: "Total Saídas",      v: totSaiAnual },
                               { label: "Resultado Líquido", v: totLiqAnual },
-                              { label: "Saldo Acumulado",   v: saldoAcM[11] ?? totLiqAnual },
+                              { label: "Saldo Acumulado",   v: saldoAcM[saldoAcM.length - 1] ?? totLiqAnual },
                             ].map((k, i) => (
                               <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none", background: "var(--bg-card)" }}>
                                 <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{k.label}</div>
@@ -1355,12 +1391,12 @@ function FinanceiroRelatoriosInner() {
                           </div>
                           {/* Tabela */}
                           <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: Math.max(900, mensalMeses.length * 80 + 220) }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
-                                  {MESES.map(m => <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>)}
-                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#111111", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
+                                  {mensalMeses.map(mm => <th key={mm.ym} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 64 }}>{mm.label}</th>)}
+                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#111111", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total Período</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1386,7 +1422,7 @@ function FinanceiroRelatoriosInner() {
                                 <tr style={{ background: "var(--bg-tag)" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#111111" }}>Saldo Acumulado</td>
                                   {saldoAcM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: corSaldo(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
-                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: corSaldo(saldoAcM[11]??totLiqAnual), whiteSpace: "nowrap" }}>{fmtBRL(saldoAcM[11]??totLiqAnual, 2)}</td>
+                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: corSaldo(saldoAcM[saldoAcM.length-1]??totLiqAnual), whiteSpace: "nowrap" }}>{fmtBRL(saldoAcM[saldoAcM.length-1]??totLiqAnual, 2)}</td>
                                 </tr>
                               </tbody>
                             </table>
