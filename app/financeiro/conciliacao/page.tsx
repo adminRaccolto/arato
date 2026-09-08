@@ -204,7 +204,7 @@ function ConciliacaoInner() {
   const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico"|"inconsistencias">(() => searchParams.get("pendentes") === "true" ? "inconsistencias" : "extrato");
   const [historico, setHistorico]     = useState<HistoricoConciliacao[]>([]);
   const [pendencias, setPendencias]   = useState<Pendencia[]>([]);
-  const [subInconsist, setSubInconsist] = useState<"com_conta"|"sem_conta"|"sem_lancamento">("com_conta");
+  const [subInconsist, setSubInconsist] = useState<"com_conta"|"sem_conta">("com_conta");
 
   const [contaSel, setContaSel]     = useState<string>("");
   const [filtroPend, setFiltroPend] = useState(() => searchParams.get("pendentes") === "true");
@@ -1081,7 +1081,6 @@ function ConciliacaoInner() {
         {!extrato && abaAtiva === "inconsistencias" && (() => {
           const comConta    = pendencias.filter(p => p.conta_id);
           const semContaOFX = pendencias.filter(p => !p.conta_id);
-          const lancSemConta = lancamentos.filter(l => !l.conta_bancaria && l.status !== "cancelado");
 
           // Agrupa OFX-com-conta por conta_nome
           const grupos = new Map<string, { conta_nome: string; itens: Pendencia[] }>();
@@ -1100,7 +1099,6 @@ function ConciliacaoInner() {
                 {([
                   ["com_conta",     `OFX sem lançamento — por conta (${comConta.length})`],
                   ["sem_conta",     `OFX sem conta bancária (${semContaOFX.length})`],
-                  ["sem_lancamento",`CP/CR sem conta bancária (${lancSemConta.length})`],
                 ] as const).map(([k, lbl]) => (
                   <button key={k} onClick={() => setSubInconsist(k)}
                     style={{ padding: "5px 13px", borderRadius: 7, border: `0.5px solid ${subInconsist === k ? "#C9921B" : "var(--border)"}`, background: subInconsist === k ? "#FBF3E0" : "var(--bg-card)", color: subInconsist === k ? "#92400E" : "var(--text-2)", fontSize: 12, fontWeight: subInconsist === k ? 700 : 400, cursor: "pointer" }}>
@@ -1219,50 +1217,7 @@ function ConciliacaoInner() {
                 )
               )}
 
-              {/* CP/CR sem conta bancária */}
-              {subInconsist === "sem_lancamento" && (
-                lancSemConta.length === 0 ? (
-                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-                    <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Todos os lançamentos têm conta bancária indicada</div>
-                  </div>
-                ) : (
-                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                    <div style={{ padding: "10px 16px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>CP/CR sem conta bancária vinculada</div>
-                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Lançamentos no período que não têm conta bancária — edite-os em CP ou CR para vincular</div>
-                    </div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ background: "var(--bg-page)" }}>
-                          {["Tipo", "Descrição", "Vencimento", "Valor", "Status"].map(h => (
-                            <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {lancSemConta.map((l, i) => (
-                          <tr key={l.id} style={{ borderBottom: i < lancSemConta.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
-                            <td style={{ padding: "8px 12px" }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: l.tipo === "pagar" ? "#FEE2E2" : "#DCFCE7", color: l.tipo === "pagar" ? "#DC2626" : "#16A34A" }}>
-                                {l.tipo === "pagar" ? "CP" : "CR"}
-                              </span>
-                            </td>
-                            <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{l.descricao}</td>
-                            <td style={{ padding: "8px 12px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
-                            <td style={{ padding: "8px 12px", fontWeight: 700, color: l.tipo === "pagar" ? "#E24B4A" : "#16A34A" }}>{fmtBRL(l.valor)}</td>
-                            <td style={{ padding: "8px 12px" }}>
-                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, background: l.status === "baixado" ? "#DCFCE7" : "#FEF3C7", color: l.status === "baixado" ? "#16A34A" : "#92400E", fontWeight: 600 }}>
-                                {l.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )
-              )}
+
             </div>
           );
         })()}
