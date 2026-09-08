@@ -53,6 +53,7 @@ export default function CpProdutorPage() {
   const [lancamentos, setLancamentos] = useState<LancamentoComSugestao[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [processando, setProcessando] = useState(false);
+  const [processandoAuto, setProcessandoAuto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState("");
   const [pagina, setPagina] = useState(0);
@@ -139,6 +140,33 @@ export default function CpProdutorPage() {
   useEffect(() => {
     if (contaId) carregarDados(contaId);
   }, [contaId, carregarDados]);
+
+  async function processarTudoAuto() {
+    if (!contaId) return;
+    setProcessandoAuto(true);
+    setMsg("🤖 IA vasculhando NF a NF e aplicando UPDATEs automaticamente... aguarde.");
+    try {
+      const res = await fetch("/api/admin/cp-produtor/processar-auto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conta_id: contaId }),
+      });
+      const data = await res.json();
+      if (data.erro) throw new Error(data.erro);
+      setMsg(
+        `✅ Concluído — ${data.total_processados} CP processados | ` +
+        `${data.atualizados} atualizados | ` +
+        `${data.indeterminados} indeterminados pela IA` +
+        (data.erros_count ? ` | ⚠️ ${data.erros_count} erros` : "")
+      );
+      // Recarrega lista
+      await carregarDados(contaId);
+    } catch (err) {
+      setMsg(`Erro: ${err instanceof Error ? err.message : "falha"}`);
+    } finally {
+      setProcessandoAuto(false);
+    }
+  }
 
   async function processarLoteIA() {
     const inicio = pagina * TAMANHO_LOTE;
@@ -272,6 +300,14 @@ export default function CpProdutorPage() {
 
         {contaId && !carregando && lancamentos.length > 0 && (
           <>
+            <button
+              onClick={processarTudoAuto}
+              disabled={processandoAuto || processando}
+              style={{ padding: "8px 18px", background: "#7C2D12", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: (processandoAuto || processando) ? "not-allowed" : "pointer", opacity: (processandoAuto || processando) ? 0.7 : 1 }}
+            >
+              {processandoAuto ? "⏳ Processando tudo..." : `🤖 Processar tudo automaticamente (${lancamentos.length})`}
+            </button>
+
             <button
               onClick={processarLoteIA}
               disabled={processando}
