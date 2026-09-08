@@ -9,7 +9,7 @@ import type { Fazenda } from "../../../lib/supabase";
 import { getDreGrupo } from "../../../lib/seedOperacoesGerenciais";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type AnoSafra   = { id: string; ano: string; fazenda_id?: string };
+type AnoSafra   = { id: string; descricao: string; fazenda_id?: string };
 type Ciclo      = { id: string; cultura: string; ano_safra_id: string; fazenda_id: string; descricao?: string; is_auxiliar?: boolean | null; ciclo_pai_id?: string | null; absorcao_pct?: number | null };
 type DreRow     = { label: string; valor: number; bold?: boolean; indent?: number; tipo?: "receita" | "custo" | "resultado" | "subtotal" };
 
@@ -125,8 +125,8 @@ export default function DrePage() {
     if (fids.length === 0) return;
     Promise.all(
       fids.map(fid =>
-        supabase.from("anos_safra").select("id, ano, fazenda_id").eq("fazenda_id", fid)
-          .order("ano", { ascending: false })
+        supabase.from("anos_safra").select("id, descricao, fazenda_id").eq("fazenda_id", fid)
+          .order("descricao", { ascending: false })
           .then(r => (r.data ?? []) as AnoSafra[])
       )
     ).then(results => {
@@ -134,11 +134,11 @@ export default function DrePage() {
       const unique: AnoSafra[] = [];
       for (const rows of results) {
         for (const a of rows) {
-          if (!seen.has(a.ano)) { seen.add(a.ano); unique.push(a); }
+          if (!seen.has(a.descricao)) { seen.add(a.descricao); unique.push(a); }
         }
       }
       setAnosArr(unique);
-      if (unique.length > 0 && !anoLabel) setAnoLabel(unique[0].ano);
+      if (unique.length > 0 && !anoLabel) setAnoLabel(unique[0].descricao);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fids.join(",")]);
@@ -148,7 +148,7 @@ export default function DrePage() {
     if (fids.length === 0 || !anoLabel) return;
     Promise.all(
       fids.map(fid =>
-        supabase.from("anos_safra").select("id").eq("fazenda_id", fid).eq("ano", anoLabel)
+        supabase.from("anos_safra").select("id").eq("fazenda_id", fid).eq("descricao", anoLabel)
           .then(r => (r.data ?? []).map(a => a.id as string))
           .then(anoIds =>
             anoIds.length > 0
@@ -375,7 +375,7 @@ export default function DrePage() {
       const area = totalAreaHa || 1;
       const sacas = totalSacas || ((orcData as any)?.produtividade_esperada ?? 0) * area;
 
-      const ano = { id: ciclo.ano_safra_id, ano: anoLabel };
+      const ano = { id: ciclo.ano_safra_id, descricao: anoLabel };
       resultados.push({
         ciclo,
         anoSafra: ano,
@@ -430,7 +430,7 @@ export default function DrePage() {
     const totalReceita = sum("receita_total");
     return {
       ciclo: { id: "consolidado", cultura: "Consolidado", ano_safra_id: "", fazenda_id: "" },
-      anoSafra: { id: "", ano: anoLabel },
+      anoSafra: { id: "", descricao: anoLabel },
       area_ha: totalArea,
       receita_venda: sum("receita_venda"),
       receita_bonificacao: sum("receita_bonificacao"),
@@ -589,7 +589,7 @@ export default function DrePage() {
               onChange={e => { setAnoLabel(e.target.value); setCiclosSel([]); }}
               style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, minWidth: 140 }}
             >
-              {anosArr.map(a => <option key={a.id} value={a.ano}>{a.ano}</option>)}
+              {anosArr.map(a => <option key={a.id} value={a.descricao}>{a.descricao}</option>)}
             </select>
           </div>
 
@@ -670,7 +670,7 @@ export default function DrePage() {
         {dreParaExibir.map((d, idx) => {
           const linhas = montarLinhas(d);
           const custoTotal = d.cpv_total + d.desp_operacionais_total + d.desp_financeiras_total;
-          const anoLabel = d.anoSafra.ano;
+          const anoLabel = d.anoSafra.descricao;
           const cultLabel = d.ciclo.cultura;
 
           return (

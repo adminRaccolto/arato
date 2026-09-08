@@ -92,9 +92,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
   setCicloIds: React.Dispatch<React.SetStateAction<string[]>>;
   dreLoading: boolean;
 }) {
-  // Filtra por ano safra; se não houver ciclos vinculados ao ano, mostra todos
-  const ciclosPorAno = ciclos.filter(c => c.ano_safra_id === anoSafraId);
-  const ciclosFiltrados = ciclosPorAno.length > 0 ? ciclosPorAno : ciclos;
+  const ciclosFiltrados = anoSafraId ? ciclos.filter(c => c.ano_safra_id === anoSafraId) : ciclos;
   const ciclosSel = ciclos.filter(c => cicloIds.includes(c.id));
   const areaTotal = ciclosSel.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
 
@@ -104,9 +102,10 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
         <div>
           <label style={lbl}>Ano Safra</label>
           <select value={anoSafraId} onChange={e => {
-            setAnoSafraId(e.target.value);
-            const doAno = ciclos.filter(c => c.ano_safra_id === e.target.value);
-            setCicloIds((doAno.length > 0 ? doAno : ciclos).map(c => c.id));
+            const novoAnoId = e.target.value;
+            setAnoSafraId(novoAnoId);
+            const doAno = novoAnoId ? ciclos.filter(c => c.ano_safra_id === novoAnoId) : ciclos;
+            setCicloIds(doAno.map(c => c.id));
           }} style={inp}>
             <option value="">Todos</option>
             {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
