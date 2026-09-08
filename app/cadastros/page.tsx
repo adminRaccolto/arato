@@ -4545,14 +4545,25 @@ function CadastrosInner() {
                   tipo:                (["produto_agricola","peca","material","uso_consumo","escritorio","combustivel","lubrificante","geral","outros"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
                 };
                 if (editIns) {
-                  await atualizarInsumo(editIns.id, payload);
+                  const res = await fetch("/api/insumos", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: editIns.id, ...payload }),
+                  });
+                  if (!res.ok) { const j = await res.json(); setErroModal(j.erro || "Erro ao salvar insumo"); return; }
                   setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...payload } : r));
                 } else {
-                  const n = await criarInsumo(payload);
+                  const res = await fetch("/api/insumos", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                  });
+                  if (!res.ok) { const j = await res.json(); setErroModal(j.erro || "Erro ao salvar insumo"); return; }
+                  const n = await res.json() as Insumo;
                   setInsumos(x => [...x, n].sort((a, b) => a.nome.localeCompare(b.nome)));
                 }
                 setModalIns(false);
-              } catch (e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
+              } catch (e: unknown) { setErroModal((e as {message?:string})?.message || JSON.stringify(e)); }
               finally { setSalvando(false); }
             };
 
