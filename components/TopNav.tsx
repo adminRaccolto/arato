@@ -120,6 +120,8 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro", panel: true, minStep: 6,
     children: [
+      { type: "divider", label: "Cartões de Crédito" },
+      { id: "fin-cartoes",         label: "Cartões de Crédito",           path: "/financeiro/cartoes",              moduleId: "fin_pagar"      },
       { type: "divider", label: "Atividade Rural (Produtor)" },
       { id: "fin-pagar",           label: "Contas a Pagar",               path: "/financeiro/pagar",                moduleId: "fin_pagar"      },
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
@@ -129,7 +131,6 @@ const NAV: NavItem[] = [
       { id: "fin-emp-pagar",       label: "Contas a Pagar — Empresa",    path: "/empresas/pagar",                  moduleId: "fin_pagar"      },
       { id: "fin-emp-receber",     label: "Contas a Receber — Empresa",  path: "/empresas/receber",                moduleId: "fin_receber"    },
       { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha"                                             },
-      { id: "fin-cartoes",         label: "Cartões de Crédito",           path: "/financeiro/cartoes",              moduleId: "fin_pagar"      },
       { type: "divider", label: "Tesouraria" },
       { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria",     path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },
       { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",      path: "/financeiro/tesouraria/operacoes", moduleId: "fin_tesouraria" },
