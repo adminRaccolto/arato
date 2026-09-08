@@ -7,7 +7,7 @@ import {
   listarNfEntradaItens, criarNfEntradaItem,
   processarNfEntrada,
   processarDevolucaoCompra,
-  listarInsumos,
+  listarInsumosParaConta,
   criarInsumo,
   listarDepositos,
   listarDepositosMulti,
@@ -544,7 +544,7 @@ export default function NfCompraPage() {
     const idsParaNf = fazendaIds.length > 1 ? fazendaIds : [fazendaId];
     const [nfsData, insData, depData, pesData] = await Promise.all([
       listarNfEntradasPorFazendas(idsParaNf),
-      listarInsumos(fazendaId),
+      listarInsumosParaConta(contaId, fazendaId),
       listarDepositosMulti(idsParaNf),
       listarPessoasDaConta(fazendaId),
     ]);
@@ -1415,7 +1415,7 @@ export default function NfCompraPage() {
         nfEdit.emitente_cnpj,
         {
           nfeNumero:           nfEdit.numero,
-          dataVencimentoCp:    nfEdit.data_vencimento_cp,
+          dataVencimentoCp:    cab.data_vencimento_cp || nfEdit.data_vencimento_cp,
           formaPagamento:      (nfEdit as Record<string,unknown>).forma_pagamento as string | undefined,
           tipoEntrada:         nfEdit.tipo_entrada,
           anoSafraId:          nfEdit.ano_safra_id,

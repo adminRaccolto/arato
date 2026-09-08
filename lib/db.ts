@@ -2433,33 +2433,34 @@ export async function processarNfEntrada(
         centro_custo_id:         opts?.centroCustoId ?? undefined,
       };
 
+      // Usa API route com service_role_key — evita 42501 por JWT expirado
       const parcs = opts?.parcelas;
-      if (parcs && parcs.length > 1) {
-        const agrupador = crypto.randomUUID();
-        const total = parcs.length;
-        let primeiroId: string | null = null;
-        for (let i = 0; i < total; i++) {
-          const { data: pd, error: pe } = await supabase.from("lancamentos").insert({
+      const agRows = parcs && parcs.length > 1
+        ? (() => {
+            const agrupador = crypto.randomUUID();
+            const total = parcs.length;
+            return parcs.map((p, i) => ({
+              ...baseCP,
+              data_vencimento: p.data,
+              valor:           p.valor,
+              num_parcela:     i + 1,
+              total_parcelas:  total,
+              agrupador,
+            }));
+          })()
+        : [{
             ...baseCP,
-            data_vencimento: parcs[i].data,
-            valor:           parcs[i].valor,
-            num_parcela:     i + 1,
-            total_parcelas:  total,
-            agrupador,
-          }).select("id").single();
-          if (pe) throw new Error(`Erro ao criar parcela ${i + 1} da NF: ${pe.message}`);
-          if (i === 0) primeiroId = pd?.id ?? null;
-        }
-        if (primeiroId) nfUpdates.lancamento_id = primeiroId;
-      } else {
-        const { data: lancDB, error: lancErr } = await supabase.from("lancamentos").insert({
-          ...baseCP,
-          data_vencimento: opts?.dataVencimentoCp ?? dataEntrada,
-          valor:           valorTotal,
-        }).select("id").single();
-        if (lancErr) throw new Error(`Erro ao criar CP da NF: ${lancErr.message} (code: ${lancErr.code})`);
-        if (lancDB?.id) nfUpdates.lancamento_id = lancDB.id;
-      }
+            data_vencimento: opts?.dataVencimentoCp ?? dataEntrada,
+            valor:           valorTotal,
+          }];
+      const agRes = await fetch("/api/lancamentos-cp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: agRows }),
+      });
+      const agJson = await agRes.json() as { ok: boolean; ids?: string[]; error?: string };
+      if (!agJson.ok) throw new Error(`Erro ao criar CP da NF: ${agJson.error}`);
+      if (agJson.ids?.[0]) nfUpdates.lancamento_id = agJson.ids[0];
     }
   }
 
