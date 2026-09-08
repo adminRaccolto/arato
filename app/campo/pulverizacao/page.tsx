@@ -27,7 +27,7 @@ const inp: React.CSSProperties = {
 type Produto = { insumo_id: string; nome: string; dose: string; unidade: string };
 
 export default function CampoPulverizacaoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [etapa, setEtapa]     = useState<"form" | "ok">("form");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro]       = useState("");
@@ -61,11 +61,12 @@ export default function CampoPulverizacaoPage() {
       return;
     }
 
+    const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [{ data: tal }, { data: cic }, { data: ins }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade_medida, valor_unitario, custo_medio")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fids)
         .in("categoria", ["defensivo"])
         .order("nome"),
     ]);
@@ -76,7 +77,7 @@ export default function CampoPulverizacaoPage() {
     salvarCache(`talhoes_${fazendaId}`, talRes);
     salvarCache(`ciclos_${fazendaId}`, cicRes);
     salvarCache(`insumos_defensivos_${fazendaId}`, insRes);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

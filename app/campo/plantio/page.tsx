@@ -15,7 +15,7 @@ const inp: React.CSSProperties = {
 };
 
 export default function CampoPlantioPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [etapa, setEtapa]     = useState<"form" | "ok">("form");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro]       = useState("");
@@ -46,10 +46,11 @@ export default function CampoPlantioPage() {
       return;
     }
 
+    const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [{ data: tal }, { data: cic }, { data: sem }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
-      supabase.from("insumos").select("id, nome, unidade_medida").eq("fazenda_id", fazendaId).in("categoria", ["semente", "inoculante"]).order("nome"),
+      supabase.from("insumos").select("id, nome, unidade_medida").in("fazenda_id", fids).in("categoria", ["semente", "inoculante"]).order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
     const cicRes = (cic ?? []) as Ciclo[];
@@ -60,7 +61,7 @@ export default function CampoPlantioPage() {
     salvarCache(`talhoes_${fazendaId}`, talRes);
     salvarCache(`ciclos_${fazendaId}`, cicRes);
     salvarCache(`sementes_${fazendaId}`, semRes);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
