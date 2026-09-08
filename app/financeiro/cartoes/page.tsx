@@ -4,6 +4,9 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import {
   listarCartoesDaConta,
+  criarCartao,
+  atualizarCartao,
+  excluirCartao,
   listarFaturasDaConta,
   listarLancamentosDaFatura,
   fecharFatura,
@@ -38,7 +41,19 @@ const STATUS_COR: Record<string, { bg: string; cor: string }> = {
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-type Aba = "faturas" | "conciliacao";
+type Aba = "cartoes" | "faturas" | "conciliacao";
+
+const BANDEIRAS = ["visa","master","elo","amex","hipercard","outros"] as const;
+
+type FormCartao = {
+  titular: string; banco: string; bandeira: CartaoCredito["bandeira"];
+  numero_final: string; dia_fechamento: string; dia_vencimento: string;
+  limite: string; observacao: string; ativo: boolean;
+};
+const FORM_VAZIO: FormCartao = {
+  titular: "", banco: "", bandeira: "visa", numero_final: "",
+  dia_fechamento: "1", dia_vencimento: "10", limite: "", observacao: "", ativo: true,
+};
 
 // ─── Tipos para conciliação ───────────────────────────────────────────────────
 interface LinhaExtrato {
@@ -50,7 +65,14 @@ interface LinhaExtrato {
 // ═════════════════════════════════════════════════════════════════════════════
 export default function CartoesCredito() {
   const { contaId, fazendaId } = useAuth();
-  const [aba, setAba] = useState<Aba>("faturas");
+  const [aba, setAba] = useState<Aba>("cartoes");
+
+  // ── Estado da aba Cartões ──────────────────────────────────────────────────
+  const [modalCartao,    setModalCartao]    = useState(false);
+  const [editandoCartao, setEditandoCartao] = useState<CartaoCredito | null>(null);
+  const [formCartao,     setFormCartao]     = useState<FormCartao>(FORM_VAZIO);
+  const [salvandoCartao, setSalvandoCartao] = useState(false);
+  const [erroCartao,     setErroCartao]     = useState("");
 
   const [cartoes,  setCartoes]  = useState<CartaoCredito[]>([]);
   const [faturas,  setFaturas]  = useState<FaturaCartao[]>([]);
@@ -94,6 +116,62 @@ export default function CartoesCredito() {
   const totalAberto  = faturas.filter(f => f.status !== "paga").reduce((s, f) => s + f.valor_total, 0);
   const totalFatura  = faturas.length;
   const totalPago    = faturas.filter(f => f.status === "paga").reduce((s, f) => s + f.valor_total, 0);
+
+  // ── CRUD de cartões ───────────────────────────────────────────────────────
+  const abrirNovoCartao = () => {
+    setEditandoCartao(null);
+    setFormCartao(FORM_VAZIO);
+    setErroCartao("");
+    setModalCartao(true);
+  };
+  const abrirEditarCartao = (c: CartaoCredito) => {
+    setEditandoCartao(c);
+    setFormCartao({
+      titular: c.titular, banco: c.banco ?? "", bandeira: c.bandeira,
+      numero_final: c.numero_final ?? "", dia_fechamento: String(c.dia_fechamento),
+      dia_vencimento: String(c.dia_vencimento), limite: c.limite ? String(c.limite) : "",
+      observacao: c.observacao ?? "", ativo: c.ativo,
+    });
+    setErroCartao("");
+    setModalCartao(true);
+  };
+  const salvarCartaoModal = async () => {
+    if (!contaId) return;
+    if (!formCartao.titular.trim()) { setErroCartao("Informe o titular do cartão."); return; }
+    if (!formCartao.dia_fechamento || !formCartao.dia_vencimento) { setErroCartao("Informe os dias de fechamento e vencimento."); return; }
+    setSalvandoCartao(true); setErroCartao("");
+    try {
+      const payload = {
+        conta_id: contaId,
+        fazenda_id: fazendaId ?? null,
+        titular: formCartao.titular.trim(),
+        banco: formCartao.banco.trim() || null,
+        bandeira: formCartao.bandeira,
+        numero_final: formCartao.numero_final.replace(/\D/g,"").slice(-4) || null,
+        dia_fechamento: parseInt(formCartao.dia_fechamento) || 1,
+        dia_vencimento: parseInt(formCartao.dia_vencimento) || 10,
+        limite: formCartao.limite ? parseFloat(formCartao.limite.replace(/\./g,"").replace(",",".")) : null,
+        observacao: formCartao.observacao.trim() || null,
+        ativo: formCartao.ativo,
+      };
+      if (editandoCartao) {
+        await atualizarCartao(editandoCartao.id, payload);
+      } else {
+        await criarCartao(payload);
+      }
+      const novos = await listarCartoesDaConta(contaId);
+      setCartoes(novos);
+      setModalCartao(false);
+    } catch (e) { setErroCartao((e as Error).message); }
+    setSalvandoCartao(false);
+  };
+  const deletarCartao = async (c: CartaoCredito) => {
+    if (!confirm(`Excluir o cartão "${c.titular}"? Só é possível se não houver faturas vinculadas.`)) return;
+    try {
+      await excluirCartao(c.id);
+      setCartoes(prev => prev.filter(x => x.id !== c.id));
+    } catch (e) { alert((e as Error).message); }
+  };
 
   // ── Detalhe da fatura ─────────────────────────────────────────────────────
   const abrirFatura = async (f: FaturaCartao) => {
@@ -195,12 +273,71 @@ export default function CartoesCredito() {
         {/* Abas */}
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
           <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
-            {([["faturas","Faturas"], ["conciliacao","Conciliação"]] as [Aba, string][]).map(([k, lbl]) => (
+            {([["cartoes","💳 Meus Cartões"], ["faturas","Faturas"], ["conciliacao","Conciliação"]] as [Aba, string][]).map(([k, lbl]) => (
               <button key={k} onClick={() => setAba(k)} style={{ padding: "10px 20px", border: "none", background: aba===k ? "#fff" : "var(--bg-card)", borderBottom: `2px solid ${aba===k ? "#1A5C38" : "transparent"}`, cursor: "pointer", fontSize: 13, fontWeight: aba===k ? 600 : 400, color: aba===k ? "#1A5C38" : "var(--text-2)" }}>
                 {lbl}
               </button>
             ))}
           </div>
+
+          {/* ═══ CARTÕES ═══ */}
+          {aba === "cartoes" && (
+            <div style={{ padding: 20 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                <button onClick={abrirNovoCartao}
+                  style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  + Novo Cartão
+                </button>
+              </div>
+              {loading ? (
+                <div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>Carregando…</div>
+              ) : cartoes.length === 0 ? (
+                <div style={{ padding: 48, textAlign: "center", color: "var(--text-2)" }}>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>💳</div>
+                  <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum cartão cadastrado</div>
+                  <div style={{ fontSize: 12 }}>Cadastre os cartões de crédito utilizados pela fazenda ou empresa.</div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+                  {cartoes.map(c => (
+                    <div key={c.id} style={{ border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", background: "var(--bg-card)" }}>
+                      {/* Topo colorido */}
+                      <div style={{ background: BANDEIRA_COR[c.bandeira], padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{c.titular}</div>
+                          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 }}>
+                            {BANDEIRA_LABEL[c.bandeira]}{c.numero_final ? ` ••••${c.numero_final}` : ""}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, background: c.ativo ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)", color: "#fff", fontWeight: 600 }}>
+                          {c.ativo ? "Ativo" : "Inativo"}
+                        </span>
+                      </div>
+                      {/* Detalhes */}
+                      <div style={{ padding: "12px 18px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 12 }}>
+                        {c.banco && <div><span style={{ color: "var(--text-3)" }}>Banco: </span><span style={{ color: "var(--text-1)", fontWeight: 500 }}>{c.banco}</span></div>}
+                        {c.limite && <div><span style={{ color: "var(--text-3)" }}>Limite: </span><span style={{ color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(c.limite)}</span></div>}
+                        <div><span style={{ color: "var(--text-3)" }}>Fecha: </span><span style={{ color: "var(--text-1)" }}>dia {c.dia_fechamento}</span></div>
+                        <div><span style={{ color: "var(--text-3)" }}>Vence: </span><span style={{ color: "var(--text-1)" }}>dia {c.dia_vencimento}</span></div>
+                        {c.observacao && <div style={{ gridColumn: "1/-1", color: "var(--text-2)", fontStyle: "italic", marginTop: 2 }}>{c.observacao}</div>}
+                      </div>
+                      {/* Ações */}
+                      <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "10px 18px", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button onClick={() => abrirEditarCartao(c)}
+                          style={{ fontSize: 12, padding: "5px 14px", border: "0.5px solid var(--border-table)", borderRadius: 7, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontWeight: 500 }}>
+                          ✏ Editar
+                        </button>
+                        <button onClick={() => deletarCartao(c)}
+                          style={{ fontSize: 12, padding: "5px 14px", border: "0.5px solid #E24B4A50", borderRadius: 7, background: "#FFF5F5", color: "#991B1B", cursor: "pointer", fontWeight: 500 }}>
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ═══ FATURAS ═══ */}
           {aba === "faturas" && (
@@ -469,6 +606,90 @@ export default function CartoesCredito() {
           )}
         </div>
       </main>
+
+      {/* ═══ MODAL CADASTRO / EDIÇÃO CARTÃO ═══ */}
+      {modalCartao && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setModalCartao(false); }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 520, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{editandoCartao ? "Editar Cartão" : "Novo Cartão de Crédito"}</span>
+              <button onClick={() => setModalCartao(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+            </div>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Titular */}
+              <div>
+                <label style={lblS}>Titular / Nome do cartão *</label>
+                <input value={formCartao.titular} onChange={e => setFormCartao(p => ({ ...p, titular: e.target.value }))}
+                  placeholder="Ex: Empresa Rancho Alegre — Bradesco" style={inpS} />
+              </div>
+              {/* Banco + Bandeira */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={lblS}>Banco</label>
+                  <input value={formCartao.banco} onChange={e => setFormCartao(p => ({ ...p, banco: e.target.value }))}
+                    placeholder="Ex: Bradesco, Itaú, BB" style={inpS} />
+                </div>
+                <div>
+                  <label style={lblS}>Bandeira *</label>
+                  <select value={formCartao.bandeira} onChange={e => setFormCartao(p => ({ ...p, bandeira: e.target.value as CartaoCredito["bandeira"] }))} style={inpS}>
+                    {BANDEIRAS.map(b => <option key={b} value={b}>{BANDEIRA_LABEL[b]}</option>)}
+                  </select>
+                </div>
+              </div>
+              {/* Nº final + Limite */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={lblS}>Últimos 4 dígitos</label>
+                  <input value={formCartao.numero_final} onChange={e => setFormCartao(p => ({ ...p, numero_final: e.target.value.replace(/\D/g,"").slice(0,4) }))}
+                    placeholder="1234" maxLength={4} style={inpS} />
+                </div>
+                <div>
+                  <label style={lblS}>Limite (R$)</label>
+                  <input value={formCartao.limite} onChange={e => setFormCartao(p => ({ ...p, limite: e.target.value }))}
+                    placeholder="0,00" inputMode="decimal" style={inpS} />
+                </div>
+              </div>
+              {/* Fechamento + Vencimento */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={lblS}>Dia de fechamento *</label>
+                  <input type="number" min={1} max={31} value={formCartao.dia_fechamento}
+                    onChange={e => setFormCartao(p => ({ ...p, dia_fechamento: e.target.value }))} style={inpS} />
+                </div>
+                <div>
+                  <label style={lblS}>Dia de vencimento *</label>
+                  <input type="number" min={1} max={31} value={formCartao.dia_vencimento}
+                    onChange={e => setFormCartao(p => ({ ...p, dia_vencimento: e.target.value }))} style={inpS} />
+                </div>
+              </div>
+              {/* Observação */}
+              <div>
+                <label style={lblS}>Observação</label>
+                <input value={formCartao.observacao} onChange={e => setFormCartao(p => ({ ...p, observacao: e.target.value }))}
+                  placeholder="Ex: Cartão corporativo operacional" style={inpS} />
+              </div>
+              {/* Ativo */}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+                <input type="checkbox" checked={formCartao.ativo} onChange={e => setFormCartao(p => ({ ...p, ativo: e.target.checked }))} />
+                Cartão ativo
+              </label>
+
+              {erroCartao && <div style={{ padding: "10px 12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 12 }}>{erroCartao}</div>}
+            </div>
+            <div style={{ padding: "14px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => setModalCartao(false)}
+                style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontSize: 13 }}>
+                Cancelar
+              </button>
+              <button onClick={salvarCartaoModal} disabled={salvandoCartao}
+                style={{ padding: "8px 22px", background: salvandoCartao ? "#999" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: salvandoCartao ? "default" : "pointer", fontSize: 13, fontWeight: 600 }}>
+                {salvandoCartao ? "Salvando…" : (editandoCartao ? "Salvar alterações" : "Cadastrar cartão")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
