@@ -186,6 +186,8 @@ export default function CampoPulverizacaoPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            fazenda_id:           fazendaId,
+            data_operacao:        fData,
             itens:                itensBaixa,
             ciclo_id:             fCiclo || undefined,
             descricao_lancamento: `Pulverização — ${tipoLabel}${talhaoNome ? ` · ${talhaoNome}` : ""}`,

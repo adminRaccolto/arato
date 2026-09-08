@@ -146,6 +146,8 @@ export default function CampoAdubacaoPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          fazenda_id:           fazendaId,
+          data_operacao:        fData,
           itens:                itensBaixa,
           ciclo_id:             fCiclo || undefined,
           descricao_lancamento: `Adubação — ${modalLabel}${talhaoNome ? ` · ${talhaoNome}` : ""}`,

@@ -21,6 +21,9 @@ interface ConsumoItem {
 
 interface Payload {
   itens: ConsumoItem[];
+  // Campos top-level obrigatórios para o lançamento (evita depender de itens[0])
+  fazenda_id: string;
+  data_operacao: string;           // data do lançamento financeiro
   // Dados para gerar o lançamento CP obrigatório
   ciclo_id?: string;
   descricao_lancamento: string;   // ex: "Pulverização — Herbicida"
@@ -30,22 +33,23 @@ interface Payload {
 // POST /api/campo/consumir-estoque
 // Registra saída de estoque + cria lançamento CP para operações do campo app.
 // Usa service_role_key — imune a JWT expirado e RLS.
+// O lançamento CP é SEMPRE criado (mesmo sem itens de estoque).
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as Payload;
     const { itens, ciclo_id, descricao_lancamento, categoria_lancamento } = body;
-    if (!itens?.length) return NextResponse.json({ ok: true, baixados: 0 });
+    // fazenda_id e data podem vir no top-level (preferência) ou derivado do primeiro item
+    const fazenda_id  = body.fazenda_id  || itens?.[0]?.fazenda_id;
+    const data        = body.data_operacao || itens?.[0]?.data;
+    if (!fazenda_id || !data) return NextResponse.json({ erro: "fazenda_id e data são obrigatórios" }, { status: 400 });
 
     const supabase = sb();
 
     let baixados = 0;
     let custoTotal = 0;
     const erros: string[] = [];
-    // fazenda_id é o mesmo para todos os itens da operação
-    const fazenda_id = itens[0].fazenda_id;
-    const data = itens[0].data;
 
-    for (const item of itens) {
+    for (const item of (itens ?? [])) {
       if (!item.insumo_id || item.quantidade <= 0) continue;
 
       // Busca estoque e custo atual

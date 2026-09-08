@@ -127,6 +127,8 @@ export default function CampoPlantioPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            fazenda_id:           fazendaId,
+            data_operacao:        fData,
             itens,
             ciclo_id:             fCiclo || undefined,
             descricao_lancamento: `Plantio — ${sementeNome}${fVaridade ? ` (${fVaridade})` : ""}${talhaoNome ? ` · ${talhaoNome}` : ""}`,
