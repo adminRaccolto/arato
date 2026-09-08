@@ -6,7 +6,7 @@ import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-sto
 
 type Talhao = { id: string; nome: string; area_ha?: number };
 type Ciclo   = { id: string; cultura: string; ano_safra?: { descricao: string } };
-type Insumo  = { id: string; nome: string; unidade_medida?: string; valor_unitario?: number; custo_medio?: number };
+type Insumo  = { id: string; nome: string; unidade?: string; valor_unitario?: number; custo_medio?: number };
 
 const TIPO_OPTS = [
   { v: "herbicida",          label: "Herbicida",    icon: "🌿" },
@@ -65,7 +65,7 @@ export default function CampoPulverizacaoPage() {
     const [{ data: tal }, { data: cic }, { data: ins }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
-      supabase.from("insumos").select("id, nome, unidade_medida, valor_unitario, custo_medio")
+      supabase.from("insumos").select("id, nome, unidade, valor_unitario, custo_medio")
         .in("fazenda_id", fids)
         .in("categoria", ["defensivo"])
         .order("nome"),
@@ -92,7 +92,7 @@ export default function CampoPulverizacaoPage() {
       const next = [...prev];
       if (field === "insumo_id") {
         const ins = insumos.find(x => x.id === val);
-        next[i] = { ...next[i], insumo_id: val, nome: ins?.nome ?? "", unidade: ins?.unidade_medida ?? "L/ha" };
+        next[i] = { ...next[i], insumo_id: val, nome: ins?.nome ?? "", unidade: ins?.unidade ?? "L/ha" };
       } else {
         next[i] = { ...next[i], [field]: val };
       }

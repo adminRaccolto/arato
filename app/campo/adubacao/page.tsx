@@ -6,7 +6,7 @@ import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-sto
 
 type Talhao = { id: string; nome: string; area_ha?: number };
 type Ciclo   = { id: string; cultura: string; ano_safra?: { descricao: string } };
-type Insumo  = { id: string; nome: string; unidade_medida?: string };
+type Insumo  = { id: string; nome: string; unidade?: string };
 type ProdutoRow = { insumo_id: string; dose_kg_ha: string };
 
 const MODALIDADES = [
@@ -60,7 +60,7 @@ export default function CampoAdubacaoPage() {
     const [{ data: tal }, { data: cic }, { data: ins }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
-      supabase.from("insumos").select("id, nome, unidade_medida")
+      supabase.from("insumos").select("id, nome, unidade")
         .in("fazenda_id", fids)
         .in("categoria", ["fertilizante", "micronutriente", "corretivo", "organico"])
         .order("nome"),

@@ -6,7 +6,7 @@ import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-sto
 
 type Talhao = { id: string; nome: string; area_ha?: number };
 type Ciclo   = { id: string; cultura: string; ano_safra?: { descricao: string } };
-type Insumo  = { id: string; nome: string; unidade_medida?: string };
+type Insumo  = { id: string; nome: string; unidade?: string };
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "13px 14px", border: "0.5px solid var(--border-table)",
@@ -50,7 +50,7 @@ export default function CampoPlantioPage() {
     const [{ data: tal }, { data: cic }, { data: sem }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
-      supabase.from("insumos").select("id, nome, unidade_medida").in("fazenda_id", fids).in("categoria", ["semente", "inoculante"]).order("nome"),
+      supabase.from("insumos").select("id, nome, unidade").in("fazenda_id", fids).in("categoria", ["semente", "inoculante"]).order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
     const cicRes = (cic ?? []) as Ciclo[];
