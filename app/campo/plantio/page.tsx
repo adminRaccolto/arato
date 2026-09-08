@@ -114,6 +114,28 @@ export default function CampoPlantioPage() {
         setSalvando(false);
         return;
       }
+
+      // Baixa estoque da semente se vinculada e com dose + área informadas
+      if (fSemente && dose > 0 && area > 0) {
+        const talhaoNome = talhoes.find(t => t.id === fTalhao)?.nome;
+        const cicloDesc  = ciclos.find(c => c.id === fCiclo)?.cultura;
+        await fetch("/api/campo/consumir-estoque", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            itens: [{
+              insumo_id:       fSemente,
+              fazenda_id:      fazendaId,
+              quantidade:      dose * area,
+              data:            fData,
+              operacao:        "plantio",
+              talhao_nome:     talhaoNome,
+              safra_descricao: cicloDesc,
+            }],
+          }),
+        });
+      }
+
       setEtapa("ok");
     } catch (e) { setErro((e as Error).message); }
     setSalvando(false);

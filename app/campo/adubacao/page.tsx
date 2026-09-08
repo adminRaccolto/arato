@@ -126,6 +126,27 @@ export default function CampoAdubacaoPage() {
     const itensComId = itens.map(it => ({ ...it, adubacao_id: adub.id }));
     await supabase.from("adubacoes_base_itens").insert(itensComId);
 
+    // Baixa estoque dos fertilizantes vinculados ao estoque
+    const itensBaixa = itens
+      .filter(it => it.insumo_id && it.quantidade_kg && it.quantidade_kg > 0)
+      .map(it => ({
+        insumo_id:       it.insumo_id,
+        fazenda_id:      fazendaId,
+        quantidade:      it.quantidade_kg!,
+        data:            fData,
+        operacao:        "adubacao",
+        talhao_nome:     talhoes.find(t => t.id === fTalhao)?.nome,
+        safra_descricao: ciclos.find(c => c.id === fCiclo)?.cultura,
+        observacao:      fModalidade !== "convencional" ? fModalidade : undefined,
+      }));
+    if (itensBaixa.length > 0) {
+      await fetch("/api/campo/consumir-estoque", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens: itensBaixa }),
+      });
+    }
+
     setEtapa("ok"); setSalvando(false);
   }
 
