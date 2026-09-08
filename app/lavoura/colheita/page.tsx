@@ -181,8 +181,6 @@ export default function ColheitaPage() {
   const [insumoIdFinal, setInsumoIdFinal] = useState("");
   const [insumoIdColheita, setInsumoIdColheita] = useState("");
   const [filtroTipoDeposito, setFiltroTipoDeposito] = useState<"todos"|"proprio"|"terceiro">("todos");
-  const [modalPesagemAvulsa, setModalPesagemAvulsa] = useState(false);
-  const [formPesagemAvulsa, setFormPesagemAvulsa] = useState({ data: hoje(), placa: "", produto: "", peso_bruto_kg: 0, tara_kg: 0, umidade_pct: 0, motorista: "", destino: "", obs: "" });
   const [romParaImprimir, setRomParaImprimir] = useState<{ rom: ColheitaRomaneio; col: ColheitaComRomaneios } | null>(null);
   // Culturas para pré-seleção automática do produto na finalização
 
@@ -427,12 +425,6 @@ export default function ColheitaPage() {
             }}>
               ⚖ Romaneio de Entrada
             </Link>
-            <button
-              onClick={() => { setFormPesagemAvulsa({ data: hoje(), placa: "", produto: "", peso_bruto_kg: 0, tara_kg: 0, umidade_pct: 0, motorista: "", destino: "", obs: "" }); setModalPesagemAvulsa(true); }}
-              style={{ background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #FDE9BB", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-            >
-              ⚖ Pesagem Avulsa
-            </button>
             <button
               onClick={abrirModalColheita}
               style={{
@@ -1293,104 +1285,6 @@ export default function ColheitaPage() {
         );
       })()}
 
-      {/* ── Modal Pesagem Avulsa ── */}
-      {modalPesagemAvulsa && (() => {
-        const pl = Math.max(0, formPesagemAvulsa.peso_bruto_kg - formPesagemAvulsa.tara_kg);
-        const sacas = +(pl / 60).toFixed(2);
-        return (
-          <>
-            {/* print CSS — mostra só a área de impressão */}
-            <style>{`@media print { body * { visibility: hidden; } #avulsa-print-area, #avulsa-print-area * { visibility: visible; } #avulsa-print-area { position: fixed; left: 0; top: 0; width: 100%; padding: 24px; background: #fff; } }`}</style>
-            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 500, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-                <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Pesagem Avulsa</h2>
-                  <button onClick={() => setModalPesagemAvulsa(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
-                </div>
-                <div style={{ padding: "16px 24px 8px", fontSize: 12, color: "#7A5200", background: "#FBF3E0", borderBottom: "0.5px solid #FDE9BB" }}>
-                  ⚠️ Pesagem avulsa gera apenas um romaneio para impressão — não impacta estoque, contratos nem lançamentos financeiros.
-                </div>
-                <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <label><div style={lbStyle}>Data *</div>
-                      <input type="date" value={formPesagemAvulsa.data} onChange={e => setFormPesagemAvulsa(f => ({ ...f, data: e.target.value }))} style={inpStyle} /></label>
-                    <label><div style={lbStyle}>Placa *</div>
-                      <input value={formPesagemAvulsa.placa} onChange={e => setFormPesagemAvulsa(f => ({ ...f, placa: e.target.value.toUpperCase() }))} style={inpStyle} placeholder="ABC-1234" /></label>
-                  </div>
-                  <label><div style={lbStyle}>Produto *</div>
-                    <input value={formPesagemAvulsa.produto} onChange={e => setFormPesagemAvulsa(f => ({ ...f, produto: e.target.value }))} style={inpStyle} placeholder="Ex: Soja, Milho..." /></label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                    <label><div style={lbStyle}>Peso Bruto (kg) *</div>
-                      <InputNumerico decimais={0} value={formPesagemAvulsa.peso_bruto_kg || ""} onChange={v => setFormPesagemAvulsa(f => ({ ...f, peso_bruto_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} /></label>
-                    <label><div style={lbStyle}>Tara (kg) *</div>
-                      <InputNumerico decimais={0} value={formPesagemAvulsa.tara_kg || ""} onChange={v => setFormPesagemAvulsa(f => ({ ...f, tara_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} /></label>
-                    <label><div style={lbStyle}>Peso Líquido (kg)</div>
-                      <div style={{ ...inpStyle, background: "#E8E8E8", display: "flex", alignItems: "center", fontWeight: 600 }}>{fmt(pl, 0)}</div></label>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <label><div style={lbStyle}>Umidade %</div>
-                      <InputNumerico decimais={1} value={formPesagemAvulsa.umidade_pct || ""} onChange={v => setFormPesagemAvulsa(f => ({ ...f, umidade_pct: parseFloat(v) || 0 }))} style={inpStyle} min={0} max={40} /></label>
-                    <label><div style={lbStyle}>Sacas estimadas (60 kg)</div>
-                      <div style={{ ...inpStyle, background: "#E8E8E8", display: "flex", alignItems: "center", fontWeight: 600 }}>{fmt(sacas, 2)} sc</div></label>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <label><div style={lbStyle}>Motorista</div>
-                      <input value={formPesagemAvulsa.motorista} onChange={e => setFormPesagemAvulsa(f => ({ ...f, motorista: e.target.value }))} style={inpStyle} placeholder="Nome do motorista" /></label>
-                    <label><div style={lbStyle}>Destino</div>
-                      <input value={formPesagemAvulsa.destino} onChange={e => setFormPesagemAvulsa(f => ({ ...f, destino: e.target.value }))} style={inpStyle} placeholder="Armazém / comprador" /></label>
-                  </div>
-                  <label><div style={lbStyle}>Observações</div>
-                    <textarea value={formPesagemAvulsa.obs} onChange={e => setFormPesagemAvulsa(f => ({ ...f, obs: e.target.value }))} style={{ ...inpStyle, height: 56, resize: "vertical" }} placeholder="Observações livres" /></label>
-
-                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 4 }}>
-                    <button onClick={() => setModalPesagemAvulsa(false)} style={btnCancelStyle}>Fechar</button>
-                    <button
-                      disabled={!formPesagemAvulsa.placa || !formPesagemAvulsa.produto || pl <= 0}
-                      onClick={() => window.print()}
-                      style={{ ...btnPrimStyle, opacity: !formPesagemAvulsa.placa || !formPesagemAvulsa.produto || pl <= 0 ? 0.5 : 1 }}
-                    >
-                      🖨️ Gerar Romaneio
-                    </button>
-                  </div>
-                </div>
-                {/* Área de impressão (hidden na tela, visível no print) */}
-                <div id="avulsa-print-area" style={{ display: "none" }}>
-                  <div style={{ textAlign: "center", marginBottom: 16 }}>
-                    <div style={{ fontWeight: 700, fontSize: 18 }}>ROMANEIO DE PESAGEM AVULSA</div>
-                  </div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16, fontFamily: "monospace", fontSize: 13 }}>
-                    <tbody>
-                      {[
-                        ["Produto",       formPesagemAvulsa.produto],
-                        ["Data",          formPesagemAvulsa.data],
-                        ["Placa",         formPesagemAvulsa.placa],
-                        ["Motorista",     formPesagemAvulsa.motorista || "—"],
-                        ["Destino",       formPesagemAvulsa.destino || "—"],
-                        ["Peso Bruto",    `${fmt(formPesagemAvulsa.peso_bruto_kg, 0)} kg`],
-                        ["Tara",          `${fmt(formPesagemAvulsa.tara_kg, 0)} kg`],
-                        ["Peso Líquido",  `${fmt(pl, 0)} kg`],
-                        ["Umidade",       formPesagemAvulsa.umidade_pct > 0 ? `${fmt(formPesagemAvulsa.umidade_pct, 1)}%` : "—"],
-                        ["Sacas est.",    `${fmt(sacas, 2)} sc`],
-                        ["Observações",   formPesagemAvulsa.obs || "—"],
-                      ].map(([k, v]) => (
-                        <tr key={k} style={{ borderBottom: "0.5px solid #ccc" }}>
-                          <td style={{ padding: "5px 8px", fontWeight: 600, width: "35%" }}>{k}</td>
-                          <td style={{ padding: "5px 8px" }}>{v}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ marginTop: 40, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
-                    <div style={{ borderTop: "1px solid #000", paddingTop: 6, textAlign: "center", fontSize: 12 }}>Assinatura do motorista</div>
-                    <div style={{ borderTop: "1px solid #000", paddingTop: 6, textAlign: "center", fontSize: 12 }}>Responsável pelo recebimento</div>
-                  </div>
-                  <div style={{ marginTop: 16, textAlign: "center", fontSize: 10, color: "#888" }}>Pesagem avulsa — documento não fiscal — Emitido via RacTech</div>
-                </div>
-              </div>
-            </div>
-          </>
-        );
-      })()}
 
     </div>
   );

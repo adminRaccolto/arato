@@ -1,2819 +1,900 @@
 /**
- * Manual Operacional do Arato
- * Importado pelo sistema de suporte para responder perguntas de uso.
- * Gerado automaticamente — não editar manualmente.
+ * Manual Operacional do Arato — Olívia
+ * Gerado a partir do mapa real do TopNav e das páginas existentes.
+ * Atualizar sempre que uma tela for criada, removida ou renomeada.
+ * Última revisão: setembro/2026
  */
 
 export const MANUAL_OPERACIONAL = `
 # Manual Operacional — Arato
+Versão: setembro/2026
 
-Este manual descreve como usar cada módulo do sistema Arato.
-Leia a seção correspondente ao que você precisa fazer.
+Este manual descreve como navegar e usar cada módulo do Arato.
+A Olívia usa este documento para responder perguntas de usuários.
 
 ---
 
 ## CONCEITOS ESSENCIAIS
 
-**Saca (sc):** 60 kg. Unidade padrão para soja, milho e trigo.
-**Arroba (@):** 15 kg. Unidade padrão para algodão e boi.
-**Ciclo:** É a "safra operacional" — soja 2025/2026, milho 2ª 2025/2026, etc. Toda operação (plantio, pulverização, colheita) é vinculada a um ciclo. A tabela "Safras" está vazia no sistema — use sempre "Ciclos".
+**Saca (sc):** 60 kg. Unidade padrão de grãos (soja, milho, trigo).
+**Arroba (@):** 15 kg. Unidade padrão de algodão e boi.
+**Ciclo:** Safra operacional — ex: "Soja 2025/2026", "Milho 2ª 2025/2026". Toda operação de campo é vinculada a um ciclo. A tabela "Safras" está vazia — use sempre "Ciclos".
 **CP:** Conta a Pagar. **CR:** Conta a Receber.
-**Talhão:** Subdivisão da fazenda. Unidade básica de plantio.
-**OG (Operação Gerencial):** Classificação contábil de uma transação — vincula o lançamento ao plano de contas.
-**CFOP:** Código fiscal obrigatório na NF-e que descreve a natureza da operação (ex: 6101 = venda de produção para outro estado).
-**NCM:** Código de classificação do produto (ex: 1201.90.00 = soja em grão).
-**DANFE:** Documento impresso que acompanha a NF-e no transporte.
-**Romaneio:** Documento de pesagem de caminhão (peso bruto, tara, peso líquido).
-**Barter:** Troca de insumos por grãos. Aparece como modalidade de pagamento em CP.
-**LCDPR:** Livro Caixa Digital do Produtor Rural — obrigação da Receita Federal para PF.
-**SIEG:** Serviço externo que importa automaticamente NF-e e NFS-e recebidas pela fazenda.
+**Talhão:** Subdivisão operacional da fazenda. Unidade básica de plantio.
+**OG:** Operação Gerencial — vincula o lançamento ao plano de contas.
+**CFOP:** Código fiscal da operação (ex: 6501 = venda soja para outro estado).
+**Romaneio:** Documento de pesagem de caminhão (bruto, tara, líquido).
+**Barter:** Troca de insumos por grãos.
+**LCDPR:** Livro Caixa Digital do Produtor Rural (obrigação Receita Federal para PF).
+**SIEG:** Serviço que captura automaticamente NF-e emitidas para o CNPJ/CPF da fazenda.
 **MDF-e:** Manifesto Eletrônico de Documentos Fiscais — obrigatório no transporte de carga.
 **CT-e:** Conhecimento de Transporte Eletrônico.
 
-**Cor azul no sistema** = ação automática (o sistema fez).
-**Cor mostarda no sistema** = ação manual (o usuário fez).
+**Cor azul = ação automática (sistema fez). Cor mostarda = ação manual (usuário fez).**
+
+---
+
+## ESTRUTURA DO MENU (navegação real do sistema)
+
+O menu superior do Arato tem os seguintes grupos principais:
+
+1. **Lavoura** — operações de campo e planejamento agrícola
+2. **Compras & Estoque** — pedidos, NFs de entrada, estoque
+3. **Comercial & Logística** — contratos, expedição, transporte, balança
+4. **Financeiro** — CP, CR, fluxo de caixa, tesouraria, relatórios
+5. **Fiscal** — NF-e emitidas, LCDPR, SPED
+6. **Resultados** — DRE, custos, produtividade
+7. **Configurações** — cadastros, parâmetros, usuários
+8. **Ajuda** — aprendizado e Suporte IA (esta tela)
 
 ---
 
 ## MÓDULO 1 — DASHBOARD
 
-**Caminho:** Menu inicial (tela que abre ao fazer login)
+**Caminho:** Tela inicial após o login.
 
-### O que faz
-Mostra um resumo geral da fazenda: alertas de vencimento, resumo financeiro da semana, preços de mercado ao vivo e acesso rápido a ações pendentes.
+**O que faz:** Resumo geral da fazenda com preços de mercado ao vivo, alertas de vencimento e resumo financeiro.
 
-### Painéis disponíveis
-
-**Preços de mercado (atualização automática a cada 5 minutos):**
+**Preços de mercado (atualização automática a cada 5 min):**
 - Soja CBOT em US$/sc e R$/sc
 - Milho CBOT em US$/sc e R$/sc
 - Algodão ICE em ¢/lb e R$/@
 - Dólar (USD/BRL)
-- Indicadores de mercado aberto/fechado
 
 **Alertas de vencimento:**
-- Crítico (vermelho): vencendo hoje ou vencido
-- Alto (laranja): vencendo em até 3 dias
-- Médio (azul): vencendo em até 7 dias
-- Tipos de alerta: Conta a Pagar, Conta a Receber, Arrendamento, Certificado A1, Contrato de Grãos, Estoque Mínimo, Seguro
-
-**Resumo financeiro da semana:**
-- CP em aberto total
-- CR em aberto total
-- CP vencendo esta semana
-- CR vencendo esta semana
-
-**Busca global:** Campo de busca no topo que encontra lançamentos, contratos, ciclos, insumos e pessoas em toda a fazenda.
-
-### O que é automático
-- Preços de mercado: atualizados automaticamente via API pública (CBOT, Yahoo Finance, AwesomeAPI)
-- Alertas: calculados automaticamente com base nas datas de vencimento dos lançamentos
+- Vermelho (crítico): vencendo hoje ou vencido
+- Laranja (alto): vencendo em até 3 dias
+- Azul (médio): vencendo em até 7 dias
+- Tipos monitorados: CP, CR, Arrendamento, Certificado A1, Contrato de Grãos, Estoque Mínimo, Seguro
 
 ---
 
-## MÓDULO 2 — PROPRIEDADES (Fazendas e Talhões)
+## MÓDULO 2 — LAVOURA → PLANEJAMENTO
 
-**Caminho:** Menu superior → **Propriedades**
+### 2.1 Planejamento de Safra
+**Caminho:** Lavoura → Planejamento → Planejamento de Safra
 
-### O que faz
-Exibe um mapa resumido de todas as fazendas e seus talhões. É uma tela de leitura — o cadastro é feito em Cadastros.
+Gerencia ciclos agrícolas com orçamento, comparativo planejado×realizado e agenda de operações.
 
-### Informações exibidas
-- Número de fazendas ativas
-- Área total em hectares (ha)
-- Número de talhões
-- Quantidade de talhões com GPS cadastrado
-- Alerta se a soma da área dos talhões for menor que a área total da fazenda (hectares sem talhão definido)
+**Abas:**
+- **Orçamento** — itens por categoria (sementes, fertilizantes, defensivos, correção de solo, operações, arrendamento, outros); mostra custo/ha, receita esperada e margem estimada.
+- **Comparativo Planejado×Realizado** — desvio por categoria com barra de progresso.
+- **Agenda** — cronograma de operações do ciclo selecionado.
 
-### Ações disponíveis
-- **+ Nova Fazenda** → leva para **Cadastros → Fazendas**
-- **Editar fazenda** → leva para **Cadastros → Fazendas**
-- **+ Novo Talhão** → leva para **Cadastros → Fazendas**
+### 2.2 Safras e Ciclos
+**Caminho:** Lavoura → Planejamento → Safras e Ciclos
 
-### Pré-requisito
-Para aparecer dados aqui, é necessário cadastrar fazenda e talhões em **Cadastros → Fazendas**.
+Cadastra anos safra e ciclos. Todo lançamento de campo exige um ciclo previamente cadastrado aqui.
 
----
+### 2.3 Orçamento Planejado × Realizado
+**Caminho:** Lavoura → Planejamento → Orçamento Planejado × Realizado
 
-## MÓDULO 3 — LAVOURA / PLANEJAMENTO AGRÍCOLA
-
-**Caminho:** Menu superior → **Lavoura** → **Planejamento Agrícola**
-
-### O que faz
-Mostra todos os ciclos (safras operacionais) da fazenda, permite criar novos ciclos e acompanhar o andamento das operações.
-
-### Abas disponíveis
-1. **Ciclos** — lista e gerencia os ciclos
-2. **Análise** — análise de produtividade e custos por ciclo
-
-### Ciclos — conceito
-Um ciclo representa uma cultura plantada em uma safra. Exemplo: "Soja 2025/2026" ou "Milho 2ª 2025/2026".
-
-**Culturas disponíveis:** Soja, Milho 1ª, Milho 2ª (Safrinha), Algodão, Trigo, Sorgo
-
-**Status do ciclo:**
-- planejada: ciclo criado, sem operações concluídas
-- em_andamento: pelo menos uma operação concluída
-- colhida: colheita registrada
-- cancelada: ciclo cancelado
-
-### Como criar um ciclo
-1. Clique em **+ Novo Ciclo**
-2. Preencha: Ano Safra (*), Cultura (*), Descrição (*), Área total prevista (ha), Produtividade esperada (sc/ha), Preço esperado (R$/sc ou US$/sc)
-3. Clique em Salvar
-
-**Pré-requisito:** Ter o Ano Safra cadastrado em **Cadastros → Safras & Ciclos**.
-
-### Ações sobre um ciclo
-- **+ Lançar Operação** — abre modal para registrar uma operação manualmente (data, tipo, área, custo/ha)
-- **Concluir Operação** — marca operação como realizada; o ciclo passa automaticamente para "em_andamento"
-- **Registrar Colheita** — informa produtividade real (sc/ha) e data de colheita; ciclo passa para "colhida"
-
-### O que é automático
-- Ao concluir uma operação, o status do ciclo muda automaticamente
-- Ao registrar a colheita, o ciclo fecha automaticamente
+Atalho direto para a aba Comparativo do Planejamento de Safra.
 
 ---
 
-## MÓDULO 4 — LAVOURA / PLANTIO
+## MÓDULO 3 — LAVOURA → OPERAÇÕES DE CAMPO
 
-**Caminho:** Menu superior → **Lavoura** → **Plantio**
+### 3.1 Plantio
+**Caminho:** Lavoura → Operações de Campo → Plantio
 
-### O que faz
-Registra o plantio de cada talhão dentro de um ciclo. Gera baixa automática no estoque de sementes e lança a Conta a Pagar de sementes.
+Registra o plantio por talhão. Gera baixa automática no estoque de sementes e lança CP de sementes.
 
-### Seletor em cascata (obrigatório preencher em ordem)
-Produtor (*) → Fazenda (*) → Ano Safra (*) → Ciclo (*) → Talhão (*)
+**Seletor em cascata (obrigatório em ordem):** Produtor → Fazenda → Ano Safra → Ciclo → Talhão
 
-### Campos do plantio
-- **Área plantada (ha)** (*) — área efetiva do talhão plantado
-- **Data de plantio** (*) — data real do plantio
-- **Semente usada** — seleciona do estoque de insumos (tipo Semente)
-- **Variedade** — nome da cultivar (ex: M5917IPRO)
-- **Dose (kg/ha)** — dose de semente por hectare
-- **Data prevista de colheita** — estimativa
-- **Produtividade esperada (sc/ha)** — meta de produtividade
-- **Preço esperado (R$/sc)** — preço de venda esperado para projeções
-- **Observação**
+**Campos:** área plantada (ha), data, semente (select do estoque), variedade, dose (kg/ha), data prevista colheita, produtividade esperada (sc/ha), preço esperado (R$/sc).
 
-### Cálculos automáticos
-- Quantidade total de semente = dose (kg/ha) × área (ha)
-- Custo de sementes = quantidade × custo médio do estoque
+**Automático ao salvar:**
+1. Baixa no estoque de sementes (dose × área)
+2. CP "Custo de Sementes" vinculada ao ciclo
 
-### O que é automático ao salvar
-1. Baixa automática do estoque de sementes (quantidade calculada)
-2. Lançamento de Conta a Pagar "Custo de Sementes" vinculado ao ciclo
+### 3.2 Adubação de Base
+**Caminho:** Lavoura → Operações de Campo → Adubação de Base
 
-### Estatísticas exibidas
-- Talhões plantados no ciclo
-- Área total plantada no ciclo
-- Receita esperada total (área × produtividade esperada × preço esperado)
+Registra aplicações de fertilizantes sólidos ou líquidos antes ou durante o plantio. Gera baixa de estoque e CP de fertilizantes.
 
-### Erros comuns
-- **"Semente não encontrada no estoque"** — cadastre o insumo em **Estoque → NF Entrada** ou **Cadastros → Insumos**
-- **"Estoque insuficiente"** — verifique o saldo em **Estoque → Posição**
+### 3.3 Correção de Solo
+**Caminho:** Lavoura → Operações de Campo → Correção de Solo
 
----
+Registra aplicações de calcário, gesso e corretivos de solo. Gera baixa de estoque e lançamento de custo.
 
-## MÓDULO 5 — LAVOURA / PULVERIZAÇÃO
+### 3.4 Pulverização Terrestre
+**Caminho:** Lavoura → Operações de Campo → Pulverização Terrestre
 
-**Caminho:** Menu superior → **Lavoura** → **Pulverização**
+Registra aplicações de defensivos e fertilizantes foliares. Gera baixa de estoque e CP de defensivos.
 
-### O que faz
-Registra aplicações de defensivos, fertilizantes foliares e outros produtos em talhões. Gera baixa automática no estoque e lança CP de defensivos.
+**Tipos de operação:** herbicida, fungicida, inseticida, nematicida, acaricida, fertilizante foliar, regulador, dessecação, outros.
 
-### Seletor em cascata (obrigatório preencher em ordem)
-Produtor (*) → Fazenda (*) → Ano Safra (*) → Ciclo (*) → Talhão (*)
+**Automático ao salvar:**
+1. Baixa de cada produto no estoque (dose × área)
+2. CP "Defensivos Agrícolas"
 
-### Campos principais
-- **Tipo de operação** (*): herbicida, fungicida, inseticida, nematicida, acaricida, fertilizante_foliar, regulador, dessecação, outros
-- **Momento de aplicação:** pré-emergência, pós-emergência, dessecação
-- **Estádio fenológico:** VE, V1... V6, R1... R8, Pós-emergência, Pré-emergência
-- **Data da aplicação** (*)
-- **Área aplicada (ha)** (*)
-- **Capacidade do tanque (L)** — volume do tanque do pulverizador
-- **Vazão (L/ha)** — volume de calda por hectare
-- **Número de tanques** — calculado automaticamente: total de calda / capacidade do tanque
+### 3.5 Aplicação Aérea
+**Caminho:** Lavoura → Operações de Campo → Aplicação Aérea
 
-### Grid de produtos (pode adicionar múltiplos)
-- Produto (select do estoque) — dose por hectare — unidade
+Registra aplicações realizadas por aeronaves agrícolas. Mesmos campos da pulverização terrestre.
 
-### O que é automático ao salvar
-1. Baixa automática de cada produto no estoque (dose × área)
-2. Lançamento de CP "Defensivos Agrícolas" com o custo total
+### 3.6 Tratamento de Sementes
+**Caminho:** Lavoura → Operações de Campo → Tratamento de Sementes
 
-### Erros comuns
-- **Produto não aparece no select** — insumo não cadastrado ou sem estoque; use **Estoque → NF Entrada**
+Registra tratamentos com fungicidas, inseticidas e inoculantes aplicados às sementes antes do plantio.
 
 ---
 
-## MÓDULO 6 — LAVOURA / COLHEITA PRÓPRIA
+## MÓDULO 4 — LAVOURA → MONITORAMENTO
 
-**Caminho:** Menu superior → **Lavoura** → **Colheita Própria**
+### 4.1 Mapa de Talhões
+**Caminho:** Lavoura → Monitoramento → Mapa de Talhões
 
-### O que faz
-Registra os romaneios de colheita (pesagem de cada caminhão) e calcula o peso classificado descontando umidade, impureza e avariados conforme padrões ABIOVE.
+Visualização dos talhões com suas coordenadas GPS cadastradas.
 
-### Processo em 2 etapas
+### 4.2 Recomendações Agronômicas
+**Caminho:** Lavoura → Monitoramento → Recomendações Agronômicas
 
-**Etapa 1 — Criar registro de colheita:**
-1. Selecione Fazenda, Ciclo, Talhão
-2. Informe: área colhida (ha), data
-3. Salve o registro
+Registro de laudos e recomendações do agrônomo responsável pela fazenda.
 
-**Etapa 2 — Adicionar romaneios (um por caminhão):**
-1. Clique em **+ Romaneio**
-2. Preencha: número do romaneio, placa do caminhão (*), peso bruto (kg) (*), tara (kg)
-3. Informe os parâmetros de classificação:
-   - **Umidade (%)** — padrão: soja 14%, milho 14,5%, algodão 12%
-   - **Impureza (%)** — padrão: soja 1%, milho 1%, algodão 1,5%
-   - **Avariados (%)** — calculado como soma dos sub-parâmetros: ardidos, mofados, fermentados, germinados, esverdeados, quebrados, carunchados
-4. O sistema calcula automaticamente os descontos e o peso classificado final
+### 4.3 Pragas & Doenças
+**Caminho:** Lavoura → Monitoramento → Pragas & Doenças
 
-### Fórmulas de classificação (exibidas ao vivo)
-- Peso líquido = peso bruto - tara
-- Desconto umidade = PL × (U - U_padrão) / (100 - U_padrão)
-- Desconto impureza = PL × excesso / 100
-- Desconto avariados = PL × excesso / 100
-- Peso classificado = PL - desconto umidade - desconto impureza - desconto avariados
-- Sacas líquidas = peso classificado / 60
+Monitoramento de ocorrência de pragas e doenças por talhão.
 
-### Finalizar Colheita
-Após adicionar todos os romaneios, clique em **Finalizar Colheita**. O sistema:
-1. Calcula o total de sacas líquidas
-2. Registra entrada automática no estoque (grão colhido)
-3. Atualiza a produtividade real do ciclo (sc/ha)
+### 4.4 Pluviometria
+**Caminho:** Lavoura → Monitoramento → Pluviometria
+
+Registro de índices pluviométricos por fazenda e talhão.
 
 ---
 
-## MÓDULO 7 — LAVOURA / ADUBAÇÃO DE BASE
+## MÓDULO 5 — LAVOURA → COLHEITA
 
-**Caminho:** Menu superior → **Lavoura** → **Adubação de Base**
+### 5.1 Colheita
+**Caminho:** Lavoura → Colheita → Colheita
 
-### O que faz
-Registra aplicações de fertilizantes sólidos antes ou durante o plantio. Gera baixa de estoque e CP de fertilizantes.
+Registra romaneios de colheita (pesagem de cada caminhão) com classificação de grãos.
 
-### Campos principais
-- Seletor em cascata: Produtor → Fazenda → Ano Safra → Ciclo → Talhão
-- Tipo: sólido, líquido
-- Fórmula NPK (ex: 0-20-20)
-- Produto (select do estoque), dose (kg/ha ou L/ha), área (ha)
-- Data da aplicação
+**Processo em 2 etapas:**
+1. Crie o registro de colheita: fazenda, ciclo, talhão, área colhida (ha), data.
+2. Adicione romaneios (um por caminhão):
+   - Placa (*), Peso bruto (kg) (*), Tara (kg)
+   - Classificação por commodity:
+     - **Soja (ABIOVE):** umidade (padrão 14%), impureza (padrão 1%), avariados (ardidos+mofados+fermentados+germinados+esverdeados+quebrados+carunchados)
+     - **Milho (IN MAPA 60/2011):** umidade (padrão 14,5%), impureza, avariados, chochos, ardidos, fermentados
+3. Clique em **Finalizar Colheita** → o sistema registra entrada no estoque e atualiza a produtividade real do ciclo.
 
----
+**Importante:** A Pesagem Avulsa de carga NÃO vinculada à colheita deve ser feita em **Comercial & Logística → Balança → Pesagem Avulsa**.
 
-## MÓDULO 8 — LAVOURA / CORREÇÃO DE SOLO
+### 5.2 Romaneios de Produção
+**Caminho:** Lavoura → Colheita → Romaneios de Produção
 
-**Caminho:** Menu superior → **Lavoura** → **Correção de Solo**
+Lista todos os romaneios de entrada de produção (grãos colhidos e armazenados).
 
-### O que faz
-Registra aplicações de calcário, gesso e outros corretivos de solo. Similar à adubação de base.
+### 5.3 Classificação de Grãos
+**Caminho:** Lavoura → Colheita → Classificação de Grãos
 
-### Campos principais
-- Seletor em cascata: Produtor → Fazenda → Ano Safra → Ciclo → Talhão
-- Produto corretivo (calcário, gesso, etc.), dose (ton/ha), área (ha)
-- Data da aplicação
-
----
-
-## MÓDULO 9 — LAVOURA / RELATÓRIO DE APLICAÇÕES
-
-**Caminho:** Menu superior → **Lavoura** → **Relatórios** → **Aplicações por Ciclo**
-
-### O que faz
-Relatório consolidado de todas as aplicações (pulverizações, adubações) por safra/ciclo, com exportação para PDF, XLSX e WhatsApp.
-
-### Filtros disponíveis
-- Ano Safra, Ciclos (múltiplos), Talhões (múltiplos)
-- Tipos de operação (herbicida, fungicida, etc.)
-- Período (data início / data fim)
-- Produto específico
-- Agrupamento: detalhado / por insumo / por grupo+subgrupo / por talhão / por tipo de operação
-
-### Cards de resumo
-- Total de aplicações no período
-- Área total aplicada (ha)
-- Custo total das aplicações
-- Custo médio por hectare
-
-### Exportação
-- **PDF** — layout A4 paisagem com logo, cabeçalho, tabela, rodapé. Use o botão **Imprimir PDF**.
-- **XLSX** — planilha com 2 abas (Resumo e Dados detalhados). Gerado via SheetJS.
-- **WhatsApp** — gera XLSX, faz upload para o Supabase Storage e abre link wa.me com mensagem pré-formatada.
+Gerencia padrões de classificação por commodity (parâmetros ABIOVE para soja, IN MAPA 60/2011 para milho).
 
 ---
 
-## MÓDULO 10 — CONTRATOS DE GRÃOS (Comercialização)
+## MÓDULO 6 — LAVOURA → MÁQUINAS
 
-**Caminho:** Menu superior → **Comercial** → **Contratos de Grãos**
+### 6.1 Máquinas e Veículos
+**Caminho:** Lavoura → Máquinas → Máquinas e Veículos
 
-### O que faz
-Gestão de contratos de venda de grãos (soja, milho, algodão, etc.) com compradores. Controla volumes contratados, entregues e saldo disponível.
+Cadastro de tratores, colheitadeiras, caminhões e outros equipamentos da fazenda.
 
-### Abas da lista
-- **Contratos** — lista de contratos com filtros por status, produto, safra
-- **Expedição** — romaneios e embarques vinculados
-- **Posição** — balanço geral: quanto está contratado, entregue e disponível por produto
+### 6.2 Manutenções
+**Caminho:** Lavoura → Máquinas → Manutenções
 
-### Status do contrato
-- aberto: nenhuma entrega ainda
-- parcial: parte entregue
-- encerrado: entrega completa
-- cancelado: contrato cancelado
+Histórico de manutenções preventivas e corretivas por máquina.
 
-### Produtos disponíveis
-Soja, Milho 1ª, Milho 2ª (Safrinha), Algodão, Sorgo, Trigo, Feijão
+### 6.3 Custos por Máquina
+**Caminho:** Lavoura → Máquinas → Custos por Máquina
 
-### Como criar um contrato
+Relatório de gastos de manutenção e combustível agrupados por equipamento.
 
-**Aba Principal:**
-- **Nº Lançamento** (auto-gerado), **Nº Contrato** (*), **Safra** (*)
-- **Autorização** — código de autorização do comprador
-- **Tipo** — Normal, À Fixar, Venda a Ordem
-- Flags: Confirmado, À Fixar, Venda a Ordem
-- **Produtor** (*) — dropdown com nome do produtor; ao selecionar, aparece automaticamente o campo **Inscrição Estadual (IE)**:
-  - Se o produtor tem 0 IEs cadastradas: campo de texto livre para digitar manualmente
-  - Se o produtor tem 1 IE: campo preenchido automaticamente (somente leitura)
-  - Se o produtor tem 2 ou mais IEs: dropdown para escolher a correta
-  - Para cadastrar IEs de um produtor: Cadastros → Produtores → editar → aba IEs
-- **Cliente/Comprador** (*), Nº Contrato Cliente
-- **Modalidade de Preço** — fixo, a fixar, basis, prêmio
-- **Natureza da Operação** (*) — com CFOP preenchido automaticamente:
-  - VFE-PF (Venda p/ Fora do Estado - Produtor Físico) → CFOP 6501 (soja/milho via trading)
-  - VPE-PF → CFOP 6101 (algodão e outros)
-  - Remessa p/ Depósito → CFOP 5905
-  - Devolução → CFOP 5201/6201
-- **Produto** (*), **Quantidade (sc ou @)** (*), **Preço** (*), **Moeda** (BRL ou USD)
-- **Frete** — CIF, FOB, por conta terceiros, próprio, sem frete
+---
 
-**Aba Adicionais:**
-- Propriedade (fazenda de origem), Empreendimento (ciclo)
-- Seguradora, Corretora
-- Depósito de Carregamento, Depósito Fiscal
-- Observações públicas e internas
-- **Documento / Anexo** — upload do PDF físico do contrato (armazenado em Storage → contratos-venda/)
+## MÓDULO 7 — LAVOURA → ALGODÃO (Add-on opcional)
 
-### Add-on IA — Extração automática de Contrato de Venda por PDF (ia_contrato_venda)
+**Disponível apenas para contas com o add-on Algodão habilitado.**
+**Caminho:** Lavoura → Algodão → (aba desejada)
 
-**Disponível quando:** conta tem o add-on ia_contrato_venda ativo (habilitado em /admin/modulos).
+**Abas disponíveis:**
+- **Safra & Operações** — operações especiais como defolhação e regulador de crescimento (NAWF, % abertura maçãs).
+- **Monitoramento de Bicudo** — armadilhas por talhão, leituras semanais; alerta automático ≥ 8 capturas/armadilha/semana.
+- **Colheita & Módulos** — rastreamento campo → transporte → algodoeira.
+- **Algodoeira / Beneficiamento** — lotes com rendimento de pluma (semáforo < 38% / 38-40% / ≥ 40%).
+- **HVI & Qualidade** — laudo por lote com 11 parâmetros USDA/HVI vs referências MT.
+- **Posição de Algodão** — preço ICE/CBOT ao vivo (¢/lb e R$/@), valor do estoque de pluma, posição por algodoeira.
+
+---
+
+## MÓDULO 8 — COMPRAS & ESTOQUE → COMPRAS
+
+### 8.1 Pedidos de Compra
+**Caminho:** Compras & Estoque → Compras → Pedidos de Compra
+
+Controla o processo de compra de insumos do rascunho até a entrega, gerando automaticamente NF de entrada ao receber.
+
+**Status:** rascunho → aprovado → parcialmente_entregue → entregue / cancelado
+
+**Abas do pedido:** Principal (fazenda, fornecedor, produtor responsável com IE, fiscal), Itens/Serviços/CC, Desconto, Entregas (pedidos não-fiscais) ou NFs Vinculadas (pedidos fiscais), Cobrança, Documentos.
+
+**Atenção:** Pedidos com NFs de entrada vinculadas não podem ser excluídos — use status "Cancelado".
+
+### 8.2 NF de Produtos
+**Caminho:** Compras & Estoque → Compras → NF de Produtos
+
+Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no estoque e geração automática de CP.
+
+**Fluxo:** Upload XML (recomendado) ou modo manual → Cabeçalho (fornecedor, CNPJ, número, CFOP, vínculo de atividade, entidade contábil, depósito padrão) → Itens & Processamento (associar produtos ao catálogo).
+
+**Auto-preenchimento por CNPJ:** ao importar XML, o fornecedor é preenchido automaticamente se o CNPJ estiver cadastrado em Pessoas.
+
+**Integração SIEG:** botão "Sincronizar SIEG" importa NFs recebidas automaticamente do serviço de captura de XML.
+
+**Botões por status:**
+- Pendente: Processar, Excluir
+- Processada: Ver, DANFE, Devolver, Reclassificar, Estornar, Excluir
+- Para desfazer: use **Estornar** — reverte estoque, CP e pendências fiscais antes de excluir.
+
+### 8.3 NF de Serviços (NFS-e)
+**Caminho:** Compras & Estoque → Compras → NF de Serviços
+
+Lança notas fiscais de serviços recebidos (NFS-e). Completamente separado da NF de produtos.
+
+**Wizard 3 passos:** Prestador → Serviço (código LC 116/2003, discriminação, valor) → Tributação (ISS, retenções federais: PIS, COFINS, CSLL, IRRF, INSS).
+
+### 8.4 Pendências de Classificação
+**Caminho:** Compras & Estoque → Compras → Pendências de Classificação
+
+Lista NFs capturadas pelo SIEG aguardando classificação gerencial (categoria e OG).
+
+---
+
+## MÓDULO 9 — COMPRAS & ESTOQUE → ESTOQUE
+
+### 9.1 Posição de Estoque
+**Caminho:** Compras & Estoque → Estoque → Posição de Estoque
+
+Saldo atual por produto. Filtros: categoria, depósito, busca por nome. Badge vermelho = abaixo do mínimo.
+
+### 9.2 Kardex (Ficha de Estoque)
+**Caminho:** Compras & Estoque → Estoque → Kardex (Ficha de Estoque)
+
+Rastreamento completo de entradas e saídas de um produto específico, com saldo e custo médio a cada movimentação.
+
+### 9.3 Transferências entre Fazendas
+**Caminho:** Compras & Estoque → Estoque → Transferências entre Fazendas
+
+Registra movimentação de insumos entre fazendas da mesma conta.
+
+### 9.4 Abastecimento de Máquinas
+**Caminho:** Compras & Estoque → Estoque → Abastecimento de Máquinas
+
+Registra abastecimentos de combustível por máquina, com baixa automática no estoque.
+
+### 9.5 Romaneios de Terceiros
+**Caminho:** Compras & Estoque → Estoque → Romaneios de Terceiros
+
+Romaneios de entrada de grãos em armazéns de terceiros (depositário externo).
+
+---
+
+## MÓDULO 10 — COMPRAS & ESTOQUE → INTEGRAÇÃO DE DOCUMENTOS
+
+### 10.1 Notas Capturadas (SIEG)
+**Caminho:** Compras & Estoque → Integração de Documentos → Notas Capturadas (SIEG)
+
+Central de classificação das NF-e capturadas automaticamente pelo SIEG. Permite classificar rapidamente por operação gerencial e categoria antes de processar.
+
+### 10.2 Ligar / Desligar SIEG
+**Caminho:** Compras & Estoque → Integração de Documentos → ⚡ Ligar / Desligar SIEG
+
+Atalho para a tela de Automações onde o SIEG pode ser ativado ou desativado.
+
+---
+
+## MÓDULO 11 — COMERCIAL & LOGÍSTICA → COMERCIALIZAÇÃO
+
+### 11.1 Contratos de Grãos
+**Caminho:** Comercial & Logística → Comercialização → Contratos de Grãos
+
+Gerencia contratos de venda de grãos (soja, milho, algodão) com compradores.
+
+**Status:** aberto → parcial → encerrado / cancelado
+
+**Add-on IA (ia_contrato_venda):** ao criar um contrato, clique em "Selecionar PDF" para que o Arato extraia automaticamente os dados do contrato assinado pela trading (comprador, vendedor, produto, volume, preço, datas, CFOP).
+
+**Romaneio de entrega:** No contrato, clique em **+ Romaneio**. Preencha placa (*), peso bruto (*), tara e classificação por commodity.
+
+**Automático:**
+- CFOP preenchido ao escolher Natureza da Operação
+- Saldo do contrato atualizado a cada romaneio
+- Status "parcial" ou "encerrado" calculado automaticamente
+
+### 11.2 Compromissos em Grãos
+**Caminho:** Comercial & Logística → Comercialização → Compromissos em Grãos
+
+Relatório read-only de contratos de grãos originados de arrendamentos, compras de terra e barter. Mostra KPIs totais e por commodity com barra de progresso de entrega.
+
+### 11.3 Faturamento / NF-e de Saída
+**Caminho:** Comercial & Logística → Comercialização → Faturamento / NF-e de Saída
+
+Emissão de NF-e de venda de grãos. Integrada com contratos — ao emitir gera CR automaticamente.
+
+### 11.4 Compra de Terra
+**Caminho:** Comercial & Logística → Comercialização → Compra de Terra
+
+Gerencia contratos de compra de propriedades rurais com parcelas a prazo (BRL ou sacas de grãos).
+
+### 11.5 Contratos de Arrendamento
+**Caminho:** Comercial & Logística → Comercialização → Contratos de Arrendamento
+
+Gerencia arrendamentos de terra: controla parcelas, vencimentos e pagamentos.
+
+**Abas:** Lista → Pagamentos → Próximos Vencimentos (calendário 12 meses; alerta ≤ 15 dias).
+
+**Formas de pagamento:**
+- sc_soja / sc_milho / sc_soja_milho → gera contrato de grãos (compromete produção)
+- BRL → lança CP no financeiro
+
+---
+
+## MÓDULO 12 — COMERCIAL & LOGÍSTICA → EXPEDIÇÃO
+
+### 12.1 Expedição de Grãos
+**Caminho:** Comercial & Logística → Expedição → Expedição de Grãos
+
+Controla a logística de saída de grãos: cargas, MDF-e, status de entrega e correção de peso no destino.
+
+**Rotas (mutuamente exclusivas por carga):**
+1. Transbordo sem NF — movimentação interna, sem documento fiscal
+2. Transbordo com Remessa (CFOP 5905) — remessa para depósito de terceiro
+3. Direto ao Comprador (CFOP 6101) — entrega direta ao comprador
+
+**Pipeline de status:** rascunho → em_transito → entregue → corrigindo_peso → encerrada
+
+**Emitir MDF-e:** Clique em "Emitir MDF-e" → UF início/fim, percurso, CIOT → status muda para "em_transito".
+**Correção de peso:** divergência > 1% gera alerta "NF COMPLEMENTAR NECESSÁRIA".
+
+### 12.2 Cargas em Trânsito
+**Caminho:** Comercial & Logística → Expedição → Cargas em Trânsito
+
+Filtro rápido da Expedição exibindo apenas cargas com status "em_transito".
+
+### 12.3 Romaneios de Saída
+**Caminho:** Comercial & Logística → Expedição → Romaneios de Saída
+
+Relatório de todos os romaneios de saída de grãos (entregas a compradores e armazéns).
+
+---
+
+## MÓDULO 13 — COMERCIAL & LOGÍSTICA → FRETES E TRANSPORTE
+
+### 13.1 Acerto de Frete (TAC)
+**Caminho:** Comercial & Logística → Fretes e Transporte → Acerto de Frete (TAC)
+
+Gerencia acertos financeiros com transportadores autônomos (TAC/ANTT).
+
+### 13.2 CT-e — Conhecimento de Transporte
+**Caminho:** Comercial & Logística → Fretes e Transporte → CT-e
+
+Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
+
+### 13.3 MDF-e — Manifesto de Cargas
+**Caminho:** Comercial & Logística → Fretes e Transporte → MDF-e
+
+Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
+
+### 13.4 Transportadoras / Veículos
+**Caminho:** Comercial & Logística → Fretes e Transporte → Transportadoras / Veículos
+
+Cadastro de transportadoras, veículos (tipos de caminhão) e motoristas. Alerta automático de CNH vencendo.
+
+---
+
+## MÓDULO 14 — COMERCIAL & LOGÍSTICA → BALANÇA
+
+### 14.1 Pesagem Avulsa
+**Caminho:** Comercial & Logística → Balança → Pesagem Avulsa
+
+Pesagem de cargas não vinculadas à colheita nem a contrato de entrega. Ticket salvo em banco de dados, em 2 etapas.
+
+**Tipos de pesagem:**
+- **Neutra** — pesagem simples sem classificação de entrada ou saída.
+- **Entrada** — caminhão chega CARREGADO: 1ª pesagem = Peso Bruto → 2ª pesagem = Tara (após descarregar). Peso líquido = Bruto − Tara.
+- **Saída** — caminhão chega VAZIO: 1ª pesagem = Tara → 2ª pesagem = Peso Bruto (após carregar). Peso líquido = Bruto − Tara.
+
+**Fluxo completo:**
+1. Clique em **+ Nova Pesagem (Tara)**
+2. Selecione o tipo (Entrada / Saída / Neutra)
+3. Preencha: placa, motorista, produto, fornecedor/cliente e o 1º peso (conforme o tipo)
+4. O ticket fica na aba **Em Andamento** aguardando a 2ª pesagem
+5. Quando o caminhão terminar, clique no ticket → **⚖ Pesar Bruto** (Saída/Neutra) ou **⚖ Pesar Tara** (Entrada)
+6. O peso líquido é calculado automaticamente e o ticket é finalizado
+
+**Modos de entrada de peso (em cada campo):**
+- **✏ Manual** — campo numérico digitado pelo operador.
+- **🔌 Balança** — leitura automática via porta serial (Web Serial API). Requer Google Chrome ou Microsoft Edge. Protocolos suportados: Toledo Prix/Prix Fit, Filizola MK-III/PDV, Urano UR-E, RS-232 genérico. Configuração padrão: 9600 baud, 8N1.
+
+**Atenção:** Para pesagem durante a colheita (romaneio de produção), use **Lavoura → Colheita → Colheita**.
+
+---
+
+## MÓDULO 15 — FINANCEIRO → ATIVIDADE RURAL (PRODUTOR)
+
+### 15.1 Contas a Pagar
+**Caminho:** Financeiro → Atividade Rural → Contas a Pagar
+
+Gerencia despesas do produtor rural (pessoa física — CPF).
+
+**Abas de status:** Aberto / Vencido / Vencendo / Baixado / Parcial / Barter / Previsão / Todos
+
+**Origem automática (badge azul):** NF Entrada, Plantio (sementes), Pulverização (defensivos), Arrendamento, Pedido Compra, SIEG.
+
+**Criação manual:** Produtor → Fazenda → Ano Safra → Ciclo → Descrição (*), Valor (*), Moeda (BRL/USD/barter), Vencimento (*), Categoria (*), OG, Centro de Custo, Vínculo de Atividade, Entidade Contábil.
+
+**Baixa parcial:** valor pago < total → status "parcial" (badge amarelo). O saldo permanece no mesmo registro — baixe o restante clicando novamente no ícone de baixa.
+
+**CP em dólar:** campo "Cotação (R$/US$)" não é automático — abra a CP, preencha a cotação e salve.
+
+**Reprogramar vencimento:** Ícone 📅 na linha → nova data → a observação recebe "[Reprogramado para DD/MM/AAAA]" automaticamente.
+
+### 15.2 Contas a Receber
+**Caminho:** Financeiro → Atividade Rural → Contas a Receber
+
+Gerencia receitas previstas e realizadas do produtor rural.
+
+**Filtros:** aberto / vencido / vencendo / baixado / barter / previsão / todos
+
+**Origem automática (badge azul):** NF Saída, Arrendamento, Contrato Financeiro, Plantio.
+
+### 15.3 Adiantamentos a Fornecedores
+**Caminho:** Financeiro → Atividade Rural → Adiantamentos a Fornecedores
+
+Registra pagamentos antecipados a fornecedores antes da entrega do produto ou serviço.
+
+### 15.4 Folha de Pagamento
+**Caminho:** Financeiro → Atividade Rural → Folha de Pagamento
+
+Gerencia folha de pagamento dos funcionários vinculados ao produtor rural (CPF).
+
+---
+
+## MÓDULO 16 — FINANCEIRO → EMPRESA (CNPJ)
+
+### 16.1 Contas a Pagar — Empresa
+**Caminho:** Financeiro → Empresa → Contas a Pagar — Empresa
+
+CP da pessoa jurídica (empresa com CNPJ). Mesma funcionalidade da CP do produtor.
+
+### 16.2 Contas a Receber — Empresa
+**Caminho:** Financeiro → Empresa → Contas a Receber — Empresa
+
+CR da pessoa jurídica.
+
+### 16.3 Folha de Pagamento — Empresa
+**Caminho:** Financeiro → Empresa → Folha de Pagamento — Empresa
+
+Folha de pagamento dos funcionários da empresa (CNPJ).
+
+### 16.4 Cartões de Crédito
+**Caminho:** Financeiro → Empresa → Cartões de Crédito
+
+Gerencia gastos em cartões de crédito corporativos.
+
+---
+
+## MÓDULO 17 — FINANCEIRO → TESOURARIA
+
+### 17.1 Lançamento de Tesouraria
+**Caminho:** Financeiro → Tesouraria → Lançamento de Tesouraria
+
+Lançamentos avulsos não CP/CR: transferências entre contas, ajustes de saldo, taxas bancárias, aplicações e resgates.
+
+### 17.2 Operações de Tesouraria
+**Caminho:** Financeiro → Tesouraria → Operações de Tesouraria
+
+Lista e detalhe de todas as operações de tesouraria realizadas.
+
+### 17.3 Mútuos entre Empresas
+**Caminho:** Financeiro → Tesouraria → Mútuos entre Empresas
+
+Registra empréstimos entre empresas do grupo (PJ ↔ PJ).
+
+### 17.4 Aplicações Financeiras
+**Caminho:** Financeiro → Tesouraria → Aplicações Financeiras
+
+Gerencia aplicações e resgates em fundos, CDBs e outros investimentos.
+
+### 17.5 Conciliação Bancária
+**Caminho:** Financeiro → Tesouraria → Conciliação Bancária
+
+Concilia lançamentos do sistema com o extrato OFX importado do banco.
+
+**Layout:** painel esquerdo (CP/CR em aberto) + painel direito (extrato OFX).
 
 **Como usar:**
-1. Clique em **Novo Contrato**
-2. No topo da aba Principal, clique em **Selecionar PDF**
-3. Envie o PDF do contrato assinado pela trading
-4. O sistema (Arato IA) extrai automaticamente:
-   - Comprador (com CNPJ e Inscrição Estadual)
-   - Vendedor/Produtor (com CPF/CNPJ e IE)
-   - Produto (com match automático no cadastro de insumos)
-   - Volume em sacas e toneladas
-   - Preço por saca (BRL ou USD)
-   - Datas de entrega e pagamento
-   - Destino (exportação → preenche CFOP 6501; mercado interno → 6101)
-   - Frete (FOB/CIF)
-   - Retenções (Funrural, SENAR, etc.)
-5. Confira o indicador de confiança:
-   - **✓ Alta confiança** — todos os campos principais extraídos → revise e salve
-   - **⚠ Confira os campos** — alguns campos faltando → verifique antes de salvar
-   - **⚠ Baixa** — poucos campos extraídos → preencha manualmente o restante
-6. Clique em **Ver extraído** para ver campo a campo o que foi encontrado
-7. O PDF é salvo automaticamente no Storage (contratos-venda/)
-8. Revise os campos e clique em **Salvar Contrato**
+1. Clique em "Importar Extrato OFX" no painel direito → upload do arquivo .ofx do banco
+2. O sistema tenta casar automaticamente por valor (±R$ 0,02) e data (±7 dias)
+3. Confirme os vínculos automáticos ou faça vínculos manuais clicando em "Vincular"
 
-**O que NÃO é preenchido automaticamente:**
-- Grupo Vendedor, Vendedor (campos comerciais internos)
-- Ciclo/Empreendimento (vínculo com safra)
-- Cessão de recebível
+**Borderô (um débito para vários lançamentos):** Clique em "Vincular" → selecione múltiplos lançamentos no painel esquerdo → Confirmar.
 
-**Resolução de problemas:**
-- "Baixa confiança": o PDF pode ser uma imagem escaneada de baixa qualidade ou formato proprietário
-- Use o painel "Ver extraído → Resposta bruta da IA" para ver o que o modelo leu do documento
-- Comprador ou Produtor não preenchidos: verifique se o CNPJ/CPF está cadastrado em Pessoas/Produtores
-
-### Romaneio de entrega
-1. No contrato, clique em **+ Romaneio**
-2. Preencha: número, data, placa, peso bruto (kg) (*), tara (kg)
-3. Classificação por commodity:
-   - **Soja (ABIOVE):** umidade, impureza, avariados (ardidos, mofados, fermentados, germinados, esverdeados, quebrados, carunchados)
-   - **Milho (IN MAPA 60/2011):** umidade, impureza, avariados, chochos, ardidos, fermentados
-4. Peso balança de origem vs peso destino — sistema calcula divergência em kg e %
-5. Se divergência > tolerância configurada: alerta de NF Complementar
-
-### Encerramento em lote
-Selecione vários contratos e clique em **Encerrar Selecionados** para finalizar em massa por safra.
-
-### O que é automático
-- CFOP preenchido automaticamente ao escolher Natureza da Operação
-- Saldo do contrato atualizado automaticamente a cada romaneio
-- Status mudado para "parcial" ou "encerrado" conforme entrega acumulada
+**Persistência:** o extrato OFX fica salvo no banco entre sessões. Para trocar: clique em "Remover Extrato".
 
 ---
 
-## MÓDULO 11 — EXPEDIÇÃO DE GRÃOS
+## MÓDULO 18 — FINANCEIRO → RELATÓRIOS FINANCEIROS
 
-**Caminho:** Menu superior → **Comercial** → **Expedição de Grãos**
+### 18.1 Fluxo de Caixa Previsto
+**Caminho:** Financeiro → Relatórios Financeiros → Fluxo de Caixa Previsto
 
-### O que faz
-Controla a logística de saída de grãos: criação de cargas, emissão de MDF-e, acompanhamento de status de entrega e correção de peso no destino.
+Projeção de entradas e saídas baseada em lançamentos em aberto.
 
-### Rotas de expedição (mutuamente exclusivas por carga)
-1. **Transbordo sem NF** — movimentação interna entre armazéns, sem documento fiscal
-2. **Transbordo com Remessa (CFOP 5905)** — remessa para depósito de terceiro
-3. **Direto ao Comprador (CFOP 6101)** — entrega direta ao comprador final
+**Modos:** Diário (grid dia a dia) e Mensal (colunas por mês no período selecionado).
+**Filtros:** produtor(es), conta(s) bancária(s), período (De/Até). Botões "Selecionar Todos Produtores" e "Selecionar Todas Contas" disponíveis para agilizar.
+**Padrão:** início = hoje, fim = hoje + 12 meses.
 
-### Pipeline de status de uma carga
-rascunho → em_transito → entregue → corrigindo_peso → encerrada
+### 18.2 Fluxo de Caixa Realizado
+**Caminho:** Financeiro → Relatórios Financeiros → Fluxo de Caixa Realizado
 
-### Como criar uma carga
-1. Clique em **+ Nova Carga**
-2. Informe: contrato, produto, rota, destino, transportadora, veículo, motorista
-3. Pesos: peso bruto (kg), tara (kg), peso líquido; ou informar peso aproximado
-4. Salve como rascunho
+Fluxo de caixa baseado apenas em lançamentos já baixados (realizados).
 
-### Emitir MDF-e
-1. Na carga, clique em **Emitir MDF-e**
-2. Preencha: UF início, UF fim, percurso, CIOT (se aplicável)
-3. Confirme → status muda para "em_transito" automaticamente
+### 18.3 CP / CR — Contas
+**Caminho:** Financeiro → Relatórios Financeiros → CP / CR — Contas
 
-### Gerar NF-e
-- Clique em **Gerar NF-e** na carga (disponível conforme rota)
-- CFOP preenchido automaticamente: 5905 (remessa) ou 6101 (venda)
+Relatório consolidado de CP e CR por período, categoria e conta bancária.
 
-### Correção de peso no destino
-1. Carga chega ao comprador com peso diferente
-2. Clique em **Corrigir Peso**
-3. Informe o peso líquido medido no destino
-4. Sistema calcula divergência automaticamente
-5. Se divergência > 1% (ou tolerância configurada): nota de alerta "NF COMPLEMENTAR NECESSÁRIA"
+### 18.4 Posição Bancária
+**Caminho:** Financeiro → Relatórios Financeiros → Posição Bancária
 
----
+Saldo atual de cada conta bancária com histórico de movimentos.
 
-## MÓDULO 12 — CONTRATOS DE ARRENDAMENTO
+### 18.5 Endividamento
+**Caminho:** Financeiro → Relatórios Financeiros → Endividamento
 
-**Caminho:** Menu superior → **Comercial** → **Contratos de Arrendamento**
+Visão consolidada do endividamento total por credor, tipo e ano de vencimento das parcelas.
 
-### O que faz
-Gerencia contratos de arrendamento de terra: controla parcelas a pagar, gera vencimentos automáticos e alerta com 15 dias de antecedência.
+**Estrutura:** N1 (clicável = tipo) → N2 (expande = contratos) → N3 (expande = parcelas individuais). Colunas = um ano por coluna.
+**Filtros:** produtor, status, moeda, intervalo de anos (atalhos: 12 meses / 3 anos / 5 anos / Tudo).
+**Bloco Compra de Imóveis:** tabela adicional (cabeçalho marrom) aparece quando há parcelas de compra de terra cadastradas.
 
-### Abas disponíveis
-- **Lista** — todos os arrendamentos com cards expansíveis e tabela de pagamentos inline
-- **Pagamentos** — filtro por ano safra e status, baixa individual
-- **Próximos Vencimentos** — calendário de 12 meses; parcelas urgentes (≤15 dias) destacadas
+### 18.6 Gastos por Classificação
+**Caminho:** Financeiro → Relatórios Financeiros → Gastos por Classificação
 
-### Formas de pagamento
-- **sc_soja** — X sacas de soja (gera compromisso de entrega de grãos)
-- **sc_milho** — X sacas de milho
-- **sc_soja_milho** — mistura de soja e milho
-- **brl** — valor em reais (gera CP no fluxo de caixa)
-
-**Lógica de negócio:**
-- Pagamento em sacas → gera contrato de grãos automaticamente (compromete volume de produção)
-- Pagamento em BRL → lança Conta a Pagar no fluxo de caixa
-
-### Como registrar um pagamento
-1. Na aba Pagamentos, localize a parcela
-2. Clique em **Baixar**
-3. Confirme data e valor pago
-4. Status muda para "pago"
-
-### O que é automático
-- Geração de parcelas anuais ao criar o arrendamento (função gerarParcelas)
-- Alerta de vencimento 15 dias antes
-- Lançamento de CP ao criar parcelas em BRL
+Relatório de despesas agrupadas por Operação Gerencial e categoria financeira.
 
 ---
 
-## MÓDULO 13 — FLUXO DE CAIXA
+## MÓDULO 19 — CONFIGURAÇÕES → COMPLEMENTO FINANCEIRO
 
-**Caminho:** Menu superior → **Financeiro** → **Fluxo de Caixa**
+### 19.1 Contratos Financeiros (Crédito Rural)
+**Caminho:** Configurações → Complemento Financeiro → Contratos Financeiros
 
-### O que faz
-Visão consolidada de todas as entradas e saídas de dinheiro da fazenda, com projeção futura e filtros por período, conta bancária e moeda.
+Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAMP, FCO, Finame, CPR, etc.).
 
-### Abas disponíveis
-- **Lançamentos** — lista de todos os lançamentos com filtros
-- **Fluxo** — análise do fluxo de caixa com sub-abas:
-  - Horizontal: saldo acumulado semana a semana
-  - Vertical: composição de receitas e despesas por categoria
-  - Realizado vs Projetado: comparativo do que foi pago vs previsto
-- **Conciliação** — importação de extrato OFX para conciliar com lançamentos
+**Add-on IA (ia_cedula):** banner "Anexe o PDF da Cédula" aparece quando habilitado. O sistema extrai automaticamente credor, tipo, valor, taxa, sistema de amortização, datas e cronograma de parcelas.
 
-### Filtros na aba Lançamentos
-- Todos / A Receber / A Pagar / Vencidos / Baixados / Barter
-- Período: padrão 12 meses passados a 10 meses futuros
-- Conta bancária
-- Moeda (BRL / USD / Barter)
-- Busca por descrição
+**Sistemas de amortização:** SAC (amortização constante), PRICE (parcela constante), Crescentes (com % de crescimento).
 
-### Moedas suportadas
-- BRL (reais)
-- USD (dólares — convertidos para BRL pela cotação informada ou padrão)
-- Barter (sacas de soja/milho — exibido em sc)
+**Abas:** Principal, Liberação, Pagamento (tabela de amortização + baixas), Garantias, Centro de Custo, Aditivos, Movimentações.
 
-### Conciliação OFX
+### 19.2 Apoio Financeiro
+**Caminho:** Configurações → Complemento Financeiro → Apoio Financeiro
 
-A tela de Conciliação tem layout em dois painéis lado a lado:
+Ferramenta exclusiva Raccolto para projeções e estimativas financeiras. Os lançamentos aparecem no Fluxo de Caixa com badge laranja "Apoio Financeiro" — não entram no sistema oficial.
 
-**Painel esquerdo (360px fixo) — Lançamentos CP/CR:**
-- Lista todos os lançamentos em aberto (Contas a Pagar e Contas a Receber)
-- Filtros: tipo (CP/CR), busca por descrição, período
-- Cada lançamento tem um checkbox — útil para selecionar múltiplos para um borderô
+### 19.3 Seguros / Apólices
+**Caminho:** Configurações → Complemento Financeiro → Seguros / Apólices
 
-**Painel direito (flexível) — Extrato OFX:**
-- Exibe as linhas do arquivo OFX importado com colunas redimensionáveis
-- Para redimensionar uma coluna: arraste a borda direita do cabeçalho da coluna
-- Linhas com vínculo confirmado ficam em verde; sem vínculo, em branco
+Gerencia apólices de seguro (rural, vida, patrimonial, automóvel, máquinas). Controla prêmios e sinistros. Alerta automático de vencimento 7 dias antes.
 
-**Como importar e conciliar:**
-1. Clique em **Importar Extrato OFX** no painel direito
-2. Faça upload do arquivo .ofx baixado do banco
-3. O sistema tenta automaticamente casar lançamentos por valor (±R$ 0,02) e data (±7 dias)
-4. Linhas com casamento automático ficam pré-vinculadas (confirme ou desvincule)
-5. Para linhas sem casamento: clique em **Vincular** na linha OFX → selecione o lançamento no painel esquerdo → clique **Confirmar**
+### 19.4 Consórcios
+**Caminho:** Configurações → Complemento Financeiro → Consórcios
 
-**Borderô (um pagamento bancário para múltiplos lançamentos):**
-- Exemplo: um débito de R$ 12.000 que quita 3 fornecedores de R$ 4.000 cada
-- Ao clicar **Vincular** na linha OFX, o painel esquerdo exibe checkboxes
-- Selecione todos os lançamentos que compõem o borderô → clique **Confirmar**
-- O sistema vincula os N lançamentos a essa única linha do extrato
+Gerencia cotas de consórcio com cronograma de parcelas e CPs automáticas.
 
-**Persistência do extrato:**
-- O extrato OFX importado é salvo automaticamente no banco de dados (tabela "extratos_bancarios")
-- Na próxima vez que abrir a tela, o extrato já aparece sem precisar reimportar
-- Banner informativo aparece no topo quando há conciliações pendentes
-- Para limpar e reimportar um novo extrato: clique em **Remover Extrato**
-
-**Como desvincular:**
-- Clique no ícone de desvínculo (✕) na linha OFX já vinculada
-
-### Simulações
-Clique em **+ Simulação** para criar um lançamento hipotético e ver o impacto no fluxo sem salvar como real.
-
-### FC Previsto — Apoio Financeiro
-Lançamentos em aberto (não baixados) do **Apoio Financeiro** (ferramenta Raccotlo) também aparecem na seção de FC Previsto, com badge laranja "Apoio Financeiro". Isso permite que o consultor veja o impacto projetado de suas estimativas no fluxo de caixa da fazenda, sem que esses valores sejam parte do sistema oficial. O badge de origem identifica a fonte de cada linha.
-
-### Grid Dia a Dia — Coluna Fornecedor/Credor
-No grid expandido por dia (aba Lançamentos, ao clicar em uma data), a coluna **Fornecedor/Credor** exibe o nome cadastrado da pessoa vinculada ao lançamento (campo pessoa_id da tabela pessoas). Se o lançamento não tiver pessoa vinculada, exibe a descrição do lançamento como fallback. Isso significa que o nome do fornecedor/credor vem do cadastro de Pessoas — não da descrição do lançamento em si.
+**Após editar dados:** use o botão **Regenerar Parcelas e CPs** para recalcular o cronograma (disponível apenas no modo edição).
 
 ---
 
-## MÓDULO 14 — CONTAS A RECEBER
+## MÓDULO 20 — FISCAL → EMISSÃO E CONTROLE
 
-**Caminho:** Menu superior → **Financeiro** → **Contas a Receber**
+### 20.1 Monitor NF-e Emitidas
+**Caminho:** Fiscal → Emissão e Controle → Monitor NF-e Emitidas
 
-### O que faz
-Gerencia todas as receitas previstas e realizadas: vendas de grãos, prestação de serviços, captações, etc.
+Lista todas as NF-e emitidas pela fazenda. Status: autorizada, cancelada, denegada. Acesso ao DANFE e XML.
 
-### Filtros de status
-- aberto, vencido, vencendo (próx. 7 dias), baixado, barter, previsão, todos
+### 20.2 Pendências Fiscais
+**Caminho:** Fiscal → Emissão e Controle → Pendências Fiscais
 
-### Como criar uma CR
-1. Clique em **+ Nova CR**
-2. Preencha (seletor em cascata): Produtor → Fazenda → Ano Safra → Ciclo (opcional) → Talhão (opcional)
-3. Campos obrigatórios:
-   - **Descrição** (*) — ex: "Venda de Soja Contrato 001"
-   - **Valor** (*) e **Moeda** (BRL / USD / barter)
-   - **Data de vencimento** (*)
-   - **Categoria** — Venda de grãos, Prestação de serviços, Arrendamento recebido, Captação de Custeio, etc.
-4. Campos opcionais: Forma de recebimento, Conta bancária, OG (Operação Gerencial), Centro de Custo, Observação, Produtor, Vínculo de Atividade (rural/PF/investimento)
+NF-e com pendências: rejeitadas pela SEFAZ, sem número de autorização, inutilizações pendentes.
 
-### Como dar baixa (registrar recebimento)
-1. Localize o lançamento na lista
-2. Clique em **Baixar**
-3. Informe a data de recebimento real
-4. Confirme
+### 20.3 GNRE
+**Caminho:** Fiscal → Emissão e Controle → GNRE
 
-### Reprogramar vencimento
-Se um recebimento não ocorreu na data prevista e a data deve ser alterada:
-1. Clique no ícone 📅 (calendário) na linha do lançamento
-2. Informe a **Nova Data de Vencimento**
-3. (Opcional) Informe uma observação explicando o motivo
-4. Clique em **Confirmar Reprogramação**
-- A observação do lançamento recebe automaticamente o prefixo "[Reprogramado para DD/MM/AAAA]"
-- A data original fica registrada na observação para rastreio
+Guia Nacional de Recolhimento de Tributos Estaduais para operações interestaduais (DIFAL, ST).
 
-### Parcelamento
-1. No modal de criação, marque **Parcelado**
-2. Informe número de parcelas e periodicidade
-3. O sistema gera todas as parcelas automaticamente com datas calculadas
+### 20.4 Remessas Logísticas
+**Caminho:** Fiscal → Emissão e Controle → Remessas Logísticas
 
-### Baixa em lote (borderô)
-1. Selecione múltiplos lançamentos
-2. Clique em **Baixar Selecionados**
-3. Informe a data de recebimento
+NF-e de remessa para armazéns e depósitos (CFOP 5905/6905).
 
-### Origens automáticas (badge azul)
-- **NF Saída** — CR gerada automaticamente ao emitir NF-e de venda
-- **Arrendamento** — CR gerada pelo módulo de arrendamento
-- **Contrato Financeiro** — captação de crédito
-- **Plantio** — vinculado a operação de lavoura
+### 20.5 Certificado Digital
+**Caminho:** Fiscal → Emissão e Controle → Certificado Digital
 
-### Memória de colunas por usuário
-O grid de CR também lembra, por usuário logado, quais colunas estão visíveis e a largura de cada coluna. Ajuste arrastando as bordas dos cabeçalhos ou pelo menu de contexto (botão direito no cabeçalho).
-
-### CR em dólar (USD) — cotação obrigatória
-Mesma regra da CP: se o campo de cotação não estiver informado, aparece "⚠ Abra e informe a cotação" em laranja. Abra a CR, preencha o campo **Cotação (R$/US$)** e salve.
+Gerencia o certificado A1 usado para assinar NF-e. Alerta de vencimento 30/15/7/1 dia antes.
 
 ---
 
-## MÓDULO 15 — CONTAS A PAGAR
+## MÓDULO 21 — FISCAL → OBRIGAÇÕES
 
-**Caminho:** Menu superior → **Financeiro** → **Contas a Pagar**
+### 21.1 LCDPR
+**Caminho:** Fiscal → Obrigações → LCDPR
 
-### O que faz
-Gerencia todas as despesas da fazenda: insumos, combustível, frete, arrendamento, manutenção, impostos, parcelas de financiamento, etc.
+Gerador do Livro Caixa Digital do Produtor Rural. Filtra lançamentos com vínculo_atividade = "rural" e entidade_contabil = "pf".
 
-### Abas de status (filtros rápidos)
-- **Aberto** — em aberto e dentro do prazo
-- **Vencido** — passou da data de vencimento sem pagamento
-- **Vencendo** — vence nos próximos 7 dias
-- **Baixado** — pago integralmente
-- **Parcial** — baixa parcial registrada (valor pago < valor total); badge amarelo; o saldo restante ainda está em aberto. Use esta aba para localizar e quitar o restante das contas parcialmente pagas
-- **Barter** — lançamentos em sacas (moeda barter)
-- **Previsão** — lançamentos marcados como previsão (não impactam o caixa real)
-- **Todos** — todos os status
+### 21.2 SPED ECD — Contábil
+**Caminho:** Fiscal → Obrigações → SPED ECD — Contábil
 
-> **Nota:** ao lançar CP diretamente (sem origem de NF), o campo **Talhão** não é exibido — não é necessário para lançamentos diretos. O campo **Ano Safra** é pré-preenchido automaticamente com a **safra vigente** no momento do lançamento. A Operação Gerencial salva originalmente em uma CP sempre é exibida corretamente ao editar, mesmo que não esteja na lista filtrada.
+Gerador do arquivo SPED ECD (leiaute 10) para pessoas jurídicas (CNPJ). Exporta blocos 0, I e 9 compatíveis com PGE da Receita Federal.
 
-### Categorias de CP
-- **Insumos:** Sementes, Fertilizantes, Defensivos Agrícolas, Inoculante, Adjuvante, Herbicida, Fungicida, Inseticida, Nematicida, Outros Insumos
-- **Combustível e Lubrificantes**
-- **Serviços Agrícolas** (empreitadas)
-- **Fretes**
-- **Arrendamento de Terra**
-- **Manutenção e Reparos**
-- **Impostos e Taxas** (ITR, INCRA, etc.)
-- **Juros e Encargos Financeiros**
-- **Pagamentos:** Custeio, Investimento, Empréstimo
-- **Seguro** (prêmio de apólice)
-- **Consórcio**
-- **Administração e Gestão**
-- **Outros**
+### 21.3 eSocial Rural
+**Caminho:** Fiscal → Obrigações → eSocial Rural
 
-### Como criar uma CP
-1. Clique em **+ Nova CP**
-2. Seletor em cascata: Produtor → Fazenda → Ano Safra → Ciclo → Talhão (conforme necessário)
-3. **Aba Principal** (*):
-   - Descrição (*), Valor (*), Moeda (BRL / USD / barter), Vencimento (*), Categoria (*)
-   - LCDPR: tipo de documento para o Livro Caixa Digital
-   - **Veículo / Máquina (opcional):** select unificado com máquinas da fazenda e veículos de transportadoras próprias. Aparece automaticamente quando há veículos cadastrados.
-     - Para categorias de **Manutenção** (OG 2.01.01.03.*): exibe todos os tipos (tratores, colheitadeiras, caminhões, etc.)
-     - Para demais categorias (multa de trânsito, impostos, etc.): exibe apenas veículos emplacados (caminhão, carreta, carro, veículos de transportadora)
-     - Formato de exibição: [ABC-1234] — Nome (Fazenda) ou [ABC-1234] (Transportadora) com grupos separados
-4. **Aba Adicionais:**
-   - Forma de pagamento, Conta de pagamento (banco), OG, Centro de Custo
-   - Produtor, Ciclo, Talhão (vínculos para rateio)
-   - Natureza: real ou previsão
-   - Encargos: juros (%), multa (%), desconto (%)
-   - Meses diferido (diferimento de ICMS)
-   - Observação
-5. Salvar
+Geração de eventos trabalhistas rurais para o eSocial (23 eventos S-1.0).
 
-### Parcelamento
-Marque **Parcelado**, informe número de parcelas e data da primeira. O sistema gera todas as parcelas.
+### 21.4 IBS / CBS — 2027
+**Caminho:** Fiscal → Obrigações → IBS / CBS — 2027
 
-### Reprogramar vencimento
-Se um pagamento não ocorreu na data prevista e a data deve ser alterada:
-1. Clique no ícone 📅 (calendário) na linha do lançamento
-2. Informe a **Nova Data de Vencimento**
-3. (Opcional) Informe uma observação explicando o motivo
-4. Clique em **Confirmar Reprogramação**
-- A observação recebe automaticamente o prefixo "[Reprogramado para DD/MM/AAAA]"
-- A data original fica registrada na observação para rastreio
+Preparação para a Reforma Tributária com vigência em 2027.
 
-### Baixa em lote (borderô de pagamentos)
-1. Filtre por fornecedor ou período
-2. Selecione os lançamentos
-3. Clique em **Borderô** → informe data de pagamento e conta debitada
+### 21.5 Parcerias & Grupos
+**Caminho:** Fiscal → Obrigações → Parcerias & Grupos
 
-### Lançamentos em borderô — regras
-- Lançamento que já pertence a um borderô exibe badge **BDR** azul na coluna de ações — não pode ser baixado individualmente
-- Ao clicar no lançamento, o popup mostra botão **"📋 Ver Borderô"** em vez de "Reabrir"
-- Para estornar individualmente, primeiro estorne o borderô completo
+Gerencia operações entre empresas do mesmo grupo econômico para fins fiscais.
 
-### Reclassificar
-CP já criada pode ter a categoria/OG alterada sem tocar nos lançamentos contábeis. Use **Reclassificar**.
+### 21.6 Operações Fiscais
+**Caminho:** Fiscal → Obrigações → Operações Fiscais
 
-### Coluna "Operação" no grid
-Exibe a Operação Gerencial analítica vinculada ao lançamento (ex: "Compra de Adubos e Fertilizantes"). Se aparecer a categoria sintética (ex: "Insumos") em vez da analítica, isso indica que a OG foi configurada quando o sistema usava outro modelo de tenant — o valor não está errado, apenas o lookup encontrou a OG pai.
-
-### Memória de colunas por usuário
-O grid de CP lembra, por usuário logado, quais colunas estão visíveis e a largura de cada coluna. Para ajustar:
-- **Adicionar/remover colunas:** clique com o botão direito sobre o cabeçalho da tabela → menu de colunas
-- **Redimensionar:** arraste a borda direita do cabeçalho de qualquer coluna
-- As preferências ficam salvas e não se perdem ao sair da tela
-
-### Origens automáticas (badge azul)
-- **NF Entrada** — CP gerada ao processar uma NF de compra no módulo de Estoque
-- **Plantio** — "Custo de Sementes" gerado pelo módulo de Plantio
-- **Pulverização** — "Defensivos Agrícolas" gerado pelo módulo de Pulverização
-- **Arrendamento** — CP gerada pelo módulo de arrendamento (quando em BRL)
-- **Pedido Compra** — ao aprovar um pedido de compra
-- **SIEG** — CP gerada automaticamente pela importação automática de NF-e
-
-### CP em dólar (USD) — cotação obrigatória
-Quando a CP está em USD, o sistema exibe abaixo do valor em dólar a linha de conversão em reais. Se a cotação ainda não foi informada, aparece o aviso laranja **"⚠ Abra e informe a cotação"**.
-
-**Como informar a cotação:**
-1. Clique em **Abrir / Editar** na CP
-2. Na aba Principal, o campo **Cotação (R$/US$)** estará **em branco** (campo vazio = não salvo)
-3. Digite a cotação (ex: 5,12) e clique em **Salvar alterações**
-4. A linha de conversão passará a exibir o equivalente em reais
-
-> **Atenção:** o campo de cotação não é pré-preenchido automaticamente — ele ficará em branco até que seja informado e salvo. Ao abrir o modal sem digitar nada e fechar, a cotação **não** é salva.
-
-### Baixa Parcial
-Quando o valor pago é menor do que o valor total da CP, o sistema registra uma **baixa parcial**:
-1. Clique no ícone de baixa (✓) na linha da CP
-2. No campo **Valor Pago**, informe o valor efetivamente pago (menor que o total)
-3. O status muda para **"parcial"** (badge amarelo)
-4. O saldo restante permanece no mesmo registro com o valor original — o sistema calcula a diferença automaticamente
-5. Opcionalmente informe uma **Nova Data de Vencimento** para o saldo restante
-6. Para quitar o restante, clique novamente no ícone de baixa e informe o saldo
-
-> Baixas parciais ficam visíveis no grid com status "parcial". Não é criado um novo registro — o lançamento original é atualizado com o status e o campo de nova data de vencimento.
+Parâmetros de CFOP padrão por tipo de operação (venda, remessa, devolução, etc.).
 
 ---
 
-## MÓDULO 16 — CONTRATOS FINANCEIROS (Crédito Rural)
+## MÓDULO 22 — RESULTADOS
 
-**Caminho:** Menu superior → **Financeiro** → **Contratos Financeiros**
+### 22.1 DRE Agrícola
+**Caminho:** Resultados → Resultado Econômico → DRE Agrícola
 
-### O que faz
-Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAMP, FCO, Finame, CPR, etc.), com cálculo automático de amortização (SAC, PRICE ou parcelas crescentes).
+Demonstração de Resultado do Exercício por safra/ciclo.
 
-### Tipos de contrato
-- Custeio, Investimento, Securitização, CPR (Cédula de Produto Rural), EGF, Outros
+**Blocos:** Receita Bruta → Deduções (Funrural 1,5% + SENAR 0,2%) → CPV → DGA (Despesas Gerais e Administrativas: RH/Serviços/Adm) → Despesas Financeiras.
 
-### Linhas de crédito disponíveis
-PRONAF, PRONAMP, FCO Rural, FNO Rural, FNE Rural, BNDES/ABC, BNDES Finame, PCA (Armazéns), Custeio Livre, Custeio SNCR, CPR Física, CPR Financeira, EGF, Crédito Rural Outros, Financiamento Livre, Outros
+**KPIs:** Receita Total, Custo Total, Resultado Líquido, Margem, Produtividade (sc/ha), EBITDA.
 
-### IA — Extração automática de Cédula por PDF (Add-on ia_cedula)
+**Ponto de equilíbrio:** custo total / preço médio por saca. Folga em sc/ha exibida graficamente.
 
-Quando o add-on **IA — Extração de Cédula** está habilitado para a conta, aparece um banner laranja no topo do formulário "Novo Contrato Financeiro":
-> "📄 Deixe que o Arato lança pra você. Anexe o PDF da Cédula aqui."
+### 22.2 Margens por Safra
+**Caminho:** Resultados → Resultado Econômico → Margens por Safra
 
-Clique em **Selecionar PDF**, escolha o PDF da cédula de crédito rural (CPR, CCB, contrato bancário, etc.). O sistema lê o documento e preenche automaticamente: credor, tipo, valor financiado, taxa de juros, sistema de amortização, data de início e data de vencimento. O usuário revisa e salva.
+Comparativo de margens entre ciclos e culturas.
 
-- Badge de **confiança** (alta/média/baixa) indica a qualidade da extração
-- Campos preenchidos pela IA podem ser editados manualmente antes de salvar
-- Se o contrato já foi salvo com PDF, aparece link "📎 Cédula anexada" na linha da lista
+### 22.3 Custos Totais
+**Caminho:** Resultados → Custos → Custos Totais
 
-**Ativação:** Admin → Módulos → Add-ons Opcionais → "IA — Extração de Cédula". Sem o add-on ativo, o banner não aparece.
+Consolidação de todos os custos por safra com agrupamento por categoria.
 
-### Como criar um contrato financeiro
+### 22.4 Custo / ha
+**Caminho:** Resultados → Custos → Custo / ha
 
-**Aba Principal:**
-- Fazenda (*), Descrição (*), Credor (banco/agência) (*), Tipo (*), Linha de Crédito
-- Valor Financiado (*), Moeda, Data do Contrato (*), Número do Documento
-- Taxa de Juros aa (%) → convertida automaticamente para am (%)
-- IOF (%), TAC, Outros Custos
-- Conta de Liberação (banco onde entra o dinheiro), Conta de Pagamento
+Análise de custo por hectare por talhão e ciclo.
 
-**Configuração de Amortização:**
-- **Tipo de Cálculo:** SAC (amortização constante), PRICE (parcela constante), Crescentes (parcelas crescentes com % de crescimento)
-- Número de Parcelas, Periodicidade (mensal, trimestral, semestral, anual)
-- Carência (meses): tipo "só juros" ou "total" (capitaliza o principal)
-- Data da Primeira Parcela
-- Botão **Gerar Parcelas** → sistema calcula toda a tabela Price/SAC automaticamente
+### 22.5 Regras de Rateio
+**Caminho:** Resultados → Custos → Regras de Rateio
 
-**Aba Liberação:**
-- Parcelas de liberação (quando o dinheiro é liberado em etapas)
+Define como custos comuns são rateados entre ciclos por proporção configurável.
 
-**Aba Pagamento:**
-- Tabela de amortização gerada automaticamente (editável)
-- Baixa individual de parcelas
+### 22.6 Aplicações por Ciclo
+**Caminho:** Resultados → Custos → Aplicações por Ciclo
 
-**Aba Garantias:**
-- Tipo de garantia: Alienação Fiduciária, Hipoteca, Penhor Rural, Aval, Nota Promissória, CPR como Garantia, Cessão de Recebíveis, Outros
-- Tipo de bem: Imóvel Rural, Imóvel Urbano, Máquina/Veículo, Semovente, Produto Agrícola, Outro
-- Grau: 1°, 2°, 3°
-- Valor de Avaliação
+Relatório consolidado de aplicações (pulverizações, adubações) por safra/ciclo. Exportação PDF, XLSX e WhatsApp.
 
-**Aba Centro de Custo:**
-Rateio entre fazendas/ciclos com percentual por linha
+### 22.7 Manutenção de Máquinas
+**Caminho:** Resultados → Custos → Manutenção de Máquinas
 
-**Aba Aditivos:**
-Registro de aditivos contratuais (prorrogação, novação, etc.)
+Relatório de custos de manutenção por máquina e período.
 
-**Aba Movimentações:**
-Histórico de todas as baixas realizadas
+### 22.8 Produtividade
+**Caminho:** Resultados → Desempenho → Produtividade
 
-### Importação em lote
-Clique em **Importar Contratos** para subir um arquivo padronizado com múltiplos contratos e suas tabelas de amortização.
+Análise de produtividade real vs esperada por talhão e ciclo (sc/ha).
+
+### 22.9 Gastos por Classificação
+**Caminho:** Resultados → Desempenho → Gastos por Classificação
+
+Despesas agrupadas por Operação Gerencial.
 
 ---
 
-## MÓDULO 17 — TESOURARIA
+## MÓDULO 23 — CONFIGURAÇÕES → CADASTROS
 
-**Caminho:** Menu superior → **Financeiro** → **Tesouraria**
+### 23.1 Pessoas e Entidades
+**Caminho:** Configurações → Cadastros → Pessoas e Entidades
 
-### O que faz
-Lançamentos avulsos que não são CP ou CR tradicionais: transferências entre contas, mútuo entre empresas, ajustes de saldo, taxas bancárias, aplicações e resgates financeiros.
+Cadastro de compradores, fornecedores, transportadoras, arrendantes e outras entidades externas (CNPJ/CPF, IE, PIX, dados bancários, subcategoria).
 
-### Tipos de operação
-- Mútuo entre Empresas — empréstimo entre PJ do grupo
-- Seguros — pagamento de prêmios
-- Consórcio — parcelas de consórcio
-- Ajuste de Saldo — correção de saldo de conta bancária
-- Transferência entre Contas — movimentação interna
-- Taxa Bancária — tarifas e tarifas bancárias
-- Aplicação Financeira — saída para investimento
-- Resgate de Aplicação — retorno de investimento
-- Outros
+### 23.2 Produtores
+**Caminho:** Configurações → Cadastros → Produtores
 
-### Como lançar
-1. Clique em **+ Lançamento Tesouraria**
-2. Selecione o tipo de operação
-3. Informe: conta de origem, conta de destino (se aplicável), valor, data, descrição
-4. Para ajuste de saldo: informe saldo atual e saldo correto (sistema calcula diferença)
-5. Salve
+Cadastro dos produtores rurais com CPF/CNPJ, inscrições estaduais por estado (IE), dados bancários.
 
----
+### 23.3 Fazendas e Talhões
+**Caminho:** Configurações → Cadastros → Fazendas e Talhões
 
-## MÓDULO 18 — SEGUROS
+Cadastro completo de fazendas (dados gerais, matrículas, certidões CAR/ITR/CCIR, arrendamentos) e talhões com GPS.
 
-**Caminho:** Menu superior → **Financeiro** → **Seguros**
+### 23.4 Funcionários
+**Caminho:** Configurações → Cadastros → Funcionários
 
-### O que faz
-Gerencia apólices de seguro da fazenda: rural, vida, patrimonial, automóvel, responsabilidade civil, máquinas e outros. Controla prêmios e sinistros.
+Cadastro de funcionários para folha de pagamento (produtor PF e empresa PJ).
 
-### Ramos de seguro disponíveis
-rural, vida, patrimonial, automóvel, responsabilidade civil, máquinas, outro
+### 23.5 Catálogo de Insumos
+**Caminho:** Configurações → Cadastros → Catálogo de Insumos
 
-### Como cadastrar uma apólice
-1. Clique em **+ Nova Apólice**
-2. Preencha:
-   - Número da Apólice (*), Seguradora (*), Ramo (*), Objeto Segurado (*)
-   - Importância Segurada (*) — valor máximo de cobertura
-   - Prêmio Anual (*), Forma de Pagamento do Prêmio
-   - Vigência: Data Início (*), Data Fim (*)
-   - Corretora, Contato do Corretor, Observação
-3. Salve
+Cadastro de sementes, fertilizantes, defensivos, corretivos e outros insumos com custo médio, estoque mínimo e unidade.
 
-### Prêmios
-Após criar a apólice, o sistema gera automaticamente as parcelas de prêmio conforme a forma de pagamento. Registre cada pagamento clicando em **Pagar**.
+### 23.6 Itens Gerais
+**Caminho:** Configurações → Cadastros → Itens Gerais
 
-### Sinistros
-Na apólice, clique em **+ Sinistro**. Informe: data da ocorrência, descrição, valor reclamado, número de protocolo. Acompanhe o status: aberto → em_análise → pago / negado.
+Produtos e serviços que não são insumos agrícolas (peças, ferramentas, materiais de escritório).
 
-### Alertas
-- O sistema alerta automaticamente quando uma apólice está vencendo (7 dias antes)
-- Apólices vencidas aparecem com status "vencida" em vermelho
+### 23.7 Depósitos & Armazéns
+**Caminho:** Configurações → Cadastros → Depósitos & Armazéns
+
+Cadastro de armazéns, silos, tulhas, galpões e outros depósitos físicos.
+
+### 23.8 Contas Bancárias
+**Caminho:** Configurações → Cadastros → Contas Bancárias
+
+Cadastro das contas bancárias da fazenda para vinculação com CP/CR e conciliação OFX.
 
 ---
 
-## MÓDULO 19 — CONSÓRCIOS
+## MÓDULO 24 — CONFIGURAÇÕES → SISTEMA
 
-**Caminho:** Menu superior → **Financeiro** → **Consórcios**
+### 24.1 Parâmetros Fiscais (NF-e)
+**Caminho:** Configurações → Sistema → Parâmetros Fiscais (NF-e)
 
-### O que faz
-Gerencia cotas de consórcio de máquinas, imóveis e outros bens. Controla parcelas mensais, contemplação e migração para financiamento. Parcelas não pagas geram Contas a Pagar automaticamente no Financeiro.
+Configura ambiente (homologação/produção), série, CNPJ emitente, IE, UF, código IBGE do município, CRT, CFOPs padrão, CSTs, NCMs por commodity, caminho do certificado A1.
 
-> **Escopo:** Consórcios são carregados por **conta** (não por fazenda ativa). Todos os consórcios de todas as fazendas da conta aparecem na mesma lista.
+### 24.2 Operações Fiscais / CFOP
+**Caminho:** Configurações → Sistema → Operações Fiscais / CFOP
 
-### Como cadastrar um consórcio
-1. Clique em **+ Novo Consórcio**
-2. Preencha os campos obrigatórios:
-   - **Administradora*** — texto livre (ex: Porto Seguro, Embracon)
-   - **Número da Cota*** — código da cota
-   - **Grupo** — número do grupo do consórcio
-   - **Tipo de Bem*** — select: máquina agrícola, veículo leve, veículo pesado, imóvel rural, imóvel urbano, outros
-   - **Bem (descrição)** — texto livre (ex: "Tratores 120cv x3")
-   - **Valor do Crédito (R$)***
-   - **Valor da Parcela Mensal (R$)***
-   - **Total de Parcelas*** e **Parcelas já Pagas***
-   - **Data de Início*** — data da primeira parcela
-   - **Status*** — A Contemplar ou Contemplado
-   - **Agricultor / Consorciado** — select dos produtores cadastrados. Vincula o produtor à cota (útil para LCDPR e controle por CPF)
-   - **Fazenda** — qual fazenda da conta recebe o bem
-   - **Observações** — texto livre
-3. Clique em **Salvar**. O sistema gera automaticamente as parcelas e as Contas a Pagar (CP) para todas as parcelas ainda não pagas
+Tabela de CFOP padrão por tipo de operação fiscal.
 
-### Campos automáticos ao salvar
-- Parcelas futuras (depois das parcelas_pagas) → criadas em parcelas_consorcio
-- Contas a Pagar → criadas em lancamentos com:
-  - Categoria: "Consórcio — A Contemplar" ou "Consórcio — Contemplado"
-  - Status: em_aberto
-  - Origem: consorcio
-  - Vencimento = data de cada parcela
+### 24.3 Operações Gerenciais
+**Caminho:** Configurações → Sistema → Operações Gerenciais
 
-### Editar um consórcio existente
-1. Clique em **Abrir** na linha do consórcio (abre em modo visualização)
-2. Clique em **✏ Editar** dentro do modal para habilitar os campos
-3. Ajuste os dados e salve — apenas os dados cadastrais são atualizados; as parcelas existentes **não são regeneradas automaticamente**
-4. Para recalcular as parcelas e CPs após editar dados (ex: novo valor de parcela), use o botão **Regenerar Parcelas e CPs** (ver abaixo)
+Plano de contas gerencial — associa cada tipo de lançamento a uma conta no plano de contas.
 
-### Regenerar Parcelas e CPs
-Botão disponível dentro do modal de edição (aparecer somente no modo edição). Recalcula todo o cronograma do consórcio.
+### 24.4 Plano de Contas
+**Caminho:** Configurações → Sistema → Plano de Contas
 
-**O que faz:**
-- Remove todas as parcelas existentes do banco
-- Remove todas as CPs em aberto vinculadas ao consórcio (não remove as já pagas)
-- Gera novo conjunto de parcelas (total_parcelas) e CPs para as parcelas futuras
+Hierarquia de contas gerenciais (grupos, subgrupos, contas analíticas).
 
-**Quando usar:** sempre que alterar valor da parcela, total de parcelas, parcelas pagas ou data de início.
+### 24.5 Classificação Automática
+**Caminho:** Configurações → Sistema → Classificação Automática
 
-Após a conclusão, um alerta exibe: "✅ N parcelas criadas — N CPs lançadas no financeiro."
+Regras automáticas para classificar NFs capturadas pelo SIEG por categoria e OG (baseadas em CNPJ, palavras-chave, CFOP).
 
-**Atenção:** para ver as CPs vencidas (passadas), clique na aba **Vencidos** em **Contas a Pagar**. O sistema busca automaticamente 2 anos para trás ao entrar nessa aba.
+### 24.6 Taxas de Referência
+**Caminho:** Configurações → Sistema → Taxas de Referência
 
-### Extração por IA (PDF da cédula / contrato)
-Se a administradora fornece o contrato em PDF, é possível extrair os dados automaticamente:
-1. Dentro do modal de novo consórcio, clique no botão de upload de PDF
-2. O sistema envia o PDF para a IA (Claude) que extrai os campos
-3. Campos preenchidos automaticamente: administradora, número da cota, grupo, tipo de bem, valor do crédito, valor da parcela, total de parcelas, data de início
-4. **Agricultor**: se o PDF contém o CPF do tomador e este CPF corresponde a um produtor cadastrado, o campo Agricultor é preenchido automaticamente
-5. Confira os dados extraídos antes de salvar — a IA pode errar em documentos com formatação não padrão
+Parâmetros financeiros: SELIC, IGP-M, IPCA, CDI — usados em cálculos de correção monetária.
 
-### Contemplação
-Quando a cota for contemplada, edite o consórcio e mude o status para **Contemplado**.
-- O sistema atualiza a categoria das CPs para "Consórcio — Contemplado"
-- Use **Regenerar Parcelas e CPs** para atualizar todo o cronograma
-- Para registrar formalmente: anote a data e tipo de contemplação no campo Observações
+### 24.7 Contabilidade
+**Caminho:** Configurações → Sistema → Contabilidade
 
-### Erros comuns
-- **"CPs não aparecem em Contas a Pagar"**: Verifique a data de vencimento das parcelas. Se são antigas (passadas), clique na aba **Vencidos** em Contas a Pagar — o sistema busca 2 anos para trás nessa aba.
-- **"Regenerar não faz nada"**: O modal precisa estar em modo **Edição** (clique em ✏ Editar primeiro).
-- **"Parcelas geradas mas sem CP"**: O valor da parcela mensal pode estar zerado — verifique e ajuste; depois Regenerar.
-- **"Agricultor não preenche automaticamente pela IA"**: O CPF do tomador não foi encontrado nos produtores cadastrados. Selecione manualmente o agricultor no select após a extração.
+Parâmetros contábeis por entidade (PF/PJ): método de escrituração (G/R/B), dados do livro, responsável técnico, termos de abertura/encerramento.
 
 ---
 
-## MÓDULO 20 — ENDIVIDAMENTO
+## MÓDULO 25 — CONFIGURAÇÕES → USUÁRIOS
 
-**Caminho:** Menu superior → **Financeiro** → **Endividamento**
+### 25.1 Usuários e Permissões
+**Caminho:** Configurações → Usuários → Usuários e Permissões
 
-### O que faz
-Visão consolidada do endividamento total da fazenda por credor, tipo e ano de vencimento das parcelas. Permite análise de concentração de dívida no tempo.
+Gerencia usuários da conta: criação, e-mail, senha, permissões por módulo.
 
-### Filtros
-- Produtor, Status (ativo/quitado/cancelado), Moeda
-- Intervalo de anos (ex: 2025 a 2030)
-- Atalhos: Próx. 12 meses / 3 anos / 5 anos / Tudo
-- Mostrar apenas parcelas em aberto (padrão) ou todas
+### 25.2 Auditoria
+**Caminho:** Configurações → Usuários → Auditoria
 
-### Estrutura da tabela
-- Linha N1 (clicável): totais por tipo (Custeio, Investimento, Compra de Terra, Consórcio, etc.)
-- Linha N2 (expande ao clicar N1): contratos individuais do tipo
-- Linha N3 (expande ao clicar N2): parcelas individuais do contrato
-- Colunas: um ano por coluna, com valores de amortização + juros
-- Coluna atual destacada em azul; anos futuros em cinza com label "proj."
-
-### Tipos de endividamento
-Custeio, Investimento, Securitização, CPR, EGF, Compra de Terra, Compra de Imóvel, Consórcio Contemplado, Consórcio Não Contemplado, Outros
-
-### Impressão
-Botão **Imprimir** gera PDF multi-página com tabela completa. A impressão inclui tanto os financiamentos (tabela azul-escuro) quanto as parcelas de Compra de Imóveis Rurais (tabela marrom), mantendo a estrutura de colunas por ano.
-
-### XLSX
-Botão **XLSX** exporta todas as linhas em planilha com coluna extra **Bloco** (Financiamento / Compra de Imóvel) para diferenciar as origens.
-
-### Bloco Compra de Imóveis Rurais
-Abaixo da tabela principal de financiamentos, aparece automaticamente uma segunda tabela (cabeçalho em marrom) quando existem parcelas cadastradas em **Compras de Terra → Contratos de Compra de Terra**. Essa tabela exibe as obrigações de pagamento ao vendedor do imóvel, agrupadas por imóvel:
-
-- **Linha N1 (clicável)**: imóvel — nome do imóvel + vendedor + valor total da escritura
-- **Linha N2 (expande ao clicar N1)**: parcelas individuais com data de vencimento, valor e status (pendente / pago / atrasado)
-- As colunas por ano seguem o mesmo padrão da tabela de financiamentos
-- O saldo pendente das parcelas de compra de imóvel é **somado ao KPI "Saldo Devedor Total"** do cabeçalho
-- O filtro "Apenas em aberto" também filtra as parcelas de imóveis rurais (oculta pagas)
-
-> Se não houver nenhuma compra de terra cadastrada com parcelas a vencer, a tabela marrom simplesmente não aparece.
-
----
-
-## MÓDULO 21 — ESTOQUE
-
-**Caminho:** Menu superior → **Compras & Estoque** → **Estoque**
-
-### O que faz
-Controla o estoque de insumos (sementes, fertilizantes, defensivos, combustível), equipamentos e grãos. Registra entradas por NF e baixas automáticas pelas operações de campo.
-
-### Abas disponíveis
-1. **Posição** — saldo atual por produto com filtros e valor total
-2. **NF Entrada** — lançamento de notas fiscais de compra de insumos
-3. **Terceiros** — estoque em armazém de terceiros (por fornecedor/depositário)
-4. **Movimentações** — histórico completo de entradas e saídas com filtros
-5. **Relatórios** — sub-aba Kardex (rastreamento produto a produto)
-
-### Aba Posição
-- **Busca** por nome do produto
-- **Filtro por depósito**: dropdown "Todos os depósitos" → selecione um depósito/armazém para ver só o estoque daquele local
-- Filtros por categoria: Sementes, Fertilizantes, Defensivos, Corretivos, Produtos, ⚠ Mínimo, ⛔ Negativos
-- Badge vermelho: produto abaixo do estoque mínimo
-- Valor total em estoque (custo médio × saldo)
-
-### Aba NF Entrada — como lançar uma nota fiscal de compra
-
-**Modo XML (recomendado):**
-1. Clique em **Lançar NF de Entrada**
-2. Clique em **Carregar XML**
-3. Selecione o arquivo .xml da NF-e
-4. O sistema preenche automaticamente: fornecedor, CNPJ, número da NF, data, valor total
-5. Na etapa 2, verifique o vínculo de cada item da NF com o produto no estoque:
-   - O sistema tenta associar automaticamente por nome similar
-   - Corrija manualmente se necessário
-6. Para cada item, informe o tipo de alocação:
-   - **Estoque** — entra no estoque para uso posterior
-   - **VEF (remessa)** — CFOP 1922/2922 — estoque em fazenda de terceiro
-   - **Remessa** — CFOP 1116/1117 — remessa para depósito
-7. Clique em **Processar NF**
-
-**Modo Manual:**
-1. Clique em **Lançar NF de Entrada**
-2. Preencha manualmente: fornecedor, CNPJ, número, série, data, valor
-3. Na etapa 2, adicione os itens manualmente (produto, quantidade, valor unitário)
-4. Clique em **Processar NF**
-
-**O que é automático ao processar a NF:**
-1. Entrada no estoque pelo custo médio ponderado
-2. Lançamento de CP vinculado à nota
-3. Atualização do custo médio do produto
-
-**Alerta de preço:** se o valor unitário da NF for 10% maior que o custo médio atual, o sistema exibe alerta antes de confirmar.
-
----
-
-## MÓDULO 22 — PEDIDOS DE COMPRA
-
-**Caminho:** Menu superior → **Compras & Estoque** → **Pedidos de Compra**
-
-### O que faz
-Controla o processo de compra de insumos: da criação do pedido (rascunho) até a confirmação de entrega, gerando automaticamente a NF de entrada ao receber.
-
-### Status do pedido
-rascunho → aprovado → parcialmente_entregue → entregue / cancelado
-
-### Como criar um pedido
-
-**Aba Principal:**
-- Fazenda (*), Data (*), Fornecedor (*), Tipo (produto / serviço / ambos)
-- **Nº do Pedido** — campo editável (identificador do pedido)
-- **Produtor responsável** — seletor de produtor com três colunas: Nome | I.E. | Município. A coluna I.E. exibe a Inscrição Estadual registrada em Cadastros → Produtores → IEs. Se a IE aparecer "—" para um produtor, é porque ela ainda não foi cadastrada (acesse Cadastros → Produtores → editar produtor → aba IEs para adicionar).
-- Fiscal: emite NF? Sim/Não (pedidos fiscais têm aba "NFs Vinculadas" em vez de "Entregas")
-- Cotação da moeda (para pedidos em USD), Possui Ordem de Compra, Entrega única ou fracionada
-
-**Aba Itens / Serviços / CC:**
-- Adicione itens com: produto/insumo (*), quantidade (*), unidade, preço unitário, total
-- Serviços: descrição, valor
-- CC: rateio por Centro de Custo
-
-**Aba Desconto:**
-- Antecipação: juros (%) e desconto de antecipação (%)
-- Desconto de pontualidade (%)
-- Desconto adicional (% ou valor fixo)
-- Frete
-
-**Aba Entregas** (pedidos não-fiscais):
-- Data prevista, endereço de entrega
-- Após criação: registre entrega item a item com quantidade efetiva recebida
-- Barra de progresso por item
-- Status muda automaticamente conforme entrega acumulada
-
-**Aba NFs Vinculadas** (pedidos fiscais):
-- Lista todas as NFs de entrada já lançadas vinculadas a este pedido
-- A baixa do CP de um pedido fiscal ocorre automaticamente ao processar a NF de entrada, não há botão de baixa manual
-
-**Aba Cobrança:**
-- Forma de pagamento, suporte a barter, data de vencimento
-
-**Aba Documentos:**
-- Anexo de cotações, ordens de compra, etc.
-
-### Busca na lista
-A busca na lista filtra por **descrição**, **fornecedor** e **número do pedido** (campo nr_pedido). Útil para localizar um pedido pelo número informado na nota do fornecedor.
-
-### Exclusão de pedido
-Pedidos com NFs de entrada vinculadas **não podem ser excluídos**. Para cancelar, use o status "Cancelado" em vez de excluir.
-
----
-
-## MÓDULO 23 — NF DE ENTRADA DE PRODUTOS
-
-**Caminho:** Menu superior → **Compras & Estoque** → **NF de Produtos**
-
-### O que faz
-Lança notas fiscais de compra de produtos (mercadorias). Fluxo em 3 passos (Cabeçalho → Dados → Itens & Processamento). Integra com Sieg para importação automática de NF-e recebidas.
-
-### Passo 1 — Upload / Sieg
-- **Sincronizar SIEG:** botão para importar NF-e recebidas automaticamente do serviço Sieg
-- **Nova NF Manual:** preenche todos os campos manualmente
-- Ao clicar em **Processar** numa NF do Sieg, ela avança para o Passo 2 (Cabeçalho)
-
-### Passo 2 — Cabeçalho
-Campos principais:
-- **Número da NF** (*), Série, CFOP
-- **Emitente (Fornecedor)** — select com nome e CNPJ do cadastro de Pessoas
-
-  > **Auto-preenchimento por CNPJ:** ao importar um XML ou NF do Sieg, o sistema compara o CNPJ do emitente com o cadastro de Pessoas da conta. Se houver correspondência, o campo **Emitente (Fornecedor)** é preenchido automaticamente. O mesmo ocorre ao digitar o CNPJ manualmente e sair do campo.
-  >
-  > Se o fornecedor não estiver cadastrado, aparece o botão **+ Cadastrar** que cria a pessoa direto com os dados da NF.
-
-- **Nome do emitente** — preenchido automaticamente pelo XML/Sieg; editável manualmente
-- **CNPJ do Emitente** — auto-preenchido pelo XML; ao sair do campo, aplica classificação automática e tenta vincular o fornecedor
-- Data de emissão (*), Data de entrada, Valor Produtos (R$)
-- Natureza da Operação, Chave de Acesso NF-e (44 dígitos)
-- **Vencimento da CP** — data de vencimento da conta a pagar gerada
-- **Ano Safra** e **Ciclo** — vinculação contábil e de custo
-- **Operação Gerencial** — classificação no plano de contas
-- **Vínculo de Atividade**: Atividade Rural (LCDPR), Pessoa Física, Investimento, Não tributável
-- **Entidade Contábil**: PF — Produtor Rural (CPF) ou PJ — Empresa (CNPJ)
-- Impostos adicionados ao total: IPI, ST, FCP-ST, DIFAL, Desconto
-
-### Passo 3 — Itens & Processamento
-- **Tabela de itens**: cada item da NF é associado a um insumo/produto do catálogo
-- **Toggle Estoque / C. Custo** por item: define se vai para estoque (contagem física) ou direto para centro de custo
-- **Conversão de unidade**: ex. BAG→KG, TON→KG detectado automaticamente pelo XML
-
-**Depósito padrão:**
-- Select de depósito para todos os itens que irão para estoque e não têm depósito individual
-- **Toggle Próprio / Terceiro** acima do select — filtra a lista:
-  - **Próprio:** armazéns e silos da fazenda (insumo_fazenda, armazem_fazenda, almoxarifado, oficina)
-  - **Terceiro:** depósitos de fornecedores ou armazenadores externos (terceiro, armazem_terceiro)
-- A lista exibe **todos os depósitos de todas as fazendas da conta** (não apenas a fazenda ativa)
-
-### Campos da NF de Produtos (resumo técnico)
-- Fornecedor, CNPJ, IE, Número da NF, Série, CFOP, Natureza da Operação
-- Data de emissão, Data de entrada
-- Itens: descrição, NCM, CFOP do item, quantidade, unidade, valor unitário
-- Impostos: ICMS CST/alíq, PIS CST/alíq, COFINS CST/alíq
-- Vínculo de Atividade (rural / PF / investimento / não tributável)
-- Entidade Contábil (PF produtor ou PJ empresa)
-
-### Erros comuns — NF de Produtos
-- **Fornecedor não preenchido automaticamente pelo Sieg:** o CNPJ da NF pode não estar cadastrado em Pessoas. Vá em **Cadastros → Pessoas**, cadastre o fornecedor com o CNPJ correto e volte para processar a NF.
-- **Depósito não aparece:** os depósitos listados dependem do toggle Próprio/Terceiro. Mude o toggle e verifique se o depósito desejado aparece.
-- **"Associar ao insumo":** se um item não é encontrado no catálogo, clique no select da coluna "Insumo / Centro Custo" e busque pelo nome. Se não houver, crie o insumo em **Cadastros → Insumos**.
-- **Centro de Custo (CC) não aparece no Passo 3:** o select de CC no processamento de NF busca os centros de custo de **todas as fazendas da conta** — não apenas da fazenda ativa. Se ainda aparecer vazio, verifique se existem centros de custo cadastrados em **Cadastros → Centros de Custo**.
-- **Estoque duplicado / saldo incorreto após processar NF:** clique em **Estornar** na linha da NF processada (botão laranja claro). Isso reverte todo o estoque creditado e o lançamento financeiro (CP), retornando a NF para "Pendente". Depois reabra via "Processar", corrija os itens e processe uma única vez.
-- **Não consigo reprocessar uma NF já processada:** proposital — o sistema bloqueia reprocessamento para evitar duplicação de estoque. Use o botão **Estornar** primeiro.
-- **NF lançada pelo WhatsApp:** aparece na grade com o badge "📱 WhatsApp" em verde abaixo do valor. Tem os mesmos botões de ação que qualquer outra NF (Estornar, Excluir). Para excluí-la completamente (inclusive a pendência fiscal e o CP associado), clique em **Excluir** — o sistema remove todos os registros vinculados automaticamente.
-- **Não estou encontrando a NF do WhatsApp:** acesse **Compras → NF de Produtos** e limpe todos os filtros (Status, Tipo, Origem). Busque pelo nome do emitente ou pelo número da NF. As NFs do WhatsApp ficam com o badge "📱 WhatsApp" na coluna de valor.
-
-### Botões de ação por status — NF de Produtos
-| Status | Botões disponíveis |
-|---|---|
-| Pendente | Processar, Excluir |
-| Processada | Ver, DANFE, Devolver (se tipo = insumos), Reclassificar, Estornar, Excluir |
-| Cancelada | Excluir |
-
-> **Excluir NF Processada:** o sistema reverte automaticamente todo o estoque, movimentações PA, lançamento CP e pendências fiscais antes de excluir o registro. A operação é segura e usa processamento servidor.
-
----
-
-## MÓDULO 24 — NF DE SERVIÇOS (NFS-e)
-
-**Caminho:** Menu superior → **Compras & Estoque** → **NF de Serviços**
-
-### O que faz
-Lança notas fiscais de serviços recebidos (NFS-e) com código LC 116/2003 e cálculo de ISS e retenções federais. Completamente separado de NF de produtos.
-
-### Wizard em 3 passos
-
-**Passo 1 — Prestador:**
-- Prestador (select do cadastro de Pessoas), CNPJ, Município de prestação
-- Regime de tributação: Simples Nacional, Lucro Presumido, etc.
-
-**Passo 2 — Serviço:**
-- Número da NFS-e, Data, Código do serviço LC 116/2003 (13 opções)
-- Discriminação dos serviços (texto livre)
-- Valor dos serviços, Deduções
-
-**Passo 3 — Tributação:**
-- ISS: alíquota (%), valor calculado automaticamente
-- Retenções federais: PIS, COFINS, CSLL, IRRF, INSS (se aplicável)
-- Valor líquido = valor serviços - retenções
-
----
-
-## MÓDULO 25 — FATURAMENTO POR CONTRATO (NF-e de Venda de Grãos)
-
-**Caminho:** Menu superior → **Comercial** → **Faturamento por Contrato**
-
-### O que faz
-Emissão assistida de NF-e de venda de grãos vinculada a contratos e romaneios. O fluxo guia o usuário em 3 passos: (1) escolha do tipo de emissão, (2) seleção do contrato, (3) seleção do romaneio/carga, (4) preenchimento do formulário NF-e.
-
-> **Nota:** A tela "Triangulação de NF" foi desativada. As operações de **Venda a Ordem** e **Entrega Futura** agora são tratadas diretamente no Faturamento por Contrato, com fluxo de 2 NF-es e referenciamento automático.
-
-### Tipos de emissão disponíveis
-| Tipo | CFOP | Quando usar |
-|------|------|-------------|
-| Venda normal (produção própria) | 6.101 | Remessa física direta ao comprador |
-| Venda para exportação (VFE-PF) | 6.501 | Formação de lote para exportação |
-| Remessa simbólica — Entrega Futura | 6.117 | Contrato fixado, produto ainda no armazém |
-| Remessa por conta e ordem (Venda a Ordem) | 6.923 | Acompanha o caminhão em operação triangular |
-
-### Fluxo Venda a Ordem (2 NF-es obrigatórias — art. 129 RICMS/MT)
-A Venda a Ordem ocorre quando o produtor vende para Trading A, mas a mercadoria vai fisicamente para Trading B (destinatário final).
-
-**Passo 1 — NF 6.101 simbólica (emitida para Trading A):**
-1. Selecione o contrato marcado com **🔄 Venda a Ordem**
-2. Selecione o romaneio/carga
-3. No formulário, o CFOP 6.101 já estará selecionado; destinatário = Trading A
-4. Emita a NF-e → sistema confirma com a chave de acesso da NF 6.101
-
-**Passo 2 — NF 6.923 de remessa física (emitida para Trading B):**
-1. O sistema exibe o painel de conclusão com a chave da NF 6.101 já copiada
-2. Clique em **"Emitir NF 6.923 (remessa física) →"**
-3. O formulário abre pré-preenchido com CFOP 6.923 e a chave NFref na aba Fiscal
-4. Altere o destinatário para Trading B (destinatário físico)
-5. Emita a NF 6.923 — ela acompanha o transporte fisicamente
-
-**Verificação:** a aba Fiscal da NF 6.923 deve mostrar a seção azul com a chave de 44 dígitos da NF 6.101.
-
-### Fluxo Entrega Futura (2 NF-es obrigatórias)
-A Entrega Futura ocorre quando o preço é fixado hoje mas o produto só sairá fisicamente depois.
-
-**Passo 1 — NF 6.117 simbólica (emitida na contratação):**
-1. Selecione CFOP 6.117 no formulário
-2. Emita a NF simbólica → sistema registra a chave
-
-**Passo 2 — NF 6.101 de saída física (emitida no embarque):**
-1. O sistema exibe o painel amarelo com a chave da NF 6.117
-2. Clique em **"Emitir NF 6.101 (saída física) →"**
-3. O formulário abre com CFOP 6.101 e a chave NFref na aba Fiscal
-4. Emita — ela acompanha a saída física da mercadoria
-
-### Seção NFref (aba Fiscal)
-- Aparece automaticamente quando CFOP é 6.923 ou 6.117
-- Campo "Chave da NF referenciada": 44 dígitos numéricos — validado em tempo real
-- Campo "Número da NF referenciada": número legível (ex: 000123)
-- Os valores são inseridos na tag <NFref> do XML da NF-e
-
-### Formulário NF-e — 8 abas
-- **Produtor**: emitente (CPF/CNPJ, IE, endereço)
-- **Destinatário**: comprador (seleção do cadastro de Pessoas)
-- **Operações**: produto, CFOP, quantidade, preço, impostos
-- **Transportador**: frete, transportadora, placa, RNTRC
-- **Retirada**: local de retirada se diferente do emitente
-- **Fiscal**: NFref (quando 6.923/6.117), guia ICMS, NF do produtor, situação fiscal
-- **Observações**: texto legal automático + obs. manual
-- **Pontualidade**: desconto, referência de contrato
-
-### Erros comuns
-- **"NFref obrigatória"**: ao emitir NF 6.923 ou 6.101 de entrega futura, preencha a chave de 44 dígitos na aba Fiscal
-- **Chave com dígitos incorretos**: o campo NFref aceita apenas números e valida os 44 dígitos
-- **Destinatário errado em 6.923**: lembre que a NF 6.923 vai para Trading B (destinatário físico), não para Trading A
-
----
-
-## MÓDULO 25B — NF-e / FISCAL (Notas Fiscais — visão geral)
-
-**Caminho:** Menu superior → **Fiscal** → **NF-e**
-
-### O que faz
-Listagem geral de NF-es emitidas, cancelamento, devolução, NF complementar, certificado A1 e contingência.
-
-### Abas disponíveis
-1. **Venda** — NF-e de venda de produção
-2. **Devolução** — NF-e de devolução
-3. **Cancelamento** — NF-e canceladas
-4. **Complemento** — NF Complementar (correção de valor)
-5. **Certificado** — informações e vencimento do Certificado A1
-6. **Contingência** — emissão em contingência (SEFAZ fora do ar)
-
-### Como emitir uma NF-e de venda
-
-**Aba Produtor:**
-- Selecione o produtor emitente (PF ou PJ) — CNPJ/CPF, IE, endereço preenchidos automaticamente
-
-**Aba Destinatário:**
-- Selecione o comprador do cadastro de Pessoas
-- Tipo: PJ (CNPJ) ou PF (CPF)
-- Indicador IE: contribuinte / isento / não contribuinte
-
-**Aba Operações:**
-- Natureza da Operação (*) — com CFOP auto-preenchido (ex: VFE-PF → CFOP 6501)
-- Produto (*): Soja (NCM 1201.90.00), Milho (NCM 1005.10.90), Algodão (NCM 5201.00.20), Trigo (NCM 1001.99.00)
-- Quantidade, Unidade, Preço Unitário, Valor Total
-- ICMS CST e alíquota (preenchidos pelas configurações de tributação)
-- PIS/COFINS CST (geralmente CST 06 — alíquota zero para grãos)
-
-**Aba Transportador:**
-- Modalidade de Frete: CIF, FOB, por conta terceiros, próprio (remetente/destinatário), sem frete
-- Transportadora (CNPJ, IE), Veículo (placa, UF), RNTRC
-
-**Aba Retirada:**
-- Endereço de retirada da mercadoria (se diferente do emitente)
-
-**Aba Fiscal:**
-- Ambiente: Produção ou Homologação (teste)
-- Série, Número, Data/Hora de emissão
-- Forma de emissão: Normal (1), SVC-AN (5), SVC-RS (6) — contingência
-
-**Aba Observações:**
-- Informações complementares (infCpl) — preenchidas automaticamente conforme Natureza da Operação
-- Texto legal obrigatório de ICMS diferido, PIS/COFINS zero, etc.
-
-**Aba Pontualidade:**
-- Desconto de pontualidade (%)
-
-### Transmitir a NF-e
-1. Clique em **Transmitir SEFAZ**
-2. O sistema assina com o Certificado A1 e envia para a SEFAZ
-3. Status muda para "autorizada" (protocolo verde) ou "rejeitada" (código de erro)
-
-### Imprimir DANFE
-Na NF autorizada, clique em **DANFE** → abre janela de impressão do browser.
-
-### Cancelar NF-e
-1. Na lista, clique em **Cancelar** na NF desejada
-2. Informe a justificativa de cancelamento (mínimo 15 caracteres)
-3. O sistema envia o evento de cancelamento para a SEFAZ
-
-### Erros comuns
-- **Rejeição 202 — Chave NF-e já utilizada:** número de NF duplicado. Avance o número nas configurações.
-- **Rejeição 561 — Certificado expirado:** renove o Certificado A1 e recarregue nas configurações.
-- **Rejeição 165 — Certificado inválido:** verifique se o certificado está no ambiente correto (prod/homol).
-- **Rejeição 502 — Campo ID não corresponde:** geralmente causado por série inválida para o tipo de emitente. Acesse **Configurações → Parâmetros do Sistema → Fiscal** e corrija a Série NF-e:
-  - Emitente **CNPJ**: série de **0 a 889**
-  - Emitente **CPF** (produtor rural PF): série de **920 a 969** (séries 890–899 são reservadas à SEFAZ e causam este erro)
-- **CFG: Série inválida para emitente CPF:** o sistema detectou que a série configurada está fora da faixa 920–969. Configure a série correta em Parâmetros → Fiscal → Série NF-e.
-- **CFG: Município IBGE não configurado:** o endereço do emitente ou destinatário não tem o código IBGE preenchido. Edite o cadastro da pessoa/produtor e use o campo CEP para auto-preencher (o sistema busca o código IBGE automaticamente via ViaCEP).
-- **SEFAZ fora do ar:** use a aba **Contingência** para emitir em modo offline.
-
-### Certificado A1
-Aba **Certificado** exibe: nome, validade, dias restantes e status. O sistema alerta 30, 15, 7 e 1 dia antes do vencimento.
-
----
-
-## MÓDULO 26 — TRIBUTAÇÃO NCM
-
-**Caminho:** Menu superior → **Configurações** → **Parâmetros do Sistema** → aba **Tributação NCM**
-
-### O que faz
-Define as alíquotas e CSTs por NCM para preenchimento automático nas NF-e. Inclui presets para Mato Grosso.
-
-### Presets disponíveis (botão "Carregar Presets MT")
-- **Soja em grão (NCM 12019000):** ICMS 051 interno / 020 interestadual (base 61,11%) / PIS-COFINS CST 06 (zero)
-- **Milho em grão (NCM 10059010):** mesmas regras da soja
-- **Algodão em pluma (NCM 52010020):** ICMS 041 (não tributado) / PIS-COFINS CST 06 (zero)
-- **Algodão em caroço (NCM 12072900):** ICMS 051/020 / PIS-COFINS CST 06
-
-### IBS/CBS (Reforma Tributária)
-Campo para ativar destaque de IBS e CBS na NF-e. Manter desativado enquanto não obrigatório.
-
----
-
-## MÓDULO 27 — LCDPR (Livro Caixa Digital do Produtor Rural)
-
-**Caminho:** Menu superior → **Fiscal** → **LCDPR**
-
-### O que faz
-Gera o Livro Caixa Digital do Produtor Rural, obrigação da Receita Federal para produtores rurais PF. Exporta arquivo no formato exigido pelo programa GCAP/LCDPR. Inclui **apenas lançamentos de entidade PF** — lançamentos de empresas (PJ) são automaticamente excluídos.
-
-### Abas disponíveis
-1. **Livro Caixa** — entradas dos lançamentos baixados (somente PF), lançamentos manuais e importados. Filtro por ano no topo.
-2. **Plano de Contas LCDPR** — lista todas as Operações Gerenciais (OGs) da conta e permite vincular cada uma a um código LCDPR (101–299). OGs sem código atribuído usam mapeamento automático por categoria. As descrições das OGs aparecem em letras minúsculas com inicial maiúscula.
-3. **Importação** — upload de planilha XLS/CSV com lançamentos históricos para complementar o Livro Caixa.
-4. **Resumo Anual** — totais de receitas e despesas por código LCDPR.
-5. **Exportação** — gera arquivo .txt no formato da Receita Federal para transmissão pelo GCAP.
-
-### Filtro de entidade — somente PF
-O LCDPR é por CPF de produtor rural. **Lançamentos de fazendas com entidade contábil = PJ são excluídos automaticamente.** Lançamentos sem entidade definida (legados) são incluídos. Configure a entidade contábil da fazenda em **Cadastros → Fazendas → Dados Gerais → Escrituração Fiscal**.
-
-### Plano de Contas LCDPR — como vincular OGs
-1. Acesse a aba **Plano de Contas LCDPR**
-2. A tabela lista todas as OGs ativas da conta com classificação e descrição
-3. Na coluna "Código LCDPR", selecione o código correspondente para cada OG
-4. Clique em **Salvar** na linha (ou o sistema salva automaticamente ao sair do select)
-5. OGs com código atribuído exibem o código com descrição; sem código, o sistema usa mapeamento automático
-
-### Códigos LCDPR — Receitas
-- 101: Venda de produto rural
-- 102: Prestação de serviços rurais
-- 103: Recursos de financiamento rural recebidos
-- 104: Ressarcimento do ITR
-- 199: Outras receitas rurais
-
-### Códigos LCDPR — Despesas
-- 201: Custeio da atividade rural
-- 202: Investimento na atividade rural
-- 203: Amortização de financiamento rural
-- 204: Pagamento de ITR
-- 205: Outros impostos e taxas
-- 299: Outras despesas rurais
-
-### Mapeamento automático (quando OG não tem código vinculado)
-- "Venda de grãos" / "Venda de soja" / "Venda de milho" → 101
-- "Insumos" / "Sementes" / "Fertilizantes" / "Defensivos" → 201
-- "Máquinas" / "Investimento" → 202
-- "Amortização" → 203
-- "ITR" → 104
-
-### Filtro de atividade rural
-Além do filtro de entidade PF, somente lançamentos com **Vínculo de Atividade = rural** entram no LCDPR. Configure esse campo ao criar CP/CR ou em lote via edição.
-
-### Exportar
-1. Selecione o exercício (ano) no topo
-2. Revise os lançamentos na aba Livro Caixa
-3. Acesse a aba **Exportação** → clique em **Gerar Arquivo** → baixa o .txt para transmissão pelo GCAP
-
----
-
-## MÓDULO 28 — SPED ECD (Contabilidade Digital)
-
-**Caminho:** Menu superior → **Fiscal** → **SPED Contábil**
-
-### O que faz
-Gera o arquivo SPED ECD (Escrituração Contábil Digital) no Leiaute 10, compatível com o PGE da Receita Federal e sistemas contábeis como Domínio.
-
-### Pré-requisito
-- Configurar os parâmetros contábeis em **Configurações → Parâmetros de Contabilidade**:
-  - Método de escrituração (G/R/B)
-  - Dados do livro (número, data)
-  - Responsável técnico (contador, CRC)
-  - Termos de abertura e encerramento
-- Ter lançamentos com **Entidade Contábil** (pf/pj) e **OG** (Operação Gerencial) configurados
-- OG deve ter conta débito e conta crédito definidas no plano de contas
-
-### Como gerar o SPED ECD
-1. Selecione o exercício (ano)
-2. Selecione a Entidade Contábil (PF ou PJ)
-3. Clique em **Gerar Preview** — exibe quantos lançamentos foram incluídos e quais foram ignorados (sem conta configurada)
-4. Revise o preview
-5. Clique em **Baixar Arquivo** → download do arquivo .txt
-6. Transmita pelo PGE (Programa Gerador de Escrituração) da Receita Federal
-
-### Lançamentos ignorados
-Lançamentos sem OG configurada ou sem contas débito/crédito no plano de contas são excluídos. O preview lista quais foram ignorados para que você possa corrigir.
-
----
-
-## MÓDULO 29 — TRANSPORTE / CT-e
-
-**Caminho:** Menu superior → **Transporte** → **CT-e**
-
-### O que faz
-Emite Conhecimentos de Transporte Eletrônico (CT-e **4.00**) para frota própria da fazenda (motoristas e veículos cadastrados em Transporte → Cadastros). O schema CT-e 3.00 foi **extinto pela SEFAZ em 31/01/2024** — o sistema emite exclusivamente CT-e 4.00.
-
-### Conceito: Emitente vs Transportadoras de terceiros
-- **Emitente do CT-e**: SEMPRE uma das suas empresas registradas em **Cadastros → Empresas** com finalidade **Transportadora** (ex: MURIANA TRANSPORTES LTDA, OGLIARI TRANSPORTES LTDA).
-- **Transportadoras de terceiros** (Transporte → Cadastros → Transportadoras): empresas que você CONTRATA para fazer fretes. Elas emitem os próprios CT-es — você não emite por elas.
-- **Veículos e Motoristas**: frota compartilhada da conta. Um veículo pode aparecer em CT-e de qualquer empresa emitente. "Agregado" = motorista autônomo com veículo próprio, registrado sem vínculo de transportadora.
-
-### Pré-requisitos antes de emitir
-1. Em **Cadastros → Empresas**, edite cada empresa transportadora sua e marque a finalidade **Transportadora**. Elas passam a aparecer no seletor de Emitente do CT-e.
-2. Em **Transporte → Cadastros**, cadastre os veículos e motoristas (frota própria ou agregados).
-3. Certificado A1 configurado em **Fiscal → Certificado Digital** para a empresa emitente.
-
-### Campos do CT-e
-- **Emitente**: selecionar qual das suas empresas transportadoras está emitindo (*)
-- Número CT-e, Série, Data de emissão (*)
-- CFOP, Natureza da Operação
-- Tomador (quem paga o frete): remetente, destinatário, expedidor ou recebedor
-- Remetente: nome, CNPJ (ou select do cadastro de Pessoas)
-- Destinatário: nome, CNPJ (ou select do cadastro de Pessoas)
-- Origem: município/UF de saída (*), Destino: município/UF chegada (*)
-- Produto: descrição (*), NCM, quantidade, unidade, peso bruto (kg), peso líquido (kg)
-- Valor da mercadoria, Valor do frete (*)
-- ICMS: alíquota e valor calculado automaticamente
-- Veículo (select do cadastro de Transportes), Motorista (select do cadastro de Transportes)
-- NF-e vinculada (chave de acesso)
-- Observação
-
-### Status do CT-e
-rascunho → autorizado → cancelado
-
-### DACTE (documento impresso)
-- Clique no ícone de impressora na linha do CT-e com status **autorizado**
-- Inclui: emitente, remetente, destinatário, percurso, valores, modal rodoviário, código de barras da chave de acesso
-
-### Ambiente de emissão — Homologação vs Produção
-O CT-e pode ser emitido em dois ambientes:
-- **Homologação** (tpAmb = 2): para testes — a SEFAZ aceita e valida o XML mas o documento **não tem validade fiscal**
-- **Produção** (tpAmb = 1): documentos com validade fiscal real — **use somente com certificado A1 válido e RNTRC habilitado**
-
-**Como trocar o ambiente:**
-1. Vá em **Configurações → Parâmetros do Sistema → aba CT-e**
-2. No campo **Ambiente**, selecione **Produção** (ou Homologação)
-3. Ao mudar para Produção pela primeira vez: recomenda-se resetar o **Próximo Número** para 1 e confirmar a **Série** (geralmente 001)
-4. Salve. Os próximos CT-es já saem no ambiente selecionado
-
-> Certificado A1 e RNTRC são validados pela SEFAZ em ambiente de Produção. Em Homologação, qualquer CNPJ fictício é aceito.
-
-### Diagnóstico de conexão com a SEFAZ
-
-Antes de tentar emitir, é possível testar se a comunicação com a SEFAZ está funcionando sem enviar nenhum CT-e real:
-
-1. Vá em **Configurações → Parâmetros do Sistema → aba CT-e**
-2. Clique em **🔌 Testar Conexão SEFAZ** (botão no canto superior direito da aba)
-3. O sistema envia uma consulta de status (CTeStatusServicoV4) para a SEFAZ
-4. Resultado possível:
-   - ✅ Verde: "SEFAZ em operação — mTLS e rede OK ✓" — comunicação funcionando
-   - ❌ Vermelho: mensagem de erro com diagnóstico específico (veja abaixo)
-5. O tempo de resposta (ex: 1.243ms) aparece no resultado para referência
-
-### Erros de comunicação vs Rejeições fiscais — como distinguir
-
-O sistema exibe mensagens diferentes conforme o tipo de problema:
-
-**Falha de comunicação (problema técnico de rede/TLS):**
-- Mensagem: "Falha de comunicação com a SEFAZ"
-- Causas: certificado A1 com cadeia incompleta, IP bloqueado, timeout de rede
-- O que fazer: use o botão **🔌 Testar Conexão SEFAZ** em Parâmetros → CT-e para diagnosticar
-- Não é uma rejeição fiscal — o CT-e nem chegou até a SEFAZ
-
-**Rejeição fiscal (a SEFAZ recebeu e recusou):**
-- Mensagem: "CT-e rejeitado pela SEFAZ — cStat NNN: [motivo]"
-- Causas: dado inválido no XML (CNPJ, CFOP, RNTRC), série duplicada, certificado expirado
-- O que fazer: corrija os dados apontados no motivo e reemita
-
-### Erros de diagnóstico específicos
-- connection_reset: falha de mTLS — a SEFAZ encerrou a conexão TLS antes de receber dados. Verifique se o certificado A1 tem a cadeia completa de ACs intermediárias.
-- timeout: SEFAZ não respondeu em 45s — problema na SEFAZ ou rota de rede
-- tls_unknown_issuer: o bundle de ACs raiz não contém a AC ICP-Brasil necessária
-- certificado_expirado: o certificado A1 expirou — renove em Fiscal → Certificado Digital
-- configuracao_cte_nao_encontrada: nenhuma configuração CT-e encontrada para o emitente. Configure em Parâmetros do Sistema → CT-e.
-- certificado_nao_configurado: certificado A1 ou senha ausentes para o emitente selecionado
-
----
-
-## MÓDULO 30 — TRANSPORTE / MDF-e
-
-**Caminho:** Menu superior → **Transporte** → **MDF-e**
-
-### O que faz
-Emite o Manifesto Eletrônico de Documentos Fiscais, obrigatório no transporte interestadual e intermunicipal de cargas.
-
-### Conceito
-O MDF-e "envelopa" um conjunto de CT-es (ou NF-es avulsas) em uma única viagem. Um caminhão que sai carregado de MT para SP com vários conhecimentos de transporte precisa de um MDF-e cobrindo toda a viagem.
-
-### Campos do MDF-e
-- Série, Número, Data de emissão
-- UF de Início (*), UF de Fim (*), Percurso (lista de UFs intermediárias)
-- RNTRC, Tipo de Emitente
-- Seleção dos documentos: CT-e autorizados e NF-e avulsas a incluir no manifesto
-- CIOT (Código Identificador da Operação de Transporte) — para frete pago
-- Informações do veículo e condutor
-
-### Fluxo típico
-1. Emita e autorize os CT-es da viagem
-2. Crie o MDF-e e selecione os CT-es autorizados
-3. Informe veículo, motorista, percurso
-4. Autorize o MDF-e antes de o caminhão partir
-5. Ao chegar no destino: encerre o MDF-e
-
-### DAMDFe (documento impresso)
-Para MDF-es com status **autorizado** ou **encerrado**, aparece o botão **Imprimir / DAMDFe** na linha da lista:
-- Clique no botão para abrir o documento em nova aba para impressão
-- O DAMDFe inclui: emitente, veículo, motorista, percurso (UF início → UF fim + UFs intermediárias), documentos vinculados (CT-es), número e chave de acesso do MDF-e, protocolo de autorização
-- Se o MDF-e tiver CIOT registrado, a seção CIOT aparece no documento com código e código verificador
-
-### CIOT — Código Identificador da Operação de Transporte
-O CIOT é exigido para fretes pagos acima de determinado valor. No Arato:
-- Informe o CIOT no campo correspondente ao criar ou editar o MDF-e
-- Ao autorizar o MDF-e com CIOT preenchido, o código é **salvo automaticamente no banco** (via API route com permissão de escrita segura)
-- Para re-gerar ou atualizar o CIOT de um MDF-e já autorizado: clique no botão **CIOT** na linha do manifesto — um modal permite atualizar o código sem reautorizar o documento
-- O CIOT fica disponível na impressão do DAMDFe
-
-### Editar MDF-e autorizado
-MDF-es com status **autorizado** exibem um botão **Editar** na linha da lista. Esse botão abre o modal de edição para:
-- Atualizar o CIOT (sem precisar cancelar e reemitir o MDF-e)
-- Corrigir campos de observação
-
-> Campos fiscais (percurso, veículo, CT-es vinculados) **não podem ser alterados** após autorização — para correções desse tipo é necessário cancelar o MDF-e e emitir um novo.
-
-### Ambiente de emissão — Homologação vs Produção
-O MDF-e segue o mesmo ambiente configurado em **Configurações → Parâmetros do Sistema → aba MDF-e**. Trocar de Homologação para Produção requer o mesmo cuidado do CT-e: certificado A1 válido e RNTRC habilitado na ANTT.
-
----
-
-## MÓDULO 30B — TRANSPORTE / Acerto de Frete
-
-**Caminho:** Menu superior → **Transporte** → **Acerto de Frete (TAC)**
-
-### O que faz
-Realiza o fechamento mensal de motoristas **TAC (Transportador Autônomo de Cargas)** — motoristas autônomos que prestam serviço com caminhão próprio (terceiro). Consolida todos os fretes realizados no mês, desconta combustível abastecido na fazenda, adiantamentos pagos e outros descontos, e calcula o valor líquido a pagar. Ao fechar, gera automaticamente uma Conta a Pagar.
-
-### Conceito — Próprio vs Terceiro
-- **Veículo próprio**: pertence à fazenda (frota interna). Custo de combustível já está no lançamento da bomba.
-- **Veículo de terceiro (TAC)**: pertence ao motorista autônomo. A fazenda pode abastecer o caminhão dele e descontar no acerto mensal.
-
-### Cadastro de veículos de terceiros
-1. Vá em **Configurações → Parâmetros do Sistema → aba Transportes → Veículos**
-2. Clique em **+ Novo Veículo** ou edite um existente
-3. No campo **Propriedade**: selecione **Terceiro (caminhão autônomo)**
-4. No campo **Proprietário**: selecione a pessoa cadastrada (nome/CPF do dono do caminhão)
-5. Os campos **Tara**, **Capacidade** e **RNTRC** são obrigatórios para usar em CT-e
-
-### Fluxo do Acerto de Frete mensal
-1. Vá em **Transporte → Acerto de Frete (TAC)**
-2. Selecione o **mês** e **ano** do fechamento
-3. Clique em **+ Abrir Acerto** para cada motorista TAC do período
-4. Dentro do acerto:
-   - Clique em **+ Importar** nos CT-es autorizados do período (aparecendo automaticamente)
-   - Adicione itens manuais: combustível, adiantamentos, descontos, bônus
-   - Confira o **Valor Líquido a Pagar** calculado automaticamente
-5. Clique em **Fechar Acerto e Gerar CP** — uma Conta a Pagar é criada automaticamente
-6. Status do acerto: **Aberto** → **Fechado** (CP gerado) → **Pago** (quando a CP for quitada)
-
-### Cálculo do Acerto
-\`\`\`
-Valor Bruto     = soma dos fretes (CT-e importados + bônus)
-Combustível     = litros × preço do diesel abastecido na fazenda
-Adiantamentos   = valores pagos ao motorista antes do fechamento
-Outros Descontos = multas, danos, etc.
-──────────────────────────────────────
-Valor Líquido = Bruto − Combustível − Adiantamentos − Outros Descontos
-\`\`\`
-
-### Dica operacional
-- Cadastre o motorista em **Parâmetros → Transportes → Motoristas** como **TAC** (não CLT)
-- Apenas motoristas com tipo **TAC** aparecem na tela de Acerto de Frete
-- Motoristas CLT (celetistas) são funcionários da fazenda — seu custo vai pela folha de pagamento, não pelo acerto de frete
-
----
-
-## MÓDULO 31 — BI (Business Intelligence)
-
-**Caminho:** Menu superior → **BI** (ou acessado pelo ícone do gráfico)
-
-### O que faz
-Painel analítico com visão estratégica da fazenda: posição de grãos, evolução de endividamento, custos por insumo, comparativos de safra.
-
-### Abas disponíveis
-1. **Posição de Grãos** — balanço da produção: projetada vs comprometida vs livre
-2. **Custos & Insumos** — análise de gastos por categoria e produto por ciclo
-3. **Recursos de Terceiros** — saldo de dívidas financeiras por categoria
-4. **Evolução de Endividamento** — projeção de desembolso futuro ano a ano
-
-### Aba Posição de Grãos
-Barra visual mostrando:
-- **Vermelho:** sacas comprometidas com arrendamento (pagamento em grãos)
-- **Laranja:** sacas comprometidas com barter
-- **Azul:** sacas fixadas em contratos de venda
-- **Verde:** sacas livres (disponíveis para comercializar)
-- **Roxo (barra separada):** sacas equivalentes às dívidas financeiras
-
-### Aba Custos & Insumos
-- Selecione o ciclo
-- Filtros por grupo de custo: Sementes, Fertilizantes, Defensivos, Operações, Arrendamento, Mão de Obra, Encargos Financeiros, Outros
-- Custo por hectare comparado ao benchmark MT (Soja: R$ 5.800/ha; Milho: R$ 3.500/ha; Algodão: R$ 8.500/ha)
-- Ranking de produtos por gasto total
-
-### Aba Evolução de Endividamento
-- 4 linhas: Endividamento acumulado / Captação / Amortização / Juros e encargos
-- Colunas = (ano atual − 3) até último vencimento de parcela
-- Coluna atual destacada em azul; futuras projetadas em cinza
-- Análise automática: tendência, custo financeiro %, pico de desembolso, projeção de quitação
-- Filtro por grupos: Linhas de Crédito, Consórcio Contemplado, Consórcio Não Contemplado, Compra de Imóvel/Terra
-
----
-
-## MÓDULO 32 — DRE AGRÍCOLA
-
-**Caminho:** Menu superior → **Relatórios** → **DRE Agrícola**
-
-### O que faz
-Demonstração do Resultado do Exercício adaptada para fazenda: mostra receitas, custos e resultado por safra/ciclo com análise de ponto de equilíbrio e ROI.
-
-### Filtros
-- Fazenda (todas ou específica)
-- Ano Agrícola (selecione o label da safra)
-- Ciclos: botões toggle para selecionar quais culturas incluir
-- Modo: Consolidado (tudo junto) ou Individual (um card por ciclo)
-
-### Estrutura do DRE
-1. **Receita Bruta** — contratos confirmados/encerrados; ou sacas × preço esperado se sem contrato
-2. **Deduções** — Funrural (1,5%) + SENAR (0,2%)
-3. **Receita Líquida**
-4. **Custo dos Produtos Vendidos (CPV):**
-   - Sementes (de plantios)
-   - Fertilizantes (de adubações)
-   - Defensivos (de pulverizações)
-   - Correção de Solo
-   - Operações Mecanizadas
-   - Combustível
-   - Manutenção
-5. **Lucro Bruto**
-6. **Despesas Operacionais:**
-   - Arrendamento de Terra
-   - Mão de Obra
-   - Administrativo
-   - Seguro de Lavoura
-   - Assistência Técnica
-7. **EBITDA**
-8. **Despesas Financeiras:**
-   - Juros de Custeio
-   - Juros Outros
-9. **Resultado Líquido**
-
-### Fontes de custo no DRE
-O DRE agrega custos de duas fontes:
-- **Contas a Pagar oficiais** (tabela 'contas_pagar') com 'ciclo_id' correspondente ao ciclo selecionado
-- **Lançamentos do Apoio Financeiro** (tabela 'apoio_lancamentos') do tipo "pagar" que tenham 'ciclo_id' preenchido
-
-Isso significa que estimativas de custo lançadas pelo consultor no Apoio Financeiro **já contribuem ao DRE** desde que vinculadas ao ciclo correto.
-
-### KPI Cards
-- Receita Total, Custo Total, Resultado Líquido, Margem (%), Produtividade (sc/ha), EBITDA
-
-### Análise visual
-- **Composição de custos:** barras por categoria
-- **Ponto de equilíbrio (PE):** calculado como Custo Total ÷ Preço médio por saca; exibe em sc/ha e folga acima do PE
-- **ROI:** Resultado Líquido ÷ Custo Total × 100
-
-### Impressão
-Botão **Imprimir** → layout A4 paisagem com filtros aplicados.
-
----
-
-## MÓDULO 33 — MÓDULO ALGODÃO (Add-on)
-
-**Caminho:** Menu superior → **Algodão**
-
-### Pré-requisito
-Módulo Algodão precisa estar habilitado para a conta. Solicite ativação se não aparecer no menu.
-
-### Abas disponíveis
-1. **Safra & Operações** — ciclos de algodão, stat cards, operações especiais
-2. **Bicudo** — controle de armadilhas e capturas
-3. **Módulos** — rastreamento de módulos do campo à algodoeira
-4. **Algodoeira** — registro de beneficiamento por lote
-5. **HVI & Qualidade** — laudos de qualidade da pluma
-6. **Posição** — cockpit com preço ICE/CBOT ao vivo e posição de estoque
-
-### Aba Bicudo (Bicudo do Algodoeiro)
-- Cadastrar armadilhas por talhão
-- Registrar leituras semanais (capturas por armadilha)
-- **Alerta automático:** ≥ 8 capturas/armadilha/semana → alert vermelho de risco alto
-- Histórico de capturas em gráfico
-
-### Aba Módulos (campo → algodoeira)
-Status dos módulos: campo → em_transporte → entregue
-- Ao criar um módulo: informar talhão, colhedora, peso estimado
-- Ao transportar: placa, data
-- Ao entregar: romaneio na algodoeira
-
-### Aba Algodoeira (Beneficiamento)
-- Selecione a algodoeira (do cadastro de Pessoas)
-- Informe: lote, data de entrada, módulos entregues
-- Resultados: rendimento pluma (%), fardos, peso pluma (kg), caroço (kg)
-- **Semáforo de rendimento:** < 38% = vermelho, 38–40% = amarelo, ≥ 40% = verde
-- Custo de beneficiamento (R$ por arroba)
-
-### Aba HVI & Qualidade
-Laudo por lote com 11 parâmetros HVI (High Volume Instrument) com semáforo por parâmetro conforme referências MT:
-- Comprimento (UHML), Uniformidade (Uni%), Resistência (Str g/tex), Micronaire (Mic), Reflectância (Rd), Amarelamento (+b), Índice de Fiabilidade (SFI%), Maturidade (Mat%), Finura (HS), Índice de Consistência (CSP), Impureza (Leaf)
-- Prêmio/Desconto calculado automaticamente sobre o preço ICE
-
-### Aba Posição
-- Preço ICE/CBOT ao vivo em ¢/lb convertido para R$/@
-- Valor total do estoque de pluma em R$
-- Fluxo de produção: talhões → módulos → algodoeiras
-- Posição por algodoeira: módulos entregues, fardos beneficiados, pluma disponível
-
----
-
-## MÓDULO 34 — CADASTROS
-
-**Caminho:** Menu superior → **Cadastros**
-
-### O que faz
-Centraliza todos os cadastros mestres do sistema. Qualquer entidade que precisa ser selecionada em outros módulos precisa estar cadastrada aqui primeiro.
-
-### Grupos de abas
-
-**Cadastros Gerais:**
-- **Produtores** — donos da produção (PF ou PJ). Campos: nome (*), CPF/CNPJ (*), IE, e-mail, telefone, endereço. Busca automática de CEP via ViaCEP. Sub-aba: Inscrições Estaduais (por UF).
-- **Fazendas** — propriedades rurais. Modal com 7 sub-abas:
-  - Geral: nome (*), município (*), estado (*), área total (ha), CAR, NIRF, CCIR; endereço com CEP → ViaCEP
-    - Seção **Escrituração Fiscal**: Entidade Contábil (PF = Produtor Rural CPF / PJ = Empresa CNPJ) e CPF/CNPJ fiscal. **Campo obrigatório para LCDPR e SPED ECD.** Todos os lançamentos gerados por esta fazenda herdam automaticamente a entidade definida aqui — sem necessidade de classificar cada lançamento individualmente.
-  - Matrículas: lista de matrículas do imóvel, comparativo de área (matriculado vs total)
-  - CARs: Cadastro Ambiental Rural com vencimentos
-  - NIRFs: Número do Imóvel na Receita Federal
-  - ITRs: dados do ITR por ano
-  - CCIRs: Certificado de Cadastro de Imóvel Rural com vencimentos
-  - Arrendamentos: contratos de arrendamento vinculados à fazenda
-- **Funcionários** — colaboradores CLT/PJ. Sub-abas: dados pessoais, remuneração, premiações, férias.
-- **Pessoas** — fornecedores, compradores, parceiros, arrendantes. Campos: nome, CPF/CNPJ, tipo (fornecedor, comprador, arrendante, transportadora, etc.), contato, endereço. Subcategoria "Arrendante" necessária para aparecer no dropdown de arrendamentos.
-- **Imóveis Urbanos** — imóveis não rurais da família/empresa.
-
-**Cadastros Técnicos:**
-- **Safras & Ciclos (Anos Safra)** — cria os anos agrícolas (ex: "2025/2026") e os ciclos dentro de cada ano (ex: "Soja 2025/2026"). Ciclos são obrigatórios antes de qualquer operação de lavoura.
-- **Insumos** — produtos de uso no campo: sementes, fertilizantes, defensivos, etc. Campos: nome (*), categoria (*), unidade (*), estoque mínimo, custo médio, princ. ativo.
-- **Produtos** — itens comercializados.
-- **Itens** — itens genéricos.
-- **Depósitos** — armazéns, silos, tulhas, galpões. Campos: nome, tipo, capacidade (sc). O seletor de fazenda no topo mostra "Todos" para ver depósitos de todas as fazendas ou filtra por fazenda selecionada.
-- **Máquinas** — frota da fazenda. Sub-abas: geral (placa, tipo, modelo, ano), aquisição (valor, financiamento), seguro.
-- **Combustíveis** — bombas de abastecimento da fazenda. Campos: nome, produto (diesel/gasolina), localização.
-- **Grupos de Insumo / Subgrupos** — hierarquia de classificação de insumos.
-- **Culturas** — define as culturas com fator de conversão kg (60 para grãos, 15 para algodão). Usado nos cálculos de sc/@.
-- **Padrões de Classificação** — tabelas configuráveis de parâmetros por commodity. Botão "Carregar Padrões Oficiais" carrega ABIOVE (soja) e IN MAPA 60/2011 (milho).
-- **Princípios Ativos** — base de dados de moléculas defensivos.
-- **Unidades de Medida** — kg, L, sc, @, ton, etc.
-
-**Financeiro:**
-- **Centros de Custo** — hierarquia de CC para rateio de despesas.
-- **Operações Gerenciais (OG)** — classificação contábil de lançamentos. Modal com abas: principal (nome, tipo), estoque (impacta estoque?), fiscal (CFOP, NCM), financeiro (impacta CP/CR?), contabilidade (conta débito/crédito), CFOP.
-- **Histórico Fiscal** — lista de CFOPs usados.
-- **Formas de Pagamento** — PIX, boleto, transferência, etc.
-- **Contas Bancárias** — contas da fazenda com banco, agência, conta, tipo.
-
----
-
-## MÓDULO 35 — AUTOMAÇÕES
-
-**Caminho:** Menu superior → **Configurações** → **Automações**
-
-### O que faz
-Painel de controle das automações que o sistema executa automaticamente. Permite ativar/desativar e executar manualmente para testes.
-
-### Automações disponíveis
-
-**1. Alertas de Vencimento** (categoria: Alertas)
-- Horário: todo dia às 7h BRT
-- O que faz: verifica CP, CR, arrendamentos e Certificado A1 vencendo nos próximos 7 dias; envia e-mail de alerta com tabelas por urgência (crítico/alto/médio)
-- Para ativar: ligue o toggle; configure e-mail em Integrações
-
-**2. Relatório Semanal** (categoria: Relatórios)
-- Horário: toda segunda-feira às 7h BRT
-- O que faz: envia e-mail com resumo financeiro da semana (CP/CR a vencer, vencidos, saldo projetado, preços de mercado, contratos ativos, operações de lavoura)
-- Para ativar: ligue o toggle
-
-**3. Atualização de Preços** (categoria: Mercado)
-- Horário: todo dia às 7h BRT (+ ao vivo a cada 5 min no Dashboard)
-- O que faz: atualiza cotações CBOT Soja/Milho/Algodão e USD/BRL
-- Funciona automaticamente ao abrir o Dashboard — não precisa de configuração
-
-**4. Importação Automática SIEG** (categoria: Fiscal)
-- Horário: 2× ao dia — 8h e 17h BRT
-- O que faz: consulta a API SIEG, baixa NF-e e NFS-e recebidas; cria fornecedor automaticamente se novo; lança CP; arquiva XML; classifica itens por regras
-- Para ativar: clique em **Configurar SIEG** e informe a API Key do SIEG e os CNPJs da fazenda
-
-### Como testar manualmente
-Clique em **Executar** em qualquer automação para disparar imediatamente (útil para verificar se e-mails chegam).
-
-### Configuração de e-mail
-Informe o Resend API Key e o e-mail remetente em **Configurações → Parâmetros do Sistema → Integrações**.
-
----
-
-## MÓDULO 36 — PARÂMETROS DO SISTEMA
-
-**Caminho:** Menu superior → **Configurações** → **Parâmetros do Sistema**
-
-### O que faz
-Configurações globais do sistema: dados fiscais do emitente, certificado digital, parâmetros de expedição, transportes, integrações.
-
-### Abas disponíveis
-
-**Aba Aparência:**
-- Logo da fazenda, cores, nome exibido
-
-**Aba Fiscal — NF-e:**
-- Ambiente: Produção ou Homologação (sempre use Homologação para testes)
-- Série NF-e, Próximo Número
-- CPF/CNPJ Emitente (*), Razão Social/Nome (*)
-- Inscrição Estadual, Inscrição Municipal
-- CRT (Regime Tributário): 1-Simples Nacional, 2-SN Excesso, 3-Regime Normal, 4-MEI
-- Certificado A1: caminho no Supabase Storage, Senha
-
-**Aba Tributação NCM:**
-- Tabela de NCMs com todas as alíquotas (ver Módulo 26 — Tributação NCM)
-
-**Aba Operações Fiscais:**
-- CFOPs padrão de venda dentro do estado, venda fora do estado, remessa para depósito
-
-**Aba CT-e:**
-- Ambiente (Homologação / Produção), Série, Número inicial, RNTRC do transportador
-- Certificado A1 do CT-e (opcional — usa o da NF-e se vazio)
-- Botão **🔌 Testar Conexão SEFAZ** (canto superior direito da aba): envia uma consulta de status (CTeStatusServicoV4) para validar mTLS e rede sem emitir CT-e. Resultado verde = comunicação OK; resultado vermelho = diagnóstico do erro de rede/TLS. Use antes de tentar emitir para isolar problemas técnicos de rejeições fiscais.
-
-**Aba MDF-e:**
-- Ambiente, Série, Número inicial, RNTRC emitente, Tipo Emitente (Autônomo/ETC/CTC)
-- UF Início padrão, UF Fim padrão
-
-**Aba Transportes:**
-- CRUD completo de **Transportadoras** (CNPJ, razão social, RNTRC, UF)
-- CRUD completo de **Veículos** (placa, tipo, tara, capacidade, RNTRC)
-- CRUD completo de **Motoristas** (nome, CPF, CNH, validade CNH — alerta se vencendo)
-
-**Aba Integrações:**
-- Resend API Key, E-mail Remetente (para automações de e-mail)
-- WhatsApp API URL, Token, Instância (para automações de WhatsApp)
-
-**Aba Expedição:**
-- Peso Aproximado padrão (%) — estimativa de peso quando peso real não disponível
-- Tolerância de Divergência (%) — acima disso, alerta de NF Complementar
-- Gerar NF Remessa automaticamente: Sim/Não
-- Bucket Supabase para XMLs
-
-### Importante
-Todas as configurações são salvas por fazenda. Um novo cliente deve preencher essas configurações antes de emitir a primeira NF-e.
-
----
-
-## MÓDULO 37 — REGRAS DE RATEIO
-
-**Caminho:** Menu superior → **Configurações** → **Regras de Rateio**
-
-### O que faz
-Define como os custos são distribuídos (rateados) entre fazendas (Nível 1) e entre ciclos dentro da fazenda (Nível 2), quando uma despesa atende a múltiplas culturas ou fazendas.
-
-### Dois níveis de rateio
-
-**Nível 2 — Fazenda → Ciclos** (tab padrão):
-- Distribui um custo entre os ciclos (culturas) de *uma única fazenda*
-- Dois modos:
-  - **Atribuído**: você define o % de cada ciclo manualmente (barra visual em tempo real)
-  - **Por Área Plantada**: o sistema calcula automaticamente a proporção com base na área plantada (ha) de cada ciclo no Ano Safra
-- Campos: Fazenda, Ano Safra, Tipo (Atribuído/Por Área), Centro(s) de Custo, Nome, linhas de ciclo + %
-
-**Nível 1 — Global → Fazendas** (segunda tab):
-- Distribui um custo entre *todas as fazendas* da conta
-- Dois modos:
-  - **Atribuído**: você define o % de cada fazenda manualmente
-  - **Por Área dos Ciclos**: o sistema calcula automaticamente pela soma das áreas de todos os ciclos de cada fazenda no Ano Safra
-- Campos: Nome, Ano Safra, Tipo (Atribuído/Por Área), CC de Origem (opcional), lista de fazendas participantes
-
-### Escopo CC nas Operações Gerenciais
-No cadastro de Operações Gerenciais (aba Operações Gerenciais em Cadastros), há uma coluna **Escopo CC** em cada linha. Ela classifica onde o custo é alocado:
-- **Global (conta)**: custo compartilhado entre todas as fazendas — usa regras N1
-- **Fazenda**: custo de uma fazenda específica, mas distribuído entre ciclos — usa regras N2
-- **Ciclo**: custo de um ciclo específico — não precisa de rateio
-- **Não classificado**: sem rateio definido
-
-Para alterar o Escopo CC: clique no dropdown na coluna "Escopo CC" na tabela de Operações Gerenciais — salva automaticamente.
-
-### Fluxo de alocação de custo
-1. Custo lançado com uma OG que tem Escopo CC = "global"
-2. O sistema aplica a Regra N1 para distribuir entre fazendas (pelo % atribuído ou pela área dos ciclos)
-3. Para cada fazenda, aplica a Regra N2 para distribuir entre ciclos (pelo % atribuído ou pela área plantada)
-4. O custo aparece na DRE por ciclo/cultura no valor proporcional calculado
-
----
-
-## MÓDULO 38 — IMPORTAÇÃO DE DADOS
-
-**Caminho:** Menu superior → **Configurações** → **Importação**
-
-### O que faz
-Permite importar dados em massa via planilha XLSX: pessoas, CP, CR, insumos, produtos, máquinas, contratos financeiros, arrendamentos, contratos de venda, produtores, fazendas, talhões e lançamentos do Apoio Financeiro.
-
-### Abas disponíveis
-- **Pessoas** — clientes, fornecedores, parceiros
-- **CP** — Contas a Pagar em lote
-- **CR** — Contas a Receber em lote
-- **Insumos** — cadastro de insumos em massa
-- **Produtos** — itens comercializados
-- **Máquinas** — frota
-- **Contratos Financeiros** — financiamentos e crédito
-- **Arrendamentos** — contratos de arrendamento
-- **Contratos de Venda** — contratos de grãos (tabela contratos)
-- **Produtores** — produtores rurais
-- **Fazendas** — propriedades rurais
-- **Talhões** — subdivisões das fazendas
-- **Apoio Financeiro** — lançamentos exclusivos do consultor Raccotlo (apenas raccotlo)
-
-### Processo de importação (igual para todas as abas)
-1. Clique em **Baixar Template** para obter o modelo XLSX
-2. Preencha a planilha respeitando as colunas do template
-3. Arraste o arquivo para a zona de upload (ou clique para selecionar)
-4. O sistema valida cada linha e exibe:
-   - Verde: ok para importar
-   - Vermelho: erro (campo obrigatório faltando, formato inválido, etc.)
-   - Amarelo: duplicado encontrado
-5. Revise os erros, corrija no arquivo se necessário
-6. Clique em **Importar** para confirmar as linhas válidas
-7. Um resumo final mostra: importados / erros / duplicados ignorados
-
-### Campos obrigatórios (marcados com * no template)
-Variam por aba — o template inclui uma linha de instruções na segunda linha.
-
-### Lookups automáticos
-Campos como "Fazenda" (por nome), "Safra" (por descrição), "Ciclo" (por descrição) são resolvidos automaticamente durante a importação.
+Log de todas as ações realizadas por cada usuário no sistema (quem fez o quê e quando).
 
 ---
 
 ## PERGUNTAS FREQUENTES
 
-**P: O sistema não mostra as fazendas. O que faço?**
-R: Verifique se você está logado com o usuário correto e se a fazenda está cadastrada em **Cadastros → Fazendas**. Se a fazenda existir mas não aparecer, entre em contato com o suporte.
+### Como faço uma pesagem avulsa de carga?
+Acesse **Comercial & Logística → Balança → Pesagem Avulsa**. Clique em "+ Nova Pesagem (Tara)", selecione o tipo (Entrada/Saída/Neutra), preencha os dados e o 1º peso. O ticket fica em "Em Andamento" para registrar a 2ª pesagem quando o caminhão voltar.
 
-**P: Como troco de fazenda ativa?**
-R: No canto superior direito do TopNav, clique no nome da fazenda. Se você tiver mais de uma fazenda na sua conta, aparece um dropdown para selecionar. Se não aparecer, você tem apenas uma fazenda cadastrada.
+### Qual a diferença entre Pesagem Entrada e Pesagem Saída?
+- **Entrada:** caminhão chega carregado. 1ª pesagem = Peso Bruto. 2ª pesagem = Tara (após descarregar). Líquido = Bruto − Tara.
+- **Saída:** caminhão chega vazio. 1ª pesagem = Tara. 2ª pesagem = Peso Bruto (após carregar). Líquido = Bruto − Tara.
 
-**P: Os ciclos não aparecem no select de lavoura.**
-R: Ciclos precisam estar cadastrados em **Cadastros → Safras & Ciclos (Anos Safra)**. Primeiro crie o Ano Safra (ex: "2025/2026"), depois crie os ciclos dentro dele.
+### Como registro a colheita de soja?
+Acesse **Lavoura → Colheita → Colheita**. Crie o registro de colheita (fazenda, ciclo, talhão, área, data). Adicione um romaneio por caminhão (placa, peso bruto, tara, classificação ABIOVE). Clique em "Finalizar Colheita" ao terminar.
 
-**P: A NF-e foi rejeitada pela SEFAZ. O que fazer?**
-R: Veja o código de rejeição:
-- 202: número duplicado → avance o número nas configurações
-- 561: certificado expirado → renove o Certificado A1
-- 206: CNPJ/CPF inválido → verifique os dados do emitente ou destinatário
-- 999: erro interno SEFAZ → aguarde e tente novamente
+### Como lanço uma NF de compra de insumos?
+Acesse **Compras & Estoque → Compras → NF de Produtos**. Clique em "Lançar NF de Entrada", carregue o XML (recomendado) ou preencha manualmente. Associe os itens ao catálogo de insumos e clique em "Processar NF".
 
-**P: O estoque baixou errado depois de um plantio.**
-R: Verifique em **Estoque → Movimentações** qual baixa foi feita. Se necessário, crie um lançamento de ajuste manual (entrada no estoque) e refaça o plantio corretamente.
+### Como crio um contrato de venda de grãos?
+Acesse **Comercial & Logística → Comercialização → Contratos de Grãos**. Clique em "Novo Contrato", preencha produtor, comprador, produto, quantidade, preço, natureza da operação (CFOP preenchido automaticamente) e salve.
 
-**P: O LCDPR está vazio mesmo tendo lançamentos.**
-R: Verifique duas coisas: (1) somente lançamentos com **Vínculo de Atividade = rural** entram no LCDPR — edite os lançamentos e defina esse campo; (2) somente lançamentos de fazendas com **Entidade Contábil = PF** entram — verifique em **Cadastros → Fazendas → Dados Gerais → Escrituração Fiscal**. Lançamentos de entidade PJ são excluídos automaticamente.
+### Onde configuro os parâmetros da NF-e?
+Acesse **Configurações → Sistema → Parâmetros Fiscais (NF-e)**. Preencha ambiente, série, CNPJ emitente, IE, UF, IBGE, CRT, CFOPs e NCMs por commodity.
 
-**P: O LCDPR está trazendo lançamentos de contas bancárias de empresa (PJ).**
-R: A fazenda está configurada sem entidade contábil definida. Acesse **Cadastros → Fazendas → editar → Dados Gerais → Escrituração Fiscal** e defina a Entidade Contábil como "PF — Produtor Rural (CPF)". Os novos lançamentos passarão a ser excluídos do LCDPR automaticamente.
+### Como importo o extrato OFX do banco?
+Acesse **Financeiro → Tesouraria → Conciliação Bancária**. Clique em "Importar Extrato OFX" no painel direito, faça upload do arquivo .ofx e confirme os vínculos automáticos ou faça-os manualmente.
 
-**P: Como funciona o custo médio no estoque?**
-R: O sistema usa custo médio ponderado. Ao dar entrada por NF, o novo custo médio é calculado como: (saldo atual × custo_médio_atual + quantidade_entrada × custo_unitário_NF) ÷ (saldo atual + quantidade_entrada).
+### Como vejo o fluxo de caixa futuro?
+Acesse **Financeiro → Relatórios Financeiros → Fluxo de Caixa Previsto**. Padrão: hoje a +12 meses. Use os botões "Selecionar Todos Produtores" e "Selecionar Todas Contas" para agilizar.
 
-**P: Posso usar o sistema em homologação (teste) antes de emitir NF-e real?**
-R: Sim. Em **Configurações → Parâmetros do Sistema → Fiscal**, mude o Ambiente para "Homologação". As NF-e emitidas em homologação são enviadas para o ambiente de testes da SEFAZ e não têm validade fiscal.
+### Como conecto uma balança física?
+Na tela de **Pesagem Avulsa** (Comercial & Logística → Balança), clique no toggle "🔌 Balança" no campo de peso. Requer Google Chrome ou Microsoft Edge. Selecione a porta serial, clique "Conectar" e o peso aparece em tempo real.
 
-**P: As automações de e-mail não estão chegando.**
-R: Verifique: (1) a automação está ativada em **Configurações → Automações**; (2) o Resend API Key está configurado em **Configurações → Parâmetros do Sistema → Integrações**; (3) o domínio de e-mail está verificado no painel da Resend; (4) clique em **Executar** manualmente e veja se há mensagem de erro.
+### Onde cadastro compradores e fornecedores?
+Acesse **Configurações → Cadastros → Pessoas e Entidades**.
 
-**P: Como importar NF-e recebidas automaticamente?**
-R: Configure a integração SIEG em **Configurações → Automações → Configurar SIEG**. Informe a API Key do SIEG e os CNPJs da fazenda. A importação ocorrerá automaticamente 2× ao dia.
+### Como adiciono uma nova fazenda?
+Acesse **Configurações → Cadastros → Fazendas e Talhões**. Clique em "+ Nova Fazenda".
 
-**P: O que é "vínculo de atividade" num lançamento?**
-R: Classifica se o lançamento pertence à atividade rural (PF produtor rural), à PJ empresa, a um investimento ou é não tributável. Usado para o LCDPR (filtro: "rural") e para o SPED ECD (filtro: "pj" ou "pf").
+### O que é o SIEG?
+Serviço que captura automaticamente todas as NF-e emitidas contra o CNPJ/CPF da fazenda. As notas aparecem em **Compras & Estoque → Integração de Documentos → Notas Capturadas (SIEG)** para serem classificadas e processadas. Para ativar/desativar: **Compras & Estoque → Integração de Documentos → ⚡ Ligar / Desligar SIEG**.
 
-**P: Como configurar um novo cliente no sistema?**
-R: O administrador (raccotlo) cria o usuário via painel admin. O novo cliente deve então: (1) fazer login, (2) ir em **Cadastros → Fazendas** e criar sua fazenda, (3) preencher **Parâmetros do Sistema** com dados fiscais e certificado A1, (4) criar os Ciclos e Talhões, (5) começar a operar.
-
-**P: Regenerei as parcelas do consórcio mas as CPs não aparecem em Contas a Pagar.**
-R: CPs com datas no passado (parcelas vencidas) aparecem na aba **Vencidos** de Contas a Pagar, não na aba padrão. Clique na aba Vencidos — o sistema busca automaticamente 2 anos atrás para cobrir essas parcelas. CPs futuras aparecem em Em Aberto dentro do período padrão.
-
-**P: O campo Agricultor no consórcio não é obrigatório?**
-R: Não — é opcional. Serve para vincular o produtor titular da cota, útil quando o consórcio está no nome de um produtor PF específico (para LCDPR ou controle por CPF). Se a conta tem apenas um produtor, pode deixar vazio.
-
-**P: Posso ter consórcios de fazendas diferentes na mesma tela?**
-R: Sim. A tela de Consórcios carrega todos os consórcios da **conta** (não apenas da fazenda ativa). Todos aparecem na lista, independente de qual fazenda está selecionada no TopNav.
+### O que é "vínculo de atividade"?
+Campo que classifica o lançamento para fins fiscais:
+- **Atividade Rural** — entra no LCDPR (produtor PF)
+- **Pessoa Física** — despesa pessoal (não é rural)
+- **Investimento** — CAPEX / imobilizado
+- **Não tributável** — operação isenta
 
 ---
 
-## MÓDULO: MODO CAMPO (MOBILE)
-
-Aplicação mobile-first acessada em **/campo** — otimizada para uso no celular no campo, fora do escritório. Acessível pelo menu principal ou direto pela URL.
-
-### Acesso e Seletor de Fazenda
-- O botão **← Desktop** no topo leva de volta ao sistema principal
-- Se a conta tem **mais de uma fazenda**, o nome da fazenda no topo é clicável e exibe um menu para troca de fazenda ativa
-- A fazenda selecionada afeta todos os registros feitos no modo campo
-
-### Aba Início (/campo)
-Hub com saudação, hora, resumo (talhões e ciclo ativo), alertas críticos e atalhos para todas as operações.
-
-### Aba Plantio (/campo/plantio)
-Registro simplificado de operação de semeadura. Campos:
-- **Talhão*** — select; ao selecionar, a área é preenchida automaticamente
-- **Ciclo/Safra*** — select dos ciclos da fazenda
-- **Data do Plantio*** — padrão: hoje
-- **Variedade/Cultivar** — texto livre (ex: M6410 IPRO)
-- **Área (ha)** — preenchida automaticamente pelo talhão, editável
-- **Dose de Semente (kg/ha)** — calcula automaticamente o total em kg
-- **Observações** — texto livre
-
-Salva na tabela \`plantios\`. Ao concluir, mostra resumo e botão "Ver todos os plantios" (redireciona para Lavoura → Plantio desktop).
-
-### Aba Pulverização (/campo/pulverizacao)
-Registro de aplicação de defensivos e foliares. Campos:
-- **Talhão** e **Ciclo/Safra***** — selects obrigatórios
-- **Tipo de Aplicação*** — botões: Herbicida / Fungicida / Inseticida / Foliar / Dessecação / Regulador / Outros
-- **Data***
-- **Estádio** — texto (ex: R1, V5)
-- **Área (ha)** e **Volume de calda (L/ha)**
-- **Produtos Aplicados*** — um ou mais produtos. Para cada um: select do insumo cadastrado (ou texto livre), dose e unidade (L/ha, mL/ha, kg/ha, g/ha, cc/ha). Total calculado automaticamente.
-- Botão **+ Adicionar Produto** para múltiplos produtos na mesma aplicação
-
-Salva em \`pulverizacoes\` + \`pulverizacao_itens\`. Ao concluir, redireciona para Lavoura → Pulverização desktop.
-
-### Aba Colheita (/campo/colheita)
-Registro simplificado de produtividade por talhão. Campos:
-- **Talhão*** e **Ciclo/Safra***
-- **Data da Colheita***
-- **Área colhida (ha)*** e **Produtividade (sc/ha)***
-- Preview automático: total de sacas e toneladas
-- **Umidade (%)** e **Impureza (%)**
-- **Destino/Armazém** — select dos depósitos cadastrados
-
-Salva em \`colheitas\`. Ao concluir, redireciona para Lavoura → Colheita Própria desktop.
-
-### Aba Abastecimento (/campo/abastecimento)
-Registro de abastecimento de combustível para máquinas e frota. Campos:
-- **Bomba/Tanque*** — select mostra nome, tipo de combustível e estoque atual em litros
-- **Destino** — 3 opções: Máquina (select das máquinas cadastradas, preenche horímetro automaticamente), Funcionário (select), Outro (texto livre)
-- **Data***
-- **Quantidade (L)***
-- **Horímetro (h)** — preenchido automaticamente ao selecionar máquina; atualiza o horímetro da máquina ao salvar
-- **Valor por litro (R$)** — opcional; calcula o custo total
-- **Observações**
-
-Salva em \`abastecimentos\`. Se a bomba tem \`consume_estoque = true\`, desconta do \`estoque_atual_l\`. Se a máquina é selecionada e horímetro informado, atualiza \`maquinas.horimetro_atual\`.
-
-### Aba Monitoramento (/campo/monitoramento)
-Registro de pragas, doenças e plantas daninhas. Fluxo em 3 etapas:
-1. **Formulário**: talhão, ciclo, data, tipo (praga/doença/invasora), espécie (catálogo), nível de infestação (1-4), % plantas afetadas, estádio, ação recomendada, observações
-2. **GPS**: captura localização georreferenciada do ponto de incidência
-3. **Foto**: até 3 fotos da ocorrência (upload para Supabase Storage)
-
-Salva em \`monitoramento_pragas\`. Nível 4 (Crítico) gera alerta no Dashboard e na tela inicial do modo campo.
-
-### Erros comuns no modo campo
-- **"Nenhuma bomba cadastrada"**: Acesse Configurações → Combustíveis para cadastrar bombas antes de usar o abastecimento
-- **"Preencha talhão, ciclo e data"**: Campos obrigatórios não preenchidos
-- **GPS não capturado**: No monitoramento, é possível pular e salvar sem GPS clicando "Pular GPS"
-- **JWT expirado (42501)**: Se surgir erro de permissão, faça logout e login novamente
-
----
-
-## MÓDULO 39 — APOIO FINANCEIRO (Ferramenta Raccotlo)
-
-**Caminho:** Menu superior → **Financeiro** → **Apoio Financeiro**
-
-> **Acesso exclusivo Raccotlo:** Apenas usuários com perfil 'raccotlo' têm acesso. Clientes fazendeiros não enxergam esta tela.
-
-### O que faz
-Ferramenta de trabalho interno do consultor Raccotlo para organizar lançamentos e previsões financeiras **paralelas** ao sistema oficial da fazenda. Permite:
-- Criar estimativas de CP/CR que ainda não estão no sistema oficial
-- Baixar lançamentos do sistema oficial dentro do contexto do Apoio (marcação separada)
-- Ter uma visão financeira consolidada (oficial + estimativas) sem contaminar os dados do cliente
-
-### Abas
-
-**Aba Exclusivo (lançamentos próprios do Apoio):**
-- Lista de CP/CR criadas diretamente no Apoio Financeiro (não existem no sistema oficial)
-- Badge por status: em_aberto, baixado_apoio
-- Grid full-width com 13 colunas: Data, Vencimento, Descrição, Fornecedor, Produtor, Safra, Origem, Categoria, Valor, Status, Ações
-- **Filtros de string**: linha de inputs abaixo dos cabeçalhos para filtrar por Descrição, Fornecedor, Produtor, Safra, Origem, Categoria — digitação em tempo real + botão ✕ Limpar para resetar todos
-- Filtro de status: dropdown (Todos / Em aberto / Baixado)
-
-**Aba Compartilhado (lançamentos oficiais gerenciados via Apoio):**
-- Lista de CP/CR do sistema oficial que foram "baixadas" dentro do contexto do Apoio
-- Badge: baixado_apoio ou baixado_oficial
-- Permite "Reabrir baixa" tanto para lançamentos baixados no Apoio quanto no sistema oficial
-
-**Aba Importação:**
-- Importa lançamentos do Apoio em massa via planilha XLSX
-- Template com 19 campos: data, vencimento, tipo, valor, moeda, descrição, categoria, fazenda, pessoa_nome, cnpj_cpf, produtor_nome, produtor_cpf_cnpj, safra_nome, ciclo, talhão, operacao_gerencial, observacao, origem, status
-- Matching automático de Pessoa por CNPJ/CPF (prioridade) ou por nome; Fazenda por nome; OG por descrição
-- CNPJ com zero inicial suprimido pelo Excel é normalizado automaticamente (13 → 14 dígitos)
-- Empresas com 2 CNPJs cadastradas com o mesmo nome: o sistema usa o CNPJ para resolver a ambiguidade; se só o nome for informado e houver duplicata, o lançamento importa sem vínculo de pessoa (sem erro)
-- Campos produtor_nome, safra_nome, origem são gravados como texto livre (não dependem de FK) para preservar contexto histórico mesmo que o cadastro mude
-
-### Como criar um lançamento exclusivo
-1. Clique em **+ Novo Lançamento**
-2. Preencha:
-   - **Tipo** (*): A Pagar ou A Receber
-   - **Descrição** (*): texto livre
-   - **Valor** (*) e **Data de Vencimento** (*)
-   - **Pessoa / Fornecedor**: select do cadastro de Pessoas
-   - **Ano Safra**: select dos anos safra da fazenda
-   - **Ciclo**: select dos ciclos, filtrado pelo Ano Safra selecionado
-   - **Operação Gerencial**: select do plano de contas (OG)
-   - **Categoria** e **Observação** (opcionais)
-3. Salvar
-
-> Lançamentos com **Ciclo preenchido** e **tipo = pagar** contribuem automaticamente ao custo da safra no DRE Agrícola.
-
-### Como dar baixa em um lançamento exclusivo
-1. Clique em **Baixar** na linha do lançamento
-2. Modal abre com:
-   - **Data da Baixa** (*) — padrão: hoje
-   - **Conta Bancária** — select das contas bancárias cadastradas (opcional)
-   - **Observação** (opcional)
-3. Clique em **Confirmar Baixa**
-
-### Como reabrir uma baixa
-- Lançamento com badge **baixado_apoio**: clique em **Reabrir** → remove a baixa do Apoio, volta para em_aberto
-- Lançamento com badge **baixado_oficial** (na aba Compartilhado): clique em **Reabrir (Oficial)** → reverte o status do lançamento oficial para em_aberto no sistema
-
-### Lançamentos abertos no Fluxo de Caixa
-Lançamentos em aberto (não baixados) do Apoio Financeiro **aparecem na seção FC Previsto** do Fluxo de Caixa com badge laranja "Apoio Financeiro", dentro do intervalo de datas selecionado.
-
-### Erros comuns
-- **"Permissão negada"**: Usuário não tem perfil raccotlo. Confirme o role no painel admin.
-- **Ciclo não aparece**: Selecione primeiro o Ano Safra — o select de Ciclo só mostra os ciclos do ano escolhido.
-- **Valor aceita vírgula**: No campo valor, use vírgula como separador decimal (ex: 1.234,56).
-
----
-
-## MÓDULO 40 — ADMIN → DADOS & LIMPEZA
-
-**Caminho:** Acessível apenas para usuários Raccotlo via /admin/dados
-
-### O que faz
-Ferramenta de manutenção de dados: permite contar, limpar e zerar registros de uma fazenda. Organizado em acordeões por categoria.
-
-### Grupo: Estoque & Compras
-
-**Cadastro de Insumos:**
-- Conta e lista todos os insumos cadastrados na fazenda
-- **Limpar:** exclui todos os insumos. Pré-requisito: exclua as Movimentações de Estoque antes (insumos têm FK de movimentações)
-
-**Itens Gerais (peças/materiais):**
-- Mesma lógica dos Insumos, mas filtra apenas itens do tipo "produto"
-- **Limpar:** exclui os itens. Exclua Movimentações antes
-
-**Zeramento de Estoque:**
-- **Não apaga** os registros do catálogo — apenas define estoque = 0 em todos os insumos e itens da fazenda
-- Útil para reiniciar o saldo físico sem perder o cadastro (nomes, NCM, preço médio, etc.)
-- Para reverter, é necessário fazer nova entrada de estoque via NF ou ajuste manual
-
-### Outros grupos disponíveis
-- **Financeiro:** limpar CP, CR, Lançamentos
-- **Lavoura:** limpar Ciclos, Talhões, Operações
-- **Contratos:** limpar Contratos de Grãos, Arrendamentos
-- **Comercial:** limpar Romaneios, Expedições
-
-### Importante
-- Todas as limpezas são **irreversíveis** — confirme com o cliente antes de executar
-- O sistema solicita confirmação dupla antes de excluir
-- Apenas raccotlo tem acesso a esta tela (clientes não enxergam)
-
----
-
-## REFERÊNCIA RÁPIDA — CAMINHOS DO MENU
-
-| O que fazer | Caminho |
-|---|---|
-| Usar modo mobile (campo) | Acessar /campo no celular |
-| Registrar plantio (mobile) | Campo → Plantio |
-| Registrar pulverização (mobile) | Campo → Pulv. |
-| Registrar colheita (mobile) | Campo → Colheita |
-| Abastecer máquina (mobile) | Campo → Abastecer |
-| Monitorar pragas (mobile) | Campo → Monitor. |
-| Ver alertas e preços | Dashboard |
-| Ver fazendas e talhões | Propriedades |
-| Criar/ver ciclos de lavoura | Lavoura → Planejamento Agrícola |
-| Registrar plantio | Lavoura → Plantio |
-| Registrar pulverização | Lavoura → Pulverização |
-| Registrar adubação | Lavoura → Adubação de Base |
-| Registrar correção de solo | Lavoura → Correção de Solo |
-| Registrar colheita | Lavoura → Colheita Própria |
-| Ver relatório de aplicações | Lavoura → Relatórios → Aplicações por Ciclo |
-| Criar contrato de venda de grãos | Comercial → Contratos de Grãos |
-| Controlar expedição | Comercial → Expedição de Grãos |
-| Gerenciar arrendamentos | Comercial → Contratos de Arrendamento |
-| Ver fluxo de caixa | Financeiro → Fluxo de Caixa |
-| Lançar contas a receber | Financeiro → Contas a Receber |
-| Lançar contas a pagar | Financeiro → Contas a Pagar |
-| Vincular multa de trânsito a veículo | Financeiro → Contas a Pagar → Nova CP → campo Veículo |
-| Vincular manutenção a máquina/veículo | Financeiro → Contas a Pagar → Nova CP → campo Veículo |
-| Gerenciar financiamentos | Financeiro → Contratos Financeiros |
-| Lançamentos de tesouraria | Financeiro → Tesouraria |
-| Estimativas financeiras (consultor) | Financeiro → Apoio Financeiro |
-| Gerenciar seguros | Financeiro → Seguros |
-| Gerenciar consórcios | Financeiro → Consórcios |
-| Ver endividamento total | Financeiro → Endividamento |
-| Ver posição de estoque | Compras & Estoque → Estoque |
-| Dar entrada em NF de insumos | Compras & Estoque → Estoque → NF Entrada |
-| Criar pedido de compra | Compras & Estoque → Pedidos de Compra |
-| Lançar NF de produtos recebida | Compras & Estoque → NF de Produtos |
-| Processar NF do Sieg | Compras & Estoque → NF de Produtos → Processar |
-| Lançar NF de serviços recebida | Compras & Estoque → NF de Serviços |
-| Emitir NF-e de venda | Fiscal → NF-e |
-| Gerar LCDPR | Fiscal → LCDPR |
-| Gerar SPED ECD | Fiscal → SPED Contábil |
-| Configurar entidade fiscal da fazenda | Cadastros → Fazendas → editar → Dados Gerais → Escrituração Fiscal |
-| Emitir CT-e | Transporte → CT-e |
-| Emitir MDF-e | Transporte → MDF-e |
-| Análise estratégica | BI |
-| Ver DRE | Relatórios → DRE Agrícola |
-| Módulo algodão | Algodão |
-| Configurar automações | Configurações → Automações |
-| Configurar NF-e e fiscal | Configurações → Parâmetros do Sistema |
-| Cadastrar fazendas | Cadastros → Fazendas |
-| Cadastrar ciclos e safras | Cadastros → Safras & Ciclos |
-| Cadastrar insumos | Cadastros → Insumos |
-| Cadastrar pessoas/fornecedores | Cadastros → Pessoas |
-| Cadastrar contas bancárias | Cadastros → Contas Bancárias |
-| Importar dados em massa | Configurações → Importação |
-| Importar lançamentos do Apoio (raccotlo) | Financeiro → Apoio Financeiro → aba Importação |
-| Definir regras de rateio | Configurações → Regras de Rateio |
-| Limpar ou zerar dados de uma fazenda (raccotlo) | /admin/dados |
-| Zerar estoque sem apagar cadastro (raccotlo) | /admin/dados → Estoque & Compras → Zeramento de Estoque |
-| Relatório de romaneios de entrada | Estoque → Relatórios → Romaneios de Entrada |
-| Relatório de romaneios de saída por contrato | Estoque → Relatórios → Romaneios de Saída |
-| Emitir NF de transferência entre fazendas | Fiscal → NF-e → aba NF de Transferência |
-| Preencher código IBGE do município (pessoa) | Cadastros → Pessoas → editar → seção Endereço → campo "Cód. IBGE Município" |
-
----
-
-## MÓDULO 41 — NF DE TRANSFERÊNCIA ENTRE FAZENDAS
-
-**Caminho:** Fiscal → NF-e → aba **NF de Transferência**
-
-### O que faz
-Emite NF-e de transferência de mercadorias entre estabelecimentos da mesma conta (fazendas do mesmo produtor). Não é uma venda — é uma remessa interna. Usa CFOPs específicos de transferência.
-
-### CFOPs disponíveis
-- **5.152** — Transferência de produção do estabelecimento (intraestadual)
-- **6.152** — Transferência de produção do estabelecimento (interestadual)
-- **5.906** — Remessa para armazenagem (intraestadual)
-- **6.906** — Remessa para armazenagem (interestadual)
-
-### Como emitir
-1. Clique na aba **NF de Transferência**
-2. Selecione o **Produtor / Emitente** (o produtor que aparece como remetente na NF-e)
-3. Selecione o **CFOP / Natureza** conforme o estado de destino e a finalidade
-4. Selecione a **Fazenda Destino** (não pode ser a mesma fazenda ativa)
-5. Escolha o **Produto (NCM)** e informe quantidade + unidade + valor unitário
-6. Preencha as datas de emissão e saída
-7. Clique em **Gerar NF-e**
-
-O sistema preenche automaticamente o texto legal obrigatório no campo de observações conforme a legislação.
-
-### Diferença de NF de Remessa
-- **NF de Remessa (CFOP 5.905/6.905):** para envio a terceiros (ex: armazém de terceiros, industrialização)
-- **NF de Transferência (5.152/6.152):** para envio entre estabelecimentos do **mesmo** titular
-
----
-
-## MÓDULO 42 — RELATÓRIO DE ROMANEIOS
-
-**Caminho:** Estoque → Relatórios → **Romaneios de Entrada** ou **Romaneios de Saída**
-
-### O que faz
-Exibe todos os romaneios do período com totais de peso e sacas. Separado em duas abas: entrada (lavoura → armazém) e saída (entrega por contrato).
-
-### Aba Entrada (Lavoura → Armazém)
-Mostra os romaneios registrados em **Estoque → Romaneio de Entrada**. Cada linha representa um caminhão que entrou com produção da lavoura.
-
-**Filtros disponíveis:**
-- Fazenda, Data início/fim
-- Ano Safra → Ciclo (hierárquico)
-- Status (Confirmado / Rascunho)
-- Busca por placa, motorista ou produto
-
-**Totais automáticos:** Total de cargas · Peso Bruto (t) · Peso Líquido (t) · Total de sacas
-
-### Aba Saída (Entrega por Contrato)
-Mostra os romaneios de entrega registrados nos contratos de comercialização.
-
-**Agrupamento por contrato:** ativado por padrão. Clique no card do contrato para expandir e ver cada caminhão individual, com subtotal por contrato.
-
-**Impressão:** botão "Imprimir" abre impressão em A4 paisagem com todos os grupos expandidos.
-
-### Dúvidas frequentes
-- **"Não aparecem romaneios":** verifique o período de datas (padrão: último mês). Clique em **Buscar** após alterar os filtros.
-- **"Sacas zeradas":** o campo "sacas" pode não ter sido calculado no romaneio. Verifique se a classificação foi preenchida (umidade, impureza, avariados).
-
----
-
-## ATUALIZAÇÃO — CT-e: Validação de Endereço do Remetente
-
-O sistema agora **bloqueia a transmissão do CT-e** se o endereço do remetente estiver incompleto. Os campos obrigatórios são:
-- Logradouro, Número, Bairro
-- Código IBGE do município, Nome do município, UF
-
-**Mensagem de erro:** "Endereço do remetente incompleto. Campos ausentes: logradouro, numero..."
-
-**Solução:** Vá em **Cadastros → Pessoas**, edite a pessoa que está como remetente no CT-e e preencha o endereço completo. O campo **Cód. IBGE Município** é preenchido automaticamente quando você digita o CEP e o sistema faz a consulta ViaCEP. Se o IBGE não foi preenchido, edite o campo manualmente com o código de 7 dígitos do município (ex: 5106224 para Lucas do Rio Verde/MT).
-
----
-
-## ATUALIZAÇÃO — Cadastro de Pessoas: Campo Código IBGE
-
-O cadastro de **Pessoas** agora exibe o campo **Cód. IBGE Município** na seção de Endereço, ao lado de Município e Estado.
-
-**Por que é importante:** o código IBGE do município é obrigatório no schema do CT-e 4.00 e do MDF-e. Sem esse código preenchido, o CT-e não pode ser transmitido.
-
-**Preenchimento automático:** ao digitar o CEP completo, o sistema consulta ViaCEP e preenche automaticamente o código IBGE. Se necessário, edite manualmente: são 7 dígitos numéricos (ex: 5106224 para Lucas do Rio Verde-MT, 5108402 para Sinop-MT, 5102504 para Cuiabá-MT).
-
----
-
-## ATUALIZAÇÃO — Controle de Módulos Add-on
-
-Os módulos **Algodão**, **BI Raccotlo**, **Proteção de Margem** e outros add-ons agora são bloqueados na própria página quando o módulo está desabilitado para a conta.
-
-**Antes:** o módulo desabilitado sumia do menu mas a página ainda era acessível pela URL direta.
-**Agora:** a página exibe a tela de upgrade/bloqueio se o módulo não estiver habilitado.
-
-**Para o admin (Raccotlo):** para ativar ou desativar um add-on para um cliente, acesse **Gestão Arato → Módulos**, selecione a conta, marque/desmarque o módulo e clique em **Salvar Alterações**. A mudança entra em vigor imediatamente (sem precisar o cliente recarregar a página, graças à sincronização em tempo real via Realtime).
-
----
-
-## ATUALIZAÇÃO — Consórcios: Campo Agricultor e Regenerar CPs
-
-### Novo campo: Agricultor / Consorciado
-O cadastro de consórcios agora tem o campo **Agricultor / Consorciado** — um select dos produtores cadastrados na conta. Permite vincular quem é o titular da cota (ex: em casos de consórcios no nome de um produtor PF específico dentro de um grupo com várias fazendas).
-
-**Uso no LCDPR:** quando o agricultor PF é vinculado ao consórcio, o custo das parcelas pode ser classificado corretamente por entidade contábil.
-
-**Extração automática por IA:** ao carregar um PDF do contrato de adesão, a IA tenta encontrar o CPF do tomador e o cruza com os produtores cadastrados. Se encontrar, preenche o campo Agricultor automaticamente.
-
-### Regenerar Parcelas e CPs
-Botão **Regenerar Parcelas e CPs** disponível ao editar um consórcio. Apaga e recria todo o cronograma de parcelas e CPs em aberto.
-
-**Retorno visual:** após concluir, o sistema exibe: "✅ N parcelas criadas — N CPs lançadas no financeiro."
-
-**Importante:** se as CPs geradas tiverem datas no **passado** (parcelas vencidas anteriores a hoje), elas aparecem na aba **Vencidos** de Contas a Pagar — não na aba padrão "Em Aberto". Ao clicar na aba Vencidos, o sistema amplia automaticamente o período de busca para **2 anos atrás**, garantindo que todas as CPs vencidas do consórcio apareçam.
-
----
-
-## ATUALIZAÇÃO — Contas a Pagar: Aba Vencidos busca 2 anos atrás
-
-**Caminho:** Financeiro → Contas a Pagar → aba **Vencidos**
-
-Ao clicar na aba **Vencidos**, o filtro de período é automaticamente ajustado para:
-- Início: hoje − 2 anos
-- Fim: hoje
-
-Isso garante que CPs antigas (como parcelas de consórcio lançadas retroativamente após um Regenerar) apareçam na lista. Ao sair da aba Vencidos, o período volta ao padrão (hoje → +3 meses).
-
-**Pergunta frequente:** "Regenerei as parcelas do consórcio mas as CPs não aparecem em nenhuma aba." → Clique na aba **Vencidos** para ver as parcelas passadas; as futuras aparecem em Em Aberto dentro do período padrão.
-
----
-
-## ATUALIZAÇÃO — Contas a Receber: Baixa individual bloqueada para lançamentos de borderô
-
-**Módulo:** Contas a Receber (e Contas a Pagar — mesma lógica)
-
-- Lançamento pertencente a um borderô exibe badge **BDR** azul na coluna de ações
-- Clicar no ícone de baixa em um lançamento BDR **não abre o popup de baixa** — em vez disso, aparece o botão **"📋 Ver Borderô"**
-- Lançamentos BDR **não podem ser baixados individualmente** enquanto o borderô existir
-- Para desfazer: abra o borderô e clique em **Estornar Borderô** — isso desfaz a baixa de todos os lançamentos do lote e remove o vínculo BDR
-- Após o estorno do borderô, os lançamentos voltam a aceitar baixa individual normalmente
-
-**Por quê:** garante integridade do borderô — um borderô é uma baixa única de um lote; a baixa individual quebraria o saldo do lote.
-
----
-
-## ATUALIZAÇÃO — Liberações (Parcelas de Liberação): exclusão remove CR vinculada
-
-**Módulo:** Financeiro → Contratos Financeiros → aba Pagamento → Liberações
-
-- Ao excluir uma parcela de liberação (captação de recurso), o sistema agora **também exclui automaticamente a CR (Conta a Receber) vinculada** que foi gerada no momento da criação da parcela
-- Antes a exclusão da liberação deixava a CR "órfã" no módulo CR
-- Não há impacto para CRs que foram **baixadas** — essas são preservadas; apenas CRs em aberto são removidas
-
----
-
-## ATUALIZAÇÃO — Pedido de Compra: subcategoria e princípio ativo no modal de novo insumo
-
-**Módulo:** Compras & Estoque → Pedidos de Compra → modal de item → botão "Criar novo insumo"
-
-Ao criar um novo insumo diretamente do pedido de compra (campo "Produto / Insumo" → "Criar novo"):
-- O modal agora inclui campos **Subcategoria** (grupo de insumo) e **Princípio Ativo** (campo livre de texto)
-- Esses campos eram ignorados antes — o insumo era criado sem grupo e sem princípio ativo
-- O campo **Princípio Ativo** aparece apenas quando a categoria do insumo é defensivo (herbicida, fungicida, inseticida, nematicida, etc.)
-
----
-
-## ATUALIZAÇÃO — Contratos Financeiros e Contratos de Grãos: 4 casas decimais na cotação
-
-**Módulos:** Financeiro → Contratos Financeiros | Comercial → Contratos de Grãos
-
-- O campo **Cotação / Valor de Conversão** (R$/US$) agora aceita e exibe **4 casas decimais**
-- Exemplo: 5,1234 em vez de 5,12
-- Isso é importante para cotações travadas em PTAX de dias específicos, que normalmente têm 4 decimais (ex: 5,7843)
-
----
-
-## ATUALIZAÇÃO — Anexos (AnexoDocumentos) em CP, CR e Contratos de Grãos
-
-**Módulos:** CP, CR, Contratos de Grãos
-
-- A aba **Adicionais** de CP e CR e o modal de Contrato de Grãos agora incluem o componente de **Anexos**
-- É possível fazer upload de PDFs, imagens e outros arquivos vinculados ao lançamento
-- Os arquivos ficam no Supabase Storage (bucket "arquivos") e persistem mesmo após fechar o modal
-- **Limite:** arquivos de até 50 MB por upload
-- **Pergunta frequente:** "Enviei um arquivo mas sumiu ao reabrir." → Verifique se o bucket "arquivos" está criado como público no Supabase Storage.
-
----
-
-## ATUALIZAÇÃO — NF de Produtos e NF de Serviços: seleção e impressão em lote
-
-**Módulos:** Compras & Estoque → NF de Produtos | NF de Serviços
-
-- A lista de NFs agora tem uma **coluna de checkbox** à esquerda
-- Marque múltiplas NFs para seleção em lote
-- A barra de ação preta aparece acima da tabela mostrando quantas NFs estão selecionadas, com botões **🖨 Imprimir** e **Limpar seleção**
-- O botão **Imprimir** gera uma janela de impressão com todas as NFs selecionadas formatadas sequencialmente
-
----
-
-## ATUALIZAÇÃO — NF de Produtos: filtro por produtor
-
-**Módulo:** Compras & Estoque → NF de Produtos
-
-- Novo filtro **Produtor** na barra de filtros da lista de NFs
-- O filtro aparece apenas quando há mais de um produtor cadastrado na conta
-- Filtra as NFs pelo produtor vinculado no campo "Produtor" do cabeçalho da NF
-
-## ATUALIZAÇÃO — NF de Serviços (NFS-e): filtro por fazenda
-
-**Módulo:** Compras & Estoque → NF de Serviços
-
-- Novo filtro **Fazenda** na barra de filtros da lista de NFS-e
-- O filtro aparece apenas quando a conta tem mais de uma fazenda
-- Filtra as NFS-e pela fazenda (campo fazenda_id) vinculada a cada nota
-
----
-
-## ATUALIZAÇÃO — Cadastro de Pessoas: busca CNPJ preenche IE e IM automaticamente
-
-**Módulo:** Cadastros → Pessoas → modal Pessoa Jurídica → campo CNPJ → botão 🔍
-
-- A busca de CNPJ via BrasilAPI agora preenche automaticamente:
-  - **IE (Inscrição Estadual):** extraída do campo inscricao_estadual ou inscricoes_estaduais[0].numero da API
-  - **IM (Inscrição Municipal):** extraída do campo inscricao_municipal — nova informação, antes não era coletada
-- **Novo campo IM** adicionado ao formulário ao lado do campo IE (grade 2 colunas)
-- O campo IM é importante para empresas prestadoras de serviço: é exigido na emissão de NFS-e
-- **Banco de dados:** coluna inscricao_mun adicionada na tabela pessoas (Migration 203)
-- **Pergunta frequente:** "A busca do CNPJ não trouxe a IE/IM." → A BrasilAPI pode não ter o dado para CNPJs de estados que não disponibilizam a informação. Preencha manualmente.
-
----
-
-## ATUALIZAÇÃO — Contratos de Grãos: coluna Contrato exibe número do cliente como principal
-
-**Módulo:** Comercial → Contratos de Grãos → grid da lista
-
-- A coluna **Contrato** agora exibe o **Nº do Contrato do Cliente** (comprador/trading, campo nr_contrato_cliente) como número principal em negrito
-- O número interno do sistema (CTR-XXXX/XX, campo numero) aparece em texto menor abaixo
-- Quando nr_contrato_cliente não está preenchido, exibe o número interno como principal
-- **Por quê:** os produtores se referem ao contrato pelo número da AMAGGI/BUNGE/CARGILL, não pelo número interno do sistema
-
----
-
-## ATUALIZAÇÃO — NF de Produtos processamento em lote: subcategoria de estoque selecionável
-
-**Módulo:** Compras & Estoque → NF de Produtos → modal de processamento em lote
-
-Ao processar NFs em lote e selecionar **Estoque** como destino:
-- Aparece um sub-seletor de **Subcategoria do Estoque** com 3 opções:
-  - **Insumos Agrícolas** (padrão)
-  - **Peças / Manutenção**
-  - **Combustível**
-- Antes, todas as NFs de lote eram classificadas como "Insumos" independentemente do conteúdo
-- O tipo selecionado é aplicado a todos os itens do lote
-
----
-
-## ATUALIZAÇÃO — Insumos: campo NCM em todas as categorias; matching por NCM na NF
-
-**Módulo:** Cadastros → Insumos → modal de insumo
-
-- Novo campo **NCM** adicionado ao formulário de insumo, presente em **todas as categorias** (antes era visível apenas em algumas)
-- O NCM do insumo é usado para matching automático durante o processamento de NF de Entrada
-- **Prioridade de matching:**
-  1. NCM exato (número sem pontos/traços) → se um único insumo tem aquele NCM, é selecionado automaticamente
-  2. Se múltiplos insumos têm o mesmo NCM → desempate por similaridade de nome com a descrição do item da NF
-  3. Se sem NCM ou sem match por NCM → fallback por similaridade de texto (comportamento anterior)
-- **Recomendação:** preencher o NCM nos insumos mais comuns agiliza muito o processamento de NFs de compra
-
----
-
-## ATUALIZAÇÃO — NF de Entrada: data de entrada auto-preenchida com data de hoje
-
-**Módulo:** Compras & Estoque → NF de Produtos → campo Data de Entrada
-
-- Ao importar uma NF (via XML ou manual) ou ao abrir uma NF existente sem data de entrada, o campo **Data de Entrada** é agora automaticamente preenchido com a **data de hoje**
-- O usuário pode alterar a data antes de salvar
-- Antes o campo ficava vazio e o usuário esquecia de preencher, causando problemas de rastreabilidade de estoque
-
----
-
-## ATUALIZAÇÃO — Folha de Pagamento: carregamento de funcionários e duplicação corrigidos
-
-**Módulo:** Financeiro → Folha de Pagamento
-
-Dois bugs corrigidos:
-
-1. **Funcionários não apareciam na lista da folha:**
-   - O sistema buscava funcionários com empresa_id IS NULL via filtro de banco, mas a coluna pode ter comportamento diferente dependendo da versão do banco
-   - Corrigido: o sistema agora carrega todos os funcionários da fazenda e filtra no cliente apenas os sem empresa_id (funcionários do produtor rural, não de empresas)
-   - Funcionários vinculados a uma empresa (CNPJ) continuam **não aparecendo** na folha do produtor rural — isso é correto
-
-2. **Ao salvar a folha uma segunda vez, era criada uma folha duplicada:**
-   - Após o primeiro salvamento, o ID da folha não era atualizado no estado interno
-   - No segundo salvar, o sistema interpretava como "nova folha" e criava um duplicado
-   - Corrigido: após o INSERT da folha, o id gerado é imediatamente gravado no estado — salvamentos subsequentes fazem UPDATE na folha existente
-
----
-
-## ATUALIZAÇÃO — Folha de Pagamento: adiantamento, benefícios e outros descontos
-
-**Módulo:** Financeiro → Folha de Pagamento
-**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento**
-
-### Coluna Adiantamento — herança automática
-
-O campo **Adiantamento** da folha é preenchido automaticamente ao processar a folha, herdando os valores lançados na aba **Adiantamentos** (dentro da própria tela de Folha de Pagamento).
-
-**Como funciona:**
-- Abra **Folha de Pagamento → aba Adiantamentos** e registre os adiantamentos pagos no mês (com ou sem competência de referência)
-- Ao clicar em **Processar Folha**, o sistema busca adiantamentos com status "pendente" para cada funcionário e preenche o campo automaticamente
-- O campo continua editável caso precise corrigir manualmente
-- O valor do adiantamento é deduzido do salário líquido automaticamente
-- Ao fechar a folha (**Fechar Folha**), os adiantamentos vinculados mudam para status "descontado"
-
-**Regra de correspondência:**
-- Inclui adiantamentos sem competência de referência (campo em branco) — vale para qualquer folha
-- Inclui adiantamentos com competência igual ao mês da folha (ex: "2026-08" para agosto)
-- Adiantamentos de outros meses **não** são incluídos automaticamente
-
-### Coluna Outros Descontos — justificativa obrigatória
-
-O campo **Outros Descontos** aceita um valor em reais e exige uma **justificativa** que aparece diretamente na linha da tabela.
-
-**Como usar:**
-1. No campo de valor, informe o desconto em reais
-2. No campo de texto abaixo (placeholder "Justificativa..."), descreva o desconto — ex: "Adiantamento de combustível", "Desconto uniforme", "Empréstimo pessoal"
-3. A justificativa fica gravada na folha e aparece no recibo do funcionário
-
-**Quando a folha está fechada:** ambos os campos ficam somente leitura (não é possível editar).
-
-### Coluna Benefícios — vem do cadastro do funcionário
-
-Os benefícios mensais (**Vale Transporte**, **Vale Refeição/Alimentação**, **Outros Benefícios**) são cadastrados uma única vez no perfil do funcionário e propagados automaticamente para toda folha mensal.
-
-**Como cadastrar benefícios de um funcionário:**
-1. Vá em **Cadastros → Funcionários**
-2. Abra o funcionário e clique em **✏ Editar**
-3. Na aba **Remuneração**, role até a seção **Benefícios mensais**
-4. Preencha: Vale Transporte, Vale Refeição/Alimentação, Outros Benefícios
-5. Clique em **Salvar Funcionário**
-
-**Regra importante:** benefícios **não geram lançamento financeiro** — são um crédito ao funcionário no demonstrativo da folha. O CP correspondente (ex: fornecedor de VR) é lançado separadamente em Contas a Pagar.
-
-**Na folha:** os benefícios aparecem como somente leitura com a nota "(do cadastro)". Para alterar o valor, edite o cadastro do funcionário.
-
----
-
-## ATUALIZAÇÃO — Cessão de Recebível: múltiplos fornecedores e vínculo com Pedido de Compra
-
-**Módulo:** Comercial → Contratos de Grãos
-**Seção:** Aba Adicionais → Cessão de Recebível
-
-### O que é Cessão de Recebível
-
-Quando o produtor cede o valor a receber de um contrato de grãos para quitar débitos com fornecedores — em vez de receber o dinheiro, o comprador paga diretamente ao fornecedor do produtor.
-
-### Múltiplos fornecedores beneficiários
-
-A cessão agora suporta **N fornecedores** beneficiários em um único contrato.
-
-**Como usar:**
-1. No modal de contrato (aba **Principal** → seção **Cessão de Recebível**), marque o checkbox **Dado em Cessão**
-2. Clique em **+ Adicionar fornecedor beneficiário** para cada credor
-3. Para cada beneficiário, preencha:
-   - **Fornecedor** — selecione do cadastro de Pessoas
-   - **Data da Cessão** — data de formalização
-   - **Observação** — ex: "quitação barter safra 25/26"
-4. Para remover um beneficiário, clique no **×** na linha correspondente
-
-### Vincular Débitos CP / Pedido de Compra
-
-Cada beneficiário tem seu próprio botão **Vincular Débitos CP / PC →**.
-
-**Como usar:**
-1. Selecione o fornecedor beneficiário e clique em **Vincular Débitos CP / PC →**
-2. O modal abre mostrando todas as CPs em aberto daquele fornecedor, organizadas em duas seções:
-
-   **Pedidos de Compra (seção superior):**
-   - CPs originadas de Pedidos de Compra aparecem agrupadas pelo número do pedido
-   - Checkbox **Selecionar tudo** no header do grupo seleciona todas as CPs do pedido de uma vez
-   - O total do pedido é exibido no header do grupo
-
-   **CPs avulsas (seção inferior):**
-   - CPs sem vínculo com Pedido de Compra aparecem individualmente
-
-3. Para cada CP selecionada, o campo **Valor Cessão** é preenchido com o valor total da CP (editável — pode ser um valor parcial)
-4. Clique em **Confirmar Vínculos**
-
-**Total cedido:** o cabeçalho do modal mostra o valor total cedido para aquele fornecedor vs. o valor total do contrato — um alerta vermelho aparece se ultrapassar.
-
-### Encerramento e baixa automática
-
-Ao encerrar o contrato, o sistema pergunta:
-- Quantos CPs estão vinculados à cessão
-- O valor total que será baixado automaticamente
-
-Ao confirmar o encerramento, todas as CPs vinculadas são baixadas automaticamente com a observação "Baixa automática por cessão de crédito — Contrato NNN".
-
----
-
-## ATUALIZAÇÃO — NF de Remessa (CFOP 5.905 / 6.905): fluxo em 2 etapas
-
-**Módulo:** Compras & Estoque → NF de Entrada
-**Fluxo:** NF Entrada → Emitir NF Remessa → Fiscal → NF-e Emitidas
-
-Quando uma NF de Entrada registra insumos que chegaram via remessa logística (armazém de terceiro), é possível emitir a NF de Remessa correspondente — a nota que formaliza o retorno ou reenvio da mercadoria.
-
-### Fluxo em 2 etapas
-
-**Etapa 1 — Criar rascunho:**
-1. Em **Compras & Estoque → NF de Entrada**, localize a NF desejada
-2. Clique no menu de ações (⋯) e selecione **Emitir NF Remessa**
-3. O sistema abre a tela **Fiscal → NF-e Emitidas** em modo "NF de Remessa" com:
-   - CFOP 6.905 (ou 5.905, conforme UF) preenchido automaticamente
-   - Natureza da operação e observações preenchidas
-   - Itens pré-carregados da NF de Entrada (apenas itens destinados ao estoque/maquinário)
-4. Preencha o **Destinatário** (campo obrigatório)
-5. Clique em **○ Salvar Rascunho** — a nota é salva com status "Rascunho" **sem** envio à SEFAZ
-
-**Etapa 2 — Transmitir:**
-1. Acesse **Fiscal → NF-e Emitidas**
-2. Localize a nota com badge **Rascunho** (badge azul escuro)
-3. Clique no botão **▶ Transmitir →**
-4. O modal reabre com os dados pré-carregados — revise e clique em **Emitir NF-e**
-5. O sistema assina e transmite à SEFAZ normalmente
-
-**Identificação no grid:**
-- Rascunhos têm badge "Rascunho" em azul escuro e botão "▶ Transmitir →"
-- NFs em digitação normais (sem rascunho) têm botão "⟳ Consultar SEFAZ"
-
-**Vínculo automático:** após a autorização SEFAZ, o sistema registra automaticamente o vínculo entre a NF de Remessa emitida e a NF de Entrada de origem na tabela de controle logístico.
-
----
-
-## MÓDULO — FOLHA DE PAGAMENTO (PRODUTOR RURAL)
-
-**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento** (/financeiro/folha)
-
-### O que faz
-Registra e controla a folha de pagamento dos funcionários vinculados às fazendas do produtor rural (CPF). Permite lançamento com competência corrente ou retroativa, replicação para competências futuras e gera Contas a Pagar automaticamente no Financeiro.
-
-### Pré-requisito
-Funcionários devem estar cadastrados em **Cadastros → Funcionários** com vínculo a pelo menos uma fazenda da conta. Cada funcionário tem: nome, função, salário base, vale-transporte, vale-refeição, outros benefícios, tipo (CLT/PJ/autônomo) e flag "ativo".
-
-### Como acessar e visualizar
-- A tela exibe as folhas cadastradas por competência
-- Seletores de mês/ano permitem navegar entre competências
-- Cada linha da lista representa uma folha de um período; clique em **Abrir** para ver os funcionários e valores
-
-### Como criar uma nova folha
-
-**Competência corrente (mês atual):**
-1. Clique em **+ Nova Folha**
-2. O modal abre com os campos **DE (mês/ano)** e **ATÉ (mês/ano)** mostrando a competência atual
-3. Os funcionários ativos das fazendas da conta carregam automaticamente com salário base e benefícios do cadastro
-4. Ajuste valores individualmente se necessário (campos editáveis diretamente na tabela)
-5. Use **+ Adicionar funcionário manualmente** para incluir alguém não cadastrado ou com valor diferente
-6. Clique em **Salvar Folha**
-
-**Competência retroativa (meses anteriores):**
-1. Clique em **+ Nova Folha**
-2. No modal, altere os campos **DE** e **ATÉ** para o período desejado (ex: Jan/2026 a Mar/2026)
-3. O sistema cria automaticamente uma folha para cada mês no intervalo
-4. Ajuste os funcionários e valores, depois salve
-
-### Replicar folha para meses futuros
-Após salvar uma folha, dentro do modal aberto:
-1. Clique em **↻ Replicar Folha** (botão no rodapé)
-2. O modal de replicação abre — selecione para quantas competências posteriores quer replicar: **1 a 12 meses**
-3. Chips mostram um preview dos meses que serão criados
-4. Clique em **Confirmar** — o sistema duplica a folha com os mesmos funcionários e valores para cada mês seguinte
-5. Folhas já existentes no período são ignoradas (sem duplicação)
-
-### O que é automático
-- Funcionários e benefícios carregados do cadastro (salário base, VT, VR, outros)
-- CPs de folha lançadas no Financeiro com origem "folha" para cada competência salva
-- Ao replicar: cada mês gera sua própria CP no Financeiro
-
-### Editar uma folha existente
-1. Na lista, clique em **Abrir** na folha desejada
-2. Clique em **✏ Editar** no modal para habilitar a edição
-3. Ajuste funcionários, valores e benefícios
-4. Clique em **Salvar alterações**
-
-### Erros comuns
-- **"Nenhum funcionário"**: verifique se há funcionários com flag "ativo = sim" vinculados às fazendas da conta em **Cadastros → Funcionários**
-- **"Folha já existe para esta competência"**: o sistema bloqueia duplicação da mesma competência — use **Abrir** para editar a existente
-- **"Replicar não aparece"**: o botão ↻ Replicar Folha só aparece depois de salvar — salve a folha primeiro
-
----
-
-## MÓDULO — FOLHA DE PAGAMENTO — EMPRESA
-
-**Caminho:** Menu superior → **Financeiro** → **Folha de Pagamento — Empresa** (/empresas/folha)
-
-### O que faz
-Registra e controla a folha de pagamento dos funcionários de **empresas com CNPJ** (PJ) do grupo. Funciona de forma análoga à folha do produtor rural, mas separada para gestão de pessoal da pessoa jurídica.
-
-### Diferença em relação à Folha do Produtor
-| Folha do Produtor (/financeiro/folha) | Folha da Empresa (/empresas/folha) |
-|---|---|
-| Funcionários vinculados a **fazendas** | Funcionários vinculados a **empresas (CNPJ)** |
-| Produtor rural — CPF | Empresa — CNPJ |
-| Aparece em Financeiro → seção Atividade Rural | Aparece em Financeiro → seção Empresa (CNPJ) |
-
-### Como criar uma nova folha (Empresa)
-
-1. Clique em **+ Nova Folha**
-2. O modal abre com o campo de **competência** editável (mês/ano)
-   - Para competência corrente: mantenha o mês atual
-   - Para competência retroativa: altere para o período desejado
-3. Os funcionários da empresa carregam automaticamente com salário base e benefícios
-4. Ajuste valores individualmente se necessário
-5. Adicione funcionários avulsos com **+ Adicionar funcionário manualmente**
-6. Clique em **Salvar Folha**
-
-### Replicar folha (Empresa)
-Mesmo fluxo da folha do produtor:
-1. Após salvar, clique em **↻ Replicar Folha**
-2. Selecione N meses (1 a 12)
-3. Confirme — folha duplicada para cada competência futura
-
-### O que é automático
-- Funcionários e benefícios carregados do cadastro de funcionários vinculados à empresa
-- CPs lançadas no Financeiro com origem "folha" para cada competência
-
-### Erros comuns
-- **"Nenhum funcionário"**: verifique se há funcionários com tipo de vínculo "empresa" e flag "ativo = sim" em **Cadastros → Funcionários**, com a empresa correta selecionada
-- **"Competência retroativa não funciona"**: ao criar nova folha, o campo de competência é editável — altere para o mês desejado antes de clicar em Salvar
+## ERROS COMUNS E SOLUÇÕES
+
+| Erro | Causa | Solução |
+|---|---|---|
+| "Semente não encontrada" ao registrar plantio | Insumo não está no estoque | Lançar NF de entrada ou cadastrar em Catálogo de Insumos |
+| "Estoque insuficiente" | Saldo zerado ou negativo | Verificar Posição de Estoque e lançar entrada |
+| CP em USD sem conversão | Cotação não informada | Abrir a CP, informar cotação no campo e salvar |
+| Fornecedor não preenchido automaticamente pelo SIEG | CNPJ não cadastrado em Pessoas | Cadastrar o fornecedor em Configurações → Cadastros → Pessoas e Entidades |
+| NF não pode ser reprocessada | Proteção contra duplicação | Usar botão "Estornar" antes de reprocessar |
+| Consórcio não aparece em CP | Parcelas com data passada | Ir para aba "Vencidos" em Contas a Pagar |
+| Balança não conecta | Browser incompatível | Usar Google Chrome ou Microsoft Edge |
+| Pedido de compra não pode ser excluído | Tem NFs de entrada vinculadas | Usar status "Cancelado" em vez de excluir |
+| "Ciclo não encontrado" ao registrar operação | Ciclo não cadastrado | Cadastrar em Configurações → Cadastros → Safras e Ciclos |
+| CP não aparece no Fluxo de Caixa | Produtor ou conta bancária não selecionados no filtro | Usar os botões "Selecionar Todos" nos filtros |
 `;
-
-

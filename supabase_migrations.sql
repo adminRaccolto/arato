@@ -11258,7 +11258,7 @@ CREATE TABLE IF NOT EXISTS pesagens_avulsas (
   fazenda_id        uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
   conta_id          uuid REFERENCES contas(id) ON DELETE SET NULL,
   tipo              text NOT NULL DEFAULT 'neutra' CHECK (tipo IN ('neutra','entrada','saida')),
-  status            text NOT NULL DEFAULT 'aguardando_bruto' CHECK (status IN ('aguardando_bruto','finalizado','cancelado')),
+  status            text NOT NULL DEFAULT 'aguardando_bruto' CHECK (status IN ('aguardando_bruto','aguardando_tara','finalizado','cancelado')),
   placa             text,
   motorista         text,
   produto           text,
