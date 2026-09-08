@@ -203,7 +203,8 @@ export default function AuditoriaPage() {
   const [fBusca,        setFBusca]        = useState("");
   const [ocultarSistema, setOcultarSistema] = useState(true);
 
-  const carregar = useCallback(async () => {
+  // Fetch manual — não reage a mudança de filtro; só dispara via botão ou mount
+  const carregar = useCallback(async (pag = 0) => {
     if (!fazendaId) return;
     setLoading(true);
     try {
@@ -213,23 +214,25 @@ export default function AuditoriaPage() {
         .gte("created_at", fDe + "T00:00:00")
         .lte("created_at", fAte + "T23:59:59")
         .order("created_at", { ascending: false })
-        .range(pagina * PAGE, (pagina + 1) * PAGE - 1);
+        .range(pag * PAGE, (pag + 1) * PAGE - 1);
 
       if (fTabela) q = q.eq("tabela", fTabela);
       if (fAcao)   q = q.eq("acao",   fAcao);
 
       const { data, error } = await q;
       if (error) throw error;
-      setLogs(prev => pagina === 0 ? (data ?? []) : [...prev, ...(data ?? [])]);
+      setLogs(prev => pag === 0 ? (data ?? []) : [...prev, ...(data ?? [])]);
+      setPagina(pag);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, fazendaIds, fDe, fAte, fTabela, fAcao, pagina]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazendaId, fazendaIds]);
 
-  useEffect(() => { setPagina(0); }, [fDe, fAte, fTabela, fAcao]);
-  useEffect(() => { carregar(); }, [carregar]);
+  // Carrega uma única vez quando a fazenda estiver disponível
+  useEffect(() => { if (fazendaId) carregar(0); }, [fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const logsFiltrados = useMemo(() => {
     return logs.filter(l => {
@@ -344,6 +347,10 @@ export default function AuditoriaPage() {
             style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 12px", fontSize: 12, color: "#666", background: "#F9FAFB", cursor: "pointer" }}>
             Limpar
           </button>
+          <button onClick={() => carregar(0)} disabled={loading}
+            style={{ border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 700, color: "#fff", background: loading ? "#93A8C6" : "#1A4870", cursor: loading ? "default" : "pointer", whiteSpace: "nowrap" }}>
+            {loading ? "Carregando…" : "↻ Atualizar"}
+          </button>
         </div>
 
         {/* Tabela de logs */}
@@ -449,7 +456,7 @@ export default function AuditoriaPage() {
           <div style={{ padding: "10px 16px", borderTop: "0.5px solid #F0F0F0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#888" }}>
             <span>Exibindo {logsFiltrados.length} eventos</span>
             {logs.length === PAGE * (pagina + 1) && (
-              <button onClick={() => setPagina(p => p + 1)} disabled={loading}
+              <button onClick={() => carregar(pagina + 1)} disabled={loading}
                 style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", fontWeight: 600 }}>
                 {loading ? "Carregando…" : "Carregar mais"}
               </button>
