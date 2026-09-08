@@ -117,7 +117,7 @@ export default function SidebarAtalhos() {
   // Não mostrar em páginas do app campo (mobile) nem login
   if (pathname?.startsWith("/app/campo") || pathname?.startsWith("/login") || pathname?.startsWith("/admin")) return null;
 
-  // Sidebar desativada — mostra aba mínima para reativar
+  // Sidebar desativada — mostra aba visível para reativar
   if (!ativada) {
     return (
       <button
@@ -125,15 +125,24 @@ export default function SidebarAtalhos() {
         title="Mostrar barra de atalhos"
         style={{
           position: "fixed", left: 0, top: "50%", transform: "translateY(-50%)",
-          zIndex: 300, width: 14, height: 52,
-          background: "var(--bg-card)", border: "0.5px solid var(--border-table)",
-          borderLeft: "none", borderRadius: "0 8px 8px 0",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          color: "var(--text-3)", fontSize: 9, padding: 0,
-          boxShadow: "2px 0 8px rgba(0,0,0,0.08)",
+          zIndex: 400, width: 22, height: 80,
+          background: "#1A4870", border: "none",
+          borderRadius: "0 10px 10px 0",
+          cursor: "pointer", display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 3,
+          padding: 0,
+          boxShadow: "3px 0 12px rgba(0,0,0,0.18)",
         }}
       >
-        ▶
+        <span style={{ color: "#fff", fontSize: 10, lineHeight: 1 }}>▶</span>
+        <span style={{
+          color: "rgba(255,255,255,0.8)", fontSize: 8, fontWeight: 700,
+          writingMode: "vertical-rl", textOrientation: "mixed",
+          letterSpacing: "0.06em", textTransform: "uppercase",
+          transform: "rotate(180deg)",
+        }}>
+          Atalhos
+        </span>
       </button>
     );
   }
