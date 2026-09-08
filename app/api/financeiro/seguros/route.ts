@@ -111,7 +111,12 @@ export async function POST(req: NextRequest) {
           numero_documento: numeroApolice,
         }));
 
-        const { data: lancs } = await sb.from("lancamentos").insert(lancRows).select("id, data_vencimento");
+        const { data: lancs, error: lancError } = await sb.from("lancamentos").insert(lancRows).select("id, data_vencimento");
+
+        if (lancError) {
+          console.error("[API seguros] lancamentos insert error:", lancError);
+          return NextResponse.json({ ok: false, error: `Erro ao criar lançamentos CP: ${lancError.message}` }, { status: 500 });
+        }
 
         if (lancs && lancs.length > 0) {
           const premioRows = parcelas.map((parc, i) => ({
@@ -122,7 +127,8 @@ export async function POST(req: NextRequest) {
             pago: parc.data_vencimento < today,
             lancamento_id: lancs[i]?.id ?? null,
           }));
-          await sb.from("pagamentos_premio_seguro").insert(premioRows);
+          const { error: premioError } = await sb.from("pagamentos_premio_seguro").insert(premioRows);
+          if (premioError) console.error("[API seguros] pagamentos_premio_seguro insert error:", premioError);
         }
       }
     }
