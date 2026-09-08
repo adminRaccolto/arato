@@ -71,7 +71,11 @@ export default function SidebarAtalhos() {
   const [modal,      setModal]      = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [montado,    setMontado]    = useState(false);
-  const sideRef = useRef<HTMLDivElement>(null);
+  const sideRef  = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Largura calculada antes dos effects para usar como dependência
+  const W = expandida ? 216 : 52;
 
   // Só renderiza no client (evita mismatch SSR)
   useEffect(() => {
@@ -81,15 +85,28 @@ export default function SidebarAtalhos() {
     setExpandida(exp === "1");
   }, []);
 
-  // Clique fora do modal fecha
+  // Clique fora do modal fecha — verifica sideRef E modalRef
   useEffect(() => {
     if (!modal) return;
     const handler = (e: MouseEvent) => {
-      if (sideRef.current && !sideRef.current.contains(e.target as Node)) setModal(false);
+      const fora =
+        sideRef.current  && !sideRef.current.contains(e.target as Node) &&
+        modalRef.current && !modalRef.current.contains(e.target as Node);
+      if (fora) setModal(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [modal]);
+
+  // CSS variable --sidebar-w: empurra o conteúdo da página para a direita
+  useEffect(() => {
+    const show =
+      montado &&
+      !pathname?.startsWith("/app/campo") &&
+      !pathname?.startsWith("/login") &&
+      !pathname?.startsWith("/admin");
+    document.documentElement.style.setProperty("--sidebar-w", show ? W + "px" : "0px");
+  }, [montado, pathname, W]);
 
   if (!montado) return null;
 
@@ -133,7 +150,6 @@ export default function SidebarAtalhos() {
     setModal(false);
   };
 
-  const W = expandida ? 216 : 52;
   const grupos = Array.from(new Set(CATALOGO_ATALHOS.map(i => i.grupo)));
 
   return (
@@ -219,8 +235,7 @@ export default function SidebarAtalhos() {
       {/* ═══ MODAL CONFIGURAÇÃO ═══ */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "flex-start", paddingTop: 92, paddingLeft: W }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: "0 12px 12px 0", width: 360, maxHeight: "calc(100vh - 92px)", display: "flex", flexDirection: "column", boxShadow: "4px 0 24px rgba(0,0,0,0.15)" }}
-            onClick={e => e.stopPropagation()}>
+          <div ref={modalRef} style={{ background: "var(--bg-card)", borderRadius: "0 12px 12px 0", width: 360, maxHeight: "calc(100vh - 92px)", display: "flex", flexDirection: "column", boxShadow: "4px 0 24px rgba(0,0,0,0.15)" }}>
 
             {/* Header */}
             <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>

@@ -42,7 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <BannerInadimplente />
           <VersionChecker />
           <SidebarAtalhos />
-          {children}
+          <div style={{ paddingLeft: "var(--sidebar-w, 0px)", transition: "padding-left 0.2s ease" }}>
+            {children}
+          </div>
           <Footer />
         </AuthProvider>
       </body>
