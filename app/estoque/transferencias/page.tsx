@@ -98,6 +98,14 @@ export default function TransferenciasEstoquePage() {
   const [insumosPorFazenda, setInsumosPorFazenda] = useState<Record<string, Insumo[]>>({});
   const [carregando, setCarregando] = useState(false);
 
+  // ── Cadastros de transporte ────────────────────────────────────────────────
+  type TrRow = { id: string; razao_social?: string; nome?: string; cnpj?: string; rntrc?: string };
+  type VeRow = { id: string; placa: string; tipo?: string; rntrc?: string };
+  type MoRow = { id: string; nome: string; cpf?: string };
+  const [transportadoras, setTransportadoras] = useState<TrRow[]>([]);
+  const [veiculos, setVeiculos]               = useState<VeRow[]>([]);
+  const [motoristas, setMotoristas]           = useState<MoRow[]>([]);
+
   // ── Abas ──────────────────────────────────────────────────────────────────
   const [aba, setAba] = useState<"lista" | "solicitacoes">("lista");
 
@@ -112,6 +120,10 @@ export default function TransferenciasEstoquePage() {
     cfopSufixo: "152",
     entradaAutomatica: true,
     observacao: "",
+    transportadoraId: "",
+    veiculoId: "",
+    motoristaId: "",
+    freteConta: "9",   // 9 = sem frete
   });
   const [itens, setItens] = useState<ItemForm[]>([
     { insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" },
@@ -195,6 +207,16 @@ export default function TransferenciasEstoquePage() {
         deposito_destino_nome: depMap[t.fazenda_destino_id as string]?.find(d => d.id === t.deposito_destino_id)?.nome ?? "—",
       }));
       setTransferencias(enriched);
+
+      // Transportadoras, veículos e motoristas da fazenda ativa
+      const [trRes2, veRes, moRes] = await Promise.all([
+        supabase.from("transportadoras").select("id,razao_social,nome,cnpj,rntrc").eq("fazenda_id", fazendaId).order("razao_social"),
+        supabase.from("veiculos").select("id,placa,tipo,rntrc").eq("fazenda_id", fazendaId).order("placa"),
+        supabase.from("motoristas").select("id,nome,cpf").eq("fazenda_id", fazendaId).order("nome"),
+      ]);
+      setTransportadoras((trRes2.data ?? []) as TrRow[]);
+      setVeiculos((veRes.data ?? []) as VeRow[]);
+      setMotoristas((moRes.data ?? []) as MoRow[]);
     } finally {
       setCarregando(false);
     }
@@ -275,6 +297,10 @@ export default function TransferenciasEstoquePage() {
         data_emissao:         status === "emitida" ? new Date().toISOString() : null,
         observacao:           form.observacao || null,
         via_app:              false,
+        transportadora_id:    form.transportadoraId || null,
+        veiculo_id:           form.veiculoId || null,
+        motorista_id:         form.motoristaId || null,
+        frete_conta:          form.freteConta || "9",
       };
       const res = editandoId
         ? await acao("atualizar", editandoId, payload, itensParsed)
@@ -319,7 +345,7 @@ export default function TransferenciasEstoquePage() {
   }
 
   function resetForm() {
-    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "" });
+    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9" });
     setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
     setEditandoId(null);
@@ -356,6 +382,10 @@ export default function TransferenciasEstoquePage() {
       cfopSufixo,
       entradaAutomatica: t.entrada_automatica ?? true,
       observacao:        t.observacao ?? "",
+      transportadoraId:  (t as unknown as Record<string, string>).transportadora_id ?? "",
+      veiculoId:         (t as unknown as Record<string, string>).veiculo_id ?? "",
+      motoristaId:       (t as unknown as Record<string, string>).motorista_id ?? "",
+      freteConta:        (t as unknown as Record<string, string>).frete_conta ?? "9",
     });
     setItens(
       (t.itens ?? []).length > 0
@@ -768,6 +798,51 @@ export default function TransferenciasEstoquePage() {
               </div>
             </div>
 
+            {/* Transporte */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6, marginBottom: 14 }}>
+                Transporte (opcional)
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 120px", gap: "0 16px" }}>
+                <div>
+                  <label style={lbl}>Transportadora</label>
+                  <select value={form.transportadoraId} onChange={e => setForm(f => ({ ...f, transportadoraId: e.target.value }))} style={inp}>
+                    <option value="">— Sem transportadora —</option>
+                    {transportadoras.map(t => (
+                      <option key={t.id} value={t.id}>{t.razao_social || t.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Veículo / Placa</label>
+                  <select value={form.veiculoId} onChange={e => setForm(f => ({ ...f, veiculoId: e.target.value }))} style={inp}>
+                    <option value="">— Sem veículo —</option>
+                    {veiculos.map(v => (
+                      <option key={v.id} value={v.id}>{v.placa}{v.tipo ? ` — ${v.tipo}` : ""}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Motorista</label>
+                  <select value={form.motoristaId} onChange={e => setForm(f => ({ ...f, motoristaId: e.target.value }))} style={inp}>
+                    <option value="">— Sem motorista —</option>
+                    {motoristas.map(m => (
+                      <option key={m.id} value={m.id}>{m.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Frete por conta</label>
+                  <select value={form.freteConta} onChange={e => setForm(f => ({ ...f, freteConta: e.target.value }))} style={inp}>
+                    <option value="0">0 - Emitente</option>
+                    <option value="1">1 - Destinatário</option>
+                    <option value="2">2 - Terceiros</option>
+                    <option value="9">9 - Sem frete</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             {/* Observação */}
             <div style={{ marginBottom: 20 }}>
               <label style={lbl}>Observação</label>
@@ -812,6 +887,13 @@ export default function TransferenciasEstoquePage() {
         if (c.funrural_retido === "true") infCplPartes.push(c.inf_cpl_funrural || "Funrural retido pelo adquirente.");
         if (detalhe.observacao) infCplPartes.push(detalhe.observacao);
         const infCpl = infCplPartes.filter(Boolean).join(" ");
+
+        // Dados de transporte
+        const tData = detalhe as unknown as Record<string, string>;
+        const transp  = transportadoras.find(t => t.id === tData.transportadora_id);
+        const veiculo = veiculos.find(v => v.id === tData.veiculo_id);
+        const motor   = motoristas.find(m => m.id === tData.motorista_id);
+        const freteLabel: Record<string, string> = { "0": "0 - EMITENTE", "1": "1 - DESTINATÁRIO", "2": "2 - TERCEIROS", "9": "9 - SEM FRETE" };
 
         const B = "1px solid #aaa"; // borda DANFE
         const lbl: React.CSSProperties = { fontSize: 8, color: "#555", textTransform: "uppercase", letterSpacing: 0.3, display: "block", marginBottom: 2 };
@@ -950,11 +1032,17 @@ export default function TransferenciasEstoquePage() {
                   <div style={{ padding: "3px 8px", background: "#eee", borderBottom: B }}>
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>TRANSPORTADOR / VOLUMES TRANSPORTADOS</span>
                   </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", borderBottom: B }}>
+                    {box("RAZÃO SOCIAL", transp ? (transp.razao_social || transp.nome || "—") : "—")}
+                    {box("FRETE POR CONTA", freteLabel[tData.frete_conta ?? "9"] ?? "9 - SEM FRETE")}
+                    {box("CÓDIGO ANTT / RNTRC", transp?.rntrc ?? "—")}
+                    {box("PLACA DO VEÍCULO", veiculo?.placa ?? "—", { borderRight: "none" })}
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr" }}>
-                    {box("RAZÃO SOCIAL", "—")}
-                    {box("FRETE POR CONTA", "0 - EMITENTE")}
-                    {box("CÓDIGO ANTT", "—")}
-                    {box("PLACA DO VEÍCULO", "—", { borderRight: "none" })}
+                    {box("MOTORISTA", motor?.nome ?? "—")}
+                    {box("CPF MOTORISTA", motor?.cpf ?? "—")}
+                    {box("TIPO VEÍCULO", veiculo?.tipo ?? "—")}
+                    {box("RNTRC VEÍCULO", veiculo?.rntrc ?? "—", { borderRight: "none" })}
                   </div>
                 </div>
 

@@ -242,6 +242,10 @@ export async function POST(request: NextRequest) {
           entrada_automatica:  transferencia.entrada_automatica,
           data_transferencia:  transferencia.data_transferencia,
           observacao:          transferencia.observacao ?? null,
+          transportadora_id:   transferencia.transportadora_id ?? null,
+          veiculo_id:          transferencia.veiculo_id ?? null,
+          motorista_id:        transferencia.motorista_id ?? null,
+          frete_conta:         transferencia.frete_conta ?? "9",
         })
         .eq("id", tid)
         .eq("status", "rascunho"); // só edita rascunho

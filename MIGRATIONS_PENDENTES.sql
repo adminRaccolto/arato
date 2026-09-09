@@ -1522,3 +1522,25 @@ FROM (VALUES
 -- 4. LIMPEZA
 -- ============================================================
 COMMIT;
+
+-- ══════════════════════════════════════════════════════════════════
+-- Fix: insumos_grupo_id_fkey apontava para grupos_insumo (tabela
+-- antiga/vazia) em vez de grupos_insumos (tabela atual com 's').
+-- Causa: "Erro ao criar insumo: ...violates foreign key constraint
+-- insumos_grupo_id_fkey" ao cadastrar insumo via pedido de compra.
+-- ══════════════════════════════════════════════════════════════════
+ALTER TABLE public.insumos DROP CONSTRAINT IF EXISTS insumos_grupo_id_fkey;
+
+ALTER TABLE public.insumos
+  ADD CONSTRAINT insumos_grupo_id_fkey
+  FOREIGN KEY (grupo_id) REFERENCES public.grupos_insumos(id) ON DELETE SET NULL;
+
+
+-- ══════════════════════════════════════════════════════════════════
+-- Transferências: campos de transporte na NF-e
+-- ══════════════════════════════════════════════════════════════════
+ALTER TABLE transferencias_estoque
+  ADD COLUMN IF NOT EXISTS transportadora_id UUID REFERENCES transportadoras(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS veiculo_id        UUID REFERENCES veiculos(id)        ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS motorista_id      UUID REFERENCES motoristas(id)      ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS frete_conta       TEXT DEFAULT '9';  -- 0=emitente 1=dest 2=terc 9=sem frete
