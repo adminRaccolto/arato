@@ -165,7 +165,7 @@ export default function TransferenciasEstoquePage() {
       const insMap: Record<string, Insumo[]> = {};
       await Promise.all(fazendas.map(async (f) => {
         const { data } = await supabase
-          .from("insumos").select("id,nome,unidade,estoque,categoria,deposito_id")
+          .from("insumos").select("id,nome,unidade,estoque,categoria,deposito_id,custo_medio")
           .eq("fazenda_id", f.id).order("nome");
         insMap[f.id] = (data ?? []) as Insumo[];
       }));
@@ -663,10 +663,12 @@ export default function TransferenciasEstoquePage() {
                           <td style={td}>
                             <select value={it.insumo_id} onChange={e => updateItem(i, "insumo_id", e.target.value)} style={{ ...inp, width: 220 }}>
                               <option value="">— Selecione —</option>
-                              {insumosOrigem.map(ins => (
-                                <option key={ins.id} value={ins.id}>
-                                  {ins.nome} (Est: {ins.estoque?.toFixed(2) ?? 0} {ins.unidade})
-                                </option>
+                              {insumosOrigem
+                                .filter(ins => !form.depositoOrigemId || ins.deposito_id === form.depositoOrigemId)
+                                .map(ins => (
+                                  <option key={ins.id} value={ins.id}>
+                                    {ins.nome} (Est: {ins.estoque?.toFixed(2) ?? 0} {ins.unidade})
+                                  </option>
                               ))}
                             </select>
                           </td>
