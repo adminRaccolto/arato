@@ -119,12 +119,14 @@ export default function TransferenciasEstoquePage() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  // ── Detalhe ───────────────────────────────────────────────────────────────
+  // ── Detalhe / Preview DANFE ───────────────────────────────────────────────
   const [detalhe, setDetalhe] = useState<TransferenciaComItens | null>(null);
   const [acaoId, setAcaoId] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  // Textos complementares da config fiscal (carregados ao abrir preview)
+  const [infCplBase, setInfCplBase] = useState<string>("");
+  const [infCplTransf, setInfCplTransf] = useState<string>("");
 
-  // ── Saldo real por insumo no depósito de origem (calculado via movimentações) ──
 
   // ── Helper API route (service_role_key) ─────────────────────────────────
   async function acao(
@@ -324,7 +326,30 @@ export default function TransferenciasEstoquePage() {
     setEditandoId(null);
   }
 
-  function abrirDetalhe(t: TransferenciaComItens) { setDetalhe(t); }
+  async function abrirDetalhe(t: TransferenciaComItens) {
+    setDetalhe(t);
+    // Carrega textos complementares da config fiscal do emitente (fazenda origem)
+    try {
+      const { data } = await supabase
+        .from("configuracoes_modulo")
+        .select("config")
+        .eq("fazenda_id", t.fazenda_origem_id ?? fazendaId)
+        .like("modulo", "produtor_%")
+        .limit(1)
+        .single();
+      if (data?.config) {
+        const cfg = data.config as Record<string, string>;
+        const partes: string[] = [];
+        if (cfg.inf_cpl_padrao) partes.push(cfg.inf_cpl_padrao.trim());
+        if (cfg.inf_cpl_cnd)    partes.push(cfg.inf_cpl_cnd.trim());
+        if (cfg.icms_diferido_ativo === "true") partes.push(cfg.inf_cpl_icms_diferido || "ICMS diferido conforme art. 572 do RICMS/MT.");
+        if (cfg.inf_cpl_base_reduzida) partes.push(cfg.inf_cpl_base_reduzida.trim());
+        if (cfg.funrural_retido === "true") partes.push(cfg.inf_cpl_funrural || "Funrural retido na fonte pelo adquirente.");
+        setInfCplBase(partes.filter(Boolean).join(" "));
+        setInfCplTransf(cfg.inf_cpl_transferencia ?? "");
+      }
+    } catch { /* sem config fiscal — tudo bem */ }
+  }
 
   function abrirEditar(t: TransferenciaComItens) {
     const cfopSufixo = t.cfop ? t.cfop.replace(/^[56]/, "") : "152";
@@ -773,89 +798,181 @@ export default function TransferenciasEstoquePage() {
         </div>
       )}
 
-      {/* ── Modal Detalhe ─────────────────────────────────────────────────── */}
-      {detalhe && (
-        <div onClick={() => setDetalhe(null)} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000,
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{ ...card, width: 680, maxWidth: "95vw", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{detalhe.numero ?? "Transferência"}</h3>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>
-                  {fmtData(detalhe.data_transferencia)} · CFOP {detalhe.cfop}
+      {/* ── Preview DANFE ─────────────────────────────────────────────────── */}
+      {detalhe && (() => {
+        const st = STATUS_LABEL[detalhe.status] ?? STATUS_LABEL.rascunho;
+        const isRascunho = detalhe.status === "rascunho";
+        const totalGeral = (detalhe.itens ?? []).reduce((s, it) => s + (it.valor_total ?? (it.custo_unitario ?? 0) * it.quantidade), 0);
+        const infCpl = [infCplTransf, infCplBase].filter(Boolean).join(" | ");
+        const border = "1px solid #ccc";
+        const cellSt: React.CSSProperties = { padding: "6px 8px", fontSize: 11, borderRight: border, borderBottom: border };
+        return (
+          <div onClick={() => setDetalhe(null)} style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
+            display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "24px 12px", overflowY: "auto",
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#fff", width: "min(820px, 98vw)", borderRadius: 4, boxShadow: "0 12px 48px rgba(0,0,0,0.22)", fontFamily: "Arial, sans-serif" }}>
+
+              {/* Barra de status */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", background: isRascunho ? "#FBF3E0" : "#DCFCE7", borderBottom: border }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: isRascunho ? "#7A5A12" : "#15803D" }}>
+                    {isRascunho ? "PRÉ-VISUALIZAÇÃO DA NF-e — RASCUNHO" : "NF-e EMITIDA"}
+                  </span>
+                  <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, background: st.bg, color: st.cor }}>{st.txt}</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {detalhe.nf_chave && (
+                    <a href={`/api/fiscal/danfe?chave=${detalhe.nf_chave}&fazenda_id=${detalhe.fazenda_origem_id}`}
+                       target="_blank" rel="noopener noreferrer"
+                       style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", textDecoration: "underline" }}>
+                      Abrir DANFE PDF
+                    </a>
+                  )}
+                  <button onClick={() => setDetalhe(null)} style={{ fontSize: 18, background: "none", border: "none", cursor: "pointer", color: "#555", lineHeight: 1 }}>✕</button>
                 </div>
               </div>
-              <div>
-                <span style={{
-                  padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700,
-                  background: STATUS_LABEL[detalhe.status]?.bg,
-                  color: STATUS_LABEL[detalhe.status]?.cor,
-                }}>
-                  {STATUS_LABEL[detalhe.status]?.txt}
-                </span>
-              </div>
-            </div>
 
-            {/* Rota */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, marginBottom: 20, alignItems: "center" }}>
-              <div style={{ background: "#F4F6FA", borderRadius: 10, padding: "12px 16px" }}>
-                <div style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Origem</div>
-                <div style={{ fontWeight: 700, color: "#1a1a1a" }}>{detalhe.fazenda_origem_nome}</div>
-                <div style={{ fontSize: 12, color: "#555" }}>{detalhe.deposito_origem_nome !== "—" ? detalhe.deposito_origem_nome : "Sem depósito"}</div>
-              </div>
-              <div style={{ fontSize: 24, color: "#111111" }}>→</div>
-              <div style={{ background: "#F4F6FA", borderRadius: 10, padding: "12px 16px" }}>
-                <div style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Destino</div>
-                <div style={{ fontWeight: 700, color: "#1a1a1a" }}>{detalhe.fazenda_destino_nome}</div>
-                <div style={{ fontSize: 12, color: "#555" }}>{detalhe.deposito_destino_nome !== "—" ? detalhe.deposito_destino_nome : "Sem depósito"}</div>
-              </div>
-            </div>
+              <div style={{ padding: "0 0 0 0" }}>
+                {/* Cabeçalho DANFE */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", borderBottom: border }}>
+                  {/* Emitente */}
+                  <div style={{ padding: "12px 14px", borderRight: border }}>
+                    <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", marginBottom: 2 }}>EMITENTE</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{detalhe.fazenda_origem_nome}</div>
+                    <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                      {detalhe.deposito_origem_nome && detalhe.deposito_origem_nome !== "—" ? detalhe.deposito_origem_nome : "Sem depósito especificado"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                      <strong>Nat. da Operação:</strong> Transferência de Insumos entre Estabelecimentos
+                    </div>
+                  </div>
+                  {/* Número / CFOP */}
+                  <div style={{ padding: "12px 14px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", marginBottom: 4 }}>NF-e</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: 1 }}>
+                      {detalhe.nf_numero ? String(detalhe.nf_numero).padStart(9, "0") : "A EMITIR"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+                      CFOP <strong>{detalhe.cfop}</strong>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#666" }}>
+                      Data: <strong>{fmtData(detalhe.data_transferencia)}</strong>
+                    </div>
+                    {detalhe.ie_diferentes && (
+                      <div style={{ marginTop: 6, fontSize: 10, color: "#C9921B", fontWeight: 700 }}>⚠ INTERESTADUAL</div>
+                    )}
+                  </div>
+                </div>
 
-            {detalhe.ie_diferentes && (
-              <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "8px 14px", marginBottom: 14, fontSize: 12, color: "#7A5A12" }}>
-                ⚠️ IEs distintas entre origem e destino. Verificar necessidade de NF de entrada no destino.
-              </div>
-            )}
+                {/* Destinatário */}
+                <div style={{ padding: "10px 14px", borderBottom: border }}>
+                  <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", marginBottom: 2 }}>DESTINATÁRIO</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{detalhe.fazenda_destino_nome}</div>
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                    {detalhe.deposito_destino_nome && detalhe.deposito_destino_nome !== "—" ? detalhe.deposito_destino_nome : "Sem depósito especificado"}
+                  </div>
+                </div>
 
-            {/* Itens */}
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
-              <thead>
-                <tr>
-                  {["Insumo","Qtd","Unidade","Custo Unit.","Total"].map(h => <th key={h} style={th}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {(detalhe.itens ?? []).map(it => (
-                  <tr key={it.id}>
-                    <td style={td}>{Object.values(insumosPorFazenda).flat().find(i => i.id === it.insumo_id)?.nome ?? it.insumo_id}</td>
-                    <td style={{ ...td, textAlign: "right" }}>{it.quantidade}</td>
-                    <td style={td}>{it.unidade_medida}</td>
-                    <td style={{ ...td, textAlign: "right" }}>{it.custo_unitario ? fmtBRL(it.custo_unitario) : "—"}</td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{it.valor_total ? fmtBRL(it.valor_total) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                {/* Itens */}
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ background: "#f5f5f5" }}>
+                        {["#","DESCRIÇÃO DO PRODUTO","QTD","UNID","VALOR UNIT.","VALOR TOTAL"].map((h, i) => (
+                          <th key={h} style={{ ...cellSt, fontWeight: 700, textAlign: i >= 2 ? "right" : "left", fontSize: 10, background: "#f0f0f0" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(detalhe.itens ?? []).map((it, idx) => {
+                        const ins = todosInsumos.find(x => x.id === it.insumo_id);
+                        const nome = ins?.nome ?? it.insumo_id;
+                        const vlUnit = it.custo_unitario ?? ins?.custo_medio ?? 0;
+                        const vlTotal = it.valor_total ?? vlUnit * it.quantidade;
+                        return (
+                          <tr key={it.id ?? idx} style={{ background: idx % 2 === 0 ? "#fff" : "#fafafa" }}>
+                            <td style={{ ...cellSt, width: 28, textAlign: "center", color: "#888" }}>{idx + 1}</td>
+                            <td style={{ ...cellSt, fontWeight: 600, color: "#111" }}>
+                              {nome}
+                              {it.variedade && <span style={{ color: "#888", fontWeight: 400 }}> · {it.variedade}</span>}
+                              {it.lote_semente && <span style={{ color: "#888", fontWeight: 400 }}> · Lote: {it.lote_semente}</span>}
+                            </td>
+                            <td style={{ ...cellSt, textAlign: "right" }}>{it.quantidade.toFixed(3)}</td>
+                            <td style={{ ...cellSt, textAlign: "right" }}>{it.unidade_medida}</td>
+                            <td style={{ ...cellSt, textAlign: "right" }}>{vlUnit ? fmtBRL(vlUnit) : "—"}</td>
+                            <td style={{ ...cellSt, textAlign: "right", fontWeight: 600 }}>{vlTotal ? fmtBRL(vlTotal) : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-            {detalhe.observacao && (
-              <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
-                <strong>Obs:</strong> {detalhe.observacao}
-              </div>
-            )}
-            {detalhe.solicitante_nome && (
-              <div style={{ fontSize: 12, color: "#888" }}>
-                Solicitado via App Campo por <strong>{detalhe.solicitante_nome}</strong>
-              </div>
-            )}
+                {/* Totais */}
+                <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 14px", borderBottom: border, borderTop: border, background: "#f9f9f9", gap: 32 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase" }}>Total de Itens</div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{(detalhe.itens ?? []).length}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase" }}>Valor Total da NF</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>{totalGeral ? fmtBRL(totalGeral) : "—"}</div>
+                  </div>
+                </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setDetalhe(null)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>Fechar</button>
+                {/* Info Complementar */}
+                <div style={{ padding: "10px 14px", borderBottom: border }}>
+                  <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", marginBottom: 4 }}>INFORMAÇÕES COMPLEMENTARES (infCpl)</div>
+                  {infCpl ? (
+                    <div style={{ fontSize: 11, color: "#111", lineHeight: 1.7 }}>{infCpl}</div>
+                  ) : (
+                    <div style={{ fontSize: 11, color: "#aaa", fontStyle: "italic" }}>
+                      Nenhum texto configurado. Configure em{" "}
+                      <a href="/configuracoes/modulos?aba=fiscal" target="_blank" style={{ color: "#1A4870" }}>
+                        Parâmetros do Sistema → Fiscal → Textos por Tipo de Operação
+                      </a>.
+                    </div>
+                  )}
+                  {detalhe.observacao && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: "#555" }}>
+                      <strong>Obs. interna:</strong> {detalhe.observacao}
+                    </div>
+                  )}
+                </div>
+
+                {/* Rodapé */}
+                <div style={{ padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  {detalhe.nf_chave ? (
+                    <div style={{ fontSize: 9, color: "#888", fontFamily: "monospace", letterSpacing: 0.5 }}>
+                      Chave: {detalhe.nf_chave}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 10, color: "#C9921B", fontStyle: "italic" }}>
+                      Chave de acesso gerada após emissão na SEFAZ
+                    </div>
+                  )}
+                  {detalhe.solicitante_nome && (
+                    <div style={{ fontSize: 10, color: "#888" }}>Solicitado via App: {detalhe.solicitante_nome}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Botões */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "12px 16px", borderTop: border, background: "#fafafa" }}>
+                {isRascunho && (
+                  <button onClick={() => { setDetalhe(null); abrirEditar(detalhe); }} style={{ ...btn("#1A4870") }}>
+                    Editar Rascunho
+                  </button>
+                )}
+                <button onClick={() => setDetalhe(null)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
     </>
   );

@@ -1243,30 +1243,94 @@ function ParametrosSistemaContent() {
                             txta({
                               rows: 3,
                               value: String(c.inf_cpl_padrao ?? ""),
-                              placeholder: "Produtor Rural. Isento de IE conforme Art. 4º, II do RICMS/MT. Razão Social conforme CND em anexo.",
+                              placeholder: "Produtor Rural. Isento de IE conforme Art. 4º, II do RICMS/MT.",
                               onChange: e => setCfg(emitter.moduloKey, "inf_cpl_padrao", e.target.value),
                             })
                           )}
                         </div>
 
-                        {/* Preview do infCpl */}
-                        {(() => {
-                          const partes: string[] = [];
-                          if (c.inf_cpl_padrao) partes.push(String(c.inf_cpl_padrao).trim());
-                          if (c.icms_diferido_ativo === "true") partes.push((String(c.inf_cpl_icms_diferido || "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.")).trim());
-                          if (c.inf_cpl_base_reduzida) partes.push(String(c.inf_cpl_base_reduzida).trim());
-                          if (c.funrural_retido === "true") partes.push((String(c.inf_cpl_funrural || "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.")).trim());
-                          const preview = partes.filter(Boolean).join(" ");
-                          if (!preview) return null;
-                          return (
-                            <div style={{ background: "#F2F2F2", border: "0.5px solid #2A2A2A", borderRadius: 8, padding: 12 }}>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Pré-visualização do infCpl (operação interna):</div>
-                              <div style={{ fontSize: 12, color: "#0D0D0D", lineHeight: 1.6 }}>{preview}</div>
-                            </div>
-                          );
-                        })()}
+                        {/* CND */}
+                        <div>
+                          {campo("CND — Certidão Negativa de Débito (referência que entra em todas as NF-e)",
+                            txta({
+                              rows: 2,
+                              value: String(c.inf_cpl_cnd ?? ""),
+                              placeholder: "CND nº 123.456.789 válida até 31/12/2026 — Receita Federal / Fazenda Estadual.",
+                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_cnd", e.target.value),
+                            })
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Textos por tipo de operação */}
+                    <div style={{ marginBottom: 24 }}>
+                      {secHeader("Textos por Tipo de Operação")}
+                      <p style={{ fontSize: 12, color: "#666", marginTop: 0, marginBottom: 14 }}>
+                        Cada texto é adicionado ao <code>infCpl</code> somente quando a operação correspondente é emitida.
+                        Use variáveis como <code>[NUMERO]</code>, <code>[DATA]</code>, <code>[ORIGEM]</code>, <code>[DESTINO]</code>.
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                        <div>
+                          {campo("Transferência de Insumos (CFOP 5152 / 6152)",
+                            txta({
+                              rows: 3,
+                              value: String(c.inf_cpl_transferencia ?? ""),
+                              placeholder: "Transferência de insumos entre estabelecimentos do mesmo grupo econômico. Não constitui fato gerador de ICMS — Art. 3º, VI da LC 87/1996.",
+                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_transferencia", e.target.value),
+                            })
+                          )}
+                        </div>
+                        <div>
+                          {campo("Remessa para Armazém / Depósito (CFOP 5905 / 6905)",
+                            txta({
+                              rows: 3,
+                              value: String(c.inf_cpl_remessa_armazem ?? ""),
+                              placeholder: "Remessa para depósito em armazém geral. Não constitui fato gerador de receita. ICMS diferido — RICMS/MT.",
+                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_remessa_armazem", e.target.value),
+                            })
+                          )}
+                        </div>
+                        <div>
+                          {campo("Venda de Grãos / Insumos (CFOP 6101 / 5101)",
+                            txta({
+                              rows: 3,
+                              value: String(c.inf_cpl_venda ?? ""),
+                              placeholder: "Contrato nº [NUMERO]. ICMS diferido conforme RICMS/MT. Funrural retido pelo adquirente.",
+                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_venda", e.target.value),
+                            })
+                          )}
+                        </div>
+                        <div>
+                          {campo("Devolução / Retorno (CFOP 5201 / 6201)",
+                            txta({
+                              rows: 2,
+                              value: String(c.inf_cpl_devolucao ?? ""),
+                              placeholder: "Devolução referente à NF-e nº [NUMERO] de [DATA]. Motivo: [MOTIVO].",
+                              onChange: e => setCfg(emitter.moduloKey, "inf_cpl_devolucao", e.target.value),
+                            })
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview do infCpl */}
+                    {(() => {
+                      const partes: string[] = [];
+                      if (c.inf_cpl_padrao) partes.push(String(c.inf_cpl_padrao).trim());
+                      if (c.inf_cpl_cnd) partes.push(String(c.inf_cpl_cnd).trim());
+                      if (c.icms_diferido_ativo === "true") partes.push((String(c.inf_cpl_icms_diferido || "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.")).trim());
+                      if (c.inf_cpl_base_reduzida) partes.push(String(c.inf_cpl_base_reduzida).trim());
+                      if (c.funrural_retido === "true") partes.push((String(c.inf_cpl_funrural || "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.")).trim());
+                      const preview = partes.filter(Boolean).join(" ");
+                      if (!preview) return null;
+                      return (
+                        <div style={{ background: "#F2F2F2", border: "0.5px solid #2A2A2A", borderRadius: 8, padding: 12, marginBottom: 24 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Pré-visualização do infCpl (base — todas as NF-e):</div>
+                          <div style={{ fontSize: 12, color: "#0D0D0D", lineHeight: 1.6 }}>{preview}</div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Salvar */}
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
