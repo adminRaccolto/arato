@@ -194,24 +194,21 @@ export default function TransporteCadastrosPage() {
     const novas = empTransp.filter(e => !jaVinculadas.has(e.id));
     if (novas.length === 0) { alert("Todas as empresas transportadoras já estão sincronizadas."); return; }
     setSincronizando(true);
+    // Só colunas que existem na tabela base (razao_social, cnpj, ie, rntrc, municipio, uf, email)
+    // Colunas cpf/cep/logradouro/bairro/numero/telefone/obs foram adicionadas por migration posterior
+    // e podem não existir ainda — o usuário pode editá-las individualmente após a importação
     const inserts = novas.map(e => ({
-      fazenda_id:   fazendaId,
-      empresa_id:   e.id,
-      razao_social: e.razao_social ?? e.nome,
-      nome_fantasia: e.nome !== e.razao_social ? e.nome : undefined,
-      cnpj:         e.cpf_cnpj && e.cpf_cnpj.replace(/\D/g, "").length === 14 ? e.cpf_cnpj : undefined,
-      cpf:          e.cpf_cnpj && e.cpf_cnpj.replace(/\D/g, "").length === 11 ? e.cpf_cnpj : undefined,
-      ie:           e.inscricao_est || undefined,
-      rntrc:        e.rntrc || undefined,
-      cep:          e.cep || undefined,
-      logradouro:   e.logradouro || undefined,
-      numero:       e.numero || undefined,
-      bairro:       e.bairro || undefined,
-      municipio:    e.municipio || undefined,
-      uf:           e.estado || undefined,
-      telefone:     e.telefone || undefined,
-      email:        e.email || undefined,
-      ativa:        true,
+      fazenda_id:    fazendaId,
+      empresa_id:    e.id,
+      razao_social:  e.razao_social ?? e.nome,
+      nome_fantasia: (e.nome && e.nome !== (e.razao_social ?? e.nome)) ? e.nome : undefined,
+      cnpj:          e.cpf_cnpj || undefined,
+      ie:            e.inscricao_est || undefined,
+      rntrc:         e.rntrc || undefined,
+      municipio:     e.municipio || undefined,
+      uf:            e.estado || undefined,
+      email:         e.email || undefined,
+      ativa:         true,
     }));
     const { error } = await supabase.from("transportadoras").insert(inserts);
     setSincronizando(false);
