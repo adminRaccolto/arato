@@ -123,6 +123,9 @@ export default function TransferenciasEstoquePage() {
   const [detalhe, setDetalhe] = useState<TransferenciaComItens | null>(null);
   const [acaoId, setAcaoId] = useState<string | null>(null);
 
+  // ── Saldo real por insumo no depósito de origem (calculado via movimentações) ──
+  const [saldoNoDeposito, setSaldoNoDeposito] = useState<Record<string, number>>({});
+
   // ── Helper API route (service_role_key) ─────────────────────────────────
   async function acao(
     tipo: string,
@@ -201,12 +204,36 @@ export default function TransferenciasEstoquePage() {
     if (fazendaId) setForm(f => ({ ...f, fazendaOrigemId: fazendaId }));
   }, [fazendaId]);
 
+  // Recalcula saldo real por insumo no depósito de origem via movimentações
+  // (confiável: ignora fazenda_id do cadastro do insumo, usa o deposito_id da movimentação)
+  useEffect(() => {
+    const dep = form.depositoOrigemId;
+    if (!dep) { setSaldoNoDeposito({}); return; }
+    const allFazIds = todasFazendas.map(f => f.id);
+    if (!allFazIds.length) return;
+    supabase
+      .from("movimentacoes_estoque")
+      .select("insumo_id, tipo, quantidade")
+      .in("fazenda_id", allFazIds)
+      .eq("deposito_id", dep)
+      .then(({ data }) => {
+        const mapa: Record<string, number> = {};
+        for (const m of data ?? []) {
+          const delta = m.tipo === "entrada" ? m.quantidade : m.tipo === "saida" ? -m.quantidade : m.quantidade;
+          mapa[m.insumo_id] = (mapa[m.insumo_id] ?? 0) + delta;
+        }
+        setSaldoNoDeposito(mapa);
+      });
+  }, [form.depositoOrigemId, todasFazendas]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Computed ──────────────────────────────────────────────────────────────
   const fazendaOrigem = todasFazendas.find(f => f.id === form.fazendaOrigemId);
   const fazendaDestino = todasFazendas.find(f => f.id === form.fazendaDestinoId);
   const depositosOrigem = depositosPorFazenda[form.fazendaOrigemId] ?? [];
   const depositosDestino = depositosPorFazenda[form.fazendaDestinoId] ?? [];
-  const insumosOrigem = insumosPorFazenda[form.fazendaOrigemId] ?? [];
+  // Todos os insumos da conta (todas as fazendas) para lookup de nome e unidade
+  const todosInsumos = Object.values(insumosPorFazenda).flat();
+  const insumosOrigem = form.fazendaOrigemId ? (insumosPorFazenda[form.fazendaOrigemId] ?? []) : todosInsumos;
   const prefixo = prefixoCfop(fazendaOrigem?.estado, fazendaDestino?.estado);
   const cfopCalculado = prefixo + form.cfopSufixo;
   const estadosDiferentes = fazendaOrigem?.estado !== fazendaDestino?.estado && !!fazendaOrigem && !!fazendaDestino;
@@ -227,7 +254,7 @@ export default function TransferenciasEstoquePage() {
       const updated = { ...it, [field]: value };
       // Auto-fill unidade do insumo selecionado
       if (field === "insumo_id" && value) {
-        const ins = insumosOrigem.find(x => x.id === value);
+        const ins = todosInsumos.find(x => x.id === value);
         if (ins) updated.unidade_medida = ins.unidade ?? "kg";
       }
       return updated;
@@ -653,7 +680,7 @@ export default function TransferenciasEstoquePage() {
                   </thead>
                   <tbody>
                     {itens.map((it, i) => {
-                      const insumoSel = insumosOrigem.find(x => x.id === it.insumo_id);
+                      const insumoSel = todosInsumos.find(x => x.id === it.insumo_id);
                       const qtd = parseFloat(it.quantidade.replace(",", ".")) || 0;
                       const custo = parseFloat(it.custo_unitario.replace(",", ".")) || (insumoSel?.custo_medio ?? 0);
                       const total = qtd * custo;
@@ -663,13 +690,19 @@ export default function TransferenciasEstoquePage() {
                           <td style={td}>
                             <select value={it.insumo_id} onChange={e => updateItem(i, "insumo_id", e.target.value)} style={{ ...inp, width: 220 }}>
                               <option value="">— Selecione —</option>
-                              {insumosOrigem
-                                .filter(ins => (ins.estoque ?? 0) > 0)
-                                .map(ins => (
+                              {(form.depositoOrigemId
+                                // Quando depósito selecionado: usa saldo calculado das movimentações (ignora fazenda_id do cadastro)
+                                ? todosInsumos.filter(ins => (saldoNoDeposito[ins.id] ?? 0) > 0)
+                                // Sem depósito: mostra todos da fazenda com estoque > 0
+                                : todosInsumos.filter(ins => (ins.estoque ?? 0) > 0)
+                              ).map(ins => {
+                                const saldo = form.depositoOrigemId ? (saldoNoDeposito[ins.id] ?? 0) : (ins.estoque ?? 0);
+                                return (
                                   <option key={ins.id} value={ins.id}>
-                                    {ins.nome} (Est: {ins.estoque?.toFixed(2)} {ins.unidade})
+                                    {ins.nome} (Est: {saldo.toFixed(2)} {ins.unidade})
                                   </option>
-                              ))}
+                                );
+                              })}
                             </select>
                           </td>
                           <td style={td}>
