@@ -383,7 +383,7 @@ export async function excluirInsumos(ids: string[]): Promise<void> {
 }
 
 export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoEstoque[]> {
-  let q = supabase.from("movimentacoes_estoque").select("*").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
+  let q = supabase.from("movimentacoes_estoque").select("*, ciclos(descricao)").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
   if (insumo_id) q = q.eq("insumo_id", insumo_id);
   if (dataInicio) q = q.gte("data", dataInicio);
   if (dataFim)    q = q.lte("data", dataFim);

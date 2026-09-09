@@ -256,6 +256,10 @@ export default function DrePage() {
         if (cat === "assistencia_tecnica")   return "assistencia_tecnica";
         if (cat === "juros_custeio")         return "juros_custeio";
         if (cat === "juros")                 return "desp_financeira";
+        // Categorias geradas pelo campo app
+        if (cat === "Insumos — Fertilizantes" || cat === "insumos_fertilizantes") return "fertilizantes";
+        if (cat === "Insumos — Defensivos"    || cat === "insumos_defensivos")     return "defensivos";
+        if (cat === "Insumos — Sementes"      || cat === "insumos_sementes")       return "sementes";
         return "outros";
       }
 
@@ -694,7 +698,7 @@ export default function DrePage() {
           const linhas = montarLinhas(d);
           const custoTotal = d.cpv_total + d.desp_operacionais_total + d.desp_financeiras_total;
           const anoLabel = d.anoSafra.descricao;
-          const cultLabel = d.ciclo.cultura;
+          const cultLabel = d.ciclo.descricao || d.ciclo.cultura;
 
           return (
             <div key={d.ciclo.id + idx} style={{ marginBottom: 28 }}>
@@ -895,7 +899,7 @@ export default function DrePage() {
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>Indicador</th>
                     {dres.map(d => (
                       <th key={d.ciclo.id} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#111111", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>
-                        {d.ciclo.cultura}
+                        {d.ciclo.descricao || d.ciclo.cultura}
                       </th>
                     ))}
                   </tr>

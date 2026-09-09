@@ -1164,10 +1164,10 @@ export default function Estoque() {
               </div>
               <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Origem"]} />
+                  <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Safra / Ciclo", "Origem"]} />
                   <tbody>
                     {movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length === 0 && (
-                      <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma movimentação registrada</td></tr>
+                      <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma movimentação registrada</td></tr>
                     )}
                     {movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).map((m, i, arr) => {
                       const ins = insumos.find(x => x.id === m.insumo_id);
@@ -1195,6 +1195,9 @@ export default function Estoque() {
                               : <span style={{ color: m.tipo === "entrada" ? "#111111" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins?.unidade}</span>}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
+                            {(m as MovimentacaoEstoque & { ciclos?: { descricao: string } | null }).ciclos?.descricao || m.safra || "—"}
+                          </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {m.auto ? badge("Auto","#E8E8E8","#0D0D0D") : badge("Manual","#FBF0D8","#7A5A12")}
                             {(m as MovimentacaoEstoque & { usuario_nome?: string }).usuario_nome && (

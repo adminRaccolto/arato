@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         operacao:                item.operacao,
         talhao:                  item.talhao_nome ?? null,
         safra:                   item.safra_descricao ?? null,
+        ciclo_id:                ciclo_id ?? null,
         observacao:              item.observacao ?? null,
         auto:                    true,
       });
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
       data_lancamento: new Date().toISOString().slice(0, 10),
       data_vencimento: data,
       valor:           custoTotal,
-      safra_id:        ciclo_id ?? null,
+      ciclo_id:        ciclo_id ?? null,
       status:          "em_aberto",
       auto:            true,
     });

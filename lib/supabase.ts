@@ -201,6 +201,8 @@ export type MovimentacaoEstoque = {
   data: string;
   talhao?: string;
   safra?: string;
+  ciclo_id?: string | null;
+  ciclos?: { descricao: string } | null;
   operacao?: string;
   nf_entrada?: string;
   deposito_id?: string;

@@ -5,7 +5,7 @@ import { supabase } from "../../../lib/supabase";
 
 type Talhao   = { id: string; nome: string; area_ha?: number };
 type AnoSafra = { id: string; descricao: string };
-type Ciclo    = { id: string; cultura: string; ano_safra_id?: string; ano_safra?: { descricao: string } };
+type Ciclo    = { id: string; cultura: string; descricao: string; data_inicio?: string; data_fim?: string; ano_safra_id?: string; ano_safra?: { descricao: string } };
 type Insumo   = { id: string; nome: string; unidade_medida?: string; custo_medio?: number };
 type Empresa  = { id: string; razao_social: string; cloa_numero?: string };
 
@@ -87,7 +87,7 @@ export default function CampoAereaPage() {
     const [{ data: tal }, { data: anos }, { data: cic }, { data: ins }, { data: emp }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-      supabase.from("ciclos").select("id, cultura, ano_safra_id, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, ano_safra_id, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade_medida, custo_medio")
         .eq("fazenda_id", fazendaId)
         .in("categoria", ["defensivo", "fertilizante", "adjuvante"])
@@ -99,7 +99,12 @@ export default function CampoAereaPage() {
     ]);
     setTalhoes((tal ?? []) as Talhao[]);
     setAnosSafra((anos ?? []) as AnoSafra[]);
-    setCiclos((cic ?? []) as Ciclo[]);
+    const cicRes = (cic ?? []) as Ciclo[];
+    setCiclos(cicRes);
+    // Auto-detecta ciclo ativo pela data atual
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ativo = cicRes.find(c => c.data_inicio && c.data_fim && c.data_inicio <= hoje && hoje <= c.data_fim);
+    if (ativo) setFCiclo(ativo.id);
     setInsumos((ins ?? []) as Insumo[]);
     setEmpresas((emp ?? []) as Empresa[]);
   }, [fazendaId, contaId]);
@@ -225,7 +230,7 @@ export default function CampoAereaPage() {
       <div style={{ fontSize: 20, fontWeight: 700, color: "#166534", textAlign: "center" }}>Aplicação Aérea registrada!</div>
       <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 12, padding: "14px 18px", width: "100%", fontSize: 13, color: "#166534", lineHeight: 1.8 }}>
         <div>{TIPO_AERONAVE.find(x => x.v === fAeronave)?.icon} {TIPO_AERONAVE.find(x => x.v === fAeronave)?.label}</div>
-        <div>🌱 {cicloSel?.cultura ?? "—"} · {fData.split("-").reverse().join("/")}</div>
+        <div>🌱 {cicloSel?.descricao || cicloSel?.cultura || "—"} · {fData.split("-").reverse().join("/")}</div>
         <div>📐 {areaTotal.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ha · {talhoesSel.length} talhão(ões)</div>
         <div>💧 {TIPO_APLIC.find(x => x.v === fTipo)?.label}</div>
         {fVento && <div style={{ color: ventoAlerta ? "#991B1B" : "#166534", fontWeight: 600 }}>💨 Vento: {fVento} km/h {ventoAlerta ? "⚠️ Acima do limite" : "✓ OK"}</div>}
@@ -317,7 +322,7 @@ export default function CampoAereaPage() {
               <option value="">Selecione o ciclo...</option>
               {ciclos.filter(c => !fAnoSafra || c.ano_safra_id === fAnoSafra).map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.cultura} {(c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? ""}
+                  {c.descricao || c.cultura} {(c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? ""}
                 </option>
               ))}
             </select>

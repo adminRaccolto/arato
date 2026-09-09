@@ -5,7 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
-type Ciclo   = { id: string; cultura: string; ano_safra?: { descricao: string } };
+type Ciclo   = { id: string; cultura: string; descricao: string; data_inicio?: string; data_fim?: string; ano_safra?: { descricao: string } };
 type Insumo  = { id: string; nome: string; unidade?: string };
 
 const inp: React.CSSProperties = {
@@ -49,7 +49,7 @@ export default function CampoPlantioPage() {
     const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [{ data: tal }, { data: cic }, { data: sem }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade").in("fazenda_id", fids).in("categoria", ["semente", "inoculante"]).order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
@@ -58,6 +58,10 @@ export default function CampoPlantioPage() {
     setTalhoes(talRes);
     setCiclos(cicRes);
     setSementes(semRes);
+    // Auto-detecta ciclo ativo pela data atual
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ativo = cicRes.find(c => c.data_inicio && c.data_fim && c.data_inicio <= hoje && hoje <= c.data_fim);
+    if (ativo) setFCiclo(ativo.id);
     salvarCache(`talhoes_${fazendaId}`, talRes);
     salvarCache(`ciclos_${fazendaId}`, cicRes);
     salvarCache(`sementes_${fazendaId}`, semRes);
@@ -118,7 +122,7 @@ export default function CampoPlantioPage() {
       // Baixa estoque + lançamento CP obrigatório
       {
         const talhaoNome  = talhoes.find(t => t.id === fTalhao)?.nome;
-        const cicloDesc   = ciclos.find(c => c.id === fCiclo)?.cultura;
+        const cicloDesc   = ciclos.find(c => c.id === fCiclo)?.descricao || ciclos.find(c => c.id === fCiclo)?.cultura;
         const sementeNome = sementes.find(s => s.id === fSemente)?.nome ?? "Semente";
         const itens = fSemente && dose > 0 && area > 0
           ? [{ insumo_id: fSemente, fazenda_id: fazendaId, quantidade: dose * area, data: fData, operacao: "plantio", talhao_nome: talhaoNome, safra_descricao: cicloDesc }]
@@ -165,7 +169,7 @@ export default function CampoPlantioPage() {
         </div>
       )}
       <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 12, padding: "14px 18px", width: "100%", fontSize: 13, color: "#166534", lineHeight: 1.6 }}>
-        <strong>{talhaoSel?.nome}</strong> · {cicloSel?.cultura ?? "—"}<br />
+        <strong>{talhaoSel?.nome}</strong> · {cicloSel?.descricao || cicloSel?.cultura || "—"}<br />
         {fData.split("-").reverse().join("/")} · {fArea ? `${fArea} ha` : "—"}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
@@ -203,7 +207,7 @@ export default function CampoPlantioPage() {
           <option value="">Selecione o ciclo...</option>
           {ciclos.map(c => (
             <option key={c.id} value={c.id}>
-              {c.cultura} {(c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? ""}
+              {c.descricao || c.cultura} {(c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? ""}
             </option>
           ))}
         </select>

@@ -5,7 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { adicionarNaFila, salvarCache, lerCache } from "../../../lib/offline-store";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
-type Ciclo   = { id: string; cultura: string; ano_safra?: { descricao: string } };
+type Ciclo   = { id: string; cultura: string; descricao: string; data_inicio?: string; data_fim?: string; ano_safra?: { descricao: string } };
 type Insumo  = { id: string; nome: string; unidade?: string };
 type ProdutoRow = { insumo_id: string; dose_kg_ha: string };
 
@@ -59,7 +59,7 @@ export default function CampoAdubacaoPage() {
     const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [{ data: tal }, { data: cic }, { data: ins }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade")
         .in("fazenda_id", fids)
         .in("categoria", ["fertilizante", "micronutriente", "corretivo", "organico"])
@@ -69,6 +69,10 @@ export default function CampoAdubacaoPage() {
     const cicRes = (cic ?? []) as Ciclo[];
     const insRes = (ins ?? []) as Insumo[];
     setTalhoes(talRes); setCiclos(cicRes); setInsumos(insRes);
+    // Auto-detecta ciclo ativo pela data atual
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ativo = cicRes.find(c => c.data_inicio && c.data_fim && c.data_inicio <= hoje && hoje <= c.data_fim);
+    if (ativo) setFCiclo(ativo.id);
     salvarCache(`talhoes_${fazendaId}`, talRes);
     salvarCache(`ciclos_${fazendaId}`, cicRes);
     salvarCache(`insumos_adub_${fazendaId}`, insRes);
@@ -139,7 +143,7 @@ export default function CampoAdubacaoPage() {
           data:            fData,
           operacao:        "adubacao",
           talhao_nome:     talhaoNome,
-          safra_descricao: ciclos.find(c => c.id === fCiclo)?.cultura,
+          safra_descricao: ciclos.find(c => c.id === fCiclo)?.descricao || ciclos.find(c => c.id === fCiclo)?.cultura,
           observacao:      fModalidade !== "convencional" ? fModalidade : undefined,
         }));
       await fetch("/api/campo/consumir-estoque", {
@@ -205,7 +209,7 @@ export default function CampoAdubacaoPage() {
           <option value="">— Selecionar ciclo —</option>
           {ciclos.map(c => {
             const ano = (c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? "";
-            return <option key={c.id} value={c.id}>{c.cultura}{ano ? ` — ${ano}` : ""}</option>;
+            return <option key={c.id} value={c.id}>{c.descricao || c.cultura}{ano ? ` — ${ano}` : ""}</option>;
           })}
         </select>
       </div>

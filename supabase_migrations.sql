@@ -11307,3 +11307,14 @@ CREATE POLICY "allow_all_parametros_armazenagem" ON parametros_armazenagem
 CREATE INDEX IF NOT EXISTS idx_param_arm_fazenda ON parametros_armazenagem(fazenda_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration: ciclo_id em movimentacoes_estoque ──────────────────────────────
+-- Vincula cada movimentação de saída ao ciclo agrícola correspondente.
+-- Permite filtrar custos de insumos por ciclo no DRE e no relatório de estoque.
+
+ALTER TABLE movimentacoes_estoque
+  ADD COLUMN IF NOT EXISTS ciclo_id UUID REFERENCES ciclos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_mov_ciclo ON movimentacoes_estoque(ciclo_id) WHERE ciclo_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

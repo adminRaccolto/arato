@@ -15,7 +15,7 @@ export interface CascadeValues {
 
 interface Row    { id: string; nome: string }
 interface IeRow  { id: string; inscricao_estadual: string; estado: string; fazenda_id?: string | null; ativa: boolean }
-interface CicloRow extends Row { ano_safra_id: string; cultura?: string; descricao?: string }
+interface CicloRow extends Row { ano_safra_id: string; cultura?: string; descricao?: string; data_inicio?: string; data_fim?: string }
 
 interface Props {
   contaId:           string | null;
@@ -136,9 +136,18 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
   // 5. Ciclos quando Fazenda ou Ano Safra muda
   useEffect(() => {
     if (!values.fazendaId) { setCiclos([]); return; }
-    let q = supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", values.fazendaId);
+    let q = supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, data_inicio, data_fim").eq("fazenda_id", values.fazendaId);
     if (values.anoSafraId) q = q.eq("ano_safra_id", values.anoSafraId);
-    q.order("descricao").then(({ data }) => setCiclos((data ?? []).map(r => ({ id: r.id, nome: r.descricao ?? "", ano_safra_id: r.ano_safra_id, cultura: r.cultura }))));
+    q.order("descricao").then(({ data }) => {
+      const lista = (data ?? []).map(r => ({ id: r.id, nome: r.descricao ?? "", ano_safra_id: r.ano_safra_id, cultura: r.cultura, descricao: r.descricao, data_inicio: r.data_inicio, data_fim: r.data_fim }));
+      setCiclos(lista);
+      // Auto-seleciona o ciclo ativo pela data atual (só se cicloId ainda não foi escolhido)
+      if (!values.cicloId) {
+        const hoje = new Date().toISOString().slice(0, 10);
+        const ativo = lista.find(c => c.data_inicio && c.data_fim && c.data_inicio <= hoje && hoje <= c.data_fim);
+        if (ativo) onChange({ ...values, cicloId: ativo.id });
+      }
+    });
   }, [values.fazendaId, values.anoSafraId]);
 
   function sel(field: keyof CascadeValues, id: string) {
