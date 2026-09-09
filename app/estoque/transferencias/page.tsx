@@ -122,6 +122,7 @@ export default function TransferenciasEstoquePage() {
   // ── Detalhe ───────────────────────────────────────────────────────────────
   const [detalhe, setDetalhe] = useState<TransferenciaComItens | null>(null);
   const [acaoId, setAcaoId] = useState<string | null>(null);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
   // ── Saldo real por insumo no depósito de origem (calculado via movimentações) ──
 
@@ -252,7 +253,6 @@ export default function TransferenciasEstoquePage() {
     }
     setSalvando(true); setErro(null);
     try {
-      const numero = `TRF-${Date.now().toString().slice(-6)}`;
       const itensParsed = itens.map(it => ({
         insumo_id:      it.insumo_id,
         quantidade:     parseFloat(it.quantidade.replace(",", ".")),
@@ -261,8 +261,7 @@ export default function TransferenciasEstoquePage() {
         variedade:      it.variedade || null,
         lote_semente:   it.lote_semente || null,
       }));
-      const res = await acao("salvar", undefined, {
-        numero,
+      const payload = {
         fazenda_origem_id:    form.fazendaOrigemId,
         deposito_origem_id:   form.depositoOrigemId || null,
         fazenda_destino_id:   form.fazendaDestinoId,
@@ -275,7 +274,10 @@ export default function TransferenciasEstoquePage() {
         data_emissao:         status === "emitida" ? new Date().toISOString() : null,
         observacao:           form.observacao || null,
         via_app:              false,
-      }, itensParsed);
+      };
+      const res = editandoId
+        ? await acao("atualizar", editandoId, payload, itensParsed)
+        : await acao("salvar", undefined, { ...payload, numero: `TRF-${Date.now().toString().slice(-6)}` }, itensParsed);
       if (!res.ok) throw new Error(res.error ?? "Erro ao salvar");
       setModal(false);
       resetForm();
@@ -319,9 +321,39 @@ export default function TransferenciasEstoquePage() {
     setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "" });
     setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
+    setEditandoId(null);
   }
 
   function abrirDetalhe(t: TransferenciaComItens) { setDetalhe(t); }
+
+  function abrirEditar(t: TransferenciaComItens) {
+    const cfopSufixo = t.cfop ? t.cfop.replace(/^[56]/, "") : "152";
+    setForm({
+      fazendaOrigemId:   t.fazenda_origem_id ?? "",
+      depositoOrigemId:  t.deposito_origem_id ?? "",
+      fazendaDestinoId:  t.fazenda_destino_id ?? "",
+      depositoDestinoId: t.deposito_destino_id ?? "",
+      dataTransferencia: t.data_transferencia ? t.data_transferencia.slice(0, 10) : hoje(),
+      cfopSufixo,
+      entradaAutomatica: t.entrada_automatica ?? true,
+      observacao:        t.observacao ?? "",
+    });
+    setItens(
+      (t.itens ?? []).length > 0
+        ? (t.itens ?? []).map(i => ({
+            insumo_id:      i.insumo_id,
+            quantidade:     String(i.quantidade),
+            unidade_medida: i.unidade_medida ?? "kg",
+            custo_unitario: i.custo_unitario != null ? String(i.custo_unitario) : "",
+            variedade:      i.variedade ?? "",
+            lote_semente:   i.lote_semente ?? "",
+          }))
+        : [{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]
+    );
+    setEditandoId(t.id);
+    setErro(null);
+    setModal(true);
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -492,6 +524,11 @@ export default function TransferenciasEstoquePage() {
                             {t.status === "emitida" || t.status === "entrada_confirmada" ? "Visualizar NF" : "Visualizar"}
                           </button>
                           {t.status === "rascunho" && (
+                            <button onClick={() => abrirEditar(t)} style={btn("#1A4870")}>
+                              Editar
+                            </button>
+                          )}
+                          {t.status === "rascunho" && (
                             <button onClick={() => emitirSolicitacao(t)} disabled={acaoId === t.id} style={btn("#111111")}>
                               {acaoId === t.id ? "…" : "Emitir NF"}
                             </button>
@@ -536,7 +573,9 @@ export default function TransferenciasEstoquePage() {
           <div onClick={e => e.stopPropagation()} style={{
             ...card, width: 860, maxWidth: "98vw", boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
           }}>
-            <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700 }}>Nova Transferência de Insumos</h3>
+            <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700 }}>
+              {editandoId ? "Editar Transferência de Insumos" : "Nova Transferência de Insumos"}
+            </h3>
 
             {/* Alertas */}
             {estadosDiferentes && (
@@ -727,7 +766,7 @@ export default function TransferenciasEstoquePage() {
                 Cancelar
               </button>
               <button onClick={() => salvar("rascunho")} disabled={salvando} style={btn("#111111")}>
-                {salvando ? "…" : "Salvar Transferência"}
+                {salvando ? "…" : editandoId ? "Salvar Alterações" : "Salvar Transferência"}
               </button>
             </div>
           </div>

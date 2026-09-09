@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   let acao = "unknown";
   try {
     const body = await request.json() as {
-      acao: "emitir" | "cancelar" | "confirmar_entrada" | "salvar";
+      acao: "emitir" | "cancelar" | "confirmar_entrada" | "salvar" | "atualizar";
       transferencia_id?: string;
       modulo_key?: string;    // opcional — se não enviado, busca o primeiro disponível
       transferencia?: Record<string, unknown>;
@@ -224,6 +224,37 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ ok: true, id: transf.id });
+    }
+
+    if (body.acao === "atualizar") {
+      const { transferencia_id: tid, transferencia, itens } = body;
+      if (!tid || !transferencia) return NextResponse.json({ ok: false, error: "Dados ausentes" }, { status: 400 });
+
+      const { error: updErr } = await adm
+        .from("transferencias_estoque")
+        .update({
+          fazenda_origem_id:   transferencia.fazenda_origem_id,
+          deposito_origem_id:  transferencia.deposito_origem_id ?? null,
+          fazenda_destino_id:  transferencia.fazenda_destino_id,
+          deposito_destino_id: transferencia.deposito_destino_id ?? null,
+          cfop:                transferencia.cfop,
+          ie_diferentes:       transferencia.ie_diferentes,
+          entrada_automatica:  transferencia.entrada_automatica,
+          data_transferencia:  transferencia.data_transferencia,
+          observacao:          transferencia.observacao ?? null,
+        })
+        .eq("id", tid)
+        .eq("status", "rascunho"); // só edita rascunho
+      if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 500 });
+
+      // Substitui itens
+      await adm.from("transferencias_estoque_itens").delete().eq("transferencia_id", tid);
+      if (itens && itens.length > 0) {
+        const itensCom = itens.map(it => ({ ...it, transferencia_id: tid }));
+        await adm.from("transferencias_estoque_itens").insert(itensCom);
+      }
+
+      return NextResponse.json({ ok: true, id: tid });
     }
 
     console.log(`[transferencia-acao] ${acao} ok ${Date.now() - t0}ms`);
