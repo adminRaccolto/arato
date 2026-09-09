@@ -1318,7 +1318,7 @@ export default function NfCompraPage() {
       setErr("Selecione uma Operação Gerencial antes de processar a NF.");
       return;
     }
-    // Guard: lotes de semente incompletos — múltiplos lotes exigem peso de cada um
+    // Guard: lotes de semente com número mas sem peso — bloqueia (peso é obrigatório por lote)
     for (const it of itens) {
       if (!it.lotes_semente?.length || it.lotes_semente.length < 2) continue;
       const semPeso = it.lotes_semente.filter(l => l.numero && !(l.quantidade_kg ?? 0));
@@ -1326,12 +1326,8 @@ export default function NfCompraPage() {
         setErr(`Item "${it.descricao_nf || it.insumo_id}": lote(s) ${semPeso.map(l => l.numero || "sem número").join(", ")} sem peso informado. Preencha o peso de cada lote.`);
         return;
       }
-      const totalLotes = it.lotes_semente.reduce((s, l) => s + (l.quantidade_kg ?? 0), 0);
-      const diff = Math.abs(totalLotes - it.quantidade);
-      if (diff > 0.01) {
-        setErr(`Item "${it.descricao_nf || it.insumo_id}": soma dos lotes (${totalLotes.toFixed(2)}) diverge da quantidade do item (${it.quantidade.toFixed(2)}). Corrija os pesos antes de processar.`);
-        return;
-      }
+      // Divergência de peso é permitida — o custo unitário será ajustado automaticamente
+      // para manter o valor total da NF: custo/kg = valor_total / soma_lotes
     }
     setSaving(true);
     setErr("");
@@ -3892,18 +3888,33 @@ export default function NfCompraPage() {
                               );
                             })}
                             {/* Barra de totais — só quando múltiplos lotes */}
-                            {multiLote && totalLotes > 0 && (
+                            {multiLote && totalLotes > 0 && (() => {
+                              const valorTotalItem = it.valor_total ?? 0;
+                              const precoAjustado = totalLotes > 0 && valorTotalItem > 0
+                                ? valorTotalItem / totalLotes
+                                : null;
+                              const precoOriginal = it.quantidade > 0 && valorTotalItem > 0
+                                ? valorTotalItem / it.quantidade
+                                : null;
+                              const divergeValor = precoAjustado !== null && precoOriginal !== null && Math.abs(precoAjustado - precoOriginal) > 0.001;
+                              return (
                               <div style={{ marginTop: 6 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: ok ? "#16A34A" : "#C9921B", marginBottom: 3 }}>
                                   <span>Total lotes: <strong>{totalLotes.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {isBAG ? "bags" : "kg"}</strong></span>
                                   <span>Total NF: <strong>{qtdTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {isBAG ? "bags" : "kg"}</strong></span>
                                 </div>
                                 <div style={{ height: 4, background: "#D1E8D4", borderRadius: 4, overflow: "hidden" }}>
-                                  <div style={{ height: "100%", width: `${Math.min((totalLotes / qtdTotal) * 100, 100)}%`, background: ok ? "#16A34A" : "#C9921B", transition: "width 0.2s" }} />
+                                  <div style={{ height: "100%", width: `${Math.min((totalLotes / (qtdTotal || 1)) * 100, 100)}%`, background: ok ? "#16A34A" : "#C9921B", transition: "width 0.2s" }} />
                                 </div>
-                                {!ok && diff !== null && diff > 0.01 && (
-                                  <div style={{ fontSize: 10, color: "#C9921B", marginTop: 3 }}>
-                                    ⚠️ Divergência de {diff.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} — ajuste os pesos antes de processar.
+                                {divergeValor && diff !== null && diff > 0.01 && (
+                                  <div style={{ fontSize: 10, color: "#1A4870", background: "#E8F0FA", border: "0.5px solid #B0C8E0", borderRadius: 5, padding: "4px 8px", marginTop: 4 }}>
+                                    ℹ️ Peso dos lotes difere da NF em {diff.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {isBAG ? "bags" : "kg"}.<br />
+                                    O valor total <strong>(R$ {valorTotalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})</strong> é mantido — o custo unitário será ajustado para <strong>R$ {precoAjustado!.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}/{isBAG ? "bag" : "kg"}</strong> (era R$ {precoOriginal!.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}/{isBAG ? "bag" : "kg"}).
+                                  </div>
+                                )}
+                                {ok && (
+                                  <div style={{ fontSize: 10, color: "#16A34A", marginTop: 3 }}>
+                                    ✓ Totais conferem — cada lote entrará no estoque com R$ {precoOriginal?.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}/{isBAG ? "bag" : "kg"}.
                                   </div>
                                 )}
                                 {loteSemPeso && (
@@ -3912,7 +3923,8 @@ export default function NfCompraPage() {
                                   </div>
                                 )}
                               </div>
-                            )}
+                              );
+                            })()}
                           </div>
                           );
                         })()}

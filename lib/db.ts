@@ -2121,14 +2121,21 @@ export async function processarNfEntrada(
       const lotesComPeso = lotes.filter(l => l.numero && (l.quantidade_kg ?? 0) > 0);
 
       if (lotesComPeso.length > 1) {
-        // Múltiplos lotes com peso individual → uma movimentação de estoque por lote
+        // Múltiplos lotes com peso individual → uma movimentação de estoque por lote.
+        // O valor financeiro da NF é fixo (item.valor_total). O peso que vale é a soma
+        // dos lotes físicos. Se houver divergência, ajusta o preço/kg para que
+        // sum(qtd_lote × custo_ajustado) = valor_total_item — sem alterar o que é pago.
+        const totalPesoLotes = lotesComPeso.reduce((s, l) => s + (l.quantidade_kg ?? 0), 0);
+        const custoAjustado = totalPesoLotes > 0
+          ? item.valor_total / totalPesoLotes
+          : custoUnitarioCatalogo;
         for (const lote of lotesComPeso) {
           await supabase.from("movimentacoes_estoque").insert({
             insumo_id:          item.insumo_id,
             fazenda_id,
             tipo:               "entrada",
             quantidade:         lote.quantidade_kg,
-            valor_unitario:     custoUnitarioCatalogo,
+            valor_unitario:     custoAjustado,
             data:               dataEntrada,
             observacao:         `NF ${nfId} — ${item.descricao_produto} | Lote: ${lote.numero}`,
             auto:               true,
@@ -2136,7 +2143,7 @@ export async function processarNfEntrada(
             nf_entrada_item_id: item.id,
             lote_semente:       lote.numero,
           });
-          await creditarInsumo(item.insumo_id, lote.quantidade_kg!, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
+          await creditarInsumo(item.insumo_id, lote.quantidade_kg!, custoAjustado, fazenda_id, item.deposito_id ?? null);
         }
       } else {
         // Um lote ou sem lotes → movimento único com quantidade total do item
