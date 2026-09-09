@@ -1280,14 +1280,17 @@ export default function Estoque() {
 
               {/* ── Movimentação por Produto (Kardex) ── */}
               {relTipo === "kardex" && (() => {
-                // Filtrar movs por categoria e produto selecionado
+                // Filtrar insumos por categoria e produto (depósito se aplica nas movimentações, não no cadastro)
                 const insumosFiltrados = insumos.filter(ins =>
                   (kardexCat === "todos" || ins.categoria === kardexCat) &&
-                  (!kardexInsumoId || ins.id === kardexInsumoId) &&
-                  (!kardexDepositoId || ins.deposito_id === kardexDepositoId)
+                  (!kardexInsumoId || ins.id === kardexInsumoId)
                 );
                 const insIds = new Set(insumosFiltrados.map(i => i.id));
-                const movsFiltr = kardexMovs.filter(m => insIds.has(m.insumo_id));
+                // Depósito filtra pelo campo deposito_id da movimentação, não do cadastro do insumo
+                const movsFiltr = kardexMovs.filter(m =>
+                  insIds.has(m.insumo_id) &&
+                  (!kardexDepositoId || m.deposito_id === kardexDepositoId)
+                );
 
                 // Agrupar por produto
                 type KardexRow = { insumo: Insumo; movs: (MovimentacaoEstoque & { saldo: number })[]; totalE: number; totalS: number; saldoFinal: number; saldoInicial: number };
@@ -1296,7 +1299,10 @@ export default function Estoque() {
                     const mIns = movsFiltr.filter(m => m.insumo_id === ins.id).slice().reverse(); // cronológico
 
                     // Saldo inicial real: soma das movimentações ANTES do período (não usa ins.estoque que pode estar dessincronizado)
-                    const antesIns = kardexMovsAntes.filter(m => m.insumo_id === ins.id);
+                    const antesIns = kardexMovsAntes.filter(m =>
+                      m.insumo_id === ins.id &&
+                      (!kardexDepositoId || m.deposito_id === kardexDepositoId)
+                    );
                     const preE  = antesIns.filter(m => m.tipo === "entrada").reduce((s, m) => s + m.quantidade, 0);
                     const preS  = antesIns.filter(m => m.tipo === "saida").reduce((s, m) => s + m.quantidade, 0);
                     const preAj = antesIns.filter(m => m.tipo === "ajuste").reduce((s, m) => s + m.quantidade, 0);
@@ -1350,8 +1356,7 @@ export default function Estoque() {
                           <select style={inp} value={kardexInsumoId} onChange={e => setKardexInsumoId(e.target.value)}>
                             <option value="">Todos</option>
                             {insumos.filter(i =>
-                              (kardexCat === "todos" || i.categoria === kardexCat) &&
-                              (!kardexDepositoId || i.deposito_id === kardexDepositoId)
+                              (kardexCat === "todos" || i.categoria === kardexCat)
                             ).map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
                           </select>
                         </div>
