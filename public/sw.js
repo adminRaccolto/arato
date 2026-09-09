@@ -5,10 +5,10 @@
 //   /api/, supabase  → Network Only (dados sempre frescos)
 //   imagens/fontes   → Stale-While-Revalidate
 
-const V = "arato-v5";
-const STATIC = "arato-static-v5";
-const SHELL  = "arato-shell-v5";
-const IMAGES = "arato-img-v5";
+const V = "arato-v6";
+const STATIC = "arato-static-v6";
+const SHELL  = "arato-shell-v6";
+const IMAGES = "arato-img-v6";
 
 const OFFLINE_URL = "/offline";
 
