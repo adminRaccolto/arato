@@ -1121,6 +1121,46 @@ Executar no Supabase SQL Editor (adiciona entidade_contabil em fazendas + trigge
 
 ---
 
+### Sessão setembro/2026 — Correções DRE, App Campo e Unificação Romaneio
+
+#### Correções DRE Agrícola + App Campo (commit 4e5c6d7)
+- **Bug DRE zero CPV campo**: `consumir-estoque/route.ts` tinha `safra_id: ciclo_id` (campo errado). DRE filtra `contas_pagar` por `ciclo_id`, então o lançamento nunca aparecia. Corrigido para `ciclo_id: ciclo_id`.
+- **DRE exibia "Safrinha"**: `cultLabel = d.ciclo.cultura` retornava o enum (ex: "milho_2"). Corrigido para `d.ciclo.descricao || d.ciclo.cultura` → exibe "MILHO 26/27".
+- **App campo auto-sugere ciclo ativo**: plantio, pulverização, adubação e aérea detectam o ciclo com `data_inicio <= hoje <= data_fim` e pré-selecionam automaticamente.
+- **CascadeSelector** também auto-seleciona ciclo ativo por data.
+- **Movimentações de estoque**: nova coluna "Safra / Ciclo" via JOIN `ciclos(descricao)`. Migration adicionou `ciclo_id` na tabela `movimentacoes_estoque`.
+- **DRE mapas de categoria campo**: adicionados mapeamentos "Insumos — Fertilizantes/Defensivos/Sementes" → grupos DRE.
+
+#### Unificação do sistema de Romaneio (commit 23255f4)
+- **Problema**: dois sistemas de romaneio coexistiam — botão `+ Romaneio` dentro de cada colheita escrevia em `colheita_romaneios`; botão "Romaneio de Entrada" no cabeçalho escrevia em `romaneios_entrada`. Dados não se comunicavam.
+- **Solução**: tudo passa pelo `romaneios_entrada` com `colheita_id` vinculando à colheita de origem.
+- **Fluxo dois passos**:
+  1. Caminhão chega carregado → "⚖ Registrar Peso Bruto" → `status: "em_pesagem"`, `tara_kg: 0`, sem movimentação de estoque
+  2. Caminhão descarrega e retorna vazio → "⚖ Capturar Tara" (botão na expansão ▼) → preenche tara + classificação + depósito → "✓ Confirmar Entrada" → `status: "confirmado"` + `movimentacoes_estoque` criada
+- **Expansão ▼** da colheita mostra dois grupos: "Em Pesagem — Aguardando Tara" (laranja) e "Entrada Confirmada" (verde) com total de sacas
+- **Tela `/estoque/romaneio-entrada`** virou relatório read-only — botão "+ Novo Romaneio" removido; filtro de status inclui "Em Pesagem"
+- **`romaneios_entrada`**: novo campo `colheita_id UUID REFERENCES colheitas(id)`, novo status `"em_pesagem"` (sem CHECK constraint, campo TEXT)
+- **`lib/db.ts`**: nova função `listarRomaneiosEntradaDaColheita(colheita_id)`
+
+#### Arquitetura — Romaneio de Colheita Própria
+- `colheita_romaneios` (tabela antiga): não mais usada no frontend. Dados históricos permanecem.
+- `romaneios_entrada` (tabela principal): único sistema de romaneio. `colheita_id` é o elo com a colheita.
+- Fluxo obrigatório: Peso Bruto (`em_pesagem`) → Tara + Depósito (`confirmado`) = entrada no estoque
+- `confirmarRomaneioEntrada()` em `lib/db.ts` cria `movimentacoes_estoque` e marca `entrada_estoque: true` — idempotente
+- Tela Colheita Própria: `+ Romaneio` no card e `+ Novo Romaneio` na expansão expandem o mesmo modal completo
+- Modal detecta modo: cabeçalho "Romaneio de Entrada — Colheita" (novo) vs "Capturar Tara — [PLACA]" (edição de em_pesagem)
+
+#### Migration pendente — executar no Supabase SQL Editor
+```sql
+ALTER TABLE romaneios_entrada
+  ADD COLUMN IF NOT EXISTS colheita_id UUID REFERENCES colheitas(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_rom_entrada_colheita ON romaneios_entrada(colheita_id)
+  WHERE colheita_id IS NOT NULL;
+NOTIFY pgrst, 'reload schema';
+```
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.
