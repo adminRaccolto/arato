@@ -97,7 +97,8 @@ export default function TransporteCadastrosPage() {
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
   const [veiculos,        setVeiculos]        = useState<Veiculo[]>([]);
   const [motoristas,      setMotoristas]      = useState<Motorista[]>([]);
-  const [empresas,        setEmpresas]        = useState<{ id: string; nome: string }[]>([]);
+  const [empresas,        setEmpresas]        = useState<{ id: string; nome: string; razao_social?: string; cpf_cnpj?: string; inscricao_est?: string; rntrc?: string; cep?: string; logradouro?: string; numero?: string; bairro?: string; municipio?: string; estado?: string; telefone?: string; email?: string; finalidades?: string[] }[]>([]);
+  const [sincronizando, setSincronizando] = useState(false);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState("");
@@ -119,8 +120,8 @@ export default function TransporteCadastrosPage() {
     if (r1.data) setTransportadoras(r1.data);
     if (r2.data) setVeiculos(r2.data);
     if (r3.data) setMotoristas(r3.data);
-    // Carrega empresas próprias para vincular transportadora interna
-    const { data: emp } = await supabase.from("empresas").select("id, nome").in("fazenda_id", fazendaIds).order("nome");
+    // Carrega empresas para vincular e sincronizar transportadoras internas
+    const { data: emp } = await supabase.from("empresas").select("id, nome, razao_social, cpf_cnpj, inscricao_est, rntrc, cep, logradouro, numero, bairro, municipio, estado, telefone, email, finalidades").in("fazenda_id", fazendaIds).order("nome");
     if (emp) setEmpresas(emp);
     setLoading(false);
   }, [fazendaId]);
@@ -182,6 +183,41 @@ export default function TransporteCadastrosPage() {
     await carregar();
     setModalM(null);
     setSalvando(false);
+  };
+
+  // ── Sincronizar transportadoras a partir de Empresas ───────────────────────
+  const sincronizarDeEmpresas = async () => {
+    if (!fazendaId) return;
+    const empTransp = empresas.filter(e => (e.finalidades ?? []).includes("transportadora"));
+    if (empTransp.length === 0) { alert("Nenhuma empresa marcada como Transportadora em Cadastros → Empresas."); return; }
+    const jaVinculadas = new Set(transportadoras.map(t => t.empresa_id).filter(Boolean));
+    const novas = empTransp.filter(e => !jaVinculadas.has(e.id));
+    if (novas.length === 0) { alert("Todas as empresas transportadoras já estão sincronizadas."); return; }
+    setSincronizando(true);
+    const inserts = novas.map(e => ({
+      fazenda_id:   fazendaId,
+      empresa_id:   e.id,
+      razao_social: e.razao_social ?? e.nome,
+      nome_fantasia: e.nome !== e.razao_social ? e.nome : undefined,
+      cnpj:         e.cpf_cnpj && e.cpf_cnpj.replace(/\D/g, "").length === 14 ? e.cpf_cnpj : undefined,
+      cpf:          e.cpf_cnpj && e.cpf_cnpj.replace(/\D/g, "").length === 11 ? e.cpf_cnpj : undefined,
+      ie:           e.inscricao_est || undefined,
+      rntrc:        e.rntrc || undefined,
+      cep:          e.cep || undefined,
+      logradouro:   e.logradouro || undefined,
+      numero:       e.numero || undefined,
+      bairro:       e.bairro || undefined,
+      municipio:    e.municipio || undefined,
+      uf:           e.estado || undefined,
+      telefone:     e.telefone || undefined,
+      email:        e.email || undefined,
+      ativa:        true,
+    }));
+    const { error } = await supabase.from("transportadoras").insert(inserts);
+    setSincronizando(false);
+    if (error) { alert("Erro: " + error.message); return; }
+    await carregar();
+    alert(`${novas.length} transportadora(s) importada(s) com sucesso.`);
   };
 
   // ── Filtros ─────────────────────────────────────────────────────────────────
@@ -248,7 +284,11 @@ export default function TransporteCadastrosPage() {
         {/* ── Transportadoras ── */}
         {aba === "transportadoras" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
+              <button style={{ ...btnR, display: "flex", alignItems: "center", gap: 5 }}
+                onClick={sincronizarDeEmpresas} disabled={sincronizando}>
+                {sincronizando ? "Importando…" : "⟳ Importar de Empresas"}
+              </button>
               <button style={btnV} onClick={() => setModalT({ ativa: true })}>+ Nova Transportadora</button>
             </div>
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
@@ -268,7 +308,10 @@ export default function TransporteCadastrosPage() {
                   ) : transFilt.map((t, i) => (
                     <tr key={t.id} style={{ borderBottom: i < transFilt.length - 1 ? "0.5px solid #EEF1F7" : "none" }}>
                       <td style={{ padding: "10px 12px" }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{t.razao_social}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{t.razao_social}</span>
+                          {t.empresa_id && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "#D5E8F5", color: "#1A4870", fontWeight: 600 }}>Própria</span>}
+                        </div>
                         {t.nome_fantasia && <div style={{ fontSize: 11, color: "#666" }}>{t.nome_fantasia}</div>}
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "monospace" }}>{t.cnpj ?? t.cpf ?? "—"}</td>
