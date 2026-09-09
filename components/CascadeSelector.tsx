@@ -26,6 +26,8 @@ interface Props {
   levels?:    Array<"produtor" | "ie" | "fazenda" | "anoSafra" | "ciclo" | "talhao">;
   /** Remove o asterisco de obrigatório do campo Fazenda. Padrão: true */
   fazendaRequired?: boolean;
+  /** Remove o asterisco de obrigatório do campo IE. Padrão: true */
+  ieRequired?: boolean;
 }
 
 const inp: React.CSSProperties = {
@@ -44,7 +46,7 @@ const CULTURAS: Record<string, string> = {
   algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo", outro: "Outro",
 };
 
-export default function CascadeSelector({ contaId, fazendaIdFallback, values, onChange, levels, fazendaRequired = true }: Props) {
+export default function CascadeSelector({ contaId, fazendaIdFallback, values, onChange, levels, fazendaRequired = true, ieRequired = true }: Props) {
   const show = levels ?? ["produtor", "fazenda", "anoSafra", "ciclo", "talhao"];
   const useIE = show.includes("ie");
 
@@ -192,7 +194,7 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
           {/* IE — só exibe quando o level "ie" está ativo e o Produtor foi selecionado */}
           {show.includes("ie") && show.includes("produtor") && (
             <div>
-              <label style={lbl}>IE <span style={{ color: "#E24B4A" }}>*</span></label>
+              <label style={lbl}>IE {ieRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
               <select style={inp} value={values.ieId ?? ""}
                 onChange={e => sel("ieId", e.target.value)}
                 disabled={!values.produtorId}>

@@ -725,8 +725,10 @@ export default function ColheitaPage() {
               {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
               <CascadeSelector
                 contaId={contaId}
+                fazendaIdFallback={fazendaId}
                 values={cascade}
                 levels={["produtor", "ie", "fazenda", "anoSafra", "ciclo", "talhao"]}
+                ieRequired={false}
                 onChange={next => {
                   setCascade(next);
                   setAnoSafraSel(next.anoSafraId ?? "");
@@ -820,44 +822,6 @@ export default function ColheitaPage() {
                 <div style={lbStyle}>Observação</div>
                 <textarea value={formColheita.observacao ?? ""} onChange={e => setFormColheita(f => ({ ...f, observacao: e.target.value }))} style={{ ...inpStyle, height: 60, resize: "vertical" }} placeholder="Observações gerais" />
               </label>
-
-              {/* Peso colhido — entrada rápida (opcional) */}
-              <div style={{ background: "#F3F8FF", borderRadius: 10, border: "0.5px solid #C5D9F0", padding: "14px 16px" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 4 }}>Peso colhido (opcional)</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 12 }}>
-                  Informe o total colhido agora, ou deixe em branco e registre romaneio a romaneio depois (pesagem caminhão a caminhão).
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                  <label>
-                    <div style={lbStyle}>Total sacas colhidas (sc)</div>
-                    <InputNumerico decimais={3} value={formColheita.total_sacas || ""}
-                      onChange={v => {
-                        const sc = parseFloat(v) || 0;
-                        const cls = CLASSE_COMMODITY[formColheita.produto] ?? CLASSE_COMMODITY["soja"];
-                        setFormColheita(f => ({ ...f, total_sacas: sc, total_kg_bruto: sc * cls.kg_saca, total_kg_classificado: sc * cls.kg_saca }));
-                      }}
-                      style={inpStyle} min={0} placeholder="Ex: 3.600" />
-                  </label>
-                  <label>
-                    <div style={lbStyle}>Peso líquido total (kg)</div>
-                    <InputNumerico decimais={0} value={formColheita.total_kg_bruto || ""}
-                      onChange={v => {
-                        const kg = parseFloat(v) || 0;
-                        const cls = CLASSE_COMMODITY[formColheita.produto] ?? CLASSE_COMMODITY["soja"];
-                        setFormColheita(f => ({ ...f, total_kg_bruto: kg, total_kg_classificado: kg, total_sacas: +(kg / cls.kg_saca).toFixed(3) }));
-                      }}
-                      style={inpStyle} min={0} placeholder="Ex: 216.000" />
-                  </label>
-                  <div>
-                    <div style={lbStyle}>Produtividade (calculada)</div>
-                    <div style={{ ...inpStyle, background: "#E8F4EC", color: "#16A34A", fontWeight: 700 }}>
-                      {formColheita.area_ha && formColheita.total_sacas
-                        ? `${((formColheita.total_sacas) / formColheita.area_ha).toFixed(1)} sc/ha`
-                        : "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {erro && <div style={{ color: "#E24B4A", fontSize: 13, background: "#FFF5F5", padding: "8px 12px", borderRadius: 7 }}>{erro}</div>}
 
