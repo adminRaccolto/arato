@@ -6,6 +6,24 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.09",
+    data: "09/09/2026",
+    titulo: "Transferências — Novo Fluxo + Correções Estoque",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "Transferência entre Fazendas: novo fluxo em 2 etapas — salva como rascunho primeiro, emite a NF diretamente pelo grid após revisar. Botões 'Visualizar', 'Emitir NF' e 'Cancelar' ficam na linha da tabela." },
+      { tipo: "melhoria", texto: "Transferência entre Fazendas: CFOP agora é selecionável (5 opções). Padrão alterado para 5152/6152 — Mercadoria adquirida de terceiros (sem ST), que é o correto para a maioria dos insumos comprados." },
+      { tipo: "correcao", texto: "Detalhe de transferência: nome do insumo agora exibe corretamente em vez do UUID (ocorria quando a fazenda origem era diferente da fazenda ativa no formulário)." },
+      { tipo: "melhoria", texto: "Kardex: coluna 'Origem' exibe ícone e link contextual por tipo de movimentação (NF, aplicação em campo, transferência, perda etc.). Coluna 'Usuário' indica operador ou 'Sistema'." },
+      { tipo: "melhoria", texto: "Movimentação por Produto: colunas 'Motivo' e 'Obs.' substituídas por 'Origem' (link contextual) e 'Usuário'." },
+      { tipo: "correcao", texto: "Kardex: corrigido bug que retornava sempre zero movimentos (fechamento de closure sobre fazendaIds + builder Supabase imutável)." },
+      { tipo: "melhoria", texto: "App Campo: login dedicado em /campo/login com tema escuro mobile-first. Usuários do campo são redirecionados para esta tela ao tentar acessar o sistema." },
+      { tipo: "correcao", texto: "NF de Produtos: corrigida duplicação de movimentações de estoque em NFs reprocessadas. A limpeza de movimentos agora ocorre antes da exclusão dos itens, evitando o registro múltiplo." },
+      { tipo: "melhoria", texto: "Menu: 'Transferência entre Fazendas' movida de Estoque de Grãos para Estoque de Insumos, onde pertence." },
+    ],
+    onde: "Compras & Estoque → Estoque → Transferências · Kardex · Movimentação por Produto",
+  },
+  {
     versao: "2026.09.08-c",
     data: "08/09/2026",
     titulo: "Ticket em 2 vias + Romaneio na Pesagem Avulsa",

@@ -284,10 +284,31 @@ Saldo atual por produto. Filtros: categoria, depósito, busca por nome. Badge ve
 
 Rastreamento completo de entradas e saídas de um produto específico, com saldo e custo médio a cada movimentação.
 
-### 9.3 Transferências entre Fazendas
-**Caminho:** Compras & Estoque → Estoque → Transferências entre Fazendas
+- **Filtros:** insumo (obrigatório), depósito (opcional), período, fazenda (mostra todos os depósitos da conta).
+- **Colunas:** Data · Tipo · Operação · Origem · Quantidade · Saldo Acumulado · Depósito · Usuário.
+- **Coluna Origem:** exibe ícone e link contextual — 📄 NF (link para NF), 🌱 Aplicação em campo (ciclo), 🔄 Transferência, ⛽ Abastecimento, 🌿 Baixa de uso, ⚠ Perda, ⚙ Ajuste de saldo, 📦 Inventário.
+- **Coluna Usuário:** nome do operador que lançou, ou "Sistema" para lançamentos automáticos.
 
-Registra movimentação de insumos entre fazendas da mesma conta.
+### 9.3 Movimentação por Produto (Posição de Insumos)
+**Caminho:** Compras & Estoque → Estoque → Posição de Insumos → painel "Movimentação por Produto"
+
+Histórico filtrado de movimentações do produto selecionado, com as mesmas colunas Origem e Usuário do Kardex.
+
+### 9.4 Transferências entre Fazendas
+**Caminho:** Compras & Estoque → Estoque de Insumos → Transferência entre Fazendas
+
+Registra movimentação de insumos entre fazendas da mesma conta com emissão de NF de transferência.
+
+**Fluxo em 2 etapas:**
+1. Clique em **+ Nova Transferência**, preencha origem, destino, CFOP, itens e salve → a transferência fica como **Rascunho**.
+2. Na tabela, revise os dados e clique em **Emitir NF** para emitir a nota. Após emitida, o botão muda para **DANFE** e **Confirmar Entrada** (se entrada não for automática).
+
+**CFOP:** selecionável entre 5 opções; padrão é 5152/6152 (mercadoria adquirida de terceiros, sem ST). O prefixo 5 (mesmo estado) ou 6 (inter-estadual) é calculado automaticamente pelos estados das fazendas.
+
+**Botões na tabela por status:**
+- Rascunho: Visualizar · **Emitir NF** · Cancelar
+- Emitida: Visualizar NF · DANFE · Confirmar Entrada (se não automático) · Cancelar
+- Entrada Confirmada / Cancelada: Visualizar NF
 
 ### 9.4 Abastecimento de Máquinas
 **Caminho:** Compras & Estoque → Estoque → Abastecimento de Máquinas
