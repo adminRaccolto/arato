@@ -10,9 +10,11 @@ import {
   listarColheitasDaConta,
   criarColheita,
   excluirColheita,
-  listarColheitaRomaneios,
-  criarColheitaRomaneio,
-  excluirColheitaRomaneio,
+  listarRomaneiosEntradaDaColheita,
+  criarRomaneioEntrada,
+  atualizarRomaneioEntrada,
+  confirmarRomaneioEntrada,
+  excluirRomaneioEntrada,
   finalizarColheita,
   listarTodosCiclos,
   listarAnosSafra,
@@ -21,7 +23,7 @@ import {
   listarInsumos,
   listarFazendas,
 } from "../../../lib/db";
-import type { ColheitaRegistro, ColheitaRomaneio, Ciclo, AnoSafra, Talhao, Deposito, Insumo, Fazenda } from "../../../lib/supabase";
+import type { ColheitaRegistro, RomaneioEntrada, Ciclo, AnoSafra, Talhao, Deposito, Insumo, Fazenda } from "../../../lib/supabase";
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -106,7 +108,7 @@ const calcDescAvar  = (pl: number, a: number, aPad: number) => a > aPad ? +(pl *
 // Tipos auxiliares
 // ────────────────────────────────────────────────────────────
 
-type ColheitaComRomaneios = ColheitaRegistro & { romaneios?: ColheitaRomaneio[] };
+type ColheitaComRomaneios = ColheitaRegistro & { romaneios?: RomaneioEntrada[] };
 
 const COLHEITA_VAZIO: Omit<ColheitaRegistro, "id" | "created_at"> = {
   fazenda_id:            "",
@@ -125,6 +127,7 @@ const COLHEITA_VAZIO: Omit<ColheitaRegistro, "id" | "created_at"> = {
 const ROMANEIO_VAZIO = {
   numero:             "",
   placa:              "",
+  motorista:          "",
   peso_bruto_kg:      0,
   tara_kg:            0,
   umidade_pct:        0,
@@ -141,6 +144,7 @@ const ROMANEIO_VAZIO = {
   carunchados:        "",
   outros_avariados:   "",
   data:               hoje(),
+  depositoId:         "",
 };
 
 // ────────────────────────────────────────────────────────────
@@ -173,6 +177,7 @@ export default function ColheitaPage() {
   // Modais
   const [modalColheita,  setModalColheita]  = useState(false);
   const [modalRomaneio,  setModalRomaneio]  = useState<string | null>(null); // colheita_id
+  const [editRomaneio,   setEditRomaneio]   = useState<RomaneioEntrada | null>(null);
   const [modalFinalizar, setModalFinalizar] = useState<ColheitaComRomaneios | null>(null);
 
   // Formulários
@@ -181,7 +186,7 @@ export default function ColheitaPage() {
   const [insumoIdFinal, setInsumoIdFinal] = useState("");
   const [insumoIdColheita, setInsumoIdColheita] = useState("");
   const [filtroTipoDeposito, setFiltroTipoDeposito] = useState<"todos"|"proprio"|"terceiro">("todos");
-  const [romParaImprimir, setRomParaImprimir] = useState<{ rom: ColheitaRomaneio; col: ColheitaComRomaneios } | null>(null);
+  const [romParaImprimir, setRomParaImprimir] = useState<{ rom: RomaneioEntrada; col: ColheitaComRomaneios } | null>(null);
   // Culturas para pré-seleção automática do produto na finalização
 
   // ── Carregamento ──────────────────────────────────────────
@@ -213,15 +218,12 @@ export default function ColheitaPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // Expande colheita e carrega romaneios
+  // Expande colheita e carrega romaneios de entrada
   const toggleExpandir = async (id: string) => {
     if (expandido === id) { setExpandido(null); return; }
     setExpandido(id);
-    const col = colheitas.find(c => c.id === id);
-    if (col && !col.romaneios) {
-      const roms = await listarColheitaRomaneios(id);
-      setColheitas(prev => prev.map(c => c.id === id ? { ...c, romaneios: roms } : c));
-    }
+    const roms = await listarRomaneiosEntradaDaColheita(id);
+    setColheitas(prev => prev.map(c => c.id === id ? { ...c, romaneios: roms } : c));
   };
 
   // ── Stats ─────────────────────────────────────────────────
@@ -266,7 +268,35 @@ export default function ColheitaPage() {
   const abrirRomaneio = (colheitaId: string) => {
     const col = colheitas.find(c => c.id === colheitaId);
     const umPad = PRODUTOS_PADRAO[col?.produto ?? "soja"]?.umPad ?? 14;
+    setEditRomaneio(null);
     setFormRomaneio({ ...ROMANEIO_VAZIO, umidade_padrao_pct: umPad, umidade_pct: umPad, data: hoje() });
+    setModalRomaneio(colheitaId);
+  };
+
+  const abrirCapturarTara = (rom: RomaneioEntrada, colheitaId: string) => {
+    setEditRomaneio(rom);
+    setFormRomaneio({
+      numero:             rom.ticket_numero ?? "",
+      placa:              rom.placa ?? "",
+      motorista:          rom.motorista ?? "",
+      peso_bruto_kg:      rom.peso_bruto_kg,
+      tara_kg:            0,
+      umidade_pct:        rom.umidade_pct ?? 0,
+      umidade_padrao_pct: rom.umidade_padrao_pct ?? 14,
+      impureza_pct:       rom.impureza_pct ?? 0,
+      avariados_pct:      rom.avariados_pct ?? 0,
+      ph:                 rom.ph_hl ? String(rom.ph_hl) : "",
+      ardidos:            rom.ardidos_pct ? String(rom.ardidos_pct) : "",
+      mofados:            rom.mofados_pct ? String(rom.mofados_pct) : "",
+      fermentados:        rom.fermentados_pct ? String(rom.fermentados_pct) : "",
+      germinados:         rom.germinados_pct ? String(rom.germinados_pct) : "",
+      esverdeados:        rom.esverdeados_pct ? String(rom.esverdeados_pct) : "",
+      quebrados:          rom.quebrados_pct ? String(rom.quebrados_pct) : "",
+      carunchados:        rom.carunchados_pct ? String(rom.carunchados_pct) : "",
+      outros_avariados:   rom.outros_avariados_pct ? String(rom.outros_avariados_pct) : "",
+      data:               rom.data,
+      depositoId:         rom.deposito_id ?? "",
+    });
     setModalRomaneio(colheitaId);
   };
 
@@ -294,65 +324,113 @@ export default function ColheitaPage() {
              pArd, pMof, pFer, pGer, pEsv, pQue, pCar, pOut, temSub };
   };
 
-  const salvarRomaneio = async () => {
+  const buildPayload = (colheitaId: string) => {
+    const col = colheitas.find(c => c.id === colheitaId);
+    const { cls, pl, d_umid, d_imp, d_avar, avar_pct, classificado, sacas,
+            pArd, pMof, pFer, pGer, pEsv, pQue, pCar, pOut, temSub } = calcRom();
+    const temClassif = formRomaneio.umidade_pct > 0 || formRomaneio.impureza_pct > 0 || avar_pct > 0;
+    return {
+      fazenda_id:           fazendaId!,
+      tipo:                 "proprio" as const,
+      colheita_id:          colheitaId,
+      data:                 formRomaneio.data,
+      placa:                formRomaneio.placa.toUpperCase(),
+      motorista:            formRomaneio.motorista || null,
+      ticket_numero:        formRomaneio.numero || null,
+      insumo_id:            (col as (ColheitaRegistro & { insumo_id?: string }) | undefined)?.insumo_id ?? null,
+      produto_nome:         insumos.find(i => i.id === (col as (ColheitaRegistro & { insumo_id?: string }) | undefined)?.insumo_id)?.nome ?? col?.produto ?? null,
+      ciclo_id:             col?.ciclo_id ?? null,
+      talhao_id:            col?.talhao_id ?? null,
+      peso_bruto_kg:        formRomaneio.peso_bruto_kg,
+      tara_kg:              formRomaneio.tara_kg,
+      umidade_pct:          formRomaneio.umidade_pct || null,
+      umidade_padrao_pct:   temClassif ? cls.umidade_padrao : null,
+      desconto_umidade_kg:  d_umid || null,
+      impureza_pct:         formRomaneio.impureza_pct || null,
+      impureza_padrao_pct:  temClassif ? cls.impureza_padrao : null,
+      desconto_impureza_kg: d_imp || null,
+      avariados_pct:        avar_pct || null,
+      avariados_padrao_pct: temClassif ? cls.avariados_padrao : null,
+      desconto_avariados_kg: d_avar || null,
+      ardidos_pct:          temSub ? pArd || null : null,
+      mofados_pct:          temSub ? pMof || null : null,
+      fermentados_pct:      temSub ? pFer || null : null,
+      germinados_pct:       temSub ? pGer || null : null,
+      esverdeados_pct:      temSub ? pEsv || null : null,
+      quebrados_pct:        temSub ? pQue || null : null,
+      carunchados_pct:      temSub ? pCar || null : null,
+      outros_avariados_pct: temSub ? pOut || null : null,
+      ph_hl:                parseFloat(formRomaneio.ph) || null,
+      peso_classificado_kg: temClassif ? classificado : pl,
+      sacas,
+      deposito_id:          formRomaneio.depositoId || null,
+      entrada_estoque:      false as const,
+    };
+  };
+
+  // Passo 1: registra apenas o Peso Bruto → status em_pesagem (sem movimentar estoque)
+  const salvarPesoBruto = async () => {
     if (!fazendaId || !modalRomaneio) return;
     if (!formRomaneio.placa.trim()) { setErro("Informe a placa do caminhão"); return; }
     if (formRomaneio.peso_bruto_kg <= 0) { setErro("Informe o peso bruto"); return; }
     setSalvando(true);
     setErro(null);
     try {
-      const { cls, pl, d_umid, d_imp, d_avar, avar_pct, classificado, sacas,
-              pArd, pMof, pFer, pGer, pEsv, pQue, pCar, pOut, temSub } = calcRom();
-      const temClassif = formRomaneio.umidade_pct > 0 || formRomaneio.impureza_pct > 0 || avar_pct > 0;
-      await criarColheitaRomaneio({
-        colheita_id:            modalRomaneio,
-        fazenda_id:             fazendaId,
-        numero:                 formRomaneio.numero || undefined,
-        placa:                  formRomaneio.placa.toUpperCase(),
-        peso_bruto_kg:          formRomaneio.peso_bruto_kg,
-        tara_kg:                formRomaneio.tara_kg,
-        peso_liquido_kg:        pl,
-        umidade_pct:            formRomaneio.umidade_pct || undefined,
-        umidade_padrao_pct:     temClassif ? cls.umidade_padrao : undefined,
-        desconto_umidade_kg:    d_umid || undefined,
-        impureza_pct:           formRomaneio.impureza_pct || undefined,
-        desconto_impureza_kg:   d_imp || undefined,
-        avariados_pct:          avar_pct || undefined,
-        avariados_padrao_pct:   temClassif ? cls.avariados_padrao : undefined,
-        desconto_avariados_kg:  d_avar || undefined,
-        ph_hl:                  parseFloat(formRomaneio.ph) || undefined,
-        ardidos_pct:            temSub ? pArd || undefined : undefined,
-        mofados_pct:            temSub ? pMof || undefined : undefined,
-        fermentados_pct:        temSub ? pFer || undefined : undefined,
-        germinados_pct:         temSub ? pGer || undefined : undefined,
-        esverdeados_pct:        temSub ? pEsv || undefined : undefined,
-        quebrados_pct:          temSub ? pQue || undefined : undefined,
-        carunchados_pct:        temSub ? pCar || undefined : undefined,
-        outros_avariados_pct:   temSub ? pOut || undefined : undefined,
-        peso_classificado_kg:   temClassif ? classificado : pl,
-        sacas,
-        data:                   formRomaneio.data,
-      });
+      const payload = { ...buildPayload(modalRomaneio), tara_kg: 0, status: "em_pesagem" as const };
+      await criarRomaneioEntrada(payload);
+      const colId = modalRomaneio;
       setModalRomaneio(null);
-      // Recarrega romaneios e totais
-      const roms = await listarColheitaRomaneios(modalRomaneio);
-      const colAtt = await listarColheitasDaConta(fazendaId);
-      setColheitas(colAtt.map(c => c.id === modalRomaneio ? { ...c, romaneios: roms } : c));
+      setEditRomaneio(null);
+      const roms = await listarRomaneiosEntradaDaColheita(colId);
+      setColheitas(prev => prev.map(c => c.id === colId ? { ...c, romaneios: roms } : c));
+      setExpandido(colId);
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao salvar romaneio");
+      setErro(e instanceof Error ? e.message : "Erro ao salvar peso bruto");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // Passo 2: captura tara, confirma → gera entrada no estoque
+  const confirmarEntrada = async () => {
+    if (!fazendaId || !modalRomaneio) return;
+    if (!formRomaneio.depositoId) { setErro("Selecione o depósito de destino"); return; }
+    if (formRomaneio.peso_bruto_kg <= 0) { setErro("Informe o peso bruto"); return; }
+    if (formRomaneio.tara_kg <= 0) { setErro("Informe o peso tara"); return; }
+    setSalvando(true);
+    setErro(null);
+    try {
+      const payload = { ...buildPayload(modalRomaneio), status: "confirmado" as const };
+      let rom: RomaneioEntrada;
+      if (editRomaneio) {
+        await atualizarRomaneioEntrada(editRomaneio.id, payload);
+        rom = { ...editRomaneio, ...payload };
+      } else {
+        rom = await criarRomaneioEntrada(payload);
+      }
+      if (!rom.entrada_estoque) {
+        await confirmarRomaneioEntrada(rom, fazendaId);
+      }
+      const colId = modalRomaneio;
+      setModalRomaneio(null);
+      setEditRomaneio(null);
+      const roms = await listarRomaneiosEntradaDaColheita(colId);
+      const cols = await listarColheitasDaConta(fazendaId);
+      setColheitas(cols.map(c => c.id === colId ? { ...c, romaneios: roms } : c));
+      setExpandido(colId);
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : "Erro ao confirmar entrada");
     } finally {
       setSalvando(false);
     }
   };
 
   const removerRomaneio = async (romId: string, colheitaId: string) => {
-    if (!fazendaId) return;
     if (!confirm("Remover este romaneio?")) return;
     try {
-      await excluirColheitaRomaneio(romId, colheitaId, fazendaId);
-      const roms  = await listarColheitaRomaneios(colheitaId);
-      const colAtt = await listarColheitasDaConta(fazendaId);
-      setColheitas(colAtt.map(c => c.id === colheitaId ? { ...c, romaneios: roms } : c));
+      await excluirRomaneioEntrada(romId);
+      const roms = await listarRomaneiosEntradaDaColheita(colheitaId);
+      setColheitas(prev => prev.map(c => c.id === colheitaId ? { ...c, romaneios: roms } : c));
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao remover");
     }
@@ -598,111 +676,113 @@ export default function ColheitaPage() {
                     </div>
                   </div>
 
-                  {/* Romaneios expandidos */}
-                  {isExp && (
-                    <div style={{ borderTop: "0.5px solid var(--border-row)", background: "var(--bg-card)" }}>
-                      <div style={{ padding: "10px 20px 6px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                        Romaneios ({col.romaneios?.length ?? 0})
+                  {/* Romaneios expandidos — agrupados por status */}
+                  {isExp && (() => {
+                    const emPesagem   = (col.romaneios ?? []).filter(r => r.status === "em_pesagem");
+                    const confirmados = (col.romaneios ?? []).filter(r => r.status === "confirmado");
+                    const thStyle: React.CSSProperties = { padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left" as const, whiteSpace: "nowrap" as const, borderBottom: "0.5px solid var(--border-table)" };
+                    const thR: React.CSSProperties = { ...thStyle, textAlign: "right" as const };
+                    const RomTabela = ({ roms, grupo }: { roms: RomaneioEntrada[]; grupo: "em_pesagem" | "confirmado" }) => (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: grupo === "em_pesagem" ? "#FBF3E0" : "#E8F0E8" }}>
+                              <th style={thStyle}>Nº</th>
+                              <th style={thStyle}>Placa</th>
+                              <th style={thR}>Data</th>
+                              <th style={thR}>Peso Bruto</th>
+                              <th style={thR}>Tara</th>
+                              <th style={thR}>Peso Líq.</th>
+                              {grupo === "confirmado" && <>
+                                <th style={thR}>Umid %</th>
+                                <th style={thR}>Imp %</th>
+                                <th style={thR}>Avar %</th>
+                                <th style={thR}>Classificado</th>
+                                <th style={thR}>Sacas</th>
+                              </>}
+                              <th style={thStyle}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {roms.map(rom => (
+                              <tr key={rom.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                                <td style={{ padding: "8px 12px" }}>{rom.ticket_numero || "—"}</td>
+                                <td style={{ padding: "8px 12px", fontWeight: 600 }}>{rom.placa || "—"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right" }}>{rom.data ? new Date(rom.data + "T12:00").toLocaleDateString("pt-BR") : "—"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmt(rom.peso_bruto_kg)} kg</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right" }}>{rom.tara_kg > 0 ? `${fmt(rom.tara_kg)} kg` : "—"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>
+                                  {rom.tara_kg > 0 ? `${fmt(rom.peso_bruto_kg - rom.tara_kg)} kg` : "—"}
+                                </td>
+                                {grupo === "confirmado" && <>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.umidade_pct ?? 0) > (rom.umidade_padrao_pct ?? 14) ? "#E24B4A" : undefined }}>
+                                    {rom.umidade_pct ? `${fmt(rom.umidade_pct, 1)}%` : "—"}
+                                  </td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{rom.impureza_pct ? `${fmt(rom.impureza_pct, 1)}%` : "—"}</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{rom.avariados_pct ? `${fmt(rom.avariados_pct, 1)}%` : "—"}</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#0D0D0D" }}>{fmt(rom.peso_classificado_kg ?? 0, 1)} kg</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#0D0D0D" }}>{fmt(rom.sacas ?? 0, 2)} sc</td>
+                                </>}
+                                <td style={{ padding: "8px 12px", whiteSpace: "nowrap", display: "flex", gap: 6 }}>
+                                  {grupo === "em_pesagem" && (
+                                    <button onClick={() => abrirCapturarTara(rom, col.id)}
+                                      style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                      ⚖ Capturar Tara
+                                    </button>
+                                  )}
+                                  <button onClick={() => removerRomaneio(rom.id, col.id)}
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14 }}>
+                                    ×
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      {!col.romaneios || col.romaneios.length === 0 ? (
-                        <div style={{ padding: "8px 20px 16px", fontSize: 13, color: "#444" }}>
-                          Nenhum romaneio lançado. Clique em "+ Romaneio" para adicionar.
+                    );
+                    return (
+                      <div style={{ borderTop: "0.5px solid var(--border-row)", background: "var(--bg-card)" }}>
+                        {/* Em pesagem */}
+                        {emPesagem.length > 0 && (
+                          <>
+                            <div style={{ padding: "8px 20px 4px", display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "#C9921B", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                ⚖ Em Pesagem — Aguardando Tara ({emPesagem.length})
+                              </span>
+                            </div>
+                            <RomTabela roms={emPesagem} grupo="em_pesagem" />
+                          </>
+                        )}
+                        {/* Confirmados */}
+                        {confirmados.length > 0 && (
+                          <>
+                            <div style={{ padding: "8px 20px 4px" }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "#1A5C38", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                ✓ Entrada Confirmada ({confirmados.length})
+                              </span>
+                            </div>
+                            <RomTabela roms={confirmados} grupo="confirmado" />
+                            <div style={{ padding: "8px 20px", background: "#E8E8E8", display: "flex", gap: 24, fontSize: 12 }}>
+                              <span><strong>{fmt(confirmados.reduce((s, r) => s + (r.peso_classificado_kg ?? 0), 0), 1)} kg</strong> classificados</span>
+                              <span style={{ fontWeight: 700 }}>{fmt(confirmados.reduce((s, r) => s + (r.sacas ?? 0), 0), 2)} sc</span>
+                            </div>
+                          </>
+                        )}
+                        {emPesagem.length === 0 && confirmados.length === 0 && (
+                          <div style={{ padding: "12px 20px", fontSize: 13, color: "#444" }}>
+                            Nenhum romaneio lançado. Clique em "+ Romaneio" para adicionar.
+                          </div>
+                        )}
+                        <div style={{ padding: "8px 20px" }}>
+                          <button onClick={() => abrirRomaneio(col.id)}
+                            style={{ fontSize: 12, color: "#1A5CB8", background: "#EBF3FF", border: "0.5px solid #B8CEED", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontWeight: 600 }}>
+                            + Novo Romaneio
+                          </button>
                         </div>
-                      ) : (
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                            <thead>
-                              <tr style={{ background: "var(--border-row)" }}>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Nº</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Placa</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Data</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Peso Bruto</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Tara</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Peso Líq.</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Umid %</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>D.Umid kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Imp %</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>D.Imp kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Avar %</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>D.Avar kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Classificado kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Sacas</th>
-                                <th style={{ padding: "7px 12px", borderBottom: "0.5px solid var(--border-table)" }}></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {col.romaneios!.map(rom => (
-                                <tr key={rom.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
-                                  <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{rom.numero || "—"}</td>
-                                  <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text-1)" }}>{rom.placa}</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-1)" }}>{rom.data ? new Date(rom.data + "T12:00").toLocaleDateString("pt-BR") : "—"}</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmt(rom.peso_bruto_kg)} kg</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmt(rom.tara_kg)} kg</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-1)", fontWeight: 600 }}>{fmt(rom.peso_liquido_kg)} kg</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.umidade_pct ?? 0) > (rom.umidade_padrao_pct ?? 14) ? "#E24B4A" : "var(--text-1)" }}>
-                                    {fmt(rom.umidade_pct ?? 0, 1)}%
-                                  </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#E24B4A" }}>
-                                    {(rom.desconto_umidade_kg ?? 0) > 0 ? `-${fmt(rom.desconto_umidade_kg ?? 0, 1)}` : "—"}
-                                  </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.impureza_pct ?? 0) > 1 ? "#EF9F27" : "var(--text-1)" }}>
-                                    {fmt(rom.impureza_pct ?? 0, 1)}%
-                                  </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#EF9F27" }}>
-                                    {(rom.desconto_impureza_kg ?? 0) > 0 ? `-${fmt(rom.desconto_impureza_kg ?? 0, 1)}` : "—"}
-                                  </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.avariados_pct ?? 0) > 0.5 ? "#EF9F27" : "var(--text-1)" }}>
-                                    {fmt(rom.avariados_pct ?? 0, 1)}%
-                                  </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#EF9F27" }}>
-                                    {(rom.desconto_avariados_kg ?? 0) > 0 ? `-${fmt(rom.desconto_avariados_kg ?? 0, 1)}` : "—"}
-                                  </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#111111" }}>{fmt(rom.peso_classificado_kg, 1)} kg</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{fmt(rom.sacas, 2)} sc</td>
-                                  <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                                    <button onClick={() => setRomParaImprimir({ rom, col })} title="Imprimir romaneio"
-                                      style={{ background: "none", border: "none", cursor: "pointer", color: "#1A5CB8", fontSize: 13, marginRight: 4 }}>
-                                      🖨️
-                                    </button>
-                                    <button
-                                      onClick={() => removerRomaneio(rom.id, col.id)}
-                                      style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14 }}
-                                    >
-                                      ×
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            {/* Totais */}
-                            <tfoot>
-                              <tr style={{ background: "#E8E8E8", color: "var(--text-1)", fontWeight: 600 }}>
-                                <td colSpan={3} style={{ padding: "8px 12px", color: "#0D0D0D" }}>Total</td>
-                                <td colSpan={2} style={{ padding: "8px 12px" }} />
-                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0D0D0D" }}>
-                                  {fmt(col.romaneios!.reduce((s, r) => s + r.peso_liquido_kg, 0))} kg
-                                </td>
-                                <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", color: "#E24B4A" }}>
-                                  {col.umidade_media ? `${fmt(col.umidade_media, 1)}% méd.` : "—"}
-                                </td>
-                                <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", color: "#EF9F27" }}>
-                                  {col.impureza_media ? `${fmt(col.impureza_media, 1)}% méd.` : "—"}
-                                </td>
-                                <td colSpan={2} style={{ padding: "8px 12px" }} />
-                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0D0D0D" }}>
-                                  {fmt(col.total_kg_classificado, 1)} kg
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "right", color: "#0D0D0D" }}>
-                                  {fmt(col.total_sacas, 2)} sc
-                                </td>
-                                <td />
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -849,6 +929,7 @@ export default function ColheitaPage() {
         const produto     = colheitaSel?.produto ?? "soja";
         const isSoja      = produto === "soja";
         const isMilho     = produto === "milho" || produto === "milho1" || produto === "milho2";
+        const isCapturarTara = !!editRomaneio;
 
         const applyPadrao = () => setFormRomaneio(f => ({
           ...f,
@@ -869,28 +950,37 @@ export default function ColheitaPage() {
             <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Romaneio de Entrada — Colheita</h2>
+                  <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>
+                    {isCapturarTara ? `Capturar Tara — ${editRomaneio.placa ?? ""}` : "Romaneio de Entrada — Colheita"}
+                  </h2>
                   <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
                     {PRODUTOS_PADRAO[produto]?.label ?? produto}
                     {colheitaSel?.variedade ? ` — ${colheitaSel.variedade}` : ""}
                     {" · "}Padrão: {cls.umidade_padrao}% umid · {cls.impureza_padrao}% imp · {cls.avariados_padrao}% avar
+                    {isCapturarTara && <span style={{ marginLeft: 8, background: "#FBF3E0", color: "#C9921B", padding: "2px 8px", borderRadius: 4, fontWeight: 600 }}>Passo 2: Peso Tara</span>}
                   </div>
                 </div>
-                <button onClick={() => setModalRomaneio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+                <button onClick={() => { setModalRomaneio(null); setEditRomaneio(null); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
               </div>
               <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
 
                 {/* Seção 1 — Identificação */}
                 <div>
                   <div style={secTitle}>Identificação</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                     <label>
                       <div style={lbStyle}>Nº Romaneio</div>
                       <input value={formRomaneio.numero} onChange={e => setFormRomaneio(f => ({ ...f, numero: e.target.value }))} style={inpStyle} placeholder="001" />
                     </label>
                     <label>
                       <div style={lbStyle}>Placa do Caminhão *</div>
-                      <input value={formRomaneio.placa} onChange={e => setFormRomaneio(f => ({ ...f, placa: e.target.value.toUpperCase() }))} style={inpStyle} placeholder="ABC1D234" maxLength={8} />
+                      <input value={formRomaneio.placa} onChange={e => setFormRomaneio(f => ({ ...f, placa: e.target.value.toUpperCase() }))}
+                        style={inpStyle} placeholder="ABC1D234" maxLength={8} readOnly={isCapturarTara} />
+                    </label>
+                    <label>
+                      <div style={lbStyle}>Motorista</div>
+                      <input value={formRomaneio.motorista} onChange={e => setFormRomaneio(f => ({ ...f, motorista: e.target.value }))}
+                        style={inpStyle} placeholder="Nome do motorista" readOnly={isCapturarTara} />
                     </label>
                     <label>
                       <div style={lbStyle}>Data</div>
@@ -901,23 +991,41 @@ export default function ColheitaPage() {
 
                 {/* Seção 2 — Pesagem */}
                 <div>
-                  <div style={secTitle}>Pesagem</div>
+                  <div style={secTitle}>
+                    {isCapturarTara ? "Passo 2 — Peso Tara (caminhão vazio)" : "Pesagem"}
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                     <label>
                       <div style={lbStyle}>Peso Bruto (kg) *</div>
-                      <InputNumerico decimais={0} value={formRomaneio.peso_bruto_kg || ""} onChange={v => setFormRomaneio(f => ({ ...f, peso_bruto_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} placeholder="Ex: 45000" />
+                      {isCapturarTara ? (
+                        <div style={{ ...inpStyle, background: "var(--bg-page)", fontWeight: 700, fontSize: 14, color: "#111111", display: "flex", alignItems: "center" }}>
+                          {fmt(formRomaneio.peso_bruto_kg)} kg
+                        </div>
+                      ) : (
+                        <InputNumerico decimais={0} value={formRomaneio.peso_bruto_kg || ""} onChange={v => setFormRomaneio(f => ({ ...f, peso_bruto_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} placeholder="Ex: 45000" />
+                      )}
                     </label>
                     <label>
-                      <div style={lbStyle}>Tara (kg) *</div>
+                      <div style={lbStyle}>Tara (kg) {isCapturarTara ? "*" : "(opcional)"}</div>
                       <InputNumerico decimais={0} value={formRomaneio.tara_kg || ""} onChange={v => setFormRomaneio(f => ({ ...f, tara_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} placeholder="Ex: 14000" />
                     </label>
                     <div>
                       <div style={lbStyle}>Peso Líquido (calculado)</div>
                       <div style={{ ...inpStyle, background: "var(--bg-page)", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#111111" : "var(--text-3)", display: "flex", alignItems: "center" }}>
-                        {fmt(pl)} kg
+                        {pl > 0 ? `${fmt(pl)} kg` : "—"}
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Depósito de destino */}
+                <div>
+                  <div style={lbStyle}>Armazém / Depósito de Destino {isCapturarTara ? "*" : "(para confirmar)"}</div>
+                  <select value={formRomaneio.depositoId} onChange={e => setFormRomaneio(f => ({ ...f, depositoId: e.target.value }))} style={inpStyle}>
+                    <option value="">Selecione o depósito...</option>
+                    {depositos.filter(d => ["armazem_fazenda", "almoxarifado", "armazem_terceiro", "terceiro"].includes(d.tipo))
+                      .map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                  </select>
                 </div>
 
                 {/* Seção 3 — Classificação do Grão */}
@@ -1068,10 +1176,17 @@ export default function ColheitaPage() {
 
                 {erro && <div style={{ color: "#E24B4A", fontSize: 13, background: "#FFF5F5", padding: "8px 12px", borderRadius: 7 }}>{erro}</div>}
 
-                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                  <button onClick={() => setModalRomaneio(null)} style={btnCancelStyle}>Cancelar</button>
-                  <button onClick={salvarRomaneio} disabled={salvando || pl <= 0} style={btnPrimStyle}>
-                    {salvando ? "Salvando..." : "Confirmar Romaneio"}
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                  <button onClick={() => { setModalRomaneio(null); setEditRomaneio(null); }} style={btnCancelStyle}>Cancelar</button>
+                  {!isCapturarTara && (
+                    <button onClick={salvarPesoBruto} disabled={salvando || formRomaneio.peso_bruto_kg <= 0}
+                      style={{ ...btnPrimStyle, background: "#C9921B" }}>
+                      {salvando ? "Salvando..." : "⚖ Registrar Peso Bruto"}
+                    </button>
+                  )}
+                  <button onClick={confirmarEntrada} disabled={salvando || formRomaneio.tara_kg <= 0 || !formRomaneio.depositoId}
+                    style={{ ...btnPrimStyle, background: "#1A5C38" }}>
+                    {salvando ? "Confirmando..." : "✓ Confirmar Entrada no Estoque"}
                   </button>
                 </div>
               </div>
@@ -1189,7 +1304,7 @@ export default function ColheitaPage() {
                 <div id="rom-print-area" style={{ padding: 24, fontFamily: "monospace", fontSize: 13, color: "#000" }}>
                   <div style={{ textAlign: "center", marginBottom: 16 }}>
                     <div style={{ fontWeight: 700, fontSize: 16 }}>ROMANEIO DE COLHEITA</div>
-                    <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>Nº {rom.numero || "—"}</div>
+                    <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>Nº {rom.ticket_numero || "—"}</div>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
                     <tbody>
@@ -1212,7 +1327,7 @@ export default function ColheitaPage() {
                       {[
                         ["Peso Bruto",     `${fmt(rom.peso_bruto_kg, 0)} kg`],
                         ["Tara",           `${fmt(rom.tara_kg, 0)} kg`],
-                        ["Peso Líquido",   `${fmt(rom.peso_liquido_kg, 0)} kg`],
+                        ["Peso Líquido",   `${fmt(rom.peso_bruto_kg - rom.tara_kg, 0)} kg`],
                       ].map(([k, v]) => (
                         <tr key={k} style={{ borderBottom: "0.5px solid #ddd" }}>
                           <td style={{ padding: "5px 8px", fontWeight: 600, width: "40%" }}>{k}</td>

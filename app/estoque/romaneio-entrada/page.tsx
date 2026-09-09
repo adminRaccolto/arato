@@ -113,7 +113,7 @@ export default function RomaneioEntradaPage() {
 
   // Filtros lista
   const [fTipo,    setFTipo]    = useState<"" | "proprio" | "terceiro">("");
-  const [fStatus,  setFStatus]  = useState<"" | "rascunho" | "confirmado">("");
+  const [fStatus,  setFStatus]  = useState<"" | "rascunho" | "em_pesagem" | "confirmado">("");
   const [fDe,      setFDe]      = useState("");
   const [fAte,     setFAte]     = useState("");
   const [fBusca,   setFBusca]   = useState("");
@@ -352,7 +352,7 @@ export default function RomaneioEntradaPage() {
   // ── KPIs ────────────────────────────────────────────────────────────────
   const sacasTotal    = filtrados.reduce((s, r) => s + (r.sacas ?? 0), 0);
   const pesoTotal     = filtrados.reduce((s, r) => s + (r.peso_classificado_kg ?? r.peso_bruto_kg - r.tara_kg), 0);
-  const qRascunho     = filtrados.filter(r => r.status === "rascunho").length;
+  const qRascunho     = filtrados.filter(r => r.status === "rascunho" || r.status === "em_pesagem").length;
   const qConfirmado   = filtrados.filter(r => r.status === "confirmado").length;
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -370,10 +370,7 @@ export default function RomaneioEntradaPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Romaneio de Entrada</h1>
-          <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Recebimento de grãos — pesagem própria ou ticket de terceiros</p>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
+          <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Relatório de recebimento de grãos — pesagem própria e tickets de terceiros</p>
         </div>
       </div>
 
@@ -403,6 +400,7 @@ export default function RomaneioEntradaPage() {
         <select style={{ ...inp, width: 150 }} value={fStatus} onChange={e => setFStatus(e.target.value as typeof fStatus)}>
           <option value="">Todos os status</option>
           <option value="rascunho">Rascunho</option>
+          <option value="em_pesagem">Em Pesagem</option>
           <option value="confirmado">Confirmado</option>
         </select>
         <input type="date" style={{ ...inp, width: 150 }} value={fDe}  onChange={e => setFDe(e.target.value)}  placeholder="De" />
@@ -426,7 +424,7 @@ export default function RomaneioEntradaPage() {
           <tbody>
             {filtrados.length === 0 ? (
               <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-                Nenhum romaneio de entrada encontrado. Clique em "+ Novo Romaneio" para registrar.
+                Nenhum romaneio encontrado para os filtros selecionados.
               </td></tr>
             ) : filtrados.map((r, ri) => {
               const cicloNome = ciclos.find(c => c.id === r.ciclo_id)?.descricao;
@@ -470,9 +468,9 @@ export default function RomaneioEntradaPage() {
                   </td>
                   <td style={{ padding: "9px 12px" }}>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 600,
-                      background: r.status === "confirmado" ? "#ECFDF5" : "#FBF3E0",
-                      color:      r.status === "confirmado" ? "#16A34A" : "#C9921B" }}>
-                      {r.status === "confirmado" ? "Confirmado" : "Rascunho"}
+                      background: r.status === "confirmado" ? "#ECFDF5" : r.status === "em_pesagem" ? "#FBF3E0" : "#F3F4F6",
+                      color:      r.status === "confirmado" ? "#16A34A" : r.status === "em_pesagem" ? "#C9921B" : "#6B7280" }}>
+                      {r.status === "confirmado" ? "Confirmado" : r.status === "em_pesagem" ? "Em Pesagem" : "Rascunho"}
                     </span>
                   </td>
                   <td style={{ padding: "9px 12px" }}>

@@ -11318,3 +11318,18 @@ ALTER TABLE movimentacoes_estoque
 CREATE INDEX IF NOT EXISTS idx_mov_ciclo ON movimentacoes_estoque(ciclo_id) WHERE ciclo_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration: colheita_id + em_pesagem em romaneios_entrada ──────────────────
+-- Vincula romaneios de entrada à colheita que os originou.
+-- Suporte ao fluxo de dois passos: Peso Bruto (em_pesagem) → Tara (confirmado).
+
+ALTER TABLE romaneios_entrada
+  ADD COLUMN IF NOT EXISTS colheita_id UUID REFERENCES colheitas(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_rom_entrada_colheita ON romaneios_entrada(colheita_id)
+  WHERE colheita_id IS NOT NULL;
+
+-- status agora aceita 'em_pesagem' além de 'rascunho' e 'confirmado'
+-- (campo é TEXT sem CHECK constraint, apenas documentando o novo valor)
+
+NOTIFY pgrst, 'reload schema';

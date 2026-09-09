@@ -604,7 +604,8 @@ export type RomaneioEntrada = {
   produtor_id?: string | null;
   ie_produtor?: string | null;
   ie_municipio?: string | null;
-  status: "rascunho" | "confirmado";
+  colheita_id?: string | null;
+  status: "rascunho" | "em_pesagem" | "confirmado";
   entrada_estoque?: boolean | null;
   obs?: string | null;
   created_at?: string;

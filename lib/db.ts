@@ -5777,6 +5777,16 @@ export async function listarPedidosCompraDaConta(fazenda_id_fallback?: string | 
   return data ?? [];
 }
 
+export async function listarRomaneiosEntradaDaColheita(colheita_id: string): Promise<RomaneioEntrada[]> {
+  const { data, error } = await supabase
+    .from("romaneios_entrada")
+    .select("*")
+    .eq("colheita_id", colheita_id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listarRomaneiosEntradaDaConta(fazenda_id_fallback?: string | null): Promise<RomaneioEntrada[]> {
   const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
   if (!ids.length) return [];
