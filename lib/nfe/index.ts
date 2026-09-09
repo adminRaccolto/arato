@@ -286,7 +286,18 @@ export async function emitirNFe(
   const emitente: EmitenteCfg = {
     cpf_cnpj:       cpfCnpjEmit,
     razao_social:   confg.razao_social ?? "",
-    ie:             emitIeOverride ?? confg.ie_emitente ?? "",
+    ie:             emitIeOverride ?? (() => {
+      // Usa IE da UF do destinatário quando há múltiplas IEs cadastradas
+      const ufDest = (input.destinatario.uf ?? "").toUpperCase();
+      if (ufDest) {
+        try {
+          const iesPorUf: { uf: string; ie: string }[] = JSON.parse(confg.ies_por_uf ?? "[]");
+          const ieMatch = iesPorUf.find(r => r.uf.toUpperCase() === ufDest);
+          if (ieMatch?.ie) return ieMatch.ie;
+        } catch { /* usa IE principal */ }
+      }
+      return confg.ie_emitente ?? "";
+    })(),
     im:             confg.im_emitente,
     crt:            (confg.crt as EmitenteCfg["crt"]) ?? "3",
     logradouro:     confg.logradouro ?? "",

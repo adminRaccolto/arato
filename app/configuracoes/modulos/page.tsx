@@ -1027,6 +1027,48 @@ function ParametrosSistemaContent() {
                       {renderFieldsGrid(emitter.moduloKey, FISCAL_IDENT)}
                     </div>
 
+                    {/* Inscrições Estaduais por UF */}
+                    {(() => {
+                      const iesPorUf: { uf: string; ie: string }[] = (() => {
+                        try { return JSON.parse(String(c.ies_por_uf ?? "[]")); } catch { return []; }
+                      })();
+                      const setIes = (novas: { uf: string; ie: string }[]) =>
+                        setCfg(emitter.moduloKey, "ies_por_uf", JSON.stringify(novas));
+                      return (
+                        <div style={{ marginBottom: 24 }}>
+                          {secHeader("Inscrições Estaduais por UF (quando possui IE em mais de um estado)")}
+                          {iesPorUf.length > 0 && (
+                            <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 32px", gap: "8px 10px", marginBottom: 10, alignItems: "center" }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>UF</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>Inscrição Estadual</div>
+                              <div />
+                              {iesPorUf.map((row, i) => (
+                                <>
+                                  <input key={`uf-${i}`} value={row.uf} maxLength={2}
+                                    onChange={e => { const n = [...iesPorUf]; n[i] = { ...n[i], uf: e.target.value.toUpperCase() }; setIes(n); }}
+                                    placeholder="MT" style={{ padding: "6px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 13, outline: "none", textTransform: "uppercase", textAlign: "center" }} />
+                                  <input key={`ie-${i}`} value={row.ie}
+                                    onChange={e => { const n = [...iesPorUf]; n[i] = { ...n[i], ie: e.target.value }; setIes(n); }}
+                                    placeholder="Número da IE" style={{ padding: "6px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box" as const }} />
+                                  <button key={`rm-${i}`} onClick={() => setIes(iesPorUf.filter((_, j) => j !== i))}
+                                    style={{ background: "none", border: "0.5px solid #E24B4A", borderRadius: 5, color: "#E24B4A", fontSize: 14, cursor: "pointer", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                                </>
+                              ))}
+                            </div>
+                          )}
+                          <button onClick={() => setIes([...iesPorUf, { uf: "", ie: "" }])}
+                            style={{ fontSize: 12, padding: "5px 12px", border: "0.5px solid var(--border)", borderRadius: 6, background: "var(--bg-page)", cursor: "pointer", color: "var(--text-1)" }}>
+                            + Adicionar IE por UF
+                          </button>
+                          {iesPorUf.length > 0 && (
+                            <p style={{ fontSize: 11, color: "var(--text-3)", margin: "8px 0 0" }}>
+                              Ao emitir NF-e, o sistema usa a IE da UF do destinatário. Se não encontrar, usa a IE principal acima.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Endereço */}
                     <div style={{ marginBottom: 24 }}>
                       {secHeader("Endereço")}
