@@ -1318,6 +1318,21 @@ export default function NfCompraPage() {
       setErr("Selecione uma Operação Gerencial antes de processar a NF.");
       return;
     }
+    // Guard: lotes de semente incompletos — múltiplos lotes exigem peso de cada um
+    for (const it of itens) {
+      if (!it.lotes_semente?.length || it.lotes_semente.length < 2) continue;
+      const semPeso = it.lotes_semente.filter(l => l.numero && !(l.quantidade_kg ?? 0));
+      if (semPeso.length > 0) {
+        setErr(`Item "${it.descricao_nf || it.insumo_id}": lote(s) ${semPeso.map(l => l.numero || "sem número").join(", ")} sem peso informado. Preencha o peso de cada lote.`);
+        return;
+      }
+      const totalLotes = it.lotes_semente.reduce((s, l) => s + (l.quantidade_kg ?? 0), 0);
+      const diff = Math.abs(totalLotes - it.quantidade);
+      if (diff > 0.01) {
+        setErr(`Item "${it.descricao_nf || it.insumo_id}": soma dos lotes (${totalLotes.toFixed(2)}) diverge da quantidade do item (${it.quantidade.toFixed(2)}). Corrija os pesos antes de processar.`);
+        return;
+      }
+    }
     setSaving(true);
     setErr("");
     try {
@@ -3803,30 +3818,48 @@ export default function NfCompraPage() {
                         {/* Lotes de semente — aparece somente quando insumo é semente */}
                         {tipo === "insumos" && insumos.find(i => i.id === it.insumo_id)?.categoria === "semente" && (() => {
                           const unidadeItem = insumos.find(i => i.id === it.insumo_id)?.unidade ?? "kg";
-                          const labelQtd = String(unidadeItem).toLowerCase() === "bag" ? "Qtd (bags)" : "Peso (kg)";
+                          const isBAG = String(unidadeItem).toLowerCase() === "bag";
+                          const labelQtd = isBAG ? "Qtd (bags)*" : "Peso (kg)*";
+                          const multiLote = it.lotes_semente.length > 1;
+                          const totalLotes = it.lotes_semente.reduce((s, l) => s + (l.quantidade_kg ?? 0), 0);
+                          const qtdTotal = it.quantidade;
+                          const diff = totalLotes > 0 ? Math.abs(totalLotes - qtdTotal) : null;
+                          const ok = diff !== null && diff <= 0.01;
+                          const loteSemPeso = multiLote && it.lotes_semente.some(l => l.numero && !(l.quantidade_kg ?? 0));
                           return (
-                          <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "8px 12px", background: "#F6F9F6" }}>
+                          <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "8px 12px", background: "#F0F7F1" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, color: "#1A5C38" }}>🌱 Lotes de Semente</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "#1A5C38" }}>🌱 Lotes de Semente</span>
                               <button
                                 onClick={() => setItem(it.key, { lotes_semente: [...it.lotes_semente, { numero: "", quantidade_kg: undefined }] })}
-                                style={{ fontSize: 11, padding: "2px 10px", borderRadius: 5, border: "0.5px solid #16A34A", background: "#E8F5E9", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}
+                                style={{ fontSize: 11, padding: "2px 10px", borderRadius: 5, border: "0.5px solid #16A34A", background: "#E8F5E9", color: "#16A34A", cursor: "pointer", fontWeight: 700 }}
                               >+ Lote</button>
-                              <span style={{ fontSize: 10, color: "var(--text-3)" }}>
-                                {it.lotes_semente.length === 0
-                                  ? "Adicione ao menos um lote para rastreabilidade"
-                                  : `${it.lotes_semente.length} lote${it.lotes_semente.length > 1 ? "s" : ""}`}
-                              </span>
+                              {it.lotes_semente.length === 0 && (
+                                <span style={{ fontSize: 10, color: "#6B7A6E" }}>Adicione ao menos um lote para rastreabilidade</span>
+                              )}
+                              {multiLote && ok && (
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "#16A34A" }}>✓ {it.lotes_semente.length} lotes · totais conferem · cada lote terá entrada separada no estoque</span>
+                              )}
+                              {multiLote && !ok && totalLotes > 0 && (
+                                <span style={{ fontSize: 10, fontWeight: 600, color: "#C9921B" }}>{it.lotes_semente.length} lotes</span>
+                              )}
                             </div>
+                            {multiLote && (
+                              <div style={{ fontSize: 10, color: "#1A5C38", background: "#D8F0DC", border: "0.5px solid #A4D4AA", borderRadius: 6, padding: "4px 10px", marginBottom: 8 }}>
+                                💡 Com múltiplos lotes, informe o peso de cada um — cada lote gerará uma entrada separada no estoque.
+                              </div>
+                            )}
                             {it.lotes_semente.length > 0 && (
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 14px auto 26px", gap: "0 6px", marginBottom: 4, padding: "0 2px" }}>
-                                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>Nº do Lote</span>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 14px 120px 26px", gap: "0 6px", marginBottom: 4, padding: "0 2px" }}>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>Nº do Lote *</span>
                                 <span />
                                 <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>{labelQtd}</span>
                                 <span />
                               </div>
                             )}
-                            {it.lotes_semente.map((lote, li) => (
+                            {it.lotes_semente.map((lote, li) => {
+                              const semPesoEste = multiLote && lote.numero && !(lote.quantidade_kg ?? 0);
+                              return (
                               <div key={li} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
                                 <input
                                   placeholder="Ex: LS2025-001"
@@ -3835,38 +3868,51 @@ export default function NfCompraPage() {
                                     const novos = it.lotes_semente.map((l, i) => i === li ? { ...l, numero: e.target.value } : l);
                                     setItem(it.key, { lotes_semente: novos });
                                   }}
-                                  style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 2 }}
+                                  style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}
                                 />
                                 <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>—</span>
                                 <input
                                   type="number"
                                   min={0}
                                   step={0.01}
-                                  placeholder={labelQtd}
+                                  placeholder={isBAG ? "bags" : "kg"}
                                   value={lote.quantidade_kg ?? ""}
                                   onChange={e => {
                                     const v = parseFloat(e.target.value) || undefined;
                                     const novos = it.lotes_semente.map((l, i) => i === li ? { ...l, quantidade_kg: v } : l);
                                     setItem(it.key, { lotes_semente: novos });
                                   }}
-                                  style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}
+                                  style={{ ...inp, fontSize: 11, padding: "4px 8px", width: 100, flexShrink: 0, borderColor: semPesoEste ? "#E24B4A" : undefined }}
                                 />
                                 <button
                                   onClick={() => setItem(it.key, { lotes_semente: it.lotes_semente.filter((_, i) => i !== li) })}
                                   style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15, flexShrink: 0 }}
                                 >×</button>
                               </div>
-                            ))}
-                            {it.lotes_semente.length > 1 && (() => {
-                              const totalLotes = it.lotes_semente.reduce((s, l) => s + (l.quantidade_kg ?? 0), 0);
-                              const qtdTotal = it.quantidade;
-                              const diff = Math.abs(totalLotes - qtdTotal);
-                              return totalLotes > 0 && diff > 0.01 ? (
-                                <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>
-                                  ⚠️ Total dos lotes: {totalLotes.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} — Qtd do item: {qtdTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} (divergência de {diff.toLocaleString("pt-BR", { maximumFractionDigits: 2 })})
+                              );
+                            })}
+                            {/* Barra de totais — só quando múltiplos lotes */}
+                            {multiLote && totalLotes > 0 && (
+                              <div style={{ marginTop: 6 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: ok ? "#16A34A" : "#C9921B", marginBottom: 3 }}>
+                                  <span>Total lotes: <strong>{totalLotes.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {isBAG ? "bags" : "kg"}</strong></span>
+                                  <span>Total NF: <strong>{qtdTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {isBAG ? "bags" : "kg"}</strong></span>
                                 </div>
-                              ) : null;
-                            })()}
+                                <div style={{ height: 4, background: "#D1E8D4", borderRadius: 4, overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${Math.min((totalLotes / qtdTotal) * 100, 100)}%`, background: ok ? "#16A34A" : "#C9921B", transition: "width 0.2s" }} />
+                                </div>
+                                {!ok && diff !== null && diff > 0.01 && (
+                                  <div style={{ fontSize: 10, color: "#C9921B", marginTop: 3 }}>
+                                    ⚠️ Divergência de {diff.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} — ajuste os pesos antes de processar.
+                                  </div>
+                                )}
+                                {loteSemPeso && (
+                                  <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 3 }}>
+                                    ⚠️ Há lotes sem peso informado — preencha ou remova-os.
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                           );
                         })()}

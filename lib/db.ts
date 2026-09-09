@@ -2117,24 +2117,47 @@ export async function processarNfEntrada(
         .eq("nf_entrada_item_id", item.id);
       if ((movExiste ?? 0) > 0) continue;
 
-      // Insere movimento ANTES de atualizar custo_medio (inclui esta entrada no cálculo dos 6 meses)
-      const loteMovStr = Array.isArray(item.lotes_semente) && item.lotes_semente.length > 0
-        ? (item.lotes_semente.length === 1 ? item.lotes_semente[0].numero : item.lotes_semente.map(l => l.numero).filter(Boolean).join(", "))
-        : (item.lote_semente ?? null);
-      await supabase.from("movimentacoes_estoque").insert({
-        insumo_id:          item.insumo_id,
-        fazenda_id,
-        tipo:               "entrada",
-        quantidade:         item.quantidade,
-        valor_unitario:     custoUnitarioCatalogo,
-        data:               dataEntrada,
-        observacao:         `NF ${nfId} — ${item.descricao_produto}`,
-        auto:               true,
-        deposito_id:        item.deposito_id ?? null,
-        nf_entrada_item_id: item.id,
-        lote_semente:       loteMovStr,
-      });
-      await creditarInsumo(item.insumo_id, item.quantidade, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
+      const lotes = Array.isArray(item.lotes_semente) ? item.lotes_semente : [];
+      const lotesComPeso = lotes.filter(l => l.numero && (l.quantidade_kg ?? 0) > 0);
+
+      if (lotesComPeso.length > 1) {
+        // Múltiplos lotes com peso individual → uma movimentação de estoque por lote
+        for (const lote of lotesComPeso) {
+          await supabase.from("movimentacoes_estoque").insert({
+            insumo_id:          item.insumo_id,
+            fazenda_id,
+            tipo:               "entrada",
+            quantidade:         lote.quantidade_kg,
+            valor_unitario:     custoUnitarioCatalogo,
+            data:               dataEntrada,
+            observacao:         `NF ${nfId} — ${item.descricao_produto} | Lote: ${lote.numero}`,
+            auto:               true,
+            deposito_id:        item.deposito_id ?? null,
+            nf_entrada_item_id: item.id,
+            lote_semente:       lote.numero,
+          });
+          await creditarInsumo(item.insumo_id, lote.quantidade_kg!, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
+        }
+      } else {
+        // Um lote ou sem lotes → movimento único com quantidade total do item
+        const loteMovStr = lotes.length > 0 && lotes[0].numero
+          ? lotes[0].numero
+          : (item.lote_semente ?? null);
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id:          item.insumo_id,
+          fazenda_id,
+          tipo:               "entrada",
+          quantidade:         item.quantidade,
+          valor_unitario:     custoUnitarioCatalogo,
+          data:               dataEntrada,
+          observacao:         `NF ${nfId} — ${item.descricao_produto}${loteMovStr ? ` | Lote: ${loteMovStr}` : ""}`,
+          auto:               true,
+          deposito_id:        item.deposito_id ?? null,
+          nf_entrada_item_id: item.id,
+          lote_semente:       loteMovStr,
+        });
+        await creditarInsumo(item.insumo_id, item.quantidade, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
+      }
     }
 
     // ── Manutenção de máquina ────────────────────────────────────
