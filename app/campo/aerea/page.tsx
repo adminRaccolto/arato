@@ -3,10 +3,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
-type Talhao  = { id: string; nome: string; area_ha?: number };
-type Ciclo   = { id: string; cultura: string; ano_safra?: { ano: string } };
-type Insumo  = { id: string; nome: string; unidade_medida?: string; custo_medio?: number };
-type Empresa = { id: string; razao_social: string; cloa_numero?: string };
+type Talhao   = { id: string; nome: string; area_ha?: number };
+type AnoSafra = { id: string; descricao: string };
+type Ciclo    = { id: string; cultura: string; ano_safra_id?: string; ano_safra?: { descricao: string } };
+type Insumo   = { id: string; nome: string; unidade_medida?: string; custo_medio?: number };
+type Empresa  = { id: string; razao_social: string; cloa_numero?: string };
 
 type Produto = { insumo_id: string; nome: string; dose: string; unidade: string };
 
@@ -51,17 +52,19 @@ export default function CampoAereaPage() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro]         = useState("");
 
-  const [talhoes, setTalhoes]   = useState<Talhao[]>([]);
-  const [ciclos,  setCiclos]    = useState<Ciclo[]>([]);
-  const [insumos, setInsumos]   = useState<Insumo[]>([]);
+  const [talhoes,  setTalhoes]  = useState<Talhao[]>([]);
+  const [anosSafra, setAnosSafra] = useState<AnoSafra[]>([]);
+  const [ciclos,   setCiclos]   = useState<Ciclo[]>([]);
+  const [insumos,  setInsumos]  = useState<Insumo[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
 
   // Campos
-  const [fAeronave, setFAeronave]     = useState("aviao");
+  const [fAeronave, setFAeronave]       = useState("aviao");
   const [fEmpresaId, setFEmpresaId]   = useState("");
   const [fEmpresaNome, setFEmpresaNome] = useState("");
   const [fPrefixo, setFPrefixo]       = useState("");
   const [fPiloto, setFPiloto]         = useState("");
+  const [fAnoSafra, setFAnoSafra]     = useState("");
   const [fCiclo, setFCiclo]           = useState("");
   const [fTipo, setFTipo]             = useState("fungicida");
   const [fData, setFData]             = useState(() => new Date().toISOString().split("T")[0]);
@@ -81,9 +84,10 @@ export default function CampoAereaPage() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [{ data: tal }, { data: cic }, { data: ins }, { data: emp }] = await Promise.all([
+    const [{ data: tal }, { data: anos }, { data: cic }, { data: ins }, { data: emp }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(ano)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, ano_safra_id, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade_medida, custo_medio")
         .eq("fazenda_id", fazendaId)
         .in("categoria", ["defensivo", "fertilizante", "adjuvante"])
@@ -94,6 +98,7 @@ export default function CampoAereaPage() {
         .order("razao_social"),
     ]);
     setTalhoes((tal ?? []) as Talhao[]);
+    setAnosSafra((anos ?? []) as AnoSafra[]);
     setCiclos((cic ?? []) as Ciclo[]);
     setInsumos((ins ?? []) as Insumo[]);
     setEmpresas((emp ?? []) as Empresa[]);
@@ -203,7 +208,7 @@ export default function CampoAereaPage() {
 
   function novoRegistro() {
     setFAeronave("aviao"); setFEmpresaId(""); setFEmpresaNome(""); setFPrefixo(""); setFPiloto("");
-    setFCiclo(""); setFTipo("fungicida"); setFData(new Date().toISOString().split("T")[0]);
+    setFAnoSafra(""); setFCiclo(""); setFTipo("fungicida"); setFData(new Date().toISOString().split("T")[0]);
     setFEstagio(""); setFCalda(""); setFAltura(""); setFVento(""); setFDir(""); setFTemp(""); setFUmidade("");
     setFART(""); setFCLOA(""); setFCustoHa(""); setFObs("");
     setTalhoesSel([]); setProdutos([{ insumo_id: "", nome: "", dose: "", unidade: "L/ha" }]);
@@ -300,12 +305,19 @@ export default function CampoAereaPage() {
         <div style={secTitle}>Identificação</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
-            <label style={lbl}>Ciclo / Safra *</label>
+            <label style={lbl}>Ano Safra</label>
+            <select value={fAnoSafra} onChange={e => { setFAnoSafra(e.target.value); setFCiclo(""); }} style={inp}>
+              <option value="">— Todos os anos —</option>
+              {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Ciclo *</label>
             <select value={fCiclo} onChange={e => setFCiclo(e.target.value)} style={inp}>
               <option value="">Selecione o ciclo...</option>
-              {ciclos.map(c => (
+              {ciclos.filter(c => !fAnoSafra || c.ano_safra_id === fAnoSafra).map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.cultura} {(c.ano_safra as unknown as { ano: string } | null)?.ano ?? ""}
+                  {c.cultura} {(c.ano_safra as unknown as { descricao: string } | null)?.descricao ?? ""}
                 </option>
               ))}
             </select>

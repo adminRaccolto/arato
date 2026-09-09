@@ -11281,4 +11281,29 @@ CREATE POLICY "allow_all_pesagens" ON pesagens_avulsas FOR ALL USING (true) WITH
 CREATE INDEX IF NOT EXISTS idx_pesagens_fazenda ON pesagens_avulsas(fazenda_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pesagens_status  ON pesagens_avulsas(fazenda_id, status);
 
+-- ── Migration: Parâmetros de Armazenagem (Quebra Técnica de Grãos) ──────────
+-- Configuração de quebra técnica automática por produto/tipo de depósito.
+-- Usada pelo módulo Estoque de Grãos (/estoque/graos) para descontar
+-- automaticamente perdas de evaporação, limpeza e movimentação.
+
+CREATE TABLE IF NOT EXISTS parametros_armazenagem (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id    UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  produto       TEXT,                     -- NULL = todos os produtos
+  tipo_deposito TEXT NOT NULL DEFAULT 'armazem_fazenda',
+  quebra_pct    NUMERIC(5,2) NOT NULL DEFAULT 2.0 CHECK (quebra_pct >= 0 AND quebra_pct <= 100),
+  observacao    TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE parametros_armazenagem ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_parametros_armazenagem" ON parametros_armazenagem;
+CREATE POLICY "allow_all_parametros_armazenagem" ON parametros_armazenagem
+  FOR ALL USING (
+    fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE INDEX IF NOT EXISTS idx_param_arm_fazenda ON parametros_armazenagem(fazenda_id);
+
 NOTIFY pgrst, 'reload schema';
