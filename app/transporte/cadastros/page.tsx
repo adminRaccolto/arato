@@ -190,16 +190,17 @@ export default function TransporteCadastrosPage() {
     if (!fazendaId) return;
     const empTransp = empresas.filter(e => (e.finalidades ?? []).includes("transportadora"));
     if (empTransp.length === 0) { alert("Nenhuma empresa marcada como Transportadora em Cadastros → Empresas."); return; }
-    const jaVinculadas = new Set(transportadoras.map(t => t.empresa_id).filter(Boolean));
-    const novas = empTransp.filter(e => !jaVinculadas.has(e.id));
-    if (novas.length === 0) { alert("Todas as empresas transportadoras já estão sincronizadas."); return; }
+    // Deduplicar por CNPJ — não usa empresa_id (coluna pode não existir)
+    const jaExistemCnpjs = new Set(transportadoras.map(t => (t.cnpj ?? "").replace(/\D/g, "")).filter(Boolean));
+    const novas = empTransp.filter(e => {
+      const digits = (e.cpf_cnpj ?? "").replace(/\D/g, "");
+      return !digits || !jaExistemCnpjs.has(digits);
+    });
+    if (novas.length === 0) { alert("Todas as empresas transportadoras já estão cadastradas (verificado por CNPJ)."); return; }
     setSincronizando(true);
-    // Só colunas que existem na tabela base (razao_social, cnpj, ie, rntrc, municipio, uf, email)
-    // Colunas cpf/cep/logradouro/bairro/numero/telefone/obs foram adicionadas por migration posterior
-    // e podem não existir ainda — o usuário pode editá-las individualmente após a importação
+    // Usa apenas colunas garantidas na tabela base — sem empresa_id, bairro, cep, logradouro, etc.
     const inserts = novas.map(e => ({
       fazenda_id:    fazendaId,
-      empresa_id:    e.id,
       razao_social:  e.razao_social ?? e.nome,
       nome_fantasia: (e.nome && e.nome !== (e.razao_social ?? e.nome)) ? e.nome : undefined,
       cnpj:          e.cpf_cnpj || undefined,
@@ -212,7 +213,7 @@ export default function TransporteCadastrosPage() {
     }));
     const { error } = await supabase.from("transportadoras").insert(inserts);
     setSincronizando(false);
-    if (error) { alert("Erro: " + error.message); return; }
+    if (error) { alert("Erro ao importar: " + error.message); return; }
     await carregar();
     alert(`${novas.length} transportadora(s) importada(s) com sucesso.`);
   };
