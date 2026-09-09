@@ -30,9 +30,18 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtData = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
 const hoje = () => new Date().toISOString().slice(0, 10);
 
-function cfopPara(estadoOrigem?: string, estadoDestino?: string): string {
-  if (!estadoOrigem || !estadoDestino) return "5409";
-  return estadoOrigem === estadoDestino ? "5409" : "6409";
+// CFOPs comuns para transferência de insumos (sufixo = últimos 3 dígitos)
+const CFOP_OPCOES: { sufixo: string; label: string }[] = [
+  { sufixo: "152", label: "5152/6152 — Mercadoria adquirida de terceiros (sem ST)" },
+  { sufixo: "151", label: "5151/6151 — Produção do próprio estabelecimento (sem ST)" },
+  { sufixo: "409", label: "5409/6409 — Produção própria com substituição tributária (ST)" },
+  { sufixo: "410", label: "5410/6410 — Mercadoria de terceiros com substituição tributária (ST)" },
+  { sufixo: "949", label: "5949/6949 — Outra saída de mercadoria" },
+];
+
+function prefixoCfop(estadoOrigem?: string, estadoDestino?: string): "5" | "6" {
+  if (!estadoOrigem || !estadoDestino) return "5";
+  return estadoOrigem === estadoDestino ? "5" : "6";
 }
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
@@ -100,6 +109,7 @@ export default function TransferenciasEstoquePage() {
     fazendaDestinoId: "",
     depositoDestinoId: "",
     dataTransferencia: hoje(),
+    cfopSufixo: "152",
     entradaAutomatica: true,
     observacao: "",
   });
@@ -197,7 +207,8 @@ export default function TransferenciasEstoquePage() {
   const depositosOrigem = depositosPorFazenda[form.fazendaOrigemId] ?? [];
   const depositosDestino = depositosPorFazenda[form.fazendaDestinoId] ?? [];
   const insumosOrigem = insumosPorFazenda[form.fazendaOrigemId] ?? [];
-  const cfopCalculado = cfopPara(fazendaOrigem?.estado, fazendaDestino?.estado);
+  const prefixo = prefixoCfop(fazendaOrigem?.estado, fazendaDestino?.estado);
+  const cfopCalculado = prefixo + form.cfopSufixo;
   const estadosDiferentes = fazendaOrigem?.estado !== fazendaDestino?.estado && !!fazendaOrigem && !!fazendaDestino;
 
   const solicitacoes = transferencias.filter(t => t.status === "solicitada");
@@ -300,7 +311,7 @@ export default function TransferenciasEstoquePage() {
   }
 
   function resetForm() {
-    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), entradaAutomatica: true, observacao: "" });
+    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "" });
     setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
   }
@@ -590,8 +601,17 @@ export default function TransferenciasEstoquePage() {
                 <input type="date" value={form.dataTransferencia} onChange={e => setForm(f => ({ ...f, dataTransferencia: e.target.value }))} style={inp} />
               </div>
               <div>
-                <label style={lbl}>CFOP (automático)</label>
-                <input type="text" value={cfopCalculado} readOnly style={{ ...inp, background: "#F4F6FA", color: "#888" }} />
+                <label style={lbl}>CFOP — <span style={{ color: "#1A4870", fontWeight: 700 }}>{cfopCalculado}</span></label>
+                <select
+                  value={form.cfopSufixo}
+                  onChange={e => setForm(f => ({ ...f, cfopSufixo: e.target.value }))}
+                  style={inp}
+                  title="O prefixo 5 (mesmo estado) ou 6 (inter-estadual) é calculado automaticamente"
+                >
+                  {CFOP_OPCOES.map(o => (
+                    <option key={o.sufixo} value={o.sufixo}>{o.label}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <label style={lbl}>Opções</label>
