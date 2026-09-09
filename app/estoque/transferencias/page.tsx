@@ -343,10 +343,10 @@ export default function TransferenciasEstoquePage() {
       {/* KPI */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 22 }}>
         {[
-          { label: "Solicitações Pendentes",  val: solicitacoes.length,                                cor: solicitacoes.length > 0 ? "#C9921B" : "#888" },
-          { label: "NFs Emitidas",            val: historico.filter(t => t.status === "emitida").length, cor: "#111111" },
-          { label: "Entradas Confirmadas",    val: historico.filter(t => t.status === "entrada_confirmada").length, cor: "#16A34A" },
-          { label: "Canceladas",              val: historico.filter(t => t.status === "cancelada").length,          cor: "#E24B4A" },
+          { label: "Aguardando Emissão",      val: historico.filter(t => t.status === "rascunho").length,            cor: historico.filter(t => t.status === "rascunho").length > 0 ? "#C9921B" : "#888" },
+          { label: "Solicitações App Campo",  val: solicitacoes.length,                                              cor: solicitacoes.length > 0 ? "#C9921B" : "#888" },
+          { label: "NFs Emitidas",            val: historico.filter(t => t.status === "emitida").length,             cor: "#111111" },
+          { label: "Entradas Confirmadas",    val: historico.filter(t => t.status === "entrada_confirmada").length,  cor: "#16A34A" },
         ].map(k => (
           <div key={k.label} style={{ ...card, borderLeft: `3px solid ${k.cor}`, padding: "14px 18px" }}>
             <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
@@ -483,13 +483,20 @@ export default function TransferenciasEstoquePage() {
                       </td>
                       <td style={td}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>Ver</button>
+                          <button onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>
+                            {t.status === "emitida" || t.status === "entrada_confirmada" ? "Visualizar NF" : "Visualizar"}
+                          </button>
+                          {t.status === "rascunho" && (
+                            <button onClick={() => emitirSolicitacao(t)} disabled={acaoId === t.id} style={btn("#111111")}>
+                              {acaoId === t.id ? "…" : "Emitir NF"}
+                            </button>
+                          )}
                           {t.nf_chave && (
                             <a
                               href={`/api/fiscal/danfe?chave=${t.nf_chave}&fazenda_id=${t.fazenda_origem_id}`}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ ...btn("#111111"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                              style={{ ...btn("#378ADD"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                             >
                               DANFE
                             </a>
@@ -714,11 +721,8 @@ export default function TransferenciasEstoquePage() {
               <button onClick={() => setModal(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                 Cancelar
               </button>
-              <button onClick={() => salvar("rascunho")} disabled={salvando} style={btn("#888")}>
-                {salvando ? "…" : "Salvar Rascunho"}
-              </button>
-              <button onClick={() => salvar("emitida")} disabled={salvando} style={btn("#111111")}>
-                {salvando ? "…" : "✓ Emitir NF de Transferência"}
+              <button onClick={() => salvar("rascunho")} disabled={salvando} style={btn("#111111")}>
+                {salvando ? "…" : "Salvar Transferência"}
               </button>
             </div>
           </div>
