@@ -986,7 +986,7 @@ export default function FolhaPagamentoPage() {
       {/* ══════════════ MODAL FOLHA ══════════════ */}
       {modalFolha && (
         <div style={S.overlay} onClick={()=>setModalFolha(false)}>
-          <div style={{ ...S.modal, width: "min(96vw,1100px)" }} onClick={e=>e.stopPropagation()}>
+          <div style={{ ...S.modal, width: "min(99vw,1600px)", padding: "20px 20px 28px" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <h2 style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
                 {folhaEdit.id
@@ -1076,11 +1076,11 @@ export default function FolhaPagamentoPage() {
                   <div style={{ textAlign:"center", padding:24, color:"#888" }}>Nenhum funcionário. Adicione manualmente abaixo.</div>
                 ) : (
                   <div style={{ overflowX:"auto" }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr>
                           {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Sal. Líquido"].map(h=>(
-                            <th key={h} style={S.th}>{h}</th>
+                            <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1093,38 +1093,38 @@ export default function FolhaPagamentoPage() {
                           return (
                             <>
                               <tr key={idx} style={{ background: !sel ? "#F9F9F9" : idx%2===0?"#fff":"#FAFBFD", opacity: sel ? 1 : 0.45 }}>
-                                <td style={{ ...S.td, width:28 }}>
+                                <td style={{ ...S.td, width:24, padding:"4px 6px" }}>
                                   <input type="checkbox" checked={sel} onChange={() => setSelecionados(prev => { const s = new Set(prev); s.has(idx) ? s.delete(idx) : s.add(idx); return s; })} style={{ cursor:"pointer" }} />
                                 </td>
-                                <td style={{ ...S.td, width:28 }}>
-                                  <button onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#1A4870", padding:"0 4px" }}>{expanded?"▾":"▸"}</button>
+                                <td style={{ ...S.td, width:24, padding:"4px 4px" }}>
+                                  <button onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:13, color:"#1A4870", padding:"0 2px" }}>{expanded?"▾":"▸"}</button>
                                 </td>
-                                <td style={{ ...S.td, minWidth:120 }}>
+                                <td style={{ ...S.td, minWidth:110, padding:"4px 8px" }}>
                                   {f.empresa_id
                                     ? <span style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{empresasMap[f.empresa_id] ?? "Empresa"}</span>
                                     : f.produtor_id
                                       ? <span style={{ fontSize:11, fontWeight:600, color:"#16A34A", background:"#DCFCE7", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{produtoresMap[f.produtor_id] ?? "Produtor"}</span>
                                       : <span style={{ fontSize:11, color:"#aaa" }}>Sem vínculo</span>}
                                 </td>
-                                <td style={{ ...S.td, fontWeight:600, minWidth:160 }}>{f.nome_funcionario}</td>
-                                <td style={{ ...S.td, fontVariantNumeric:"tabular-nums", color:"#555", textAlign:"right" }}>
+                                <td style={{ ...S.td, fontWeight:600, minWidth:140, padding:"4px 8px" }}>{f.nome_funcionario}</td>
+                                <td style={{ ...S.td, fontVariantNumeric:"tabular-nums", color:"#555", textAlign:"right", padding:"4px 8px", whiteSpace:"nowrap" }}>
                                   {moeda(f.salario_base)}
                                 </td>
-                                <td style={S.td}>
+                                <td style={{ ...S.td, padding:"4px 6px" }}>
                                   <input type="number" value={f.gratificacao} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)}
-                                    style={{ ...S.inp, width:90, textAlign:"right", borderColor: f.gratificacao > 0 ? "#C9921B" : "#DDE2EE" }} />
+                                    style={{ ...S.inp, width:80, textAlign:"right", borderColor: f.gratificacao > 0 ? "#C9921B" : "#DDE2EE", fontSize:12 }} />
                                 </td>
-                                <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(f.salario_bruto)}</td>
-                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_trabalhador)}</td>
-                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.irrf)}</td>
+                                <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.salario_bruto)}</td>
+                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.inss_trabalhador)}</td>
+                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.irrf)}</td>
                                 {/* ── Adiantamento — editável (herda da aba Adiantamentos) ── */}
-                                <td style={S.td}>
+                                <td style={{ ...S.td, padding:"4px 6px" }}>
                                   {isFechado ? (
-                                    <span style={{ fontVariantNumeric:"tabular-nums", color: f.adiantamento > 0 ? "#C9921B" : "#888" }}>{moeda(f.adiantamento)}</span>
+                                    <span style={{ fontVariantNumeric:"tabular-nums", color: f.adiantamento > 0 ? "#C9921B" : "#888", whiteSpace:"nowrap" }}>{moeda(f.adiantamento)}</span>
                                   ) : (
                                     <>
                                       <input type="number" value={f.adiantamento} onChange={e=>setFuncField(idx,"adiantamento",parseFloat(e.target.value)||0)}
-                                        style={{ ...S.inp, width:90, textAlign:"right", borderColor: f.adiantamento > 0 ? "#EF9F27" : "#DDE2EE" }} />
+                                        style={{ ...S.inp, width:80, textAlign:"right", borderColor: f.adiantamento > 0 ? "#EF9F27" : "#DDE2EE", fontSize:12 }} />
                                       {f.adiantamento > 0 && (
                                         <div style={{ fontSize:9, color:"#C9921B", marginTop:1 }}>auto ↑ adi.</div>
                                       )}
@@ -1132,7 +1132,7 @@ export default function FolhaPagamentoPage() {
                                   )}
                                 </td>
                                 {/* ── Outros Descontos — com justificativa inline ── */}
-                                <td style={S.td}>
+                                <td style={{ ...S.td, padding:"4px 6px" }}>
                                   {isFechado ? (
                                     <div>
                                       <span style={{ fontVariantNumeric:"tabular-nums", color:"#555" }}>{moeda(f.outros_descontos)}</span>
@@ -1148,15 +1148,15 @@ export default function FolhaPagamentoPage() {
                                   )}
                                 </td>
                                 {/* ── Benefícios — vem do cadastro do funcionário ── */}
-                                <td style={S.td}>
-                                  <div style={{ fontVariantNumeric:"tabular-nums", color:"#16A34A", fontWeight:600 }}>
+                                <td style={{ ...S.td, padding:"4px 8px" }}>
+                                  <div style={{ fontVariantNumeric:"tabular-nums", color:"#16A34A", fontWeight:600, whiteSpace:"nowrap" }}>
                                     {moeda(f.vale_transporte + f.vale_refeicao + f.outros_beneficios)}
                                   </div>
                                   {!isFechado && (
                                     <div style={{ fontSize:9, color:"#888", marginTop:1 }}>do cadastro</div>
                                   )}
                                 </td>
-                                <td style={{ ...S.td, fontWeight:700, color: liq >= 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(liq)}</td>
+                                <td style={{ ...S.td, fontWeight:700, color: liq >= 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(liq)}</td>
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-detail`} style={{ background:"#F8FAFD" }}>
