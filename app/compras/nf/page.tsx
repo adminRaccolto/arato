@@ -1306,9 +1306,15 @@ export default function NfCompraPage() {
   // ── Processar NF (finalizar) ──────────────────────────────
   async function processarNF() {
     if (!fazendaId || !nfEdit) return;
-    // Guard: NF já processada não pode ser reprocessada — use "Estornar" antes
+    // Guard local: evita duplo clique com estado local desatualizado
     if (nfEdit.status === "processada") {
       alert("Esta NF já foi processada. Para reprocessar, clique em 'Estornar' primeiro para reverter o estoque e o lançamento financeiro.");
+      return;
+    }
+    // Guard DB: estado local pode estar desatualizado — verifica no banco antes de prosseguir
+    const { data: nfAtual } = await supabase.from("nf_entradas").select("status").eq("id", nfEdit.id).single();
+    if (nfAtual?.status === "processada") {
+      alert("Esta NF já foi processada. Atualize a página para ver o estado atual.");
       return;
     }
     // Guard: operação gerencial é obrigatória.
@@ -1355,7 +1361,14 @@ export default function NfCompraPage() {
         }),
       });
 
-      // 1. Limpar itens existentes (evita duplicação se houve falha parcial anterior)
+      // 1. Limpar itens E movimentos vinculados antes de recriar.
+      //    Itens são recriados com novos UUIDs — a guarda de idempotência em processarNfEntrada
+      //    usa nf_entrada_item_id, tornando-se inválida se movimentos antigos ficarem com IDs velhos.
+      //    Aqui apagamos tudo para garantir estado limpo antes de reprocessar.
+      const { data: itensExist } = await supabase.from("nf_entrada_itens").select("id").eq("nf_entrada_id", nfEdit.id);
+      if (itensExist?.length) {
+        await supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itensExist.map(i => i.id));
+      }
       await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfEdit.id);
 
       // 1b. Recriar todos os itens do estado atual
