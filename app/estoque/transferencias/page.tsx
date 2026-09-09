@@ -208,11 +208,11 @@ export default function TransferenciasEstoquePage() {
       }));
       setTransferencias(enriched);
 
-      // Transportadoras, veículos e motoristas da fazenda ativa
+      // Transportadoras, veículos e motoristas de todas as fazendas da conta
       const [trRes2, veRes, moRes] = await Promise.all([
-        supabase.from("transportadoras").select("id,razao_social,nome,cnpj,rntrc").eq("fazenda_id", fazendaId).order("razao_social"),
-        supabase.from("veiculos").select("id,placa,tipo,rntrc").eq("fazenda_id", fazendaId).order("placa"),
-        supabase.from("motoristas").select("id,nome,cpf").eq("fazenda_id", fazendaId).order("nome"),
+        supabase.from("transportadoras").select("id,razao_social,nome,cnpj,rntrc").in("fazenda_id", fazIds).order("razao_social"),
+        supabase.from("veiculos").select("id,placa,tipo,rntrc").in("fazenda_id", fazIds).order("placa"),
+        supabase.from("motoristas").select("id,nome,cpf").in("fazenda_id", fazIds).order("nome"),
       ]);
       setTransportadoras((trRes2.data ?? []) as TrRow[]);
       setVeiculos((veRes.data ?? []) as VeRow[]);
