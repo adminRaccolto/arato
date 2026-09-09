@@ -54,7 +54,7 @@ type LinhaKardex = {
 // ─── componente ─────────────────────────────────────────────────────────────
 
 export default function Kardex() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
 
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [insumoId,     setInsumoId]     = useState("");
@@ -67,16 +67,17 @@ export default function Kardex() {
   const [carregando,   setCarregando]   = useState(false);
   const [gerado,       setGerado]       = useState(false);
 
-  // Carrega listas base — usa fazendaId (não fazendaIds) para consistência
+  // Carrega insumos e depósitos de TODAS as fazendas da conta
+  const fazendaIdsKey = fazendaIds.join(",");
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazendaIds.length) return;
     supabase.from("insumos").select("*")
-      .eq("fazenda_id", fazendaId).order("nome")
+      .in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
     supabase.from("depositos").select("id,nome")
-      .eq("fazenda_id", fazendaId).order("nome")
+      .in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setDepositos(data ?? []));
-  }, [fazendaId]);
+  }, [fazendaIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const insumosFiltrados = insumos.filter(i =>
     !busca || i.nome.toLowerCase().includes(busca.toLowerCase())
@@ -86,16 +87,15 @@ export default function Kardex() {
 
   // Gera o relatório
   const gerarKardex = useCallback(async () => {
-    if (!fazendaId || !insumoId) return;
+    if (!fazendaIds.length || !insumoId) return;
     setCarregando(true);
     setGerado(false);
 
-    // 1. Movimentações ANTES do período para saldo inicial
-    // Usa eq (não in) — mesmo comportamento de listarMovimentacoes
+    // 1. Movimentações ANTES do período — de todas as fazendas da conta
     let qAntes = supabase
       .from("movimentacoes_estoque")
       .select("*, ciclos(descricao)")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .eq("insumo_id", insumoId)
       .lt("data", dataIni)
       .order("data", { ascending: true });
@@ -106,7 +106,7 @@ export default function Kardex() {
     let qPeriodo = supabase
       .from("movimentacoes_estoque")
       .select("*, ciclos(descricao)")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds)
       .eq("insumo_id", insumoId)
       .gte("data", dataIni)
       .lte("data", dataFim)
@@ -235,7 +235,7 @@ export default function Kardex() {
     setLinhas(resultado);
     setCarregando(false);
     setGerado(true);
-  }, [fazendaId, insumoId, dataIni, dataFim, depositoId]);
+  }, [fazendaIdsKey, insumoId, dataIni, dataFim, depositoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── resumo ────────────────────────────────────────────────────────────────
   const totalEntradas   = linhas.reduce((s, l) => s + l.entrada_total, 0);
