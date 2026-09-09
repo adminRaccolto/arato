@@ -289,6 +289,25 @@ export default function TransferenciasEstoquePage() {
     }
     setSalvando(true); setErro(null);
     try {
+      // Se a transportadora selecionada vem de empresas (não da tabela transportadoras),
+      // auto-criar o registro em transportadoras para satisfazer a FK
+      let transpId: string | null = form.transportadoraId || null;
+      if (transpId) {
+        const trSel = transportadoras.find(t => t.id === transpId);
+        if (trSel?._origem === "empresa") {
+          // Tenta inserir na tabela transportadoras (upsert por CNPJ)
+          const ins = {
+            fazenda_id:   fazendaId,
+            razao_social: trSel.razao_social ?? trSel.nome ?? "Transportadora",
+            cnpj:         trSel.cnpj || undefined,
+            rntrc:        trSel.rntrc || undefined,
+            ativa:        true,
+          };
+          const { data: nova } = await supabase.from("transportadoras").insert(ins).select("id").single();
+          if (nova) transpId = nova.id;
+        }
+      }
+
       const itensParsed = itens.map(it => ({
         insumo_id:      it.insumo_id,
         quantidade:     parseFloat(it.quantidade.replace(",", ".")),
@@ -310,7 +329,7 @@ export default function TransferenciasEstoquePage() {
         data_emissao:         status === "emitida" ? new Date().toISOString() : null,
         observacao:           form.observacao || null,
         via_app:              false,
-        transportadora_id:    form.transportadoraId || null,
+        transportadora_id:    transpId,
         veiculo_id:           form.veiculoId || null,
         motorista_id:         form.motoristaId || null,
         frete_conta:          form.freteConta || "9",
