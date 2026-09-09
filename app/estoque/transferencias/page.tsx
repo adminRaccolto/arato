@@ -664,10 +664,13 @@ export default function TransferenciasEstoquePage() {
                             <select value={it.insumo_id} onChange={e => updateItem(i, "insumo_id", e.target.value)} style={{ ...inp, width: 220 }}>
                               <option value="">— Selecione —</option>
                               {insumosOrigem
-                                .filter(ins => !form.depositoOrigemId || ins.deposito_id === form.depositoOrigemId)
+                                .filter(ins =>
+                                  (!form.depositoOrigemId || ins.deposito_id === form.depositoOrigemId) &&
+                                  (ins.estoque ?? 0) > 0
+                                )
                                 .map(ins => (
                                   <option key={ins.id} value={ins.id}>
-                                    {ins.nome} (Est: {ins.estoque?.toFixed(2) ?? 0} {ins.unidade})
+                                    {ins.nome} (Est: {ins.estoque?.toFixed(2)} {ins.unidade})
                                   </option>
                               ))}
                             </select>
