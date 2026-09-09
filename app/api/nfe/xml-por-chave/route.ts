@@ -9,12 +9,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { consultarNfePorChave } from "../../../../lib/sefaz-consulta";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(req: NextRequest) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   let body: { fazendaId?: string; chaveAcesso?: string; ambiente?: "producao" | "homologacao" };
   try { body = await req.json(); } catch {
     return NextResponse.json({ ok: false, erro: "Body inválido" }, { status: 400 });
