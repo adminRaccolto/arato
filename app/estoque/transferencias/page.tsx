@@ -99,7 +99,8 @@ export default function TransferenciasEstoquePage() {
   const [carregando, setCarregando] = useState(false);
 
   // ── Cadastros de transporte ────────────────────────────────────────────────
-  type TrRow = { id: string; razao_social?: string; nome?: string; cnpj?: string; rntrc?: string };
+  // TrRow unifica registros da tabela transportadoras + empresas com finalidade "transportadora"
+  type TrRow = { id: string; razao_social?: string; nome?: string; cnpj?: string; rntrc?: string; _origem?: "tabela" | "empresa" };
   type VeRow = { id: string; placa: string; tipo?: string; rntrc?: string };
   type MoRow = { id: string; nome: string; cpf?: string };
   const [transportadoras, setTransportadoras] = useState<TrRow[]>([]);
@@ -208,13 +209,25 @@ export default function TransferenciasEstoquePage() {
       }));
       setTransferencias(enriched);
 
-      // Transportadoras, veículos e motoristas de todas as fazendas da conta
-      const [trRes2, veRes, moRes] = await Promise.all([
+      // Transportadoras: tabela transportadoras + empresas com finalidade "transportadora"
+      const [trRes2, veRes, moRes, empRes] = await Promise.all([
         supabase.from("transportadoras").select("id,razao_social,nome,cnpj,rntrc").in("fazenda_id", fazIds).order("razao_social"),
         supabase.from("veiculos").select("id,placa,tipo,rntrc").in("fazenda_id", fazIds).order("placa"),
         supabase.from("motoristas").select("id,nome,cpf").in("fazenda_id", fazIds).order("nome"),
+        supabase.from("empresas").select("id,razao_social,nome,cpf_cnpj,rntrc,finalidades").in("fazenda_id", fazIds).order("nome"),
       ]);
-      setTransportadoras((trRes2.data ?? []) as TrRow[]);
+      // Mescla: tabela de transportadoras + empresas com finalidade "transportadora"
+      const tabelaTransp = ((trRes2.data ?? []) as TrRow[]).map(t => ({ ...t, _origem: "tabela" as const }));
+      const cnpjsNaTabela = new Set(tabelaTransp.map(t => (t.cnpj ?? "").replace(/\D/g, "")).filter(Boolean));
+      const empresasTransp = ((empRes.data ?? []) as { id: string; razao_social?: string; nome?: string; cpf_cnpj?: string; rntrc?: string; finalidades?: string[] }[])
+        .filter(e => (e.finalidades ?? []).includes("transportadora"))
+        .filter(e => {
+          const digits = (e.cpf_cnpj ?? "").replace(/\D/g, "");
+          return !digits || !cnpjsNaTabela.has(digits); // evita duplicata por CNPJ
+        })
+        .map(e => ({ id: e.id, razao_social: e.razao_social ?? e.nome, nome: e.nome, cnpj: e.cpf_cnpj, rntrc: e.rntrc, _origem: "empresa" as const }));
+      const todasTransp = [...tabelaTransp, ...empresasTransp].sort((a, b) => (a.razao_social ?? "").localeCompare(b.razao_social ?? ""));
+      setTransportadoras(todasTransp);
       setVeiculos((veRes.data ?? []) as VeRow[]);
       setMotoristas((moRes.data ?? []) as MoRow[]);
     } finally {
