@@ -24,6 +24,19 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
   const [fazendas, setFazendas] = useState<FazendaOp[]>([]);
   const [showSwitch, setShowSwitch] = useState(false);
 
+  // Hooks devem vir antes de qualquer return condicional (Rules of Hooks)
+  const carregarFazendas = useCallback(async () => {
+    if (!contaId) return;
+    const { data } = await supabase
+      .from("fazendas")
+      .select("id, nome")
+      .eq("conta_id", contaId)
+      .order("nome");
+    setFazendas((data ?? []) as FazendaOp[]);
+  }, [contaId]);
+
+  useEffect(() => { carregarFazendas(); }, [carregarFazendas]);
+
   // Aguarda autenticação — AuthProvider já redireciona para /login se não houver sessão
   if (userRole === null) {
     return (
@@ -38,18 +51,6 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
   }
 
   // SW registrado globalmente no layout raiz com scope "/" — não registrar aqui novamente
-
-  const carregarFazendas = useCallback(async () => {
-    if (!contaId) return;
-    const { data } = await supabase
-      .from("fazendas")
-      .select("id, nome")
-      .eq("conta_id", contaId)
-      .order("nome");
-    setFazendas((data ?? []) as FazendaOp[]);
-  }, [contaId]);
-
-  useEffect(() => { carregarFazendas(); }, [carregarFazendas]);
 
 
   return (
