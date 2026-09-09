@@ -781,7 +781,7 @@ export default function TransferenciasEstoquePage() {
               <tbody>
                 {(detalhe.itens ?? []).map(it => (
                   <tr key={it.id}>
-                    <td style={td}>{insumosOrigem.find(i => i.id === it.insumo_id)?.nome ?? it.insumo_id}</td>
+                    <td style={td}>{Object.values(insumosPorFazenda).flat().find(i => i.id === it.insumo_id)?.nome ?? it.insumo_id}</td>
                     <td style={{ ...td, textAlign: "right" }}>{it.quantidade}</td>
                     <td style={td}>{it.unidade_medida}</td>
                     <td style={{ ...td, textAlign: "right" }}>{it.custo_unitario ? fmtBRL(it.custo_unitario) : "—"}</td>
