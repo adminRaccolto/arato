@@ -28,12 +28,16 @@ function MONTH_START() {
 
 // ─── tipos internos ──────────────────────────────────────────────────────────
 
+type MovComCiclo = MovimentacaoEstoque & { ciclos?: { descricao: string } | null };
+
 type LinhaKardex = {
   data: string;
   documento: string;
   operacao: string;
   tipo: "entrada" | "saida" | "ajuste" | "saldo_inicial";
   motivo?: string;
+  nf_ref?: string;
+  ciclo_descricao?: string;
   entrada_qty: number;
   entrada_unit: number;
   entrada_total: number;
@@ -50,7 +54,7 @@ type LinhaKardex = {
 // ─── componente ─────────────────────────────────────────────────────────────
 
 export default function Kardex() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId } = useAuth();
 
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [insumoId,     setInsumoId]     = useState("");
@@ -63,14 +67,14 @@ export default function Kardex() {
   const [carregando,   setCarregando]   = useState(false);
   const [gerado,       setGerado]       = useState(false);
 
-  // Carrega listas base
+  // Carrega listas base — usa fazendaId (não fazendaIds) para consistência
   useEffect(() => {
     if (!fazendaId) return;
     supabase.from("insumos").select("*")
-      .in("fazenda_id", fazendaIds).order("nome")
+      .eq("fazenda_id", fazendaId).order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
     supabase.from("depositos").select("id,nome")
-      .in("fazenda_id", fazendaIds).order("nome")
+      .eq("fazenda_id", fazendaId).order("nome")
       .then(({ data }) => setDepositos(data ?? []));
   }, [fazendaId]);
 
@@ -87,45 +91,46 @@ export default function Kardex() {
     setGerado(false);
 
     // 1. Movimentações ANTES do período para saldo inicial
-    const qAntes = supabase
+    // Usa eq (não in) — mesmo comportamento de listarMovimentacoes
+    let qAntes = supabase
       .from("movimentacoes_estoque")
-      .select("*")
-      .in("fazenda_id", fazendaIds)
+      .select("*, ciclos(descricao)")
+      .eq("fazenda_id", fazendaId)
       .eq("insumo_id", insumoId)
       .lt("data", dataIni)
       .order("data", { ascending: true });
-    if (depositoId) qAntes.eq("deposito_id", depositoId);
+    // Supabase builder é imutável — reatribuir para aplicar filtro
+    if (depositoId) qAntes = qAntes.eq("deposito_id", depositoId);
 
     // 2. Movimentações NO período
-    const qPeriodo = supabase
+    let qPeriodo = supabase
       .from("movimentacoes_estoque")
-      .select("*")
-      .in("fazenda_id", fazendaIds)
+      .select("*, ciclos(descricao)")
+      .eq("fazenda_id", fazendaId)
       .eq("insumo_id", insumoId)
       .gte("data", dataIni)
-      .lte("data", dataFim + "T23:59:59")
+      .lte("data", dataFim)
       .order("data", { ascending: true });
-    if (depositoId) qPeriodo.eq("deposito_id", depositoId);
+    if (depositoId) qPeriodo = qPeriodo.eq("deposito_id", depositoId);
 
-    const [{ data: antes }, { data: periodo }] = await Promise.all([qAntes, qPeriodo]);
+    const [{ data: antes, error: e1 }, { data: periodo, error: e2 }] = await Promise.all([qAntes, qPeriodo]);
+    if (e1) console.error("Kardex antes:", e1);
+    if (e2) console.error("Kardex período:", e2);
 
     // Calcula saldo inicial por custo médio ponderado
-    let saldo_qty    = 0;
-    let custo_total  = 0;
+    let saldo_qty   = 0;
+    let custo_total = 0;
 
-    for (const m of (antes ?? []) as MovimentacaoEstoque[]) {
+    for (const m of (antes ?? []) as MovComCiclo[]) {
       const unit = m.custo_unitario_na_baixa ?? m.valor_unitario ?? 0;
       if (m.tipo === "entrada") {
-        const novoTotal  = custo_total + m.quantidade * unit;
-        const novaQtd    = saldo_qty + m.quantidade;
-        custo_total      = novoTotal;
-        saldo_qty        = novaQtd;
+        custo_total = custo_total + m.quantidade * unit;
+        saldo_qty   = saldo_qty + m.quantidade;
       } else if (m.tipo === "saida") {
         const cm = saldo_qty > 0 ? custo_total / saldo_qty : unit;
         custo_total = Math.max(0, custo_total - m.quantidade * cm);
         saldo_qty   = Math.max(0, saldo_qty - m.quantidade);
       } else {
-        // ajuste
         saldo_qty   = m.quantidade;
         custo_total = m.quantidade * unit;
       }
@@ -135,28 +140,24 @@ export default function Kardex() {
 
     const resultado: LinhaKardex[] = [];
 
-    // Linha de saldo inicial
     resultado.push({
-      data:            dataIni,
-      documento:       "—",
-      operacao:        "Saldo Inicial",
-      tipo:            "saldo_inicial",
-      entrada_qty:     0,
-      entrada_unit:    0,
-      entrada_total:   0,
-      saida_qty:       0,
-      saida_unit:      0,
-      saida_total:     0,
+      data:          dataIni,
+      documento:     "—",
+      operacao:      "Saldo Inicial",
+      tipo:          "saldo_inicial",
+      entrada_qty:   0, entrada_unit: 0, entrada_total: 0,
+      saida_qty:     0, saida_unit:   0, saida_total:   0,
       saldo_qty,
-      custo_medio:     cm_inicial,
-      saldo_total:     saldo_qty * cm_inicial,
+      custo_medio:   cm_inicial,
+      saldo_total:   saldo_qty * cm_inicial,
     });
 
-    // Processa movimentações do período
     let cm = cm_inicial;
 
-    for (const m of (periodo ?? []) as MovimentacaoEstoque[]) {
+    for (const m of (periodo ?? []) as MovComCiclo[]) {
       const unit = m.custo_unitario_na_baixa ?? m.valor_unitario ?? cm;
+      const nf_ref = m.nf_entrada ?? undefined;
+      const ciclo_descricao = m.ciclos?.descricao ?? undefined;
 
       if (m.tipo === "entrada") {
         const novaQtd   = saldo_qty + m.quantidade;
@@ -167,16 +168,16 @@ export default function Kardex() {
 
         resultado.push({
           data:          m.data.slice(0, 10),
-          documento:     m.nf_entrada ?? m.motivo ?? "—",
+          documento:     nf_ref ?? m.motivo ?? "—",
           operacao:      labelMotivo(m.motivo ?? "entrada"),
           tipo:          "entrada",
           motivo:        m.motivo,
+          nf_ref,
+          ciclo_descricao,
           entrada_qty:   m.quantidade,
           entrada_unit:  unit,
           entrada_total: m.quantidade * unit,
-          saida_qty:     0,
-          saida_unit:    0,
-          saida_total:   0,
+          saida_qty:     0, saida_unit: 0, saida_total: 0,
           saldo_qty,
           custo_medio:   cm,
           saldo_total:   saldo_qty * cm,
@@ -188,17 +189,16 @@ export default function Kardex() {
         const qty_saida = Math.min(m.quantidade, saldo_qty);
         custo_total     = Math.max(0, custo_total - qty_saida * cm);
         saldo_qty       = Math.max(0, saldo_qty - qty_saida);
-        // cm não muda em saída (custo médio ponderado)
 
         resultado.push({
           data:          m.data.slice(0, 10),
-          documento:     m.nf_entrada ?? m.operacao ?? "—",
+          documento:     nf_ref ?? m.operacao ?? "—",
           operacao:      labelMotivo(m.motivo ?? "saida"),
           tipo:          "saida",
           motivo:        m.motivo,
-          entrada_qty:   0,
-          entrada_unit:  0,
-          entrada_total: 0,
+          nf_ref,
+          ciclo_descricao,
+          entrada_qty:   0, entrada_unit: 0, entrada_total: 0,
           saida_qty:     m.quantidade,
           saida_unit:    cm,
           saida_total:   m.quantidade * cm,
@@ -220,12 +220,9 @@ export default function Kardex() {
           documento:     "Ajuste",
           operacao:      "Ajuste de Inventário",
           tipo:          "ajuste",
-          entrada_qty:   0,
-          entrada_unit:  0,
-          entrada_total: 0,
-          saida_qty:     0,
-          saida_unit:    0,
-          saida_total:   0,
+          ciclo_descricao,
+          entrada_qty:   0, entrada_unit: 0, entrada_total: 0,
+          saida_qty:     0, saida_unit:   0, saida_total:   0,
           saldo_qty,
           custo_medio:   cm,
           saldo_total:   saldo_qty * cm,
@@ -249,17 +246,15 @@ export default function Kardex() {
   const qtdEntradas     = linhas.reduce((s, l) => s + l.entrada_qty, 0);
   const qtdSaidas       = linhas.reduce((s, l) => s + l.saida_qty,   0);
 
-  // ── exportar PDF ─────────────────────────────────────────────────────────
   function exportarPDF() { window.print(); }
 
-  // ── exportar XLSX ─────────────────────────────────────────────────────────
   async function exportarXLSX() {
     if (!insumoSel) return;
     const XLSX = await import("xlsx");
     const rows = linhas.map(l => ({
       "Data":              fmtDate(l.data),
-      "Documento":         l.documento,
       "Operação":          l.operacao,
+      "Origem":            origemTexto(l),
       "Entrada Qtd":       l.entrada_qty  || "",
       "Entrada Unit R$":   l.entrada_unit  ? fmt(l.entrada_unit)  : "",
       "Entrada Total R$":  l.entrada_total ? fmt(l.entrada_total) : "",
@@ -269,7 +264,7 @@ export default function Kardex() {
       "Saldo Qtd":         fmtQty(l.saldo_qty),
       "Custo Médio R$":    fmt(l.custo_medio),
       "Saldo Total R$":    fmt(l.saldo_total),
-      "Usuário":           l.usuario ?? "",
+      "Usuário":           l.usuario ?? (l.tipo === "saldo_inicial" ? "" : "Sistema"),
       "Observação":        l.obs ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -306,12 +301,8 @@ export default function Kardex() {
             </div>
             {gerado && (
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={exportarPDF} style={btnSec}>
-                  🖨 Imprimir / PDF
-                </button>
-                <button onClick={exportarXLSX} style={btnSec}>
-                  📊 Exportar XLSX
-                </button>
+                <button onClick={exportarPDF} style={btnSec}>🖨 Imprimir / PDF</button>
+                <button onClick={exportarXLSX} style={btnSec}>📊 Exportar XLSX</button>
               </div>
             )}
           </div>
@@ -320,36 +311,26 @@ export default function Kardex() {
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 32px" }}>
 
           {/* ── Filtros ── */}
-          <div style={{
-            background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12,
-            padding: 24, marginBottom: 20,
-          }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 24, marginBottom: 20 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 180px 180px auto", gap: 16, alignItems: "end" }}>
 
               {/* Produto */}
-              <div>
+              <div style={{ position: "relative" }}>
                 <label style={lbl}>Produto *</label>
                 <input
                   type="text"
                   placeholder="Buscar produto…"
                   value={busca}
                   onChange={e => { setBusca(e.target.value); setInsumoId(""); setGerado(false); }}
-                  style={{ ...inp, marginBottom: insumosFiltrados.length && busca && !insumoId ? 0 : undefined }}
+                  style={inp}
                 />
                 {busca && !insumoId && insumosFiltrados.length > 0 && (
-                  <div style={{
-                    border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)",
-                    maxHeight: 200, overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                    position: "absolute", zIndex: 100, width: 300,
-                  }}>
+                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", maxHeight: 200, overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", position: "absolute", zIndex: 100, width: "100%", top: "100%" }}>
                     {insumosFiltrados.map(i => (
                       <div
                         key={i.id}
                         onClick={() => { setInsumoId(i.id); setBusca(i.nome); setGerado(false); }}
-                        style={{
-                          padding: "8px 14px", cursor: "pointer", fontSize: 13,
-                          borderBottom: "0.5px solid #F0F0F0",
-                        }}
+                        style={{ padding: "8px 14px", cursor: "pointer", fontSize: 13, borderBottom: "0.5px solid #F0F0F0" }}
                         onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "var(--bg-card)")}
                       >
@@ -383,13 +364,7 @@ export default function Kardex() {
               <button
                 onClick={gerarKardex}
                 disabled={!insumoId || carregando}
-                style={{
-                  background: insumoId ? "#111111" : "#C0CAD6",
-                  color: "#fff", border: "none", borderRadius: 8,
-                  padding: "10px 24px", fontSize: 13, fontWeight: 600,
-                  cursor: insumoId ? "pointer" : "not-allowed",
-                  height: 40, whiteSpace: "nowrap",
-                }}
+                style={{ background: insumoId ? "#111111" : "#C0CAD6", color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: insumoId ? "pointer" : "not-allowed", height: 40, whiteSpace: "nowrap" }}
               >
                 {carregando ? "Gerando…" : "Gerar Kardex"}
               </button>
@@ -401,33 +376,26 @@ export default function Kardex() {
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: "Saldo Inicial",   valor: `${fmtQty(saldoInicial)} ${insumoSel?.unidade ?? ""}`,  cor: "#111111" },
-                  { label: "Total Entradas",   valor: `${fmtQty(qtdEntradas)} ${insumoSel?.unidade ?? ""}`,   cor: "#16A34A" },
-                  { label: "Total Saídas",     valor: `${fmtQty(qtdSaidas)} ${insumoSel?.unidade ?? ""}`,     cor: "#E24B4A" },
-                  { label: "Saldo Final",      valor: `${fmtQty(saldoFinal)} ${insumoSel?.unidade ?? ""}`,    cor: "#111111" },
-                  { label: "Custo Médio Final",valor: `R$ ${fmt(cmFinal)}/${insumoSel?.unidade ?? "un"}`,     cor: "#C9921B" },
+                  { label: "Saldo Inicial",    valor: `${fmtQty(saldoInicial)} ${insumoSel?.unidade ?? ""}`, cor: "#111111" },
+                  { label: "Total Entradas",   valor: `${fmtQty(qtdEntradas)} ${insumoSel?.unidade ?? ""}`,  cor: "#16A34A" },
+                  { label: "Total Saídas",     valor: `${fmtQty(qtdSaidas)} ${insumoSel?.unidade ?? ""}`,    cor: "#E24B4A" },
+                  { label: "Saldo Final",      valor: `${fmtQty(saldoFinal)} ${insumoSel?.unidade ?? ""}`,   cor: "#111111" },
+                  { label: "Custo Médio Final",valor: `R$ ${fmt(cmFinal)}/${insumoSel?.unidade ?? "un"}`,    cor: "#C9921B" },
                 ].map(k => (
-                  <div key={k.label} style={{
-                    background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10,
-                    padding: "14px 18px",
-                  }}>
+                  <div key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 18px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4, fontWeight: 600 }}>{k.label}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Totais financeiros */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: "Valor Total Entradas", valor: `R$ ${fmt(totalEntradas)}`,          cor: "#16A34A" },
-                  { label: "Valor Total Saídas",   valor: `R$ ${fmt(totalSaidas)}`,            cor: "#E24B4A" },
-                  { label: "Saldo Total (R$)",      valor: `R$ ${fmt(saldoFinal * cmFinal)}`,   cor: "#111111" },
+                  { label: "Valor Total Entradas", valor: `R$ ${fmt(totalEntradas)}`,        cor: "#16A34A" },
+                  { label: "Valor Total Saídas",   valor: `R$ ${fmt(totalSaidas)}`,          cor: "#E24B4A" },
+                  { label: "Saldo Total (R$)",     valor: `R$ ${fmt(saldoFinal * cmFinal)}`, cor: "#111111" },
                 ].map(k => (
-                  <div key={k.label} style={{
-                    background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10,
-                    padding: "14px 18px",
-                  }}>
+                  <div key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 18px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4, fontWeight: 600 }}>{k.label}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                   </div>
@@ -435,21 +403,11 @@ export default function Kardex() {
               </div>
 
               {/* ── Tabela Kardex ── */}
-              <div style={{
-                background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12,
-                overflow: "hidden",
-              }}>
-                {/* Cabeçalho do produto */}
-                <div style={{
-                  background: "#111111", color: "#fff",
-                  padding: "12px 20px",
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                }}>
+              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "#111111", color: "#fff", padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{insumoSel?.nome}</span>
-                    <span style={{ fontSize: 12, opacity: 0.75, marginLeft: 12 }}>
-                      {insumoSel?.categoria} · Un: {insumoSel?.unidade}
-                    </span>
+                    <span style={{ fontSize: 12, opacity: 0.75, marginLeft: 12 }}>{insumoSel?.categoria} · Un: {insumoSel?.unidade}</span>
                   </div>
                   <div style={{ fontSize: 12, opacity: 0.8 }}>
                     Período: {fmtDate(dataIni)} → {fmtDate(dataFim)}
@@ -462,7 +420,8 @@ export default function Kardex() {
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         <th style={{ ...th, width: 85 }}>Data</th>
-                        <th style={{ ...th, textAlign: "left" }}>Operação / Documento</th>
+                        <th style={{ ...th, textAlign: "left" }}>Operação</th>
+                        <th style={{ ...th, textAlign: "left" }}>Origem</th>
                         <th style={{ ...th, width: 70 }}>E. Qtd</th>
                         <th style={{ ...th, width: 90 }}>E. Unit R$</th>
                         <th style={{ ...th, width: 100 }}>E. Total R$</th>
@@ -472,24 +431,49 @@ export default function Kardex() {
                         <th style={{ ...th, width: 80 }}>Saldo Qtd</th>
                         <th style={{ ...th, width: 90 }}>Custo Médio</th>
                         <th style={{ ...th, width: 105 }}>Saldo Total</th>
-                        <th style={{ ...th, textAlign: "left", width: 130 }}>Obs</th>
+                        <th style={{ ...th, textAlign: "left", width: 110 }}>Usuário</th>
                       </tr>
                     </thead>
                     <tbody>
                       {linhas.map((l, i) => (
-                        <tr
-                          key={i}
-                          style={{ background: corLinha(l.tipo), borderBottom: "0.5px solid var(--bg-tag)" }}
-                        >
+                        <tr key={i} style={{ background: corLinha(l.tipo), borderBottom: "0.5px solid var(--bg-tag)" }}>
                           <td style={{ ...td, textAlign: "center", color: "var(--text-2)" }}>{fmtDate(l.data)}</td>
+
+                          {/* Operação */}
                           <td style={{ ...td, paddingLeft: 14 }}>
-                            <div style={{ fontWeight: l.tipo === "saldo_inicial" ? 700 : 400, color: "var(--text-1)" }}>
+                            <div style={{ fontWeight: l.tipo === "saldo_inicial" ? 700 : 500, color: "var(--text-1)", fontSize: 12 }}>
                               {l.operacao}
                             </div>
-                            {l.documento !== "—" && (
-                              <div style={{ fontSize: 11, color: "var(--text-3)" }}>{l.documento}</div>
+                          </td>
+
+                          {/* Origem */}
+                          <td style={{ ...td, paddingLeft: 10 }}>
+                            {l.tipo === "saldo_inicial" ? (
+                              <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>
+                            ) : l.nf_ref ? (
+                              <a href="/compras/nf" target="_blank" title={`Ver NF ${l.nf_ref}`}
+                                style={{ color: "#1A4870", fontWeight: 600, fontSize: 11, textDecoration: "none", background: "#D5E8F5", padding: "2px 8px", borderRadius: 5, display: "inline-block", whiteSpace: "nowrap" }}>
+                                📄 NF {l.nf_ref.length > 20 ? l.nf_ref.slice(0, 8) + "…" : l.nf_ref}
+                              </a>
+                            ) : l.ciclo_descricao ? (
+                              <span style={{ fontSize: 11, color: "#16A34A", whiteSpace: "nowrap" }}>🌱 {l.ciclo_descricao}</span>
+                            ) : l.motivo === "transferencia" ? (
+                              <span style={{ fontSize: 11, color: "#378ADD" }}>🔄 Transferência</span>
+                            ) : l.motivo === "abastecimento" ? (
+                              <span style={{ fontSize: 11, color: "var(--text-2)" }}>⛽ Abastecimento</span>
+                            ) : l.motivo === "baixa_uso" ? (
+                              <span style={{ fontSize: 11, color: "#16A34A" }}>🌿 Aplicação campo</span>
+                            ) : l.motivo === "baixa_perda" ? (
+                              <span style={{ fontSize: 11, color: "#E24B4A" }}>⚠ Perda</span>
+                            ) : l.motivo === "ajuste_saldo" || l.tipo === "ajuste" ? (
+                              <span style={{ fontSize: 11, color: "#7A5A12" }}>⚙ Ajuste manual</span>
+                            ) : l.motivo === "inventario" ? (
+                              <span style={{ fontSize: 11, color: "#7A5A12" }}>📦 Inventário</span>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "var(--text-3)" }}>{l.obs ? l.obs.slice(0, 40) : "—"}</span>
                             )}
                           </td>
+
                           {/* Entrada */}
                           <td style={{ ...td, textAlign: "right", color: "#16A34A", fontWeight: l.entrada_qty ? 600 : 400 }}>
                             {l.entrada_qty ? fmtQty(l.entrada_qty) : <span style={{ color: "#ccc" }}>—</span>}
@@ -500,6 +484,7 @@ export default function Kardex() {
                           <td style={{ ...td, textAlign: "right", color: "#16A34A", fontWeight: l.entrada_total ? 600 : 400 }}>
                             {l.entrada_total ? fmt(l.entrada_total) : <span style={{ color: "#ccc" }}>—</span>}
                           </td>
+
                           {/* Saída */}
                           <td style={{ ...td, textAlign: "right", color: "#E24B4A", fontWeight: l.saida_qty ? 600 : 400 }}>
                             {l.saida_qty ? fmtQty(l.saida_qty) : <span style={{ color: "#ccc" }}>—</span>}
@@ -510,6 +495,7 @@ export default function Kardex() {
                           <td style={{ ...td, textAlign: "right", color: "#E24B4A", fontWeight: l.saida_total ? 600 : 400 }}>
                             {l.saida_total ? fmt(l.saida_total) : <span style={{ color: "#ccc" }}>—</span>}
                           </td>
+
                           {/* Saldo */}
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#111111" }}>
                             {fmtQty(l.saldo_qty)}
@@ -520,43 +506,34 @@ export default function Kardex() {
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#111111" }}>
                             {fmt(l.saldo_total)}
                           </td>
-                          <td style={{ ...td, paddingLeft: 10, color: "#666", maxWidth: 130 }}>
-                            <span style={{ fontSize: 11 }}>{l.obs ?? ""}</span>
+
+                          {/* Usuário */}
+                          <td style={{ ...td, paddingLeft: 10, fontSize: 11 }}>
+                            {l.tipo === "saldo_inicial" ? (
+                              <span style={{ color: "var(--text-3)" }}>—</span>
+                            ) : l.usuario ? (
+                              <span style={{ color: "var(--text-2)" }}>{l.usuario}</span>
+                            ) : (
+                              <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>Sistema</span>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
 
-                    {/* Totais */}
                     {linhas.length > 1 && (
                       <tfoot>
                         <tr style={{ background: "#111111", color: "#fff" }}>
-                          <td colSpan={2} style={{ ...td, fontWeight: 700, paddingLeft: 14, color: "#fff" }}>
-                            TOTAIS DO PERÍODO
-                          </td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#86EFAC" }}>
-                            {fmtQty(qtdEntradas)}
-                          </td>
+                          <td colSpan={3} style={{ ...td, fontWeight: 700, paddingLeft: 14, color: "#fff" }}>TOTAIS DO PERÍODO</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#86EFAC" }}>{fmtQty(qtdEntradas)}</td>
                           <td style={{ ...td }}></td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#86EFAC" }}>
-                            {fmt(totalEntradas)}
-                          </td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#FCA5A5" }}>
-                            {fmtQty(qtdSaidas)}
-                          </td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#86EFAC" }}>{fmt(totalEntradas)}</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#FCA5A5" }}>{fmtQty(qtdSaidas)}</td>
                           <td style={{ ...td }}></td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#FCA5A5" }}>
-                            {fmt(totalSaidas)}
-                          </td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#fff" }}>
-                            {fmtQty(saldoFinal)}
-                          </td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#FDE68A" }}>
-                            {fmt(cmFinal)}
-                          </td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#fff" }}>
-                            {fmt(saldoFinal * cmFinal)}
-                          </td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#FCA5A5" }}>{fmt(totalSaidas)}</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#fff" }}>{fmtQty(saldoFinal)}</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#FDE68A" }}>{fmt(cmFinal)}</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#fff" }}>{fmt(saldoFinal * cmFinal)}</td>
                           <td style={{ ...td }}></td>
                         </tr>
                       </tfoot>
@@ -574,10 +551,7 @@ export default function Kardex() {
           )}
 
           {!gerado && !carregando && (
-            <div style={{
-              background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12,
-              padding: 48, textAlign: "center",
-            }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 48, textAlign: "center" }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
               <div style={{ fontSize: 14, color: "var(--text-3)" }}>
                 Selecione um produto e o período para gerar a ficha de estoque (Kardex).
@@ -587,7 +561,6 @@ export default function Kardex() {
         </div>
       </div>
 
-      {/* ── Estilos para impressão ── */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -600,7 +573,20 @@ export default function Kardex() {
   );
 }
 
-// ─── helpers de label ────────────────────────────────────────────────────────
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function origemTexto(l: LinhaKardex): string {
+  if (l.tipo === "saldo_inicial") return "—";
+  if (l.nf_ref) return `NF ${l.nf_ref}`;
+  if (l.ciclo_descricao) return `Safra: ${l.ciclo_descricao}`;
+  if (l.motivo === "transferencia") return "Transferência";
+  if (l.motivo === "abastecimento") return "Abastecimento";
+  if (l.motivo === "baixa_uso") return "Aplicação campo";
+  if (l.motivo === "baixa_perda") return "Perda";
+  if (l.motivo === "ajuste_saldo" || l.tipo === "ajuste") return "Ajuste manual";
+  if (l.motivo === "inventario") return "Inventário";
+  return l.obs?.slice(0, 50) ?? "—";
+}
 
 function labelMotivo(motivo: string): string {
   const map: Record<string, string> = {
@@ -610,6 +596,7 @@ function labelMotivo(motivo: string): string {
     baixa_perda:   "Baixa por Perda",
     transferencia: "Transferência",
     inventario:    "Inventário",
+    abastecimento: "Abastecimento",
     outros:        "Outros",
     entrada:       "Entrada",
     saida:         "Saída",

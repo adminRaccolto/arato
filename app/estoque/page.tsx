@@ -1455,18 +1455,37 @@ export default function Estoque() {
                               </div>
                               <div style={{ overflowX: "auto" }}>
                                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                                  <TH cols={["Data", "Tipo", "Motivo", "Quantidade", "Saldo Acum.", "Depósito", "Obs."]} />
+                                  <TH cols={["Data", "Tipo", "Origem", "Quantidade", "Saldo Acum.", "Depósito", "Usuário"]} />
                                   <tbody>
                                     {g.movs.map((m, mi) => {
                                       const dep = depositos.find(d => d.id === m.deposito_id);
                                       const isAdj2 = m.tipo === "ajuste";
+                                      const nfNum = m.nf_entrada ?? (m.observacao?.match(/NF\s+([\w-]+)/)?.[1]);
+                                      const origem = (() => {
+                                        if (nfNum) return (
+                                          <a href="/compras/nf" target="_blank" title={`Ver NF ${nfNum}`}
+                                            style={{ color: "#1A4870", fontWeight: 600, fontSize: 12, textDecoration: "none", background: "#D5E8F5", padding: "2px 8px", borderRadius: 5, display: "inline-block" }}>
+                                            📄 NF {nfNum}
+                                          </a>
+                                        );
+                                        if ((m as MovimentacaoEstoque & { ciclos?: { descricao: string } | null }).ciclos?.descricao) return (
+                                          <span style={{ fontSize: 12, color: "#16A34A" }}>🌱 {(m as MovimentacaoEstoque & { ciclos?: { descricao: string } | null }).ciclos!.descricao}</span>
+                                        );
+                                        if (m.motivo === "transferencia") return <span style={{ fontSize: 12, color: "#378ADD" }}>🔄 Transferência</span>;
+                                        if (m.motivo === "abastecimento") return <span style={{ fontSize: 12, color: "var(--text-2)" }}>⛽ Abastecimento</span>;
+                                        if (m.motivo === "baixa_uso") return <span style={{ fontSize: 12, color: "#16A34A" }}>🌿 Aplicação em campo</span>;
+                                        if (m.motivo === "baixa_perda") return <span style={{ fontSize: 12, color: "#E24B4A" }}>⚠ Perda</span>;
+                                        if (m.motivo === "ajuste_saldo") return <span style={{ fontSize: 12, color: "#7A5A12" }}>⚙ Ajuste de saldo</span>;
+                                        if (m.motivo === "inventario") return <span style={{ fontSize: 12, color: "#7A5A12" }}>📦 Inventário</span>;
+                                        return <span style={{ fontSize: 12, color: "var(--text-3)" }}>{MOTIVO_LABEL[m.motivo ?? ""] ?? m.motivo ?? "—"}</span>;
+                                      })();
                                       return (
                                         <tr key={m.id} style={{ borderBottom: mi < g.movs.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: isAdj2 ? "#FFFDF5" : undefined }}>
                                           <td style={{ padding: "8px 14px", whiteSpace: "nowrap", color: "var(--text-2)" }}>{m.data.split("-").reverse().join("/")}</td>
                                           <td style={{ padding: "8px 14px", textAlign: "center" }}>
                                             {isAdj2 ? badge("⚙ Ajuste","#FBF3E0","#7A5A12") : m.tipo === "entrada" ? badge("▲ Entrada","#E8E8E8","#0D0D0D") : badge("▼ Saída","#FCEBEB","#791F1F")}
                                           </td>
-                                          <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{MOTIVO_LABEL[m.motivo ?? ""] ?? m.motivo ?? "—"}</td>
+                                          <td style={{ padding: "8px 14px" }}>{origem}</td>
                                           <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 600, color: isAdj2 ? (m.quantidade >= 0 ? "#111111" : "#E24B4A") : m.tipo === "entrada" ? "#111111" : "#E24B4A" }}>
                                             {isAdj2 ? `${m.quantidade >= 0 ? "+" : ""}${fmtNum(m.quantidade)}` : `${m.tipo === "entrada" ? "+" : "-"}${fmtNum(m.quantidade)}`} {g.insumo.unidade}
                                           </td>
@@ -1474,8 +1493,8 @@ export default function Estoque() {
                                             {fmtNum(m.saldo)} {g.insumo.unidade}
                                           </td>
                                           <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
-                                          <td style={{ padding: "8px 14px", fontSize: 11, color: isAdj2 ? "#7A5A12" : "var(--text-3)", maxWidth: 180, whiteSpace: "normal" }}>
-                                            {m.observacao ? <><strong>{isAdj2 ? "Justificativa: " : ""}</strong><span title={m.observacao}>{m.observacao.slice(0, 60)}{m.observacao.length > 60 ? "…" : ""}</span></> : "—"}
+                                          <td style={{ padding: "8px 14px", fontSize: 12, color: m.auto ? "var(--text-3)" : "var(--text-2)" }}>
+                                            {m.auto ? <span style={{ fontStyle: "italic", color: "var(--text-3)" }}>Sistema</span> : (m.usuario_nome ?? "—")}
                                           </td>
                                         </tr>
                                       );

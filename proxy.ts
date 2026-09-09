@@ -8,6 +8,7 @@ export async function proxy(request: NextRequest) {
   // Rotas públicas — passa direto sem verificar sessão
   if (
     pathname.startsWith("/login") ||
+    pathname.startsWith("/campo/login") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/alterar-senha") ||
     pathname.startsWith("/planos") ||
@@ -43,6 +44,10 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
+    // Rota do campo → login dedicado do campo
+    if (pathname.startsWith("/campo")) {
+      return NextResponse.redirect(new URL("/campo/login", request.url));
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
