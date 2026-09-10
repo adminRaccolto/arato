@@ -22,10 +22,23 @@ export async function POST(req: NextRequest) {
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     if (body.cpf_cnpj) {
-      const { data: existente } = await admin.from("produtores")
-        .select("*").eq("fazenda_id", body.fazenda_id).eq("cpf_cnpj", body.cpf_cnpj).maybeSingle();
-      if (existente) {
-        return NextResponse.json({ error: "duplicado", produtor_existente: existente }, { status: 409 });
+      // Compara por dígitos puros e formatado — cadastros antigos guardam com
+      // máscara ("176.798.429-49") e um match exato só na string enviada perdia
+      // duplicatas reais (achado de auditoria: mesmo padrão causou 91
+      // fornecedores duplicados em `pessoas`). limit(1) evita a falha silenciosa
+      // do maybeSingle() quando já existe mais de um registro para o documento.
+      const docRaw = String(body.cpf_cnpj).replace(/\D/g, "");
+      const docFmt = docRaw.length === 14
+        ? docRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+        : docRaw.length === 11
+          ? docRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+          : docRaw;
+      const { data: existentes } = await admin.from("produtores")
+        .select("*").eq("fazenda_id", body.fazenda_id)
+        .or(`cpf_cnpj.eq.${docRaw},cpf_cnpj.eq.${docFmt}`)
+        .limit(1);
+      if (existentes?.[0]) {
+        return NextResponse.json({ error: "duplicado", produtor_existente: existentes[0] }, { status: 409 });
       }
     }
 

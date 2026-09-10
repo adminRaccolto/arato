@@ -143,15 +143,28 @@ async function syncFazenda(
       const xmlStorageOk = !uploadErr;
 
       // Verifica/cria fornecedor
+      // Busca por CPF/CNPJ raw OU formatado ("06.315.338/0226-00") — cadastros
+      // legados/importados guardam com máscara. Achado real: essa rotina só
+      // checava o formato raw, então todo fornecedor pré-cadastrado com máscara
+      // virava duplicado a cada NF processada (91 casos confirmados no catálogo).
+      // limit(1) + array em vez de maybeSingle(): evita falha silenciosa
+      // (PGRST116) quando já existe mais de um registro para o mesmo documento.
       let pessoaId: string | null = null;
       const cnpjEmit = nfe.cnpj_emitente.replace(/\D/g, "");
       if (cnpjEmit) {
-        const { data: pes } = await db
+        const cnpjFmt = cnpjEmit.length === 14
+          ? cnpjEmit.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+          : cnpjEmit.length === 11
+            ? cnpjEmit.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+            : cnpjEmit;
+        const { data: pesList } = await db
           .from("pessoas")
           .select("id")
           .eq("fazenda_id", fazendaId)
-          .eq("cpf_cnpj", cnpjEmit)
-          .maybeSingle();
+          .or(`cpf_cnpj.eq.${cnpjEmit},cpf_cnpj.eq.${cnpjFmt}`)
+          .order("created_at", { ascending: true })
+          .limit(1);
+        const pes = pesList?.[0] ?? null;
         if (pes) {
           pessoaId = pes.id;
         } else {
@@ -159,7 +172,9 @@ async function syncFazenda(
             fazenda_id:     fazendaId,
             nome:           nfe.nome_emitente || cnpjEmit,
             cpf_cnpj:       cnpjEmit,
-            tipo:           "fornecedor",
+            tipo:           cnpjEmit.length === 11 ? "pf" : "pj",
+            fornecedor:     true,
+            cliente:        false,
             importado_sieg: true,
           }).select("id").maybeSingle();
           pessoaId = nova?.id ?? null;

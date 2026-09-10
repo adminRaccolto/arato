@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarFazendasDaConta } from "../../../lib/db";
@@ -477,6 +478,7 @@ export default function EstoqueGraosPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+      <TopNav />
       {/* Header */}
       <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "14px 22px" }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Estoque de Grãos</div>

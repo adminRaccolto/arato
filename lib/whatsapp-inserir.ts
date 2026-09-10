@@ -2103,10 +2103,20 @@ async function inserirNovoFornecedor(dados: Record<string, unknown>, fazendaId: 
 
   const cnpj = String(dados.cnpj ?? "").replace(/\D/g, "");
   const tipo = cnpj.length === 11 ? "pf" : "pj";
+  const cnpjFmtBusca = cnpj.length === 14
+    ? cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+    : cnpj.length === 11 ? cnpj.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : cnpj;
 
+  // Busca raw + formatado, limit(1)+array — evita duplicar fornecedor já
+  // cadastrado com máscara e a falha silenciosa do maybeSingle() com duplicata
+  // pré-existente (achado de auditoria: mesmo padrão em 91 casos reais).
   if (cnpj) {
-    const { data: existente } = await sb().from("pessoas")
-      .select("id, nome").eq("fazenda_id", fazendaId).eq("cpf_cnpj", cnpj).maybeSingle();
+    const { data: existenteList } = await sb().from("pessoas")
+      .select("id, nome").eq("fazenda_id", fazendaId)
+      .or(`cpf_cnpj.eq.${cnpj},cpf_cnpj.eq.${cnpjFmtBusca}`)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const existente = existenteList?.[0] ?? null;
     if (existente) return { ok: true, mensagem: `ℹ️ Fornecedor já cadastrado: *${existente.nome}*` };
   }
 
@@ -2280,11 +2290,22 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   }
 
   // 1. Upsert Pessoa (fornecedor) por CNPJ; fallback por nome quando sem CNPJ
+  // Busca raw + formatado, limit(1)+array — sem isso, um fornecedor já
+  // cadastrado com máscara virava um novo duplicado a cada mensagem recebida
+  // sobre o mesmo fornecedor (achado real: 6 duplicados do mesmo fornecedor
+  // num único dia, via esse fluxo).
   let pessoaId: string | null = null;
   let pessoaNova = false;
   if (cnpj) {
-    const { data: existente } = await sb().from("pessoas")
-      .select("id").eq("fazenda_id", fazendaId).eq("cpf_cnpj", cnpj).maybeSingle();
+    const cnpjFmtBusca = cnpj.length === 14
+      ? cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+      : cnpj.length === 11 ? cnpj.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : cnpj;
+    const { data: existenteList } = await sb().from("pessoas")
+      .select("id").eq("fazenda_id", fazendaId)
+      .or(`cpf_cnpj.eq.${cnpj},cpf_cnpj.eq.${cnpjFmtBusca}`)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const existente = existenteList?.[0] ?? null;
     if (existente) {
       pessoaId = existente.id;
     } else {

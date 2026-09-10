@@ -38,6 +38,8 @@ type LinhaKardex = {
   tipo: "entrada" | "saida" | "ajuste" | "saldo_inicial";
   motivo?: string;
   nf_ref?: string;
+  nf_numero?: string;
+  nf_origem?: "sieg" | "xml" | "manual";
   ciclo_descricao?: string;
   entrada_qty: number;
   entrada_unit: number;
@@ -237,6 +239,23 @@ export default function Kardex() {
       }
     }
 
+    // Resolve NF (número + origem) para exibir documento legível em vez do UUID cru
+    const nfIds = [...new Set(resultado.map(l => l.nf_ref).filter((v): v is string => !!v))];
+    if (nfIds.length > 0) {
+      const { data: nfs } = await supabase
+        .from("nf_entradas")
+        .select("id, numero, origem")
+        .in("id", nfIds);
+      const nfMap = new Map((nfs ?? []).map(nf => [nf.id as string, nf as { numero: string; origem: string }]));
+      for (const l of resultado) {
+        if (l.nf_ref) {
+          const nf = nfMap.get(l.nf_ref);
+          l.nf_numero = nf?.numero ?? l.nf_ref.slice(0, 8) + "…";
+          l.nf_origem = (nf?.origem as "sieg" | "xml" | "manual" | undefined) ?? undefined;
+        }
+      }
+    }
+
     setLinhas(resultado);
     setCarregando(false);
     setGerado(true);
@@ -282,7 +301,8 @@ export default function Kardex() {
     const rows = linhas.map(l => ({
       "Data":              fmtDate(l.data),
       "Operação":          l.operacao,
-      "Origem":            origemTexto(l),
+      "Origem":            origemTipoTexto(l),
+      "Documento":         origemDocumentoTexto(l),
       "Entrada Qtd":       l.entrada_qty  || "",
       "Entrada Unit R$":   l.entrada_unit  ? fmt(l.entrada_unit)  : "",
       "Entrada Total R$":  l.entrada_total ? fmt(l.entrada_total) : "",
@@ -318,7 +338,7 @@ export default function Kardex() {
 
         {/* ── Cabeçalho ── */}
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)", padding: "18px 32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1400, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1800, margin: "0 auto" }}>
             <div>
               <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111111" }}>
                 Kardex — Ficha de Estoque
@@ -336,7 +356,7 @@ export default function Kardex() {
           </div>
         </div>
 
-        <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 32px" }}>
+        <div style={{ maxWidth: 1800, margin: "0 auto", padding: "24px 32px" }}>
 
           {/* ── Filtros ── */}
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 24, marginBottom: 20 }}>
@@ -447,19 +467,20 @@ export default function Kardex() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
-                        <th style={{ ...th, width: 85 }}>Data</th>
-                        <th style={{ ...th, textAlign: "left" }}>Operação</th>
-                        <th style={{ ...th, textAlign: "left" }}>Origem</th>
-                        <th style={{ ...th, width: 70 }}>E. Qtd</th>
-                        <th style={{ ...th, width: 90 }}>E. Unit R$</th>
-                        <th style={{ ...th, width: 100 }}>E. Total R$</th>
-                        <th style={{ ...th, width: 70 }}>S. Qtd</th>
-                        <th style={{ ...th, width: 90 }}>S. Unit R$</th>
-                        <th style={{ ...th, width: 100 }}>S. Total R$</th>
-                        <th style={{ ...th, width: 80 }}>Saldo Qtd</th>
-                        <th style={{ ...th, width: 90 }}>Custo Médio</th>
-                        <th style={{ ...th, width: 105 }}>Saldo Total</th>
-                        <th style={{ ...th, textAlign: "left", width: 110 }}>Usuário</th>
+                        <th style={{ ...th, width: 95 }}>Data</th>
+                        <th style={{ ...th, textAlign: "left", width: 160 }}>Operação</th>
+                        <th style={{ ...th, textAlign: "left", width: 130 }}>Origem</th>
+                        <th style={{ ...th, textAlign: "left" }}>Documento</th>
+                        <th style={{ ...th, width: 85 }}>E. Qtd</th>
+                        <th style={{ ...th, width: 100 }}>E. Unit R$</th>
+                        <th style={{ ...th, width: 115 }}>E. Total R$</th>
+                        <th style={{ ...th, width: 85 }}>S. Qtd</th>
+                        <th style={{ ...th, width: 100 }}>S. Unit R$</th>
+                        <th style={{ ...th, width: 115 }}>S. Total R$</th>
+                        <th style={{ ...th, width: 95 }}>Saldo Qtd</th>
+                        <th style={{ ...th, width: 105 }}>Custo Médio</th>
+                        <th style={{ ...th, width: 120 }}>Saldo Total</th>
+                        <th style={{ ...th, textAlign: "left", width: 130 }}>Usuário</th>
                         <th style={{ ...th, width: 46 }}></th>
                       </tr>
                     </thead>
@@ -475,23 +496,22 @@ export default function Kardex() {
                             </div>
                           </td>
 
-                          {/* Origem */}
+                          {/* Origem — tipo da movimentação (Sieg/XML/Manual/Safra/etc.) */}
                           <td style={{ ...td, paddingLeft: 10 }}>
                             {l.tipo === "saldo_inicial" ? (
                               <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>
                             ) : l.nf_ref ? (
-                              <a href="/compras/nf" target="_blank" title={`Ver NF ${l.nf_ref}`}
-                                style={{ color: "#1A4870", fontWeight: 600, fontSize: 11, textDecoration: "none", background: "#D5E8F5", padding: "2px 8px", borderRadius: 5, display: "inline-block", whiteSpace: "nowrap" }}>
-                                📄 NF {l.nf_ref.length > 20 ? l.nf_ref.slice(0, 8) + "…" : l.nf_ref}
-                              </a>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: l.nf_origem ? ORIGEM_NF_LABEL[l.nf_origem].cor : "#1A4870", whiteSpace: "nowrap" }}>
+                                {l.nf_origem ? ORIGEM_NF_LABEL[l.nf_origem].icone : "📄"} {l.nf_origem ? ORIGEM_NF_LABEL[l.nf_origem].label : "NF"}
+                              </span>
                             ) : l.ciclo_descricao ? (
-                              <span style={{ fontSize: 11, color: "#16A34A", whiteSpace: "nowrap" }}>🌱 {l.ciclo_descricao}</span>
+                              <span style={{ fontSize: 11, color: "#16A34A", whiteSpace: "nowrap" }}>🌱 Safra</span>
                             ) : l.motivo === "transferencia" ? (
                               <span style={{ fontSize: 11, color: "#378ADD" }}>🔄 Transferência</span>
                             ) : l.motivo === "abastecimento" ? (
                               <span style={{ fontSize: 11, color: "var(--text-2)" }}>⛽ Abastecimento</span>
                             ) : l.motivo === "baixa_uso" ? (
-                              <span style={{ fontSize: 11, color: "#16A34A" }}>🌿 Aplicação campo</span>
+                              <span style={{ fontSize: 11, color: "#16A34A" }}>🌿 Campo</span>
                             ) : l.motivo === "baixa_perda" ? (
                               <span style={{ fontSize: 11, color: "#E24B4A" }}>⚠ Perda</span>
                             ) : l.motivo === "ajuste_saldo" || l.tipo === "ajuste" ? (
@@ -499,7 +519,23 @@ export default function Kardex() {
                             ) : l.motivo === "inventario" ? (
                               <span style={{ fontSize: 11, color: "#7A5A12" }}>📦 Inventário</span>
                             ) : (
-                              <span style={{ fontSize: 11, color: "var(--text-3)" }}>{l.obs ? l.obs.slice(0, 40) : "—"}</span>
+                              <span style={{ fontSize: 11, color: "var(--text-3)" }}>Outros</span>
+                            )}
+                          </td>
+
+                          {/* Documento — número da NF (não o UUID) ou descrição do motivo */}
+                          <td style={{ ...td, paddingLeft: 10 }}>
+                            {l.tipo === "saldo_inicial" ? (
+                              <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>
+                            ) : l.nf_ref ? (
+                              <a href="/compras/nf" target="_blank" title={`Ver NF ${l.nf_numero ?? l.nf_ref}`}
+                                style={{ color: "#1A4870", fontWeight: 600, fontSize: 11, textDecoration: "none", background: "#D5E8F5", padding: "2px 8px", borderRadius: 5, display: "inline-block", whiteSpace: "nowrap" }}>
+                                📄 NF {l.nf_numero ?? l.nf_ref.slice(0, 8) + "…"}
+                              </a>
+                            ) : l.ciclo_descricao ? (
+                              <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{l.ciclo_descricao}</span>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "var(--text-3)" }}>{l.obs ? l.obs.slice(0, 50) : "—"}</span>
                             )}
                           </td>
 
@@ -546,17 +582,27 @@ export default function Kardex() {
                               <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>Sistema</span>
                             )}
                           </td>
-                          {/* Excluir */}
+                          {/* Excluir — bloqueado quando a movimentação vem de uma NF: excluir só o
+                              lançamento de estoque deixaria a NF "processada" com CP e itens intactos,
+                              dessincronizado do estoque real. Nesses casos, usar Estornar na própria NF. */}
                           <td style={{ ...td, textAlign: "center", padding: "4px 6px" }}>
                             {l.id && l.tipo !== "saldo_inicial" && (
-                              <button
-                                onClick={() => excluirMovimento(l.id!, insumoId)}
-                                disabled={excluindo.has(l.id)}
-                                title="Excluir lançamento"
-                                style={{ background: "none", border: "none", cursor: excluindo.has(l.id) ? "wait" : "pointer", color: "#E24B4A", fontSize: 15, padding: "2px 4px", opacity: excluindo.has(l.id) ? 0.4 : 0.6, lineHeight: 1 }}
-                              >
-                                🗑
-                              </button>
+                              l.nf_ref ? (
+                                <a href="/compras/nf" target="_blank"
+                                  title="Esta movimentação vem de uma NF processada. Para desfazer com segurança (estoque + CP + status), use 'Estornar' na tela de NF de Produtos — excluir aqui deixaria a NF inconsistente."
+                                  style={{ color: "var(--text-3)", fontSize: 14, padding: "2px 4px", opacity: 0.6, textDecoration: "none" }}>
+                                  🔒
+                                </a>
+                              ) : (
+                                <button
+                                  onClick={() => excluirMovimento(l.id!, insumoId)}
+                                  disabled={excluindo.has(l.id)}
+                                  title="Excluir lançamento"
+                                  style={{ background: "none", border: "none", cursor: excluindo.has(l.id) ? "wait" : "pointer", color: "#E24B4A", fontSize: 15, padding: "2px 4px", opacity: excluindo.has(l.id) ? 0.4 : 0.6, lineHeight: 1 }}
+                                >
+                                  🗑
+                                </button>
+                              )
                             )}
                           </td>
                         </tr>
@@ -566,7 +612,7 @@ export default function Kardex() {
                     {linhas.length > 1 && (
                       <tfoot>
                         <tr style={{ background: "#111111", color: "#fff" }}>
-                          <td colSpan={3} style={{ ...td, fontWeight: 700, paddingLeft: 14, color: "#fff" }}>TOTAIS DO PERÍODO</td>
+                          <td colSpan={4} style={{ ...td, fontWeight: 700, paddingLeft: 14, color: "#fff" }}>TOTAIS DO PERÍODO</td>
 
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#86EFAC" }}>{fmtQty(qtdEntradas)}</td>
                           <td style={{ ...td }}></td>
@@ -618,16 +664,29 @@ export default function Kardex() {
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function origemTexto(l: LinhaKardex): string {
+const ORIGEM_NF_LABEL: Record<string, { icone: string; label: string; cor: string }> = {
+  sieg:   { icone: "📡", label: "Sieg",   cor: "#1A4870" },
+  xml:    { icone: "📄", label: "XML",    cor: "#378ADD" },
+  manual: { icone: "✍",  label: "Manual", cor: "#7A5A12" },
+};
+
+function origemTipoTexto(l: LinhaKardex): string {
   if (l.tipo === "saldo_inicial") return "—";
-  if (l.nf_ref) return `NF ${l.nf_ref}`;
-  if (l.ciclo_descricao) return `Safra: ${l.ciclo_descricao}`;
+  if (l.nf_ref) return l.nf_origem ? ORIGEM_NF_LABEL[l.nf_origem].label : "NF";
+  if (l.ciclo_descricao) return "Safra";
   if (l.motivo === "transferencia") return "Transferência";
   if (l.motivo === "abastecimento") return "Abastecimento";
   if (l.motivo === "baixa_uso") return "Aplicação campo";
   if (l.motivo === "baixa_perda") return "Perda";
   if (l.motivo === "ajuste_saldo" || l.tipo === "ajuste") return "Ajuste manual";
   if (l.motivo === "inventario") return "Inventário";
+  return "Outros";
+}
+
+function origemDocumentoTexto(l: LinhaKardex): string {
+  if (l.tipo === "saldo_inicial") return "—";
+  if (l.nf_ref) return l.nf_numero ?? l.nf_ref;
+  if (l.ciclo_descricao) return l.ciclo_descricao;
   return l.obs?.slice(0, 50) ?? "—";
 }
 

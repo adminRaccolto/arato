@@ -9,6 +9,19 @@ const sb = () =>
     { auth: { persistSession: false } }
   );
 
+// Mesma normalização de lib/db.ts (criarInsumo) — mantidas em sincronia.
+// Sem confirm() nesta rota (sem contexto de navegador): em vez de bloquear,
+// reaproveita o insumo já existente para não criar duplicado silenciosamente.
+function normalizarNomeInsumo(nome: string): string {
+  return nome
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(de|do|da|dos|das)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -18,6 +31,14 @@ export async function POST(req: NextRequest) {
     if (!acesso.ok) return NextResponse.json({ erro: acesso.error }, { status: acesso.status });
 
     const supabase = sb();
+
+    if (body.nome) {
+      const { data: existentes } = await supabase.from("insumos").select("*").eq("fazenda_id", body.fazenda_id);
+      const alvoNorm = normalizarNomeInsumo(body.nome);
+      const parecido = (existentes ?? []).find(e => normalizarNomeInsumo(e.nome) === alvoNorm);
+      if (parecido) return NextResponse.json({ ...parecido, _reaproveitado: true });
+    }
+
     const { data, error } = await supabase.from("insumos").insert(body).select().single();
     if (error) return NextResponse.json({ erro: error.message }, { status: 400 });
 

@@ -682,6 +682,17 @@ export default function NfCompraPage() {
     listarCiclos(cab.ano_safra_id, fazendaId).then(setCiclosNF).catch(() => setCiclosNF([]));
   }, [cab.ano_safra_id, fazendaId]);
 
+  // Reforço do auto-preenchimento de Produtor: se wProdutores só termina de carregar
+  // DEPOIS que a NF já foi aberta (abrirEditar roda antes do re-render refletir o
+  // fetch), o cálculo original ficou com array vazio. Assim que wProdutores chega,
+  // tenta de novo — só se o campo ainda estiver vazio, para não sobrescrever escolha manual.
+  useEffect(() => {
+    if (!nfEdit || cab.produtor_id || !cab.cnpj_destino || wProdutores.length === 0) return;
+    const encontrado = produtorPorCnpj(cab.cnpj_destino);
+    if (encontrado) setCab(p => ({ ...p, produtor_id: encontrado }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wProdutores, nfEdit, cab.cnpj_destino]);
+
   // Carrega IEs do produtor selecionado
   useEffect(() => {
     if (!cab.produtor_id) { setIesProdutor([]); setCab(p => ({ ...p, ie_produtor: "" })); return; }
@@ -909,6 +920,11 @@ export default function NfCompraPage() {
 
   // ── Abrir edição ──────────────────────────────────────────
   async function abrirEditar(nf: NfEntrada) {
+    // Garante wProdutores (e demais dados auxiliares) carregados antes de abrir —
+    // achado real: abrir uma NF direto da lista (sem passar pelo fluxo de "nova NF")
+    // nunca disparava esse carregamento, então produtorPorCnpj() abaixo rodava
+    // contra um array vazio e nunca auto-preenchia o Produtor.
+    await carregarWizardData(nf.fazenda_id ?? fazendaId ?? "");
     setNfEdit(nf);
     setOrig((nf.origem ?? "manual") as OrigEscolha);
     // "combustivel" não é um TipoEntrada base — mapeia para "insumos" + e_combustivel=true
@@ -1488,6 +1504,24 @@ export default function NfCompraPage() {
         },
       );
 
+      // 2b. Verificação de integridade — confirma que o lançamento financeiro (CP)
+      // foi realmente criado antes de marcar a NF como processada. Achado real:
+      // uma NF ficou "processada", com estoque e itens ok, mas sem nenhum CP
+      // vinculado — silenciosamente. NF só de remessa não gera CP (esperado);
+      // qualquer outro caso sem CP/emp_lancamento agora é bloqueado aqui em vez
+      // de deixar a NF marcada como concluída de forma enganosa.
+      const temApenasRemessa = itensDB.length > 0 && itensDB.every(i => i.tipo_apropiacao === "remessa");
+      if (!temApenasRemessa) {
+        const { data: nfPosProc } = await supabase
+          .from("nf_entradas")
+          .select("lancamento_id, emp_lancamento_id")
+          .eq("id", nfEdit.id)
+          .single();
+        if (!nfPosProc?.lancamento_id && !nfPosProc?.emp_lancamento_id) {
+          throw new Error("O estoque foi movimentado, mas o lançamento financeiro (CP) não foi criado. A NF NÃO foi marcada como processada — tente novamente; se o erro persistir, avise o suporte antes de reprocessar.");
+        }
+      }
+
       // 3. Marcar como processada
       await atualizarNfEntrada(nfEdit.id, { status: "processada", processado_por: nomeUsuario ?? undefined });
 
@@ -1967,9 +2001,22 @@ export default function NfCompraPage() {
   }
 
   // ── Auto-fill emitente quando pessoa selecionada ─────────
+  // Alerta se a pessoa escolhida tiver CPF/CNPJ diferente do emitente já
+  // capturado do XML — evita vincular a NF ao fornecedor errado (achado real:
+  // NF de Luiz Fiorese ficou classificada como "Quati S.A." por seleção equivocada).
   function onPessoaChange(id: string) {
     const p = pessoas.find(x => x.id === id);
     if (p) {
+      const cnpjXml = (cab.emitente_cnpj ?? "").replace(/\D/g, "");
+      const cnpjPessoa = (p.cpf_cnpj ?? "").replace(/\D/g, "");
+      if (cnpjXml && cnpjPessoa && cnpjXml !== cnpjPessoa) {
+        const confirmado = confirm(
+          `Atenção: o CPF/CNPJ do emitente capturado nesta NF (${cab.emitente_cnpj}) é diferente do CPF/CNPJ de "${p.nome}" (${p.cpf_cnpj}).\n\n` +
+          `Selecionar esta pessoa vai vincular a NF a um fornecedor diferente do que realmente emitiu o documento.\n\n` +
+          `Confirma mesmo assim?`
+        );
+        if (!confirmado) return;
+      }
       setCab(prev => ({
         ...prev,
         pessoa_id:     id,

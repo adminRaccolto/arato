@@ -370,10 +370,25 @@ export async function listarInsumosParaConta(contaIdDireto?: string | null, faze
   return data ?? [];
 }
 
+// Normaliza nome de insumo para comparação: remove acento, caixa, pontuação e
+// artigos comuns ("de"/"do"/"da") — pega duplicatas como "SEM. SOJA BRS 8381"
+// vs "SEM. DE SOJA BRS 8381" que uma comparação exata (ilike) não detecta.
+function normalizarNomeInsumo(nome: string): string {
+  return nome
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(de|do|da|dos|das)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise<Insumo> {
-  const { data: existente } = await supabase.from("insumos")
-    .select("id").eq("fazenda_id", i.fazenda_id).ilike("nome", i.nome).maybeSingle();
-  if (existente && !confirm(`Já existe um insumo/produto chamado "${i.nome}". Cadastrar mesmo assim?`)) {
+  const { data: existentes } = await supabase.from("insumos")
+    .select("id, nome").eq("fazenda_id", i.fazenda_id);
+  const alvoNorm = normalizarNomeInsumo(i.nome);
+  const parecido = (existentes ?? []).find(e => normalizarNomeInsumo(e.nome) === alvoNorm);
+  if (parecido && !confirm(`Já existe um insumo parecido: "${parecido.nome}". Cadastrar "${i.nome}" mesmo assim vai criar um duplicado no catálogo — considere usar o já existente. Cadastrar mesmo assim?`)) {
     throw new Error("Cadastro cancelado.");
   }
   const { data, error } = await supabase.from("insumos").insert(i).select().single();
@@ -1334,8 +1349,19 @@ export async function listarContasBancariasDaConta(fazenda_id_fallback?: string 
 }
 export async function criarPessoa(p: Omit<Pessoa, "id" | "created_at">): Promise<Pessoa> {
   if (p.cpf_cnpj) {
-    const { data: existente } = await supabase.from("pessoas")
-      .select("*").eq("fazenda_id", p.fazenda_id).eq("cpf_cnpj", p.cpf_cnpj).maybeSingle();
+    // Compara por dígitos puros e formatado, limit(1)+array em vez de
+    // maybeSingle() — mesmo padrão de bug encontrado em auditoria (91
+    // fornecedores duplicados por comparação exata de string).
+    const docRaw = p.cpf_cnpj.replace(/\D/g, "");
+    const docFmt = docRaw.length === 14
+      ? docRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+      : docRaw.length === 11 ? docRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : docRaw;
+    const { data: existenteList } = await supabase.from("pessoas")
+      .select("*").eq("fazenda_id", p.fazenda_id)
+      .or(`cpf_cnpj.eq.${docRaw},cpf_cnpj.eq.${docFmt}`)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const existente = existenteList?.[0] ?? null;
     if (existente) {
       if (confirm(`Já existe um cadastro com esse CPF/CNPJ: "${existente.nome}".\n\nUsar o cadastro existente em vez de criar um novo?`)) {
         return existente;
@@ -2397,13 +2423,20 @@ export async function processarNfEntrada(
   // ── Pessoa: lookup por CNPJ ou auto-cria fornecedor ──────────────────────
   // pessoas.cpf_cnpj pode estar formatado ("06.315.338/0226-00") ou raw ("06315338022600")
   // dependendo da origem do cadastro. Busca por ambos os formatos.
+  // limit(1) + array em vez de maybeSingle(): se já existir mais de uma pessoa
+  // com o mesmo CPF/CNPJ (duplicata legada), maybeSingle() falha silenciosamente
+  // (PGRST116) e o código antigo entendia isso como "não encontrado" — criando
+  // mais um duplicado a cada NF processada. Achado real: 91 fornecedores
+  // duplicados no catálogo por causa exatamente desse padrão.
   let pessoaId: string | null = null;
   if (cnpjRaw) {
-    const { data: pesExist } = await supabase
+    const { data: pesExistList } = await supabase
       .from("pessoas").select("id")
       .eq("fazenda_id", fazenda_id)
       .or(`cpf_cnpj.eq.${cnpjRaw},cpf_cnpj.eq.${cnpjFmt}`)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const pesExist = pesExistList?.[0] ?? null;
     if (pesExist) {
       pessoaId = pesExist.id;
     } else {
@@ -2601,7 +2634,8 @@ export async function processarNfEntrada(
   }
 
   // Marca NF como processada (e vincula pessoa + lancamento em um único update)
-  await supabase.from("nf_entradas").update(nfUpdates).eq("id", nfId);
+  const { error: nfUpdateErr } = await supabase.from("nf_entradas").update(nfUpdates).eq("id", nfId);
+  if (nfUpdateErr) throw nfUpdateErr;
 }
 
 // Verifica se uma NF pode ser excluída e retorna o status do lançamento associado

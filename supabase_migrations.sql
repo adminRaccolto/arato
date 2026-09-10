@@ -12111,4 +12111,118 @@ CREATE POLICY "allow_all_lcdpr_contador" ON lcdpr_contador FOR ALL USING (true) 
 
 NOTIFY pgrst, 'reload schema';
 
+-- ============================================================
+-- Seção 245 — Consolidação do CFOP fragmentado (Fase 5 do
+-- roadmap LCDPR/Fiscal). Unifica em `operacoes_fiscais` os 2
+-- sistemas hardcoded que hoje decidem CFOP de verdade
+-- (app/contratos/page.tsx e app/comercial/faturamento/page.tsx)
+-- + o que já existia em Configurações (órfão até aqui).
+-- `codigo` é o identificador estável usado pelas telas; NÃO
+-- corresponde a nenhuma coluna persistida em `contratos` (que só
+-- guarda `cfop` e `natureza_operacao` como texto livre) — logo
+-- nenhuma venda em andamento é afetada por esta migration.
+-- ============================================================
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS codigo TEXT;
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS grupo TEXT NOT NULL DEFAULT 'Vendas';
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS tipo_pessoa TEXT CHECK (tipo_pessoa IN ('pf','pj') OR tipo_pessoa IS NULL);
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS cfop_tipo_interno TEXT;
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS cfop_tipo_externo TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_op_fiscais_fazenda_codigo
+  ON operacoes_fiscais(fazenda_id, codigo) WHERE codigo IS NOT NULL;
+
+-- Backfill idempotente: 17 operações canônicas, uma vez por fazenda existente.
+-- Funde os pares intra/inter que existiam como entradas duplicadas em
+-- app/contratos/page.tsx (ex: VPE-PF / VPE-PF-INTRA → uma linha só, com
+-- cfop_interno e cfop_externo). Textos jurídicos preservados verbatim das
+-- fontes originais (NATUREZAS_VENDA / NATUREZAS_OPERACAO) — nenhuma citação
+-- legal nova foi inventada nesta consolidação.
+INSERT INTO operacoes_fiscais (
+  fazenda_id, codigo, nome, descricao, grupo, tipo_pessoa,
+  cfop_interno, cfop_externo, cfop_tipo_interno, cfop_tipo_externo,
+  icms_cst_interno, icms_cst_externo, icms_aliq, icms_base_reduzida_pct,
+  ibs_cbs_imune, ibs_cbs_reducao_pct, inf_cpl_template, ativa
+)
+SELECT f.id, v.codigo, v.nome, v.descricao, v.grupo, v.tipo_pessoa,
+       v.cfop_interno, v.cfop_externo, v.cfop_tipo_interno, v.cfop_tipo_externo,
+       v.icms_cst_interno, v.icms_cst_externo, v.icms_aliq, v.icms_base_reduzida_pct,
+       v.ibs_cbs_imune, v.ibs_cbs_reducao_pct, v.inf_cpl_template, true
+FROM fazendas f
+CROSS JOIN (VALUES
+  ('VPE-PF', 'Venda de Produção — Produtor PF', 'Venda de produção própria a comprador dentro (5101) ou fora (6101) do estado — Pessoa Física', 'Vendas', 'pf',
+   '5101', '6101', 'venda_interna_pf', 'venda_interestadual_pf', '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'ICMS diferido conforme legislação estadual aplicável ao produtor rural. Isento de PIS/COFINS conforme art. 10, inciso VI da Lei 10.925/2004. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.'),
+
+  ('VPE-PJ', 'Venda de Produção — Produtor PJ', 'Venda de produção própria a comprador dentro (5101) ou fora (6101) do estado — Pessoa Jurídica', 'Vendas', 'pj',
+   '5101', '6101', 'venda_interna_pj', 'venda_interestadual_pj', '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'ICMS diferido conforme legislação estadual aplicável ao produtor rural.'),
+
+  ('VMT', 'Venda de Mercadoria de Terceiros', 'Revenda de grão adquirido de terceiros (não produção própria) a comprador dentro (5102) ou fora (6102) do estado', 'Vendas', NULL,
+   '5102', '6102', NULL, NULL, '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'Revenda de grão adquirido de terceiros. ICMS Diferido nas operações internas; base de cálculo reduzida nas interestaduais.'),
+
+  ('VFE-PF', 'Venda Fim Específico de Exportação — PF', 'Venda a trading exportadora dentro (5501) ou fora (6501) do estado — Pessoa Física. Operação mais comum em MT.', 'Exportação', 'pf',
+   '5501', '6501', 'exportacao_fim_espec_interna', 'exportacao_fim_espec_pf', '040', '040', 0::numeric, 100::numeric, true, 100::numeric,
+   'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88. Funrural retido pelo adquirente nos termos do art. 25 da Lei 8.212/1991.'),
+
+  ('VFE-PJ', 'Venda Fim Específico de Exportação — PJ', 'Venda a trading exportadora dentro (5501) ou fora (6501) do estado — Pessoa Jurídica', 'Exportação', 'pj',
+   '5501', '6501', 'exportacao_fim_espec_interna', 'exportacao_fim_espec_pj', '040', '040', 0::numeric, 100::numeric, true, 100::numeric,
+   'Venda com fim específico de exportação. ICMS suspenso conforme art. 7º, inciso II da Lei Complementar 87/1996 e legislação estadual. PIS/COFINS imunes conforme art. 149-A da CF/88.'),
+
+  ('VFE-TER', 'Venda Fim Específico de Exportação — Mercadoria de Terceiros', 'Venda de grão adquirido de terceiros (não produção própria) a trading exportadora (CFOP 6502)', 'Exportação', NULL,
+   '6502', '6502', NULL, NULL, '040', '040', 0::numeric, 100::numeric, true, 100::numeric,
+   'Venda de grão adquirido de terceiros para trading exportadora. ICMS suspenso conforme art. 7º, inciso II da LC 87/1996.'),
+
+  ('EXP', 'Exportação Direta pelo Produtor', 'Produtor exporta diretamente ao exterior (CFOP 7101). Exige RE e DU-E no SISCOMEX.', 'Exportação', NULL,
+   '7101', '7101', NULL, NULL, '040', '040', 0::numeric, 100::numeric, true, 100::numeric,
+   'Exportação direta. Operação imune de ICMS, PIS, COFINS e Funrural conforme art. 149-A da CF/88 e art. 14 da Lei 11.945/2009.'),
+
+  ('EXP-TER', 'Exportação Direta — Mercadoria de Terceiros', 'Exportação direta de mercadoria adquirida de terceiros (CFOP 7102). Exige RE e DU-E.', 'Exportação', NULL,
+   '7102', '7102', NULL, NULL, '040', '040', 0::numeric, 100::numeric, true, 100::numeric,
+   'Exportação direta de mercadoria de terceiros. Imune de ICMS, PIS, COFINS conforme art. 149-A da CF/88. Exige RE e DU-E no SISCOMEX.'),
+
+  ('VO', 'Venda à Ordem — Produção Própria', 'NF de venda ao comprador final em operação triangular, dentro (5118) ou fora (6118) do estado — o armazém/depositário emite a remessa simbólica (ver "RVO")', 'Venda à Ordem', NULL,
+   '5118', '6118', NULL, NULL, '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'Operação triangular: NF de venda ao comprador final. O armazém/depositário emite NF de remessa simbólica em separado, por conta e ordem do produtor. ICMS diferido conforme legislação estadual. Funrural e Fundeinfra incidem normalmente.'),
+
+  ('VO-TER', 'Venda à Ordem — Mercadoria de Terceiros', 'NF de venda ao comprador final (CFOP 6118), grão adquirido de terceiros, entregue por conta e ordem', 'Venda à Ordem', NULL,
+   '6118', '6118', NULL, NULL, '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'Venda de grão adquirido de terceiros, entregue ao comprador final por conta e ordem. NF de remessa emitida em separado pelo depositário.'),
+
+  ('RVO', 'Remessa para Venda à Ordem', 'NF de remessa simbólica emitida pelo armazém/depositário ao comprador final (CFOP 6119), por conta e ordem do produtor', 'Remessas', NULL,
+   '6119', '6119', NULL, 'venda_a_ordem', '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'Venda à ordem — operação triangular. ICMS diferido conforme legislação estadual aplicável ao produtor rural.'),
+
+  ('REF', 'Remessa Simbólica — Entrega Futura', 'Faturamento antecipado, sem movimentação física de mercadoria (CFOP 6117). Entrega real ocorre depois.', 'Remessas', NULL,
+   '6117', '6117', NULL, 'faturamento_antecipado', '051', '051', 12::numeric, 100::numeric, false, 100::numeric,
+   'Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido conforme legislação estadual aplicável ao produtor rural.'),
+
+  ('RAG', 'Remessa/Retorno de Armazém Geral', 'Depósito (5905/6905) e retorno (5906/6906) em armazém de terceiros. Não é venda — não gera receita nem Funrural.', 'Remessas', NULL,
+   '5905', '6905', NULL, NULL, '051', '051', 12::numeric, 100::numeric, false, 100::numeric,
+   'Remessa para depósito em armazém geral. Operação não configura venda. Não incide ICMS, PIS, COFINS nem Funrural. ICMS diferido conforme RICMS estadual.'),
+
+  ('TAG', 'Retorno de Armazém Geral', 'Retorno de mercadoria depositada em armazém geral, dentro (5906) ou fora (6906) do estado', 'Remessas', NULL,
+   '5906', '6906', NULL, NULL, '051', '051', 12::numeric, 100::numeric, false, 100::numeric,
+   'Retorno de mercadoria depositada em armazém geral. Natureza espelho da remessa. Não incide tributo.'),
+
+  ('TRF', 'Transferência entre Estabelecimentos', 'Transferência entre fazendas/filiais do mesmo CNPJ ou grupo (CFOP 6151). Não é venda.', 'Remessas', NULL,
+   '6151', '6151', NULL, NULL, '051', '051', 0::numeric, 100::numeric, false, 100::numeric,
+   'Transferência entre fazendas/filiais do mesmo CNPJ ou grupo econômico. Não constitui venda — não gera receita nem Funrural.'),
+
+  ('DEV-VP', 'Devolução de Venda de Produção', 'Devolução de mercadoria originada em venda de produção própria, dentro (1201) ou fora (2201) do estado', 'Devolução', NULL,
+   '1201', '2201', NULL, NULL, '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'Devolução de mercadoria originada em venda de produção. ICMS diferido estornado conforme emissão original. Funrural não incide sobre devolução.'),
+
+  ('DEV-MA', 'Devolução de Mercadoria Adquirida', 'Devolução de mercadoria adquirida para comercialização, dentro (1202) ou fora (2202) do estado', 'Devolução', NULL,
+   '1202', '2202', NULL, NULL, '051', '020', 12::numeric, 61.11::numeric, false, 60::numeric,
+   'Devolução de mercadoria adquirida para comercialização.')
+) AS v(codigo, nome, descricao, grupo, tipo_pessoa, cfop_interno, cfop_externo, cfop_tipo_interno, cfop_tipo_externo,
+       icms_cst_interno, icms_cst_externo, icms_aliq, icms_base_reduzida_pct, ibs_cbs_imune, ibs_cbs_reducao_pct, inf_cpl_template)
+WHERE NOT EXISTS (
+  SELECT 1 FROM operacoes_fiscais existing
+  WHERE existing.fazenda_id = f.id AND existing.codigo = v.codigo
+);
+
+NOTIFY pgrst, 'reload schema';
+
 

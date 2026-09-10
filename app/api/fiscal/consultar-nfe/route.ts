@@ -31,12 +31,22 @@ async function upsertFornecedor(
 ): Promise<string | null> {
   const supabase = sb();
   const cnpjLimpo = cnpj.replace(/\D/g, "");
+  const cnpjFmt = cnpjLimpo.length === 14
+    ? cnpjLimpo.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+    : cnpjLimpo.length === 11
+      ? cnpjLimpo.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+      : cnpjLimpo;
 
-  const { data: existente } = await supabase.from("pessoas")
+  // Compara raw + formatado, limit(1)+array em vez de maybeSingle() — mesma
+  // classe de bug encontrada em auditoria (91 fornecedores duplicados por
+  // comparação exata de string sem considerar máscara ou duplicata pré-existente).
+  const { data: existenteList } = await supabase.from("pessoas")
     .select("id, municipio, logradouro, cnae")
     .eq("fazenda_id", fazendaId)
-    .eq("cpf_cnpj", cnpjLimpo)
-    .maybeSingle();
+    .or(`cpf_cnpj.eq.${cnpjLimpo},cpf_cnpj.eq.${cnpjFmt}`)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  const existente = existenteList?.[0] ?? null;
 
   if (existente) {
     // Atualiza campos vazios sem sobrescrever dados já preenchidos

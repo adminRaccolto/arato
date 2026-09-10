@@ -214,14 +214,20 @@ export async function emitirNFe(
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal não encontrada para ${moduloKey}` };
 
   // Fallback: IBGE do destinatário em branco → busca no cadastro de Pessoas pelo CPF/CNPJ
+  // Compara raw + formatado, limit(1)+array — cadastros com máscara não batiam
+  // no match exato por dígitos (mesma classe de bug da auditoria de duplicatas).
   if (!input.destinatario.municipio_ibge && input.destinatario.cpf_cnpj) {
     const digits = input.destinatario.cpf_cnpj.replace(/\D/g, "");
-    const { data: pess } = await sb()
+    const digitsFmt = digits.length === 14
+      ? digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+      : digits.length === 11 ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : digits;
+    const { data: pessList } = await sb()
       .from("pessoas")
       .select("municipio_ibge, municipio, estado, cep")
       .eq("fazenda_id", fazendaId)
-      .eq("cpf_cnpj", digits)
-      .maybeSingle();
+      .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`)
+      .limit(1);
+    const pess = pessList?.[0] ?? null;
     if (pess?.municipio_ibge) {
       input = {
         ...input,
