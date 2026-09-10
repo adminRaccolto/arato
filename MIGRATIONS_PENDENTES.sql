@@ -1544,3 +1544,25 @@ ALTER TABLE transferencias_estoque
   ADD COLUMN IF NOT EXISTS veiculo_id        UUID REFERENCES veiculos(id)        ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS motorista_id      UUID REFERENCES motoristas(id)      ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS frete_conta       TEXT DEFAULT '9';  -- 0=emitente 1=dest 2=terc 9=sem frete
+
+
+-- ══════════════════════════════════════════════════════════════════
+-- ciclo_id em movimentacoes_estoque (DRE por ciclo + Kardex)
+-- ══════════════════════════════════════════════════════════════════
+ALTER TABLE movimentacoes_estoque
+  ADD COLUMN IF NOT EXISTS ciclo_id UUID REFERENCES ciclos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_mov_ciclo ON movimentacoes_estoque(ciclo_id)
+  WHERE ciclo_id IS NOT NULL;
+
+
+-- ══════════════════════════════════════════════════════════════════
+-- colheita_id + status em_pesagem em romaneios_entrada
+-- ══════════════════════════════════════════════════════════════════
+ALTER TABLE romaneios_entrada
+  ADD COLUMN IF NOT EXISTS colheita_id UUID REFERENCES colheitas(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_rom_entrada_colheita ON romaneios_entrada(colheita_id)
+  WHERE colheita_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

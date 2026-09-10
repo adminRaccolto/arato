@@ -593,7 +593,7 @@ export default function Estoque() {
       ]);
       setKardexMovs(movs);
       setKardexMovsAntes(movsAntes);
-    } catch { /* ignore */ }
+    } catch (e) { alert("Erro ao buscar movimentações: " + (e as Error).message); }
     setKardexBuscando(false);
   };
 

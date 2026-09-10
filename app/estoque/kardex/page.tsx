@@ -31,6 +31,7 @@ function MONTH_START() {
 type MovComCiclo = MovimentacaoEstoque & { ciclos?: { descricao: string } | null };
 
 type LinhaKardex = {
+  id?: string;           // movimentacoes_estoque.id (ausente em saldo_inicial)
   data: string;
   documento: string;
   operacao: string;
@@ -66,6 +67,7 @@ export default function Kardex() {
   const [linhas,       setLinhas]       = useState<LinhaKardex[]>([]);
   const [carregando,   setCarregando]   = useState(false);
   const [gerado,       setGerado]       = useState(false);
+  const [excluindo,    setExcluindo]    = useState<Set<string>>(new Set());
 
   // Carrega insumos e depósitos de TODAS as fazendas da conta
   const fazendaIdsKey = fazendaIds.join(",");
@@ -167,6 +169,7 @@ export default function Kardex() {
         saldo_qty       = novaQtd;
 
         resultado.push({
+          id:            m.id,
           data:          m.data.slice(0, 10),
           documento:     nf_ref ?? m.motivo ?? "—",
           operacao:      labelMotivo(m.motivo ?? "entrada"),
@@ -191,6 +194,7 @@ export default function Kardex() {
         saldo_qty       = Math.max(0, saldo_qty - qty_saida);
 
         resultado.push({
+          id:            m.id,
           data:          m.data.slice(0, 10),
           documento:     nf_ref ?? m.operacao ?? "—",
           operacao:      labelMotivo(m.motivo ?? "saida"),
@@ -216,6 +220,7 @@ export default function Kardex() {
         cm          = saldo_qty > 0 ? custo_total / saldo_qty : cm;
 
         resultado.push({
+          id:            m.id,
           data:          m.data.slice(0, 10),
           documento:     "Ajuste",
           operacao:      "Ajuste de Inventário",
@@ -245,6 +250,29 @@ export default function Kardex() {
   const cmFinal         = linhas[linhas.length - 1]?.custo_medio ?? 0;
   const qtdEntradas     = linhas.reduce((s, l) => s + l.entrada_qty, 0);
   const qtdSaidas       = linhas.reduce((s, l) => s + l.saida_qty,   0);
+
+  async function excluirMovimento(id: string, insumoIdAlvo: string) {
+    if (!confirm("Excluir este lançamento? O saldo físico será recalculado automaticamente.")) return;
+    setExcluindo(prev => new Set(prev).add(id));
+    try {
+      const { error } = await supabase.from("movimentacoes_estoque").delete().eq("id", id);
+      if (error) throw error;
+      // Recalcula insumos.estoque com base nos movimentos restantes
+      const { data: rest } = await supabase.from("movimentacoes_estoque")
+        .select("tipo, quantidade").eq("insumo_id", insumoIdAlvo);
+      let saldo = 0;
+      for (const m of rest ?? []) {
+        if (m.tipo === "saida") saldo -= Math.abs(m.quantidade);
+        else saldo += m.quantidade;
+      }
+      await supabase.from("insumos").update({ estoque: saldo }).eq("id", insumoIdAlvo);
+      await gerarKardex();
+    } catch (e) {
+      alert("Erro ao excluir: " + (e as Error).message);
+    } finally {
+      setExcluindo(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
+  }
 
   function exportarPDF() { window.print(); }
 
@@ -432,6 +460,7 @@ export default function Kardex() {
                         <th style={{ ...th, width: 90 }}>Custo Médio</th>
                         <th style={{ ...th, width: 105 }}>Saldo Total</th>
                         <th style={{ ...th, textAlign: "left", width: 110 }}>Usuário</th>
+                        <th style={{ ...th, width: 46 }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -517,6 +546,19 @@ export default function Kardex() {
                               <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>Sistema</span>
                             )}
                           </td>
+                          {/* Excluir */}
+                          <td style={{ ...td, textAlign: "center", padding: "4px 6px" }}>
+                            {l.id && l.tipo !== "saldo_inicial" && (
+                              <button
+                                onClick={() => excluirMovimento(l.id!, insumoId)}
+                                disabled={excluindo.has(l.id)}
+                                title="Excluir lançamento"
+                                style={{ background: "none", border: "none", cursor: excluindo.has(l.id) ? "wait" : "pointer", color: "#E24B4A", fontSize: 15, padding: "2px 4px", opacity: excluindo.has(l.id) ? 0.4 : 0.6, lineHeight: 1 }}
+                              >
+                                🗑
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -525,6 +567,7 @@ export default function Kardex() {
                       <tfoot>
                         <tr style={{ background: "#111111", color: "#fff" }}>
                           <td colSpan={3} style={{ ...td, fontWeight: 700, paddingLeft: 14, color: "#fff" }}>TOTAIS DO PERÍODO</td>
+
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#86EFAC" }}>{fmtQty(qtdEntradas)}</td>
                           <td style={{ ...td }}></td>
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#86EFAC" }}>{fmt(totalEntradas)}</td>
