@@ -1161,6 +1161,43 @@ NOTIFY pgrst, 'reload schema';
 
 ---
 
+### Sessão setembro/2026 (2) — Auditoria Rotas/Fluxos, Estoque e Reconstrução do LCDPR (commit 64ff53b)
+
+Sessão longa em duas auditorias sequenciais, cada uma executada fase a fase mediante aprovação explícita.
+
+#### Auditoria "Rotas, Fluxos e Desmembramento de Informação" — 13 fases + 2 adendos
+- Removidas rotas órfãs `app/configuracoes/nfe` e `app/configuracoes/admin` (duplicavam telas já existentes em `configuracoes/modulos`/`usuarios`)
+- `Migração de NF entre Contratos` relinkada para o grupo Comercial (`contratos/migrar-nf`)
+- `Folha de Pagamento — Empresa` relinkada para o menu Financeiro → Empresa
+- **3 bugs de estoque corrigidos**: duplicação de reprocessamento de NF-entrada; bug sistêmico de backfill duplicando saldo em 116 insumos (6 contas de clientes reais); erro de escala decimal (÷1000) em 3 insumos
+- **5 casos de NF-entrada duplicada** corrigidos com impacto financeiro/estoque real; 3 clusters maiores (337 grupos de lançamento, 5 contratos financeiros, 19 contratos) documentados como dívida técnica conhecida, não corrigidos
+- **Adendo SIEG**: corrigido bug de sincronização duplicada
+- **Adendo financeiro**: auditoria de timestamps suspeitos em tabelas financeiras (parcial)
+- **Lição registrada**: Supabase pagina em 1.000 linhas por padrão — pelo menos 2 diagnósticos nesta sessão subestimaram contagens reais até a correção com `.range()` em loop. Qualquer consulta que possa passar de 1.000 linhas precisa de paginação explícita.
+
+#### Auditoria "LCDPR, Fiscal, CFOPs e Operações Gerenciais"
+- **Achado central**: o gerador de LCDPR usava um esquema de classificação (`codigo_lcdpr`/`tipo_lcdpr`, ~10 categorias "101"–"299") e um layout de registros (`LC01/LC10/LC20/LC99`) que **não correspondem ao arquivo real** exigido pela Receita Federal. Confirmado lendo por completo o Manual de Preenchimento oficial (Anexo ao Ato Declaratório Executivo COPES nº 1/2020, leiaute 1.3).
+- **3 buracos no filtro de elegibilidade** corrigidos em `app/lcdpr/page.tsx`: `vinculo_atividade` nulo tratado como "incluir" (não como excluir — zeraria o LCDPR de todo cliente hoje); lançamentos `natureza: "previsao"` não baixados removidos do filtro; `entidade_contabil` agora exige `=== "pf"` explicitamente
+- **Backfill de `entidade_contabil`**: 1.584 lançamentos corrigidos em 19 fazendas PF (medido com paginação correta — a primeira tentativa bateu no limite de 1.000 linhas)
+- **Reconstrução completa de `app/lcdpr/page.tsx`**: reescrito do zero para emitir a sequência real de registros — `0000` (abertura), `0010` (forma de apuração), `0030` (dados cadastrais), `0040` (imóveis rurais, 1 por fazenda), `0050` (contas bancárias reais — contas do tipo caixa/trânsito viram os códigos especiais `000`/`999`, sancionados pelo próprio manual), `Q100` (1 por lançamento, com `TIPO_LANC` derivado de `tipo`/`moeda` — só 3 valores possíveis: 1=receita, 2=despesa, 3=adiantamento em produto), `Q200` (resumo mensal, novo), `9999` (identificação do contador + contagem total de linhas)
+- **Registro `0045`** (parceiros/condôminos em exploração coletiva) foi deliberadamente **deixado de fora** desta reconstrução — sinalizado na tela quando aplicável, mas não implementado
+- Nova aba "Cadastro LCDPR": CAEPF, tipo de exploração e % de participação por fazenda; dados do contador responsável (tabela nova `lcdpr_contador`)
+- **Migration Seção 244** (executada e confirmada contra o banco de produção): `fazendas.caepf`, `fazendas.tipo_exploracao`, `fazendas.participacao_lcdpr`, `fazendas.municipio_ibge`, `contas_bancarias.codigo_bacen`, tabela `lcdpr_contador`
+- **Fase 2 do roadmap original (migrar `tipo_lcdpr` → `codigo_lcdpr`) tornou-se moot**: o esquema de 10 categorias que ela ia alimentar não existe no arquivo real, então a migração não teria valor
+- **Fase 5 (CFOP fragmentado em 4 lugares — `configuracoes/modulos` "Operações Fiscais" não alimenta a NF-e real)** permanece em aberto, aguardando decisão de produto
+
+#### Arquitetura — LCDPR reconstruído (leiaute 1.3)
+- O único campo de classificação real do arquivo é `Q100.TIPO_LANC` (1/2/3) — não existe hierarquia de categorias tipo plano de contas dentro do LCDPR em si
+- Contas bancárias do tipo `"caixa"` e `"transitoria"` (enum já existente em `contas_bancarias.tipo_conta`) mapeiam direto para os códigos especiais 000/999 do registro Q100 — não entram no registro 0050
+- `lancamentos` não tem CPF/CNPJ direto — resolvido via `pessoa_id → pessoas.cpf_cnpj`
+- O gerador é só leitura/exportação: nunca altera `lancamentos`; não corrige declarações de anos anteriores já entregues
+
+#### `lib/suporte-manual.ts` (Olívia) — atualização profunda
+- Seção 21.1 (LCDPR) reescrita por completo para refletir o novo gerador, as novas abas e os códigos especiais 000/999
+- 2 novas perguntas frequentes sobre LCDPR (como gerar o arquivo; por que um lançamento aparece com conta "999")
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.

@@ -675,7 +675,22 @@ Gerencia o certificado A1 usado para assinar NF-e. Alerta de vencimento 30/15/7/
 ### 21.1 LCDPR
 **Caminho:** Fiscal → Obrigações → LCDPR
 
-Gerador do Livro Caixa Digital do Produtor Rural. Filtra lançamentos com vínculo_atividade = "rural" e entidade_contabil = "pf".
+Gerador do Livro Caixa Digital do Produtor Rural — obrigação anual da Receita Federal para produtores Pessoa Física (CPF), entregue junto com a Declaração de Imposto de Renda até 30/04 do ano seguinte. Segue o leiaute oficial 1.3 (Anexo ao Ato Declaratório Executivo COPES nº 1/2020).
+
+**Como funciona:** o sistema lê automaticamente todos os lançamentos já baixados no Financeiro com entidade contábil "PF" e vínculo de atividade "Rural" (ou em branco) no ano selecionado — não é preciso lançar nada manualmente, exceto dados históricos anteriores ao uso do sistema.
+
+**Abas:**
+- **Livro Caixa** — lista cronológica dos lançamentos do ano com saldo acumulado. A coluna "Doc." permite ajustar o tipo de documento (Nota Fiscal, Fatura, Recibo, Contrato, Folha de Pagamento, Outros) quando necessário.
+- **Produtores e Participações** — configura o % de participação de cada CPF quando o imóvel é de condomínio ou parceria (mais de um titular). Ao exportar para um produtor específico, os valores são multiplicados automaticamente pela sua quota-parte.
+- **Cadastro LCDPR** — cadastro dos dados que a Receita exige e que não fazem parte do dia a dia operacional: CAEPF e tipo de exploração de cada fazenda (individual, condomínio, arrendado, parceria, comodato ou outros), contas bancárias vinculadas e os dados do contador responsável (nome, CPF/CNPJ, CRC, e-mail, telefone). **Preencha esta aba antes da primeira exportação** — sem isso, esses campos saem em branco no arquivo.
+- **Importação** — lança dados históricos via planilha Excel/CSV (útil para anos anteriores à adoção do sistema).
+- **Exportação** — gera o arquivo .txt oficial por produtor, por ano ou por mês; também exporta em Excel para conferência antes do envio.
+
+**Contas bancárias:** contas do tipo "espécie" (dinheiro em caixa) ou "trânsito" (sem conta bancária identificada) entram no arquivo com os códigos especiais que a própria Receita prevê para esses casos (000 e 999) — não é erro, é o comportamento correto do leiaute oficial.
+
+**Importante:** o gerador é só leitura — não altera nenhum lançamento do Financeiro. Gerar o arquivo também não corrige declarações de anos anteriores já entregues à Receita.
+
+**Ainda não implementado:** o registro de parceiros/condôminos (obrigatório quando a exploração do imóvel é coletiva) não é gerado automaticamente — se a fazenda tiver essa situação, é preciso complementar o arquivo manualmente antes de enviar.
 
 ### 21.2 SPED ECD — Contábil
 **Caminho:** Fiscal → Obrigações → SPED ECD — Contábil
@@ -894,6 +909,12 @@ Acesse **Configurações → Cadastros → Fazendas e Talhões**. Clique em "+ N
 
 ### O que é o SIEG?
 Serviço que captura automaticamente todas as NF-e emitidas contra o CNPJ/CPF da fazenda. As notas aparecem em **Compras & Estoque → Integração de Documentos → Notas Capturadas (SIEG)** para serem classificadas e processadas. Para ativar/desativar: **Compras & Estoque → Integração de Documentos → ⚡ Ligar / Desligar SIEG**.
+
+### Como gero o arquivo do LCDPR?
+Acesse **Fiscal → Obrigações → LCDPR**. Antes da primeira exportação, preencha a aba "Cadastro LCDPR" com CAEPF e tipo de exploração de cada fazenda e os dados do contador responsável. Depois vá em "Exportação", escolha o produtor e o período (ano ou mês) e clique em "Gerar e baixar".
+
+### Por que um lançamento do LCDPR aparece com o código de conta "999"?
+"999" é o código oficial da Receita Federal para "numerário em trânsito" — usado quando o lançamento não tem uma conta bancária cadastrada vinculada a ele. Não é um erro; é a forma prevista pelo próprio leiaute oficial para esses casos. Para vincular a uma conta real, cadastre-a em **Configurações → Cadastros → Contas Bancárias** e associe o lançamento a ela no Financeiro.
 
 ### O que é "vínculo de atividade"?
 Campo que classifica o lançamento para fins fiscais:
