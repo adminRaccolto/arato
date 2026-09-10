@@ -610,12 +610,23 @@ export default function NfCompraPage() {
     setWDepositos(depData);
     setWBombas(bombaData);
     // Produtores para o select de Produtor da NF
+    // Cobre conta_id (pós-backfill) E fazenda_id (pré-backfill / conta_id = NULL)
     try {
-      const prodsQ = contaId
-        ? supabase.from("produtores").select("id,nome,cpf_cnpj").eq("conta_id", contaId).order("nome")
-        : supabase.from("produtores").select("id,nome,cpf_cnpj").in("fazenda_id", allFazIds).order("nome");
-      const { data: prods } = await prodsQ;
-      setWProdutores((prods ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>);
+      let prods: Array<{id:string;nome:string;cpf_cnpj?:string}> = [];
+      if (contaId && allFazIds.length > 0) {
+        const filter = `conta_id.eq.${contaId},fazenda_id.in.(${allFazIds.join(",")})`;
+        const { data } = await supabase.from("produtores").select("id,nome,cpf_cnpj").or(filter).order("nome");
+        // Deduplica por id (pode aparecer nos dois filtros)
+        const seen = new Set<string>();
+        prods = (data ?? []).filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+      } else if (contaId) {
+        const { data } = await supabase.from("produtores").select("id,nome,cpf_cnpj").eq("conta_id", contaId).order("nome");
+        prods = (data ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>;
+      } else if (allFazIds.length > 0) {
+        const { data } = await supabase.from("produtores").select("id,nome,cpf_cnpj").in("fazenda_id", allFazIds).order("nome");
+        prods = (data ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>;
+      }
+      setWProdutores(prods);
     } catch { setWProdutores([]); }
     try {
       const allIds = fazendaIds.length > 0 ? fazendaIds : (fId ? [fId] : []);
@@ -645,10 +656,17 @@ export default function NfCompraPage() {
           const s = String(c.cnpj_destino ?? c.cpf_cnpj_emitente ?? c.cnpj ?? "").replace(/\D/g,"");
           if (s && !cnpjs.includes(s)) cnpjs.push(s);
         }
-        const prodsQ = contaId
-          ? supabase.from("produtores").select("nome,cpf_cnpj").eq("conta_id", contaId)
-          : supabase.from("produtores").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
-        const { data: prods } = await prodsQ;
+        let prods: Array<{nome:string;cpf_cnpj?:string}> = [];
+        if (contaId && fazendaIds.length > 0) {
+          const { data } = await supabase.from("produtores").select("nome,cpf_cnpj").or(`conta_id.eq.${contaId},fazenda_id.in.(${fazendaIds.join(",")})`);
+          const seen = new Set<string>(); prods = (data ?? []).filter(p => { const k = p.cpf_cnpj ?? p.nome; if (seen.has(k)) return false; seen.add(k); return true; });
+        } else if (contaId) {
+          const { data } = await supabase.from("produtores").select("nome,cpf_cnpj").eq("conta_id", contaId);
+          prods = data ?? [];
+        } else {
+          const { data } = await supabase.from("produtores").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
+          prods = data ?? [];
+        }
         const { data: pess  } = await supabase.from("pessoas").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
         const todos: Array<{nome:string;cnpj:string}> = [];
         for (const c of cnpjs) {
