@@ -318,6 +318,8 @@ export default function Estoque() {
   const [auditoriaDados, setAuditoriaDados] = useState<AuditoriaItem[]>([]);
   const [auditoriaCarregando, setAuditoriaCarregando] = useState(false);
   const [auditoriaExpandido, setAuditoriaExpandido] = useState<Set<string>>(new Set());
+  const [corrigindoAbertura, setCorrigindoAbertura] = useState(false);
+  const [dataAbertura, setDataAbertura] = useState("2024-01-01");
 
   async function carregarAuditoria() {
     if (!fazendaId) return;
@@ -370,6 +372,40 @@ export default function Estoque() {
       setAuditoriaDados(resultado);
     } catch (e) { setErro((e as Error).message); }
     setAuditoriaCarregando(false);
+  }
+
+  async function corrigirSaldoAbertura() {
+    if (!fazendaId) return;
+    const itensPosDiv = auditoriaDados.filter(a => a.divergencia > 0);
+    if (itensPosDiv.length === 0) return;
+    const ok = confirm(
+      `Isso criará ${itensPosDiv.length} movimento(s) de "Saldo de Abertura" com data ${dataAbertura}.\n` +
+      `Os saldos físicos (insumos.estoque) não serão alterados — apenas os históricos de movimentação serão completados.\n\n` +
+      `Continuar?`
+    );
+    if (!ok) return;
+    setCorrigindoAbertura(true);
+    try {
+      const inserts = itensPosDiv.map(a => ({
+        fazenda_id: fazendaId,
+        insumo_id: a.insumo.id,
+        tipo: "entrada",
+        motivo: "ajuste_inventario",
+        quantidade: a.divergencia,
+        data: dataAbertura,
+        observacao: "Saldo de abertura — correção automática",
+        auto: true,
+      }));
+      const { error } = await supabase.from("movimentacoes_estoque").insert(inserts);
+      if (error) throw error;
+      setAuditoriaDados([]);
+      setAuditoriaExpandido(new Set());
+      await carregarAuditoria();
+    } catch (e) {
+      alert("Erro ao criar saldo de abertura: " + (e as Error).message);
+    } finally {
+      setCorrigindoAbertura(false);
+    }
   }
 
   // Dispara quando entra na aba auditoria
@@ -1886,7 +1922,27 @@ export default function Estoque() {
                           Compara <strong>insumos.estoque</strong> (campo) com <strong>Σ movimentações</strong> (histórico real). Mostra apenas insumos com divergência.
                         </div>
                       </div>
-                      <button style={btnE} onClick={() => { setAuditoriaDados([]); carregarAuditoria(); }}>↻ Reanalisar</button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {auditoriaDados.some(a => a.divergencia > 0) && (
+                          <>
+                            <span style={{ fontSize: 12, color: "var(--text-2)" }}>Data de abertura:</span>
+                            <input
+                              type="date"
+                              value={dataAbertura}
+                              onChange={e => setDataAbertura(e.target.value)}
+                              style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, color: "var(--text-1)", background: "var(--bg-card)" }}
+                            />
+                            <button
+                              onClick={corrigirSaldoAbertura}
+                              disabled={corrigindoAbertura}
+                              style={{ fontSize: 12, padding: "5px 12px", background: corrigindoAbertura ? "#9CA3AF" : "#1A4870", color: "#fff", border: "none", borderRadius: 6, cursor: corrigindoAbertura ? "not-allowed" : "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                            >
+                              {corrigindoAbertura ? "Corrigindo…" : "🔧 Criar Saldo de Abertura"}
+                            </button>
+                          </>
+                        )}
+                        <button style={btnE} onClick={() => { setAuditoriaDados([]); carregarAuditoria(); }}>↻ Reanalisar</button>
+                      </div>
                     </div>
 
                     {auditoriaDados.length === 0 ? (
@@ -2026,8 +2082,9 @@ export default function Estoque() {
                           </table>
                         </div>
 
-                        <div style={{ fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: "12px 16px" }}>
-                          <strong>Próximos passos:</strong> Se o diagnóstico for <em>Saldo inicial fantasma</em>, o valor foi definido no cadastro sem movimento — pode ser corrigido com um ajuste manual em <strong>± Movimentar</strong>. Se for <em>Saída sem movimento</em>, há um bug no código de baixa — revisar a rota ou função que processou a operação.
+                        <div style={{ fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: "12px 16px", lineHeight: 1.6 }}>
+                          <strong>Saldo inicial fantasma</strong> — estoque físico foi definido no cadastro sem movimentação correspondente. Use <strong>🔧 Criar Saldo de Abertura</strong> acima para gerar automaticamente os movimentos de entrada com a data escolhida. O saldo físico não muda; apenas o histórico de movimentações é completado.<br />
+                          <strong>Saída sem movimento</strong> — uma baixa alterou o campo <code>insumos.estoque</code> sem criar movimentação. Indica bug em alguma rota de consumo — revisar manualmente via <strong>± Movimentar</strong>.
                         </div>
                       </>
                     )}
