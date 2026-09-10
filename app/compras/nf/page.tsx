@@ -609,24 +609,18 @@ export default function NfCompraPage() {
     setWCentros(ccData);
     setWDepositos(depData);
     setWBombas(bombaData);
-    // Produtores para o select de Produtor da NF
-    // Cobre conta_id (pós-backfill) E fazenda_id (pré-backfill / conta_id = NULL)
+    // Produtores via API route com service_role (bypassa RLS — funciona para todos os usuários)
     try {
-      let prods: Array<{id:string;nome:string;cpf_cnpj?:string}> = [];
-      if (contaId && allFazIds.length > 0) {
-        const filter = `conta_id.eq.${contaId},fazenda_id.in.(${allFazIds.join(",")})`;
-        const { data } = await supabase.from("produtores").select("id,nome,cpf_cnpj").or(filter).order("nome");
-        // Deduplica por id (pode aparecer nos dois filtros)
-        const seen = new Set<string>();
-        prods = (data ?? []).filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-      } else if (contaId) {
-        const { data } = await supabase.from("produtores").select("id,nome,cpf_cnpj").eq("conta_id", contaId).order("nome");
-        prods = (data ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>;
-      } else if (allFazIds.length > 0) {
-        const { data } = await supabase.from("produtores").select("id,nome,cpf_cnpj").in("fazenda_id", allFazIds).order("nome");
-        prods = (data ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>;
+      const params = new URLSearchParams();
+      if (contaId) params.set("conta_id", contaId);
+      if (allFazIds.length > 0) params.set("fazenda_ids", allFazIds.join(","));
+      if (contaId || allFazIds.length > 0) {
+        const res = await fetch(`/api/produtores/listar?${params}`);
+        const json = await res.json();
+        setWProdutores((json.produtores ?? []) as Array<{id:string;nome:string;cpf_cnpj?:string}>);
+      } else {
+        setWProdutores([]);
       }
-      setWProdutores(prods);
     } catch { setWProdutores([]); }
     try {
       const allIds = fazendaIds.length > 0 ? fazendaIds : (fId ? [fId] : []);
@@ -657,16 +651,16 @@ export default function NfCompraPage() {
           if (s && !cnpjs.includes(s)) cnpjs.push(s);
         }
         let prods: Array<{nome:string;cpf_cnpj?:string}> = [];
-        if (contaId && fazendaIds.length > 0) {
-          const { data } = await supabase.from("produtores").select("nome,cpf_cnpj").or(`conta_id.eq.${contaId},fazenda_id.in.(${fazendaIds.join(",")})`);
-          const seen = new Set<string>(); prods = (data ?? []).filter(p => { const k = p.cpf_cnpj ?? p.nome; if (seen.has(k)) return false; seen.add(k); return true; });
-        } else if (contaId) {
-          const { data } = await supabase.from("produtores").select("nome,cpf_cnpj").eq("conta_id", contaId);
-          prods = data ?? [];
-        } else {
-          const { data } = await supabase.from("produtores").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
-          prods = data ?? [];
-        }
+        try {
+          const p2 = new URLSearchParams();
+          if (contaId) p2.set("conta_id", contaId);
+          if (fazendaIds.length > 0) p2.set("fazenda_ids", fazendaIds.join(","));
+          if (contaId || fazendaIds.length > 0) {
+            const r2 = await fetch(`/api/produtores/listar?${p2}`);
+            const j2 = await r2.json();
+            prods = j2.produtores ?? [];
+          }
+        } catch {}
         const { data: pess  } = await supabase.from("pessoas").select("nome,cpf_cnpj").in("fazenda_id", fazendaIds);
         const todos: Array<{nome:string;cnpj:string}> = [];
         for (const c of cnpjs) {

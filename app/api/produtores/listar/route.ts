@@ -24,23 +24,26 @@ export async function GET(req: NextRequest) {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  const conta_id   = req.nextUrl.searchParams.get("conta_id");
-  const fazenda_id = req.nextUrl.searchParams.get("fazenda_id");
+  const conta_id    = req.nextUrl.searchParams.get("conta_id");
+  const fazenda_id  = req.nextUrl.searchParams.get("fazenda_id");
+  const fazenda_ids = req.nextUrl.searchParams.get("fazenda_ids")?.split(",").filter(Boolean) ?? [];
 
-  if (!conta_id && !fazenda_id) {
+  const allFazIds = fazenda_ids.length > 0 ? fazenda_ids : (fazenda_id ? [fazenda_id] : []);
+
+  if (!conta_id && allFazIds.length === 0) {
     return NextResponse.json({ error: "conta_id ou fazenda_id obrigatório" }, { status: 400 });
   }
 
   const apenas_com_ie = req.nextUrl.searchParams.get("apenas_com_ie") === "true";
 
-  let q = admin.from("produtores").select("*").order("nome");
+  let q = admin.from("produtores").select("id,nome,cpf_cnpj,inscricao_est,email,telefone,municipio,estado,conta_id,fazenda_id").order("nome");
 
-  if (conta_id && fazenda_id) {
-    q = q.or(`conta_id.eq.${conta_id},fazenda_id.eq.${fazenda_id}`);
+  if (conta_id && allFazIds.length > 0) {
+    q = q.or(`conta_id.eq.${conta_id},fazenda_id.in.(${allFazIds.join(",")})`);
   } else if (conta_id) {
     q = q.eq("conta_id", conta_id);
   } else {
-    q = q.eq("fazenda_id", fazenda_id!);
+    q = q.in("fazenda_id", allFazIds);
   }
 
   const { data, error } = await q;
