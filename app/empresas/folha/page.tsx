@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarEmpresasDaConta } from "../../../lib/db";
+import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import type { Empresa } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 
@@ -257,16 +257,19 @@ export default function FolhaEmpresaPage() {
   }
 
   async function fecharFolha(folha: Folha) {
+    if (!fazendaId) return;
     if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? Isso irá gerar os lançamentos de CP.`)) return;
     setSaving(true);
     try {
       const { data: itens } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", folha.id);
+      const ogSalario = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.10.001");
       for (const it of (itens ?? [])) {
         const liq = Math.max(0, it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios);
         const { data: lancamento } = await supabase.from("lancamentos").insert({
           fazenda_id: fazendaId, empresa_id: empresaSel, tipo: "pagar",
           descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
           valor: liq, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Salários",
+          operacao_gerencial_id: ogSalario ?? null,
           data_vencimento: `${folha.competencia}-05`, data_lancamento: new Date().toISOString().slice(0,10),
         }).select("id").single();
         if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
@@ -282,10 +285,12 @@ export default function FolhaEmpresaPage() {
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) { setMsg("Preencha funcionário, data e valor."); return; }
     setSaving(true);
     try {
+      const ogAdiantFunc = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.09.002");
       const { data: lanc } = await supabase.from("lancamentos").insert({
         fazenda_id: fazendaId, empresa_id: empresaSel, tipo: "pagar",
         descricao: `Adiantamento — ${funcionarios.find(f=>f.id===adiEdit.funcionario_id)?.nome ?? ""}${adiEdit.descricao ? ` — ${adiEdit.descricao}` : ""}`,
         valor: adiEdit.valor, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Adiantamentos",
+        operacao_gerencial_id: ogAdiantFunc ?? null,
         data_vencimento: adiEdit.data, data_lancamento: adiEdit.data,
       }).select("id").single();
       await supabase.from("adiantamentos_salario").insert({

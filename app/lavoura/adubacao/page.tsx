@@ -229,12 +229,13 @@ export default function AdubacaoBasePage() {
             </div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>NPK, micronutrientes, adubação foliar e fertirrigação</div>
 
-            {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+            {/* Hierarquia: Fazenda → Safra → Ciclo → Talhão — Produtor/IE não se aplicam a
+                lançamento de operação de campo (são dados fiscais, não de lavoura). */}
             <div style={{ marginBottom: 14 }}>
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
-                levels={["produtor", "ie", "fazenda", "anoSafra", "ciclo", "talhao"]}
+                levels={["fazenda", "anoSafra", "ciclo", "talhao"]}
                 onChange={next => {
                   setCascade(next);
                   setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));

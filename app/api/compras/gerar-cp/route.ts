@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // ── Verifica se já existe lançamento para este pedido ─────────────────────
     const { data: pedido } = await sb
       .from("pedidos_compra")
-      .select("id, lancamento_id, status")
+      .select("id, lancamento_id, status, operacao")
       .eq("id", body.pedido_id)
       .single();
 
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
         descricao:   `Pedido de Compra nº ${body.nr_pedido ?? body.pedido_id.slice(0, 8)} — ${body.fornecedor_nome}`,
         data_vencimento: body.data_vencimento || body.data_registro,
         pessoa_id:   body.fornecedor_id ?? null,
+        operacao_gerencial_id: pedido.operacao ?? null,
       }).eq("id", pedido.lancamento_id);
       return NextResponse.json({ ok: true, lancamento_id: pedido.lancamento_id, atualizado: true });
     }
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
       pessoa_id:         body.fornecedor_id ?? null,
       origem_lancamento: "pedido_compra",
       pedido_compra_id:  body.pedido_id,
+      operacao_gerencial_id: pedido.operacao ?? null,
     };
     if (body.ano_safra_id) payload.ano_safra_id = body.ano_safra_id;
     if (body.ciclo_id)     payload.ciclo_id     = body.ciclo_id;

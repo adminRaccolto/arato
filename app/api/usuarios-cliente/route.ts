@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { validateFazendaAccess } from "../../../lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,10 @@ export async function PUT(req: Request) {
   const body = await req.json();
   const { id, fazenda_id, nome, email, grupo_id, ativo, whatsapp } = body;
   if (!id || !fazenda_id) return NextResponse.json({ error: "id e fazenda_id obrigatórios" }, { status: 400 });
+
+  // Verifica que o CHAMADOR tem acesso à fazenda informada (não só que o alvo bate com ela)
+  const acesso = await validateFazendaAccess(fazenda_id);
+  if (!acesso.ok) return NextResponse.json({ error: acesso.error }, { status: acesso.status });
 
   const db = adminClient();
 
@@ -68,6 +73,10 @@ export async function DELETE(req: Request) {
   const id = url.searchParams.get("id");
   const fazenda_id = url.searchParams.get("fazenda_id");
   if (!id || !fazenda_id) return NextResponse.json({ error: "id e fazenda_id obrigatórios" }, { status: 400 });
+
+  // Verifica que o CHAMADOR tem acesso à fazenda informada (não só que o alvo bate com ela)
+  const acesso = await validateFazendaAccess(fazenda_id);
+  if (!acesso.ok) return NextResponse.json({ error: acesso.error }, { status: acesso.status });
 
   const db = adminClient();
 

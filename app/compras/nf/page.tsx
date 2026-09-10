@@ -145,6 +145,8 @@ const TABELA_CONVERSAO: ConversaoConfig[] = [
 ];
 
 function normUnidade(u: string) { return u.toLowerCase().trim(); }
+// "ton" e "t" são a mesma unidade (tonelada) — só variam no cadastro do insumo vs. na tabela de conversão.
+function canonUnidade(u: string) { const n = normUnidade(u || ""); return n === "ton" ? "t" : n; }
 
 function getConversao(key: string): ConversaoConfig | undefined {
   return TABELA_CONVERSAO.find(c => c.key === key);
@@ -1346,6 +1348,22 @@ export default function NfCompraPage() {
       }
       // Divergência de peso é permitida — o custo unitário será ajustado automaticamente
       // para manter o valor total da NF: custo/kg = valor_total / soma_lotes
+    }
+    // Guard: unidade que vai para o estoque precisa bater com a unidade do cadastro do
+    // insumo — senão a quantidade da NF é creditada silenciosamente na unidade errada
+    // (ex: NF em kg, insumo cadastrado em L). "ton" e "t" são tratadas como sinônimos.
+    if (tipo === "insumos") {
+      for (const it of itens) {
+        if (!it.insumo_id) continue;
+        const insumo = insumos.find(i => i.id === it.insumo_id);
+        if (!insumo) continue;
+        const conv = getConversao(it.conversao_key);
+        const unidadeEfetiva = conv ? conv.para : it.unidade_nf;
+        if (canonUnidade(unidadeEfetiva) !== canonUnidade(insumo.unidade)) {
+          setErr(`Item "${it.descricao_nf || insumo.nome}": a unidade que vai para o estoque (${unidadeEfetiva || "—"}) não bate com a unidade cadastrada do insumo (${insumo.unidade}). Selecione uma conversão compatível em "Conversão de Unidade", ou corrija a unidade na NF. Se a conversão depender da densidade do produto (ex: L ↔ kg), calcule o fator manualmente fora do sistema e ajuste a quantidade antes de processar.`);
+          return;
+        }
+      }
     }
     setSaving(true);
     setErr("");
@@ -3751,6 +3769,19 @@ export default function NfCompraPage() {
                                       <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{conv.labelPara}</span>
                                     </div>
                                   )}
+
+                                  {/* Alerta: unidade que vai pro estoque não bate com a do cadastro */}
+                                  {(() => {
+                                    const insumoDoItem = insumos.find(i => i.id === it.insumo_id);
+                                    if (!insumoDoItem) return null;
+                                    const unidadeEfetiva = conv ? conv.para : it.unidade_nf;
+                                    if (canonUnidade(unidadeEfetiva) === canonUnidade(insumoDoItem.unidade)) return null;
+                                    return (
+                                      <div style={{ fontSize: 10, color: "#B91C1C", background: "#FEE2E2", borderRadius: 6, padding: "3px 8px", fontWeight: 600 }}>
+                                        ⚠ NF em {unidadeEfetiva || "—"} ≠ cadastro em {insumoDoItem.unidade}
+                                      </div>
+                                    );
+                                  })()}
                                 </>
                               )}
                             </div>

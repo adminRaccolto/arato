@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import type { Talhao, Insumo, AnoSafra, Ciclo } from "../../../lib/supabase";
-import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, processarPulverizacao } from "../../../lib/db";
+import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, processarPulverizacao, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 
 // ─── Tipos locais ────────────────────────────────────────────────────────────
@@ -937,7 +937,7 @@ export default function RecomendacoesPage() {
           await supabase.from("movimentacoes_estoque").insert({
             insumo_id: p.insumo_id, fazenda_id: fazendaId,
             tipo: "saida", quantidade: totalConsumido,
-            data: hoje, safra: rec.ciclo_id,
+            data: hoje, ciclo_id: rec.ciclo_id,
             operacao: rec.tipo,
             observacao: `${TIPOS_OP[rec.tipo].label} via recomendação agronômica`,
             auto: true,
@@ -946,12 +946,15 @@ export default function RecomendacoesPage() {
           // CP se tiver custo
           const custoTotal = valorUnit * totalConsumido;
           if (custoTotal > 0) {
+            const classificacaoRec = rec.tipo === "adubacao" ? "2.01.01.01.004" : rec.tipo === "correcao_solo" ? "2.01.01.01.002" : rec.tipo === "plantio" || rec.tipo === "tratamento_sementes" ? "2.01.01.01.003" : "2.01.01.01.001";
+            const ogRec = await resolverOperacaoGerencialPorClassificacao(fazendaId ?? "", classificacaoRec);
             await supabase.from("lancamentos").insert({
               fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
               descricao: `${TIPOS_OP[rec.tipo].label} — ${p.produto_nome}`,
               categoria: rec.tipo === "adubacao" ? "Insumos — Fertilizantes" : rec.tipo === "correcao_solo" ? "Insumos — Corretivos" : rec.tipo === "plantio" || rec.tipo === "tratamento_sementes" ? "Insumos — Sementes" : "Insumos — Defensivos",
+              operacao_gerencial_id: ogRec ?? null,
               data_lancamento: hoje, data_vencimento: hoje,
-              valor: custoTotal, safra_id: rec.ciclo_id,
+              valor: custoTotal, ciclo_id: rec.ciclo_id,
               status: "em_aberto", auto: true,
             });
           }

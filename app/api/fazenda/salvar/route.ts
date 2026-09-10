@@ -60,7 +60,26 @@ export async function POST(req: Request) {
     if (!data) return NextResponse.json({ error: "Fazenda não encontrada" }, { status: 404 });
     return NextResponse.json({ data });
   } else {
-    // INSERT
+    // INSERT — checa duplicidade por CAR (quando informado) ou nome+município como fallback
+    const car = (campos as { car?: string }).car;
+    const nome = (campos as { nome?: string }).nome;
+    const municipio = (campos as { municipio?: string }).municipio;
+    const contaId = (campos as { conta_id?: string }).conta_id;
+
+    if (car) {
+      const { data: existente } = await db.from("fazendas")
+        .select("id, nome").eq("conta_id", contaId ?? "").eq("car", car).maybeSingle();
+      if (existente) {
+        return NextResponse.json({ error: `Já existe uma fazenda cadastrada com esse CAR: "${existente.nome}". Edite o cadastro existente em vez de criar um novo.` }, { status: 409 });
+      }
+    } else if (nome && municipio) {
+      const { data: existente } = await db.from("fazendas")
+        .select("id, nome").eq("conta_id", contaId ?? "").ilike("nome", nome).eq("municipio", municipio).maybeSingle();
+      if (existente) {
+        return NextResponse.json({ error: `Já existe uma fazenda "${existente.nome}" cadastrada em ${municipio}. Edite o cadastro existente em vez de criar um novo.` }, { status: 409 });
+      }
+    }
+
     const { data, error } = await db
       .from("fazendas")
       .insert(campos)

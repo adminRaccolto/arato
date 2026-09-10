@@ -17,6 +17,26 @@ const catMap: Record<string, string> = {
   correcao_solo: "Insumos — Corretivos",
 };
 
+const classificacaoMap: Record<string, string> = {
+  pulverizacao:  "2.01.01.01.001",
+  correcao_solo: "2.01.01.01.002",
+  plantio:       "2.01.01.01.003",
+  adubacao:      "2.01.01.01.004",
+};
+
+async function resolverOgPorTipo(fazendaId: string, tipoOp: string): Promise<string | null> {
+  const classificacao = classificacaoMap[tipoOp];
+  if (!classificacao) return null;
+  const { data: fazendaRow } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const parts = ["and(fazenda_id.is.null,conta_id.is.null)"];
+  if (fazendaRow?.conta_id) parts.push(`conta_id.eq.${fazendaRow.conta_id}`);
+  parts.push(`fazenda_id.eq.${fazendaId}`);
+  const { data } = await sb().from("operacoes_gerenciais")
+    .select("id").or(parts.join(",")).eq("classificacao", classificacao).eq("inativo", false)
+    .limit(1).maybeSingle();
+  return data?.id ?? null;
+}
+
 const tipoLabel: Record<string, string> = {
   pulverizacao:  "Pulverização",
   adubacao:      "Adubação",
@@ -126,19 +146,21 @@ export async function POST(req: NextRequest) {
     await sb().from("movimentacoes_estoque").insert({
       fazenda_id: fazendaId, insumo_id: insumo.id,
       tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
-      safra: cicloId, operacao: tipoOp,
+      ciclo_id: cicloId, operacao: tipoOp,
       observacao: `${tipoLabel[tipoOp] ?? tipoOp} — ${insumo.nome} (pendência resolvida)`, auto: true,
     });
 
     // ── Lançamento CP ────────────────────────────────────────────────────────
     if (custoTotal > 0) {
+      const ogId = await resolverOgPorTipo(fazendaId, tipoOp);
       await sb().from("lancamentos").insert({
         fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
         descricao: `${tipoLabel[tipoOp] ?? tipoOp} — ${insumo.nome}`,
         categoria: catMap[tipoOp] ?? "Insumos",
+        operacao_gerencial_id: ogId,
         data_lancamento: new Date().toISOString().split("T")[0],
         data_vencimento: dataOp, valor: custoTotal,
-        safra_id: cicloId, status: "em_aberto",
+        ciclo_id: cicloId, status: "em_aberto",
       });
     }
 

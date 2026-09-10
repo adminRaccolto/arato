@@ -7,6 +7,38 @@ const admin = () =>
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+// Classificação de venda por commodity — usada para vincular o CR à Operação Gerencial correta.
+const CLASSIFICACAO_VENDA_POR_PRODUTO: Record<string, string> = {
+  soja:    "1.01.01.01.001",
+  milho:   "1.01.01.01.002",
+  algodao: "1.01.01.01.003",
+  sorgo:   "1.01.01.01.004",
+  trigo:   "1.01.01.01.005",
+};
+
+function normalizarProduto(produto: string): string {
+  return produto.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolverOgVendaGraos(sb: any, fazenda_id: string, conta_id: string | null, produto: string | null) {
+  if (!produto) return null;
+  const chave = Object.keys(CLASSIFICACAO_VENDA_POR_PRODUTO).find(k => normalizarProduto(produto).includes(k));
+  if (!chave) return null;
+  const classificacao = CLASSIFICACAO_VENDA_POR_PRODUTO[chave];
+  const parts = ["and(fazenda_id.is.null,conta_id.is.null)"];
+  if (conta_id) parts.push(`conta_id.eq.${conta_id}`);
+  parts.push(`fazenda_id.eq.${fazenda_id}`);
+  const { data } = await sb.from("operacoes_gerenciais")
+    .select("id")
+    .or(parts.join(","))
+    .eq("classificacao", classificacao)
+    .eq("inativo", false)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 // POST /api/contratos/confirmar
 // Atribui num_lancamento e cria CR quando contrato é confirmado.
 // Usa service_role_key para bypassar RLS (JWT do browser pode estar expirado).
@@ -32,7 +64,7 @@ export async function POST(req: NextRequest) {
     // ── 1. Atribuir num_lancamento se ainda não tem ───────────────────────────
     const { data: contrato } = await sb
       .from("contratos")
-      .select("id, num_lancamento, lancamento_cr_id, fazenda_id")
+      .select("id, num_lancamento, lancamento_cr_id, fazenda_id, produto")
       .eq("id", body.contrato_id)
       .single();
 
@@ -66,12 +98,17 @@ export async function POST(req: NextRequest) {
         body.data_entrega ||
         new Date().toISOString().split("T")[0];
 
+      // Resolve a Operação Gerencial de venda pelo produto do contrato (soja/milho/algodão/...)
+      const { data: fazendaRow } = await sb.from("fazendas").select("conta_id").eq("id", body.fazenda_id).maybeSingle();
+      const ogVenda = await resolverOgVendaGraos(sb, body.fazenda_id, fazendaRow?.conta_id ?? null, contrato.produto ?? null);
+
       // Monta payload base — sem colunas opcionais que podem não existir no DB
       const crPayload: Record<string, unknown> = {
         fazenda_id: body.fazenda_id,
         tipo: "receber",
         descricao: `Pedido de Venda — ${compradorNome} (Contrato ${body.numero ?? body.contrato_id.slice(-6)})`,
         categoria: "Pedido de Venda — Grãos",
+        operacao_gerencial_id: ogVenda,
         data_lancamento: new Date().toISOString().split("T")[0],
         data_vencimento: dataRef,
         valor: body.valor_total,

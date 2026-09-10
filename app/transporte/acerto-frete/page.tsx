@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
+import { listarFazendasDaConta, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import TopNav from "../../../components/TopNav";
 import type { AcertoFrete, AcertoFreteItem } from "../../../lib/supabase";
 
@@ -61,7 +62,18 @@ const STATUS_LABEL: Record<string, { label: string; bg: string; color: string }>
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function AcertoFretePage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const now = new Date();
   const [filtromes, setFiltroMes] = useState(now.getMonth() + 1);
@@ -79,20 +91,20 @@ export default function AcertoFretePage() {
 
   // ── Carregar motoristas TAC ───────────────────────────────────────────────
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc")
-      .eq("fazenda_id", fazendaId).eq("tipo", "tac")
+      .eq("fazenda_id", fazAtiva).eq("tipo", "tac")
       .order("nome")
       .then(({ data }) => data && setMotoristas(data as Motorista[]));
-  }, [fazendaId]);
+  }, [fazAtiva]);
 
   // ── Carregar acertos do período ───────────────────────────────────────────
   const carregarAcertos = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setLoading(true);
     let q = supabase.from("acertos_frete")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .eq("fazenda_id", fazAtiva)
       .eq("periodo_mes", filtromes)
       .eq("periodo_ano", filtroAno)
       .order("motorista_nome");
@@ -100,15 +112,15 @@ export default function AcertoFretePage() {
     const { data } = await q;
     setAcertos((data as AcertoFrete[]) ?? []);
     setLoading(false);
-  }, [fazendaId, filtromes, filtroAno, filtroStatus]);
+  }, [fazAtiva, filtromes, filtroAno, filtroStatus]);
 
   useEffect(() => { carregarAcertos(); }, [carregarAcertos]);
 
   // ── Criar acerto para motorista ───────────────────────────────────────────
   const criarAcerto = async (motorista: Motorista) => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const { data } = await supabase.from("acertos_frete").insert({
-      fazenda_id: fazendaId,
+      fazenda_id: fazAtiva,
       motorista_id: motorista.id,
       motorista_nome: motorista.nome,
       periodo_mes: filtromes,
@@ -126,16 +138,16 @@ export default function AcertoFretePage() {
   const abrirAcerto = async (acerto: AcertoFrete) => {
     const [itensRes, ctesRes, abastRes] = await Promise.all([
       supabase.from("acerto_frete_itens").select("*").eq("acerto_id", acerto.id).order("tipo").order("data_ref"),
-      fazendaId ? supabase.from("ctes")
+      fazAtiva ? supabase.from("ctes")
         .select("id, numero, data_emissao, valor_frete, remetente, municipio_origem, municipio_destino, status")
-        .eq("fazenda_id", fazendaId)
+        .eq("fazenda_id", fazAtiva)
         .eq("motorista_id", acerto.motorista_id ?? "")
         .gte("data_emissao", `${acerto.periodo_ano}-${String(acerto.periodo_mes).padStart(2,"0")}-01`)
         .lte("data_emissao", `${acerto.periodo_ano}-${String(acerto.periodo_mes).padStart(2,"0")}-31`)
         .in("status", ["autorizado", "encerrado"]) : { data: [] },
-      fazendaId ? supabase.from("lancamentos")
+      fazAtiva ? supabase.from("lancamentos")
         .select("id, data_vencimento, valor, historico, veiculo_id")
-        .eq("fazenda_id", fazendaId)
+        .eq("fazenda_id", fazAtiva)
         .eq("tipo", "cp")
         .ilike("historico", "%combustível%")
         .gte("data_vencimento", `${acerto.periodo_ano}-${String(acerto.periodo_mes).padStart(2,"0")}-01`)
@@ -217,7 +229,7 @@ export default function AcertoFretePage() {
 
   // ── Fechar acerto + gerar CP ──────────────────────────────────────────────
   const fecharAcerto = async () => {
-    if (!modalData || !fazendaId) return;
+    if (!modalData || !fazAtiva) return;
     setSavingAcerto(true);
     const a = modalData.acerto;
     const liquido = (a.valor_bruto ?? 0) - (a.valor_combustivel ?? 0) - (a.valor_adiantamentos ?? 0) - (a.valor_outros_descontos ?? 0);
@@ -227,15 +239,19 @@ export default function AcertoFretePage() {
       return;
     }
     // Gerar CP
+    const ogAcertoFrete = await resolverOperacaoGerencialPorClassificacao(fazAtiva, "2.01.01.07.005");
     const { data: cp } = await supabase.from("lancamentos").insert({
-      fazenda_id: fazendaId,
-      tipo: "cp",
+      fazenda_id: fazAtiva,
+      tipo: "pagar",
+      moeda: "BRL",
       descricao: `Acerto de Frete — ${a.motorista_nome} — ${mesAno(a.periodo_mes, a.periodo_ano)}`,
-      historico: `Acerto de frete motorista TAC ${a.motorista_nome}`,
+      categoria: "Fretes e Transportes",
+      operacao_gerencial_id: ogAcertoFrete ?? null,
+      observacao: `Acerto de frete motorista TAC ${a.motorista_nome}`,
       valor: liquido,
       data_vencimento: new Date(`${a.periodo_ano}-${String(a.periodo_mes).padStart(2,"0")}-10`).toISOString().slice(0,10),
-      status: "pendente",
-      origem: "acerto_frete",
+      status: "em_aberto",
+      auto: true,
     }).select("id").single();
 
     await supabase.from("acertos_frete").update({
@@ -458,9 +474,17 @@ export default function AcertoFretePage() {
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Acerto de Frete</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-2)" }}>Fechamento mensal de motoristas TAC (autônomos) — fretes, combustível, adiantamentos</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Acerto de Frete</h1>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-2)" }}>Fechamento mensal de motoristas TAC (autônomos) — fretes, combustível, adiantamentos</p>
+          </div>
+          {fazendasConta.length > 1 && (
+            <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
+              style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+              {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+            </select>
+          )}
         </div>
 
         {/* Filtros */}

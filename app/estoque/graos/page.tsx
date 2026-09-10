@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarFazendasDaConta } from "../../../lib/db";
 
 type Aba = "posicao" | "movimentacoes" | "quebra" | "qualidade" | "config";
 
@@ -112,7 +113,19 @@ function BadgeTipo({ tipo }: { tipo: "entrada" | "saida" | "quebra" }) {
 }
 
 export default function EstoqueGraosPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
   const [aba, setAba] = useState<Aba>("posicao");
   const [carregando, setCarregando] = useState(false);
 
@@ -162,22 +175,22 @@ export default function EstoqueGraosPage() {
 
   // ── Carga base ──────────────────────────────────────────────────────────────
   const carregarBase = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const [{ data: dep }, { data: anos }, { data: cic }, { data: cfg }] = await Promise.all([
-      supabase.from("depositos").select("id, nome, tipo").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-      supabase.from("ciclos").select("id, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
-      supabase.from("parametros_armazenagem").select("*").eq("fazenda_id", fazendaId).order("created_at"),
+      supabase.from("depositos").select("id, nome, tipo").eq("fazenda_id", fazAtiva).order("nome"),
+      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazAtiva).order("descricao", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, ano_safra_id").eq("fazenda_id", fazAtiva).order("created_at", { ascending: false }),
+      supabase.from("parametros_armazenagem").select("*").eq("fazenda_id", fazAtiva).order("created_at"),
     ]);
     setDepositos((dep ?? []) as Deposito[]);
     setAnosSafra((anos ?? []) as AnoSafra[]);
     setCiclos((cic ?? []) as Ciclo[]);
     setQuebConfig((cfg ?? []) as QuebConfig[]);
-  }, [fazendaId]);
+  }, [fazAtiva]);
 
   // ── Posição ─────────────────────────────────────────────────────────────────
   const carregarPosicao = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setCarregando(true);
 
     const cicloIds = fCiclo ? [fCiclo]
@@ -186,13 +199,13 @@ export default function EstoqueGraosPage() {
 
     const colQ = supabase.from("colheitas")
       .select("produto, deposito_id, total_sacas, total_kg_classificado")
-      .eq("fazenda_id", fazendaId);
+      .eq("fazenda_id", fazAtiva);
     if (cicloIds.length) colQ.in("ciclo_id", cicloIds);
     const { data: colheitas } = await colQ;
 
     const romQ = supabase.from("romaneios_entrada")
       .select("produto_nome, deposito_id, sacas, peso_classificado_kg")
-      .eq("fazenda_id", fazendaId)
+      .eq("fazenda_id", fazAtiva)
       .eq("status", "confirmado")
       .eq("tipo", "proprio");
     if (cicloIds.length) romQ.in("ciclo_id", cicloIds);
@@ -200,7 +213,7 @@ export default function EstoqueGraosPage() {
 
     const ctQ = supabase.from("contratos")
       .select("produto_agricola_id, entregue_sc, insumo:produto_agricola_id(nome)")
-      .eq("fazenda_id", fazendaId)
+      .eq("fazenda_id", fazAtiva)
       .eq("tipo", "venda")
       .gt("entregue_sc", 0);
     if (cicloIds.length) ctQ.in("ciclo_id", cicloIds);
@@ -266,11 +279,11 @@ export default function EstoqueGraosPage() {
     rows.sort((a, b) => a.produto.localeCompare(b.produto) || a.deposito_nome.localeCompare(b.deposito_nome));
     setPosicao(rows);
     setCarregando(false);
-  }, [fazendaId, fAno, fCiclo, fDeposito, fProduto, ciclos, depositos, getQuebraPct]);
+  }, [fazAtiva, fAno, fCiclo, fDeposito, fProduto, ciclos, depositos, getQuebraPct]);
 
   // ── Movimentações ────────────────────────────────────────────────────────────
   const carregarMovs = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setCarregando(true);
 
     const cicloIds = fCiclo ? [fCiclo]
@@ -284,7 +297,7 @@ export default function EstoqueGraosPage() {
     if (!fMovTipo || fMovTipo === "entrada") {
       const q = supabase.from("romaneios_entrada")
         .select("id, data, produto_nome, deposito_id, sacas, peso_classificado_kg, ciclo_id")
-        .eq("fazenda_id", fazendaId).eq("status", "confirmado").eq("tipo", "proprio")
+        .eq("fazenda_id", fazAtiva).eq("status", "confirmado").eq("tipo", "proprio")
         .order("data", { ascending: false }).limit(200);
       if (cicloIds.length) q.in("ciclo_id", cicloIds);
       const { data: roms } = await q;
@@ -304,7 +317,7 @@ export default function EstoqueGraosPage() {
     if (!fMovTipo || fMovTipo === "entrada") {
       const q = supabase.from("colheitas")
         .select("id, data_colheita, produto, deposito_id, total_sacas, total_kg_classificado, ciclo_id")
-        .eq("fazenda_id", fazendaId).order("data_colheita", { ascending: false }).limit(200);
+        .eq("fazenda_id", fazAtiva).order("data_colheita", { ascending: false }).limit(200);
       if (cicloIds.length) q.in("ciclo_id", cicloIds);
       const { data: cols } = await q;
       for (const c of (cols ?? [])) {
@@ -322,7 +335,7 @@ export default function EstoqueGraosPage() {
     if (!fMovTipo || fMovTipo === "saida") {
       const q = supabase.from("contratos")
         .select("id, data_entrega, entregue_sc, ciclo_id, insumo:produto_agricola_id(nome)")
-        .eq("fazenda_id", fazendaId).eq("tipo", "venda").gt("entregue_sc", 0)
+        .eq("fazenda_id", fazAtiva).eq("tipo", "venda").gt("entregue_sc", 0)
         .order("data_entrega", { ascending: false }).limit(200);
       if (cicloIds.length) q.in("ciclo_id", cicloIds);
       const { data: cts } = await q;
@@ -342,11 +355,11 @@ export default function EstoqueGraosPage() {
     resultado.sort((a, b) => b.data.localeCompare(a.data));
     setMovs(fMovTipo === "quebra" ? resultado.filter(m => m.tipo === "quebra") : resultado);
     setCarregando(false);
-  }, [fazendaId, fAno, fCiclo, fMovTipo, fProduto, ciclos, depositos, getQuebraPct]);
+  }, [fazAtiva, fAno, fCiclo, fMovTipo, fProduto, ciclos, depositos, getQuebraPct]);
 
   // ── Quebra Técnica ────────────────────────────────────────────────────────────
   const carregarQuebra = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setCarregando(true);
 
     const cicloIds = fCiclo ? [fCiclo]
@@ -357,7 +370,7 @@ export default function EstoqueGraosPage() {
 
     const q = supabase.from("romaneios_entrada")
       .select("id, data, ticket_numero, produto_nome, deposito_id, peso_liquido_kg, peso_classificado_kg, umidade_pct, impureza_pct, avariados_pct, sacas")
-      .eq("fazenda_id", fazendaId).eq("status", "confirmado")
+      .eq("fazenda_id", fazAtiva).eq("status", "confirmado")
       .order("data", { ascending: false }).limit(300);
     if (cicloIds.length) q.in("ciclo_id", cicloIds);
     const { data: roms } = await q;
@@ -387,11 +400,11 @@ export default function EstoqueGraosPage() {
 
     setQuebra(rows);
     setCarregando(false);
-  }, [fazendaId, fAno, fCiclo, fProduto, ciclos, depositos, getQuebraPct]);
+  }, [fazAtiva, fAno, fCiclo, fProduto, ciclos, depositos, getQuebraPct]);
 
   // ── Qualidade ─────────────────────────────────────────────────────────────────
   const carregarQualidade = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setCarregando(true);
 
     const cicloIds = fCiclo ? [fCiclo]
@@ -401,7 +414,7 @@ export default function EstoqueGraosPage() {
 
     const q = supabase.from("romaneios_entrada")
       .select("id, data, ticket_numero, produto_nome, deposito_id, umidade_pct, impureza_pct, avariados_pct, ardidos_pct, ph_hl, sacas")
-      .eq("fazenda_id", fazendaId).eq("status", "confirmado").not("umidade_pct", "is", null)
+      .eq("fazenda_id", fazAtiva).eq("status", "confirmado").not("umidade_pct", "is", null)
       .order("data", { ascending: false }).limit(300);
     if (cicloIds.length) q.in("ciclo_id", cicloIds);
     const { data: roms } = await q;
@@ -412,14 +425,14 @@ export default function EstoqueGraosPage() {
 
     setQualidade(rows);
     setCarregando(false);
-  }, [fazendaId, fAno, fCiclo, fProduto, ciclos, depositos]);
+  }, [fazAtiva, fAno, fCiclo, fProduto, ciclos, depositos]);
 
   // ── Salvar configuração ──────────────────────────────────────────────────────
   async function salvarConfig() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setSalvandoConfig(true);
     const { error } = await supabase.from("parametros_armazenagem").insert({
-      fazenda_id:    fazendaId,
+      fazenda_id:    fazAtiva,
       produto:       cfProduto.trim() || null,
       tipo_deposito: cfTipoDep,
       quebra_pct:    parseFloat(cfQuebraPct) || 0,
@@ -443,13 +456,13 @@ export default function EstoqueGraosPage() {
   useEffect(() => { carregarBase(); }, [carregarBase]);
 
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     if (aba === "posicao")       carregarPosicao();
     if (aba === "movimentacoes") carregarMovs();
     if (aba === "quebra")        carregarQuebra();
     if (aba === "qualidade")     carregarQualidade();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aba, fAno, fCiclo, fDeposito, fProduto, fMovTipo, quebConfig, depositos, ciclos, fazendaId]);
+  }, [aba, fAno, fCiclo, fDeposito, fProduto, fMovTipo, quebConfig, depositos, ciclos, fazAtiva]);
 
   // KPIs posição
   const totalEntradas  = posicao.reduce((s, r) => s + r.entradas_sc,  0);
@@ -472,6 +485,11 @@ export default function EstoqueGraosPage() {
 
       {/* Filtros globais */}
       <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        {fazendasConta.length > 1 && (
+          <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={inp}>
+            {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+          </select>
+        )}
         <select value={fAno} onChange={e => { setFAno(e.target.value); setFCiclo(""); }} style={inp}>
           <option value="">Todos os anos</option>
           {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}

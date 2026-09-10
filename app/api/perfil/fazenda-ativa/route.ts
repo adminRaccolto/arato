@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,8 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
-  const token = (req.headers.get("authorization") ?? "").replace("Bearer ", "");
+  const authHeader = req.headers.get("authorization") ?? "";
+  const token = authHeader.replace("Bearer ", "");
   if (!token) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { data: { user }, error: authErr } = await admin.auth.getUser(token);
@@ -16,6 +18,11 @@ export async function POST(req: NextRequest) {
 
   const { fazenda_id } = await req.json();
   if (!fazenda_id) return NextResponse.json({ error: "fazenda_id obrigatório" }, { status: 400 });
+
+  const acesso = await validateFazendaAccess(fazenda_id, authHeader);
+  if (!acesso.ok) {
+    return NextResponse.json({ error: acesso.error }, { status: acesso.status });
+  }
 
   const { error } = await admin
     .from("perfis")

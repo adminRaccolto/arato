@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
+import { listarFazendasDaConta } from "../../../../lib/db";
 import InputMonetario from "../../../../components/InputMonetario";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
@@ -39,7 +40,19 @@ const STATUS_META: Record<StatusMutuo, { label: string; bg: string; cl: string }
 };
 
 export default function MutuoPage() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [mutuos, setMutuos]         = useState<Mutuo[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoMutuo[]>([]);
@@ -68,7 +81,7 @@ export default function MutuoPage() {
   const [pagErr, setPagErr]       = useState("");
 
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const [{ data: md }, { data: cb }] = await Promise.all([
       supabase.from("mutuos").select("*").in("fazenda_id", fazendaIds).order("data_inicio", { ascending: false }),
       supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao").in("fazenda_id", fazendaIds),
@@ -79,7 +92,7 @@ export default function MutuoPage() {
       const { data: pd } = await supabase.from("pagamentos_mutuo").select("*").in("mutuo_id", md.map((m: Mutuo) => m.id)).order("data_pagamento", { ascending: false });
       setPagamentos(pd ?? []);
     }
-  }, [fazendaId]);
+  }, [fazAtiva]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -108,7 +121,7 @@ export default function MutuoPage() {
   }
 
   async function salvarMutuo() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     if (!mForm.contraparte.trim()) { setMErr("Informe a contraparte."); return; }
     if (!mForm.valor_principal || isNaN(parseFloat(mForm.valor_principal))) { setMErr("Valor inválido."); return; }
     if (!mForm.data_vencimento) { setMErr("Informe a data de vencimento."); return; }
@@ -117,7 +130,7 @@ export default function MutuoPage() {
       const vp = parseFloat(mForm.valor_principal);
       const isConcessao = mForm.tipo === "concessao";
       const payload = {
-        fazenda_id: fazendaId, tipo: mForm.tipo,
+        fazenda_id: fazAtiva, tipo: mForm.tipo,
         contraparte: mForm.contraparte.trim(),
         conta_minha: mForm.conta_minha || null,
         valor_principal: vp,
@@ -135,7 +148,7 @@ export default function MutuoPage() {
         await supabase.from("mutuos").insert(payload);
         // Gera lançamento financeiro do desembolso/recebimento inicial
         await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId,
+          fazenda_id: fazAtiva,
           tipo: isConcessao ? "pagar" : "receber",
           moeda: "BRL",
           descricao: `${isConcessao ? "Mútuo concedido a" : "Mútuo recebido de"} ${mForm.contraparte.trim()}`,
@@ -161,7 +174,7 @@ export default function MutuoPage() {
   }
 
   async function registrarPagamento() {
-    if (!modalPag || !fazendaId) return;
+    if (!modalPag || !fazAtiva) return;
     const vp = parseFloat(pagForm.valor_principal) || 0;
     const vj = parseFloat(pagForm.valor_juros) || 0;
     if (vp + vj <= 0) { setPagErr("Informe ao menos um valor."); return; }
@@ -188,7 +201,7 @@ export default function MutuoPage() {
       const catPrinc = isConcessao ? "Amortização Mútuo Recebida" : "Amortização Mútuo Paga";
       const catJuros = isConcessao ? "Juros Mútuo Recebidos" : "Juros Mútuo Pagos";
       const lancBase = {
-        fazenda_id: fazendaId, moeda: "BRL",
+        fazenda_id: fazAtiva, moeda: "BRL",
         data_lancamento: pagForm.data_pagamento,
         data_vencimento: pagForm.data_pagamento,
         status: "baixado" as const, auto: false,
@@ -215,7 +228,14 @@ export default function MutuoPage() {
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Mútuo entre Empresas</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Contratos de empréstimo entre empresas do grupo ou partes relacionadas</p>
           </div>
-          <button onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {fazendasConta.length > 1 && (
+              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</button>
+          </div>
         </div>
 
         {/* KPIs */}

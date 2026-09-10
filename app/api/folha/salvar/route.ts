@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolverOgPorClassificacao(sb: any, fazenda_id: string, classificacao: string): Promise<string | null> {
+  const { data: fazendaRow } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  const parts = ["and(fazenda_id.is.null,conta_id.is.null)"];
+  if (fazendaRow?.conta_id) parts.push(`conta_id.eq.${fazendaRow.conta_id}`);
+  parts.push(`fazenda_id.eq.${fazenda_id}`);
+  const { data } = await sb.from("operacoes_gerenciais")
+    .select("id").or(parts.join(",")).eq("classificacao", classificacao).eq("inativo", false)
+    .limit(1).maybeSingle();
+  return data?.id ?? null;
+}
+
 // Usa service_role_key para contornar JWT expirado / RLS em folha_pagamento.
 // Valida o token do usuário antes de executar qualquer operação.
 export async function POST(req: Request) {
@@ -118,6 +130,7 @@ export async function POST(req: Request) {
       })();
 
       // Gera CP por funcionário via service_role_key (evita RLS 42501)
+      const ogSalario = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.001");
       for (const it of (itens ?? [])) {
         const liq = Math.max(0, Math.round((
           it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento
@@ -135,6 +148,7 @@ export async function POST(req: Request) {
           moeda: "BRL",
           status: "em_aberto",
           categoria: "Pessoal / Salários",
+          operacao_gerencial_id: ogSalario,
           data_vencimento: vencimento,
           data_lancamento: hoje,
         }).select("id").single();
@@ -269,11 +283,13 @@ export async function POST(req: Request) {
     // ─── salvar_adiantamento ──────────────────────────────────────────────────
     if (operacao === "salvar_adiantamento") {
       const { fazenda_id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
+      const ogAdiantFunc = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.09.002");
       const { data: lanc, error: lancErr } = await sb.from("lancamentos").insert({
         fazenda_id, tipo: "pagar", natureza: "real",
         descricao: `Adiantamento — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
         valor, moeda: "BRL", status: "em_aberto",
         categoria: "Pessoal / Adiantamentos",
+        operacao_gerencial_id: ogAdiantFunc,
         data_vencimento: data, data_lancamento: data,
       }).select("id").single();
       if (lancErr) throw lancErr;

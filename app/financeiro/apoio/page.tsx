@@ -9,6 +9,7 @@ import {
   listarTodosCiclos,
   listarOperacoesGerenciaisAtivas,
   listarContas,
+  listarFazendasDaConta,
 } from "../../../lib/db";
 import type { Pessoa, AnoSafra, Ciclo, OperacaoGerencial, ContaBancaria } from "../../../lib/supabase";
 
@@ -16,6 +17,7 @@ import type { Pessoa, AnoSafra, Ciclo, OperacaoGerencial, ContaBancaria } from "
 
 interface Lancamento {
   id: string;
+  fazenda_id?: string;
   tipo: "pagar" | "receber";
   descricao: string;
   valor: number;
@@ -131,6 +133,18 @@ const FORM_VAZIO = {
 
 export default function ApoioFinanceiroPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const { ini: iniPadrao, fim: fimPadrao } = periodoApoio();
   const [dataIni, setDataIni] = useState(iniPadrao);
@@ -193,13 +207,13 @@ export default function ApoioFinanceiroPage() {
 
   // ── Carregar dados de referência ──────────────────────────────────────────
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     Promise.all([
-      listarPessoasDaConta(fazendaId).catch(() => [] as Pessoa[]),
-      listarAnosSafra(fazendaId).catch(() => [] as AnoSafra[]),
-      listarTodosCiclos(fazendaId).catch(() => [] as Ciclo[]),
-      listarOperacoesGerenciaisAtivas(fazendaId).catch(() => [] as OperacaoGerencial[]),
-      listarContas(fazendaId).catch(() => [] as ContaBancaria[]),
+      listarPessoasDaConta(fazAtiva).catch(() => [] as Pessoa[]),
+      listarAnosSafra(fazAtiva).catch(() => [] as AnoSafra[]),
+      listarTodosCiclos(fazAtiva).catch(() => [] as Ciclo[]),
+      listarOperacoesGerenciaisAtivas(fazAtiva).catch(() => [] as OperacaoGerencial[]),
+      listarContas(fazAtiva).catch(() => [] as ContaBancaria[]),
     ]).then(([p, a, c, o, cb]) => {
       setPessoas(p);
       setAnosSafra(a);
@@ -207,7 +221,7 @@ export default function ApoioFinanceiroPage() {
       setOpGerenciais(o);
       setContasBancarias(cb);
     });
-  }, [fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazAtiva]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ciclos filtrados por ano safra ────────────────────────────────────────
   const ciclosFiltrados = formApoio.ano_safra_id
@@ -216,12 +230,12 @@ export default function ApoioFinanceiroPage() {
 
   // ── Carregar lançamentos ──────────────────────────────────────────────────
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setCarregando(true);
     try {
       const { data: lancs } = await supabase
         .from("lancamentos")
-        .select("id,tipo,descricao,valor,data_vencimento,data_baixa,status,categoria,pessoa_id,observacao,moeda")
+        .select("id,fazenda_id,tipo,descricao,valor,data_vencimento,data_baixa,status,categoria,pessoa_id,observacao,moeda")
         .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", dataIni)
         .lte("data_vencimento", dataFim)
@@ -264,7 +278,7 @@ export default function ApoioFinanceiroPage() {
     } finally {
       setCarregando(false);
     }
-  }, [fazendaId, dataIni, dataFim, fazendaIds.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazAtiva, dataIni, dataFim, fazendaIds.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -285,12 +299,12 @@ export default function ApoioFinanceiroPage() {
 
   // ── Confirmar baixa com conta bancária ────────────────────────────────────
   async function confirmarBaixa() {
-    if (!fazendaId || !modalBaixar) return;
+    if (!fazAtiva || !modalBaixar) return;
     if (!baixarForm.data_baixa) { setErroModal("Preencha antes de salvar: Data da Baixa"); return; }
     setErroModal("");
     setSalvandoBaixa(true);
     const payload: Record<string, unknown> = {
-      fazenda_id: fazendaId,
+      fazenda_id: modalBaixar.fazenda_id ?? fazAtiva,
       lancamento_id: modalBaixar.id,
       data_baixa: baixarForm.data_baixa,
       observacao: baixarForm.observacao || null,
@@ -332,7 +346,7 @@ export default function ApoioFinanceiroPage() {
 
   // ── Salvar novo lançamento exclusivo ──────────────────────────────────────
   async function salvarApoioLanc() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const erros: string[] = [];
     if (!formApoio.descricao) erros.push("Descrição");
     if (!formApoio.data_vencimento) erros.push("Data de Vencimento");
@@ -344,7 +358,7 @@ export default function ApoioFinanceiroPage() {
     const pessoaSelecionada = pessoas.find((p) => p.id === formApoio.pessoa_id);
 
     const { error } = await supabase.from("apoio_lancamentos").insert({
-      fazenda_id:              fazendaId,
+      fazenda_id:              fazAtiva,
       tipo:                    formApoio.tipo,
       descricao:               formApoio.descricao,
       valor,
@@ -366,7 +380,7 @@ export default function ApoioFinanceiroPage() {
   }
 
   async function baixarApoioExclusivo(a: ApoioLancamento) {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setAcaoId(a.id);
     await supabase.from("apoio_lancamentos")
       .update({ baixado: true, data_baixa: hoje() }).eq("id", a.id);
@@ -588,6 +602,11 @@ export default function ApoioFinanceiroPage() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            {fazendasConta.length > 1 && (
+              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <label style={{ ...lbl, margin: 0 }}>De</label>
               <input type="date" value={dataIni} onChange={(e) => setDataIni(e.target.value)} style={{ ...inp, width: 140 }} />

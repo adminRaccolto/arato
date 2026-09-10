@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarMaquinas, listarAnosSafra, listarCiclos } from "../../../lib/db";
+import { listarMaquinas, listarAnosSafra, listarCiclos, listarFazendasDaConta } from "../../../lib/db";
 import type { Maquina, AnoSafra, Ciclo } from "../../../lib/supabase";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -50,7 +50,18 @@ interface GrupoMaq {
 
 // ─── componente ──────────────────────────────────────────────────────────────
 function RelManutInner() {
-  const { fazendaId, nomeFazendaSelecionada } = useAuth();
+  const { fazendaId, contaId, nomeFazendaSelecionada } = useAuth();
+
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [modoFiltro, setModoFiltro] = useState<"data" | "safra">("data");
   const [inicio, setInicio]         = useState(anoAtras());
@@ -69,19 +80,19 @@ function RelManutInner() {
   const [loading, setLoading]       = useState(false);
 
   useEffect(() => {
-    if (!fazendaId) return;
-    listarMaquinas(fazendaId).then(m => {
+    if (!fazAtiva) return;
+    listarMaquinas(fazAtiva).then(m => {
       setMaquinas(m);
       setMaquinasSel(new Set(m.map(x => x.id)));
     }).catch(() => {});
-    listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId]);
+    listarAnosSafra(fazAtiva).then(setAnosSafra).catch(() => {});
+  }, [fazAtiva]);
 
   useEffect(() => {
-    if (anoSafraId) listarCiclos(anoSafraId, fazendaId).then(setCiclos).catch(() => {});
+    if (anoSafraId) listarCiclos(anoSafraId, fazAtiva).then(setCiclos).catch(() => {});
     else setCiclos([]);
     setCicloId("");
-  }, [anoSafraId, fazendaId]);
+  }, [anoSafraId, fazAtiva]);
 
   function toggleSet(_set: Set<string>, key: string, setter: React.Dispatch<React.SetStateAction<Set<string>>>) {
     setter((prev: Set<string>) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
@@ -102,7 +113,7 @@ function RelManutInner() {
 
   // ── gerar ─────────────────────────────────────────────────────────────────
   async function gerar() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setLoading(true);
     try {
       const { de, ate } = modoFiltro === "safra" ? periodoSafra() : { de: inicio, ate: fim };
@@ -320,16 +331,24 @@ function RelManutInner() {
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Histórico de manutenções agrupado por equipamento</p>
           </div>
-          {gerado && (
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                PDF / Imprimir
-              </button>
-              <button onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                Exportar Excel
-              </button>
-            </div>
-          )}
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {fazendasConta.length > 1 && (
+              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
+                style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            {gerado && (
+              <>
+                <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  PDF / Imprimir
+                </button>
+                <button onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  Exportar Excel
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Filtros */}

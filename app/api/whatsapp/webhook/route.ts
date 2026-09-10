@@ -111,6 +111,21 @@ export async function POST(req: NextRequest) {
   const key = data.key as Record<string, unknown> | undefined;
   if (!key) return NextResponse.json({ ok: true });
 
+  // Idempotência — Evolution API/Baileys pode reentregar o mesmo evento (ex: se não
+  // recebe confirmação a tempo). Sem isso, uma reentrega reprocessa a mensagem do
+  // zero — inclusive um "sim" de confirmação que dispara executarInsercao() de novo,
+  // criando NF/lançamento/operação duplicados.
+  const messageId = typeof key.id === "string" ? key.id : undefined;
+  if (messageId) {
+    const { error: dupErr } = await sb().from("whatsapp_mensagens_processadas").insert({ message_id: messageId });
+    if (dupErr) {
+      if (dupErr.code === "23505") return NextResponse.json({ ok: true, duplicado: true });
+      // Erro diferente de duplicidade (ex: tabela ainda não migrada) — não bloqueia o
+      // webhook por isso, apenas segue sem a proteção de idempotência desta mensagem.
+      console.warn("[WH] falha ao registrar idempotência:", dupErr.message);
+    }
+  }
+
   const remoteJid = String(key.remoteJid ?? "");
   if (key.fromMe === true) return NextResponse.json({ ok: true });
   if (!remoteJid) return NextResponse.json({ ok: true });

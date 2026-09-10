@@ -109,6 +109,7 @@ interface PedidoMin   { id: string; nr_pedido?: string; status: string; }
 type Etapa = "prestador" | "servico" | "tributacao";
 
 const CAB_VAZIO = () => ({
+  fazenda_id: "",
   numero_nf: "", serie: "1", chave_nfse: "",
   prestador_id: "", prestador_nome: "", prestador_cnpj: "",
   tomador_id: "", tomador_nome: "", tomador_cnpj: "",
@@ -319,7 +320,7 @@ export default function NfServicoPage() {
   function abrirNovo() {
     setNfEdit(null);
     setEtapa("prestador");
-    setCab(CAB_VAZIO());
+    setCab({ ...CAB_VAZIO(), fazenda_id: fazendaId ?? "" });
     setCodigoLivre("");
     setErr("");
     setNfCondicao("avista");
@@ -334,6 +335,7 @@ export default function NfServicoPage() {
     setViewOnly(vo);
     setEtapa("prestador");
     setCab({
+      fazenda_id:           nf.fazenda_id ?? fazendaId ?? "",
       numero_nf:            nf.numero_nf,
       serie:                nf.serie,
       chave_nfse:           nf.chave_nfse ?? "",
@@ -391,7 +393,7 @@ export default function NfServicoPage() {
 
   // ── Salvar NF ───────────────────────────────────────────────
   async function salvar(status: "digitando" | "pendente" | "processada") {
-    if (!fazendaId) return;
+    if (!cab.fazenda_id && !fazendaId) return;
     setErr("");
     if (!cab.numero_nf.trim()) { setErr("Informe o número da NF."); return; }
     if (!cab.prestador_nome.trim()) { setErr("Informe o prestador."); return; }
@@ -403,7 +405,7 @@ export default function NfServicoPage() {
     const codigoFinal = cab.codigo_servico === "outros" ? codigoLivre : cab.codigo_servico;
 
     const payload = {
-      fazenda_id:            fazendaId,
+      fazenda_id:            cab.fazenda_id || fazendaId,
       numero_nf:             cab.numero_nf,
       serie:                 cab.serie,
       chave_nfse:            cab.chave_nfse || undefined,
@@ -435,7 +437,10 @@ export default function NfServicoPage() {
       pedido_compra_id:      cab.pedido_compra_id       || undefined,
       empresa_id:            cab.empresa_id || undefined,
       data_vencimento_cp:    cab.data_vencimento_cp     || undefined,
-      status,
+      // Grava "pendente" mesmo quando o usuário pediu "processada" — só é promovida
+      // a "processada" no final, depois que o CP for criado com sucesso (evita marcar
+      // como concluída uma NF cujo CP falhou no meio do caminho).
+      status:                status === "processada" ? "pendente" : status,
       origem:                "manual" as const,
       observacao:            cab.observacao || undefined,
       processado_por:        status === "processada" ? (nomeUsuario ?? undefined) : undefined,
@@ -456,7 +461,7 @@ export default function NfServicoPage() {
       // Cria CP em lancamentos quando processada (e ainda não tem lancamento vinculado)
       if (status === "processada" && !nfEdit?.lancamento_id) {
         const baseCP = {
-          fazenda_id:            fazendaId,
+          fazenda_id:            cab.fazenda_id || fazendaId,
           tipo:                  "pagar",
           moeda:                 "BRL",
           descricao:             `NFS-e ${cab.numero_nf} — ${cab.prestador_nome}`,
@@ -511,6 +516,14 @@ export default function NfServicoPage() {
         }
       }
 
+      // Só agora, com o CP confirmado (ou já existente), promove a NF a "processada".
+      if (status === "processada") {
+        const { error: errStatus } = await supabase.from("nf_servicos")
+          .update({ status: "processada" })
+          .eq("id", nfId);
+        if (errStatus) throw new Error(errStatus.message);
+      }
+
       await carregar();
       setWizard(false);
     } catch (e: unknown) {
@@ -557,7 +570,7 @@ export default function NfServicoPage() {
         const res = await fetch("/api/compras/excluir-nf-servico", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nf_id: nf.id, fazenda_id: fazendaId }),
+          body: JSON.stringify({ nf_id: nf.id, fazenda_id: nf.fazenda_id ?? fazendaId }),
         });
         if (!res.ok) {
           const json = await res.json().catch(() => ({})) as { error?: string };
@@ -591,7 +604,7 @@ export default function NfServicoPage() {
       const res = await fetch("/api/compras/excluir-nf-servico", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nf_id: modalExcluir.nf.id, fazenda_id: fazendaId }),
+        body: JSON.stringify({ nf_id: modalExcluir.nf.id, fazenda_id: modalExcluir.nf.fazenda_id ?? fazendaId }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({})) as { error?: string };
@@ -1036,6 +1049,15 @@ export default function NfServicoPage() {
               {/* ─── PASSO 1: PRESTADOR & DATA ─────────────── */}
               {etapa === "prestador" && (
                 <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
+                  {fazendas.length > 1 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={lbl}>Esta NF pertence a *</label>
+                      <select value={cab.fazenda_id} onChange={e => setCab(p => ({ ...p, fazenda_id: e.target.value }))} style={inp}>
+                        <option value="">— Selecionar —</option>
+                        {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                      </select>
+                    </div>
+                  )}
                   {/* Prestador */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>

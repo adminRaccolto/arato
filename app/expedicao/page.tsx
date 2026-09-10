@@ -29,6 +29,8 @@ interface Contrato {
   ciclo_id?: string;
   modalidade?: string;
   fazenda_id?: string;
+  produtor_id?: string;
+  produtor_nome?: string;
 }
 
 interface Carga {
@@ -36,6 +38,7 @@ interface Carga {
   numero: string;
   contrato_id?: string;
   contrato_numero?: string;
+  produtor_id?: string;
   produto: string;
   rota: RotaCarga;
   status: StatusCarga;
@@ -131,6 +134,7 @@ export default function Expedicao() {
   const [contratoSel, setContratoSel]   = useState<Contrato | null>(null);
   const [cargas, setCargas]             = useState<Carga[]>([]);
   const [carregandoC, setCarregandoC]   = useState(false);
+  const [produtorSel, setProdutorSel]   = useState<{ nome: string; cpf_cnpj?: string; inscricao_est?: string } | null>(null);
 
   // Modal nova carga
   const [modalNova, setModalNova] = useState(false);
@@ -175,7 +179,7 @@ export default function Expedicao() {
     const fids = fazendas.length > 0 ? fazendas.map(f => f.id) : [fazendaId];
     let q = supabase
       .from("contratos")
-      .select("id,numero,produto,comprador,safra,quantidade_sc,entregue_sc,status,ano_safra_id,ciclo_id,modalidade,fazenda_id")
+      .select("id,numero,produto,comprador,safra,quantidade_sc,entregue_sc,status,ano_safra_id,ciclo_id,modalidade,fazenda_id,produtor_id,produtor_nome")
       .in("fazenda_id", fids)
       .in("status", ["aberto","parcial","em andamento","confirmado"])
       .order("created_at", { ascending: false });
@@ -242,6 +246,11 @@ export default function Expedicao() {
   const selecionarContrato = (c: Contrato) => {
     setContratoSel(c);
     carregarCargas(c.id);
+    setProdutorSel(null);
+    if (c.produtor_id) {
+      supabase.from("produtores").select("nome, cpf_cnpj, inscricao_est").eq("id", c.produtor_id).single()
+        .then(({ data }) => setProdutorSel(data ?? null));
+    }
   };
 
   // ── Filtrar ciclos pelo ano safra selecionado ─────────────────────────────
@@ -269,6 +278,7 @@ export default function Expedicao() {
       fazenda_id: fidCarga,
       contrato_id: contratoSel.id,
       contrato_numero: contratoSel.numero,
+      produtor_id: contratoSel.produtor_id ?? null,
       produto: contratoSel.produto,
       status: "rascunho",
     });
@@ -892,7 +902,11 @@ export default function Expedicao() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA</div>
                   <div style={{ fontSize: 10, color: "var(--text-2)", marginTop: 2 }}>Modelo 55 — NF-e</div>
-                  <div style={{ fontSize: 10, marginTop: 8 }}>Emitente: {contratoSel?.produto ? `Produtor Rural — ${contratoSel.produto}` : "Produtor Rural"}</div>
+                  <div style={{ fontSize: 10, marginTop: 8 }}>
+                    Emitente: {produtorSel?.nome ?? contratoSel?.produtor_nome ?? "Produtor Rural"}
+                    {produtorSel?.cpf_cnpj ? ` — CPF/CNPJ ${produtorSel.cpf_cnpj}` : ""}
+                    {produtorSel?.inscricao_est ? ` — IE ${produtorSel.inscricao_est}` : ""}
+                  </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontWeight: 700, fontSize: 16, color: "#111111" }}>NF-e</div>

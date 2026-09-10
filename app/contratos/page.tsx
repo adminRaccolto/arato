@@ -11,6 +11,7 @@ import {
   encerrarAnoSafra, reabrirAnoSafra,
   baixarLancamento,
   listarIEsDoProdutor,
+  resolverOperacaoGerencialPorClassificacao,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 import InputNumerico from "../../components/InputNumerico";
@@ -214,6 +215,18 @@ const fmtData  = (iso?: string | null) => { if (!iso) return "—"; const [y,m,d
 const fmtR$    = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtPeso  = (kg: number) => `${kg.toLocaleString("pt-BR")} kg`;
 const TODAY    = new Date().toISOString().split("T")[0];
+
+// Classificação gerencial de venda por commodity — usada para vincular o CR de "Receita Grãos" à Operação Gerencial correta.
+const CLASSIFICACAO_VENDA_POR_PRODUTO: Record<string, string> = {
+  soja: "1.01.01.01.001", milho: "1.01.01.01.002", algodao: "1.01.01.01.003",
+  sorgo: "1.01.01.01.004", trigo: "1.01.01.01.005",
+};
+function classificacaoVendaPorProduto(produto: string | undefined | null): string | undefined {
+  if (!produto) return undefined;
+  const norm = produto.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const chave = Object.keys(CLASSIFICACAO_VENDA_POR_PRODUTO).find(k => norm.includes(k));
+  return chave ? CLASSIFICACAO_VENDA_POR_PRODUTO[chave] : undefined;
+}
 
 const PRODUTOS  = ["Soja", "Milho 1ª", "Milho 2ª (Safrinha)", "Algodão", "Sorgo", "Trigo", "Feijão"];
 const UNIDADES  = ["sc", "kg", "ton", "@"] as const;
@@ -1109,7 +1122,7 @@ export default function Contratos() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contrato_id: salvo.id,
-            fazenda_id: fazendaId,
+            fazenda_id: fidContrato,
             valor_total: valorTotal,
             moeda: fC.moeda,
             pessoa_id: fC.pessoa_id || undefined,
@@ -1263,7 +1276,8 @@ export default function Contratos() {
       const todosRomaneios = contratos.flatMap(c => c.romaneios);
       const criado = await criarRomaneio({
         contrato_id:           contratoSel.id,
-        fazenda_id:            fazendaId!,
+        fazenda_id:            contratoSel.fazenda_id ?? fazendaId!,
+        produtor_id:           contratoSel.produtor_id ?? undefined,
         numero:                `ROM-${String(todosRomaneios.length+1).padStart(4,"0")}`,
         placa:                 fRom.placa.toUpperCase(),
         peso_bruto_kg:         fRom.pesoEstimado ? plCalc : Number(fRom.pesoBruto),
@@ -1322,17 +1336,22 @@ export default function Contratos() {
           const compradorNome = pessoas.find(p=>p.id===(contratoSel.pessoa_id ?? cAtual?.pessoa_id))?.nome
             ?? contratoSel.comprador.split(" ").slice(0,3).join(" ");
           // 1. CR real para esta entrega
+          const ogVendaEntrega = await resolverOperacaoGerencialPorClassificacao(
+            contratoSel.fazenda_id ?? fazendaId!,
+            classificacaoVendaPorProduto(contratoSel.produto) ?? "",
+          );
           await supabase.from("lancamentos").insert({
-            fazenda_id: fazendaId,
+            fazenda_id: contratoSel.fazenda_id ?? fazendaId,
             tipo: "receber",
             descricao: `Receita Grãos — ${compradorNome} (${criado.numero})`,
             categoria: "Receita Grãos",
+            operacao_gerencial_id: ogVendaEntrega ?? null,
             data_lancamento: TODAY,
             data_vencimento: contratoSel.data_pagamento ?? TODAY,
             valor: valorEnt,
             moeda: moedaSel,
             status: "em_aberto",
-            safra_id: cAtual?.ciclo_id ?? contratoSel.ciclo_id ?? null,
+            ciclo_id: cAtual?.ciclo_id ?? contratoSel.ciclo_id ?? null,
             ano_safra_id: cAtual?.ano_safra_id ?? contratoSel.ano_safra_id ?? null,
             contrato_id: contratoSel.id,
             romaneio_id: criado.id,
@@ -1371,11 +1390,16 @@ export default function Contratos() {
           // CR líquido para esta entrega
           let crId: string | null = null;
           if (valorCR > 0) {
+            const ogVendaAdiant = await resolverOperacaoGerencialPorClassificacao(
+              contratoSel.fazenda_id ?? fazendaId!,
+              classificacaoVendaPorProduto(contratoSel.produto) ?? "",
+            );
             const { data: crRow } = await supabase.from("lancamentos").insert({
-              fazenda_id: fazendaId,
+              fazenda_id: contratoSel.fazenda_id ?? fazendaId,
               tipo: "receber",
               descricao: `Venda — ${contratoSel.comprador.split(" ").slice(0,3).join(" ")} (${criado.numero})`,
               categoria: "Receita Grãos",
+              operacao_gerencial_id: ogVendaAdiant ?? null,
               data_lancamento: TODAY, data_vencimento: TODAY,
               valor: Math.round(valorCR * 100) / 100,
               moeda: contratoSel.moeda,
@@ -1401,7 +1425,7 @@ export default function Contratos() {
               .update({ valor_aplicado: Math.round(novoApl * 100) / 100, status: novoSt })
               .eq("id", adiant.id);
             await supabase.from("aplicacoes_adiantamento").insert({
-              fazenda_id: fazendaId, adiantamento_id: adiant.id,
+              fazenda_id: contratoSel.fazenda_id ?? fazendaId, adiantamento_id: adiant.id,
               lancamento_id: crId, romaneio_id: criado.id,
               data_aplicacao: TODAY, valor_aplicado: Math.round(aplicar * 100) / 100,
               observacao: `Romaneio ${criado.numero}`,
@@ -1489,11 +1513,13 @@ export default function Contratos() {
       const contrato = contratos.find(c => c.id === adiantContratoId);
       if (!contrato || valor <= 0) return;
       // 1. CR liquidado
+      const ogAdiantCliente = await resolverOperacaoGerencialPorClassificacao(contrato.fazenda_id ?? fazendaId, "1.02.01.01.004");
       const { data: crRow } = await supabase.from("lancamentos").insert({
-        fazenda_id: fazendaId,
+        fazenda_id: contrato.fazenda_id ?? fazendaId,
         tipo: "receber",
         descricao: `Adiantamento — ${contrato.comprador.split(" ").slice(0,3).join(" ")} (Contrato ${contrato.numero ?? ""})`,
         categoria: "Adiantamento Cliente",
+        operacao_gerencial_id: ogAdiantCliente ?? null,
         data_lancamento: fAdiant.data, data_vencimento: fAdiant.data,
         valor, moeda: contrato.moeda,
         status: "liquidado", auto: true,
@@ -1501,7 +1527,7 @@ export default function Contratos() {
       }).select("id").maybeSingle();
       // 2. Registro de adiantamento
       const { data: adiant } = await supabase.from("adiantamentos_cliente").insert({
-        fazenda_id: fazendaId, contrato_id: adiantContratoId,
+        fazenda_id: contrato.fazenda_id ?? fazendaId, contrato_id: adiantContratoId,
         data: fAdiant.data, valor,
         descricao: fAdiant.descricao || null,
         lancamento_id: crRow?.id ?? null,

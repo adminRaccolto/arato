@@ -94,7 +94,17 @@ export async function atualizarConta(id: string, campos: Partial<Omit<Conta, "id
 export async function listarFazendas(id?: string): Promise<Fazenda[]> {
   let q = supabase.from("fazendas").select("*").order("nome");
   if (id) {
-    q = q.eq("id", id);
+    // Resolve TODAS as fazendas da mesma conta da fazenda informada — nunca uma única
+    // fazenda. Antes fazia .eq("id", id) e devolvia sempre 1 registro; nenhum dos ~8
+    // call sites do projeto queria esse comportamento — todos esperavam a lista completa
+    // da conta e, por causa disso, tinham o seletor de fazenda silenciosamente desligado
+    // (Contratos, Compras, Expedição, Propriedades, Financeiro/Seguros e Contratos, Lavoura).
+    const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", id).maybeSingle();
+    if (faz?.conta_id) {
+      q = q.eq("conta_id", faz.conta_id);
+    } else {
+      q = q.eq("id", id); // fallback: fazenda órfã, sem conta_id conhecida
+    }
   } else {
     // Acesso por conta (não por usuário individual) — múltiplos usuários por conta, múltiplas fazendas por conta
     const { data: { user } } = await supabase.auth.getUser();
@@ -361,12 +371,54 @@ export async function listarInsumosParaConta(contaIdDireto?: string | null, faze
 }
 
 export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise<Insumo> {
+  const { data: existente } = await supabase.from("insumos")
+    .select("id").eq("fazenda_id", i.fazenda_id).ilike("nome", i.nome).maybeSingle();
+  if (existente && !confirm(`Já existe um insumo/produto chamado "${i.nome}". Cadastrar mesmo assim?`)) {
+    throw new Error("Cadastro cancelado.");
+  }
   const { data, error } = await supabase.from("insumos").insert(i).select().single();
   if (error) throw error;
+  // Sem esta movimentação, a aba de movimentações mostra saldo negativo (só saídas,
+  // sem a entrada correspondente) e a reconciliação de estoque destrói o saldo real.
+  // Mesma lógica de app/api/insumos POST — mantidas em sincronia.
+  const estoqueInicial = Number(i.estoque ?? 0);
+  if (estoqueInicial > 0) {
+    await supabase.from("movimentacoes_estoque").insert({
+      insumo_id:  data.id,
+      fazenda_id: i.fazenda_id,
+      tipo:       "entrada",
+      motivo:     "estoque_inicial",
+      quantidade: estoqueInicial,
+      data:       new Date().toISOString().slice(0, 10),
+      observacao: "Saldo inicial cadastrado",
+      auto:       true,
+    });
+  }
   return data;
 }
 
 export async function atualizarInsumo(id: string, i: Partial<Insumo>): Promise<void> {
+  // Se o campo estoque está sendo alterado diretamente pelo cadastro, registra o
+  // ajuste como movimentação — mesma lógica de app/api/insumos PATCH, mantidas em
+  // sincronia. Sem isso, o saldo muda sem deixar rastro no kardex.
+  if ("estoque" in i) {
+    const { data: atual } = await supabase.from("insumos").select("estoque, fazenda_id").eq("id", id).maybeSingle();
+    if (atual) {
+      const delta = Number(i.estoque ?? 0) - Number(atual.estoque ?? 0);
+      if (delta !== 0) {
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id:  id,
+          fazenda_id: atual.fazenda_id,
+          tipo:       delta > 0 ? "entrada" : "saida",
+          motivo:     "ajuste_manual",
+          quantidade: Math.abs(delta),
+          data:       new Date().toISOString().slice(0, 10),
+          observacao: "Ajuste via cadastro de insumos",
+          auto:       false,
+        });
+      }
+    }
+  }
   const { error } = await supabase.from("insumos").update(i).eq("id", id);
   if (error) throw error;
 }
@@ -1069,6 +1121,15 @@ export async function criarProdutor(p: Omit<Produtor, "id" | "created_at">): Pro
     body: JSON.stringify(p),
   });
   const json = await res.json();
+
+  if (res.status === 409 && json.error === "duplicado") {
+    const existente = json.produtor_existente as Produtor;
+    if (confirm(`Já existe um produtor com esse CPF/CNPJ: "${existente.nome}".\n\nUsar o cadastro existente em vez de criar um novo?`)) {
+      return existente;
+    }
+    throw new Error("Cadastro cancelado — CPF/CNPJ já usado por outro produtor.");
+  }
+
   if (!res.ok) throw new Error(json.error ?? "Erro ao criar produtor");
   return json.produtor as Produtor;
 }
@@ -1219,15 +1280,25 @@ export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
 }
 
 // Resolve IDs de fazendas dado contaId + fallback de fazenda individual
+// Delega para /api/fazenda/da-conta (service_role — imune a RLS e a JWT
+// expirado) em vez de consultar "fazendas" direto com o cliente anon. Mesma
+// robustez que resolverFazendaIds() já usa; assinatura externa inalterada
+// para não exigir mudança nos ~16 call sites existentes.
 async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): Promise<string[]> {
   if (fazenda_id_fallback) {
-    const { data: fz } = await supabase.from("fazendas").select("id, owner_user_id, conta_id").eq("id", fazenda_id_fallback).maybeSingle();
-
-    if (fz?.conta_id && !fz.conta_id.startsWith("sem_conta_")) {
-      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("conta_id", fz.conta_id);
-      const ids = [...new Set([...(allFzs ?? []).map(f => f.id), fazenda_id_fallback])];
-      if (ids.length) return ids;
-    }
+    try {
+      const res = await fetch("/api/fazenda/da-conta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazenda_id_fallback }),
+      });
+      if (res.ok) {
+        const json = await res.json() as { ok: boolean; fazendas?: { id: string }[] };
+        if (json.ok && json.fazendas?.length) {
+          return [...new Set([...json.fazendas.map(f => f.id), fazenda_id_fallback])];
+        }
+      }
+    } catch { /* cai no fallback abaixo */ }
 
     // Fallback: inclui sempre a fazenda âncora para garantir visibilidade
     return [fazenda_id_fallback];
@@ -1262,6 +1333,16 @@ export async function listarContasBancariasDaConta(fazenda_id_fallback?: string 
   return data ?? [];
 }
 export async function criarPessoa(p: Omit<Pessoa, "id" | "created_at">): Promise<Pessoa> {
+  if (p.cpf_cnpj) {
+    const { data: existente } = await supabase.from("pessoas")
+      .select("*").eq("fazenda_id", p.fazenda_id).eq("cpf_cnpj", p.cpf_cnpj).maybeSingle();
+    if (existente) {
+      if (confirm(`Já existe um cadastro com esse CPF/CNPJ: "${existente.nome}".\n\nUsar o cadastro existente em vez de criar um novo?`)) {
+        return existente;
+      }
+      throw new Error("Cadastro cancelado — CPF/CNPJ já usado por outro cadastro.");
+    }
+  }
   const { data, error } = await supabase.from("pessoas").insert(p).select().single();
   if (error) throw error;
   return data;
@@ -1418,6 +1499,11 @@ export async function listarVeiculosUnificados(
   return result;
 }
 export async function criarMaquina(m: Omit<Maquina, "id" | "created_at">): Promise<Maquina> {
+  const { data: existente } = await supabase.from("maquinas")
+    .select("id").eq("fazenda_id", m.fazenda_id).ilike("nome", m.nome).maybeSingle();
+  if (existente && !confirm(`Já existe uma máquina chamada "${m.nome}". Cadastrar mesmo assim?`)) {
+    throw new Error("Cadastro cancelado.");
+  }
   const { data, error } = await supabase.from("maquinas").insert(m).select().single();
   if (error) throw error;
   return data;
@@ -1470,6 +1556,13 @@ export async function listarFuncionarios(fazenda_id: string): Promise<Funcionari
   return data ?? [];
 }
 export async function criarFuncionario(f: Omit<Funcionario, "id" | "created_at">): Promise<Funcionario> {
+  if (f.cpf) {
+    const { data: existente } = await supabase.from("funcionarios")
+      .select("id, nome").eq("fazenda_id", f.fazenda_id).eq("cpf", f.cpf).maybeSingle();
+    if (existente && !confirm(`Já existe um funcionário com esse CPF: "${existente.nome}". Cadastrar mesmo assim?`)) {
+      throw new Error("Cadastro cancelado.");
+    }
+  }
   const { data, error } = await supabase.from("funcionarios").insert(f).select().single();
   if (error) throw error;
   return data;
@@ -1541,8 +1634,11 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
   if (!funcs || funcs.length === 0) return { gerados: 0 };
 
   // Busca IDs das operações gerenciais por classificação (FAZ = 2.01.01.10, ADM = 2.02.01.03)
+  // Precisa cobrir as OGs globais/da conta (fazenda_id NULL), não só as legadas por fazenda —
+  // senão os salários saem sempre sem classificação contábil.
+  const contaIdFolha = await resolverContaIdDaFazenda(fazenda_id);
   const { data: opsData } = await supabase.from("operacoes_gerenciais")
-    .select("id, classificacao").eq("fazenda_id", fazenda_id);
+    .select("id, classificacao").or(ogOrFilter(contaIdFolha, fazenda_id));
   const opsByClass: Record<string, string> = {};
   for (const op of (opsData ?? [])) opsByClass[op.classificacao] = op.id;
 
@@ -1592,8 +1688,12 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
 // GRUPOS DE USUÁRIOS
 // ————————————————————————————————————————
 
-export async function listarGrupos(): Promise<GrupoUsuario[]> {
-  const { data, error } = await supabase.from("grupos_usuarios").select("*").order("nome");
+export async function listarGrupos(fazendaIds: string[]): Promise<GrupoUsuario[]> {
+  if (!fazendaIds || fazendaIds.length === 0) return [];
+  // Inclui grupos globais (fazenda_id NULL, templates compartilhados) além dos da conta
+  const { data, error } = await supabase.from("grupos_usuarios").select("*")
+    .or(`fazenda_id.in.(${fazendaIds.join(",")}),fazenda_id.is.null`)
+    .order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -1615,8 +1715,9 @@ export async function excluirGrupo(id: string): Promise<void> {
 // USUÁRIOS
 // ————————————————————————————————————————
 
-export async function listarUsuarios(): Promise<Usuario[]> {
-  const { data, error } = await supabase.from("usuarios").select("*").order("nome");
+export async function listarUsuarios(fazendaIds: string[]): Promise<Usuario[]> {
+  if (!fazendaIds || fazendaIds.length === 0) return [];
+  const { data, error } = await supabase.from("usuarios").select("*").in("fazenda_id", fazendaIds).order("nome");
   if (error) throw error;
   const rows = (data ?? []) as Usuario[];
   // Enriquecer com role do perfis para exibição no cadastro
@@ -1901,6 +2002,11 @@ export async function listarDepositosMulti(fazenda_ids: string[]): Promise<Depos
   return data ?? [];
 }
 export async function criarDeposito(d: Omit<Deposito, "id" | "created_at">): Promise<Deposito> {
+  const { data: existente } = await supabase.from("depositos")
+    .select("id").eq("fazenda_id", d.fazenda_id).ilike("nome", d.nome).maybeSingle();
+  if (existente && !confirm(`Já existe um depósito chamado "${d.nome}". Cadastrar mesmo assim?`)) {
+    throw new Error("Cadastro cancelado.");
+  }
   const { data, error } = await supabase.from("depositos").insert(d).select().single();
   if (error) throw error;
   return data;
@@ -2632,7 +2738,9 @@ export async function processarDevolucaoCompra(
 ): Promise<NfEntrada> {
   const valorTotal = itens.reduce((s, i) => s + i.valor_total, 0);
 
-  // 1. Cria NF de devolução
+  // 1. Cria NF de devolução — status inicial "pendente"; só vira "processada" no
+  // final, depois que itens/estoque/CR forem confirmados (evita marcar como
+  // concluída uma devolução que falhou no meio do caminho).
   const { data: nfDev, error: errNf } = await supabase
     .from("nf_entradas")
     .insert({
@@ -2647,7 +2755,7 @@ export async function processarDevolucaoCompra(
       data_entrada:  data_emissao,
       valor_total:   valorTotal,
       natureza:      "Devolução de Compra",
-      status:        "processada",
+      status:        "pendente",
       origem:        "manual",
       tipo_entrada:  "devolucao_compra",
       nf_origem_id,
@@ -2659,7 +2767,7 @@ export async function processarDevolucaoCompra(
   // 2. Para cada item: cria item na NF de devolução + saída de estoque
   for (const item of itens) {
     // Insere item na NF
-    const { data: nfItem } = await supabase
+    const { data: nfItem, error: errItem } = await supabase
       .from("nf_entrada_itens")
       .insert({
         nf_entrada_id:    nfDev.id,
@@ -2679,9 +2787,10 @@ export async function processarDevolucaoCompra(
       })
       .select()
       .single();
+    if (errItem) throw errItem;
 
     // Saída do estoque (desbita o insumo que está sendo devolvido)
-    await supabase.from("movimentacoes_estoque").insert({
+    const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
       insumo_id:          item.insumo_id,
       fazenda_id,
       tipo:               "saida",
@@ -2692,37 +2801,50 @@ export async function processarDevolucaoCompra(
       deposito_id:        item.deposito_id ?? null,
       nf_entrada_item_id: nfItem?.id ?? null,
     });
+    if (errMov) throw errMov;
 
     // Débita a quantidade diretamente (equivalente a uma saída)
-    const { data: ins } = await supabase
+    const { data: ins, error: errIns } = await supabase
       .from("insumos")
-      .select("estoque_atual")
+      .select("estoque")
       .eq("id", item.insumo_id)
       .single();
+    if (errIns) throw errIns;
     if (ins) {
-      const novoSaldo = Math.max(0, (ins.estoque_atual ?? 0) - item.quantidade_devolver);
-      await supabase
+      const novoSaldo = Math.max(0, (ins.estoque ?? 0) - item.quantidade_devolver);
+      const { error: errUpdIns } = await supabase
         .from("insumos")
-        .update({ estoque_atual: novoSaldo })
+        .update({ estoque: novoSaldo })
         .eq("id", item.insumo_id);
+      if (errUpdIns) throw errUpdIns;
     }
   }
 
   // 3. Cria CR — fornecedor deve devolver o valor
-  await supabase.from("lancamentos").insert({
+  const ogDevolucao = await resolverOperacaoGerencialPorClassificacao(fazenda_id, "1.02.01.03.001");
+  const { error: errCR } = await supabase.from("lancamentos").insert({
     fazenda_id,
     tipo:            "receber",
     moeda:           "BRL",
     descricao:       `Devolução de Compra NF ${numero} — ${emitente_nome}`,
     categoria:       "devolucao",
+    operacao_gerencial_id: ogDevolucao ?? null,
     data_lancamento: data_emissao,
     data_vencimento: data_vencimento ?? data_emissao,
     valor:           valorTotal,
     status:          "em_aberto",
     auto:            true,
   });
+  if (errCR) throw errCR;
 
-  return nfDev as NfEntrada;
+  // 4. Só agora, com itens/estoque/CR confirmados, marca a devolução como concluída
+  const { error: errStatus } = await supabase
+    .from("nf_entradas")
+    .update({ status: "processada" })
+    .eq("id", nfDev.id);
+  if (errStatus) throw errStatus;
+
+  return { ...nfDev, status: "processada" } as NfEntrada;
 }
 
 // ————————————————————————————————————————
@@ -3058,10 +3180,14 @@ export async function buscarOgsCf(fazenda_id: string): Promise<Map<string, strin
     OG_ENCARGO_CLASS,
     OG_CAPTACAO_CLASS,
   ])];
+  // As OGs padrão da Raccolto são globais (fazenda_id NULL) — filtrar só por
+  // fazenda_id nunca as encontrava, e todo lançamento de contrato financeiro
+  // saía sem classificação contábil (sumia do DRE e do SPED ECD).
+  const contaIdOgCf = await resolverContaIdDaFazenda(fazenda_id);
   const { data } = await supabase
     .from("operacoes_gerenciais")
     .select("id, classificacao")
-    .eq("fazenda_id", fazenda_id)
+    .or(ogOrFilter(contaIdOgCf, fazenda_id))
     .in("classificacao", uniq);
   const m = new Map<string, string>();
   (data ?? []).forEach((o: { id: string; classificacao: string }) => m.set(o.classificacao, o.id));
@@ -3346,17 +3472,20 @@ export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoS
         insumo_id:               it.insumo_id, fazenda_id: correcao.fazenda_id,
         tipo:                    "saida", quantidade: qtdNativa, data: correcao.data_aplicacao,
         custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
-        safra: correcao.ciclo_id, motivo: "correcao_solo",
+        ciclo_id: correcao.ciclo_id, motivo: "correcao_solo",
         descricao: `Correção de Solo — ${nomes[it.insumo_id] ?? "produto"}`,
       });
     }
   }
   if (correcao.custo_total && correcao.custo_total > 0) {
+    const ogCorrecao = await resolverOperacaoGerencialPorClassificacao(correcao.fazenda_id, "2.01.01.01.002");
     await supabase.from("lancamentos").insert({
       fazenda_id: correcao.fazenda_id, tipo: "pagar",
       descricao: `Correção de Solo — ${correcao.area_ha} ha`,
       valor: correcao.custo_total, data_vencimento: correcao.data_aplicacao,
       status: "pendente", categoria: "Insumos — Corretivos",
+      operacao_gerencial_id: ogCorrecao ?? null,
+      ciclo_id: correcao.ciclo_id,
     });
   }
 }
@@ -3438,17 +3567,20 @@ export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoB
         insumo_id:               it.insumo_id, fazenda_id: adubacao.fazenda_id,
         tipo:                    "saida", quantidade: qtdNativa, data: adubacao.data_aplicacao,
         custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
-        safra: adubacao.ciclo_id, motivo: "adubacao_base",
+        ciclo_id: adubacao.ciclo_id, motivo: "adubacao_base",
         descricao: `Adubação de Base — ${nomes[it.insumo_id] ?? "fertilizante"}`,
       });
     }
   }
   // Lançamento CP obrigatório — sempre criado
+  const ogAdubacao = await resolverOperacaoGerencialPorClassificacao(adubacao.fazenda_id, "2.01.01.01.004");
   await supabase.from("lancamentos").insert({
     fazenda_id: adubacao.fazenda_id, tipo: "pagar",
     descricao: `Adubação de Base — ${adubacao.area_ha} ha`,
     valor: adubacao.custo_total ?? 0, data_vencimento: adubacao.data_aplicacao,
     status: "pendente", categoria: "Insumos — Fertilizantes",
+    operacao_gerencial_id: ogAdubacao ?? null,
+    ciclo_id: adubacao.ciclo_id,
   });
 }
 
@@ -3509,7 +3641,7 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
         quantidade:               qty,
         custo_unitario_na_baixa:  ins.custo_medio ?? ins.valor_unitario ?? undefined,
         data:                     plantio.data_plantio,
-        safra:                    plantio.ciclo_id,
+        ciclo_id:                 plantio.ciclo_id,
         operacao:                 "plantio",
         observacao:               `Plantio — ${insumoNome} ${plantio.variedade ?? ""}`.trim(),
         auto:                     true,
@@ -3519,15 +3651,17 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
 
   // Lançamento CP obrigatório — sempre criado (valor 0 se custo_sementes não configurado)
   {
+    const ogPlantio = await resolverOperacaoGerencialPorClassificacao(plantio.fazenda_id, "2.01.01.01.003");
     const { data: lanc } = await supabase.from("lancamentos").insert({
       fazenda_id: plantio.fazenda_id,
       tipo: "pagar", moeda: "BRL",
       descricao: `Plantio — ${insumoNome}${plantio.variedade ? ` (${plantio.variedade})` : ""}`,
       categoria: "Insumos — Sementes",
+      operacao_gerencial_id: ogPlantio ?? null,
       data_lancamento: hoje,
       data_vencimento: plantio.data_plantio,
       valor: custo,
-      safra_id: plantio.ciclo_id,
+      ciclo_id: plantio.ciclo_id,
       status: "em_aberto", auto: true,
     }).select().single();
     if (lanc) {
@@ -3608,7 +3742,7 @@ export async function processarPulverizacao(
         quantidade:              item.total_consumido,
         custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
         data:                    pulv.data_inicio,
-        safra:                   pulv.ciclo_id,
+        ciclo_id:                pulv.ciclo_id,
         operacao:                pulv.tipo,
         observacao:              `Pulverização ${pulv.tipo} — ${nomesInsumos[item.insumo_id] ?? item.insumo_id}`,
         auto:                    true,
@@ -3621,15 +3755,17 @@ export async function processarPulverizacao(
   await supabase.from("pulverizacoes").update({ custo_total: custoTotal }).eq("id", pulv.id);
 
   // Lançamento CP obrigatório — sempre criado
+  const ogPulverizacao = await resolverOperacaoGerencialPorClassificacao(pulv.fazenda_id, "2.01.01.01.001");
   await supabase.from("lancamentos").insert({
     fazenda_id: pulv.fazenda_id,
     tipo: "pagar", moeda: "BRL",
     descricao: `Pulverização — ${TIPO_PULV_LABEL[pulv.tipo] ?? pulv.tipo}`,
     categoria: "Insumos — Defensivos",
+    operacao_gerencial_id: ogPulverizacao ?? null,
     data_lancamento: new Date().toISOString().slice(0, 10),
     data_vencimento: pulv.data_inicio,
     valor: custoTotal,
-    safra_id: pulv.ciclo_id,
+    ciclo_id: pulv.ciclo_id,
     status: "em_aberto", auto: true,
   });
 }
@@ -3735,7 +3871,7 @@ export async function finalizarColheita(colheita: ColheitaRegistro, insumoId: st
         tipo: "entrada",
         quantidade: qtd,
         data: colheita.data_colheita,
-        safra: colheita.ciclo_id,
+        ciclo_id: colheita.ciclo_id,
         operacao: "colheita",
         observacao: `Colheita própria — ${colheita.produto}${colheita.variedade ? ` (${colheita.variedade})` : ""}`,
         deposito_id: colheita.deposito_id ?? null,
@@ -4125,24 +4261,81 @@ export async function listarPedidoCompraEntregas(pedido_id: string): Promise<Ped
   return data ?? [];
 }
 
+// Recalcula o status do pedido a partir do saldo atual de todos os itens —
+// usado tanto ao registrar quanto ao editar/excluir uma entrega (pode andar
+// para frente, entregue↔parcial, ou voltar a "aprovado" se tudo for desfeito).
+async function recalcularStatusPedidoCompra(pedido_id: string): Promise<void> {
+  const itens = await listarPedidoCompraItens(pedido_id);
+  if (!itens.length) return;
+  const todoEntregue = itens.every(it => (it.qtd_entregue ?? 0) >= (it.quantidade - (it.qtd_cancelada ?? 0)));
+  const algumEntregue = itens.some(it => (it.qtd_entregue ?? 0) > 0);
+  const novoStatus = todoEntregue ? "entregue" : algumEntregue ? "parcialmente_entregue" : "aprovado";
+  await atualizarPedidoCompra(pedido_id, { status: novoStatus });
+}
+
 export async function registrarEntrega(e: Omit<PedidoCompraEntrega, "id" | "created_at">): Promise<PedidoCompraEntrega> {
+  let item: { quantidade: number; qtd_entregue: number | null; qtd_cancelada: number | null; nome_item: string } | null = null;
+  if (e.item_id) {
+    const { data } = await supabase.from("pedidos_compra_itens")
+      .select("quantidade, qtd_entregue, qtd_cancelada, nome_item").eq("id", e.item_id).single();
+    item = data;
+    if (item) {
+      const saldo = item.quantidade - (item.qtd_cancelada ?? 0) - (item.qtd_entregue ?? 0);
+      if (e.quantidade_entregue > saldo + 0.001) {
+        throw new Error(`Quantidade entregue (${e.quantidade_entregue.toLocaleString("pt-BR")}) excede o saldo disponível de "${item.nome_item}" (${saldo.toLocaleString("pt-BR")}). Corrija o valor antes de confirmar.`);
+      }
+    }
+  }
   const { data, error } = await supabase.from("pedidos_compra_entregas").insert(e).select().single();
   if (error) throw error;
   // Atualiza qtd_entregue no item
-  if (e.item_id) {
-    const { data: item } = await supabase.from("pedidos_compra_itens").select("quantidade, qtd_entregue").eq("id", e.item_id).single();
+  if (e.item_id && item) {
+    const novaQtd = (item.qtd_entregue ?? 0) + e.quantidade_entregue;
+    await supabase.from("pedidos_compra_itens").update({ qtd_entregue: novaQtd }).eq("id", e.item_id);
+  }
+  await recalcularStatusPedidoCompra(e.pedido_id);
+  return data;
+}
+
+// Corrige uma entrega já registrada (ex: erro de digitação) sem precisar excluir e recriar.
+export async function editarEntrega(id: string, novaQuantidade: number): Promise<void> {
+  const { data: entrega, error: e1 } = await supabase.from("pedidos_compra_entregas")
+    .select("pedido_id, item_id, quantidade_entregue").eq("id", id).single();
+  if (e1) throw e1;
+  if (entrega.item_id) {
+    const { data: item, error: e2 } = await supabase.from("pedidos_compra_itens")
+      .select("quantidade, qtd_entregue, qtd_cancelada, nome_item").eq("id", entrega.item_id).single();
+    if (e2) throw e2;
     if (item) {
-      const novaQtd = (item.qtd_entregue ?? 0) + e.quantidade_entregue;
-      await supabase.from("pedidos_compra_itens").update({ qtd_entregue: novaQtd }).eq("id", e.item_id);
+      // Saldo disponível sem contar esta entrega (que está prestes a ser substituída)
+      const qtdSemEstaEntrega = (item.qtd_entregue ?? 0) - entrega.quantidade_entregue;
+      const saldo = item.quantidade - (item.qtd_cancelada ?? 0) - qtdSemEstaEntrega;
+      if (novaQuantidade > saldo + 0.001) {
+        throw new Error(`Quantidade entregue (${novaQuantidade.toLocaleString("pt-BR")}) excede o saldo disponível de "${item.nome_item}" (${saldo.toLocaleString("pt-BR")}). Corrija o valor antes de salvar.`);
+      }
+      await supabase.from("pedidos_compra_itens").update({ qtd_entregue: qtdSemEstaEntrega + novaQuantidade }).eq("id", entrega.item_id);
     }
   }
-  // Verifica se pedido foi totalmente entregue
-  const itens = await listarPedidoCompraItens(e.pedido_id);
-  const todoEntregue = itens.length > 0 && itens.every(it => (it.qtd_entregue ?? 0) >= (it.quantidade - (it.qtd_cancelada ?? 0)));
-  const algumEntregue = itens.some(it => (it.qtd_entregue ?? 0) > 0);
-  const novoStatus = todoEntregue ? "entregue" : algumEntregue ? "parcialmente_entregue" : undefined;
-  if (novoStatus) await atualizarPedidoCompra(e.pedido_id, { status: novoStatus });
-  return data;
+  const { error: e3 } = await supabase.from("pedidos_compra_entregas").update({ quantidade_entregue: novaQuantidade }).eq("id", id);
+  if (e3) throw e3;
+  await recalcularStatusPedidoCompra(entrega.pedido_id);
+}
+
+// Remove uma entrega registrada por engano, devolvendo a quantidade ao saldo do item.
+export async function excluirEntrega(id: string): Promise<void> {
+  const { data: entrega, error: e1 } = await supabase.from("pedidos_compra_entregas")
+    .select("pedido_id, item_id, quantidade_entregue").eq("id", id).single();
+  if (e1) throw e1;
+  const { error: e2 } = await supabase.from("pedidos_compra_entregas").delete().eq("id", id);
+  if (e2) throw e2;
+  if (entrega.item_id) {
+    const { data: item } = await supabase.from("pedidos_compra_itens").select("qtd_entregue").eq("id", entrega.item_id).single();
+    if (item) {
+      const novaQtd = Math.max(0, (item.qtd_entregue ?? 0) - entrega.quantidade_entregue);
+      await supabase.from("pedidos_compra_itens").update({ qtd_entregue: novaQtd }).eq("id", entrega.item_id);
+    }
+  }
+  await recalcularStatusPedidoCompra(entrega.pedido_id);
 }
 
 // ————————————————————————————————————————
@@ -4505,6 +4698,20 @@ function ogOrFilter(conta_id: string | null, fazenda_id: string | null): string 
   if (conta_id)  parts.push(`conta_id.eq.${conta_id}`);
   if (fazenda_id) parts.push(`fazenda_id.eq.${fazenda_id}`);
   return parts.join(",");
+}
+
+// Resolve o id da Operação Gerencial pela classificação padrão (ex: "2.01.01.01.003" — Compra de Sementes),
+// escopada à fazenda/conta. Usada pelos fluxos automáticos que ainda não têm seletor de OG na tela.
+export async function resolverOperacaoGerencialPorClassificacao(fazenda_id: string, classificacao: string): Promise<string | undefined> {
+  const conta_id = await resolverContaIdDaFazenda(fazenda_id);
+  const { data } = await supabase.from("operacoes_gerenciais")
+    .select("id")
+    .or(ogOrFilter(conta_id, fazenda_id))
+    .eq("classificacao", classificacao)
+    .eq("inativo", false)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? undefined;
 }
 
 export async function listarOperacoesGerenciais(fazenda_id: string): Promise<OperacaoGerencial[]> {
@@ -5313,6 +5520,7 @@ export async function criarAdiantamento(
     .single();
   if (eAdiant) throw eAdiant;
 
+  const ogAdiantamento = await resolverOperacaoGerencialPorClassificacao(a.fazenda_id, "2.01.01.09.001");
   const { data: lanc, error: eLanc } = await supabase
     .from("lancamentos")
     .insert({
@@ -5322,6 +5530,7 @@ export async function criarAdiantamento(
       cotacao_usd:     a.cotacao_usd ?? null,
       descricao:       `Adiantamento — ${a.descricao}`,
       categoria:       "Adiantamento a Fornecedores",
+      operacao_gerencial_id: ogAdiantamento ?? null,
       data_lancamento: a.data_emissao,
       data_vencimento: a.data_emissao,
       valor:           a.valor,

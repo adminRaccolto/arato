@@ -8,7 +8,7 @@ import {
   listarRomaneiosEntradaDaConta, criarRomaneioEntrada, atualizarRomaneioEntrada,
   excluirRomaneioEntrada, confirmarRomaneioEntrada,
   listarDepositos, listarPessoasDaConta, listarAnosSafra, listarTodosCiclos, listarInsumos,
-  listarContratosDaConta, listarFazendas, listarTalhoes, listarProdutoresDaConta,
+  listarContratosDaConta, listarFazendasDaConta, listarTalhoes, listarProdutoresDaConta,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import type { RomaneioEntrada, Deposito, Pessoa, AnoSafra, Ciclo, Insumo, Contrato, Talhao, Produtor, ProdutorIE } from "../../../lib/supabase";
@@ -97,6 +97,14 @@ function Modal({ titulo, onClose, children, width = 800 }: { titulo: string; onC
 export default function RomaneioEntradaPage() {
   const { fazendaId, fazendaIds, contaId } = useAuth();
 
+  // Fazendas da conta — para o seletor explícito no formulário de romaneio novo
+  const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId)
+      .then(fzs => setFazendas(fzs.map(f => ({ id: f.id!, nome: f.nome }))))
+      .catch(() => {});
+  }, [fazendaId, contaId]);
 
   const [romaneios,  setRomaneios]  = useState<RomaneioEntrada[]>([]);
   const [depositos,  setDepositos]  = useState<Deposito[]>([]);
@@ -532,6 +540,20 @@ export default function RomaneioEntradaPage() {
       {modal && (
         <Modal titulo={editRom ? "Editar Romaneio de Entrada" : "Novo Romaneio de Entrada"} onClose={() => setModal(false)} width={860}>
 
+          {/* Fazenda */}
+          {fazendas.length > 1 && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Fazenda *</label>
+              <select
+                disabled={editRom?.status === "confirmado"}
+                value={form.fazenda_id || fazendaId || ""}
+                onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "0.5px solid #CDD5E0", fontSize: 13, background: "var(--bg-card)" }}
+              >
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Toggle tipo */}
           <div style={{ display: "flex", gap: 0, marginBottom: 12, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>

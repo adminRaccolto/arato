@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarFazendasDaConta } from "../../../lib/db";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type StatusCCT = "negociacao" | "assinado" | "escriturado" | "registrado" | "encerrado" | "cancelado";
@@ -177,6 +178,7 @@ function gerarPreviewParcelas(form: FormParc, moedaPadrao: MoedaParcela, scRef: 
 
 // ── Formulário vazio ──────────────────────────────────────────────────────────
 const FORM_VAZIO = {
+  fazenda_id: "",
   numero: "", status: "negociacao" as StatusCCT,
   imovel_nome: "", imovel_municipio: "", imovel_uf: "MT",
   imovel_area_total_ha: "", imovel_area_terra_nua_ha: "",
@@ -204,6 +206,14 @@ const FORM_VAZIO = {
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function CompraTerrPage() {
   const { fazendaId, contaId } = useAuth();
+  // Fazendas da conta — seletor explícito no modal (não existe "fazenda ativa")
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId)
+      .then(fzs => setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome }))))
+      .catch(() => {});
+  }, [fazendaId, contaId]);
   const [aba, setAba] = useState<"lista" | "pagamentos">("lista");
   const [contratos, setContratos]         = useState<ContratoCT[]>([]);
   const [pagamentos, setPagamentos]       = useState<Pagamento[]>([]);
@@ -277,6 +287,7 @@ export default function CompraTerrPage() {
   const abrir = (ct?: ContratoCT, soLeitura = false) => {
     if (ct) {
       setForm({
+        fazenda_id: ct.fazenda_id ?? fazendaId ?? "",
         numero: ct.numero ?? "", status: ct.status,
         imovel_nome: ct.imovel_nome, imovel_municipio: ct.imovel_municipio ?? "",
         imovel_uf: ct.imovel_uf ?? "MT",
@@ -319,7 +330,7 @@ export default function CompraTerrPage() {
           }))
         : null);
     } else {
-      setForm({ ...FORM_VAZIO });
+      setForm({ ...FORM_VAZIO, fazenda_id: fazendaId ?? "" });
       setEditId(null);
       setParcelasCustom(null);
     }
@@ -329,11 +340,11 @@ export default function CompraTerrPage() {
   };
 
   const salvar = async () => {
-    if (!fazendaId || !form.imovel_nome || !form.valor_total) return;
+    if ((!form.fazenda_id && !fazendaId) || !form.imovel_nome || !form.valor_total) return;
     setSalvando(true);
     try {
       const payload = {
-        fazenda_id: fazendaId, conta_id: contaId,
+        fazenda_id: form.fazenda_id || fazendaId, conta_id: contaId,
         numero: form.numero || null, status: form.status,
         imovel_nome: form.imovel_nome, imovel_municipio: form.imovel_municipio || null,
         imovel_uf: form.imovel_uf || null,
@@ -834,6 +845,14 @@ export default function CompraTerrPage() {
               {/* ── ABA IMÓVEL ── */}
               {abaModal === "imovel" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {fazendasConta.length > 1 && (
+                    <div><label style={lbl}>Fazenda vinculada *</label>
+                      <select style={inp} value={form.fazenda_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}>
+                        <option value="">— Selecionar —</option>
+                        {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                      </select>
+                    </div>
+                  )}
                   <div style={g2}>
                     <div><label style={lbl}>Nome / Identificação do Imóvel *</label>
                       <input style={inp} value={form.imovel_nome} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_nome: e.target.value }))} placeholder="Ex: Fazenda Boa Vista — Gleba Norte" /></div>

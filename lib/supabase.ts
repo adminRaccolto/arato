@@ -78,6 +78,11 @@ export type Fazenda = {
   // Entidade fiscal — define o CPF/CNPJ que escritura esta fazenda no LCDPR e SPED
   entidade_contabil?: "pf" | "pj"; // pf = produtor rural PF; pj = empresa/SRL
   cpf_cnpj_fiscal?: string;        // CPF ou CNPJ do titular fiscal (propagado para lancamentos)
+  // LCDPR — registro 0040 (Cadastro dos Imóveis Rurais), leiaute 1.3 (ADE COPES nº 1/2020)
+  caepf?: string;                  // Cadastro de Atividade Econômica da PF (IN RFB 1.828/2018) — 14 dígitos
+  tipo_exploracao?: number;        // 1=individual 2=condomínio 3=arrendado 4=parceria 5=comodato 6=outros
+  participacao_lcdpr?: number;     // % de participação na exploração do imóvel — default 100
+  municipio_ibge?: string;         // código IBGE do município, 7 dígitos (tabela SPED)
   owner_user_id?: string;
   created_at?: string;
 };
@@ -517,6 +522,7 @@ export type Romaneio = {
   id: string;
   contrato_id: string;
   fazenda_id: string;
+  produtor_id?: string;
   numero: string;
   placa: string;
   peso_bruto_kg: number;
@@ -1087,6 +1093,7 @@ export type ContaBancaria = {
   nome: string;
   banco_id?: string | null;     // FK → bancos (resolve codigo_compe + cnpj)
   banco?: string;               // legado — mantido para retrocompatibilidade
+  codigo_bacen?: string | null; // código de compensação BACEN, 3 dígitos (LCDPR registro 0050)
   agencia?: string;
   agencia_dv?: string | null;
   conta?: string;

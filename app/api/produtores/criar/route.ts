@@ -21,9 +21,39 @@ export async function POST(req: NextRequest) {
     const auth = await validateFazendaAccess(body.fazenda_id, req.headers.get("authorization") ?? undefined);
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
+    if (body.cpf_cnpj) {
+      const { data: existente } = await admin.from("produtores")
+        .select("*").eq("fazenda_id", body.fazenda_id).eq("cpf_cnpj", body.cpf_cnpj).maybeSingle();
+      if (existente) {
+        return NextResponse.json({ error: "duplicado", produtor_existente: existente }, { status: 409 });
+      }
+    }
+
+    // Allowlist explícita — nunca repassar o body cru para o insert (evita injeção
+    // de colunas como owner_user_id/conta_id de outra conta via payload arbitrário).
+    const payload = {
+      fazenda_id: body.fazenda_id,
+      conta_id: body.conta_id,
+      nome: body.nome,
+      tipo: body.tipo,
+      cpf_cnpj: body.cpf_cnpj,
+      incra: body.incra,
+      inscricao_est: body.inscricao_est,
+      email: body.email,
+      telefone: body.telefone,
+      cep: body.cep,
+      logradouro: body.logradouro,
+      numero: body.numero,
+      complemento: body.complemento,
+      bairro: body.bairro,
+      municipio: body.municipio,
+      municipio_ibge: body.municipio_ibge,
+      estado: body.estado,
+    };
+
     const { data, error } = await admin
       .from("produtores")
-      .insert(body)
+      .insert(payload)
       .select()
       .single();
 

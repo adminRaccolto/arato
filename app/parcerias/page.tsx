@@ -224,7 +224,7 @@ export default function ParceriasPage() {
     if (!contaId || !fazendaId) return;
     const [{ data: prods }, { data: cics }, { data: tlhs }] = await Promise.all([
       supabase.from("produtores").select("id, nome, cpf_cnpj").eq("conta_id", contaId).order("nome"),
-      supabase.from("ciclos").select("id, descricao").order("descricao"),
+      supabase.from("ciclos").select("id, descricao").in("fazenda_id", fazendaIds).order("descricao"),
       supabase.from("talhoes").select("id, nome, area_ha").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     setProdutores(prods ?? []);

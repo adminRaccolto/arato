@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import {
-  listarMaquinas, listarProdutoresDaConta, listarFuncionarios, listarFazendas,
+  listarMaquinas, listarProdutoresDaConta, listarFuncionarios, listarFazendasDaConta,
 } from "../../../lib/db";
 import type { Maquina, Produtor, Funcionario, Fazenda } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
@@ -236,7 +236,7 @@ export default function SegurosPage() {
       listarMaquinas(fazendaId),
       listarProdutoresDaConta(contaId),
       listarFuncionarios(fazendaId),
-      listarFazendas(contaId),
+      listarFazendasDaConta(contaId),
     ]);
     setMaquinas(maq);
     setProdutores(prod);
@@ -303,8 +303,11 @@ export default function SegurosPage() {
     setASaving(true); setAErr("");
     try {
       const objeto = aForm.objeto_segurado.trim() || derivarObjeto();
+      // Quando o bem segurado é a própria fazenda, usa o id dela — não a
+      // fazenda ativa no seletor, que pode ser outra da mesma conta.
+      const fazendaApolice = (aForm.bem_tipo === "fazenda" && aForm.bem_id) ? aForm.bem_id : fazendaId;
       const payload = {
-        fazenda_id: fazendaId, conta_id: contaId,
+        fazenda_id: fazendaApolice, conta_id: contaId,
         numero_apolice: aForm.numero_apolice.trim(),
         seguradora: aForm.seguradora.trim(),
         ramo: aForm.ramo, objeto_segurado: objeto,
@@ -432,9 +435,9 @@ export default function SegurosPage() {
         await supabase.from("lancamentos").update({ status: "baixado", data_baixa: premioData }).eq("id", modalPremio.lancamento_id);
       } else {
         // Lançamento CP não existia — cria agora
-        const ogId = await buscarOgSeguro(fazendaId, apolice.ramo);
+        const ogId = await buscarOgSeguro(apolice.fazenda_id ?? fazendaId, apolice.ramo);
         const { data: lanc } = await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId, tipo: "pagar",
+          fazenda_id: apolice.fazenda_id ?? fazendaId, tipo: "pagar",
           descricao: `Prêmio Seguro ${apolice.seguradora} — ${RAMO_META[apolice.ramo].label}`,
           categoria: `Prêmio de Seguro (${RAMO_META[apolice.ramo].label})`,
           operacao_gerencial_id: ogId,

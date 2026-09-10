@@ -151,6 +151,20 @@ export async function POST(req: NextRequest) {
         .limit(1);
       const dup = dups?.[0] ?? null;
 
+      // Verifica duplicata contra a outra rotina de sincronização SIEG (cron/sieg-sync, automática
+      // 2×/dia) — grava a mesma NF em nf_importadas_sieg com seu próprio CP, sem se conhecerem.
+      // Sem esta checagem, uma NF já importada automaticamente pelo cron seria reimportada aqui
+      // manualmente, gerando um segundo lançamento financeiro para a mesma compra.
+      if (!dup && !forceReimport) {
+        const { data: dupCron } = await db
+          .from("nf_importadas_sieg")
+          .select("id")
+          .in("fazenda_id", fazendaIdsDaConta)
+          .eq("chave_acesso", nfe.chave)
+          .maybeSingle();
+        if (dupCron) { duplicados_nfe++; continue; }
+      }
+
       const itensPayload = nfe.itens.map(item => ({
         fazenda_id,
         descricao_produto: item.descricao,

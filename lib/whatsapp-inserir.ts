@@ -9,6 +9,26 @@ function sb() {
   );
 }
 
+// O webhook do WhatsApp já bloqueia reentrega da mesma mensagem (message_id), mas um
+// "sim" de confirmação do usuário é uma mensagem NOVA — se o app do usuário duplicar o
+// envio dessa confirmação, executarInsercao() roda de novo para a mesma operação lógica.
+// Esta checagem cobre esse caso: procura um registro com os mesmos campos-chave criado
+// nos últimos minutos antes de inserir. Best-effort — não é uma unique constraint.
+async function existeDuplicataRecente(
+  tabela: string,
+  filtros: Record<string, string | number | null>,
+  janelaMin = 5
+): Promise<boolean> {
+  const desde = new Date(Date.now() - janelaMin * 60_000).toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q: any = sb().from(tabela).select("id").gte("created_at", desde).limit(1);
+  for (const [campo, valor] of Object.entries(filtros)) {
+    q = valor === null ? q.is(campo, null) : q.eq(campo, valor);
+  }
+  const { data } = await q.maybeSingle();
+  return !!data;
+}
+
 // Busca máquina por patrimônio (parcial) ou nome (parcial), patrimônio tem prioridade
 async function resolverMaquina(fazendaId: string, veiculo: string): Promise<string | null> {
   if (!veiculo) return null;
@@ -324,6 +344,16 @@ function _matchSafra(descricao: string, dataInicio: string, yearStart: number, s
   return false;
 }
 
+// Resolve todas as fazendas da mesma conta que fazendaId — nunca varrer o banco
+// inteiro sem escopo de tenant.
+async function _fazendaIdsDaConta(fazendaId: string): Promise<string[]> {
+  const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if (!faz?.conta_id) return [fazendaId];
+  const { data: irmas } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
+  const ids = (irmas ?? []).map(f => f.id as string);
+  return ids.length > 0 ? ids : [fazendaId];
+}
+
 async function buscarAnoSafraContrato(fazendaId: string, safraStr: string): Promise<{ id: string; descricao: string } | null> {
   if (!safraStr) return null;
   const yearStart  = _safraAnoPrincipal(safraStr);
@@ -339,9 +369,11 @@ async function buscarAnoSafraContrato(fazendaId: string, safraStr: string): Prom
     if (match) return { id: match.id, descricao: String(match.descricao ?? "") };
   }
 
-  // Tentativa 2 (fallback): busca global — cobre caso de fazenda ativa diferente da que tem a safra
+  // Tentativa 2 (fallback): cobre as outras fazendas da MESMA conta — nunca busca global
+  const fazendaIds = await _fazendaIdsDaConta(fazendaId);
   const { data: d2 } = await sb().from("anos_safra")
     .select("id, descricao, data_inicio, fazenda_id")
+    .in("fazenda_id", fazendaIds)
     .order("data_inicio", { ascending: false })
     .limit(200);
 
@@ -642,6 +674,12 @@ async function inserirRecomendacaoAgronomica(dados: Record<string, unknown>, faz
     return { ok: false, mensagem: linhas };
   }
 
+  if (await existeDuplicataRecente("recomendacoes", {
+    fazenda_id: fazendaId, tipo, data_recomendacao: dataRec, agronomo_nome: agronomoNome, codigo: codigo || null,
+  })) {
+    return { ok: true, mensagem: `ℹ️ Essa recomendação já foi registrada (${agronomoNome} — ${TIPO_LABEL[tipo] ?? tipo}). Nada duplicado.` };
+  }
+
   // ── Buscar ciclo vigente ──────────────────────────────────────────────────
   const ciclo = await buscarCicloVigente(fazendaId, dataRec);
 
@@ -792,6 +830,13 @@ async function inserirContratoFinanceiro(dados: Record<string, unknown>, fazenda
   };
 
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+  if (await existeDuplicataRecente("contratos_financeiros", {
+    fazenda_id: fazendaId, credor, valor_financiado: valor, data_contrato: dataContrato,
+  })) {
+    return { ok: true, mensagem: `ℹ️ Esse contrato já foi registrado (${credor} — R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Nada duplicado.` };
+  }
+
   const { data: cf, error } = await sb.from("contratos_financeiros").insert(registro).select().single();
   if (error) return { ok: false, mensagem: `❌ Erro ao salvar contrato: ${error.message}` };
 
@@ -930,6 +975,12 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     const maqId = await resolverMaquina(fazendaId, String(dados.veiculo ?? ""));
     const maqData = maqId ? { id: maqId } : null;
 
+    if (await existeDuplicataRecente("abastecimentos", {
+      fazenda_id: fazendaId, bomba_id: bomba.id, maquina_id: maqData?.id ?? null, quantidade_l: qtdUsuario, data: hoje,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Esse abastecimento já foi registrado (${qtdUsuario} L — *${bomba.nome}*). Nada duplicado.` };
+    }
+
     // Inserir abastecimento sem CP
     const { data: abastRec, error: abastErr } = await sb().from("abastecimentos").insert({
       fazenda_id:     fazendaId,
@@ -1002,6 +1053,13 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
 
   const conta   = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
   const cicloAb = await buscarCicloVigente(fazendaId, hoje);
+
+  const maqExtIdDedup = await resolverMaquina(fazendaId, String(dados.veiculo ?? ""));
+  if (await existeDuplicataRecente("abastecimentos", {
+    fazenda_id: fazendaId, bomba_id: bomba?.id ?? null, maquina_id: maqExtIdDedup ?? null, quantidade_l: qtdUsuario, data: hoje,
+  })) {
+    return { ok: true, mensagem: `ℹ️ Esse abastecimento já foi registrado (${qtdUsuario} L — *${bomba?.nome ?? bombaStr}*). Nada duplicado.` };
+  }
 
   const cpPayload: Record<string, unknown> = {
     fazenda_id:      fazendaId,
@@ -1209,6 +1267,11 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
   // ═══════════════════════════════════════════════════════════════════════════
   if (tipoOp === "pulverizacao") {
     if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar a pulverização." };
+    if (await existeDuplicataRecente("pulverizacoes", {
+      fazenda_id: fazendaId, ciclo_id: ciclo!.id, talhao_id: talhao?.id ?? null, data_inicio: dataOp, area_ha: areaHa,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Essa pulverização já foi registrada (${talhao?.nome ?? dados.talhao} — ${areaHa} ha). Nada duplicado.` };
+    }
     const { data: pulv, error: errPulv } = await sb().from("pulverizacoes").insert({
       fazenda_id:  fazendaId,
       ciclo_id:    ciclo!.id,
@@ -1295,6 +1358,11 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
   // ═══════════════════════════════════════════════════════════════════════════
   if (tipoOp === "adubacao") {
     if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar a adubação." };
+    if (await existeDuplicataRecente("adubacoes_base", {
+      fazenda_id: fazendaId, ciclo_id: ciclo!.id, talhao_id: talhao?.id ?? null, data_aplicacao: dataOp, area_ha: areaHa,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Essa adubação já foi registrada (${talhao?.nome ?? dados.talhao} — ${areaHa} ha). Nada duplicado.` };
+    }
 
     const { data: adub, error: errAdub } = await sb().from("adubacoes_base").insert({
       fazenda_id: fazendaId,
@@ -1376,6 +1444,11 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const custoSementes = custoTotal; // total_nativo * custo_medio
 
     if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar o plantio." };
+    if (await existeDuplicataRecente("plantios", {
+      fazenda_id: fazendaId, ciclo_id: ciclo!.id, talhao_id: talhao?.id ?? null, data_plantio: dataOp, area_ha: areaHa,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Esse plantio já foi registrado (${talhao?.nome ?? dados.talhao} — ${areaHa} ha). Nada duplicado.` };
+    }
     const { data: plantioRow, error: errPlantio } = await sb().from("plantios").insert({
       fazenda_id:      fazendaId,
       ciclo_id:        ciclo!.id,
@@ -1453,6 +1526,11 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const totalTon  = converterUnidade(totalNativo, unidadeInsumo, "t");
 
     if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar a correção de solo." };
+    if (await existeDuplicataRecente("correcoes_solo", {
+      fazenda_id: fazendaId, ciclo_id: ciclo!.id, talhao_id: talhao?.id ?? null, data_aplicacao: dataOp, area_ha: areaHa,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Essa correção de solo já foi registrada (${talhao?.nome ?? dados.talhao} — ${areaHa} ha). Nada duplicado.` };
+    }
     const { data: corr, error: errCorr } = await sb().from("correcoes_solo").insert({
       fazenda_id:     fazendaId,
       ciclo_id:       ciclo!.id,
@@ -1552,6 +1630,13 @@ async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: 
     }
     unidadeFinal = String(insumo.unidade ?? unidadeUsuario);
 
+    const hojeEntrada = new Date().toISOString().split("T")[0];
+    if (await existeDuplicataRecente("movimentacoes_estoque", {
+      fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "entrada", motivo: "compra", quantidade: qtdFinal, data: hojeEntrada,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Essa entrada já foi registrada (${insumo.nome} — ${qtdFinal.toFixed(2)} ${unidadeInsumo}). Nada duplicado.` };
+    }
+
     const novoEstoque = Number(insumo.estoque ?? 0) + qtdFinal;
     const custoMedioAtual = Number(insumo.custo_medio ?? 0);
     const novoMedio = qtdFinal > 0
@@ -1563,7 +1648,7 @@ async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: 
       fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "entrada",
       quantidade: qtdFinal, valor_unitario: qtdFinal > 0 ? valor / qtdFinal : 0,
       motivo: "compra", observacao: `Compra via WhatsApp — ${dados.fornecedor ?? ""}`,
-      data: new Date().toISOString().split("T")[0], auto: false,
+      data: hojeEntrada, auto: false,
     });
   }
 
@@ -1601,13 +1686,20 @@ async function inserirSaidaEstoque(dados: Record<string, unknown>, fazendaId: st
     return { ok: false, mensagem: `❌ Estoque insuficiente. Disponível: ${Number(insumo.estoque ?? 0).toFixed(2)} ${unidadeInsumo}` };
   }
 
+  const hojeSaida = new Date().toISOString().split("T")[0];
+  if (await existeDuplicataRecente("movimentacoes_estoque", {
+    fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "saida", motivo: "baixa_uso", quantidade: qtdFinal, data: hojeSaida,
+  })) {
+    return { ok: true, mensagem: `ℹ️ Essa saída já foi registrada (${insumo.nome} — ${qtdFinal.toFixed(2)} ${unidadeInsumo}). Nada duplicado.` };
+  }
+
   const novoEstoque = Number(insumo.estoque ?? 0) - qtdFinal;
   await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
   await sb().from("movimentacoes_estoque").insert({
     fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "saida",
     quantidade: qtdFinal, motivo: "baixa_uso",
     observacao: `Saída para ${dados.destino ?? "uso"} via WhatsApp`,
-    data: new Date().toISOString().split("T")[0], auto: false,
+    data: hojeSaida, auto: false,
   });
 
   return {
@@ -1799,11 +1891,19 @@ async function inserirRomaneio(dados: Record<string, unknown>, fazendaId: string
     .select("id").eq("fazenda_id", fazendaId)
     .ilike("nome", `%${dados.talhao}%`).limit(1).single();
 
+  const commodityRom = String(dados.commodity ?? "soja");
+  const placaRom = String(dados.placa ?? "");
+  if (await existeDuplicataRecente("romaneios", {
+    fazenda_id: fazendaId, placa_veiculo: placaRom, commodity: commodityRom, peso_bruto_kg: pesoBruto, tara_kg: tara,
+  })) {
+    return { ok: true, mensagem: `ℹ️ Esse romaneio já foi registrado (${commodityRom} — Placa ${placaRom}). Nada duplicado.` };
+  }
+
   const { error } = await sb().from("romaneios").insert({
     fazenda_id: fazendaId,
     talhao_id:  talhao?.id ?? null,
-    commodity:  String(dados.commodity ?? "soja"),
-    placa_veiculo: String(dados.placa ?? ""),
+    commodity:  commodityRom,
+    placa_veiculo: placaRom,
     peso_bruto_kg: pesoBruto, tara_kg: tara,
     peso_liquido_kg: liquido, total_sacas: sacas,
     data_romaneio: new Date().toISOString().split("T")[0],
@@ -1875,11 +1975,11 @@ async function inserirRomaneioFoto(dados: Record<string, unknown>, fazendaId: st
   }
 
   // Buscar contrato — por número ou por comprador
-  type ContratoRef = { id: string; numero: string | null };
+  type ContratoRef = { id: string; numero: string | null; produtor_id: string | null };
   let contrato: ContratoRef | null = null;
   if (contratoStr) {
     const { data: cNum } = await sb().from("contratos")
-      .select("id, numero").eq("fazenda_id", fazendaId)
+      .select("id, numero, produtor_id").eq("fazenda_id", fazendaId)
       .ilike("numero", `%${contratoStr}%`).limit(1);
     contrato = (cNum?.[0] as ContratoRef | undefined) ?? null;
 
@@ -1889,7 +1989,7 @@ async function inserirRomaneioFoto(dados: Record<string, unknown>, fazendaId: st
         .select("id").eq("fazenda_id", fazendaId).ilike("nome", `%${contratoStr}%`).limit(1);
       if (pBusca?.[0]) {
         const { data: cComp } = await sb().from("contratos")
-          .select("id, numero").eq("fazenda_id", fazendaId)
+          .select("id, numero, produtor_id").eq("fazenda_id", fazendaId)
           .eq("pessoa_id", pBusca[0].id)
           .ilike("produto", `%${commodity}%`).limit(1);
         contrato = (cComp?.[0] as ContratoRef | undefined) ?? null;
@@ -1922,12 +2022,19 @@ async function inserirRomaneioFoto(dados: Record<string, unknown>, fazendaId: st
     return { ok: true, mensagem: `${previewLines}\n\nConfirma? Responda *sim* ou *não*` };
   }
 
+  if (await existeDuplicataRecente("romaneios", {
+    fazenda_id: fazendaId, placa_veiculo: placa, commodity, peso_bruto_kg: pesoBruto, tara_kg: tara, ciclo_id: ciclo.id,
+  })) {
+    return { ok: true, mensagem: `ℹ️ Esse romaneio já foi registrado (${cap(commodity)} — Placa ${placa}). Nada duplicado.` };
+  }
+
   // Salvar no banco
   const { error } = await sb().from("romaneios").insert({
     fazenda_id:     fazendaId,
     talhao_id:      talhao?.id    ?? null,
     ciclo_id:       ciclo.id,
     contrato_id:    contrato?.id  ?? null,
+    produtor_id:    contrato?.produtor_id ?? null,
     commodity,
     placa_veiculo:  placa,
     peso_bruto_kg:  pesoBruto,
@@ -2066,6 +2173,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   const cnpj        = String(dados.cnpj_emitente ?? "").replace(/\D/g, "");
   const razao       = String(dados.razao_social ?? "Fornecedor").trim();
   const numeroNf    = String(dados.numero_nf ?? "");
+  const chaveAcesso = String(dados.chave_acesso ?? "").replace(/\D/g, "") || null;
   const dataEmissao = String(dados.data_emissao ?? new Date().toISOString().split("T")[0]);
   const valorTotal  = Number(dados.valor_total ?? 0);
   const vencimento  = parseData(String(dados.vencimento ?? "hoje"));
@@ -2147,6 +2255,29 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
 
   // ── Salvar ──────────────────────────────────────────────────────────────
   const hoje = new Date().toISOString().split("T")[0];
+
+  // Dedup: chave_acesso é chave permanente (quando extraída da foto); sem ela,
+  // cai para número+CNPJ+valor dentro de uma janela recente (mesma lógica do
+  // cross-check entre os dois sincronizadores SIEG — ver ADENDO do roadmap).
+  if (tipoNf === "servico") {
+    if (numeroNf && await existeDuplicataRecente("nf_servicos", {
+      fazenda_id: fazendaId, numero_nf: numeroNf, prestador_cnpj: cnpj || null, valor_servico: valorTotal,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Essa NF de Serviço já foi registrada (nº ${numeroNf} — ${razao}). Nada duplicado.` };
+    }
+  } else if (chaveAcesso) {
+    const { data: nfExistente } = await sb().from("nf_entradas")
+      .select("id, numero").eq("fazenda_id", fazendaId).eq("chave_acesso", chaveAcesso).maybeSingle();
+    if (nfExistente) {
+      return { ok: true, mensagem: `ℹ️ Essa NF já foi registrada (nº ${nfExistente.numero} — ${razao}). Nada duplicado.` };
+    }
+  } else if (numeroNf) {
+    if (await existeDuplicataRecente("nf_entradas", {
+      fazenda_id: fazendaId, numero: numeroNf, emitente_cnpj: cnpj || null, valor_total: valorTotal,
+    })) {
+      return { ok: true, mensagem: `ℹ️ Essa NF já foi registrada (nº ${numeroNf} — ${razao}). Nada duplicado.` };
+    }
+  }
 
   // 1. Upsert Pessoa (fornecedor) por CNPJ; fallback por nome quando sem CNPJ
   let pessoaId: string | null = null;
@@ -2277,6 +2408,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     serie:             "1",
     emitente_nome:     razao,
     emitente_cnpj:     cnpj || null,
+    chave_acesso:      chaveAcesso,
     pessoa_id:         pessoaId,
     data_emissao:      dataEmissao,
     data_entrada:      hoje,

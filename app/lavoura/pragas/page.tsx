@@ -33,7 +33,7 @@ type Monitoramento = {
   created_at: string;
 };
 
-type Talhao  = { id: string; nome: string; area_ha?: number };
+type Talhao  = { id: string; nome: string; area_ha?: number; fazenda_id?: string };
 type Ciclo   = { id: string; cultura: string; ano_safra?: { ano: string } };
 type Recomendacao = { id: string; tipo: string; agronomo_nome?: string; data_recomendacao: string };
 
@@ -175,7 +175,7 @@ export default function PragasPage() {
         .in("fazenda_id", fazendaIds)
         .order("created_at", { ascending: false })
         .limit(500),
-      supabase.from("talhoes").select("id, nome, area_ha").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("talhoes").select("id, nome, area_ha, fazenda_id").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("ciclos").select("id, cultura, anos_safra(ano)").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }),
       supabase.from("recomendacoes").select("id, tipo, agronomo_nome, data_recomendacao").in("fazenda_id", fazendaIds).order("data_recomendacao", { ascending: false }).limit(50),
     ]);
@@ -242,7 +242,9 @@ export default function PragasPage() {
     setSalvando(true);
     try {
       const { error } = await supabase.from("monitoramento_pragas").insert({
-        fazenda_id:        fazendaId,
+        // Deriva a fazenda do talhão selecionado — o talhão pode ser de
+        // outra fazenda da conta, diferente da fazenda ativa no momento.
+        fazenda_id:        talhoes.find(t => t.id === fTalhao)?.fazenda_id ?? fazendaId,
         ciclo_id:          fCiclo || null,
         talhao_id:         fTalhao,
         data:              fData,

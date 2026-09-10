@@ -3,12 +3,21 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarFazendasDaConta, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+
+// Classificação gerencial por categoria — só onde existe correspondência exata no plano de contas.
+const OG_POR_CATEGORIA: Record<string, string> = {
+  "Aporte em Aplicação Financeira":   "2.02.01.01.006", // DÉBITO REF. APLICAÇÃO — só cobre a saída da conta corrente
+  "Resgate de Aplicação Financeira":  "3.07",           // CRÉDITO REF. RESGATE DE APLICAÇÃO — só cobre a entrada na conta corrente
+  "Rendimento Financeiro":            "1.03.01.03.002", // RENDIMENTO APLICAÇÃO FINANCEIRA
+  "IOF — Aplicação Financeira":       "2.02.01.01.001", // IOF
+};
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtPct  = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
@@ -61,7 +70,19 @@ const MOV_COR: Record<TipoMovimento, string> = {
 
 // ─── Componente principal ────────────────────────────────────
 export default function AplicacoesFinanceirasPage() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [aplicacoes, setAplicacoes]   = useState<AplicacaoFinanceira[]>([]);
   const [movimentos, setMovimentos]   = useState<AplicacaoMovimento[]>([]);
@@ -100,7 +121,7 @@ export default function AplicacoesFinanceirasPage() {
 
   // ─── Carregar ─────────────────────────────────────────────
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const [{ data: ap }, { data: mv }, { data: cb }] = await Promise.all([
       supabase.from("aplicacoes_financeiras").select("*").in("fazenda_id", fazendaIds).order("data_inicio", { ascending: false }),
       supabase.from("aplicacao_movimentos").select("*").in("fazenda_id", fazendaIds).order("data", { ascending: false }),
@@ -109,7 +130,7 @@ export default function AplicacoesFinanceirasPage() {
     setAplicacoes(ap ?? []);
     setMovimentos(mv ?? []);
     setContas(cb ?? []);
-  }, [fazendaId]);
+  }, [fazAtiva]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -140,10 +161,13 @@ export default function AplicacoesFinanceirasPage() {
     tipo: "pagar" | "receber"; categoria: string; descricao: string;
     valor: number; data: string; conta?: string;
   }) {
+    const classificacao = OG_POR_CATEGORIA[payload.categoria];
+    const ogId = classificacao ? await resolverOperacaoGerencialPorClassificacao(fazAtiva, classificacao) : undefined;
     await supabase.from("lancamentos").insert({
-      fazenda_id: fazendaId,
+      fazenda_id: fazAtiva,
       tipo: payload.tipo, moeda: "BRL",
       descricao: payload.descricao, categoria: payload.categoria,
+      operacao_gerencial_id: ogId ?? null,
       valor: payload.valor,
       data_lancamento: payload.data, data_vencimento: payload.data,
       status: "baixado", auto: false,
@@ -165,7 +189,7 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarNova() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     if (!nForm.nome.trim()) { setNErr("Informe o nome da aplicação."); return; }
     if (!editando && nForm.valor_inicial <= 0) { setNErr("Informe o valor inicial."); return; }
     setNSaving(true); setNErr("");
@@ -179,7 +203,7 @@ export default function AplicacoesFinanceirasPage() {
         }).eq("id", editando.id);
       } else {
         const { data: ap } = await supabase.from("aplicacoes_financeiras").insert({
-          fazenda_id: fazendaId,
+          fazenda_id: fazAtiva,
           nome: nForm.nome.trim(), tipo: nForm.tipo, instituicao: nForm.instituicao || null,
           conta_corrente: nForm.conta_corrente || null, conta_aplicacao: nForm.conta_aplicacao || null,
           valor_aportado: nForm.valor_inicial, valor_atual: nForm.valor_inicial, rendimentos_brutos: 0,
@@ -191,7 +215,7 @@ export default function AplicacoesFinanceirasPage() {
         if (ap && nForm.valor_inicial > 0) {
           // Movimento inicial de aporte
           await supabase.from("aplicacao_movimentos").insert({
-            aplicacao_id: ap.id, fazenda_id: fazendaId,
+            aplicacao_id: ap.id, fazenda_id: fazAtiva,
             tipo: "aporte", data: nForm.data_inicio,
             valor_bruto: nForm.valor_inicial, iof: 0, ir: 0, valor_liquido: nForm.valor_inicial,
             conta_origem: nForm.conta_corrente || null,
@@ -199,9 +223,10 @@ export default function AplicacoesFinanceirasPage() {
           });
           // Double-entry: saída da corrente + entrada na investimento
           const descApl = `Aporte em ${nForm.nome.trim()} — ${TIPO_LABEL[nForm.tipo]}`;
+          const ogAporte = await resolverOperacaoGerencialPorClassificacao(fazAtiva, OG_POR_CATEGORIA["Aporte em Aplicação Financeira"]);
           const inserts = [];
-          if (nForm.conta_corrente)  inserts.push({ fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descApl} ← saída`, categoria: "Aporte em Aplicação Financeira", valor: nForm.valor_inicial, data_lancamento: nForm.data_inicio, data_vencimento: nForm.data_inicio, status: "baixado" as const, auto: false, conta_bancaria: nForm.conta_corrente, origem_lancamento: "aplicacao_financeira" });
-          if (nForm.conta_aplicacao) inserts.push({ fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descApl} → entrada`, categoria: "Aporte em Aplicação Financeira", valor: nForm.valor_inicial, data_lancamento: nForm.data_inicio, data_vencimento: nForm.data_inicio, status: "baixado" as const, auto: false, conta_bancaria: nForm.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
+          if (nForm.conta_corrente)  inserts.push({ fazenda_id: fazAtiva, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descApl} ← saída`, categoria: "Aporte em Aplicação Financeira", operacao_gerencial_id: ogAporte ?? null, valor: nForm.valor_inicial, data_lancamento: nForm.data_inicio, data_vencimento: nForm.data_inicio, status: "baixado" as const, auto: false, conta_bancaria: nForm.conta_corrente, origem_lancamento: "aplicacao_financeira" });
+          if (nForm.conta_aplicacao) inserts.push({ fazenda_id: fazAtiva, tipo: "receber" as const, moeda: "BRL", descricao: `${descApl} → entrada`, categoria: "Aporte em Aplicação Financeira", valor: nForm.valor_inicial, data_lancamento: nForm.data_inicio, data_vencimento: nForm.data_inicio, status: "baixado" as const, auto: false, conta_bancaria: nForm.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
           if (inserts.length > 0) await supabase.from("lancamentos").insert(inserts);
         }
       }
@@ -218,13 +243,13 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarAporte() {
-    if (!modalAporte || !fazendaId) return;
+    if (!modalAporte || !fazAtiva) return;
     if (aForm.valor <= 0) { setAErr("Informe o valor do aporte."); return; }
     setASaving(true); setAErr("");
     try {
       // Movimento
       await supabase.from("aplicacao_movimentos").insert({
-        aplicacao_id: modalAporte.id, fazenda_id: fazendaId,
+        aplicacao_id: modalAporte.id, fazenda_id: fazAtiva,
         tipo: "aporte", data: aForm.data,
         valor_bruto: aForm.valor, iof: 0, ir: 0, valor_liquido: aForm.valor,
         conta_origem: aForm.conta_corrente || null,
@@ -238,9 +263,10 @@ export default function AplicacoesFinanceirasPage() {
       }).eq("id", modalAporte.id);
       // Double-entry: saída corrente + entrada investimento
       const descAp = `Aporte em ${modalAporte.nome} — ${TIPO_LABEL[modalAporte.tipo]}`;
+      const ogAporte2 = await resolverOperacaoGerencialPorClassificacao(fazAtiva, OG_POR_CATEGORIA["Aporte em Aplicação Financeira"]);
       const insAp = [];
-      if (aForm.conta_corrente)          insAp.push({ fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descAp} ← saída`, categoria: "Aporte em Aplicação Financeira", valor: aForm.valor, data_lancamento: aForm.data, data_vencimento: aForm.data, status: "baixado" as const, auto: false, conta_bancaria: aForm.conta_corrente, origem_lancamento: "aplicacao_financeira" });
-      if (modalAporte.conta_aplicacao)   insAp.push({ fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descAp} → entrada`, categoria: "Aporte em Aplicação Financeira", valor: aForm.valor, data_lancamento: aForm.data, data_vencimento: aForm.data, status: "baixado" as const, auto: false, conta_bancaria: modalAporte.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
+      if (aForm.conta_corrente)          insAp.push({ fazenda_id: fazAtiva, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descAp} ← saída`, categoria: "Aporte em Aplicação Financeira", operacao_gerencial_id: ogAporte2 ?? null, valor: aForm.valor, data_lancamento: aForm.data, data_vencimento: aForm.data, status: "baixado" as const, auto: false, conta_bancaria: aForm.conta_corrente, origem_lancamento: "aplicacao_financeira" });
+      if (modalAporte.conta_aplicacao)   insAp.push({ fazenda_id: fazAtiva, tipo: "receber" as const, moeda: "BRL", descricao: `${descAp} → entrada`, categoria: "Aporte em Aplicação Financeira", valor: aForm.valor, data_lancamento: aForm.data, data_vencimento: aForm.data, status: "baixado" as const, auto: false, conta_bancaria: modalAporte.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
       if (insAp.length > 0) await supabase.from("lancamentos").insert(insAp);
       await carregar(); setModalAporte(null);
     } catch (e: unknown) { setAErr(e instanceof Error ? e.message : "Erro."); }
@@ -255,13 +281,13 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarRendimento() {
-    if (!modalRend || !fazendaId) return;
+    if (!modalRend || !fazAtiva) return;
     if (rForm.valor_bruto <= 0) { setRErr("Informe o valor do rendimento."); return; }
     setRSaving(true); setRErr("");
     try {
       // Movimento
       await supabase.from("aplicacao_movimentos").insert({
-        aplicacao_id: modalRend.id, fazenda_id: fazendaId,
+        aplicacao_id: modalRend.id, fazenda_id: fazAtiva,
         tipo: "rendimento", data: rForm.data,
         valor_bruto: rForm.valor_bruto, iof: 0, ir: 0, valor_liquido: rForm.valor_bruto,
         conta_destino: rForm.tipo_registro === "recebido" ? rForm.conta_destino : null,
@@ -293,7 +319,7 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarResgate() {
-    if (!modalResgate || !fazendaId) return;
+    if (!modalResgate || !fazAtiva) return;
     if (rgForm.valor_bruto <= 0) { setRgErr("Informe o valor do resgate."); return; }
     if (rgForm.valor_bruto > modalResgate.valor_atual) { setRgErr(`Valor maior que o saldo atual (${fmtBRL(modalResgate.valor_atual)}).`); return; }
     setRgSaving(true); setRgErr("");
@@ -303,7 +329,7 @@ export default function AplicacoesFinanceirasPage() {
 
       // Movimento
       await supabase.from("aplicacao_movimentos").insert({
-        aplicacao_id: modalResgate.id, fazenda_id: fazendaId,
+        aplicacao_id: modalResgate.id, fazenda_id: fazAtiva,
         tipo: rgForm.tipo, data: rgForm.data,
         valor_bruto: rgForm.valor_bruto, iof: rgForm.iof, ir: rgForm.ir, valor_liquido: valorLiquido,
         conta_origem: modalResgate.conta_aplicacao || null,
@@ -320,11 +346,13 @@ export default function AplicacoesFinanceirasPage() {
 
       // Double-entry: saída investimento + entrada corrente + IOF/IR
       const descRsg = `Resgate de ${modalResgate.nome} — ${TIPO_LABEL[modalResgate.tipo]}`;
+      const ogResgate = await resolverOperacaoGerencialPorClassificacao(fazAtiva, OG_POR_CATEGORIA["Resgate de Aplicação Financeira"]);
+      const ogIof     = await resolverOperacaoGerencialPorClassificacao(fazAtiva, OG_POR_CATEGORIA["IOF — Aplicação Financeira"]);
       const insRsg: object[] = [];
-      if (modalResgate.conta_aplicacao) insRsg.push({ fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: rgForm.valor_bruto, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: modalResgate.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
-      if (rgForm.conta_destino)          insRsg.push({ fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", valor: valorLiquido, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
-      if (rgForm.iof > 0 && rgForm.conta_destino) insRsg.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ ${descRsg}`, categoria: "IOF — Aplicação Financeira", valor: rgForm.iof, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
-      if (rgForm.ir  > 0 && rgForm.conta_destino) insRsg.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ ${descRsg}`, categoria: "IR — Rendimentos Financeiros", valor: rgForm.ir,  data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
+      if (modalResgate.conta_aplicacao) insRsg.push({ fazenda_id: fazAtiva, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: rgForm.valor_bruto, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: modalResgate.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
+      if (rgForm.conta_destino)          insRsg.push({ fazenda_id: fazAtiva, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", operacao_gerencial_id: ogResgate ?? null, valor: valorLiquido, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
+      if (rgForm.iof > 0 && rgForm.conta_destino) insRsg.push({ fazenda_id: fazAtiva, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ ${descRsg}`, categoria: "IOF — Aplicação Financeira", operacao_gerencial_id: ogIof ?? null, valor: rgForm.iof, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
+      if (rgForm.ir  > 0 && rgForm.conta_destino) insRsg.push({ fazenda_id: fazAtiva, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ ${descRsg}`, categoria: "IR — Rendimentos Financeiros", valor: rgForm.ir,  data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
       if (insRsg.length > 0) await supabase.from("lancamentos").insert(insRsg);
 
       await carregar(); setModalResgate(null);
@@ -346,7 +374,14 @@ export default function AplicacoesFinanceirasPage() {
               CDB, LCI, LCA, Tesouro Direto, Fundos — controle de aportes, rendimentos e resgates
             </p>
           </div>
-          <button onClick={() => abrirNova()} style={btnV}>+ Nova Aplicação</button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {fazendasConta.length > 1 && (
+              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button onClick={() => abrirNova()} style={btnV}>+ Nova Aplicação</button>
+          </div>
         </div>
 
         {/* KPIs */}

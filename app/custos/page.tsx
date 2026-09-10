@@ -13,9 +13,9 @@ type Aba = "dre" | "custoha" | "produtividade" | "custostotais";
 interface AnoSafra   { id: string; descricao: string }
 interface Ciclo      { id: string; ano_safra_id: string; cultura: string; descricao: string; area_plantada_ha?: number }
 interface CntSimples { id: string; ciclo_id?: string; produto: string; moeda: string; preco: number; quantidade_sc: number; confirmado?: boolean; status: string }
-interface MovSimples { id: string; insumo_id: string; quantidade: number; safra?: string; motivo?: string }
+interface MovSimples { id: string; insumo_id: string; quantidade: number; ciclo_id?: string; motivo?: string }
 interface InsSimples { id: string; custo_medio: number; categoria: string; nome: string }
-interface LanSimples { id: string; categoria: string; valor: number; safra_id?: string; descricao: string; status: string; data_vencimento: string }
+interface LanSimples { id: string; categoria: string; valor: number; ciclo_id?: string; descricao: string; status: string; data_vencimento: string }
 interface RatLinha   { id: string; regra_id: string; ciclo_id: string; percentual: number }
 interface RatRegra   { id: string; nome: string; tipos?: string[]; ano_safra_id?: string }
 
@@ -207,17 +207,17 @@ function CustosInner() {
         .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds)
         .neq("status", "cancelado").eq("confirmado", true),
       supabase.from("movimentacoes_estoque")
-        .select("id,insumo_id,quantidade,safra,motivo")
-        .in("fazenda_id", fazendaIds).in("safra", cicloIds).eq("tipo", "saida"),
+        .select("id,insumo_id,quantidade,ciclo_id,motivo")
+        .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds).eq("tipo", "saida"),
       supabase.from("insumos")
         .select("id,custo_medio,categoria,nome")
         .in("fazenda_id", fazendaIds),
       supabase.from("lancamentos")
-        .select("id,categoria,valor,safra_id,descricao,status,data_vencimento")
-        .in("fazenda_id", fazendaIds).in("safra_id", cicloIds).eq("tipo", "pagar"),
+        .select("id,categoria,valor,ciclo_id,descricao,status,data_vencimento")
+        .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds).eq("tipo", "pagar"),
       supabase.from("lancamentos")
-        .select("id,categoria,valor,safra_id,descricao,status,data_vencimento")
-        .in("fazenda_id", fazendaIds).is("safra_id", null).eq("tipo", "pagar"),
+        .select("id,categoria,valor,ciclo_id,descricao,status,data_vencimento")
+        .in("fazenda_id", fazendaIds).is("ciclo_id", null).eq("tipo", "pagar"),
       supabase.from("regras_rateio_linhas")
         .select("id,regra_id,ciclo_id,percentual")
         .in("ciclo_id", cicloIds),
@@ -269,7 +269,7 @@ function CustosInner() {
     cpvTotal += custo;
   }
 
-  // 4. DESPESAS DIRETAS — lancamentos com safra_id = ciclo, excluindo insumos (já no CPV)
+  // 4. DESPESAS DIRETAS — lancamentos vinculados ao ciclo, excluindo insumos (já no CPV)
   const despDirPorCat: Record<string, number> = {};
   let despDirTotal = 0;
   for (const l of lanDir) {

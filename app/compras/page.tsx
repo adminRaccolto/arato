@@ -5,7 +5,7 @@ import { useAuth } from "../../components/AuthProvider";
 import {
   listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
   listarPedidoCompraItens, salvarPedidoCompraItens,
-  listarPedidoCompraEntregas, registrarEntrega,
+  listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
@@ -190,17 +190,19 @@ function FornecedorSelect({
 }
 
 function SearchableSelect({
-  value, onChange, options, placeholder = "— Selecionar —", emptyMessage, style: extraStyle,
+  value, onChange, options, placeholder = "— Selecionar —", emptyMessage, style: extraStyle, fallbackLabel,
 }: {
   value: string; onChange: (id: string) => void;
   options: { id: string; label: string }[];
   placeholder?: string; emptyMessage?: string;
   style?: React.CSSProperties;
+  fallbackLabel?: string; // texto a exibir quando `value` não corresponde a nenhuma option (ex: insumo excluído/recategorizado, mas o nome original ficou salvo no registro)
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen]   = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find(o => o.id === value);
+  const semVinculoComNome = !selected && !!fallbackLabel?.trim();
   const filtered = query.trim() === ""
     ? options
     : options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()));
@@ -216,8 +218,9 @@ function SearchableSelect({
   return (
     <div ref={ref} style={{ position: "relative", ...extraStyle }}>
       <input
-        style={{ ...inp, paddingRight: 26 }}
-        value={open ? query : (selected?.label ?? "")}
+        style={{ ...inp, paddingRight: 26, ...(semVinculoComNome ? { color: "#C9921B", fontStyle: "italic" } : {}) }}
+        value={open ? query : (selected?.label ?? (semVinculoComNome ? fallbackLabel! : ""))}
+        title={semVinculoComNome ? "Descrição original — sem vínculo com o cadastro de insumos" : undefined}
         placeholder={placeholder}
         onFocus={() => { setOpen(true); setQuery(""); }}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
@@ -361,6 +364,8 @@ export default function ComprasPage() {
   const [modalEntrega,  setModalEntrega]  = useState<{ pedido: PedidoCompra; itens: PedidoCompraItem[] } | null>(null);
   const [entregas,      setEntregas]      = useState<PedidoCompraEntrega[]>([]);
   const [formEntrega,   setFormEntrega]   = useState({ item_id: "", data_entrega: hoje(), quantidade_entregue: "", observacao: "" });
+  const [entregaEditId, setEntregaEditId] = useState<string | null>(null);
+  const [entregaEditQtd, setEntregaEditQtd] = useState("");
   // NFs vinculadas (modal fiscal)
   const [nfsFiscais,      setNfsFiscais]      = useState<NfEntrada[]>([]);
   const [nfsFiscaisItens, setNfsFiscaisItens] = useState<NfEntradaItem[]>([]);
@@ -1071,7 +1076,7 @@ export default function ComprasPage() {
     setSalvando(true);
     try {
       const nova = await registrarEntrega({
-        pedido_id: modalEntrega.pedido.id, fazenda_id: fazendaId,
+        pedido_id: modalEntrega.pedido.id, fazenda_id: modalEntrega.pedido.fazenda_id ?? fazendaId,
         item_id: formEntrega.item_id,
         data_entrega: formEntrega.data_entrega,
         quantidade_entregue: parseFloat(formEntrega.quantidade_entregue),
@@ -1084,6 +1089,49 @@ export default function ComprasPage() {
       await carregar();
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao registrar entrega");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // Corrige um erro de digitação numa entrega já confirmada, sem excluir e recriar
+  const salvarEdicaoEntrega = async (entregaId: string) => {
+    if (!modalEntrega || !entregaEditQtd) return;
+    setSalvando(true);
+    try {
+      await editarEntrega(entregaId, parseFloat(entregaEditQtd));
+      const [ents, its] = await Promise.all([
+        listarPedidoCompraEntregas(modalEntrega.pedido.id),
+        listarPedidoCompraItens(modalEntrega.pedido.id),
+      ]);
+      setEntregas(ents);
+      setModalEntrega(p => p ? { ...p, itens: its } : null);
+      setEntregaEditId(null);
+      setEntregaEditQtd("");
+      await carregar();
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : "Erro ao editar entrega");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // Remove uma entrega registrada por engano — devolve a quantidade ao saldo do item
+  const removerEntrega = async (entregaId: string) => {
+    if (!modalEntrega) return;
+    if (!confirm("Excluir esta entrega? A quantidade volta para o saldo disponível do item.")) return;
+    setSalvando(true);
+    try {
+      await excluirEntrega(entregaId);
+      const [ents, its] = await Promise.all([
+        listarPedidoCompraEntregas(modalEntrega.pedido.id),
+        listarPedidoCompraItens(modalEntrega.pedido.id),
+      ]);
+      setEntregas(ents);
+      setModalEntrega(p => p ? { ...p, itens: its } : null);
+      await carregar();
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : "Erro ao excluir entrega");
     } finally {
       setSalvando(false);
     }
@@ -1887,6 +1935,7 @@ export default function ComprasPage() {
                                         placeholder="— Selecionar insumo —"
                                         emptyMessage="Nenhum insumo cadastrado. Use + Criar insumo →"
                                         style={{ fontSize: 12 }}
+                                        fallbackLabel={it.nome_item}
                                       />
                                     </div>
                                     {semVinculo && (
@@ -2278,8 +2327,8 @@ export default function ComprasPage() {
                     <div style={{ ...secTit, marginTop: 20 }}>Histórico de Entregas</div>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead><tr style={{ background: "var(--bg-page)" }}>
-                        {["Item","Data","Qtd. Entregue","Obs."].map((h, i) => (
-                          <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                        {["Item","Data","Qtd. Entregue","Obs.",""].map((h, i) => (
+                          <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 && i < 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                         ))}
                       </tr></thead>
                       <tbody>
@@ -2287,8 +2336,26 @@ export default function ComprasPage() {
                           <tr key={e.id} style={{ borderBottom: i < entregas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                             <td style={{ padding: "7px 10px" }}>{modalEntrega.itens.find(it => it.id === e.item_id)?.nome_item ?? "—"}</td>
                             <td style={{ padding: "7px 10px" }}>{fmtData(e.data_entrega)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#16A34A" }}>{fmtN(e.quantidade_entregue)}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#16A34A" }}>
+                              {entregaEditId === e.id ? (
+                                <InputNumerico decimais={3} value={entregaEditQtd} onChange={setEntregaEditQtd}
+                                  style={{ width: 90, textAlign: "right", padding: "3px 6px", fontSize: 12, borderRadius: 6, border: "0.5px solid var(--border)" }} />
+                              ) : fmtN(e.quantidade_entregue)}
+                            </td>
                             <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)" }}>{e.observacao ?? "—"}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                              {entregaEditId === e.id ? (
+                                <>
+                                  <button onClick={() => salvarEdicaoEntrega(e.id)} disabled={salvando} title="Salvar" style={{ background: "none", border: "none", cursor: "pointer", color: "#16A34A", fontSize: 13, fontWeight: 700, marginRight: 6 }}>✓</button>
+                                  <button onClick={() => { setEntregaEditId(null); setEntregaEditQtd(""); }} title="Cancelar" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 13 }}>×</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={() => { setEntregaEditId(e.id); setEntregaEditQtd(String(e.quantidade_entregue)); }} title="Editar quantidade" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", fontSize: 12, marginRight: 8 }}>✏</button>
+                                  <button onClick={() => removerEntrega(e.id)} title="Excluir entrega" style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14 }}>✕</button>
+                                </>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

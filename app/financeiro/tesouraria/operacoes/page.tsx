@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
+import { listarFazendasDaConta } from "../../../../lib/db";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -40,6 +41,18 @@ const TIPO_META: Record<string, { label: string; bg: string; cl: string }> = {
 
 export default function OperacoesTesourariaPage() {
   const { fazendaId, fazendaIds, contaId } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [ops, setOps]         = useState<OpTesoura[]>([]);
   const [ogs, setOgs]         = useState<OgMin[]>([]);
@@ -50,14 +63,14 @@ export default function OperacoesTesourariaPage() {
   const [err, setErr]         = useState("");
 
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const [{ data: opData }, { data: ogData }] = await Promise.all([
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`).neq("inativo", true).order("classificacao"),
     ]);
     setOps(opData ?? []);
     setOgs(ogData ?? []);
-  }, [fazendaId, fazendaIds, contaId]);
+  }, [fazAtiva, fazendaIds, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -76,10 +89,10 @@ export default function OperacoesTesourariaPage() {
   }
 
   async function salvar() {
-    if (!fazendaId || !form.nome.trim()) { setErr("Informe o nome da operação."); return; }
+    if (!fazAtiva || !form.nome.trim()) { setErr("Informe o nome da operação."); return; }
     setSaving(true); setErr("");
     try {
-      const payload = { fazenda_id: fazendaId, nome: form.nome.trim(), tipo: form.tipo, categoria: form.categoria || null, observacao: form.observacao || null, ativo: true, operacao_gerencial_id: form.og_id || null };
+      const payload = { fazenda_id: fazAtiva, nome: form.nome.trim(), tipo: form.tipo, categoria: form.categoria || null, observacao: form.observacao || null, ativo: true, operacao_gerencial_id: form.og_id || null };
       if (opEdit) { await supabase.from("operacoes_tesouraria").update(payload).eq("id", opEdit.id); }
       else { await supabase.from("operacoes_tesouraria").insert(payload); }
       await carregar();
@@ -103,11 +116,18 @@ export default function OperacoesTesourariaPage() {
 
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px" }}>
 
-        <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Operações de Tesouraria</h1>
-          <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
-            Gerencie os tipos de operações disponíveis ao registrar lançamentos de tesouraria.
-          </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Operações de Tesouraria</h1>
+            <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
+              Gerencie os tipos de operações disponíveis ao registrar lançamentos de tesouraria.
+            </p>
+          </div>
+          {fazendasConta.length > 1 && (
+            <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+              {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+            </select>
+          )}
         </div>
 
         {/* Operações padrão do sistema */}

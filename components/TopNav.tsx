@@ -133,6 +133,7 @@ const NAV: NavItem[] = [
     children: [
       { type: "divider", label: "Comercialização" },
       { id: "com-contratos",          label: "Contratos de Grãos",          path: "/contratos",                    moduleId: "contratos"   },
+      { id: "com-migrar-nf",          label: "Migração de NF entre Contratos", path: "/contratos/migrar-nf",       moduleId: "contratos"   },
       { id: "com-compromissos-graos", label: "Compromissos em Grãos",       path: "/contratos/compromissos-graos", moduleId: "contratos"   },
       { id: "com-faturamento",        label: "Faturamento / NF-e de Saída", path: "/comercial/faturamento",        moduleId: "contratos"   },
       { id: "com-compra-terra",       label: "Compra de Terra",             path: "/contratos/compra-terra",       moduleId: "contratos"   },
@@ -163,6 +164,7 @@ const NAV: NavItem[] = [
       { id: "fin-emp-pagar",       label: "Contas a Pagar — Empresa",    path: "/empresas/pagar",                  moduleId: "fin_pagar"      },
       { id: "fin-emp-receber",     label: "Contas a Receber — Empresa",  path: "/empresas/receber",                moduleId: "fin_receber"    },
       { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha"                                             },
+      { id: "fin-emp-dre",        label: "DRE por Empresa",              path: "/financeiro/empresas"                                        },
       { type: "divider", label: "Tesouraria" },
       { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria",     path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },
       { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",      path: "/financeiro/tesouraria/operacoes", moduleId: "fin_tesouraria" },

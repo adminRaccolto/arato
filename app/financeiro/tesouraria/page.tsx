@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarFazendasDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 
@@ -55,6 +56,18 @@ const TIPOS_OP_PADRAO = [
 // ─────────────────────────────────────────────────────────────
 export default function TesourariaPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [lancamentos, setLancamentos] = useState<LancTesoura[]>([]);
   const [contas, setContas]           = useState<ContaBancariaMin[]>([]);
@@ -79,7 +92,7 @@ export default function TesourariaPage() {
 
   // ── Carregar ───────────────────────────────────────────────
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
 
     const [{ data: lb }, { data: cb }, { data: ob }, { data: gsb }] = await Promise.all([
       supabase.from("lancamentos").select("*").in("fazenda_id", fazendaIds).eq("origem_lancamento", "tesouraria").order("data_lancamento", { ascending: false }),
@@ -92,7 +105,7 @@ export default function TesourariaPage() {
     setContas(cb ?? []);
     setOpsTesouraria(ob ?? []);
     setOgs(gsb ?? []);
-  }, [fazendaId, contaId]);
+  }, [fazAtiva, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -103,7 +116,7 @@ export default function TesourariaPage() {
 
   // ── Salvar Lançamento ─────────────────────────────────────
   async function salvarLancTesoura() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setLSaving(true); setLErr("");
     try {
       const op = lForm.tipo_op;
@@ -117,9 +130,10 @@ export default function TesourariaPage() {
         if (!lForm.conta_origem) throw new Error("Selecione a conta corrente de origem.");
         if (!lForm.conta_destino) throw new Error("Selecione a conta investimento de destino.");
         const descApl = lForm.descricao.trim() || "Aporte em aplicação financeira";
-        const baseApl = { fazenda_id: fazendaId, moeda: "BRL", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
+        const baseApl = { fazenda_id: fazAtiva, moeda: "BRL", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
+        const ogAporteSaida = ogs.find(o => o.classificacao === "2.02.01.01.006")?.id ?? null;
         await supabase.from("lancamentos").insert([
-          { ...baseApl, tipo: "pagar"   as const, descricao: `${descApl} ← saída`, categoria: "Aporte em Aplicação Financeira", conta_bancaria: lForm.conta_origem },
+          { ...baseApl, tipo: "pagar"   as const, descricao: `${descApl} ← saída`, categoria: "Aporte em Aplicação Financeira", operacao_gerencial_id: ogAporteSaida, conta_bancaria: lForm.conta_origem },
           { ...baseApl, tipo: "receber" as const, descricao: `${descApl} → entrada`, categoria: "Aporte em Aplicação Financeira", conta_bancaria: lForm.conta_destino },
         ]);
       } else if (isResgate) {
@@ -128,22 +142,25 @@ export default function TesourariaPage() {
         if (!lForm.conta_destino) throw new Error("Selecione a conta corrente de destino.");
         const valorLiq = lForm.valor - (lForm.iof || 0) - (lForm.ir || 0);
         const descRsg = lForm.descricao.trim() || "Resgate de aplicação financeira";
+        const ogResgateEntrada = ogs.find(o => o.classificacao === "3.07")?.id ?? null;
+        const ogIofResgate     = ogs.find(o => o.classificacao === "2.02.01.01.001")?.id ?? null;
         const lancamentos: object[] = [
-          { fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_origem, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
-          { fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", valor: valorLiq, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
+          { fazenda_id: fazAtiva, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_origem, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
+          { fazenda_id: fazAtiva, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", operacao_gerencial_id: ogResgateEntrada, valor: valorLiq, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
         ];
-        if ((lForm.iof || 0) > 0) lancamentos.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ resgate`, categoria: "IOF — Aplicação Financeira", valor: lForm.iof, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
-        if ((lForm.ir  || 0) > 0) lancamentos.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ rendimentos`, categoria: "IR — Rendimentos Financeiros", valor: lForm.ir, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
+        if ((lForm.iof || 0) > 0) lancamentos.push({ fazenda_id: fazAtiva, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ resgate`, categoria: "IOF — Aplicação Financeira", operacao_gerencial_id: ogIofResgate, valor: lForm.iof, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
+        if ((lForm.ir  || 0) > 0) lancamentos.push({ fazenda_id: fazAtiva, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ rendimentos`, categoria: "IR — Rendimentos Financeiros", valor: lForm.ir, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
         await supabase.from("lancamentos").insert(lancamentos);
       } else if (isAjuste) {
         const atual = lForm.saldo_atual || 0;
         const correto = lForm.saldo_correto || 0;
         const dif = correto - atual;
         if (!lForm.conta_ajuste) throw new Error("Selecione a conta.");
+        const ogAjuste = ogs.find(o => o.classificacao === (dif >= 0 ? "3.06" : "4.06"))?.id ?? null;
         await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId, tipo: dif >= 0 ? "receber" : "pagar" as const,
+          fazenda_id: fazAtiva, tipo: dif >= 0 ? "receber" : "pagar" as const,
           moeda: "BRL", descricao: `Ajuste de Saldo — ${lForm.conta_ajuste}`,
-          categoria: "Ajuste de Saldo", valor: Math.abs(dif),
+          categoria: "Ajuste de Saldo", operacao_gerencial_id: ogAjuste, valor: Math.abs(dif),
           data_lancamento: lForm.data, data_vencimento: lForm.data,
           status: "baixado", auto: false,
           conta_bancaria: lForm.conta_ajuste,
@@ -153,7 +170,7 @@ export default function TesourariaPage() {
       } else if (isTransf) {
         if (!lForm.conta_origem || !lForm.conta_destino || !lForm.valor) throw new Error("Preencha todos os campos.");
         const v = lForm.valor;
-        const base = { fazenda_id: fazendaId, moeda: "BRL", categoria: "Transferência entre Contas", valor: v, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado", auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
+        const base = { fazenda_id: fazAtiva, moeda: "BRL", categoria: "Transferência entre Contas", valor: v, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado", auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
         await supabase.from("lancamentos").insert([
           { ...base, tipo: "pagar"   as const, descricao: `Transferência → ${lForm.conta_destino}`, conta_bancaria: lForm.conta_origem },
           { ...base, tipo: "receber" as const, descricao: `Transferência ← ${lForm.conta_origem}`, conta_bancaria: lForm.conta_destino },
@@ -166,7 +183,7 @@ export default function TesourariaPage() {
         const opCustom = opsTesouraria.find(o => o.id === op);
         const ogId = lForm.og_id || opCustom?.operacao_gerencial_id || null;
         await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId, tipo: tipoLanc, moeda: "BRL",
+          fazenda_id: fazAtiva, tipo: tipoLanc, moeda: "BRL",
           descricao: lForm.descricao.trim(), categoria: nomeOp?.nome ?? "Tesouraria",
           valor: lForm.valor,
           data_lancamento: lForm.data, data_vencimento: lForm.data_vencimento || lForm.data,
@@ -202,7 +219,14 @@ export default function TesourariaPage() {
               Registre operações financeiras de tesouraria: transferências, ajustes de saldo, seguros, consórcios e outros.
             </p>
           </div>
-          <button onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {fazendasConta.length > 1 && (
+              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</button>
+          </div>
         </div>
 
         {/* KPI cards */}

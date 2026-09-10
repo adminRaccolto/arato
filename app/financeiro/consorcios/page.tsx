@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarFazendasDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import PlanoGate from "../../../components/PlanoGate";
@@ -119,6 +120,15 @@ export default function ConsorciosPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
 
+  // Fazendas da conta — seletor explícito no modal (não existe "fazenda ativa")
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId)
+      .then(fzs => setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome }))))
+      .catch(() => {});
+  }, [fazendaId, contaId]);
+
   // IDs das operações gerenciais de consórcio
   const [ogNaoContemplado, setOgNaoContemplado] = useState<string | null>(null);
   const [ogContemplado,    setOgContemplado]    = useState<string | null>(null);
@@ -141,6 +151,7 @@ export default function ConsorciosPage() {
   const [modalConsor,  setModalConsor]  = useState(false);
   const [consorEdit,   setConsorEdit]   = useState<Consorcio | null>(null);
   const CONSOR_VAZIO = () => ({
+    fazenda_id: fazendaId ?? "",
     administradora: "", administradora_pessoa_id: "" as string,
     numero_cota: "", grupo: "",
     tipo_bem: "maquina" as TipoBem, descricao_bem: "",
@@ -307,6 +318,7 @@ export default function ConsorciosPage() {
 
       setConsorEdit(null);
       setCForm({
+        fazenda_id:               fazendaId ?? "",
         administradora:           d.administradora      ?? "",
         administradora_pessoa_id: pessoaAdmMatch?.id    ?? "",
         numero_cota:              d.numero_cota != null ? String(d.numero_cota) : "",
@@ -346,6 +358,7 @@ export default function ConsorciosPage() {
     if (c) {
       setConsorEdit(c);
       setCForm({
+        fazenda_id: c.fazenda_id ?? fazendaId ?? "",
         administradora: c.administradora,
         administradora_pessoa_id: c.administradora_pessoa_id ?? "",
         numero_cota: c.numero_cota,
@@ -375,13 +388,13 @@ export default function ConsorciosPage() {
     setCSaving(true);
     setCErr("");
     try {
-      if (!fazendaId)                   throw new Error("Nenhuma fazenda ativa. Selecione uma fazenda no topo da página.");
+      if (!cForm.fazenda_id && !fazendaId) throw new Error("Selecione a fazenda.");
       if (!cForm.administradora?.trim()) throw new Error("Informe a administradora.");
       if (!cForm.numero_cota?.trim())    throw new Error("Informe o número da cota.");
       if (!cForm.data_inicio)            throw new Error("Informe a data de início.");
 
       const payload: Record<string, unknown> = {
-        fazenda_id: fazendaId,
+        fazenda_id: cForm.fazenda_id || fazendaId,
         administradora: cForm.administradora.trim(),
         administradora_pessoa_id: cForm.administradora_pessoa_id || null,
         numero_cota: cForm.numero_cota.trim(),
@@ -933,6 +946,15 @@ export default function ConsorciosPage() {
             {tabConsor === "dados" && (
             <div style={{ padding: "20px 22px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                {fazendasConta.length > 1 && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={lbl}>Fazenda *</label>
+                    <select value={cForm.fazenda_id} onChange={e => setCForm(f => ({ ...f, fazenda_id: e.target.value }))} style={inp}>
+                      <option value="">— Selecionar —</option>
+                      {fazendasConta.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+                    </select>
+                  </div>
+                )}
                 {/* Row 1 — Administradora (fornecedor) | Cota | Grupo */}
                 <div>
                   <label style={lbl}>

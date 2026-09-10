@@ -11,7 +11,7 @@ const supabase = createBrowserClient(
 interface Contrato {
   id: string; numero: string; comprador: string; produto: string;
   quantidade_sc: number; entregue_sc: number; status: string; safra?: string;
-  ano_safra_id?: string;
+  ano_safra_id?: string; fazenda_id?: string;
 }
 interface Romaneio {
   id: string; contrato_id: string; numero: string; data: string;
@@ -49,7 +49,7 @@ export default function MigrarNF() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [{ data: cts }, { data: lg }] = await Promise.all([
-      supabase.from("contratos").select("id,numero,comprador,produto,quantidade_sc,entregue_sc,status,safra,ano_safra_id")
+      supabase.from("contratos").select("id,numero,comprador,produto,quantidade_sc,entregue_sc,status,safra,ano_safra_id,fazenda_id")
         .in("fazenda_id", fazendaIds).order("numero", { ascending: false }),
       supabase.from("migracoes_nf").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(50),
     ]);
@@ -114,7 +114,7 @@ export default function MigrarNF() {
 
       // 4. Grava log de auditoria
       await supabase.from("migracoes_nf").insert({
-        fazenda_id: fazendaId,
+        fazenda_id: contratoOrigem.fazenda_id ?? fazendaId,
         romaneio_id: romaneioId,
         romaneio_numero: romaneioSel.numero,
         nfe_numero: romaneioSel.nfe_numero ?? null,

@@ -1004,7 +1004,9 @@ function FiscalInner() {
     supabase.from("anos_safra").select("id, descricao").in("fazenda_id", fazendaIds).order("descricao", { ascending: false })
       .then(({ data }) => { setAnosSafra(data ?? []); });
     // Carrega metadados de todos os certificados A1 via API (service role — sem RLS)
-    void fetch(`/api/cert-meta?fazenda_id=${fazendaId}`)
+    // Certificado é do CPF/CNPJ do produtor, não de uma fazenda — busca em todas as
+    // fazendas da conta para não "sumir" ao trocar a fazenda ativa no seletor.
+    void fetch(`/api/cert-meta?fazenda_ids=${fazendaIds.join(",")}`)
       .then(r => r.json())
       .then((d: { certs?: CertInfo[] }) => { setCerts(d.certs ?? []); })
       .catch(() => {});

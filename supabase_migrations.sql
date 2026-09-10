@@ -11333,3 +11333,782 @@ CREATE INDEX IF NOT EXISTS idx_rom_entrada_colheita ON romaneios_entrada(colheit
 -- (campo é TEXT sem CHECK constraint, apenas documentando o novo valor)
 
 NOTIFY pgrst, 'reload schema';
+
+
+
+---------------------------- SEÇÃO AUTIDORIA---------------------------
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 236 — Correção de 28 políticas RLS travadas em fazenda_id único
+-- Execute no Supabase SQL Editor
+-- ══════════════════════════════════════════════════════════════════════════
+--
+-- Auditoria "Conta × Fazenda" (set/2026): 28 tabelas tinham política RLS escrita
+-- como `fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())`
+-- — ou seja, o acesso ficava travado na ÚNICA fazenda gravada em perfis.fazenda_id
+-- (a "fazenda ativa" do farm switcher), não em todas as fazendas da conta do
+-- usuário. Como perfis.fazenda_id muda quando o usuário troca de fazenda, dados
+-- de outras propriedades do mesmo cliente ficavam invisíveis de forma
+-- imprevisível — mesmo com o código da tela e o seletor de fazenda corretos,
+-- porque o próprio banco já recusava devolver as linhas.
+--
+-- Correção: trocar o subselect por
+--   fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+-- — o mesmo padrão já usado corretamente em dezenas de outras tabelas deste
+-- arquivo (talhoes, culturas, triangulacoes, gnre_guias, ctes, mdfes, etc.).
+-- Nenhuma coluna nem estrutura de tabela muda — só a condição da policy.
+
+-- ── Financeiro ──────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "plano_contas_fazenda" ON plano_contas;
+CREATE POLICY "plano_contas_fazenda" ON plano_contas
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  WITH CHECK (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "adiant_select" ON adiantamentos_fornecedor;
+CREATE POLICY "adiant_select" ON adiantamentos_fornecedor FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "adiant_aplic_select" ON adiantamentos_aplicacoes;
+CREATE POLICY "adiant_aplic_select" ON adiantamentos_aplicacoes FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "conc_pend_all" ON conciliacao_pendencias;
+CREATE POLICY "conc_pend_all" ON conciliacao_pendencias FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "migracoes_nf_all" ON migracoes_nf;
+CREATE POLICY "migracoes_nf_all" ON migracoes_nf FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "adiant_cli_all" ON adiantamentos_cliente;
+CREATE POLICY "adiant_cli_all" ON adiantamentos_cliente FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "aplic_adiant_all" ON aplicacoes_adiantamento;
+CREATE POLICY "aplic_adiant_all" ON aplicacoes_adiantamento FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "Refinanciamento by fazenda" ON contratos_refinanciamento;
+CREATE POLICY "Refinanciamento by fazenda" ON contratos_refinanciamento
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+-- ── Fiscal / Estoque ───────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "pendencias_fiscais_fazenda" ON pendencias_fiscais;
+CREATE POLICY "pendencias_fiscais_fazenda" ON pendencias_fiscais
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "operacao_cfop_fiscal" ON operacao_cfop_fiscal;
+DROP POLICY IF EXISTS "fazenda_owner" ON operacao_cfop_fiscal;
+CREATE POLICY "fazenda_owner" ON operacao_cfop_fiscal
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  WITH CHECK (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "re_fazenda" ON romaneios_entrada;
+CREATE POLICY "re_fazenda" ON romaneios_entrada FOR ALL
+  USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+DROP POLICY IF EXISTS "allow_all_parametros_armazenagem" ON parametros_armazenagem;
+CREATE POLICY "allow_all_parametros_armazenagem" ON parametros_armazenagem
+  FOR ALL USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+DROP POLICY IF EXISTS "integracoes_fazenda_tenant" ON integracoes_fazenda;
+CREATE POLICY "integracoes_fazenda_tenant" ON integracoes_fazenda
+  FOR ALL USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      UNION
+      SELECT id FROM fazendas WHERE EXISTS (
+        SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "audit_log_select" ON audit_log;
+CREATE POLICY audit_log_select ON audit_log FOR SELECT
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'
+    )
+  );
+
+-- ── Sistema ─────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS logs_leitura  ON logs_sistema;
+DROP POLICY IF EXISTS logs_insercao ON logs_sistema;
+CREATE POLICY logs_leitura ON logs_sistema
+  FOR SELECT USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+CREATE POLICY logs_insercao ON logs_sistema
+  FOR INSERT WITH CHECK (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+DROP POLICY IF EXISTS backup_logs_leitura ON backup_logs;
+CREATE POLICY backup_logs_leitura ON backup_logs
+  FOR SELECT USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  );
+
+-- ── Transporte ──────────────────────────────────────────────────────────────
+-- ciots não tem fazenda_id próprio — herda via mdfe_id → mdfes.fazenda_id
+DROP POLICY IF EXISTS "Ciots by mdfe fazenda" ON ciots;
+CREATE POLICY "Ciots by mdfe fazenda" ON ciots
+  FOR ALL
+  USING (
+    mdfe_id IS NULL OR
+    mdfe_id IN (
+      SELECT id FROM mdfes m
+      WHERE m.fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      )
+    )
+  );
+
+-- ── Lavoura ─────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "monitoramento_pragas_fazenda" ON monitoramento_pragas;
+CREATE POLICY "monitoramento_pragas_fazenda" ON monitoramento_pragas
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "abastecimentos_fazenda" ON abastecimentos;
+CREATE POLICY "abastecimentos_fazenda" ON abastecimentos
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "rec_tenant" ON recomendacoes;
+CREATE POLICY "rec_tenant" ON recomendacoes FOR ALL USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "rec_tal_tenant" ON recomendacao_talhoes;
+CREATE POLICY "rec_tal_tenant" ON recomendacao_talhoes FOR ALL USING (
+  recomendacao_id IN (SELECT id FROM recomendacoes WHERE fazenda_id IN
+    (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())));
+
+DROP POLICY IF EXISTS "rec_prod_tenant" ON recomendacao_produtos;
+CREATE POLICY "rec_prod_tenant" ON recomendacao_produtos FOR ALL USING (
+  recomendacao_id IN (SELECT id FROM recomendacoes WHERE fazenda_id IN
+    (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())));
+
+DROP POLICY IF EXISTS "rec_exec_tenant" ON recomendacao_execucoes;
+CREATE POLICY "rec_exec_tenant" ON recomendacao_execucoes FOR ALL USING (
+  recomendacao_id IN (SELECT id FROM recomendacoes WHERE fazenda_id IN
+    (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())));
+
+DROP POLICY IF EXISTS ts_select ON tratamento_sementes;
+CREATE POLICY ts_select ON tratamento_sementes FOR SELECT USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+);
+DROP POLICY IF EXISTS ts_insert ON tratamento_sementes;
+CREATE POLICY ts_insert ON tratamento_sementes FOR INSERT WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+);
+DROP POLICY IF EXISTS ts_update ON tratamento_sementes;
+CREATE POLICY ts_update ON tratamento_sementes FOR UPDATE USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+);
+DROP POLICY IF EXISTS ts_delete ON tratamento_sementes;
+CREATE POLICY ts_delete ON tratamento_sementes FOR DELETE USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS tsi_select ON tratamento_sementes_itens;
+CREATE POLICY tsi_select ON tratamento_sementes_itens FOR SELECT USING (
+  tratamento_id IN (SELECT id FROM tratamento_sementes WHERE fazenda_id IN
+    (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()))
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+);
+DROP POLICY IF EXISTS tsi_all ON tratamento_sementes_itens;
+CREATE POLICY tsi_all ON tratamento_sementes_itens FOR ALL USING (
+  tratamento_id IN (SELECT id FROM tratamento_sementes WHERE fazenda_id IN
+    (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()))
+);
+
+DROP POLICY IF EXISTS tr_all ON tratamento_receitas;
+CREATE POLICY tr_all ON tratamento_receitas FOR ALL USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+);
+
+DROP POLICY IF EXISTS tri_all ON tratamento_receitas_itens;
+CREATE POLICY tri_all ON tratamento_receitas_itens FOR ALL USING (
+  receita_id IN (SELECT id FROM tratamento_receitas WHERE fazenda_id IN
+    (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()))
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+);
+
+-- ── RH ──────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "fazenda_owner" ON funcionario_premiacoes;
+CREATE POLICY "fazenda_owner" ON funcionario_premiacoes
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "fazenda_owner" ON funcionario_ferias;
+CREATE POLICY "fazenda_owner" ON funcionario_ferias
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+-- ── Comercial / Hedge ───────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "curva_mercado_select" ON curva_mercado;
+CREATE POLICY "curva_mercado_select" ON curva_mercado FOR SELECT USING (
+  fazenda_id IS NULL
+  OR fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+DROP POLICY IF EXISTS "curva_mercado_insert" ON curva_mercado;
+CREATE POLICY "curva_mercado_insert" ON curva_mercado FOR INSERT WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+DROP POLICY IF EXISTS "curva_mercado_update" ON curva_mercado;
+CREATE POLICY "curva_mercado_update" ON curva_mercado FOR UPDATE USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+DROP POLICY IF EXISTS "curva_mercado_delete" ON curva_mercado;
+CREATE POLICY "curva_mercado_delete" ON curva_mercado FOR DELETE USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+DROP POLICY IF EXISTS "desp_hedge_all" ON estrutura_despesa_hedge;
+CREATE POLICY "desp_hedge_all" ON estrutura_despesa_hedge FOR ALL USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+) WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+DROP POLICY IF EXISTS "com_metas_all" ON comercializacao_metas;
+CREATE POLICY "com_metas_all" ON comercializacao_metas FOR ALL USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+) WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+DROP POLICY IF EXISTS "fix_hedge_all" ON fixacoes_hedge;
+CREATE POLICY "fix_hedge_all" ON fixacoes_hedge FOR ALL USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+) WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+);
+
+-- ── Algodão (add-on) ────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "bicudo_armadilhas_acesso" ON bicudo_armadilhas;
+CREATE POLICY "bicudo_armadilhas_acesso" ON bicudo_armadilhas
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "bicudo_capturas_acesso" ON bicudo_capturas;
+CREATE POLICY "bicudo_capturas_acesso" ON bicudo_capturas
+  USING (armadilha_id IN (SELECT id FROM bicudo_armadilhas
+    WHERE fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')));
+
+DROP POLICY IF EXISTS "algodao_modulos_acesso" ON algodao_modulos;
+CREATE POLICY "algodao_modulos_acesso" ON algodao_modulos
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "algodao_op_esp_acesso" ON algodao_operacoes_especiais;
+CREATE POLICY "algodao_op_esp_acesso" ON algodao_operacoes_especiais
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "algodao_benef_acesso" ON algodao_beneficiamentos;
+CREATE POLICY "algodao_benef_acesso" ON algodao_beneficiamentos
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+DROP POLICY IF EXISTS "algodao_hvi_acesso" ON algodao_laudos_hvi;
+CREATE POLICY "algodao_hvi_acesso" ON algodao_laudos_hvi
+  USING (beneficiamento_id IN (SELECT id FROM algodao_beneficiamentos
+    WHERE fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')));
+
+-- ── Apoio Financeiro (apoio_baixas — a tabela irmã apoio_lancamentos já tinha sido corrigida) ──
+DROP POLICY IF EXISTS "apoio_baixas_select" ON apoio_baixas;
+CREATE POLICY "apoio_baixas_select" ON apoio_baixas FOR SELECT USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "apoio_baixas_insert" ON apoio_baixas;
+CREATE POLICY "apoio_baixas_insert" ON apoio_baixas FOR INSERT WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "apoio_baixas_delete" ON apoio_baixas;
+CREATE POLICY "apoio_baixas_delete" ON apoio_baixas FOR DELETE USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+);
+
+NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 237 — EMERGENCIAL: RLS nunca habilitada em 69 tabelas — legíveis por
+-- QUALQUER PESSOA, sem login, com a chave anon pública do site.
+--
+-- >>> EXECUTAR ESTA SEÇÃO IMEDIATAMENTE, ANTES DE QUALQUER OUTRA. <<<
+-- Não é parte do ciclo normal de migrations desta auditoria — é uma
+-- exposição de dados ativa em produção agora.
+-- ══════════════════════════════════════════════════════════════════════════
+--
+-- Achado (set/2026): testando com a ANON KEY pública (a mesma embutida no
+-- bundle JS do site, visível a qualquer visitante) e ZERO login, 69 das 212
+-- tabelas do banco devolveram contagem e dados reais de produção. Confirmado
+-- lendo linhas de verdade de "pessoas" (nome, CNPJ, telefone). Nenhuma das
+-- 212 tabelas testadas devolveu erro de permissão para a chave anon — ou
+-- seja, isto provavelmente não se limita às 69 abaixo (são só as que já têm
+-- dado real hoje; as demais podem estar igualmente abertas e vazias por ora).
+--
+-- Tabelas com dado exposto confirmado incluem: lancamentos (10.684 linhas —
+-- livro-razão financeiro inteiro de todos os clientes), pessoas (6.075 —
+-- fornecedores/compradores com CNPJ e telefone), nf_entradas + nf_servicos
+-- (5.567 notas fiscais), contratos (472), contratos_financeiros (98 —
+-- cédulas de crédito), contas_bancarias (87) e extratos_bancarios.
+--
+-- Causa raiz: nestas tabelas `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
+-- nunca foi executado — então NENHUMA política de segurança tem efeito,
+-- mesmo quando já existe uma CREATE POLICY escrita para a tabela (Postgres
+-- ignora todas as policies de uma tabela até a RLS ser explicitamente
+-- ligada nela). Em 11 delas a policy já escrita está correta (ou é
+-- intencionalmente pública, como "bancos" e "planos") e só faltava ligar.
+-- Nas outras 58, a policy existente (quando existe) é um placeholder
+-- `USING (true)` sem verificação nenhuma — equivalente, na prática, a não
+-- ter policy.
+--
+-- Ação: habilita RLS nas 69 e garante que só usuário AUTENTICADO acesse.
+-- Isso fecha o vazamento público total agora, sem mudar nada para quem já
+-- usa o sistema logado (o acesso deles já era irrestrito). NÃO restringe
+-- ainda por conta/tenant — um cliente autenticado ainda pode, em teoria, ver
+-- dado de outro cliente nessas 58 tabelas até receberem uma policy real
+-- (esse é o trabalho contínuo das Seções 236 e seguintes desta auditoria).
+-- Fechar o acesso anônimo público é a prioridade que não pode esperar.
+
+-- ── 11 tabelas: policy já escrita está correta — só faltava ligar a RLS ──
+ALTER TABLE bancos                         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE integracoes_catalogo           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lancamentos                    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nomes_comerciais               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE operacoes_gerenciais           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE planos                         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE principios_ativos              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE produtor_inscricoes_estaduais  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE talhoes                        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE textos_legais_uf               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE curva_mercado                  ENABLE ROW LEVEL SECURITY;
+
+-- ── 11 tabelas: a policy existente é um placeholder USING(true) — remove ──
+DROP POLICY IF EXISTS "allow_all_centros_custo_contrato" ON centros_custo_contrato;
+DROP POLICY IF EXISTS "allow_all_contratos_financeiros"  ON contratos_financeiros;
+DROP POLICY IF EXISTS "allow_all_extratos"               ON extratos_bancarios;
+DROP POLICY IF EXISTS "allow_all_ncm_tributacoes"        ON ncm_tributacoes;
+DROP POLICY IF EXISTS "allow_all_notas_fiscais"          ON notas_fiscais;
+DROP POLICY IF EXISTS "allow_all_operacoes_fiscais"      ON operacoes_fiscais;
+DROP POLICY IF EXISTS "allow_all_parcelas_liberacao"     ON parcelas_liberacao;
+DROP POLICY IF EXISTS "allow_all_parcelas_pagamento"     ON parcelas_pagamento;
+DROP POLICY IF EXISTS "pendencias_op_all"                ON pendencias_operacionais;
+DROP POLICY IF EXISTS "allow_all_pesagens"               ON pesagens_avulsas;
+DROP POLICY IF EXISTS "sessoes_whatsapp_service_only"    ON sessoes_whatsapp;
+
+-- ── 58 tabelas (as 11 acima + 47 que nunca tiveram policy nenhuma): liga
+--    RLS e aplica um bloqueio emergencial "só autenticado". Nome da policy
+--    deixa explícito que é provisório — precisa virar tenant-scoped depois.
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'nf_entrada_itens','pessoas','nf_entradas','nf_servicos','insumos',
+    'pagamento_lote_itens','maquinas','contratos','parcelas_pagamento',
+    'pedidos_compra_itens','arrendamento_pagamentos','subgrupos_insumos',
+    'movimentacoes_estoque','pagamento_lotes','estoque_terceiros','funcionarios',
+    'centros_custo','anos_safra','pedidos_compra','ciclo_talhoes',
+    'contratos_financeiros','contas_bancarias','notas_fiscais','arrendamentos',
+    'centros_custo_contrato','contrato_itens','configuracoes_modulo','grupos_insumos',
+    'parcelas_liberacao','perfis','operacoes_compra','operacoes_fiscais','ciclos',
+    'usuarios','depositos','matriculas_imoveis','bombas_combustivel','ncm_tributacoes',
+    'sessoes_whatsapp','extratos_bancarios','empresas','padroes_classificacao',
+    'arrendamento_matriculas','pesagens_avulsas','adubacoes_base','cargas_expedicao',
+    'pendencias_operacionais','pulverizacao_itens','pulverizacoes','adubacoes_base_itens',
+    'colheita_romaneios','plantios','transportadoras','colheitas','motoristas',
+    'pedidos_compra_entregas','romaneios','veiculos'
+  ]
+  LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS "emergencial_autenticado" ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY "emergencial_autenticado" ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)',
+      t
+    );
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- Follow-up recomendado (fora do escopo desta seção, mas anotado aqui):
+-- as outras 143 tabelas do banco não devolveram dado nos testes acima só
+-- porque estão vazias hoje — não foi confirmado que a RLS delas está
+-- correta. Vale rodar a mesma varredura (SELECT com chave anon, sem login)
+-- assim que houver tempo, e aplicar o mesmo tratamento a qualquer uma que
+-- também devolver contagem > 0 no futuro.
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 238 — EMERGENCIAL (parte 2): 76 tabelas adicionais com política
+-- "true" de verdade — confirmado por comportamento (qual/with_check = true),
+-- não só por nome. Descobertas consultando pg_policies diretamente no banco,
+-- porque não estavam registradas no supabase_migrations.sql (foram criadas
+-- fora do fluxo normal de migration deste projeto, provavelmente numa
+-- tentativa de desbloquear desenvolvimento em algum momento e nunca revertida).
+--
+-- >>> EXECUTAR IMEDIATAMENTE, junto com a Seção 237. <<<
+--
+-- Mesmo tratamento da Seção 237: fecha o acesso anônimo público, sem exigir
+-- ainda isolamento por conta (fica para as fases seguintes desta auditoria).
+-- Não afeta rotas que usam service_role_key (bypassam RLS) nem usuário já
+-- logado (o acesso dele já era irrestrito antes desta correção também).
+--
+-- Exclusão deliberada: bancos, integracoes_catalogo, nomes_comerciais,
+-- principios_ativos, textos_legais_uf — catálogos de referência genuinamente
+-- públicos (sem dado de cliente), ficam como estão.
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- ── Remove as políticas "true" confirmadas (uma tabela pode ter mais de uma) ──
+DROP POLICY IF EXISTS "allow_all_adubacoes_base"          ON adubacoes_base;
+DROP POLICY IF EXISTS "allow_all_adubacoes_base_itens"    ON adubacoes_base_itens;
+DROP POLICY IF EXISTS "allow_all_anos_safra"              ON anos_safra;
+DROP POLICY IF EXISTS "allow_all_arrendamento_matriculas" ON arrendamento_matriculas;
+DROP POLICY IF EXISTS "allow_all_arr_pagamentos"          ON arrendamento_pagamentos;
+DROP POLICY IF EXISTS "allow_all_arrendamentos"           ON arrendamentos;
+DROP POLICY IF EXISTS "allow_all_bem_consorcios"          ON bem_consorcios;
+DROP POLICY IF EXISTS "allow_all_bens"                    ON bens;
+DROP POLICY IF EXISTS "allow_all_bombas"                  ON bombas_combustivel;
+DROP POLICY IF EXISTS "allow_all_bombas_combustivel"      ON bombas_combustivel;
+DROP POLICY IF EXISTS "allow_all_cargas_expedicao"        ON cargas_expedicao;
+DROP POLICY IF EXISTS "allow_all_categorias_lancamento"   ON categorias_lancamento;
+DROP POLICY IF EXISTS "allow_all_centros_custo"           ON centros_custo;
+DROP POLICY IF EXISTS "allow_all_ciclo_talhoes"           ON ciclo_talhoes;
+DROP POLICY IF EXISTS "allow_all_ciclos"                  ON ciclos;
+DROP POLICY IF EXISTS "allow_all_colheita_romaneios"      ON colheita_romaneios;
+DROP POLICY IF EXISTS "allow_all_colheitas"               ON colheitas;
+DROP POLICY IF EXISTS "allow_all_config_contabilidade"    ON config_contabilidade;
+DROP POLICY IF EXISTS "acesso_total"                      ON configuracoes;
+DROP POLICY IF EXISTS "allow_all_configuracoes_nfe"       ON configuracoes_nfe;
+DROP POLICY IF EXISTS "allow_all_consorcio_rateios"       ON consorcio_rateios;
+DROP POLICY IF EXISTS "allow_all_contas_bancarias"        ON contas_bancarias;
+DROP POLICY IF EXISTS "allow_all_contrato_itens"          ON contrato_itens;
+DROP POLICY IF EXISTS "acesso_total"                      ON contratos;
+DROP POLICY IF EXISTS "allow_all_contratos"               ON contratos;
+DROP POLICY IF EXISTS "allow_all_correcoes_solo"          ON correcoes_solo;
+DROP POLICY IF EXISTS "allow_all_correcoes_solo_itens"    ON correcoes_solo_itens;
+DROP POLICY IF EXISTS "allow_all_depositos"               ON depositos;
+DROP POLICY IF EXISTS "allow_all_empresas"                ON empresas;
+DROP POLICY IF EXISTS "allow_all_estoque_terceiros"       ON estoque_terceiros;
+DROP POLICY IF EXISTS "allow_all_formas_pagamento"        ON formas_pagamento;
+DROP POLICY IF EXISTS "allow_all_funcionarios"            ON funcionarios;
+DROP POLICY IF EXISTS "allow_all_garantias_contrato"      ON garantias_contrato;
+DROP POLICY IF EXISTS "allow_all_grupos_insumo"           ON grupos_insumo;
+DROP POLICY IF EXISTS "allow_all_grupos_insumos"          ON grupos_insumos;
+DROP POLICY IF EXISTS "allow_all_historico_manutencao"    ON historico_manutencao;
+DROP POLICY IF EXISTS "acesso_total"                      ON insumos;
+DROP POLICY IF EXISTS "allow_all_insumos"                 ON insumos;
+DROP POLICY IF EXISTS "acesso_total"                      ON lancamentos;
+DROP POLICY IF EXISTS "allow_all_maquinas"                ON maquinas;
+DROP POLICY IF EXISTS "allow_all_matriculas_imoveis"      ON matriculas_imoveis;
+DROP POLICY IF EXISTS "allow_all_mdfe"                    ON mdfe;
+DROP POLICY IF EXISTS "allow_all_motoristas"              ON motoristas;
+DROP POLICY IF EXISTS "acesso_total"                      ON movimentacoes_estoque;
+DROP POLICY IF EXISTS "allow_all_movimentacoes_estoque"   ON movimentacoes_estoque;
+DROP POLICY IF EXISTS "allow_all_nf_entrada_itens"        ON nf_entrada_itens;
+DROP POLICY IF EXISTS "allow_all_nf_entradas"             ON nf_entradas;
+DROP POLICY IF EXISTS "allow_all_nf_servicos"             ON nf_servicos;
+DROP POLICY IF EXISTS "acesso_total"                      ON notas_fiscais;
+DROP POLICY IF EXISTS "acesso_total"                      ON operacoes;
+DROP POLICY IF EXISTS "allow_all_operacoes"               ON operacoes;
+DROP POLICY IF EXISTS "allow_all_operacoes_compra"        ON operacoes_compra;
+DROP POLICY IF EXISTS "allow_all_operacoes_tesouraria"    ON operacoes_tesouraria;
+DROP POLICY IF EXISTS "allow_all_orcamento_itens"         ON orcamento_itens;
+DROP POLICY IF EXISTS "allow_all_orcamentos"              ON orcamentos;
+DROP POLICY IF EXISTS "allow_all_padroes_classificacao"   ON padroes_classificacao;
+DROP POLICY IF EXISTS "allow_all_pagamento_lote_itens"    ON pagamento_lote_itens;
+DROP POLICY IF EXISTS "allow_all_pagamento_lotes"         ON pagamento_lotes;
+DROP POLICY IF EXISTS "allow_all_pedidos_compra"          ON pedidos_compra;
+DROP POLICY IF EXISTS "allow_all_pedidos_compra_entregas" ON pedidos_compra_entregas;
+DROP POLICY IF EXISTS "allow_all_pedidos_compra_itens"    ON pedidos_compra_itens;
+DROP POLICY IF EXISTS "allow_all_perfis"                  ON perfis;
+DROP POLICY IF EXISTS "allow_all_pessoas"                 ON pessoas;
+DROP POLICY IF EXISTS "allow_all_planejamento_tarefas"    ON planejamento_tarefas;
+DROP POLICY IF EXISTS "allow_all_plantios"                ON plantios;
+DROP POLICY IF EXISTS "allow_all_pulverizacao_itens"      ON pulverizacao_itens;
+DROP POLICY IF EXISTS "allow_all_pulverizacoes"           ON pulverizacoes;
+DROP POLICY IF EXISTS "allow_all_rateio_global_ciclos"    ON rateio_global_ciclos;
+DROP POLICY IF EXISTS "allow_all_rateio_global_faz"       ON rateio_global_fazendas;
+DROP POLICY IF EXISTS "allow_all_recomendacoes_tecnicas"  ON recomendacoes_tecnicas;
+DROP POLICY IF EXISTS "allow_all_regras_rateio"           ON regras_rateio;
+DROP POLICY IF EXISTS "allow_all_rateio_global"           ON regras_rateio_global;
+DROP POLICY IF EXISTS "acesso_total"                      ON romaneios;
+DROP POLICY IF EXISTS "allow_all_romaneios"               ON romaneios;
+DROP POLICY IF EXISTS "acesso_total"                      ON safras;
+DROP POLICY IF EXISTS "allow_all_safras"                  ON safras;
+DROP POLICY IF EXISTS "allow_all_simulacoes"              ON simulacoes;
+DROP POLICY IF EXISTS "allow_all_subgrupos_insumo"        ON subgrupos_insumo;
+DROP POLICY IF EXISTS "allow_all_subgrupos_insumos"       ON subgrupos_insumos;
+DROP POLICY IF EXISTS "acesso_total"                      ON talhoes;
+DROP POLICY IF EXISTS "allow_all_talhoes"                 ON talhoes;
+DROP POLICY IF EXISTS "allow_all_tipos_pessoa"            ON tipos_pessoa;
+DROP POLICY IF EXISTS "allow_all_transportadoras"         ON transportadoras;
+DROP POLICY IF EXISTS "allow_all_usuarios"                ON usuarios;
+DROP POLICY IF EXISTS "allow_all_veiculos"                ON veiculos;
+
+-- Estas tinham lógica real por tenant em algum momento (confirmado no
+-- histórico de migrations), mas hoje estão com qual/with_check = true —
+-- foram enfraquecidas fora do fluxo normal, igual às demais acima.
+DROP POLICY IF EXISTS "prod_ies_delete" ON produtor_inscricoes_estaduais;
+DROP POLICY IF EXISTS "prod_ies_select" ON produtor_inscricoes_estaduais;
+DROP POLICY IF EXISTS "prod_ies_update" ON produtor_inscricoes_estaduais;
+DROP POLICY IF EXISTS "taxas_insert_raccotlo" ON taxas_variaveis_historico;
+DROP POLICY IF EXISTS "taxas_update_raccotlo" ON taxas_variaveis_historico;
+
+-- ── Liga RLS (idempotente — não faz nada se já estava ligada) e aplica o
+--    mesmo bloqueio emergencial "só autenticado" nas 78 tabelas envolvidas ──
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'adubacoes_base','adubacoes_base_itens','anos_safra','arrendamento_matriculas',
+    'arrendamento_pagamentos','arrendamentos','bem_consorcios','bens',
+    'bombas_combustivel','cargas_expedicao','categorias_lancamento','centros_custo',
+    'ciclo_talhoes','ciclos','colheita_romaneios','colheitas','config_contabilidade',
+    'configuracoes','configuracoes_nfe','consorcio_rateios','contas_bancarias',
+    'contrato_itens','contratos','correcoes_solo','correcoes_solo_itens','depositos',
+    'empresas','estoque_terceiros','formas_pagamento','funcionarios','garantias_contrato',
+    'grupos_insumo','grupos_insumos','historico_manutencao','insumos','lancamentos',
+    'maquinas','matriculas_imoveis','mdfe','motoristas','movimentacoes_estoque',
+    'nf_entrada_itens','nf_entradas','nf_servicos','notas_fiscais','operacoes',
+    'operacoes_compra','operacoes_tesouraria','orcamento_itens','orcamentos',
+    'padroes_classificacao','pagamento_lote_itens','pagamento_lotes','pedidos_compra',
+    'pedidos_compra_entregas','pedidos_compra_itens','perfis','pessoas',
+    'planejamento_tarefas','plantios','pulverizacao_itens','pulverizacoes',
+    'rateio_global_ciclos','rateio_global_fazendas','recomendacoes_tecnicas',
+    'regras_rateio','regras_rateio_global','romaneios','safras','simulacoes',
+    'subgrupos_insumo','subgrupos_insumos','talhoes','tipos_pessoa','transportadoras',
+    'usuarios','veiculos','produtor_inscricoes_estaduais','taxas_variaveis_historico'
+  ]
+  LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS "emergencial_autenticado" ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY "emergencial_autenticado" ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)',
+      t
+    );
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 239 — EMERGENCIAL (parte 3): configuracoes_modulo tinha uma política
+-- liberando explicitamente para os roles {anon,authenticated} — um padrão
+-- diferente das Seções 237/238 (que usavam o role {public} por padrão), por
+-- isso não apareceu nas buscas anteriores. configuracoes_modulo guarda
+-- certificado digital A1 e chaves de API de integração — dado sensível.
+-- ══════════════════════════════════════════════════════════════════════════
+DROP POLICY IF EXISTS "allow_all_configuracoes_modulo" ON configuracoes_modulo;
+-- A policy "emergencial_autenticado" já existe nela desde a Seção 237 e
+-- passa a valer sozinha depois deste DROP — não precisa recriar nada.
+
+NOTIFY pgrst, 'reload schema';
+
+
+
+
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 240 — Auditoria Conta×Fazenda, Fase 4: adiciona conta_id (com
+-- backfill) nas tabelas que só tinham fazenda_id.
+--
+-- Aditivo e seguro: só cria coluna nova (nullable) + índice + preenche a
+-- partir de fazendas.conta_id. Não altera fazenda_id, não altera RLS, não
+-- muda nenhum comportamento do app hoje — nenhuma tela lê esta coluna ainda.
+-- É o preparo de terreno para o código passar a usar conta_id nestas
+-- tabelas (trabalho de código, à parte, depois que isto rodar).
+--
+-- Colunas confirmadas ao vivo no banco antes de escrever esta migration
+-- (fazenda_id presente, conta_id ausente em todas as 25).
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE pessoas                  ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE usuarios                 ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE grupos_usuarios          ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE insumos                  ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE grupos_insumo            ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE subgrupos_insumo         ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE tipos_pessoa             ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE centros_custo            ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE categorias_lancamento    ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE formas_pagamento         ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE empresas                 ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE contas_bancarias         ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE funcionarios             ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE anos_safra               ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE regras_rateio            ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE transportadoras          ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE veiculos                 ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE motoristas                ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE configuracoes_modulo     ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE padroes_classificacao    ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE culturas                 ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE plano_contas             ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE imoveis_urbanos          ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE regras_classificacao_nf  ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+ALTER TABLE configuracoes_automacao  ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+
+-- Backfill: resolve conta_id a partir de fazendas.conta_id, para linhas que
+-- ainda não têm. Idempotente — não sobrescreve conta_id já preenchido.
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'pessoas','usuarios','grupos_usuarios','insumos','grupos_insumo','subgrupos_insumo',
+    'tipos_pessoa','centros_custo','categorias_lancamento','formas_pagamento','empresas',
+    'contas_bancarias','funcionarios','anos_safra','regras_rateio','transportadoras',
+    'veiculos','motoristas','configuracoes_modulo','padroes_classificacao','culturas',
+    'plano_contas','imoveis_urbanos','regras_classificacao_nf','configuracoes_automacao'
+  ]
+  LOOP
+    EXECUTE format(
+      'UPDATE %I t SET conta_id = f.conta_id FROM fazendas f
+       WHERE t.fazenda_id = f.id AND t.conta_id IS NULL AND f.conta_id IS NOT NULL',
+      t
+    );
+    EXECUTE format(
+      'CREATE INDEX IF NOT EXISTS idx_%I_conta ON %I(conta_id) WHERE conta_id IS NOT NULL',
+      t, t
+    );
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 241 — Idempotência do webhook do WhatsApp
+-- Guarda o id de cada mensagem já processada (key.id do Baileys/Evolution API).
+-- O webhook tenta INSERT antes de processar; se a chave já existir (23505),
+-- é uma reentrega e a mensagem é ignorada. PRIMARY KEY garante atomicidade
+-- mesmo com duas requisições concorrentes chegando quase juntas.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS whatsapp_mensagens_processadas (
+  message_id     TEXT PRIMARY KEY,
+  processado_em  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_wa_msg_processado_em ON whatsapp_mensagens_processadas(processado_em);
+
+-- Limpeza automática: mensagens têm vida útil curta pra fins de dedup — não
+-- precisa guardar para sempre. Rode manualmente de vez em quando, ou agende
+-- um cron; não é crítico, é só para não crescer o índice sem necessidade.
+-- DELETE FROM whatsapp_mensagens_processadas WHERE processado_em < now() - interval '30 days';
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 242 — Idempotência da fila offline do app de campo
+-- Cada operação enfileirada no cliente já tem um UUID próprio
+-- (crypto.randomUUID(), gerado em lib/offline-store.ts). Adiciona uma coluna
+-- UNIQUE em cada tabela de destino para guardar esse id — o servidor usa
+-- upsert com ignoreDuplicates para nunca inserir a mesma operação duas vezes,
+-- mesmo que a fila reenvie a mesma operação por falha de rede na resposta.
+-- ============================================================
+ALTER TABLE plantios        ADD COLUMN IF NOT EXISTS origem_op_id UUID;
+ALTER TABLE pulverizacoes   ADD COLUMN IF NOT EXISTS origem_op_id UUID;
+ALTER TABLE colheitas       ADD COLUMN IF NOT EXISTS origem_op_id UUID;
+ALTER TABLE abastecimentos  ADD COLUMN IF NOT EXISTS origem_op_id UUID;
+ALTER TABLE adubacoes_base  ADD COLUMN IF NOT EXISTS origem_op_id UUID;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_plantios_origem_op       ON plantios(origem_op_id)       WHERE origem_op_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pulverizacoes_origem_op  ON pulverizacoes(origem_op_id)  WHERE origem_op_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_colheitas_origem_op      ON colheitas(origem_op_id)      WHERE origem_op_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_abastecimentos_origem_op ON abastecimentos(origem_op_id) WHERE origem_op_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_adubacoes_base_origem_op ON adubacoes_base(origem_op_id) WHERE origem_op_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 243 — Fase 7 do roadmap: propagação de produtor_id
+-- Romaneio de expedição e Carga de expedição não sabiam quem era o produtor
+-- da operação — o DANFE simplificado da Expedição mostrava a cultura
+-- (contratoSel.produto) no lugar do emitente. Propaga produtor_id a partir
+-- do contrato de origem, no momento da criação, e faz backfill retroativo.
+-- ============================================================
+ALTER TABLE romaneios        ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+ALTER TABLE cargas_expedicao ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_romaneios_produtor        ON romaneios(produtor_id);
+CREATE INDEX IF NOT EXISTS idx_cargas_expedicao_produtor ON cargas_expedicao(produtor_id);
+
+UPDATE romaneios r SET produtor_id = c.produtor_id
+  FROM contratos c
+  WHERE r.contrato_id = c.id AND r.produtor_id IS NULL AND c.produtor_id IS NOT NULL;
+
+UPDATE cargas_expedicao ce SET produtor_id = c.produtor_id
+  FROM contratos c
+  WHERE ce.contrato_id = c.id AND ce.produtor_id IS NULL AND c.produtor_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 244 — Reconstrução do gerador LCDPR (leiaute oficial 1.3,
+-- Anexo ao ADE COPES nº 1/2020) — campos que faltavam para os
+-- registros 0040 (imóvel), 0050 (conta bancária) e o novo cadastro
+-- do contador responsável (registro 9999).
+-- ============================================================
+ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS caepf TEXT;
+ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS tipo_exploracao SMALLINT; -- 1=individual 2=condomínio 3=arrendado 4=parceria 5=comodato 6=outros
+ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS participacao_lcdpr NUMERIC(5,2) DEFAULT 100;
+ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS municipio_ibge TEXT;
+
+ALTER TABLE contas_bancarias ADD COLUMN IF NOT EXISTS codigo_bacen TEXT; -- código de compensação BACEN, 3 dígitos
+
+CREATE TABLE IF NOT EXISTS lcdpr_contador (
+  conta_id    UUID PRIMARY KEY REFERENCES contas(id) ON DELETE CASCADE,
+  nome        TEXT,
+  cpf_cnpj    TEXT,
+  crc         TEXT,
+  email       TEXT,
+  telefone    TEXT,
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE lcdpr_contador ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_lcdpr_contador" ON lcdpr_contador FOR ALL USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';
+
+

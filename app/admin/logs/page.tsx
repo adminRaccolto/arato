@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarFazendasDaConta } from "../../../lib/db";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 type AcaoLog = "insert" | "update" | "delete" | "login" | "logout" | "export" | "view";
@@ -58,7 +59,19 @@ const inputStyle: React.CSSProperties = {
 
 // ── Página ─────────────────────────────────────────────────────────────────────
 export default function LogSistema() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
+
   const [logs, setLogs]           = useState<LogEntry[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro]           = useState<string | null>(null);
@@ -74,14 +87,14 @@ export default function LogSistema() {
   const setF = (p: Partial<FiltroLog>) => { setFiltro(f => ({ ...f, ...p })); setPagina(1); };
 
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setCarregando(true);
     setErro(null);
 
     let q = supabase
       .from("logs_sistema")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .eq("fazenda_id", fazAtiva)
       .order("created_at", { ascending: false })
       .limit(1000);
 
@@ -95,7 +108,7 @@ export default function LogSistema() {
       else setLogs((data ?? []) as LogEntry[]);
       setCarregando(false);
     });
-  }, [fazendaId, filtro.inicio, filtro.fim, filtro.modulo, filtro.acao]);
+  }, [fazAtiva, filtro.inicio, filtro.fim, filtro.modulo, filtro.acao]);
 
   // Filtro client-side para busca e usuário
   const logsFiltrados = logs.filter(l => {
@@ -135,20 +148,28 @@ export default function LogSistema() {
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Log do Sistema</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Rastreamento completo de inserções, edições e exclusões por usuário</p>
           </div>
-          <button
-            onClick={() => {
-              const csv = [
-                ["Data/Hora","Usuário","Módulo","Ação","Descrição","Entidade","IP"],
-                ...logsFiltrados.map(l => [fmtDt(l.created_at), l.usuario_nome ?? l.usuario_email ?? "—", l.modulo, l.acao, l.descricao, l.entidade ?? "", l.ip ?? ""])
-              ].map(r => r.join(";")).join("\n");
-              const a = document.createElement("a");
-              a.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csv);
-              a.download = `logs_${new Date().toISOString().slice(0,10)}.csv`;
-              a.click();
-            }}
-            style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-            ↓ Exportar CSV
-          </button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {fazendasConta.length > 1 && (
+              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
+                style={{ padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button
+              onClick={() => {
+                const csv = [
+                  ["Data/Hora","Usuário","Módulo","Ação","Descrição","Entidade","IP"],
+                  ...logsFiltrados.map(l => [fmtDt(l.created_at), l.usuario_nome ?? l.usuario_email ?? "—", l.modulo, l.acao, l.descricao, l.entidade ?? "", l.ip ?? ""])
+                ].map(r => r.join(";")).join("\n");
+                const a = document.createElement("a");
+                a.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csv);
+                a.download = `logs_${new Date().toISOString().slice(0,10)}.csv`;
+                a.click();
+              }}
+              style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              ↓ Exportar CSV
+            </button>
+          </div>
         </header>
 
         <div style={{ padding: "16px 22px", flex: 1 }}>

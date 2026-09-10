@@ -57,18 +57,35 @@ export async function POST(req: Request) {
       contaId = novaConta.id;
     }
 
-    // 3. Vincula fazenda à conta (caso ainda não esteja)
+    // 3. Vincula fazenda à conta (caso ainda não esteja e esteja órfã)
     await admin
       .from("fazendas")
       .update({ conta_id: contaId })
       .eq("id", body.fazenda_id)
       .is("conta_id", null);
 
+    // Confirma que a fazenda pertence de fato à conta do usuário antes de vincular no perfil —
+    // sem isso, um fazenda_id de outro cliente ficaria gravado em perfis.fazenda_id (escalada de tenant).
+    const { data: fazendaCheck } = await admin
+      .from("fazendas")
+      .select("conta_id")
+      .eq("id", body.fazenda_id)
+      .maybeSingle();
+
+    if (!fazendaCheck || fazendaCheck.conta_id !== contaId) {
+      return NextResponse.json({ ok: false, error: "fazenda_id não pertence a esta conta" }, { status: 403 });
+    }
+
     // 4. Upsert do perfil com fazenda e conta ativos
     await admin
       .from("perfis")
       .upsert(
-        { user_id: user.id, fazenda_id: body.fazenda_id, conta_id: contaId, nome: user.email },
+        {
+          user_id: user.id,
+          fazenda_id: body.fazenda_id,
+          conta_id: contaId,
+          nome: (perfil as { nome?: string } | null)?.nome ?? user.email,
+        },
         { onConflict: "user_id" },
       );
 

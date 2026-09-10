@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
-import { listarFazendasDaConta } from "../../../lib/db";
+import { listarFazendasDaConta, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
@@ -923,6 +923,16 @@ const CAT_CAPTACAO_IMP: Record<string, string> = {
   custeio: "Captação de Custeio", investimento: "Captação de Financiamento",
   securitizacao: "Captação de Securitização", cpr: "Captação de CPR",
   egf: "Captação de EGF", outros: "Captação de Empréstimos",
+};
+
+// Classificação gerencial da liberação (receita) e da amortização (despesa) por tipo de contrato.
+const OG_CAPTACAO_IMP: Record<string, string> = {
+  egf: "1.03.01.01.001", investimento: "1.03.01.01.003",
+  custeio: "1.03.01.01.002", securitizacao: "1.03.01.01.002", cpr: "1.03.01.01.002", outros: "1.03.01.01.002",
+};
+const OG_AMORT_IMP: Record<string, string> = {
+  custeio: "2.02.01.02.002", investimento: "2.02.01.02.007", securitizacao: "2.02.01.02.007",
+  cpr: "2.02.01.02.003", egf: "2.02.01.02.001", outros: "2.02.01.02.005",
 };
 
 function parseBRNum(v: unknown): number {
@@ -2112,11 +2122,13 @@ function ImportacaoInner() {
         if ((crAutoExist ?? 0) === 0) {
           // Status: se data de liberação já passou → baixado (histórico)
           const jaBaixado = dataLib <= hoje;
+          const ogCaptacao = await resolverOperacaoGerencialPorClassificacao(fazendaId, OG_CAPTACAO_IMP[r.tipo] ?? OG_CAPTACAO_IMP.outros);
           await supabase.from("lancamentos").insert({
             fazenda_id:       fazendaId,
             tipo:             "receber",
             descricao:        `${r.descricao.trim()} — Liberação de Recurso`,
             categoria:        CAT_CAPTACAO_IMP[r.tipo] ?? "Captação de Empréstimos",
+            operacao_gerencial_id: ogCaptacao ?? null,
             data_lancamento:  dataLib,
             data_vencimento:  dataLib,
             valor:            Math.round(vlBRL * 100) / 100,
@@ -2214,12 +2226,14 @@ function ImportacaoInner() {
             // ── Cria CP em lancamentos e vincula às parcelas ─────────────────
             const hoje = new Date().toISOString().slice(0, 10);
             const categoria = CAT_CAPTACAO_IMP[r.tipo] ?? "Captação de Empréstimos";
+            const ogAmort = await resolverOperacaoGerencialPorClassificacao(fazendaId, OG_AMORT_IMP[r.tipo] ?? OG_AMORT_IMP.outros);
             const totalP = parcRows.length;
             const lancRows = parcRows.map(p => ({
               fazenda_id:       fazendaId,
               tipo:             "pagar",
               descricao:        `${r.descricao.trim()} — Parcela ${p.num_parcela as number}/${totalP}`,
               categoria,
+              operacao_gerencial_id: ogAmort ?? null,
               data_lancamento:  hoje,
               data_vencimento:  p.data_vencimento as string,
               valor:            p.valor_parcela as number,

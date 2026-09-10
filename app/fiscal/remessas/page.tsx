@@ -60,19 +60,21 @@ export default function RemessasLogisticasPage() {
     setRetForm({ natureza: "Retorno de armazenagem de condomínio logístico", obs: "" });
     setRetErro("");
     setRetOk(null);
-    // Busca módulos fiscais da fazenda
-    if (fazendaId) {
+    // Busca módulos fiscais da fazenda REAL da remessa (não a fazenda ativa
+    // do seletor, que pode ser outra na mesma conta)
+    const fazendaRemessa = r.fazenda_id ?? fazendaId;
+    if (fazendaRemessa) {
       const { data } = await supabase
         .from("configuracoes_modulo")
         .select("modulo, config")
-        .eq("fazenda_id", fazendaId)
+        .eq("fazenda_id", fazendaRemessa)
         .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
       setFiscalMods((data ?? []) as Array<{modulo: string; config: Record<string,string>}>);
     }
   }
 
   async function emitirRetorno() {
-    if (!modalRetorno || !fazendaId) return;
+    if (!modalRetorno || !(modalRetorno.fazenda_id ?? fazendaId)) return;
     setRetEmitindo(true);
     setRetErro("");
     try {
@@ -98,7 +100,7 @@ export default function RemessasLogisticasPage() {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id:   fazendaId,
+          fazenda_id:   modalRetorno.fazenda_id ?? fazendaId,
           modulo_key:   fiscalMods[0]?.modulo ?? "",
           destinatario: {
             nome:           modalRetorno.destinatario_nome,

@@ -310,11 +310,11 @@ export default function SpedContabilPage() {
       const contasSet = new Map<string, ContaResumo>();
 
       for (const lc of lancs) {
-        if (!lc.operacao_id) {
+        if (!lc.operacao_gerencial_id) {
           erros.push(`Lançamento "${lc.descricao}" (${lc.data_lancamento}) sem operação gerencial — ignorado.`);
           continue;
         }
-        const op = opMap.get(lc.operacao_id);
+        const op = opMap.get(lc.operacao_gerencial_id);
         if (!op) {
           erros.push(`Operação gerencial não encontrada para: "${lc.descricao}" — ignorado.`);
           continue;

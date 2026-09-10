@@ -29,7 +29,7 @@ const inp: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-interface Talhao { id: string; nome: string; area_ha: number; lat?: number; lng?: number }
+interface Talhao { id: string; nome: string; area_ha: number; lat?: number; lng?: number; fazenda_id?: string }
 interface Fazenda { id: string; nome: string; lat?: number; lng?: number }
 
 interface DiaClima {
@@ -121,7 +121,7 @@ export default function Pluviometria() {
     if (!fazendaId) return;
     const [{ data: faz }, { data: tal }] = await Promise.all([
       supabase.from("fazendas").select("id,nome,lat,lng").eq("id", fazendaId).single(),
-      supabase.from("talhoes").select("id,nome,area_ha,lat,lng").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("talhoes").select("id,nome,area_ha,lat,lng,fazenda_id").in("fazenda_id", fazendaIds).order("nome"),
     ]);
     if (faz) setFazenda(faz as Fazenda);
     if (tal) setTalhoes(tal as Talhao[]);
@@ -138,7 +138,9 @@ export default function Pluviometria() {
       intens = mmh < 5 ? "fraca" : mmh < 25 ? "moderada" : mmh < 50 ? "forte" : "muito_forte";
     }
     await supabase.from("leituras_pluviometricas").insert({
-      fazenda_id:  fazendaId,
+      // Deriva a fazenda do talhão selecionado — pode ser de outra fazenda
+      // da conta, diferente da fazenda ativa no momento.
+      fazenda_id:  (lTalhao ? talhoes.find(t => t.id === lTalhao)?.fazenda_id : null) ?? fazendaId,
       talhao_id:   lTalhao || null,
       data:        lData,
       hora:        lHora || null,

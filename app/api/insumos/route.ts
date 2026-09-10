@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../lib/api-auth";
 
 const sb = () =>
   createClient(
@@ -11,6 +12,11 @@ const sb = () =>
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    if (!body.fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
+
+    const acesso = await validateFazendaAccess(body.fazenda_id, req.headers.get("authorization") ?? undefined);
+    if (!acesso.ok) return NextResponse.json({ erro: acesso.error }, { status: acesso.status });
+
     const supabase = sb();
     const { data, error } = await supabase.from("insumos").insert(body).select().single();
     if (error) return NextResponse.json({ erro: error.message }, { status: 400 });
@@ -46,28 +52,31 @@ export async function PATCH(req: NextRequest) {
 
     const supabase = sb();
 
+    const { data: atual } = await supabase
+      .from("insumos")
+      .select("estoque, fazenda_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!atual) return NextResponse.json({ erro: "Insumo não encontrado" }, { status: 404 });
+
+    const acesso = await validateFazendaAccess(atual.fazenda_id, req.headers.get("authorization") ?? undefined);
+    if (!acesso.ok) return NextResponse.json({ erro: acesso.error }, { status: acesso.status });
+
     // Se o campo estoque está sendo alterado, registrar ajuste de saldo
     if ("estoque" in payload) {
-      const { data: atual } = await supabase
-        .from("insumos")
-        .select("estoque, fazenda_id")
-        .eq("id", id)
-        .single();
-
-      if (atual) {
-        const delta = Number(payload.estoque ?? 0) - Number(atual.estoque ?? 0);
-        if (delta !== 0) {
-          await supabase.from("movimentacoes_estoque").insert({
-            insumo_id:  id,
-            fazenda_id: atual.fazenda_id,
-            tipo:       delta > 0 ? "entrada" : "saida",
-            motivo:     "ajuste_manual",
-            quantidade: Math.abs(delta),
-            data:       new Date().toISOString().slice(0, 10),
-            observacao: "Ajuste via cadastro de insumos",
-            auto:       false,
-          });
-        }
+      const delta = Number(payload.estoque ?? 0) - Number(atual.estoque ?? 0);
+      if (delta !== 0) {
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id:  id,
+          fazenda_id: atual.fazenda_id,
+          tipo:       delta > 0 ? "entrada" : "saida",
+          motivo:     "ajuste_manual",
+          quantidade: Math.abs(delta),
+          data:       new Date().toISOString().slice(0, 10),
+          observacao: "Ajuste via cadastro de insumos",
+          auto:       false,
+        });
       }
     }
 
@@ -84,7 +93,15 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = await Promise.resolve(new URL(req.url));
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ erro: "id obrigatório" }, { status: 400 });
-    const { error } = await sb().from("insumos").delete().eq("id", id);
+
+    const supabase = sb();
+    const { data: atual } = await supabase.from("insumos").select("fazenda_id").eq("id", id).maybeSingle();
+    if (!atual) return NextResponse.json({ erro: "Insumo não encontrado" }, { status: 404 });
+
+    const acesso = await validateFazendaAccess(atual.fazenda_id, req.headers.get("authorization") ?? undefined);
+    if (!acesso.ok) return NextResponse.json({ erro: acesso.error }, { status: acesso.status });
+
+    const { error } = await supabase.from("insumos").delete().eq("id", id);
     if (error) return NextResponse.json({ erro: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });
   } catch (e) {

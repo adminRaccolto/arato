@@ -247,7 +247,10 @@ export default function Arrendamentos() {
       const pessoa   = pessoas.find(p => p.id === fC.proprietario_id);
       const locatPes = pessoas.find(p => p.id === fC.locatario_id);
       const payload = {
-        fazenda_id: fazendaId,
+        // Editar nunca pode reatribuir o arrendamento pra outra fazenda —
+        // preserva a fazenda real do registro; só usa a fazenda ativa como
+        // default ao criar um arrendamento novo.
+        fazenda_id: editContrato ? (editContrato.fazenda_id ?? fazendaId) : fazendaId,
         proprietario_id:   fC.proprietario_id   || null,
         proprietario_nome: fC.proprietario_nome || pessoa?.nome || null,
         locatario_id:   fC.locatario_id   || null,
@@ -381,7 +384,7 @@ export default function Arrendamentos() {
           const preco  = parseFloat(cfg.preco_soja.replace(",", ".")) || null;
           novosPagamentos.push({
             arrendamento_id: arr.id,
-            fazenda_id: fazendaId,
+            fazenda_id: arr.fazenda_id ?? fazendaId,
             ano_safra_id: cfg.ano_safra_id || null,
             data_vencimento: cfg.dt_venc_soja,
             sacas_previstas: sacas > 0 ? sacas : null,
@@ -399,7 +402,7 @@ export default function Arrendamentos() {
           const preco  = parseFloat(cfg.preco_milho.replace(",", ".")) || null;
           novosPagamentos.push({
             arrendamento_id: arr.id,
-            fazenda_id: fazendaId,
+            fazenda_id: arr.fazenda_id ?? fazendaId,
             ano_safra_id: cfg.ano_safra_id || null,
             data_vencimento: cfg.dt_venc_milho,
             sacas_previstas: sacas > 0 ? sacas : null,
@@ -427,7 +430,7 @@ export default function Arrendamentos() {
           ): Promise<string | null> => {
             try {
               const lanc = await criarLancamento({
-                fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
+                fazenda_id: arr.fazenda_id ?? fazendaId, tipo: "pagar", moeda: "BRL",
                 descricao, categoria: "Arrendamento de Terra",
                 data_lancamento: hoje(), data_vencimento,
                 valor, status: "em_aberto", auto: true,
@@ -450,7 +453,7 @@ export default function Arrendamentos() {
               const descSoja = `Arrendamento Soja — ${propNome} (${cfg.descricao})`;
               const lancIdSoja = await criarLancArr(descSoja, cfg.dt_venc_soja, valorSoja, `Gerado automaticamente. ${obsSoja}`);
               novosPagamentos.push({
-                arrendamento_id: arr.id, fazenda_id: fazendaId,
+                arrendamento_id: arr.id, fazenda_id: arr.fazenda_id ?? fazendaId,
                 ano_safra_id: cfg.ano_safra_id || null,
                 data_vencimento: cfg.dt_venc_soja,
                 valor_previsto: valorSoja, status: "pendente",
@@ -473,7 +476,7 @@ export default function Arrendamentos() {
               const descMilho = `Arrendamento Milho — ${propNome} (${cfg.descricao})`;
               const lancIdMilho = await criarLancArr(descMilho, cfg.dt_venc_milho, valorMilho, `Gerado automaticamente. ${obsMilho}`);
               novosPagamentos.push({
-                arrendamento_id: arr.id, fazenda_id: fazendaId,
+                arrendamento_id: arr.id, fazenda_id: arr.fazenda_id ?? fazendaId,
                 ano_safra_id: cfg.ano_safra_id || null,
                 data_vencimento: cfg.dt_venc_milho,
                 valor_previsto: valorMilho, status: "pendente",
@@ -493,7 +496,7 @@ export default function Arrendamentos() {
               const descManual = `Arrendamento — ${propNome} (${cfg.descricao})`;
               const lancId = await criarLancArr(descManual, cfg.dt_venc_brl, valorManual, obsManual);
               novosPagamentos.push({
-                arrendamento_id: arr.id, fazenda_id: fazendaId,
+                arrendamento_id: arr.id, fazenda_id: arr.fazenda_id ?? fazendaId,
                 ano_safra_id: cfg.ano_safra_id || null,
                 data_vencimento: cfg.dt_venc_brl,
                 valor_previsto: valorManual, status: "pendente",
@@ -516,7 +519,7 @@ export default function Arrendamentos() {
         if (!cfg.incluir || cfg.ano_safra_id) continue;
         try {
           const { data: novoAs } = await supabase.from("anos_safra")
-            .insert({ fazenda_id: fazendaId, descricao: cfg.descricao })
+            .insert({ fazenda_id: arr.fazenda_id ?? fazendaId, descricao: cfg.descricao })
             .select().single();
           if (novoAs) {
             cfg.ano_safra_id = novoAs.id;
@@ -700,7 +703,7 @@ export default function Arrendamentos() {
     try {
       const ehSc = selArr.forma_pagamento !== "brl";
       const payload = {
-        arrendamento_id: selArr.id, fazenda_id: fazendaId,
+        arrendamento_id: selArr.id, fazenda_id: selArr.fazenda_id ?? fazendaId,
         ano_safra_id: fP.ano_safra_id || null,
         data_vencimento: fP.data_vencimento,
         data_pagamento: fP.data_pagamento || null,

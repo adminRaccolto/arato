@@ -110,7 +110,7 @@ async function syncFazenda(
       const nfe = parseNFeXml(xml);
       if (!nfe?.chave) { erros++; continue; }
 
-      // Verifica duplicata
+      // Verifica duplicata dentro desta própria rotina (nf_importadas_sieg)
       const { data: dup } = await db
         .from("nf_importadas_sieg")
         .select("id")
@@ -118,6 +118,18 @@ async function syncFazenda(
         .eq("chave_acesso", nfe.chave)
         .maybeSingle();
       if (dup) continue;
+
+      // Verifica duplicata contra a outra rotina de sincronização SIEG (integracoes/sieg-sync,
+      // disparada manualmente a partir de Compras → NF de Produtos). Ambas gravam CP a partir
+      // da mesma NF em tabelas diferentes (nf_entradas vs nf_importadas_sieg) sem se conhecerem —
+      // sem esta checagem, a mesma nota pode virar dois lançamentos financeiros distintos.
+      const { data: dupEntrada } = await db
+        .from("nf_entradas")
+        .select("id")
+        .eq("fazenda_id", fazendaId)
+        .eq("chave_acesso", nfe.chave)
+        .maybeSingle();
+      if (dupEntrada) continue;
 
       // Arquiva XML
       const xmlPath = `nfs-sieg/${fazendaId}/${nfe.chave}.xml`;

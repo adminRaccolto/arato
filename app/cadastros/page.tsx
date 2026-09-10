@@ -383,7 +383,7 @@ function CadastrosInner() {
   const [contratsFinanc, setContratsFinanc] = useState<ContratoFinanceiro[]>([]);
   const [modalMaq, setModalMaq]       = useState(false);
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
-  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "" });
+  const [fMaq, setFMaq]               = useState({ fazenda_id: "", nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "" });
   const [tabMaq, setTabMaq]           = useState<"geral" | "aquisicao">("geral");
 
   // ── Benfeitorias ──
@@ -405,7 +405,7 @@ function CadastrosInner() {
   const [bombas, setBombas]             = useState<BombaCombustivel[]>([]);
   const [modalBomba, setModalBomba]     = useState(false);
   const [editBomba, setEditBomba]       = useState<BombaCombustivel | null>(null);
-  const [fBomba, setFBomba]             = useState({ nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0", consume_estoque: true, insumo_id: "" });
+  const [fBomba, setFBomba]             = useState({ fazenda_id: "", nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0", consume_estoque: true, insumo_id: "" });
   const [insumosComb, setInsumosComb]   = useState<{ id: string; nome: string }[]>([]);
 
   // ── Funcionários ──
@@ -453,7 +453,7 @@ function CadastrosInner() {
   const [bancos, setBancos]           = useState<Banco[]>([]);
   const [modalConta, setModalConta]   = useState(false);
   const [editConta, setEditConta]     = useState<ContaBancaria | null>(null);
-  const [fConta, setFConta]           = useState({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "", tipo_conta: "corrente" as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: "", titular_produtor_id: "", conjunta: false, cotitulares: [] as { nome: string; cpf: string; produtor_id?: string }[] });
+  const [fConta, setFConta]           = useState({ fazenda_id: "", nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "", tipo_conta: "corrente" as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: "", titular_produtor_id: "", conjunta: false, cotitulares: [] as { nome: string; cpf: string; produtor_id?: string }[] });
 
   // ── Insumos ──
   const [insumos, setInsumos]         = useState<Insumo[]>([]);
@@ -1884,6 +1884,7 @@ function CadastrosInner() {
     setEditMaq(m ?? null);
     setTabMaq("geral");
     setFMaq(m ? {
+      fazenda_id: m.fazenda_id ?? fazIdEff ?? "",
       nome: m.nome, tipo: m.tipo, marca: m.marca ?? "", modelo: m.modelo ?? "",
       ano: String(m.ano ?? ""), patrimonio: m.patrimonio ?? "", chassi: m.chassi ?? "",
       horimetro_atual: String(m.horimetro_atual ?? ""),
@@ -1894,15 +1895,16 @@ function CadastrosInner() {
       status_financiamento: m.status_financiamento ?? "proprio",
       data_quitacao: m.data_quitacao ?? "",
       consome_combustivel: m.consome_combustivel !== false,
-    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "" });
+    } : { fazenda_id: fazIdEff ?? "", nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "" });
     setModalMaq(true);
   };
   const salvarMaq = () => salvar(async () => {
     if (!fMaq.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+    if (!fMaq.fazenda_id) { setErroModal("Selecione a fazenda"); return; }
     setErroModal("");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payload: any = {
-      fazenda_id: (fazIdEff)!, nome: fMaq.nome.trim(), tipo: fMaq.tipo,
+      fazenda_id: fMaq.fazenda_id, nome: fMaq.nome.trim(), tipo: fMaq.tipo,
       marca: fMaq.marca || undefined, modelo: fMaq.modelo || undefined,
       ano: fMaq.ano ? Number(fMaq.ano) : undefined, patrimonio: fMaq.patrimonio || undefined,
       chassi: fMaq.chassi || undefined,
@@ -1923,20 +1925,23 @@ function CadastrosInner() {
   });
 
   // ─────────────── BOMBAS ───────────────
+  const carregarInsumosCombDaFazenda = async (fazId: string) => {
+    if (!fazId) { setInsumosComb([]); return; }
+    const { data } = await supabase.from("insumos").select("id, nome").eq("fazenda_id", fazId).eq("categoria", "combustivel").order("nome");
+    setInsumosComb((data ?? []) as { id: string; nome: string }[]);
+  };
   const abrirModalBomba = async (b?: BombaCombustivel) => {
     setEditBomba(b ?? null);
-    setFBomba(b ? { nome: b.nome, combustivel: b.combustivel, capacidade_l: String(b.capacidade_l ?? ""), estoque_atual_l: String(b.estoque_atual_l), consume_estoque: b.consume_estoque !== false, insumo_id: b.insumo_id ?? "" } : { nome: "", combustivel: "diesel_s10", capacidade_l: "", estoque_atual_l: "0", consume_estoque: true, insumo_id: "" });
-    const fazId = fazIdEff;
-    if (fazId) {
-      const { data } = await supabase.from("insumos").select("id, nome").eq("fazenda_id", fazId).eq("categoria", "combustivel").order("nome");
-      setInsumosComb((data ?? []) as { id: string; nome: string }[]);
-    }
+    const fazId = b?.fazenda_id ?? fazIdEff ?? "";
+    setFBomba(b ? { fazenda_id: fazId, nome: b.nome, combustivel: b.combustivel, capacidade_l: String(b.capacidade_l ?? ""), estoque_atual_l: String(b.estoque_atual_l), consume_estoque: b.consume_estoque !== false, insumo_id: b.insumo_id ?? "" } : { fazenda_id: fazId, nome: "", combustivel: "diesel_s10", capacidade_l: "", estoque_atual_l: "0", consume_estoque: true, insumo_id: "" });
+    await carregarInsumosCombDaFazenda(fazId);
     setModalBomba(true);
   };
   const salvarBomba = () => salvar(async () => {
     if (!fBomba.nome.trim()) { setErroModal("Preencha: Nome"); return; }
+    if (!fBomba.fazenda_id) { setErroModal("Selecione a fazenda"); return; }
     setErroModal("");
-    const payload = { fazenda_id: (fazIdEff)!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, insumo_id: fBomba.insumo_id || undefined, ativa: true };
+    const payload = { fazenda_id: fBomba.fazenda_id, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, insumo_id: fBomba.insumo_id || undefined, ativa: true };
     if (editBomba) { await atualizarBomba(editBomba.id, payload); setBombas(p => p.map(x => x.id === editBomba.id ? { ...x, ...payload } : x)); }
     else { const n = await criarBomba(payload); setBombas(p => [...p, n]); }
     setModalBomba(false);
@@ -2197,7 +2202,7 @@ function CadastrosInner() {
       const json = await res.json();
       if (!json.ok) throw new Error(json.error ?? "Erro ao criar usuário de campo");
       // Recarregar lista e exibir credenciais
-      const lista = await import("../../lib/db").then(m => m.listarUsuarios());
+      const lista = await import("../../lib/db").then(m => m.listarUsuarios(fazendaIds.length > 0 ? fazendaIds : [fazId]));
       setUsuarios(lista);
       setModalUser(false);
       setCampoResult({ nome: fUser.nome.trim(), email: fUser.email.trim(), senha: fUser.senha_campo.trim() });
@@ -5946,7 +5951,7 @@ function CadastrosInner() {
                   <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Contas Bancárias <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 400 }}>({contas.filter(c => c.ativa).length} ativas)</span></div>
                   <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Contas utilizadas no Fluxo de Caixa, CP/CR e LCDPR</div>
                 </div>
-                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL", ativa: true, empresa_id: "", tipo_conta: "corrente", saldo_inicial: "", titular_produtor_id: "", conjunta: false, cotitulares: [] }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>+ Nova Conta</button>
+                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ fazenda_id: fazIdEff ?? "", nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL", ativa: true, empresa_id: "", tipo_conta: "corrente", saldo_inicial: "", titular_produtor_id: "", conjunta: false, cotitulares: [] }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>+ Nova Conta</button>
               </div>
               {contas.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-3)", fontSize: 13 }}>Nenhuma conta bancária cadastrada</div>
@@ -6010,7 +6015,7 @@ function CadastrosInner() {
                             <span style={{ background: c.ativa ? "#DCF5E8" : "var(--bg-page)", color: c.ativa ? "#14532D" : "var(--text-3)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.ativa ? "Ativa" : "Inativa"}</span>
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ nome: c.nome, banco_id: c.banco_id ?? "", banco: c.banco ?? "", agencia: c.agencia ?? "", agencia_dv: c.agencia_dv ?? "", conta: c.conta ?? "", conta_dv: c.conta_dv ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? ""), titular_produtor_id: c.produtor_id ?? "", conjunta: c.conjunta ?? false, cotitulares: c.cotitulares ?? [] }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>Editar</button>
+                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ fazenda_id: c.fazenda_id ?? fazIdEff ?? "", nome: c.nome, banco_id: c.banco_id ?? "", banco: c.banco ?? "", agencia: c.agencia ?? "", agencia_dv: c.agencia_dv ?? "", conta: c.conta ?? "", conta_dv: c.conta_dv ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? ""), titular_produtor_id: c.produtor_id ?? "", conjunta: c.conjunta ?? false, cotitulares: c.cotitulares ?? [] }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>Editar</button>
                             <button style={{ ...btnX, marginLeft: 6, color: "#E24B4A" }} onClick={async () => { if (!confirm("Excluir esta conta?")) return; await excluirConta(c.id); setContas(x => x.filter(r => r.id !== c.id)); }}>Excluir</button>
                           </td>
                         </tr>
@@ -6741,6 +6746,15 @@ function CadastrosInner() {
             return (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
 
+                {/* Fazenda */}
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={lbl}>Fazenda *</label>
+                  <select style={inp} value={fConta.fazenda_id} onChange={e => setFConta(p => ({ ...p, fazenda_id: e.target.value }))}>
+                    <option value="">— Selecionar —</option>
+                    {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                  </select>
+                </div>
+
                 {/* Nome */}
                 <div style={{ gridColumn: "1 / -1" }}>
                   <label style={lbl}>Nome / Apelido *</label>
@@ -6974,15 +6988,15 @@ function CadastrosInner() {
               onClick={async () => {
                 const erros: string[] = [];
                 if (!fConta.nome.trim()) erros.push("Nome");
+                if (!fConta.fazenda_id) erros.push("Fazenda");
                 if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
                 setErroModal("");
-                if (!fazendaId) return;
                 setSalvando(true);
                 try {
                   const saldoIni = fConta.saldo_inicial !== "" ? parseFloat(fConta.saldo_inicial) : 0;
                   const banco = bancos.find(b => b.id === fConta.banco_id);
                   const payload = {
-                    fazenda_id: fazendaId,
+                    fazenda_id: fConta.fazenda_id,
                     empresa_id: fConta.empresa_id || empresas[0]?.id || null,
                     nome: fConta.nome.trim(),
                     banco_id: fConta.banco_id || null,
@@ -8696,6 +8710,13 @@ function CadastrosInner() {
           {/* Aba Dados Gerais */}
           {tabMaq === "geral" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={lbl}>Fazenda *</label>
+                <select style={inp} value={fMaq.fazenda_id} onChange={e => setFMaq(p => ({ ...p, fazenda_id: e.target.value }))}>
+                  <option value="">— Selecionar —</option>
+                  {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+              </div>
               <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} value={fMaq.nome} onChange={e => setFMaq(p => ({ ...p, nome: e.target.value }))} /></div>
               <div>
                 <label style={lbl}>Tipo *</label>
@@ -8794,6 +8815,13 @@ function CadastrosInner() {
       {modalBomba && (
         <Modal titulo={editBomba ? "Editar Bomba" : "Nova Bomba de Combustível"} onClose={() => setModalBomba(false)} width={720}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={lbl}>Fazenda *</label>
+              <select style={inp} value={fBomba.fazenda_id} onChange={e => { const v = e.target.value; setFBomba(p => ({ ...p, fazenda_id: v, insumo_id: "" })); carregarInsumosCombDaFazenda(v); }}>
+                <option value="">— Selecionar —</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            </div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome / Localização *</label><input style={inp} placeholder="Ex: Bomba 1 — Pátio Principal" value={fBomba.nome} onChange={e => setFBomba(p => ({ ...p, nome: e.target.value }))} /></div>
             <div>
               <label style={lbl}>Combustível *</label>

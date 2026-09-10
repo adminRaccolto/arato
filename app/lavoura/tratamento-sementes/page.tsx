@@ -15,6 +15,7 @@ import {
   listarAnosSafra,
   listarTodosCiclos,
   listarDepositos,
+  listarFazendasDaConta,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
@@ -135,7 +136,19 @@ type FormReceita = {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TratamentoSementesPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendas(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   // dados
   const [tratamentos, setTratamentos]     = useState<TratamentoSemente[]>([]);
@@ -191,14 +204,14 @@ export default function TratamentoSementesPage() {
 
   // ── Carregamento ─────────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const [ts, rec, ins, anos, ciclosAll, deps] = await Promise.all([
-      listarTratamentos(fazendaId),
-      listarReceitas(fazendaId),
-      listarInsumos(fazendaId),
-      listarAnosSafra(fazendaId),
-      listarTodosCiclos(fazendaId),
-      listarDepositos(fazendaId),
+      listarTratamentos(fazAtiva),
+      listarReceitas(fazAtiva),
+      listarInsumos(fazAtiva),
+      listarAnosSafra(fazAtiva),
+      listarTodosCiclos(fazAtiva),
+      listarDepositos(fazAtiva),
     ]);
     setTratamentos(ts);
     setReceitas(rec);
@@ -207,7 +220,7 @@ export default function TratamentoSementesPage() {
     setAnosSafra(anos);
     setCiclos(ciclosAll);
     setDepositos(deps);
-  }, [fazendaId]);
+  }, [fazAtiva]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -261,7 +274,7 @@ export default function TratamentoSementesPage() {
 
   // ── Salvar Ordem ─────────────────────────────────────────────────────────────
   async function salvarOrdem() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setSalvando(true);
     setErro(null);
     try {
@@ -289,7 +302,7 @@ export default function TratamentoSementesPage() {
         await atualizarTratamento(editando.id, dados);
         tratamento = { ...editando, ...dados };
       } else {
-        tratamento = await criarTratamento(fazendaId, dados);
+        tratamento = await criarTratamento(fazAtiva, dados);
       }
 
       // Salva itens
@@ -356,7 +369,7 @@ export default function TratamentoSementesPage() {
 
   // ── Confirmar Conclusão ───────────────────────────────────────────────────────
   async function confirmarConclusao() {
-    if (!concluindo || !fazendaId) return;
+    if (!concluindo || !fazAtiva) return;
     setSalvando(true);
     setErro(null);
     try {
@@ -397,7 +410,7 @@ export default function TratamentoSementesPage() {
           const consumido = Number(itensConcluir[i]?.consumo_real) || (it.dose_total ?? 0);
           if (consumido <= 0) continue;
           await supabase.from("movimentacoes_estoque").insert({
-            fazenda_id:  fazendaId,
+            fazenda_id:  concluindo.fazenda_id ?? fazAtiva,
             insumo_id:   it.insumo_id,
             tipo:        "saida",
             motivo:      `Tratamento de Sementes #${concluindo.numero}`,
@@ -489,7 +502,7 @@ export default function TratamentoSementesPage() {
 
   // ── Salvar Receita ────────────────────────────────────────────────────────────
   async function salvarReceitaHandler() {
-    if (!fazendaId || !formReceita.nome.trim()) return;
+    if (!fazAtiva || !formReceita.nome.trim()) return;
     setSalvando(true);
     setErro(null);
     try {
@@ -507,7 +520,7 @@ export default function TratamentoSementesPage() {
       if (editandoReceita) {
         await atualizarReceita(editandoReceita.id, formReceita, itensSalvar);
       } else {
-        await salvarReceita(fazendaId, formReceita, itensSalvar);
+        await salvarReceita(fazAtiva, formReceita, itensSalvar);
       }
       setModalReceita(false);
       setEditandoReceita(null);
@@ -662,7 +675,16 @@ export default function TratamentoSementesPage() {
               Controle de ordens de tratamento, consumo de produtos e qualidade das sementes
             </p>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select
+                value={fazTrabalho}
+                onChange={e => setFazTrabalho(e.target.value)}
+                style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff" }}
+              >
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
             {aba === "ordens" && (
               <button onClick={() => { setEditando(null); setForm(formVazio); setItens([novoItem()]); setAnoSafraSel(""); setModalOrdem(true); }} style={btn()}>
                 + Nova Ordem

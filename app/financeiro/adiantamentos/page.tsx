@@ -6,7 +6,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import {
   listarAdiantamentos, criarAdiantamento, cancelarAdiantamento,
   aplicarAdiantamento, listarAplicacoesAdiantamento,
-  listarPessoas, listarContas, listarAnosSafra,
+  listarPessoas, listarContas, listarAnosSafra, listarFazendasDaConta,
 } from "../../../lib/db";
 import type {
   AdiantamentoFornecedor, AdiantamentoAplicacao,
@@ -68,7 +68,19 @@ const VAZIO_FORM = {
 const VAZIO_APLIQ = { valor_aplicado: "", data_aplicacao: "", descricao: "", nr_nf: "" };
 
 export default function AdiantamentosPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [adiantamentos, setAdiantamentos] = useState<AdiantamentoFornecedor[]>([]);
   const [pessoas, setPessoas]             = useState<Pessoa[]>([]);
@@ -91,17 +103,17 @@ export default function AdiantamentosPage() {
   const [fApliq, setFApliq] = useState({ ...VAZIO_APLIQ });
 
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setCarregando(true);
     Promise.all([
-      listarAdiantamentos(fazendaId),
-      listarPessoas(fazendaId),
-      listarContas(fazendaId),
-      listarAnosSafra(fazendaId),
+      listarAdiantamentos(fazAtiva),
+      listarPessoas(fazAtiva),
+      listarContas(fazAtiva),
+      listarAnosSafra(fazAtiva),
     ]).then(([a, p, c, s]) => {
       setAdiantamentos(a); setPessoas(p); setContas(c); setAnosSafra(s);
     }).catch(e => setErro(e.message)).finally(() => setCarregando(false));
-  }, [fazendaId]);
+  }, [fazAtiva]);
 
   // ── Filtros ───────────────────────────────────────────────────
   const lista = adiantamentos.filter(a => {
@@ -123,7 +135,7 @@ export default function AdiantamentosPage() {
 
   // ── Salvar novo ───────────────────────────────────────────────
   const salvarNovo = async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const erros: string[] = [];
     if (!form.descricao.trim()) erros.push("Descrição");
     if (!form.data_emissao) erros.push("Data de Emissão");
@@ -132,7 +144,7 @@ export default function AdiantamentosPage() {
     setSalvando(true); setErro("");
     try {
       const novo = await criarAdiantamento({
-        fazenda_id:       fazendaId,
+        fazenda_id:       fazAtiva,
         pessoa_id:        form.pessoa_id || undefined,
         descricao:        form.descricao.trim(),
         nr_documento:     form.nr_documento || undefined,
@@ -168,7 +180,7 @@ export default function AdiantamentosPage() {
     try {
       await aplicarAdiantamento(modalApliq, val, fApliq.data_aplicacao, fApliq.descricao.trim(), fApliq.nr_nf || undefined);
       // Recarrega lista para refletir novo saldo/status
-      listarAdiantamentos(fazendaId!).then(setAdiantamentos);
+      listarAdiantamentos(fazAtiva!).then(setAdiantamentos);
       setModalApliq(null);
       setFApliq({ ...VAZIO_APLIQ });
     } catch (e) { setErro((e as Error).message); }
@@ -210,9 +222,16 @@ export default function AdiantamentosPage() {
             <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Adiantamentos a Fornecedores</div>
             <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Pré-pagamentos de insumos, serviços e contratos</div>
           </div>
-          <button style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
-            + Novo Adiantamento
-          </button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {fazendasConta.length > 1 && (
+              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
+              + Novo Adiantamento
+            </button>
+          </div>
         </div>
 
         {erro && <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, padding: "10px 14px", color: "#791F1F", marginBottom: 16, fontSize: 13 }}>{erro}</div>}

@@ -249,6 +249,18 @@ function parsearXmlNfe(xml: string): { numero: string; serie: string; chave: str
 // ────────────────────────────────────────────────────────
 export default function Estoque() {
   const { fazendaId, contaId, nomeUsuario, emailUsuario } = useAuth();
+  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
+  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
+      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
+      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [fazendaId, contaId]);
+  const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [aba, setAba] = useState<Aba>("posicao");
   const [erro, setErro] = useState<string | null>(null);
@@ -322,13 +334,13 @@ export default function Estoque() {
   const [dataAbertura, setDataAbertura] = useState("2024-01-01");
 
   async function carregarAuditoria() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setAuditoriaCarregando(true);
     try {
       const { data: todos } = await supabase
         .from("movimentacoes_estoque")
         .select("*")
-        .eq("fazenda_id", fazendaId)
+        .eq("fazenda_id", fazAtiva)
         .order("data", { ascending: true })
         .order("created_at", { ascending: true });
 
@@ -375,7 +387,7 @@ export default function Estoque() {
   }
 
   async function corrigirSaldoAbertura() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     const itensPosDiv = auditoriaDados.filter(a => a.divergencia > 0);
     if (itensPosDiv.length === 0) return;
     const ok = confirm(
@@ -387,7 +399,7 @@ export default function Estoque() {
     setCorrigindoAbertura(true);
     try {
       const inserts = itensPosDiv.map(a => ({
-        fazenda_id: fazendaId,
+        fazenda_id: fazAtiva,
         insumo_id: a.insumo.id,
         tipo: "entrada",
         motivo: "ajuste_inventario",
@@ -424,14 +436,14 @@ export default function Estoque() {
   const [reconcAplicando, setReconcAplicando] = useState(false);
 
   async function verificarReconciliacao() {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setReconcBuscando(true);
     try {
       // Busca todos os movimentos da fazenda
       const { data: movimentos } = await supabase
         .from("movimentacoes_estoque")
         .select("insumo_id, tipo, quantidade")
-        .eq("fazenda_id", fazendaId);
+        .eq("fazenda_id", fazAtiva);
 
       // Soma por insumo
       const saldoMov = new Map<string, number>();
@@ -471,7 +483,7 @@ export default function Estoque() {
         await supabase.from("insumos").update({ estoque: item.saldoMov }).eq("id", item.id);
       }
       // Recarrega
-      const ins = await listarInsumos(fazendaId!);
+      const ins = await listarInsumos(fazAtiva!);
       setInsumos(ins);
       setModalReconciliar(false);
       setReconcItens([]);
@@ -507,36 +519,36 @@ export default function Estoque() {
 
   // ── Carregar dados ──
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setErro(null);
-    listarInsumos(fazendaId).then(setInsumos).catch(e => setErro(e.message));
-    listarFazendasDaConta(contaId, fazendaId)
+    listarInsumos(fazAtiva).then(setInsumos).catch(e => setErro(e.message));
+    listarFazendasDaConta(contaId, fazAtiva)
       .then(fzs => {
-        const ids = fzs.length > 0 ? fzs.map((f: { id?: string }) => f.id!) : [fazendaId];
+        const ids = fzs.length > 0 ? fzs.map((f: { id?: string }) => f.id!) : [fazAtiva];
         Promise.all(ids.map((id: string) => listarDepositos(id!))).then(r => setDepositos(r.flat())).catch(() => {});
-      }).catch(() => listarDepositos(fazendaId).then(setDepositos).catch(() => {}));
-    listarBombas(fazendaId!).then(setBombas).catch(() => {});
-    listarMaquinas(fazendaId).then(setMaquinas).catch(() => {});
-    listarPessoas(fazendaId).then(setPessoas).catch(() => {});
-    listarPASaldos(fazendaId).then(setPASaldos).catch(() => {});
-    listarCentrosCustoGeral(fazendaId).then(setCentros).catch(() => {});
+      }).catch(() => listarDepositos(fazAtiva).then(setDepositos).catch(() => {}));
+    listarBombas(fazAtiva!).then(setBombas).catch(() => {});
+    listarMaquinas(fazAtiva).then(setMaquinas).catch(() => {});
+    listarPessoas(fazAtiva).then(setPessoas).catch(() => {});
+    listarPASaldos(fazAtiva).then(setPASaldos).catch(() => {});
+    listarCentrosCustoGeral(fazAtiva).then(setCentros).catch(() => {});
     supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
-      .or(`fazenda_id.eq.${fazendaId},fazenda_id.is.null`).eq("inativo", false).eq("tipo", "despesa").order("classificacao")
+      .or(`fazenda_id.eq.${fazAtiva},fazenda_id.is.null`).eq("inativo", false).eq("tipo", "despesa").order("classificacao")
       .then(({ data }) => setOgsNf((data ?? []) as { id: string; descricao: string; classificacao: string }[]));
-  }, [fazendaId, contaId]);
+  }, [fazAtiva, contaId]);
 
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     if (aba === "movimentacoes") {
-      listarMovimentacoes(fazendaId).then(setMovs).catch(e => setErro(e.message));
-      listarMovimentacoesPA(fazendaId).then(setMovsPA).catch(() => {});
+      listarMovimentacoes(fazAtiva).then(setMovs).catch(e => setErro(e.message));
+      listarMovimentacoesPA(fazAtiva).then(setMovsPA).catch(() => {});
     }
-    if (aba === "nf_entrada")    listarNfEntradas(fazendaId).then(setNfEntradas).catch(e => setErro(e.message));
-    if (aba === "terceiros")     listarEstoqueTerceiros(fazendaId).then(setTerceiros).catch(e => setErro(e.message));
+    if (aba === "nf_entrada")    listarNfEntradas(fazAtiva).then(setNfEntradas).catch(e => setErro(e.message));
+    if (aba === "terceiros")     listarEstoqueTerceiros(fazAtiva).then(setTerceiros).catch(e => setErro(e.message));
     if (aba === "relatorios" && relTipo === "historico" && relInsumoId) {
-      listarMovimentacoes(fazendaId, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
+      listarMovimentacoes(fazAtiva, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
     }
-  }, [aba, fazendaId]); // eslint-disable-line
+  }, [aba, fazAtiva]); // eslint-disable-line
 
   // ── Helpers ──
   async function salvar(fn: () => Promise<void>) {
@@ -556,7 +568,7 @@ export default function Estoque() {
     if (fMov.tipo === "ajuste" && !fMov.observacao.trim()) { alert("Informe a justificativa do ajuste."); return; }
     const insNome = insumos.find(x => x.id === fMov.insumo_id)?.nome ?? fMov.insumo_id;
     await criarMovimentacaoManual(
-      fazendaId!, fMov.insumo_id, fMov.tipo, fMov.motivo,
+      fazAtiva!, fMov.insumo_id, fMov.tipo, fMov.motivo,
       qtd, fMov.deposito_id || undefined, fMov.data, fMov.observacao || undefined,
       fMov.tipo === "ajuste" ? qtdNova : undefined,
       nomeUsuario ?? undefined,
@@ -564,11 +576,11 @@ export default function Estoque() {
       fMov.lote_semente || undefined,
     );
     const tipoLabel = fMov.tipo === "ajuste" ? "Ajuste de estoque" : fMov.tipo === "entrada" ? "Entrada" : "Saída";
-    registrarLog(fazendaId!, "insert", "estoque",
+    registrarLog(fazAtiva!, "insert", "estoque",
       `${tipoLabel}: ${insNome} — ${fMov.tipo === "ajuste" ? `saldo ajustado para ${qtdNova}` : `${qtd} unid.`}`,
       { usuarioNome: nomeUsuario ?? undefined, usuarioEmail: emailUsuario ?? undefined, entidade: "movimentacoes_estoque", dadosDepois: { tipo: fMov.tipo, motivo: fMov.motivo, quantidade: qtd, observacao: fMov.observacao } }
     );
-    const [ins2, movs] = await Promise.all([listarInsumos(fazendaId!), listarMovimentacoes(fazendaId!)]);
+    const [ins2, movs] = await Promise.all([listarInsumos(fazAtiva!), listarMovimentacoes(fazAtiva!)]);
     setInsumos(ins2); setMovs(movs);
     setModalMov(false);
     setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
@@ -576,20 +588,20 @@ export default function Estoque() {
 
   // ── Relatório histórico ──
   const buscarHistorico = () => {
-    if (!fazendaId || !relInsumoId) return;
-    listarMovimentacoes(fazendaId, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
+    if (!fazAtiva || !relInsumoId) return;
+    listarMovimentacoes(fazAtiva, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
   };
 
   const buscarKardex = async () => {
-    if (!fazendaId) return;
+    if (!fazAtiva) return;
     setKardexBuscando(true);
     try {
       // Busca em paralelo: movimentações do período + movimentações anteriores ao período (para saldo inicial real)
       const diaAntes = new Date(kardexInicio);
       diaAntes.setDate(diaAntes.getDate() - 1);
       const [movs, movsAntes] = await Promise.all([
-        listarMovimentacoes(fazendaId, kardexInsumoId || undefined, kardexInicio, kardexFim),
-        listarMovimentacoes(fazendaId, kardexInsumoId || undefined, undefined, diaAntes.toISOString().slice(0, 10)),
+        listarMovimentacoes(fazAtiva, kardexInsumoId || undefined, kardexInicio, kardexFim),
+        listarMovimentacoes(fazAtiva, kardexInsumoId || undefined, undefined, diaAntes.toISOString().slice(0, 10)),
       ]);
       setKardexMovs(movs);
       setKardexMovsAntes(movsAntes);
@@ -603,7 +615,7 @@ export default function Estoque() {
     const cat = fIns.categoria as Insumo["categoria"];
     const tipoItem: Insumo["tipo"] = ["semente","fertilizante","defensivo","corretivo"].includes(cat) ? "insumo" : "produto";
     const payload: Omit<Insumo, "id"|"created_at"> = {
-      fazenda_id: fazendaId!, tipo: tipoItem, nome: fIns.nome.trim(), categoria: cat, unidade: fIns.unidade as Insumo["unidade"],
+      fazenda_id: fazAtiva!, tipo: tipoItem, nome: fIns.nome.trim(), categoria: cat, unidade: fIns.unidade as Insumo["unidade"],
       fabricante: fIns.fabricante || undefined, estoque: Number(fIns.estoque) || 0,
       estoque_minimo: Number(fIns.estoque_minimo) || 0, valor_unitario: fIns.valor_unitario || 0,
       deposito_id: fIns.deposito_id || undefined,
@@ -687,7 +699,7 @@ export default function Estoque() {
       const res = await fetch("/api/nfe/xml-por-chave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazendaId, chaveAcesso: digits }),
+        body: JSON.stringify({ fazAtiva, chaveAcesso: digits }),
       });
       const json = await res.json();
       if (!json.ok || !json.xmlCompleto) {
@@ -714,7 +726,7 @@ export default function Estoque() {
     if (!pessoaExistente && fNf.emitente_nome.trim() && cnpjLimpo) {
       try {
         const nova = await criarPessoa({
-          fazenda_id: fazendaId!, nome: fNf.emitente_nome.trim(),
+          fazenda_id: fazAtiva!, nome: fNf.emitente_nome.trim(),
           tipo: cnpjLimpo.length === 14 ? "pj" : "pf",
           fornecedor: true, cliente: false,
           cpf_cnpj: fNf.emitente_cnpj || undefined,
@@ -724,7 +736,7 @@ export default function Estoque() {
     }
 
     const nf = await criarNfEntrada({
-      fazenda_id: fazendaId!, numero: fNf.numero.trim(), serie: fNf.serie,
+      fazenda_id: fazAtiva!, numero: fNf.numero.trim(), serie: fNf.serie,
       chave_acesso: fNf.chave_acesso || undefined, emitente_nome: fNf.emitente_nome.trim(),
       emitente_cnpj: fNf.emitente_cnpj || undefined, data_emissao: fNf.data_emissao,
       data_entrada: new Date().toISOString().slice(0,10),
@@ -818,7 +830,7 @@ export default function Estoque() {
     for (const item of itensNf) {
       if (!item.descricao_produto.trim()) continue;
       await criarNfEntradaItem({
-        nf_entrada_id: nfCriada.id, fazenda_id: fazendaId!,
+        nf_entrada_id: nfCriada.id, fazenda_id: fazAtiva!,
         insumo_id: item.insumo_id || undefined, deposito_id: item.deposito_id || undefined,
         bomba_id: item.bomba_id || undefined, maquina_id: item.maquina_id || undefined,
         descricao_produto: item.descricao_produto, ncm: item.ncm || undefined,
@@ -838,7 +850,7 @@ export default function Estoque() {
     // Buscar itens salvos (com id completo) e processar
     const itensSalvos = await listarNfEntradaItens(nfCriada.id);
     await processarNfEntrada(
-      nfCriada.id, fazendaId!,
+      nfCriada.id, fazAtiva!,
       itensSalvos,
       fNf.valor_total || 0,
       fNf.emitente_nome, fNf.data_emissao,
@@ -846,7 +858,7 @@ export default function Estoque() {
       { nfeNumero: fNf.numero, centroCustoId: fNf.centro_custo_id || undefined },
     );
     // Recarregar
-    const [nfs, ins] = await Promise.all([listarNfEntradas(fazendaId!), listarInsumos(fazendaId!)]);
+    const [nfs, ins] = await Promise.all([listarNfEntradas(fazAtiva!), listarInsumos(fazAtiva!)]);
     setNfEntradas(nfs);
     setInsumos(ins);
     setModalNf("off");
@@ -888,6 +900,15 @@ export default function Estoque() {
               <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Insumos, produtos, NF de entrada e movimentações</p>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {fazendasConta.length > 1 && (
+                <select
+                  value={fazTrabalho}
+                  onChange={e => setFazTrabalho(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)" }}
+                >
+                  {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+              )}
               {negativos.length > 0 && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#791F1F", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⛔ {negativos.length} saldo negativo</span>}
               {alertas.length > 0 && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⚠ {alertas.length} no mínimo</span>}
               <span style={{ fontSize: 12, color: "var(--text-2)" }}>Valor: <strong style={{ color: "var(--text-1)" }}>{fmtBRL(totalValorEstoque)}</strong></span>

@@ -332,7 +332,7 @@ export default function Planejamento() {
     try {
       const ciclo = ciclos.find(c => c.id === cicloSelOrc);
       const payload = {
-        fazenda_id: fazendaId, ciclo_id: cicloSelOrc,
+        fazenda_id: ciclo?.fazenda_id ?? fazendaId, ciclo_id: cicloSelOrc,
         nome: fOH.nome || `Orçamento ${ciclo?.descricao ?? ""}`,
         status: "rascunho" as const,
         area_ha: fOH.area_ha || null,
@@ -360,7 +360,7 @@ export default function Planejamento() {
       const vUnit = fOI.valor_unitario || null;
       const total = qtd && vUnit ? parseFloat((qtd * vUnit).toFixed(2)) : null;
       const payload = {
-        orcamento_id: orcamento.id, fazenda_id: fazendaId,
+        orcamento_id: orcamento.id, fazenda_id: orcamento.fazenda_id ?? fazendaId,
         categoria: fOI.categoria,
         subcategoria: fOI.subcategoria || null,
         descricao: fOI.descricao.trim(),
@@ -390,7 +390,7 @@ export default function Planejamento() {
     if (!fazendaId || !fT.titulo.trim()) return;
     setSalvando(true);
     try {
-      const payload = { fazenda_id: fazendaId, ciclo_id: fT.ciclo_id || null, titulo: fT.titulo.trim(), descricao: fT.descricao || null, tipo: fT.tipo, data_prevista: fT.data_prevista || null, responsavel: fT.responsavel || null, prioridade: fT.prioridade, status: fT.status, observacoes: fT.observacoes || null, data_conclusao: null as string | null };
+      const payload = { fazenda_id: (fT.ciclo_id ? ciclos.find(c => c.id === fT.ciclo_id)?.fazenda_id : null) ?? fazendaId, ciclo_id: fT.ciclo_id || null, titulo: fT.titulo.trim(), descricao: fT.descricao || null, tipo: fT.tipo, data_prevista: fT.data_prevista || null, responsavel: fT.responsavel || null, prioridade: fT.prioridade, status: fT.status, observacoes: fT.observacoes || null, data_conclusao: null as string | null };
       if (editTarefa) {
         await atualizarTarefa(editTarefa.id, payload);
         setTarefas(p => p.map(t => t.id === editTarefa.id ? { ...t, ...payload } : t));
@@ -419,7 +419,7 @@ export default function Planejamento() {
     if (!fazendaId || !fR.titulo.trim()) return;
     setSalvando(true);
     try {
-      const payload = { fazenda_id: fazendaId, ciclo_id: fR.ciclo_id || null, titulo: fR.titulo.trim(), descricao: fR.descricao || null, tipo: fR.tipo, estadio_fenologico: fR.estadio_fenologico || null, data_recomendacao: fR.data_recomendacao || null, responsavel_tecnico: fR.responsavel_tecnico || null, prioridade: fR.prioridade, status: fR.status };
+      const payload = { fazenda_id: (fR.ciclo_id ? ciclos.find(c => c.id === fR.ciclo_id)?.fazenda_id : null) ?? fazendaId, ciclo_id: fR.ciclo_id || null, titulo: fR.titulo.trim(), descricao: fR.descricao || null, tipo: fR.tipo, estadio_fenologico: fR.estadio_fenologico || null, data_recomendacao: fR.data_recomendacao || null, responsavel_tecnico: fR.responsavel_tecnico || null, prioridade: fR.prioridade, status: fR.status };
       if (editRec) {
         await atualizarRecomendacao(editRec.id, payload);
         setRecomendacoes(p => p.map(r => r.id === editRec.id ? { ...r, ...payload } : r));

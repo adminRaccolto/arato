@@ -131,6 +131,7 @@ export default function Dashboard() {
   interface ConciliPendencia {
     id: string; conta_nome?: string; data: string; descricao: string;
     valor: number; tipo: "credito" | "debito"; fitid: string; conta_id?: string;
+    fazenda_id: string;
   }
   const [conciliPend, setConciliPend] = useState<ConciliPendencia[]>([]);
   const [resolvendo, setResolvendo]   = useState<string | null>(null);
@@ -575,7 +576,7 @@ export default function Dashboard() {
 
     // Carrega pendências de conciliação independentemente
     supabase.from("conciliacao_pendencias")
-      .select("id,conta_nome,conta_id,data,descricao,valor,tipo,fitid")
+      .select("id,conta_nome,conta_id,data,descricao,valor,tipo,fitid,fazenda_id")
       .in("fazenda_id", fazendaIds)
       .eq("status", "pendente")
       .order("data", { ascending: false })
@@ -589,9 +590,10 @@ export default function Dashboard() {
     try {
       const isoHoje = new Date().toISOString().slice(0, 10);
       const tipo = p.tipo === "debito" ? "pagar" : "receber";
-      // Cria lançamento (já baixado)
+      // Cria lançamento (já baixado) — na fazenda REAL da pendência, não na fazenda
+      // ativa no seletor (podem divergir em conta multi-fazenda)
       const { data: lanc } = await supabase.from("lancamentos").insert({
-        fazenda_id: fazendaId,
+        fazenda_id: p.fazenda_id ?? fazendaId,
         tipo,
         descricao: p.descricao,
         categoria,

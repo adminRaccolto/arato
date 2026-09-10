@@ -1451,7 +1451,12 @@ function ContasPagarInner() {
                         <td></td>
                         <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} /></td>
                         <td></td>
-                        <td></td>
+                        <td style={{ padding: "3px 6px" }}>
+                          <div style={{ display: "flex", gap: 2 }}>
+                            <input type="date" style={{ ...inpF, width: "50%" }} value={fVencDe} onChange={e => setFVencDe(e.target.value)} title="Vencimento de" />
+                            <input type="date" style={{ ...inpF, width: "50%" }} value={fVencAte} onChange={e => setFVencAte(e.target.value)} title="Vencimento até" />
+                          </div>
+                        </td>
                         <td style={{ padding: "3px 6px" }}>
                           <div style={{ display: "flex", gap: 2 }}>
                             <input style={{ ...inpF, width: "100%" }} placeholder="Valor exato" value={fValor} onChange={e => setFValor(e.target.value.replace(/[^\d,]/g, ""))} title="Filtrar por valor exato" />
@@ -1461,6 +1466,7 @@ function ContasPagarInner() {
                           let content: React.ReactNode = null;
                           if (k === "operacao") content = <input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} />;
                           if (k === "safra")    content = <select style={inpF} value={fSafra} onChange={e => setFSafra(e.target.value)}><option value="">Todas</option>{anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}</select>;
+                          if (k === "moeda")    content = <select style={inpF} value={fMoedaOrig} onChange={e => setFMoedaOrig(e.target.value)}><option value="">Todas</option><option value="BRL">BRL</option><option value="USD">USD</option><option value="barter">Barter</option></select>;
                           if (k === "conta")    content = <input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} />;
                           if (k === "produtor") content = <input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} />;
                           if (k === "obs")      content = <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />;

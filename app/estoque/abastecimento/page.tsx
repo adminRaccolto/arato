@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarBombas, listarMaquinas, listarFuncionarios } from "../../../lib/db";
+import { listarBombas, listarMaquinas, listarFuncionarios, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import type { BombaCombustivel, Maquina, Funcionario } from "../../../lib/supabase";
 
@@ -302,11 +302,14 @@ export default function AbastecimentoPage() {
     // Gerar CP (opcional)
     let lancId: string | null = null;
     if (fGerarCP) {
+      const ogCombustivel = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.02.099");
       const { data: lanc, error: errL } = await supabase.from("lancamentos").insert({
         fazenda_id:       fazendaId,
         tipo:             "pagar",
         descricao:        `Abastecimento ${COMB_LABEL[bomba.combustivel] ?? bomba.combustivel} — ${nomeDestino()}`,
         categoria:        "combustivel",
+        operacao_gerencial_id: ogCombustivel ?? null,
+        origem_lancamento: "manual",
         data_lancamento:  fData,
         data_vencimento:  fVencimento,
         valor:            total,

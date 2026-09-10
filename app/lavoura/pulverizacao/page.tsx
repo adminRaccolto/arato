@@ -303,12 +303,13 @@ export default function PulverizacaoPage() {
               <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>
             </div>
 
-            {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+            {/* Hierarquia: Fazenda → Safra → Ciclo → Talhão — Produtor/IE não se aplicam a
+                lançamento de operação de campo (são dados fiscais, não de lavoura). */}
             <div style={{ marginBottom: 14 }}>
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
-                levels={["produtor", "ie", "fazenda", "anoSafra", "ciclo", "talhao"]}
+                levels={["fazenda", "anoSafra", "ciclo", "talhao"]}
                 onChange={next => {
                   setCascade(next);
                   setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));

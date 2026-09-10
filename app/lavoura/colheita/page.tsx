@@ -330,7 +330,7 @@ export default function ColheitaPage() {
             pArd, pMof, pFer, pGer, pEsv, pQue, pCar, pOut, temSub } = calcRom();
     const temClassif = formRomaneio.umidade_pct > 0 || formRomaneio.impureza_pct > 0 || avar_pct > 0;
     return {
-      fazenda_id:           fazendaId!,
+      fazenda_id:           col?.fazenda_id ?? fazendaId!,
       tipo:                 "proprio" as const,
       colheita_id:          colheitaId,
       data:                 formRomaneio.data,
@@ -802,13 +802,13 @@ export default function ColheitaPage() {
             </div>
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
 
-              {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+              {/* Hierarquia: Fazenda → Safra → Ciclo → Talhão — Produtor/IE não se aplicam a
+                  lançamento de operação de campo (são dados fiscais, não de lavoura). */}
               <CascadeSelector
                 contaId={contaId}
                 fazendaIdFallback={fazendaId}
                 values={cascade}
-                levels={["produtor", "ie", "fazenda", "anoSafra", "ciclo", "talhao"]}
-                ieRequired={false}
+                levels={["fazenda", "anoSafra", "ciclo", "talhao"]}
                 onChange={next => {
                   setCascade(next);
                   setAnoSafraSel(next.anoSafraId ?? "");
