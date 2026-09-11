@@ -12226,3 +12226,67 @@ WHERE NOT EXISTS (
 NOTIFY pgrst, 'reload schema';
 
 
+
+-- ============================================================
+-- Seção 246 — App Campo (projeto novo, separado, repo
+-- arato-campo): extensão de `perfis` para login/escopo do
+-- operador, e fluxo de aprovação nas tabelas operacionais que o
+-- app novo vai escrever.
+--
+-- IMPORTANTE: `produto` é um conceito NOVO, distinto do
+-- `role='campo'` já existente (usado pelo módulo app/campo
+-- embutido aqui no Arato principal — mantido intocado por
+-- decisão do dono; ver CLAUDE.md do repo arato-campo, seção 2.9).
+-- Os dois sistemas de "campo" coexistem por enquanto, propositalmente
+-- desacoplados — não misturar os dois flags.
+--
+-- Reaproveita o padrão de idempotência de sync já criado na
+-- Seção 242 (`origem_op_id`), estendendo pra romaneios_entrada e
+-- correcoes_solo, que ficaram de fora daquela migration.
+-- ============================================================
+
+-- Perfis: produto do app + fazendas que o operador pode acessar
+ALTER TABLE perfis ADD COLUMN IF NOT EXISTS produto TEXT NOT NULL DEFAULT 'arato' CHECK (produto IN ('arato','campo'));
+ALTER TABLE perfis ADD COLUMN IF NOT EXISTS fazendas_permitidas UUID[];
+
+CREATE INDEX IF NOT EXISTS idx_perfis_produto_campo ON perfis(produto) WHERE produto = 'campo';
+
+-- Fluxo de aprovação: status_campo / origem_lancamento / auditoria,
+-- em todas as tabelas que o App Campo (novo) vai gravar. Defaults
+-- 'aprovado'/'arato' preservam 100% do comportamento atual — o
+-- Postgres popula o default em linhas já existentes também (ADD
+-- COLUMN ... DEFAULT é otimizado desde o PG 11), então nenhuma
+-- leitura hoje existente (DRE, Custos, Kardex) muda de resultado.
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['plantios','pulverizacoes','colheitas','adubacoes_base','correcoes_solo','romaneios_entrada','abastecimentos']
+  LOOP
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS status_campo TEXT NOT NULL DEFAULT ''aprovado'' CHECK (status_campo IN (''pendente'',''aprovado'',''rejeitado''))', t);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS origem_lancamento TEXT NOT NULL DEFAULT ''arato'' CHECK (origem_lancamento IN (''arato'',''app_campo''))', t);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS lancado_por_perfil_id UUID REFERENCES perfis(id) ON DELETE SET NULL', t);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS aprovado_por_perfil_id UUID REFERENCES perfis(id) ON DELETE SET NULL', t);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS aprovado_em TIMESTAMPTZ', t);
+  END LOOP;
+END $$;
+
+-- Índices parciais pra fila de aprovação (poucas linhas pendentes por vez) —
+-- usados pela tela app/lavoura/aprovacao-campo no Arato principal (a construir)
+CREATE INDEX IF NOT EXISTS idx_plantios_status_campo          ON plantios(fazenda_id)          WHERE status_campo = 'pendente';
+CREATE INDEX IF NOT EXISTS idx_pulverizacoes_status_campo     ON pulverizacoes(fazenda_id)     WHERE status_campo = 'pendente';
+CREATE INDEX IF NOT EXISTS idx_colheitas_status_campo         ON colheitas(fazenda_id)         WHERE status_campo = 'pendente';
+CREATE INDEX IF NOT EXISTS idx_adubacoes_base_status_campo    ON adubacoes_base(fazenda_id)    WHERE status_campo = 'pendente';
+CREATE INDEX IF NOT EXISTS idx_correcoes_solo_status_campo    ON correcoes_solo(fazenda_id)    WHERE status_campo = 'pendente';
+CREATE INDEX IF NOT EXISTS idx_romaneios_entrada_status_campo ON romaneios_entrada(fazenda_id) WHERE status_campo = 'pendente';
+CREATE INDEX IF NOT EXISTS idx_abastecimentos_status_campo    ON abastecimentos(fazenda_id)    WHERE status_campo = 'pendente';
+
+-- Idempotência de sync (padrão da Seção 242), estendida às 2 tabelas
+-- que ficaram de fora: romaneios_entrada e correcoes_solo.
+ALTER TABLE romaneios_entrada ADD COLUMN IF NOT EXISTS origem_op_id UUID;
+ALTER TABLE correcoes_solo    ADD COLUMN IF NOT EXISTS origem_op_id UUID;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_romaneios_entrada_origem_op ON romaneios_entrada(origem_op_id) WHERE origem_op_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_correcoes_solo_origem_op    ON correcoes_solo(origem_op_id)    WHERE origem_op_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

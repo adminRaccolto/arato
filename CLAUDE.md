@@ -1198,6 +1198,46 @@ Sessão longa em duas auditorias sequenciais, cada uma executada fase a fase med
 
 ---
 
+### Sessão setembro/2026 (3) — Modelagem do App Campo (projeto novo, separado)
+
+Sessão de modelagem de produto, sem código novo neste repo além de uma migration de suporte
+(schema). O trabalho de aplicação em si acontece no repo novo `/Users/ginomigotto/arato-campo`
+(git próprio, GitHub `adminRaccolto/arato_campo`, Vercel `arato-campo`) — contexto completo,
+decisões e histórico ficam no `CLAUDE.md` desse repo, não duplicados aqui.
+
+#### Decisão de produto
+- App Campo (operadores de campo — tratorista/encarregado, não os gestores que já usam o Arato)
+  vira produto **separado**: repositório e deploy próprios, mas **compartilhando o mesmo banco
+  Supabase**; vendido separadamente (cobrança manual, como o padrão `ia_cedula`), sempre como
+  upsell de uma conta Arato já existente; administrado pelo mesmo time Raccolto, em área dedicada
+  (`/admin/campo`, a construir)
+- Modo offline obrigatório desde a v1 (fila local + PWA + sync idempotente)
+- Fluxo de aprovação obrigatório: lançamento do operador não é definitivo até um gestor aprovar
+  dentro do Arato principal
+
+#### Achado importante — módulo `app/campo` já existente, mantido intocado
+Durante a modelagem, foi descoberto que **já existe um módulo `app/campo` inteiro e funcional**
+neste repo (~3.660 linhas: 8 telas de operação, PWA, fila offline via `lib/offline-store.ts`,
+sync idempotente via `origem_op_id` da Seção 242) — construído em sessões anteriores
+(`app/campo`, `lib/offline-store.ts`, `components/campo/SyncButton.tsx`, `app/api/campo/*`,
+`public/sw.js`), mas **nunca usado por nenhum cliente real** (confirmado no banco: 0 perfis com
+`role='campo'`, 0 registros sincronizados). Por instrução explícita do dono, **esse módulo
+permanece intocado** — o projeto novo (`arato-campo`) é construído em paralelo, sem substituí-lo;
+o código existente é usado como referência/ponto de partida (copiado, não linkado) pro projeto
+novo. Substituição é decisão futura, condicionada ao projeto novo atender à expectativa.
+
+#### Migration Seção 246 (adicionada, status de execução não confirmado)
+- `perfis.produto` (`'arato'`/`'campo'` — conceito **novo**, distinto do `role='campo'` já
+  existente usado pelo `app/campo` embutido) + `perfis.fazendas_permitidas uuid[]`
+- `status_campo`/`origem_lancamento`/`lancado_por_perfil_id`/`aprovado_por_perfil_id`/`aprovado_em`
+  em `plantios`, `pulverizacoes`, `colheitas`, `adubacoes_base`, `correcoes_solo`,
+  `romaneios_entrada`, `abastecimentos` — defaults `'aprovado'`/`'arato'` preservam 100% do
+  comportamento atual (DRE/Custos/Kardex não mudam de resultado até o App Campo novo existir)
+- `origem_op_id` (padrão de idempotência da Seção 242) estendido a `romaneios_entrada` e
+  `correcoes_solo`, que tinham ficado de fora daquela migration
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.
