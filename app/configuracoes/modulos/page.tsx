@@ -356,7 +356,7 @@ const NCM_MODAL_VAZIO: Omit<NcmTributacao, "id"> = {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 function ParametrosSistemaContent() {
-  const { fazendaId, contaId, setLogoCliente, nomeFazendaSelecionada } = useAuth();
+  const { fazendaId, contaId, setLogoCliente } = useAuth();
   const searchParams = useSearchParams();
   const [aba, setAba] = useState(() => searchParams.get("aba") ?? "aparencia");
 
@@ -869,16 +869,9 @@ function ParametrosSistemaContent() {
         <div style={{ marginBottom: 20 }}>
           <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros Fiscais — NF-e por Emitente</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
-            Cada empresa (PJ) ou produtor (PF) que emite NF-e tem configuração independente — série, numeração, endereço, IE e certificado próprios,
-            <strong> por fazenda</strong>: se o mesmo CPF/CNPJ tiver mais de um imóvel/IE, configure cada um trocando a fazenda ativa no menu superior e
-            preenchendo os parâmetros aqui de novo — não use "Inscrições Estaduais por UF" pra isso (esse campo é só pra IE secundária do
-            <strong> mesmo</strong> estabelecimento em outro estado, usada quando o destinatário da NF-e é de lá).
+            Cada empresa (PJ) ou produtor (PF) que emite NF-e tem configuração independente — série, numeração, endereço e certificado próprios.
             A tributação por produto é configurada na aba <strong>Tributação NCM</strong>.
           </p>
-          <div style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 8, background: "#FBF3E0", border: "0.5px solid #C9921B50", borderRadius: 8, padding: "6px 12px" }}>
-            <span style={{ fontSize: 11, color: "#7A5A12" }}>🏡 Configurando os parâmetros da fazenda ativa:</span>
-            <strong style={{ fontSize: 12, color: "#111111" }}>{nomeFazendaSelecionada ?? "—"}</strong>
-          </div>
         </div>
 
         {/* ── Ambiente SEFAZ Global ─────────────────────────────────── */}
