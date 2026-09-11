@@ -613,7 +613,9 @@ export default function Estoque() {
   const salvarInsumo = () => salvar(async () => {
     if (!fIns.nome.trim()) return;
     const cat = fIns.categoria as Insumo["categoria"];
-    const tipoItem: Insumo["tipo"] = ["semente","fertilizante","defensivo","corretivo"].includes(cat) ? "insumo" : "produto";
+    // Lista completa dos "insumos agrícolas de verdade" (ver comentário do tipo Insumo em
+    // lib/supabase.ts) — faltavam os legados micronutriente/biologico/inoculante aqui.
+    const tipoItem: Insumo["tipo"] = ["semente","fertilizante","defensivo","corretivo","micronutriente","biologico","inoculante"].includes(cat) ? "insumo" : "produto";
     const payload: Omit<Insumo, "id"|"created_at"> = {
       fazenda_id: fazAtiva!, tipo: tipoItem, nome: fIns.nome.trim(), categoria: cat, unidade: fIns.unidade as Insumo["unidade"],
       fabricante: fIns.fabricante || undefined, estoque: Number(fIns.estoque) || 0,

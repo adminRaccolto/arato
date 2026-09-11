@@ -144,6 +144,17 @@ const TABELA_CONVERSAO: ConversaoConfig[] = [
   { key: "l→galao",   de: "l",     para: "galao", fator: null,    tipo: "manual", labelSelect: "L → Galão (manual)",  labelPara: "galão"},
 ];
 
+// Deriva Insumo.tipo ("insumo" | "produto") a partir da categoria — mesmo critério do
+// comentário no tipo Insumo (lib/supabase.ts): "insumo" = insumos agrícolas de verdade
+// (inclusive os legados micronutriente/biologico/inoculante), "produto" = tudo o mais
+// (peças, material, escritório, combustível, produto agrícola…). Nunca gravar "produto"
+// fixo — categorias agrícolas cadastradas assim ficam invisíveis/erradas na Posição de
+// Estoque e no Kardex.
+const CATEGORIAS_INSUMO_AGRICOLA = new Set(["semente", "fertilizante", "defensivo", "corretivo", "micronutriente", "biologico", "inoculante"]);
+function tipoPorCategoria(categoria: string): "insumo" | "produto" {
+  return CATEGORIAS_INSUMO_AGRICOLA.has(categoria) ? "insumo" : "produto";
+}
+
 function normUnidade(u: string) { return u.toLowerCase().trim(); }
 // "ton" e "t" são a mesma unidade (tonelada) — só variam no cadastro do insumo vs. na tabela de conversão.
 function canonUnidade(u: string) { const n = normUnidade(u || ""); return n === "ton" ? "t" : n; }
@@ -1896,7 +1907,7 @@ export default function NfCompraPage() {
     try {
       const criado = await criarInsumo({
         fazenda_id:      fazendaId,
-        tipo:            "produto",
+        tipo:            tipoPorCategoria(formNovoInsumo.categoria),
         nome:            formNovoInsumo.nome.trim(),
         categoria:       formNovoInsumo.categoria,
         unidade:         formNovoInsumo.unidade,
