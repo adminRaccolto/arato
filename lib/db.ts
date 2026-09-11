@@ -449,6 +449,29 @@ export async function excluirInsumos(ids: string[]): Promise<void> {
   if (error) throw error;
 }
 
+// Saldo real por (insumo, depósito) — calculado a partir da soma de
+// movimentacoes_estoque (view saldo_insumo_deposito, Seção 251), não do campo
+// fixo insumos.deposito_id. É a única fonte confiável de "quanto tem de X no
+// depósito Y" — o campo fixo no cadastro nunca reflete transferências entre
+// depósitos nem insumos fisicamente divididos entre dois locais.
+export async function listarSaldoPorDeposito(fazenda_id: string): Promise<{ insumo_id: string; deposito_id: string | null; saldo: number }[]> {
+  const PAGE = 1000;
+  let all: { insumo_id: string; deposito_id: string | null; saldo: number }[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("saldo_insumo_deposito")
+      .select("insumo_id, deposito_id, saldo")
+      .eq("fazenda_id", fazenda_id)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    all = all.concat(data ?? []);
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoEstoque[]> {
   let q = supabase.from("movimentacoes_estoque").select("*").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
   if (insumo_id) q = q.eq("insumo_id", insumo_id);

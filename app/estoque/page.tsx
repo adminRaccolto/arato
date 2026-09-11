@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
   listarMovimentacoes, criarMovimentacaoManual,
+  listarSaldoPorDeposito,
   listarDepositos, listarFazendasDaConta,
   listarBombas,
   listarMaquinas,
@@ -306,6 +307,11 @@ export default function Estoque() {
   const [filtroDepDropOpen, setFiltroDepDropOpen] = useState(false);
   const [relDataInicio, setRelDataInicio] = useState(() => { const d = new Date(); d.setMonth(d.getMonth()-3); return d.toISOString().slice(0,10); });
   const [relMovs, setRelMovs]     = useState<MovimentacaoEstoque[]>([]);
+  // Saldo real por depósito — calculado a partir de movimentacoes_estoque (view
+  // saldo_insumo_deposito), não do campo fixo insumos.deposito_id/estoque. Ver
+  // Seção 251 — "Saldo por Depósito" era o único lugar do sistema que nunca
+  // refletia uma transferência entre depósitos nem um insumo dividido entre dois.
+  const [saldoPorDeposito, setSaldoPorDeposito] = useState<{ insumo_id: string; deposito_id: string | null; saldo: number }[]>([]);
   // kardex
   const [kardexInicio, setKardexInicio] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
   const [kardexFim, setKardexFim]       = useState(() => new Date().toISOString().slice(0,10));
@@ -548,7 +554,10 @@ export default function Estoque() {
     if (aba === "relatorios" && relTipo === "historico" && relInsumoId) {
       listarMovimentacoes(fazAtiva, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
     }
-  }, [aba, fazAtiva]); // eslint-disable-line
+    if (aba === "relatorios" && relTipo === "depositos") {
+      listarSaldoPorDeposito(fazAtiva).then(setSaldoPorDeposito).catch(() => {});
+    }
+  }, [aba, relTipo, fazAtiva]); // eslint-disable-line
 
   // ── Helpers ──
   async function salvar(fn: () => Promise<void>) {
@@ -1703,10 +1712,15 @@ export default function Estoque() {
                   .filter(i => !termoDep || i.nome.toLowerCase().includes(termoDep))
                   .slice(0, 60);
 
-                // Agrupar insumos por deposito_id
+                // Agrupar por depósito usando o saldo REAL (soma de movimentacoes_estoque,
+                // Seção 251) — não mais o campo fixo insumos.deposito_id/estoque, que nunca
+                // refletia transferências entre depósitos nem um insumo dividido entre dois.
+                // Um mesmo insumo pode aparecer em mais de um grupo agora, cada um com o
+                // saldo real daquele depósito especificamente.
+                type DepItem = { ins: Insumo; saldo: number };
                 type DepGrupo = {
                   dep: Deposito | null; // null = sem depósito
-                  itens: Insumo[];
+                  itens: DepItem[];
                   valorTotal: number;
                   alertas: number;
                 };
@@ -1715,12 +1729,18 @@ export default function Estoque() {
                 gruposMap.set("__sem__", { dep: null, itens: [], valorTotal: 0, alertas: 0 });
                 depositos.forEach(d => gruposMap.set(d.id, { dep: d, itens: [], valorTotal: 0, alertas: 0 }));
 
-                for (const ins of insumosFiltrados) {
-                  const chave = ins.deposito_id && gruposMap.has(ins.deposito_id) ? ins.deposito_id : "__sem__";
+                const insumosFiltradosIds = new Set(insumosFiltrados.map(i => i.id));
+                const insumoPorId = new Map(insumos.map(i => [i.id, i]));
+                for (const row of saldoPorDeposito) {
+                  if (!insumosFiltradosIds.has(row.insumo_id)) continue;
+                  if (Math.abs(row.saldo) < 0.001) continue; // zerado — nada real sobrando ali
+                  const ins = insumoPorId.get(row.insumo_id);
+                  if (!ins) continue;
+                  const chave = row.deposito_id && gruposMap.has(row.deposito_id) ? row.deposito_id : "__sem__";
                   const g = gruposMap.get(chave)!;
-                  g.itens.push(ins);
-                  g.valorTotal += ins.estoque * ins.valor_unitario;
-                  if (ins.estoque <= ins.estoque_minimo || ins.estoque < 0) g.alertas++;
+                  g.itens.push({ ins, saldo: row.saldo });
+                  g.valorTotal += row.saldo * ins.valor_unitario;
+                  if (row.saldo <= ins.estoque_minimo || row.saldo < 0) g.alertas++;
                 }
 
                 const grupos = [...gruposMap.values()].filter(g => g.itens.length > 0);
@@ -1894,20 +1914,20 @@ export default function Estoque() {
                                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                   <TH cols={["Item","Categoria","Saldo","Unidade","Valor Unit.","Valor Total","Status"]} />
                                   <tbody>
-                                    {g.itens.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map((ins, idx) => {
-                                      const negativo = ins.estoque < 0;
-                                      const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
+                                    {g.itens.slice().sort((a, b) => a.ins.nome.localeCompare(b.ins.nome)).map(({ ins, saldo }, idx) => {
+                                      const negativo = saldo < 0;
+                                      const alerta   = !negativo && saldo <= ins.estoque_minimo;
                                       const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: ins.categoria };
                                       return (
                                         <tr key={ins.id} style={{ borderBottom: idx < g.itens.length - 1 ? "0.5px solid var(--border-row)" : "none", background: negativo ? "#FFF5F5" : alerta ? "#FFFCF5" : "transparent" }}>
                                           <td style={{ padding: "9px 14px", fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>{ins.nome}</td>
                                           <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
                                           <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 700, color: negativo ? "#E24B4A" : "#1A6B3C", fontVariantNumeric: "tabular-nums" }}>
-                                            {fmtNum(ins.estoque)}
+                                            {fmtNum(saldo)}
                                           </td>
                                           <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-2)", fontSize: 12 }}>{ins.unidade}</td>
                                           <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-2)", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{fmtBRL(ins.valor_unitario)}</td>
-                                          <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(ins.estoque * ins.valor_unitario)}</td>
+                                          <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(saldo * ins.valor_unitario)}</td>
                                           <td style={{ padding: "9px 14px", textAlign: "center" }}>
                                             {negativo ? badge("Negativo","#FCEBEB","#791F1F") : alerta ? badge("Mínimo","#FAEEDA","#633806") : badge("OK","#E8E8E8","#0D0D0D")}
                                           </td>

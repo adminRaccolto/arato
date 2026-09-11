@@ -12371,3 +12371,38 @@ WHERE m.nf_entrada_item_id = i.id
   AND m.nf_entrada_id IS NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 251 — Saldo real por depósito.
+--
+-- Achado real (semente Olimpo, set/2026): "Saldo por Depósito" e
+-- "Posição de Estoque" nunca leram movimentação nenhuma — cada
+-- insumo tem só UM campo `deposito_id` e UM `estoque` no cadastro,
+-- e os relatórios só reagrupavam por esse campo fixo. Uma
+-- transferência entre depósitos (mesmo feita certinha) muda o saldo
+-- total corretamente, mas nunca muda esse campo fixo — o relatório
+-- por depósito segue mostrando tudo no depósito antigo pra sempre,
+-- e não existe nenhuma forma de um insumo aparecer fisicamente
+-- dividido entre dois depósitos.
+--
+-- Fix: uma view que calcula o saldo de verdade — soma de
+-- entradas/saídas/ajustes de movimentacoes_estoque, agrupado por
+-- insumo + depósito. "Saldo por Depósito" passa a ler daqui, não
+-- mais do campo fixo do cadastro.
+-- ============================================================
+CREATE OR REPLACE VIEW saldo_insumo_deposito AS
+SELECT
+  insumo_id,
+  fazenda_id,
+  deposito_id,
+  SUM(
+    CASE
+      WHEN tipo = 'saida' THEN -quantidade
+      ELSE quantidade  -- entrada: positivo · ajuste: já é um delta assinado (ver criarMovimentacaoManual)
+    END
+  ) AS saldo
+FROM movimentacoes_estoque
+WHERE insumo_id IS NOT NULL
+GROUP BY insumo_id, fazenda_id, deposito_id;
+
+NOTIFY pgrst, 'reload schema';
