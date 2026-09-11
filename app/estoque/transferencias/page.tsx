@@ -126,7 +126,14 @@ export default function TransferenciasEstoquePage() {
     veiculoId: "",
     motoristaId: "",
     freteConta: "9",   // 9 = sem frete
+    // CNPJ/CPF e IE do destinatário — pré-preenchidos com o cadastro fiscal da fazenda
+    // de destino, mas editáveis: a entrada pode ser numa IE diferente da do produtor
+    // responsável (ex: IE própria daquele imóvel/depósito).
+    cpfCnpjDestino: "",
+    ieDestino: "",
   });
+  // Cache local de config fiscal por fazenda — evita rebuscar a cada troca de destino
+  const [cfgFiscalCache, setCfgFiscalCache] = useState<Record<string, Record<string, string>>>({});
   const [itens, setItens] = useState<ItemForm[]>([
     { insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" },
   ]);
@@ -247,6 +254,25 @@ export default function TransferenciasEstoquePage() {
     if (fazendaId) setForm(f => ({ ...f, fazendaOrigemId: fazendaId }));
   }, [fazendaId]);
 
+  // Pré-preenche CNPJ/CPF e IE do destinatário com o cadastro fiscal da fazenda de
+  // destino ao selecioná-la — só se os campos ainda estiverem vazios, pra não
+  // sobrescrever um valor que o operador já editou manualmente (ex: IE diferente
+  // da do produtor responsável pelo depósito).
+  useEffect(() => {
+    if (!form.fazendaDestinoId || (form.cpfCnpjDestino && form.ieDestino)) return;
+    (async () => {
+      const cached = cfgFiscalCache[form.fazendaDestinoId];
+      const cfg = cached ?? await buscarCfgFiscalFazenda(form.fazendaDestinoId);
+      if (!cached) setCfgFiscalCache(prev => ({ ...prev, [form.fazendaDestinoId]: cfg }));
+      setForm(f => (f.fazendaDestinoId !== form.fazendaDestinoId ? f : {
+        ...f,
+        cpfCnpjDestino: f.cpfCnpjDestino || cfg.cpf_cnpj_emitente || "",
+        ieDestino:      f.ieDestino      || cfg.ie_emitente       || "",
+      }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.fazendaDestinoId]);
+
 
   // ── Computed ──────────────────────────────────────────────────────────────
   const fazendaOrigem = todasFazendas.find(f => f.id === form.fazendaOrigemId);
@@ -352,6 +378,8 @@ export default function TransferenciasEstoquePage() {
         deposito_destino_id:  form.depositoDestinoId || null,
         cfop:                 cfopCalculado,
         ie_diferentes:        estadosDiferentes,
+        cpf_cnpj_destino:     form.cpfCnpjDestino.trim() || null,
+        ie_destino:           form.ieDestino.trim() || null,
         entrada_automatica:   form.entradaAutomatica,
         status,
         data_transferencia:   form.dataTransferencia,
@@ -406,7 +434,7 @@ export default function TransferenciasEstoquePage() {
   }
 
   function resetForm() {
-    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9" });
+    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9", cpfCnpjDestino: "", ieDestino: "" });
     setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
     setEditandoId(null);
@@ -459,6 +487,8 @@ export default function TransferenciasEstoquePage() {
       veiculoId:         (t as unknown as Record<string, string>).veiculo_id ?? "",
       motoristaId:       (t as unknown as Record<string, string>).motorista_id ?? "",
       freteConta:        (t as unknown as Record<string, string>).frete_conta ?? "9",
+      cpfCnpjDestino:    t.cpf_cnpj_destino ?? "",
+      ieDestino:         t.ie_destino ?? "",
     });
     setItens(
       (t.itens ?? []).length > 0
@@ -750,7 +780,7 @@ export default function TransferenciasEstoquePage() {
                     {todasFazendas.filter(f => f.id !== form.fazendaOrigemId).map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                   </select>
                 </div>
-                <div>
+                <div style={{ marginBottom: 10 }}>
                   <label style={lbl}>Depósito Destino *</label>
                   {form.fazendaDestinoId && depositosDestino.length === 0 ? (
                     <p style={{ fontSize: 12, color: "#E24B4A", margin: 0 }}>
@@ -764,6 +794,19 @@ export default function TransferenciasEstoquePage() {
                     </select>
                   )}
                 </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={lbl}>CNPJ/CPF Destinatário</label>
+                    <input value={form.cpfCnpjDestino} onChange={e => setForm(f => ({ ...f, cpfCnpjDestino: e.target.value }))} placeholder="Auto (editável)" style={inp} disabled={!form.fazendaDestinoId} />
+                  </div>
+                  <div>
+                    <label style={lbl}>IE Destinatário</label>
+                    <input value={form.ieDestino} onChange={e => setForm(f => ({ ...f, ieDestino: e.target.value }))} placeholder="Auto (editável)" style={inp} disabled={!form.fazendaDestinoId} />
+                  </div>
+                </div>
+                <p style={{ fontSize: 10, color: "var(--text-3)", margin: "4px 0 0" }}>
+                  Pré-preenchido com o cadastro fiscal da fazenda — edite se a entrada for numa IE diferente da do produtor responsável.
+                </p>
               </div>
             </div>
 
@@ -1089,7 +1132,7 @@ export default function TransferenciasEstoquePage() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", borderBottom: B }}>
                     {box("NOME / RAZÃO SOCIAL", d.razao_social || detalhe.fazenda_destino_nome || "—")}
-                    {box("CNPJ / CPF", d.cpf_cnpj_emitente ?? "—")}
+                    {box("CNPJ / CPF", detalhe.cpf_cnpj_destino || d.cpf_cnpj_emitente || "—")}
                     {box("DATA DE EMISSÃO", fmtData(detalhe.data_transferencia), { borderRight: "none" })}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 80px", borderBottom: B }}>
@@ -1102,7 +1145,7 @@ export default function TransferenciasEstoquePage() {
                     {box("MUNICÍPIO", d.municipio ?? "—")}
                     {box("UF", d.uf_emitente ?? "—")}
                     {box("FONE", d.fone ?? "—")}
-                    {box("INSCRIÇÃO ESTADUAL", d.ie_emitente || "Isento", { borderRight: "none" })}
+                    {box("INSCRIÇÃO ESTADUAL", detalhe.ie_destino || d.ie_emitente || "Isento", { borderRight: "none" })}
                   </div>
                 </div>
 

@@ -1117,7 +1117,8 @@ export type TransferenciaEstoque = {
   deposito_destino_id?: string | null;
   cfop: string;
   ie_origem?: string | null;
-  ie_destino?: string | null;
+  ie_destino?: string | null;          // editável — pode diferir da IE cadastrada pra fazenda de destino
+  cpf_cnpj_destino?: string | null;    // editável — pode diferir do titular cadastrado pra fazenda de destino
   ie_diferentes: boolean;
   entrada_automatica: boolean;
   status: "solicitada" | "rascunho" | "emitida" | "entrada_confirmada" | "cancelada";

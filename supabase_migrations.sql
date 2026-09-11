@@ -12306,3 +12306,14 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE plantios ADD COLUMN IF NOT EXISTS lote_semente TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 248 — Transferência de estoque: CPF/CNPJ e IE do
+-- destinatário editáveis (podem ser diferentes do produtor
+-- responsável pela fazenda/depósito de destino — ex: IE distinta
+-- para aquele imóvel). `ie_destino` já existia na tabela mas nunca
+-- foi usada; `cpf_cnpj_destino` é nova.
+-- ============================================================
+ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS cpf_cnpj_destino TEXT;
+
+NOTIFY pgrst, 'reload schema';

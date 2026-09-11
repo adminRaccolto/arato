@@ -79,11 +79,48 @@ export async function POST(request: NextRequest) {
       const insumoMap: Record<string, Record<string, unknown>> = {};
       for (const ins of (insumos ?? [])) insumoMap[ins.id] = ins;
 
-      // 4. Busca configuração do emitente para usar como destinatário (mesma entidade)
+      // 4. Configuração fiscal do emitente (origem)
       const confEmit = await buscarConfEmitente(fazId, moduloKey);
       if (!confEmit) {
         return NextResponse.json({ ok: false, error: `Configuração fiscal '${moduloKey}' não encontrada` }, { status: 422 });
       }
+
+      // 4b. Configuração fiscal do DESTINATÁRIO — a fazenda de destino pode ter
+      // titular (CPF/CNPJ) diferente da origem, então busca a config própria dela
+      // em vez de reaproveitar a do emitente. moduloKey pode ser diferente
+      // (ex: origem é fiscal_pf_X, destino é fiscal_emp_Y).
+      const fazDestId = t.fazenda_destino_id as string;
+      let moduloKeyDest = "";
+      const { data: cfgsDest } = await adm
+        .from("configuracoes_modulo")
+        .select("modulo, config")
+        .eq("fazenda_id", fazDestId)
+        .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
+        .limit(1);
+      if (cfgsDest && cfgsDest.length > 0) moduloKeyDest = cfgsDest[0].modulo;
+      const confDest = moduloKeyDest ? await buscarConfEmitente(fazDestId, moduloKeyDest) : null;
+      const { data: fazDestRow } = await adm.from("fazendas").select("nome").eq("id", fazDestId).single();
+      if (!confDest && !(t.cpf_cnpj_destino || t.ie_destino)) {
+        return NextResponse.json({
+          ok: false,
+          error: "Configuração fiscal da fazenda de destino não encontrada, e a transferência não tem CNPJ/CPF ou IE do destinatário informados manualmente. Configure Parâmetros → Fiscal na fazenda de destino, ou informe o CNPJ/CPF e IE do destinatário na transferência.",
+        }, { status: 422 });
+      }
+      // CNPJ/CPF e IE gravados na transferência (editáveis, podem ser diferentes do
+      // titular cadastrado — ex: IE própria do imóvel/depósito) sempre têm prioridade
+      // sobre a config fiscal padrão da fazenda de destino.
+      const destinatarioDados = {
+        nome:           confDest?.razao_social ?? fazDestRow?.nome ?? "—",
+        cpf_cnpj:       (t.cpf_cnpj_destino as string | null) || confDest?.cpf_cnpj_emitente,
+        ie:             (t.ie_destino as string | null)       || confDest?.ie_emitente,
+        logradouro:     confDest?.logradouro,
+        numero:         confDest?.numero,
+        bairro:         confDest?.bairro,
+        municipio_ibge: confDest?.municipio_ibge,
+        municipio_nome: confDest?.municipio_nome,
+        uf:             confDest?.uf_emitente ?? "MT",
+        cep:            confDest?.cep,
+      };
 
       // 5. Monta input da NF-e
       const cfop = String(t.cfop ?? "5151").replace(/\D/g, "");
@@ -102,18 +139,7 @@ export async function POST(request: NextRequest) {
       });
 
       const resultado = await emitirNFe(fazId, moduloKey, {
-        destinatario: {
-          nome:            confEmit.razao_social ?? "—",
-          cpf_cnpj:        confEmit.cpf_cnpj_emitente,
-          ie:              confEmit.ie_emitente,
-          logradouro:      confEmit.logradouro,
-          numero:          confEmit.numero,
-          bairro:          confEmit.bairro,
-          municipio_ibge:  confEmit.municipio_ibge,
-          municipio_nome:  confEmit.municipio_nome,
-          uf:              confEmit.uf_emitente ?? "MT",
-          cep:             confEmit.cep,
-        },
+        destinatario: destinatarioDados,
         itens: itenNfe,
         natureza: "Transferência de mercadoria de produção própria",
         infCpl:   `Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`,
@@ -245,6 +271,8 @@ export async function POST(request: NextRequest) {
           deposito_destino_id: transferencia.deposito_destino_id ?? null,
           cfop:                transferencia.cfop,
           ie_diferentes:       transferencia.ie_diferentes,
+          cpf_cnpj_destino:    transferencia.cpf_cnpj_destino ?? null,
+          ie_destino:          transferencia.ie_destino ?? null,
           entrada_automatica:  transferencia.entrada_automatica,
           data_transferencia:  transferencia.data_transferencia,
           observacao:          transferencia.observacao ?? null,
