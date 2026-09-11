@@ -2211,6 +2211,51 @@ async function creditarInsumo(insumo_id: string, quantidade: number, valor_unita
   }).eq("id", insumo_id);
 }
 
+// Apaga tudo que uma NF já gerou (movimentações de estoque + reversão do saldo
+// do insumo + lançamento(s) financeiro) usando nf_entrada_id como fonte única da
+// verdade — nunca fica nulo, ao contrário de nf_entrada_item_id (que orfaniza se
+// o item correspondente for apagado/recriado no meio de uma falha). Usada tanto
+// por processarNfEntrada() (defesa antes de inserir de novo) quanto por
+// estornarNfProcessamento() — centraliza a limpeza num lugar só, em vez de cada
+// chamador ter sua própria versão (que foi exatamente como o bug real aconteceu:
+// a limpeza existia, mas só olhava nf_entrada_item_id).
+export async function limparMovimentacoesEFinanceiroDaNf(nfId: string): Promise<void> {
+  // 1. Reverte o saldo de cada insumo afetado antes de apagar as movimentações
+  const { data: movs } = await supabase
+    .from("movimentacoes_estoque")
+    .select("id, insumo_id, quantidade, tipo")
+    .eq("nf_entrada_id", nfId);
+  for (const mov of movs ?? []) {
+    if (!mov.insumo_id) continue;
+    const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", mov.insumo_id).single();
+    if (!ins) continue;
+    const delta = mov.tipo === "entrada" ? -mov.quantidade : mov.quantidade;
+    await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + delta }).eq("id", mov.insumo_id);
+  }
+  if (movs?.length) {
+    await supabase.from("movimentacoes_estoque").delete().eq("nf_entrada_id", nfId);
+  }
+
+  // 2. Lançamento(s) financeiro(s) — cobre parcelas múltiplas (via nf_entrada_id)
+  //    e o registro único legado (via nf_entradas.lancamento_id, para NFs
+  //    processadas antes desta coluna existir em movimentacoes_estoque)
+  await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
+  const { data: nfRow } = await supabase.from("nf_entradas").select("lancamento_id, pedido_compra_id").eq("id", nfId).single();
+  if (nfRow?.lancamento_id) {
+    await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
+  }
+  // Limpa a referência em pedidos_compra se ela apontava justamente pro
+  // lançamento que acabamos de apagar — senão a próxima tentativa de processar
+  // acha que já existe um lançamento pra "atualizar", tenta contra um id
+  // inexistente e viola a FK constraint nf_entradas_lancamento_id_fkey.
+  if (nfRow?.pedido_compra_id) {
+    const { data: pedRow } = await supabase.from("pedidos_compra").select("lancamento_id").eq("id", nfRow.pedido_compra_id).single();
+    if (pedRow?.lancamento_id && pedRow.lancamento_id === nfRow.lancamento_id) {
+      await supabase.from("pedidos_compra").update({ lancamento_id: null }).eq("id", nfRow.pedido_compra_id);
+    }
+  }
+}
+
 // Processa NF pendente: cria movimentações, atualiza custo médio, gera lançamento CP
 // tipo_apropiacao:
 //   "estoque"   → credita insumo + movimentação (compra normal)
@@ -2252,7 +2297,20 @@ export async function processarNfEntrada(
       ? cnpjRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
       : cnpjRaw;
 
+  // Trava contra duplicação real (caso NF 26967, set/2026): a limpeza "antes de
+  // recriar" nos chamadores (processarNF, Estornar) filtrava só por
+  // nf_entrada_item_id — se uma movimentação ficasse órfã (item apagado/id
+  // ausente no meio de uma falha), nenhuma limpeza a encontrava de novo, e cada
+  // nova tentativa empilhava mais estoque e mais CP em vez de substituir.
+  // Defesa aqui, na função que de fato cria os dados: apaga qualquer resíduo já
+  // ligado a esta NF (por nf_entrada_id, que nunca fica nulo) antes de inserir
+  // qualquer coisa nova — não depende de o chamador lembrar de limpar direito.
+  await limparMovimentacoesEFinanceiroDaNf(nfId);
+
   for (const item of itens) {
+    if (!item.id) {
+      throw new Error(`Item "${item.descricao_produto}" sem id — não é seguro gravar movimentação de estoque sem vínculo com a NF. Recarregue a NF e tente novamente.`);
+    }
     // Custo por unidade do catálogo — sempre derivado do total monetário da NF dividido pela
     // quantidade já convertida (armazenada em catalog units). Cobre dois cenários:
     //   a) BAG→KG automático: fator=1, mas valor_unitario ainda é R$/bag → total/kg_qty é correto
@@ -2312,6 +2370,7 @@ export async function processarNfEntrada(
             observacao:         `NF ${nfId} — ${item.descricao_produto} | Lote: ${lote.numero}`,
             auto:               true,
             deposito_id:        item.deposito_id ?? null,
+            nf_entrada_id:      nfId,
             nf_entrada_item_id: item.id,
             lote_semente:       lote.numero,
           });
@@ -2333,6 +2392,7 @@ export async function processarNfEntrada(
           observacao:         `NF ${nfId} — ${item.descricao_produto}${loteMovStr ? ` | Lote: ${loteMovStr}` : ""}`,
           auto:               true,
           deposito_id:        item.deposito_id ?? null,
+          nf_entrada_id:      nfId,
           nf_entrada_item_id: item.id,
           lote_semente:       loteMovStr,
         });
@@ -2440,6 +2500,7 @@ export async function processarNfEntrada(
         observacao:         `Remessa NF ${nfId} — ${item.descricao_produto} (${emitente})`,
         auto:               true,
         deposito_id:        item.deposito_id ?? null,
+        nf_entrada_id:      nfId,
         nf_entrada_item_id: item.id,
       });
       await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id, item.deposito_id ?? null);
@@ -2741,25 +2802,18 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
 
 // Estorna processamento de uma NF sem excluí-la: reverte estoque, deleta itens e CP, volta status para "rascunho"
 export async function estornarNfProcessamento(nfId: string): Promise<void> {
-  // 1. Reverter movimentações de estoque (insumos regulares)
-  const { data: itens } = await supabase
-    .from("nf_entrada_itens").select("id, insumo_id, quantidade")
-    .eq("nf_entrada_id", nfId);
-  const itemIds = (itens ?? []).map(i => i.id as string);
+  // 1 + 4. Reverter estoque (por nf_entrada_id — robusto mesmo se algum item ficou
+  // órfão) e apagar o(s) lançamento(s) financeiro(s), com a mesma lógica usada em
+  // processarNfEntrada() antes de reprocessar — uma função só, não duas versões
+  // que podem divergir (foi exatamente essa divergência que causou a duplicação
+  // real de estoque e CP na NF 26967, set/2026).
+  await limparMovimentacoesEFinanceiroDaNf(nfId);
 
+  // historico_manutencao (peças/manutenção) ainda só linka por item_id — mantém
+  // a limpeza por essa via, feita antes de apagar os itens abaixo.
+  const { data: itens } = await supabase.from("nf_entrada_itens").select("id").eq("nf_entrada_id", nfId);
+  const itemIds = (itens ?? []).map(i => i.id as string);
   if (itemIds.length > 0) {
-    const { data: movs } = await supabase
-      .from("movimentacoes_estoque").select("insumo_id, quantidade")
-      .in("nf_entrada_item_id", itemIds).eq("tipo", "entrada");
-    for (const mov of movs ?? []) {
-      const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", mov.insumo_id).single();
-      if (ins) {
-        await supabase.from("insumos")
-          .update({ estoque: (ins.estoque as number) - (mov.quantidade as number) })
-          .eq("id", mov.insumo_id);
-      }
-    }
-    await supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds);
     await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
   }
 
@@ -2769,28 +2823,6 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
   // 3. Estoque de terceiros
   await supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId);
 
-  // 4. Lançamento(s) financeiro(s) (CP) — inclui parcelas
-  // Deleta todos os lançamentos vinculados via nf_entrada_id (cobre parcelas múltiplas)
-  await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
-  // Fallback: lançamento único pelo ID (compatibilidade com registros antigos sem nf_entrada_id)
-  const { data: nfRow } = await supabase.from("nf_entradas").select("lancamento_id, pedido_compra_id").eq("id", nfId).single();
-  if (nfRow?.lancamento_id) {
-    await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
-  }
-  // Bug real corrigido: quando a NF veio de um pedido de compra, processarNfEntrada()
-  // reaproveita/atualiza o lançamento já apontado por pedidos_compra.lancamento_id em
-  // vez de criar um novo. Se não limpar essa referência aqui, ela fica apontando pra
-  // um lançamento que acabamos de apagar — no reprocessamento, o código tenta
-  // "atualizar" esse id inexistente (UPDATE silencioso, 0 linhas afetadas) e grava
-  // esse mesmo id em nf_entradas.lancamento_id, violando a FK constraint
-  // nf_entradas_lancamento_id_fkey. Só limpa se o lançamento do pedido era mesmo o
-  // que acabamos de apagar (evita desvincular um lançamento de outra origem).
-  if (nfRow?.pedido_compra_id) {
-    const { data: pedRow } = await supabase.from("pedidos_compra").select("lancamento_id").eq("id", nfRow.pedido_compra_id).single();
-    if (pedRow?.lancamento_id && pedRow.lancamento_id === nfRow.lancamento_id) {
-      await supabase.from("pedidos_compra").update({ lancamento_id: null }).eq("id", nfRow.pedido_compra_id);
-    }
-  }
   await supabase.from("nf_entradas").update({ lancamento_id: null }).eq("id", nfId);
 
   // 5. Itens + volta status para pendente (pronta para reprocessar)
@@ -2888,6 +2920,7 @@ export async function processarDevolucaoCompra(
       observacao:         `Devolução NF ${nfDev.id} — ${item.descricao_produto}`,
       auto:               true,
       deposito_id:        item.deposito_id ?? null,
+      nf_entrada_id:      nfDev.id,
       nf_entrada_item_id: nfItem?.id ?? null,
     });
     if (errMov) throw errMov;

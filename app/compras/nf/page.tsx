@@ -6,6 +6,7 @@ import {
   listarNfEntradas, listarNfEntradasPorFazendas, criarNfEntrada, atualizarNfEntrada,
   listarNfEntradaItens, criarNfEntradaItem,
   processarNfEntrada,
+  limparMovimentacoesEFinanceiroDaNf,
   processarDevolucaoCompra,
   listarInsumosParaConta,
   criarInsumo,
@@ -1419,14 +1420,15 @@ export default function NfCompraPage() {
         }),
       });
 
-      // 1. Limpar itens E movimentos vinculados antes de recriar.
-      //    Itens são recriados com novos UUIDs — a guarda de idempotência em processarNfEntrada
-      //    usa nf_entrada_item_id, tornando-se inválida se movimentos antigos ficarem com IDs velhos.
-      //    Aqui apagamos tudo para garantir estado limpo antes de reprocessar.
-      const { data: itensExist } = await supabase.from("nf_entrada_itens").select("id").eq("nf_entrada_id", nfEdit.id);
-      if (itensExist?.length) {
-        await supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itensExist.map(i => i.id));
-      }
+      // 1. Limpar itens E movimentos/financeiro vinculados antes de recriar.
+      //    Itens são recriados com novos UUIDs a cada tentativa. Usa a mesma função
+      //    de lib/db.ts que o Estornar usa — reverte o saldo do insumo antes de
+      //    apagar a movimentação (o delete direto daqui não revertia, o que por si
+      //    já deixava o saldo furado a cada reprocessamento) e limpa pelo link
+      //    direto nf_entrada_id, não mais só nf_entrada_item_id (que orfaniza e
+      //    escapa da limpeza se uma tentativa anterior falhou no meio do processo —
+      //    causa raiz real da duplicação de estoque/CP na NF 26967, set/2026).
+      await limparMovimentacoesEFinanceiroDaNf(nfEdit.id);
       await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfEdit.id);
 
       // 1b. Recriar todos os itens do estado atual

@@ -210,6 +210,12 @@ export type MovimentacaoEstoque = {
   ciclos?: { descricao: string } | null;
   operacao?: string;
   nf_entrada?: string;
+  // Link direto com a NF de origem — nunca depende do item ainda existir/ter id
+  // válido (diferente de nf_entrada_item_id, que fica nulo/órfão se algo falhar
+  // no meio do processamento). Toda limpeza de movimentações por NF deve usar
+  // este campo, não nf_entrada_item_id sozinho.
+  nf_entrada_id?: string | null;
+  nf_entrada_item_id?: string | null;
   deposito_id?: string;
   observacao?: string;
   usuario_nome?: string;

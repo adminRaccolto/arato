@@ -12333,3 +12333,41 @@ ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS bairro TEXT;
 ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS municipio_ibge TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 250 — Trava contra duplicação de estoque/financeiro ao
+-- reprocessar NF de entrada.
+--
+-- Causa raiz real (caso NF 26967): movimentacoes_estoque só linkava
+-- à NF indiretamente via nf_entrada_item_id → nf_entrada_itens →
+-- nf_entrada_id. Toda limpeza "antes de recriar" (no reprocessamento
+-- e no Estornar) filtrava só por nf_entrada_item_id. Se uma
+-- movimentação fosse inserida em algum momento com item_id nulo
+-- (linha de item ainda sem id, falha parcial no meio do processo,
+-- etc.), ela virava órfã PERMANENTE — nenhuma limpeza existente
+-- conseguia mais encontrá-la, e cada nova tentativa de processar
+-- deixava mais uma pra trás em vez de substituir a anterior.
+-- Resultado real: NF processada 2x gerou 2 lançamentos de CP e
+-- estoque duplicado, mesmo passando por Estornar no meio.
+--
+-- Fix: link DIRETO da movimentação com a NF (nf_entrada_id), que
+-- nunca depende do item ainda existir/ter id válido — toda limpeza
+-- passa a usar esse campo como fonte da verdade, não mais só
+-- nf_entrada_item_id.
+-- ============================================================
+ALTER TABLE movimentacoes_estoque
+  ADD COLUMN IF NOT EXISTS nf_entrada_id UUID REFERENCES nf_entradas(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_movimentacoes_estoque_nf_entrada
+  ON movimentacoes_estoque(nf_entrada_id) WHERE nf_entrada_id IS NOT NULL;
+
+-- Backfill: preenche nf_entrada_id nas movimentações já existentes que só
+-- tinham o link indireto via item (movimentações órfãs sem item_id ficam
+-- de fora — não há como recuperar a NF de origem delas com segurança).
+UPDATE movimentacoes_estoque m
+SET nf_entrada_id = i.nf_entrada_id
+FROM nf_entrada_itens i
+WHERE m.nf_entrada_item_id = i.id
+  AND m.nf_entrada_id IS NULL;
+
+NOTIFY pgrst, 'reload schema';
