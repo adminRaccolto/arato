@@ -2262,8 +2262,12 @@ export async function processarNfEntrada(
           ? item.valor_total / totalPesoLotes
           : custoUnitarioCatalogo;
         for (const lote of lotesComPeso) {
+          // Cada lote pode ser de uma variedade diferente da do item (a NF pode trazer mais
+          // de uma variedade na mesma linha/nota) — usa o insumo do lote quando informado,
+          // senão cai no insumo do item (caso comum: NF de variedade única).
+          const insumoDoLote = lote.insumo_id || item.insumo_id;
           await supabase.from("movimentacoes_estoque").insert({
-            insumo_id:          item.insumo_id,
+            insumo_id:          insumoDoLote,
             fazenda_id,
             tipo:               "entrada",
             quantidade:         lote.quantidade_kg,
@@ -2275,15 +2279,16 @@ export async function processarNfEntrada(
             nf_entrada_item_id: item.id,
             lote_semente:       lote.numero,
           });
-          await creditarInsumo(item.insumo_id, lote.quantidade_kg!, custoAjustado, fazenda_id, item.deposito_id ?? null);
+          await creditarInsumo(insumoDoLote, lote.quantidade_kg!, custoAjustado, fazenda_id, item.deposito_id ?? null);
         }
       } else {
         // Um lote ou sem lotes → movimento único com quantidade total do item
         const loteMovStr = lotes.length > 0 && lotes[0].numero
           ? lotes[0].numero
           : (item.lote_semente ?? null);
+        const insumoDoLote = lotes[0]?.insumo_id || item.insumo_id;
         await supabase.from("movimentacoes_estoque").insert({
-          insumo_id:          item.insumo_id,
+          insumo_id:          insumoDoLote,
           fazenda_id,
           tipo:               "entrada",
           quantidade:         item.quantidade,
@@ -2295,7 +2300,7 @@ export async function processarNfEntrada(
           nf_entrada_item_id: item.id,
           lote_semente:       loteMovStr,
         });
-        await creditarInsumo(item.insumo_id, item.quantidade, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
+        await creditarInsumo(insumoDoLote, item.quantidade, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
       }
     }
 

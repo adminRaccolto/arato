@@ -185,8 +185,9 @@ interface ItemRascunho {
   // Resolução via princípio ativo
   pa_nome?: string;
   pa_auto?: boolean;
-  // Sementes — múltiplos lotes
-  lotes_semente: { numero: string; quantidade_kg?: number }[];
+  // Sementes — múltiplos lotes (insumo_id opcional por lote: permite variedades
+  // diferentes dentro do mesmo item de NF — quando ausente, usa o insumo_id do item)
+  lotes_semente: { numero: string; quantidade_kg?: number; insumo_id?: string }[];
   // Apropriação
   tipo_apropiacao: NfEntradaItem["tipo_apropiacao"];
   deposito_id: string;
@@ -3963,10 +3964,15 @@ export default function NfCompraPage() {
                                 💡 Com múltiplos lotes, informe o peso de cada um — cada lote gerará uma entrada separada no estoque.
                               </div>
                             )}
+                            {it.lotes_semente.length > 1 && (
+                              <div style={{ fontSize: 10, color: "#1A5C38", background: "#D8F0DC", border: "0.5px solid #A4D4AA", borderRadius: 6, padding: "4px 10px", marginBottom: 8 }}>
+                                🧬 Cada lote pode ser de uma variedade diferente — a NF pode trazer mais de uma. Deixe em branco se for a mesma variedade do item.
+                              </div>
+                            )}
                             {it.lotes_semente.length > 0 && (
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 14px 120px 26px", gap: "0 6px", marginBottom: 4, padding: "0 2px" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 150px 100px 14px", gap: "0 6px", marginBottom: 4, padding: "0 2px" }}>
                                 <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>Nº do Lote *</span>
-                                <span />
+                                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>Variedade (se diferente)</span>
                                 <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)" }}>{labelQtd}</span>
                                 <span />
                               </div>
@@ -3984,7 +3990,20 @@ export default function NfCompraPage() {
                                   }}
                                   style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}
                                 />
-                                <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>—</span>
+                                <select
+                                  value={lote.insumo_id ?? ""}
+                                  onChange={e => {
+                                    const novos = it.lotes_semente.map((l, i) => i === li ? { ...l, insumo_id: e.target.value || undefined } : l);
+                                    setItem(it.key, { lotes_semente: novos });
+                                  }}
+                                  title="Variedade deste lote, se diferente da variedade do item"
+                                  style={{ ...inp, fontSize: 11, padding: "4px 8px", width: 150, flexShrink: 0, color: lote.insumo_id ? "#1A5C38" : "var(--text-3)" }}
+                                >
+                                  <option value="">— igual ao item —</option>
+                                  {insumos.filter(i => i.categoria === "semente").map(i => (
+                                    <option key={i.id} value={i.id}>{i.nome}</option>
+                                  ))}
+                                </select>
                                 <input
                                   type="number"
                                   min={0}
