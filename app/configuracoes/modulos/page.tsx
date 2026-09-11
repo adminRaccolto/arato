@@ -356,32 +356,9 @@ const NCM_MODAL_VAZIO: Omit<NcmTributacao, "id"> = {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 function ParametrosSistemaContent() {
-  const { fazendaId, contaId, setLogoCliente } = useAuth();
+  const { fazendaId, contaId, setLogoCliente, nomeFazendaSelecionada } = useAuth();
   const searchParams = useSearchParams();
   const [aba, setAba] = useState(() => searchParams.get("aba") ?? "aparencia");
-
-  // ── Fazenda de trabalho — NÃO existe "fazenda ativa" no sistema (ver memória
-  // project_arquitetura_sem_fazenda_ativa): parâmetros fiscais, CT-e, MDF-e e
-  // transportadoras/veículos/motoristas são todos por fazenda — precisa de
-  // seletor explícito na própria tela, `fazendaId` é só o hint inicial.
-  const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
-  const [fazTrabalho, setFazTrabalho] = useState<string>("");
-  useEffect(() => {
-    if (!fazendaId && !contaId) return;
-    fetch("/api/fazenda/da-conta", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fazenda_id: fazendaId, conta_id: contaId }),
-    })
-      .then(r => r.json())
-      .then((json: { ok: boolean; fazendas?: { id: string; nome: string }[] }) => {
-        if (!json.ok) return;
-        const fzs = json.fazendas ?? [];
-        setFazendas(fzs);
-        setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
-      })
-      .catch(() => {});
-  }, [fazendaId, contaId]);
 
   useEffect(() => {
     const abaParam = searchParams.get("aba");
@@ -404,13 +381,13 @@ function ParametrosSistemaContent() {
 
   async function fazerUploadCert(emitter: { id: string; moduloKey: string; cpf_cnpj?: string; nome: string }) {
     const st = getCertState(emitter.moduloKey);
-    if (!st.file || !st.senha.trim() || !fazTrabalho) return;
+    if (!st.file || !st.senha.trim() || !fazendaId) return;
     setCertField(emitter.moduloKey, { loading: true, erro: "" });
     try {
       const form = new FormData();
       form.append("file",          st.file);
       form.append("senha",         st.senha);
-      form.append("fazenda_id",    fazTrabalho);
+      form.append("fazenda_id",    fazendaId);
       form.append("produtor_id",   emitter.id);
       form.append("produtor_nome", emitter.nome);
       form.append("cpf_cnpj",      emitter.cpf_cnpj ?? "");
@@ -463,7 +440,7 @@ function ParametrosSistemaContent() {
   const [cteTesteResult, setCteTesteResult] = useState<{ ok: boolean; diagnostico: string; detalhe?: string; elapsed_ms?: number } | null>(null);
 
   async function testarConexaoSefaz() {
-    if (!fazTrabalho) return;
+    if (!fazendaId) return;
     setCteTestando(true);
     setCteTesteResult(null);
     try {
@@ -475,7 +452,7 @@ function ParametrosSistemaContent() {
       const res  = await fetch("/api/fiscal/status-sefaz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazTrabalho, emitente_cnpj: emitenteCnpj }),
+        body: JSON.stringify({ fazenda_id: fazendaId, emitente_cnpj: emitenteCnpj }),
       });
       const data = await res.json();
       setCteTesteResult({ ok: data.ok, diagnostico: data.diagnostico ?? data.detalhe ?? "sem diagnóstico", detalhe: data.detalhe, elapsed_ms: data.elapsed_ms });
@@ -498,39 +475,39 @@ function ParametrosSistemaContent() {
 
   // ── Carregar tudo
   useEffect(() => {
-    if (!fazTrabalho) return;
-    supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazTrabalho)
+    if (!fazendaId) return;
+    supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId)
       .then(({ data }) => {
         if (!data) return;
         const map: { [mod: string]: CfgModulo } = {};
         data.forEach(r => { if (r.config) map[r.modulo] = r.config as CfgModulo; });
         setCfgs(map);
       });
-    supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazTrabalho)
+    supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
       .then(({ data }) => data && setEmpresas(data as EmpresaMin[]));
-    supabase.from("produtores").select("id, nome, cpf_cnpj, inscricao_est, logradouro, numero, complemento, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazTrabalho)
+    supabase.from("produtores").select("id, nome, cpf_cnpj, inscricao_est, logradouro, numero, complemento, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
       .then(({ data }) => data && setProdutores(data as ProdutorMin[]));
-    supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazTrabalho).order("ncm")
+    supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm")
       .then(({ data }) => data && setNcms(data as NcmTributacao[]));
-    supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazTrabalho).order("nome")
+    supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome")
       .then(({ data }) => data && setOperacoes(data as OperacaoFiscal[]));
-  }, [fazTrabalho]);
+  }, [fazendaId]);
 
   useEffect(() => {
-    if (!fazTrabalho) return;
-    supabase.from("transportadoras").select("*").eq("fazenda_id", fazTrabalho).then(({ data }) => data && setTransportadoras(data));
-    supabase.from("veiculos").select("*").eq("fazenda_id", fazTrabalho).then(({ data }) => data && setVeiculos(data));
-    supabase.from("motoristas").select("*").eq("fazenda_id", fazTrabalho).then(({ data }) => data && setMotoristas(data));
-    supabase.from("pessoas").select("id, nome, cpf_cnpj").eq("fazenda_id", fazTrabalho).order("nome").then(({ data }) => data && setPessoasFrota(data as PessoaMin[]));
-  }, [fazTrabalho]);
+    if (!fazendaId) return;
+    supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setTransportadoras(data));
+    supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setVeiculos(data));
+    supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setMotoristas(data));
+    supabase.from("pessoas").select("id, nome, cpf_cnpj").eq("fazenda_id", fazendaId).order("nome").then(({ data }) => data && setPessoasFrota(data as PessoaMin[]));
+  }, [fazendaId]);
 
   // Resolve contaId: usa direto se disponível, senão busca da fazenda (admin Raccolto ou backfill pendente)
   useEffect(() => {
     if (contaId) { setResolvedContaId(contaId); return; }
-    if (!fazTrabalho) return;
-    supabase.from("fazendas").select("conta_id").eq("id", fazTrabalho).maybeSingle()
+    if (!fazendaId) return;
+    supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle()
       .then(({ data }) => { if (data?.conta_id) setResolvedContaId(data.conta_id as string); });
-  }, [contaId, fazTrabalho]);
+  }, [contaId, fazendaId]);
 
   useEffect(() => {
     if (!resolvedContaId) return;
@@ -572,10 +549,10 @@ function ParametrosSistemaContent() {
   };
 
   const salvar = async (modulo: string) => {
-    if (!fazTrabalho) return;
+    if (!fazendaId) return;
     setSalvando(modulo);
     await supabase.from("configuracoes_modulo").upsert(
-      { fazenda_id: fazTrabalho, modulo, config: cfgs[modulo] ?? {}, updated_at: new Date().toISOString() },
+      { fazenda_id: fazendaId, modulo, config: cfgs[modulo] ?? {}, updated_at: new Date().toISOString() },
       { onConflict: "fazenda_id,modulo" }
     );
     setSalvando(null); setOk(modulo);
@@ -584,11 +561,11 @@ function ParametrosSistemaContent() {
 
   // Salva com valor explícito (evita race condition de setState + save imediato)
   const salvarComValor = async (modulo: string, newCfg: CfgModulo) => {
-    if (!fazTrabalho) return;
+    if (!fazendaId) return;
     setSalvando(modulo);
     setCfgs(prev => ({ ...prev, [modulo]: newCfg }));
     await supabase.from("configuracoes_modulo").upsert(
-      { fazenda_id: fazTrabalho, modulo, config: newCfg, updated_at: new Date().toISOString() },
+      { fazenda_id: fazendaId, modulo, config: newCfg, updated_at: new Date().toISOString() },
       { onConflict: "fazenda_id,modulo" }
     );
     setSalvando(null); setOk(modulo);
@@ -618,14 +595,14 @@ function ParametrosSistemaContent() {
   };
 
   const salvarNcm = async () => {
-    if (!modalNcm || !fazTrabalho) return;
-    const payload = { ...NCM_MODAL_VAZIO, ...modalNcm, fazenda_id: fazTrabalho };
+    if (!modalNcm || !fazendaId) return;
+    const payload = { ...NCM_MODAL_VAZIO, ...modalNcm, fazenda_id: fazendaId };
     if (modalNcm.id) {
       await supabase.from("ncm_tributacoes").update(payload).eq("id", modalNcm.id);
     } else {
       await supabase.from("ncm_tributacoes").insert(payload);
     }
-    const { data } = await supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazTrabalho).order("ncm");
+    const { data } = await supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm");
     if (data) setNcms(data as NcmTributacao[]);
     setModalNcm(null);
   };
@@ -637,25 +614,25 @@ function ParametrosSistemaContent() {
   };
 
   const carregarPresetsMT = async () => {
-    if (!fazTrabalho) return;
+    if (!fazendaId) return;
     setCarregandoPresets(true);
     for (const preset of NCM_PRESETS_MT) {
       const exists = ncms.find(n => n.ncm === preset.ncm);
       if (!exists) {
-        await supabase.from("ncm_tributacoes").insert({ ...preset, fazenda_id: fazTrabalho });
+        await supabase.from("ncm_tributacoes").insert({ ...preset, fazenda_id: fazendaId });
       }
     }
-    const { data } = await supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazTrabalho).order("ncm");
+    const { data } = await supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm");
     if (data) setNcms(data as NcmTributacao[]);
     setCarregandoPresets(false);
   };
 
   const salvarOp = async () => {
-    if (!modalOp || !fazTrabalho) return;
-    const payload = { ...OP_MODAL_VAZIO, ...modalOp, fazenda_id: fazTrabalho };
+    if (!modalOp || !fazendaId) return;
+    const payload = { ...OP_MODAL_VAZIO, ...modalOp, fazenda_id: fazendaId };
     if (modalOp.id) await supabase.from("operacoes_fiscais").update(payload).eq("id", modalOp.id);
     else await supabase.from("operacoes_fiscais").insert(payload);
-    const { data } = await supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazTrabalho).order("nome");
+    const { data } = await supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome");
     if (data) setOperacoes(data as OperacaoFiscal[]);
     setModalOp(null);
   };
@@ -667,13 +644,13 @@ function ParametrosSistemaContent() {
   };
 
   const carregarOperacoesPresets = async () => {
-    if (!fazTrabalho) return;
+    if (!fazendaId) return;
     setCarregandoOps(true);
     for (const preset of OPERACOES_PRESETS) {
       const exists = operacoes.find(o => o.cfop_interno === preset.cfop_interno && o.nome === preset.nome);
-      if (!exists) await supabase.from("operacoes_fiscais").insert({ ...preset, fazenda_id: fazTrabalho });
+      if (!exists) await supabase.from("operacoes_fiscais").insert({ ...preset, fazenda_id: fazendaId });
     }
-    const { data } = await supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazTrabalho).order("nome");
+    const { data } = await supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome");
     if (data) setOperacoes(data as OperacaoFiscal[]);
     setCarregandoOps(false);
   };
@@ -893,11 +870,15 @@ function ParametrosSistemaContent() {
           <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros Fiscais — NF-e por Emitente</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Cada empresa (PJ) ou produtor (PF) que emite NF-e tem configuração independente — série, numeração, endereço, IE e certificado próprios,
-            <strong> por fazenda</strong> (seletor no topo da página): se o mesmo CPF/CNPJ tiver mais de um imóvel/IE, configure cada um trocando a
-            fazenda de trabalho ali e preenchendo os parâmetros aqui de novo — não use "Inscrições Estaduais por UF" pra isso (esse campo é só pra
-            IE secundária do <strong>mesmo</strong> estabelecimento em outro estado, usada quando o destinatário da NF-e é de lá).
+            <strong> por fazenda</strong>: se o mesmo CPF/CNPJ tiver mais de um imóvel/IE, configure cada um trocando a fazenda ativa no menu superior e
+            preenchendo os parâmetros aqui de novo — não use "Inscrições Estaduais por UF" pra isso (esse campo é só pra IE secundária do
+            <strong> mesmo</strong> estabelecimento em outro estado, usada quando o destinatário da NF-e é de lá).
             A tributação por produto é configurada na aba <strong>Tributação NCM</strong>.
           </p>
+          <div style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 8, background: "#FBF3E0", border: "0.5px solid #C9921B50", borderRadius: 8, padding: "6px 12px" }}>
+            <span style={{ fontSize: 11, color: "#7A5A12" }}>🏡 Configurando os parâmetros da fazenda ativa:</span>
+            <strong style={{ fontSize: 12, color: "#111111" }}>{nomeFazendaSelecionada ?? "—"}</strong>
+          </div>
         </div>
 
         {/* ── Ambiente SEFAZ Global ─────────────────────────────────── */}
@@ -1671,26 +1652,26 @@ function ParametrosSistemaContent() {
   );
 
   const salvarTransportadora = async () => {
-    if (!modalT || !fazTrabalho) return;
+    if (!modalT || !fazendaId) return;
     if (modalT.id) await supabase.from("transportadoras").update({ ...modalT }).eq("id", modalT.id);
-    else await supabase.from("transportadoras").insert({ ...modalT, fazenda_id: fazTrabalho, ativa: true });
-    const { data } = await supabase.from("transportadoras").select("*").eq("fazenda_id", fazTrabalho);
+    else await supabase.from("transportadoras").insert({ ...modalT, fazenda_id: fazendaId, ativa: true });
+    const { data } = await supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId);
     if (data) setTransportadoras(data);
     setModalT(null);
   };
   const salvarVeiculo = async () => {
-    if (!modalV || !fazTrabalho) return;
+    if (!modalV || !fazendaId) return;
     if (modalV.id) await supabase.from("veiculos").update({ ...modalV }).eq("id", modalV.id);
-    else await supabase.from("veiculos").insert({ ...modalV, fazenda_id: fazTrabalho, ativo: true });
-    const { data } = await supabase.from("veiculos").select("*").eq("fazenda_id", fazTrabalho);
+    else await supabase.from("veiculos").insert({ ...modalV, fazenda_id: fazendaId, ativo: true });
+    const { data } = await supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId);
     if (data) setVeiculos(data);
     setModalV(null);
   };
   const salvarMotorista = async () => {
-    if (!modalM || !fazTrabalho) return;
+    if (!modalM || !fazendaId) return;
     if (modalM.id) await supabase.from("motoristas").update({ ...modalM }).eq("id", modalM.id);
-    else await supabase.from("motoristas").insert({ ...modalM, fazenda_id: fazTrabalho, ativo: true });
-    const { data } = await supabase.from("motoristas").select("*").eq("fazenda_id", fazTrabalho);
+    else await supabase.from("motoristas").insert({ ...modalM, fazenda_id: fazendaId, ativo: true });
+    const { data } = await supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId);
     if (data) setMotoristas(data);
     setModalM(null);
   };
@@ -1711,15 +1692,6 @@ function ParametrosSistemaContent() {
             <span style={{ fontSize: 12, background: "#FBF3E0", color: "#C9921B", padding: "2px 10px", borderRadius: 12, fontWeight: 600, border: "0.5px solid #C9921B" }}>Configurações externas — sem código</span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#666" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
-          {fazendas.length > 0 && (
-            <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 8, background: "#FBF3E0", border: "0.5px solid #C9921B50", borderRadius: 8, padding: "6px 12px" }}>
-              <span style={{ fontSize: 11, color: "#7A5A12", fontWeight: 600 }}>🏡 Fazenda de trabalho:</span>
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ fontSize: 12, fontWeight: 700, color: "#111111", border: "0.5px solid #C9921B50", borderRadius: 6, padding: "3px 8px", background: "#fff" }}>
-                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
-              <span style={{ fontSize: 10, color: "#8B5E14" }}>Parâmetros fiscais, CT-e, MDF-e e transportadoras são configurados por fazenda — não existe fazenda ativa global.</span>
-            </div>
-          )}
         </div>
 
         <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid var(--border)" }}>
@@ -1880,7 +1852,7 @@ function ParametrosSistemaContent() {
                   </p>
                 </div>
                 <div style={{ flexShrink: 0 }}>
-                  <button onClick={testarConexaoSefaz} disabled={cteTestando || !fazTrabalho}
+                  <button onClick={testarConexaoSefaz} disabled={cteTestando || !fazendaId}
                     style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#EBF4FF", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                     {cteTestando ? "⏳ Testando..." : "🔌 Testar Conexão SEFAZ"}
                   </button>
