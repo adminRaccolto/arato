@@ -1540,7 +1540,14 @@ export default function NfCompraPage() {
       await carregar();
       setWizard(false);
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Erro ao processar NF");
+      // Erros do Supabase (PostgrestError) são objetos simples, não `instanceof Error` —
+      // sem esse fallback pro .message, a causa real ficava escondida atrás de um
+      // "Erro ao processar NF" genérico, impossível de diagnosticar pela tela.
+      const msg = e instanceof Error
+        ? e.message
+        : (e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : null);
+      setErr(msg || "Erro ao processar NF (sem detalhe do servidor — veja o console)");
+      console.error("[processarNF] erro completo:", e);
     } finally {
       setSaving(false);
     }
