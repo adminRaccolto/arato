@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, CentroCusto, AnoSafra, Empresa } from "../../../lib/supabase";
-import { listarPessoas, listarCentrosCustoGeral, listarAnosSafra, listarOperacoesGerenciaisAtivas, listarEmpresasDaConta } from "../../../lib/db";
+import { listarPessoas, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivas, listarEmpresasDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 
@@ -124,6 +124,7 @@ const CAB_VAZIO = () => ({
   ano_safra_id: "", pedido_compra_id: "",
   empresa_id: "",
   data_vencimento_cp: "", observacao: "",
+  forma_pagamento: "",
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -216,8 +217,11 @@ export default function NfServicoPage() {
     const pes = await listarPessoas(fazendaId).catch(() => []);
     setPessoas(pes);
 
-    // Centros de custo
-    const cc = await listarCentrosCustoGeral(fazendaId).catch(() => []);
+    // Centros de custo — achado real: buscava só na fazenda ativa; centros de
+    // custo costumam estar cadastrados em outra fazenda da mesma conta, então
+    // o seletor sempre aparecia vazio. Busca em todas as fazendas da conta,
+    // igual à NF de Produtos.
+    const cc = await listarCentrosCustoGeralDaConta(fazendaId).catch(() => []);
     setCentros(cc);
 
     // Anos safra
@@ -396,6 +400,7 @@ export default function NfServicoPage() {
       empresa_id:             nf.empresa_id ?? "",
       data_vencimento_cp:     nf.data_vencimento_cp ?? "",
       observacao:             nf.observacao ?? "",
+      forma_pagamento:        "",
     });
     const isLivre = !LC116.find(c => c.codigo === nf.codigo_servico);
     if (isLivre && nf.codigo_servico) {
@@ -502,11 +507,17 @@ export default function NfServicoPage() {
           auto:                  true,
           pessoa_id:             cab.prestador_id || undefined,
           numero_documento:      cab.numero_nf,
+          // Achado real: o grid de Contas a Pagar mostra a coluna "Nº NF" a
+          // partir de nfe_numero, não de numero_documento — NF de Produtos já
+          // grava os dois; aqui só gravava numero_documento, então a coluna
+          // ficava sempre "—" para lançamentos originados de NFS-e.
+          nfe_numero:            cab.numero_nf,
           origem_lancamento:     "nf_servico" as const,
           operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
           centro_custo_id:       cab.centro_custo_id       || undefined,
           ano_safra_id:          cab.ano_safra_id           || undefined,
           empresa_id:            cab.empresa_id             || undefined,
+          forma_pagamento:       cab.forma_pagamento        || undefined,
         };
 
         let primeiroLancId: string | null = null;
@@ -1348,7 +1359,20 @@ export default function NfServicoPage() {
                       </select>
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                    <div>
+                      <label style={lbl}>Forma de Pagamento</label>
+                      <select value={cab.forma_pagamento} onChange={e => setCab(p=>({...p,forma_pagamento:e.target.value}))} style={inp}>
+                        <option value="">— selecionar —</option>
+                        <option value="a_vista">À Vista</option>
+                        <option value="prazo_boleto">A Prazo — Boleto</option>
+                        <option value="prazo_pix">A Prazo — PIX</option>
+                        <option value="prazo_debito">A Prazo — Débito em Conta</option>
+                        <option value="prazo_cheque">A Prazo — Cheque</option>
+                        <option value="financiamento">Financiamento</option>
+                        <option value="outros">Outros</option>
+                      </select>
+                    </div>
                     <div>
                       <label style={lbl}>Ano Safra (para rateio)</label>
                       <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p,ano_safra_id:e.target.value}))} style={inp}>

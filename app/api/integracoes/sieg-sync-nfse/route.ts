@@ -91,7 +91,8 @@ function parseNfse(xml: string): Nfse | null {
 
     const discriminacao   = tv(sBlk || xml, "Discriminacao", "Descricao", "xDiscriminacao", "discriminacao");
     const codigo_servico  = tv(sBlk || xml, "ItemListaServico", "CodigoTributacaoMunicipio", "CodigoServico", "itemListaServico", "codigoServico");
-    const valor_servico   = money(tv(vBlk || sBlk || xml, "ValorServicos", "ValorServico", "vServicos", "valorServico"));
+    // Lista de tags ampla — ABRASF não é 100% uniforme entre prefeituras.
+    let valor_servico     = money(tv(vBlk || sBlk || xml, "ValorServicos", "ValorServico", "vServicos", "valorServico", "ValorTotalServicos", "VlrServicos", "vServPrest"));
     const valor_deducoes  = money(tv(vBlk || sBlk || xml, "ValorDeducoes", "Deducoes", "vDeducoes", "valorDeducoes"));
     const aliquota_raw    = tv(vBlk || sBlk || xml, "Aliquota", "AliquotaISS", "vAliq", "aliquota");
     const aliquota_iss    = parseFloat(aliquota_raw || "0");
@@ -102,6 +103,13 @@ function parseNfse(xml: string): Nfse | null {
     const valor_ir        = money(tv(vBlk || sBlk || xml, "ValorIr", "ValorIR", "vIR", "valorIr"));
     const vlRaw           = tv(vBlk || sBlk || xml, "ValorLiquidoNfse", "ValorLiquido", "vLiq", "valorLiquido");
     const valor_liquido   = money(vlRaw) || Math.max(0, valor_servico - valor_iss * (iss_retido ? 1 : 0) - valor_inss - valor_ir);
+    // Rede de segurança: se nenhuma das tags conhecidas bateu (valor_servico
+    // ficou 0) mas o valor líquido veio e não há nenhuma retenção, o valor do
+    // serviço é matematicamente igual ao líquido — não é chute, é a mesma
+    // conta que o próprio documento já garante (líquido = serviço − retenções).
+    if (valor_servico === 0 && valor_liquido > 0 && valor_iss === 0 && valor_inss === 0 && valor_ir === 0) {
+      valor_servico = valor_liquido;
+    }
 
     return {
       chave, numero, data_emissao, prestador_cnpj, prestador_nome,
