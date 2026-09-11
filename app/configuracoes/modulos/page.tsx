@@ -2,6 +2,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import type { ProdutorIE } from "../../../lib/supabase";
+import { listarIEsDeMultiplosProdutores } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 
@@ -93,6 +95,7 @@ const TABS = [
 // ─── Campos por módulo ────────────────────────────────────────────────────────
 type FieldDef = { key: string; label: string; type: string; placeholder?: string; options?: string[]; labels?: string[] };
 
+// PJ (Empresa): tudo num só card, como sempre foi — série/número/CRT/IE aqui mesmo.
 const FISCAL_IDENT: FieldDef[] = [
   { key: "ambiente",         label: "Ambiente",              type: "select",   options: ["producao","homologacao"],     labels: ["Produção","Homologação"] },
   { key: "serie_nfe",        label: "Série NF-e",            type: "text",     placeholder: "001" },
@@ -104,6 +107,16 @@ const FISCAL_IDENT: FieldDef[] = [
   { key: "crt",              label: "CRT (Regime Tributário)",type: "select",  options: ["1","2","3","4"], labels: ["1 – Simples Nacional","2 – SN – Excesso de sublimite","3 – Regime Normal","4 – MEI"] },
 ];
 
+// PF (Produtor): sem série/número/IE/CRT — isso agora é configurado por IE, na
+// seção "Inscrições Estaduais" logo abaixo. Aqui fica só o que é do CPF como um
+// todo: ambiente, CPF, nome, inscrição municipal (raro ter mais de uma).
+const FISCAL_IDENT_PF: FieldDef[] = [
+  { key: "ambiente",         label: "Ambiente",              type: "select",   options: ["producao","homologacao"],     labels: ["Produção","Homologação"] },
+  { key: "cpf_cnpj_emitente",label: "CPF Emitente",          type: "text",     placeholder: "000.000.000-00" },
+  { key: "razao_social",     label: "Nome",                  type: "text",     placeholder: "" },
+  { key: "im_emitente",      label: "Inscrição Municipal",   type: "text",     placeholder: "" },
+];
+
 const FISCAL_CFOP: FieldDef[] = [
   { key: "cfop_venda_dentro", label: "CFOP Venda (mesmo Estado)",   type: "text", placeholder: "5101" },
   { key: "cfop_venda_fora",   label: "CFOP Venda (outro Estado)",   type: "text", placeholder: "6101" },
@@ -112,6 +125,16 @@ const FISCAL_CFOP: FieldDef[] = [
 
 const FISCAL_CERT: FieldDef[] = [
   { key: "ibs_cbs_ativo",  label: "Destacar IBS/CBS na NF-e",                    type: "select",   options: ["nao","sim"], labels: ["Não (padrão atual)","Sim — fase de transição"] },
+];
+
+// Config específica de cada Inscrição Estadual do produtor — série e numeração são
+// SEMPRE por IE (cada estabelecimento tem sua própria numeração perante a SEFAZ),
+// e por decisão do dono, tributação/IBS-CBS também ficam aqui, não no nível do CPF.
+const IE_FISCAL_FIELDS: FieldDef[] = [
+  { key: "serie_nfe",       label: "Série NF-e",             type: "text",   placeholder: "001" },
+  { key: "numero_inicial",  label: "Próx. Número NF-e",      type: "number", placeholder: "1" },
+  { key: "crt",             label: "CRT (Regime Tributário)",type: "select", options: ["1","2","3","4"], labels: ["1 – Simples Nacional","2 – SN – Excesso de sublimite","3 – Regime Normal","4 – MEI"] },
+  { key: "ibs_cbs_ativo",   label: "Destacar IBS/CBS na NF-e",type: "select", options: ["nao","sim"], labels: ["Não (padrão atual)","Sim — fase de transição"] },
 ];
 
 const MDFE_FIELDS: FieldDef[] = [
@@ -371,6 +394,23 @@ function ParametrosSistemaContent() {
   // ── Emitentes fiscais
   const [empresas, setEmpresas] = useState<EmpresaMin[]>([]);
   const [produtores, setProdutores] = useState<ProdutorMin[]>([]);
+  // IEs de cada produtor (PF) — parâmetros fiscais (série/número/tributação/IBS-CBS)
+  // são configurados por IE, não por fazenda nem só por CPF. Endereço de cada IE
+  // vem do cadastro do Produtor (aba Inscrições Estaduais) — não se edita aqui.
+  const [iesPorProdutor, setIesPorProdutor] = useState<Record<string, ProdutorIE[]>>({});
+  useEffect(() => {
+    if (produtores.length === 0) { setIesPorProdutor({}); return; }
+    listarIEsDeMultiplosProdutores(produtores.map(p => p.id)).then(ies => {
+      const grouped: Record<string, ProdutorIE[]> = {};
+      for (const ie of ies) (grouped[ie.produtor_id] ??= []).push(ie);
+      setIesPorProdutor(grouped);
+    }).catch(() => {});
+  }, [produtores]);
+  // Chave de armazenamento em configuracoes_modulo pra cada IE — mesma tabela/
+  // padrão já usado pro resto da config fiscal, só mais granular (por IE em vez
+  // de por produtor inteiro). fazenda_id continua sendo só a coluna técnica de
+  // armazenamento (exigida pela tabela), nunca usada como filtro aqui.
+  const ieModuloKey = (baseModuloKey: string, ieId: string) => `${baseModuloKey}__ie_${ieId}`;
   const [expandedEmitter, setExpandedEmitter] = useState<string | null>(null);
 
   // ── Upload de certificado A1 (por emitente)
@@ -1024,11 +1064,44 @@ function ParametrosSistemaContent() {
                     {/* Identificação */}
                     <div style={{ marginBottom: 24 }}>
                       {secHeader("Identificação do Emitente")}
-                      {renderFieldsGrid(emitter.moduloKey, FISCAL_IDENT)}
+                      {renderFieldsGrid(emitter.moduloKey, emitter.type === "produtor" ? FISCAL_IDENT_PF : FISCAL_IDENT)}
                     </div>
 
-                    {/* Inscrições Estaduais por UF */}
-                    {(() => {
+                    {/* Inscrições Estaduais — por produtor (PF): uma config completa por IE.
+                        Por empresa (PJ): mantido o mecanismo antigo de IE por UF de destino,
+                        já que decidiu não estender múltiplas IEs pra PJ por ora. */}
+                    {emitter.type === "produtor" ? (() => {
+                      const ies = iesPorProdutor[emitter.id] ?? [];
+                      return (
+                        <div style={{ marginBottom: 24 }}>
+                          {secHeader(`Inscrições Estaduais (${ies.length})`)}
+                          <p style={{ fontSize: 11, color: "var(--text-3)", margin: "0 0 12px" }}>
+                            Série, numeração, CRT e IBS/CBS são configurados por IE — cada estabelecimento tem sua própria numeração perante a SEFAZ.
+                            Endereço e cadastro das IEs ficam em <strong>Cadastros → Produtores → Inscrições Estaduais</strong>, não aqui.
+                          </p>
+                          {ies.length === 0 && (
+                            <div style={{ fontSize: 12, color: "var(--text-3)", padding: "10px 0" }}>
+                              Nenhuma IE cadastrada pra este produtor ainda — cadastre em Cadastros → Produtores.
+                            </div>
+                          )}
+                          {ies.map(ie => {
+                            const key = ieModuloKey(emitter.moduloKey, ie.id);
+                            const endereco = [ie.logradouro, ie.numero].filter(Boolean).join(", ");
+                            return (
+                              <div key={ie.id} style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 10, background: "var(--bg-page)" }}>
+                                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                                  <strong style={{ fontSize: 13, color: "#111111" }}>IE {ie.inscricao_estadual}</strong>
+                                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>{ie.municipio ?? "—"}/{ie.estado}</span>
+                                  {endereco && <span style={{ fontSize: 11, color: "var(--text-3)" }}>· {endereco}</span>}
+                                  {!ie.ativa && <span style={{ fontSize: 10, background: "#F3F4F6", color: "#666", padding: "1px 8px", borderRadius: 10 }}>Inativa</span>}
+                                </div>
+                                {renderFields(key, IE_FISCAL_FIELDS)}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })() : (() => {
                       const iesPorUf: { uf: string; ie: string }[] = (() => {
                         try { return JSON.parse(String(c.ies_por_uf ?? "[]")); } catch { return []; }
                       })();
@@ -1188,7 +1261,8 @@ function ParametrosSistemaContent() {
                           </div>
                         );
                       })()}
-                      {renderFieldsGrid(emitter.moduloKey, FISCAL_CERT)}
+                      {/* Pra produtor (PF), IBS/CBS agora é configurado por IE, na seção acima */}
+                      {emitter.type === "empresa" && renderFieldsGrid(emitter.moduloKey, FISCAL_CERT)}
                     </div>
 
                     {/* Textos legais */}
