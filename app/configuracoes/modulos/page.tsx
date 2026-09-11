@@ -1086,14 +1086,26 @@ function ParametrosSistemaContent() {
                           )}
                           {ies.map(ie => {
                             const key = ieModuloKey(emitter.moduloKey, ie.id);
-                            const endereco = [ie.logradouro, ie.numero].filter(Boolean).join(", ");
+                            const endereco = [ie.logradouro, ie.numero, ie.bairro].filter(Boolean).join(", ");
+                            const semEndereco = !ie.logradouro && !ie.cep;
                             return (
                               <div key={ie.id} style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 10, background: "var(--bg-page)" }}>
-                                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
                                   <strong style={{ fontSize: 13, color: "#111111" }}>IE {ie.inscricao_estadual}</strong>
                                   <span style={{ fontSize: 11, color: "var(--text-3)" }}>{ie.municipio ?? "—"}/{ie.estado}</span>
-                                  {endereco && <span style={{ fontSize: 11, color: "var(--text-3)" }}>· {endereco}</span>}
                                   {!ie.ativa && <span style={{ fontSize: 10, background: "#F3F4F6", color: "#666", padding: "1px 8px", borderRadius: 10 }}>Inativa</span>}
+                                </div>
+                                <div style={{ marginBottom: 10 }}>
+                                  {semEndereco ? (
+                                    <span style={{ fontSize: 11, color: "#E24B4A", fontWeight: 600 }}>
+                                      ⚠ Endereço não cadastrado — obrigatório pra emitir NF-e. Cadastre em Cadastros → Produtores → Inscrições Estaduais.
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                      📍 {endereco}{ie.cep ? ` — CEP ${ie.cep}` : ""}
+                                      {!ie.cep && <span style={{ color: "#C9921B", fontWeight: 600 }}> · CEP não informado</span>}
+                                    </span>
+                                  )}
                                 </div>
                                 {renderFields(key, IE_FISCAL_FIELDS)}
                               </div>
