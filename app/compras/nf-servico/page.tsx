@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import type { Pessoa, CentroCusto, AnoSafra, Empresa } from "../../../lib/supabase";
-import { listarPessoas, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivas, listarEmpresasDaConta } from "../../../lib/db";
+import type { Pessoa, CentroCusto, AnoSafra, Empresa, Produtor } from "../../../lib/supabase";
+import { listarPessoas, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivas, listarEmpresasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 
@@ -131,7 +131,7 @@ const CAB_VAZIO = () => ({
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfServicoPage() {
-  const { fazendaId, fazendaIds, podeAcessarPlano, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, nomeUsuario } = useAuth();
 
   const [nfs,      setNfs]      = useState<NfServico[]>([]);
   const [pessoas,  setPessoas]  = useState<Pessoa[]>([]);
@@ -140,6 +140,7 @@ export default function NfServicoPage() {
   const [anos,     setAnos]     = useState<AnoSafra[]>([]);
   const [pedidos,  setPedidos]  = useState<PedidoMin[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [produtores, setProdutores] = useState<Produtor[]>([]);
 
   const [busca,          setBusca]          = useState("");
   const [filtroStatus,   setFiltroStatus]   = useState("");
@@ -259,6 +260,12 @@ export default function NfServicoPage() {
 
     // Empresas (Tomador de Serviço — para vincular ao CP)
     listarEmpresasDaConta(fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []).then(setEmpresas).catch(() => {});
+
+    // Produtores — achado real: o Tomador de um serviço quase sempre é a
+    // própria fazenda/produtor que contratou (advogado, agrônomo etc.), não
+    // um terceiro do cadastro geral de Pessoas. Sem isso, o tomador certo
+    // nunca aparecia na lista.
+    if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -291,28 +298,37 @@ export default function NfServicoPage() {
   }, [fazendaId]);
 
   // Busca pessoa já cadastrada pelo CPF/CNPJ, comparando dígitos puros —
-  // acha o cadastro (prestador/tomador) mesmo quando um lado está com máscara.
+  // acha o cadastro (prestador) mesmo quando um lado está com máscara.
   function pessoaPorCnpjNFS(cnpj: string): Pessoa | undefined {
     if (!cnpj) return undefined;
     const norm = cnpj.replace(/\D/g, "");
     return pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm);
   }
+  // Tomador é quase sempre a própria fazenda — busca em Produtores e Empresas
+  // antes de cair no cadastro geral de Pessoas.
+  function tomadorPorCnpjNFS(cnpj: string): (Produtor | Empresa | Pessoa) | undefined {
+    if (!cnpj) return undefined;
+    const norm = cnpj.replace(/\D/g, "");
+    return produtores.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm)
+      ?? empresas.find(e => (e.cpf_cnpj ?? "").replace(/\D/g, "") === norm)
+      ?? pessoaPorCnpjNFS(cnpj);
+  }
 
-  // Reforço: se `pessoas` só terminar de carregar depois que a NFS-e já foi
-  // aberta, tenta o match de novo assim que a lista chegar — sem sobrescrever
-  // uma escolha manual já feita.
+  // Reforço: se as listas só terminarem de carregar depois que a NFS-e já foi
+  // aberta, tenta o match de novo assim que chegarem — sem sobrescrever uma
+  // escolha manual já feita.
   useEffect(() => {
-    if (!nfEdit || pessoas.length === 0) return;
+    if (!nfEdit || (pessoas.length === 0 && produtores.length === 0 && empresas.length === 0)) return;
     if (!cab.prestador_id && cab.prestador_cnpj) {
       const m = pessoaPorCnpjNFS(cab.prestador_cnpj);
       if (m) setCab(p => ({ ...p, prestador_id: m.id }));
     }
     if (!cab.tomador_id && cab.tomador_cnpj) {
-      const m = pessoaPorCnpjNFS(cab.tomador_cnpj);
-      if (m) setCab(p => ({ ...p, tomador_id: m.id, municipio_prestacao: p.municipio_prestacao || m.municipio || "" }));
+      const m = tomadorPorCnpjNFS(cab.tomador_cnpj);
+      if (m) setCab(p => ({ ...p, tomador_id: m.id, municipio_prestacao: p.municipio_prestacao || (m as Produtor).municipio || "" }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pessoas, nfEdit]);
+  }, [pessoas, produtores, empresas, nfEdit]);
 
   // ── Auto-fill prestador ─────────────────────────────────────
   function onPrestadorChange(id: string) {
@@ -330,14 +346,20 @@ export default function NfServicoPage() {
   }
 
   // ── Auto-fill tomador ────────────────────────────────────────
+  // Tomador do serviço quase sempre é a própria fazenda (produtor PF ou
+  // empresa PJ que contratou o serviço) — busca nos três cadastros, não só
+  // no de Pessoas (que é para terceiros: fornecedores/clientes/prestadores).
   function onTomadorChange(id: string) {
-    const p = pessoas.find(x => x.id === id);
+    const prod = produtores.find(x => x.id === id);
+    const emp  = empresas.find(x => x.id === id);
+    const p    = prod ?? emp ?? pessoas.find(x => x.id === id);
     if (p) {
       setCab(prev => ({
         ...prev,
         tomador_id:   id,
         tomador_nome: p.nome ?? prev.tomador_nome,
         tomador_cnpj: p.cpf_cnpj ?? prev.tomador_cnpj,
+        municipio_prestacao: prev.municipio_prestacao || (prod?.municipio ?? ""),
       }));
     } else {
       setCab(prev => ({ ...prev, tomador_id: id }));
@@ -366,7 +388,7 @@ export default function NfServicoPage() {
     // importada) não eram vinculados automaticamente — o usuário tinha que
     // re-selecionar manualmente toda vez. Busca por CNPJ antes de abrir.
     const prestadorMatch = nf.prestador_id ? undefined : pessoaPorCnpjNFS(nf.prestador_cnpj ?? "");
-    const tomadorMatch   = nf.tomador_id   ? undefined : pessoaPorCnpjNFS(nf.tomador_cnpj ?? "");
+    const tomadorMatch   = nf.tomador_id   ? undefined : tomadorPorCnpjNFS(nf.tomador_cnpj ?? "");
     setCab({
       fazenda_id:           nf.fazenda_id ?? fazendaId ?? "",
       numero_nf:            nf.numero_nf,
@@ -477,7 +499,12 @@ export default function NfServicoPage() {
       // a "processada" no final, depois que o CP for criado com sucesso (evita marcar
       // como concluída uma NF cujo CP falhou no meio do caminho).
       status:                status === "processada" ? "pendente" : status,
-      origem:                "manual" as const,
+      // Achado real: salvar() é compartilhado entre criar NFS-e manual e
+      // processar uma já importada — gravar "manual" sempre aqui apagava a
+      // origem real (Sieg/XML) assim que a nota era processada, mesmo sem
+      // nenhuma edição manual de verdade. Preserva a origem original ao
+      // editar; só usa "manual" para uma NFS-e nova.
+      origem:                nfEdit?.origem ?? "manual",
       observacao:            cab.observacao || undefined,
       processado_por:        status === "processada" ? (nomeUsuario ?? undefined) : undefined,
     };
@@ -1147,7 +1174,19 @@ export default function NfServicoPage() {
                       <label style={lbl}>Tomador — do cadastro</label>
                       <select value={cab.tomador_id} onChange={e => onTomadorChange(e.target.value)} style={inp}>
                         <option value="">Selecionar do cadastro…</option>
-                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        {produtores.length > 0 && (
+                          <optgroup label="Produtores">
+                            {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                          </optgroup>
+                        )}
+                        {empresas.length > 0 && (
+                          <optgroup label="Empresas">
+                            {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                          </optgroup>
+                        )}
+                        <optgroup label="Pessoas (terceiros)">
+                          {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </optgroup>
                       </select>
                     </div>
                     <div>
