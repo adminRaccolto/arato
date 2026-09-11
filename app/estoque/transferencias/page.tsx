@@ -140,8 +140,11 @@ export default function TransferenciasEstoquePage() {
   const [detalhe, setDetalhe] = useState<TransferenciaComItens | null>(null);
   const [acaoId, setAcaoId] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  // Config fiscal do emitente (carregada ao abrir preview)
+  // Config fiscal do emitente e do destinatário (carregadas ao abrir preview —
+  // cada fazenda tem sua própria config em configuracoes_modulo, então o
+  // destinatário precisa da MESMA busca feita pro emitente, não reaproveitar)
   const [emitenteCfg, setEmitenteCfg] = useState<Record<string, string>>({});
+  const [destinatarioCfg, setDestinatarioCfg] = useState<Record<string, string>>({});
 
 
   // ── Helper API route (service_role_key) ─────────────────────────────────
@@ -409,23 +412,35 @@ export default function TransferenciasEstoquePage() {
     setEditandoId(null);
   }
 
+  // Busca a config fiscal (produtor_ ou empresa_) de uma fazenda específica —
+  // usada tanto pro emitente (origem) quanto pro destinatário (destino), que
+  // são fazendas diferentes com configs próprias em configuracoes_modulo.
+  async function buscarCfgFiscalFazenda(fazenda_id?: string | null): Promise<Record<string, string>> {
+    if (!fazenda_id) return {};
+    for (const prefix of ["produtor_", "empresa_"]) {
+      const { data } = await supabase
+        .from("configuracoes_modulo")
+        .select("config")
+        .eq("fazenda_id", fazenda_id)
+        .like("modulo", `${prefix}%`)
+        .limit(1)
+        .single();
+      if (data?.config) return data.config as Record<string, string>;
+    }
+    return {};
+  }
+
   async function abrirDetalhe(t: TransferenciaComItens) {
     setDetalhe(t);
     setEmitenteCfg({});
+    setDestinatarioCfg({});
     try {
-      // Tenta produtor_ primeiro, depois empresa_
-      let cfg: Record<string, string> | null = null;
-      for (const prefix of ["produtor_", "empresa_"]) {
-        const { data } = await supabase
-          .from("configuracoes_modulo")
-          .select("config")
-          .eq("fazenda_id", t.fazenda_origem_id ?? fazendaId)
-          .like("modulo", `${prefix}%`)
-          .limit(1)
-          .single();
-        if (data?.config) { cfg = data.config as Record<string, string>; break; }
-      }
-      if (cfg) setEmitenteCfg(cfg);
+      const [cfgOrigem, cfgDestino] = await Promise.all([
+        buscarCfgFiscalFazenda(t.fazenda_origem_id ?? fazendaId),
+        buscarCfgFiscalFazenda(t.fazenda_destino_id),
+      ]);
+      setEmitenteCfg(cfgOrigem);
+      setDestinatarioCfg(cfgDestino);
     } catch { /* sem config fiscal */ }
   }
 
@@ -984,6 +999,8 @@ export default function TransferenciasEstoquePage() {
         );
         const emitEndereco = [c.logradouro, c.numero, c.bairro].filter(Boolean).join(", ");
         const emitCidade = [c.municipio, c.uf_emitente].filter(Boolean).join(" / ");
+        const d = destinatarioCfg;
+        const destEndereco = [d.logradouro, d.numero, d.bairro].filter(Boolean).join(", ");
 
         return (
           <div onClick={() => setDetalhe(null)} style={{
@@ -1071,21 +1088,21 @@ export default function TransferenciasEstoquePage() {
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>DESTINATÁRIO / REMETENTE</span>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", borderBottom: B }}>
-                    {box("NOME / RAZÃO SOCIAL", detalhe.fazenda_destino_nome ?? "—")}
-                    {box("CNPJ / CPF", "—")}
+                    {box("NOME / RAZÃO SOCIAL", d.razao_social || detalhe.fazenda_destino_nome || "—")}
+                    {box("CNPJ / CPF", d.cpf_cnpj_emitente ?? "—")}
                     {box("DATA DE EMISSÃO", fmtData(detalhe.data_transferencia), { borderRight: "none" })}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 80px", borderBottom: B }}>
-                    {box("ENDEREÇO", detalhe.deposito_destino_nome && detalhe.deposito_destino_nome !== "—" ? detalhe.deposito_destino_nome : "—")}
-                    {box("BAIRRO / DISTRITO", "—")}
-                    {box("CEP", "—")}
+                    {box("ENDEREÇO", destEndereco || (detalhe.deposito_destino_nome && detalhe.deposito_destino_nome !== "—" ? detalhe.deposito_destino_nome : "—"))}
+                    {box("BAIRRO / DISTRITO", d.bairro ?? "—")}
+                    {box("CEP", d.cep ?? "—")}
                     {box("DATA DE ENTRADA/SAÍDA", "—", { borderRight: "none" })}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 60px 1fr", borderBottom: "none" }}>
-                    {box("MUNICÍPIO", "—")}
-                    {box("UF", detalhe.fazenda_destino_nome ? (detalhe.ie_diferentes ? "Outro estado" : (c.uf_emitente ?? "MT")) : "—")}
-                    {box("FONE", "—")}
-                    {box("INSCRIÇÃO ESTADUAL", "Isento", { borderRight: "none" })}
+                    {box("MUNICÍPIO", d.municipio ?? "—")}
+                    {box("UF", d.uf_emitente ?? "—")}
+                    {box("FONE", d.fone ?? "—")}
+                    {box("INSCRIÇÃO ESTADUAL", d.ie_emitente || "Isento", { borderRight: "none" })}
                   </div>
                 </div>
 
