@@ -2773,9 +2773,23 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
   // Deleta todos os lançamentos vinculados via nf_entrada_id (cobre parcelas múltiplas)
   await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
   // Fallback: lançamento único pelo ID (compatibilidade com registros antigos sem nf_entrada_id)
-  const { data: nfRow } = await supabase.from("nf_entradas").select("lancamento_id").eq("id", nfId).single();
+  const { data: nfRow } = await supabase.from("nf_entradas").select("lancamento_id, pedido_compra_id").eq("id", nfId).single();
   if (nfRow?.lancamento_id) {
     await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
+  }
+  // Bug real corrigido: quando a NF veio de um pedido de compra, processarNfEntrada()
+  // reaproveita/atualiza o lançamento já apontado por pedidos_compra.lancamento_id em
+  // vez de criar um novo. Se não limpar essa referência aqui, ela fica apontando pra
+  // um lançamento que acabamos de apagar — no reprocessamento, o código tenta
+  // "atualizar" esse id inexistente (UPDATE silencioso, 0 linhas afetadas) e grava
+  // esse mesmo id em nf_entradas.lancamento_id, violando a FK constraint
+  // nf_entradas_lancamento_id_fkey. Só limpa se o lançamento do pedido era mesmo o
+  // que acabamos de apagar (evita desvincular um lançamento de outra origem).
+  if (nfRow?.pedido_compra_id) {
+    const { data: pedRow } = await supabase.from("pedidos_compra").select("lancamento_id").eq("id", nfRow.pedido_compra_id).single();
+    if (pedRow?.lancamento_id && pedRow.lancamento_id === nfRow.lancamento_id) {
+      await supabase.from("pedidos_compra").update({ lancamento_id: null }).eq("id", nfRow.pedido_compra_id);
+    }
   }
   await supabase.from("nf_entradas").update({ lancamento_id: null }).eq("id", nfId);
 
