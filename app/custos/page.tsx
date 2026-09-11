@@ -92,7 +92,25 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
   setCicloIds: React.Dispatch<React.SetStateAction<string[]>>;
   dreLoading: boolean;
 }) {
-  const ciclosFiltrados = anoSafraId ? ciclos.filter(c => c.ano_safra_id === anoSafraId) : ciclos;
+  // Uma conta pode ter várias fazendas, cada uma com seu próprio registro de
+  // "Safra 2026/2027" (ids diferentes, mesmo rótulo) — normal, não é duplicata
+  // de cadastro. Sem agrupar por descrição, o seletor listava a mesma safra
+  // repetida e escolher a "cópia" errada mostrava o relatório zerado (os
+  // ciclos da outra fazenda ficavam de fora). Agrupa por descrição e usa
+  // todos os ids do grupo para filtrar ciclos.
+  const idsPorDescricao = new Map<string, string[]>();
+  for (const a of anosSafra) {
+    const arr = idsPorDescricao.get(a.descricao) ?? [];
+    arr.push(a.id);
+    idsPorDescricao.set(a.descricao, arr);
+  }
+  const anosSafraUnicos = [...idsPorDescricao.keys()]
+    .map(descricao => ({ descricao, ids: idsPorDescricao.get(descricao)! }))
+    .sort((a, b) => b.descricao.localeCompare(a.descricao));
+  const descricaoSelecionada = anosSafra.find(a => a.id === anoSafraId)?.descricao ?? "";
+  const idsSelecionados = descricaoSelecionada ? (idsPorDescricao.get(descricaoSelecionada) ?? []) : [];
+
+  const ciclosFiltrados = descricaoSelecionada ? ciclos.filter(c => idsSelecionados.includes(c.ano_safra_id)) : ciclos;
   const ciclosSel = ciclos.filter(c => cicloIds.includes(c.id));
   const areaTotal = ciclosSel.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
 
@@ -101,14 +119,17 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
       <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "end" }}>
         <div>
           <label style={lbl}>Ano Safra</label>
-          <select value={anoSafraId} onChange={e => {
-            const novoAnoId = e.target.value;
-            setAnoSafraId(novoAnoId);
-            const doAno = novoAnoId ? ciclos.filter(c => c.ano_safra_id === novoAnoId) : ciclos;
+          <select value={descricaoSelecionada} onChange={e => {
+            const novaDescricao = e.target.value;
+            const idsDoGrupo = novaDescricao ? (idsPorDescricao.get(novaDescricao) ?? []) : [];
+            // Mantém o formato de estado (um id só) — qualquer id do grupo serve
+            // como representante; os efeitos de dados usam sempre o grupo completo.
+            setAnoSafraId(idsDoGrupo[0] ?? "");
+            const doAno = idsDoGrupo.length ? ciclos.filter(c => idsDoGrupo.includes(c.ano_safra_id)) : ciclos;
             setCicloIds(doAno.map(c => c.id));
           }} style={inp}>
             <option value="">Todos</option>
-            {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+            {anosSafraUnicos.map(a => <option key={a.descricao} value={a.descricao}>{a.descricao}</option>)}
           </select>
         </div>
         <div>
@@ -184,7 +205,10 @@ function CustosInner() {
       if (as.length > 0) {
         const anoId = as[0].id;
         setAnoSafraId(anoId);
-        const doAno = cs.filter(c => c.ano_safra_id === anoId);
+        // Cada fazenda tem seu próprio registro de ano safra — pega todos os
+        // ids que compartilham a mesma descrição do escolhido (ver FiltroBar).
+        const idsDoGrupo = as.filter(a => a.descricao === as[0].descricao).map(a => a.id);
+        const doAno = cs.filter(c => idsDoGrupo.includes(c.ano_safra_id));
         // fallback: se nenhum ciclo está vinculado ao ano safra, seleciona todos
         setCicloIds((doAno.length > 0 ? doAno : cs).map(c => c.id));
       }
@@ -200,7 +224,13 @@ function CustosInner() {
     }
     setDreLoading(true);
     let rateioQ = supabase.from("regras_rateio").select("id,nome,tipos,ano_safra_id").in("fazenda_id", fazendaIds);
-    if (anoSafraId) rateioQ = rateioQ.eq("ano_safra_id", anoSafraId);
+    if (anoSafraId) {
+      // Mesmo agrupamento por descrição do FiltroBar — sem isso, a regra de
+      // rateio de uma fazenda-irmã com o mesmo rótulo de safra ficava de fora.
+      const descricaoAtual = anosSafra.find(a => a.id === anoSafraId)?.descricao;
+      const idsDoGrupo = descricaoAtual ? anosSafra.filter(a => a.descricao === descricaoAtual).map(a => a.id) : [anoSafraId];
+      rateioQ = rateioQ.in("ano_safra_id", idsDoGrupo);
+    }
     Promise.all([
       supabase.from("contratos")
         .select("id,ciclo_id,produto,moeda,preco,quantidade_sc,confirmado,status")

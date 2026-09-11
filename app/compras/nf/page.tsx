@@ -688,7 +688,7 @@ export default function NfCompraPage() {
   // tenta de novo — só se o campo ainda estiver vazio, para não sobrescrever escolha manual.
   useEffect(() => {
     if (!nfEdit || cab.produtor_id || !cab.cnpj_destino || wProdutores.length === 0) return;
-    const encontrado = produtorPorCnpj(cab.cnpj_destino);
+    const encontrado = produtorPorCnpj(cab.cnpj_destino, cab.nome_destinatario);
     if (encontrado) setCab(p => ({ ...p, produtor_id: encontrado }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wProdutores, nfEdit, cab.cnpj_destino]);
@@ -958,7 +958,7 @@ export default function NfCompraPage() {
       ano_safra_id: nf.ano_safra_id ?? "",
       ciclo_id: nf.ciclo_id ?? "",
       // Produtor = destinatário da NF (nosso produtor, CPF no campo cnpj_destino)
-      produtor_id: nf.produtor_id ?? produtorPorCnpj(nf.cnpj_destino ?? ""),
+      produtor_id: nf.produtor_id ?? produtorPorCnpj(nf.cnpj_destino ?? "", nf.nome_destinatario ?? undefined),
       ie_produtor: (nf as Record<string,unknown>).ie_produtor as string ?? "",
       vinculo_atividade: (nf.vinculo_atividade ?? "rural") as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
       entidade_contabil: (nf.entidade_contabil ?? "pf") as "pf" | "pj",
@@ -1105,7 +1105,7 @@ export default function NfCompraPage() {
         // auto-preenche fornecedor se CNPJ bater com cadastro
         pessoa_id: pessoaAutoId || p.pessoa_id,
         // auto-preenche produtor pelo CPF/CNPJ do destinatário da NF
-        produtor_id: produtorPorCnpj(destCnpj) || p.produtor_id,
+        produtor_id: produtorPorCnpj(destCnpj, destNome) || p.produtor_id,
         // aplica sugestão apenas se o campo ainda não foi preenchido
         operacao_gerencial_id: regraHeader?.operacao_gerencial_id ?? p.operacao_gerencial_id,
         centro_custo_id:       regraHeader?.centro_custo_id       ?? p.centro_custo_id,
@@ -1994,10 +1994,25 @@ export default function NfCompraPage() {
     return pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm)?.id ?? "";
   }
 
-  function produtorPorCnpj(cnpj: string): string {
+  // Um mesmo CPF pode ter mais de um cadastro de Produtor (ex: "FULANO" solo e
+  // "FULANO E OUTRO" numa exploração conjunta) — cada um com sua própria I.E. e
+  // endereço. Achado real: o match só por CPF pegava o registro errado, o que
+  // numa remessa emitiria com o endereço vinculado à I.E. errada. Quando há mais
+  // de 1 candidato com o mesmo CPF, desempata pelo nome do destinatário da NF
+  // (vem exatamente como está no cadastro certo, ex: "...E OUTRO"). Se mesmo
+  // assim ficar ambíguo, não arrisca — deixa em branco para seleção manual.
+  function produtorPorCnpj(cnpj: string, nomeDestino?: string): string {
     if (!cnpj) return "";
     const norm = cnpj.replace(/\D/g, "");
-    return wProdutores.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm)?.id ?? "";
+    const candidatos = wProdutores.filter(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm);
+    if (candidatos.length <= 1) return candidatos[0]?.id ?? "";
+    if (nomeDestino) {
+      const normNome = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+      const alvo = normNome(nomeDestino);
+      const porNome = candidatos.find(p => normNome(p.nome) === alvo);
+      if (porNome) return porNome.id;
+    }
+    return ""; // ambíguo — melhor pedir seleção manual do que arriscar o produtor errado
   }
 
   // ── Auto-fill emitente quando pessoa selecionada ─────────
@@ -2455,7 +2470,7 @@ export default function NfCompraPage() {
                           ? <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{nf.processado_por}</span>
                           : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>—</span>}
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                      <td style={{ padding: "10px 20px 10px 12px", textAlign: "right" }}>
                         {nf.origem === "sieg" ? (() => {
                           const isBusy  = siegBusy[nf.id];
                           const manTipo = nf.manifestacao_tipo ?? null;
@@ -2487,7 +2502,7 @@ export default function NfCompraPage() {
                         })() : <span style={{ fontSize: 11, color: "#ccc" }}>—</span>}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
                           {/* Ver */}
                           <button onClick={() => abrirVisualizador(nf)} disabled={nfViewerLoading}
                             style={{ padding: "4px 10px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>

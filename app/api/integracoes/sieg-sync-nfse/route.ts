@@ -50,7 +50,7 @@ interface Nfse {
   chave: string; numero: string; data_emissao: string;
   prestador_cnpj: string; prestador_nome: string;
   tomador_cnpj: string; municipio: string; discriminacao: string;
-  codigo_servico: string; valor_servico: number; valor_deducoes: number;
+  codigo_servico: string; cnae: string; valor_servico: number; valor_deducoes: number;
   aliquota_iss: number; valor_iss: number; iss_retido: boolean;
   valor_inss: number; valor_ir: number; valor_liquido: number;
 }
@@ -76,6 +76,9 @@ function parseNfse(xml: string): Nfse | null {
     const pId  = blk(pBlk || xml, "IdentificacaoPrestador", "CpfCnpjPrestador", "identificacaoPrestador");
     const prestador_cnpj = tv(pId || pBlk || xml, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "");
     const prestador_nome = tv(pBlk || xml, "RazaoSocial", "xNome", "NomeEmpresarial", "razaoSocial", "Nome");
+    // CNAE não é padronizado no ABRASF — cada prefeitura usa uma tag diferente
+    // (ou nenhuma). Cobre as variantes mais comuns encontradas em campo.
+    const cnae = tv(pBlk || xml, "Cnae", "CodigoCnae", "CNAE", "codigoCnae");
 
     const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador", "tomador");
     const tId  = blk(tBlk || xml, "IdentificacaoTomador", "CpfCnpjTomador", "identificacaoTomador");
@@ -102,7 +105,7 @@ function parseNfse(xml: string): Nfse | null {
 
     return {
       chave, numero, data_emissao, prestador_cnpj, prestador_nome,
-      tomador_cnpj, municipio, discriminacao, codigo_servico,
+      tomador_cnpj, municipio, discriminacao, codigo_servico, cnae,
       valor_servico, valor_deducoes, aliquota_iss, valor_iss,
       iss_retido, valor_inss, valor_ir, valor_liquido,
     };
@@ -262,6 +265,13 @@ export async function POST(req: NextRequest) {
         await db.from("nf_servicos").update({
           chave_nfse:          nfse.chave.includes("-") ? null : nfse.chave,
           prestador_nome:      nfse.prestador_nome || "Prestador SIEG",
+          prestador_cnpj:      nfse.prestador_cnpj || null,
+          // Achado real: tomador_cnpj e cnae eram extraídos do XML mas nunca
+          // chegavam a ser gravados — só sobravam como texto solto na
+          // observação, então o auto-match de Tomador por CNPJ nunca tinha
+          // dado para funcionar (o campo real ficava null no banco).
+          tomador_cnpj:        nfse.tomador_cnpj || null,
+          cnae:                nfse.cnae || null,
           municipio_prestacao: nfse.municipio || null,
           discriminacao:       nfse.discriminacao || null,
           codigo_servico:      nfse.codigo_servico || null,
@@ -288,6 +298,8 @@ export async function POST(req: NextRequest) {
         chave_nfse:          nfse.chave.includes("-") ? null : nfse.chave,
         prestador_nome:      nfse.prestador_nome || "Prestador SIEG",
         prestador_cnpj:      nfse.prestador_cnpj || null,
+        tomador_cnpj:        nfse.tomador_cnpj || null,
+        cnae:                nfse.cnae || null,
         municipio_prestacao: nfse.municipio || null,
         data_prestacao:      nfse.data_emissao,
         competencia:         nfse.data_emissao.substring(0, 7),

@@ -286,6 +286,30 @@ export default function NfServicoPage() {
     })();
   }, [fazendaId]);
 
+  // Busca pessoa já cadastrada pelo CPF/CNPJ, comparando dígitos puros —
+  // acha o cadastro (prestador/tomador) mesmo quando um lado está com máscara.
+  function pessoaPorCnpjNFS(cnpj: string): Pessoa | undefined {
+    if (!cnpj) return undefined;
+    const norm = cnpj.replace(/\D/g, "");
+    return pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm);
+  }
+
+  // Reforço: se `pessoas` só terminar de carregar depois que a NFS-e já foi
+  // aberta, tenta o match de novo assim que a lista chegar — sem sobrescrever
+  // uma escolha manual já feita.
+  useEffect(() => {
+    if (!nfEdit || pessoas.length === 0) return;
+    if (!cab.prestador_id && cab.prestador_cnpj) {
+      const m = pessoaPorCnpjNFS(cab.prestador_cnpj);
+      if (m) setCab(p => ({ ...p, prestador_id: m.id }));
+    }
+    if (!cab.tomador_id && cab.tomador_cnpj) {
+      const m = pessoaPorCnpjNFS(cab.tomador_cnpj);
+      if (m) setCab(p => ({ ...p, tomador_id: m.id, municipio_prestacao: p.municipio_prestacao || m.municipio || "" }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pessoas, nfEdit]);
+
   // ── Auto-fill prestador ─────────────────────────────────────
   function onPrestadorChange(id: string) {
     const p = pessoas.find(x => x.id === id);
@@ -334,18 +358,25 @@ export default function NfServicoPage() {
     setNfEdit(nf);
     setViewOnly(vo);
     setEtapa("prestador");
+    // Achado real: prestador/tomador já cadastrados (mesmo CNPJ da NFS-e
+    // importada) não eram vinculados automaticamente — o usuário tinha que
+    // re-selecionar manualmente toda vez. Busca por CNPJ antes de abrir.
+    const prestadorMatch = nf.prestador_id ? undefined : pessoaPorCnpjNFS(nf.prestador_cnpj ?? "");
+    const tomadorMatch   = nf.tomador_id   ? undefined : pessoaPorCnpjNFS(nf.tomador_cnpj ?? "");
     setCab({
       fazenda_id:           nf.fazenda_id ?? fazendaId ?? "",
       numero_nf:            nf.numero_nf,
       serie:                nf.serie,
       chave_nfse:           nf.chave_nfse ?? "",
-      prestador_id:         nf.prestador_id ?? "",
+      prestador_id:         nf.prestador_id ?? prestadorMatch?.id ?? "",
       prestador_nome:       nf.prestador_nome,
       prestador_cnpj:       nf.prestador_cnpj ?? "",
-      tomador_id:           nf.tomador_id ?? "",
+      tomador_id:           nf.tomador_id ?? tomadorMatch?.id ?? "",
       tomador_nome:         nf.tomador_nome ?? "",
       tomador_cnpj:         nf.tomador_cnpj ?? "",
-      municipio_prestacao:  nf.municipio_prestacao ?? "",
+      // Município não vem na NFS-e para o tomador — quando o cadastro já
+      // conhecido tem endereço, aproveita em vez de deixar em branco.
+      municipio_prestacao:  nf.municipio_prestacao || tomadorMatch?.municipio || "",
       data_prestacao:       nf.data_prestacao,
       competencia:          nf.competencia ?? nf.data_prestacao.substring(0, 7),
       codigo_servico:       nf.codigo_servico ?? "",
@@ -960,11 +991,19 @@ export default function NfServicoPage() {
                       </td>
                       {/* Ações */}
                       <td style={{ padding: "10px 12px" }}>
-                        <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 7, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
                           {/* Ver — abre em modo somente leitura */}
                           <button onClick={() => abrirEditar(nf, true)} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-1)", fontWeight: 600, whiteSpace: "nowrap" }}>
                             Ver
                           </button>
+                          {/* Recibo — comprovante interno imprimível (NFS-e não tem layout
+                              nacional padronizado como a DANFE, então isto não é o documento
+                              oficial da prefeitura, só um resumo organizado do que já temos) */}
+                          <a href={`/api/fiscal/nfse-recibo?id=${nf.id}&fazenda_id=${nf.fazenda_id}`}
+                            target="_blank" rel="noopener noreferrer"
+                            style={{ padding: "4px 9px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#EBF3FB", fontSize: 11, color: "#1A4870", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, whiteSpace: "nowrap" }}>
+                            ↗ Recibo
+                          </a>
                           {/* Proc — processa (pendente/digitando) */}
                           {(nf.status === "pendente" || nf.status === "digitando") && (
                             <button onClick={() => abrirEditar(nf, false)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
