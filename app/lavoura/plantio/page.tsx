@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
-import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantiosDaConta, excluirPlantio, atualizarPlantio, listarFazendas } from "../../../lib/db";
+import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantiosDaConta, excluirPlantio, atualizarPlantio, listarFazendas, saldoPorLote } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
@@ -37,11 +37,12 @@ export default function PlantioPage() {
   const [modal, setModal]             = useState(false);
 
   const [f, setF] = useState({
-    ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "",
+    ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "", lote_semente: "",
     area_ha: "", dose_kg_ha: 0, data_plantio: "", data_colheita_prevista: "",
     produtividade_esperada_sc_ha: "", preco_esperado_sc: 0, moeda: "BRL" as "BRL" | "USD",
     observacao: "",
   });
+  const [lotesDisponiveis, setLotesDisponiveis] = useState<{ lote: string; saldo: number }[]>([]);
 
   // Dados da fazenda ativa
   useEffect(() => {
@@ -60,6 +61,15 @@ export default function PlantioPage() {
     listarTalhoes(fid).then(setTalhoes).catch(() => {});
     listarTodosCiclos(fid).then(setTodosCiclos).catch(() => {});
   }, [fid]);
+
+  // Saldo por lote da semente escolhida — pra indicar de qual lote a semente
+  // plantada está saindo (o saldo geral do insumo continua sendo o total).
+  useEffect(() => {
+    setF(p => ({ ...p, lote_semente: "" }));
+    if (!f.insumo_id || !fid) { setLotesDisponiveis([]); return; }
+    saldoPorLote(f.insumo_id, fid).then(setLotesDisponiveis).catch(() => setLotesDisponiveis([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.insumo_id, fid]);
 
   // Ciclos filtrados pelo Ano Safra selecionado (via cascade)
   const ciclosDisponiveis = cascade.anoSafraId
@@ -85,6 +95,7 @@ export default function PlantioPage() {
         talhao_id: f.talhao_id,
         insumo_id: f.insumo_id || undefined,
         variedade: f.variedade || undefined,
+        lote_semente: f.lote_semente || undefined,
         area_ha: parseFloat(f.area_ha),
         dose_kg_ha: f.dose_kg_ha || undefined,
         quantidade_kg: qtdKg ?? undefined,
@@ -103,7 +114,7 @@ export default function PlantioPage() {
       setPlantios(p => [novo, ...p]);
       setModal(false);
       setCascade({});
-      setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "", area_ha: "", dose_kg_ha: 0, data_plantio: "", data_colheita_prevista: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: 0, moeda: "BRL", observacao: "" });
+      setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "", lote_semente: "", area_ha: "", dose_kg_ha: 0, data_plantio: "", data_colheita_prevista: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: 0, moeda: "BRL", observacao: "" });
     } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); } finally { setSalvando(false); }
   }
 
@@ -278,7 +289,7 @@ export default function PlantioPage() {
 
             {/* Semente */}
             <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Semente / Cultivar</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>
                   Semente (estoque)
@@ -296,6 +307,24 @@ export default function PlantioPage() {
               <div>
                 <label style={lbl}>Dose (kg/ha)</label>
                 <InputMonetario style={inp} placeholder="Ex: 55" value={f.dose_kg_ha} onChange={v => setF(p => ({ ...p, dose_kg_ha: v }))} />
+              </div>
+              <div>
+                <label style={lbl}>Lote (de qual saiu)</label>
+                {lotesDisponiveis.length > 0 ? (() => {
+                  const loteSel = lotesDisponiveis.find(l => l.lote === f.lote_semente);
+                  const excedeSaldo = loteSel && qtdKg && qtdKg > loteSel.saldo + 0.01;
+                  return (
+                    <>
+                      <select style={{ ...inp, borderColor: excedeSaldo ? "#E24B4A" : undefined }} value={f.lote_semente} onChange={e => setF(p => ({ ...p, lote_semente: e.target.value }))}>
+                        <option value="">— Selecionar lote —</option>
+                        {lotesDisponiveis.map(l => <option key={l.lote} value={l.lote}>{l.lote} — {l.saldo.toLocaleString("pt-BR")} kg</option>)}
+                      </select>
+                      {excedeSaldo && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>Excede o saldo do lote ({loteSel!.saldo.toLocaleString("pt-BR")} kg)</div>}
+                    </>
+                  );
+                })() : (
+                  <input style={inp} placeholder={f.insumo_id ? "Sem lote rastreado" : "—"} value={f.lote_semente} onChange={e => setF(p => ({ ...p, lote_semente: e.target.value }))} disabled={!f.insumo_id} />
+                )}
               </div>
             </div>
 

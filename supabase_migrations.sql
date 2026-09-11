@@ -12290,3 +12290,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_romaneios_entrada_origem_op ON romaneios_en
 CREATE UNIQUE INDEX IF NOT EXISTS uq_correcoes_solo_origem_op    ON correcoes_solo(origem_op_id)    WHERE origem_op_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 247 — Rastreabilidade de lote de semente no consumo
+-- (Plantio) e na Transferência de estoque.
+--
+-- `transferencias_estoque_itens.lote_semente` já existia (texto
+-- livre, não validado contra saldo real). `plantios` não tinha
+-- nenhum campo de lote. Esta seção fecha o ciclo: entrada (NF, já
+-- suportada) → saldo por lote (calculado em lib/db.ts a partir de
+-- movimentacoes_estoque, sem tabela nova) → saída com lote indicado
+-- (Plantio e Transferência, ambos passam a gravar lote_semente em
+-- movimentacoes_estoque, que já tinha a coluna desde antes).
+-- ============================================================
+ALTER TABLE plantios ADD COLUMN IF NOT EXISTS lote_semente TEXT;
+
+NOTIFY pgrst, 'reload schema';

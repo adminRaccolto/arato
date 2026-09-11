@@ -1624,6 +1624,7 @@ export type Plantio = {
   talhao_id: string;
   insumo_id?: string;                   // semente (FK insumos)
   variedade?: string;                   // nome da cultivar
+  lote_semente?: string;                // de qual lote em estoque a semente plantada saiu
   area_ha: number;
   dose_kg_ha?: number;                  // dose de semente kg/ha
   quantidade_kg?: number;               // total = dose_kg_ha × area_ha

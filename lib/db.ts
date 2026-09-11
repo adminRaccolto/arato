@@ -459,6 +459,42 @@ export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string
   return data ?? [];
 }
 
+// Saldo de semente por lote — o saldo "de vitrine" do insumo é sempre o total
+// agregado (insumos.estoque); esta função calcula a composição por trás dele,
+// somando entradas e subtraindo saídas de movimentacoes_estoque agrupado por
+// lote_semente. Usada onde o operador precisa escolher DE QUAL LOTE está saindo
+// semente (transferência, consumo no plantio) — nunca para exibir o saldo geral.
+export async function saldoPorLote(
+  insumo_id: string,
+  fazenda_id: string,
+  deposito_id?: string,
+): Promise<{ lote: string; saldo: number }[]> {
+  const porLote: Record<string, number> = {};
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    let q = supabase
+      .from("movimentacoes_estoque")
+      .select("tipo, quantidade, lote_semente, deposito_id")
+      .eq("insumo_id", insumo_id)
+      .eq("fazenda_id", fazenda_id)
+      .not("lote_semente", "is", null)
+      .range(from, from + PAGE - 1);
+    const { data, error } = await q;
+    if (error) throw error;
+    for (const m of (data ?? [])) {
+      if (deposito_id && m.deposito_id !== deposito_id) continue;
+      const lote = m.lote_semente as string;
+      const sinal = m.tipo === "entrada" ? 1 : -1;
+      porLote[lote] = (porLote[lote] ?? 0) + sinal * (m.quantidade ?? 0);
+    }
+    if (!data || data.length < PAGE) break;
+  }
+  return Object.entries(porLote)
+    .map(([lote, saldo]) => ({ lote, saldo: Math.round(saldo * 1000) / 1000 }))
+    .filter(l => l.saldo > 0.01)
+    .sort((a, b) => a.lote.localeCompare(b.lote));
+}
+
 // Movimentação manual: atualiza saldo do insumo + registra movimentação
 export async function criarMovimentacaoManual(
   fazenda_id: string,
@@ -3684,6 +3720,7 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
         operacao:                 "plantio",
         observacao:               `Plantio — ${insumoNome} ${plantio.variedade ?? ""}`.trim(),
         auto:                     true,
+        lote_semente:             plantio.lote_semente ?? null,
       });
     }
   }

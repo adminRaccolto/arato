@@ -4,6 +4,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 import type { Fazenda, Deposito, Insumo, TransferenciaEstoque, TransferenciaEstoqueItem } from "../../../lib/supabase";
+import { saldoPorLote } from "../../../lib/db";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -131,6 +132,9 @@ export default function TransferenciasEstoquePage() {
   ]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Saldo por lote de semente (origem+depósito escolhidos) — populado mais abaixo,
+  // depois que `todosInsumos` existe (ver useEffect próximo a essa const)
+  const [lotesPorInsumo, setLotesPorInsumo] = useState<Record<string, { lote: string; saldo: number }[]>>({});
 
   // ── Detalhe / Preview DANFE ───────────────────────────────────────────────
   const [detalhe, setDetalhe] = useState<TransferenciaComItens | null>(null);
@@ -249,6 +253,28 @@ export default function TransferenciasEstoquePage() {
   // Todos os insumos da conta (todas as fazendas) para lookup de nome e unidade
   const todosInsumos = Object.values(insumosPorFazenda).flat();
   const insumosOrigem = form.fazendaOrigemId ? (insumosPorFazenda[form.fazendaOrigemId] ?? []) : todosInsumos;
+
+  // Saldo por lote: um lote só faz sentido pra uma fazenda/depósito de origem
+  // específica — a chave composta invalida o cache sozinha quando a origem muda.
+  useEffect(() => {
+    if (!form.fazendaOrigemId) return;
+    const sementeIds = Array.from(new Set(
+      itens.map(it => it.insumo_id).filter(id => todosInsumos.find(x => x.id === id)?.categoria === "semente")
+    ));
+    const faltando = sementeIds.filter(id => !(`${id}|${form.fazendaOrigemId}|${form.depositoOrigemId}` in lotesPorInsumo));
+    if (faltando.length === 0) return;
+    (async () => {
+      const novos: Record<string, { lote: string; saldo: number }[]> = {};
+      for (const id of faltando) {
+        const chave = `${id}|${form.fazendaOrigemId}|${form.depositoOrigemId}`;
+        try {
+          novos[chave] = await saldoPorLote(id, form.fazendaOrigemId, form.depositoOrigemId || undefined);
+        } catch { novos[chave] = []; }
+      }
+      setLotesPorInsumo(prev => ({ ...prev, ...novos }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens, form.fazendaOrigemId, form.depositoOrigemId]);
   const prefixo = prefixoCfop(fazendaOrigem?.estado, fazendaDestino?.estado);
   const cfopCalculado = prefixo + form.cfopSufixo;
   const estadosDiferentes = fazendaOrigem?.estado !== fazendaDestino?.estado && !!fazendaOrigem && !!fazendaDestino;
@@ -813,9 +839,29 @@ export default function TransferenciasEstoquePage() {
                               : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
                           </td>
                           <td style={td}>
-                            {isSemente
-                              ? <input type="text" value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} placeholder="Ex: L2025-001" style={{ ...inp, width: 100 }} />
-                              : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
+                            {isSemente ? (() => {
+                              const chave = `${it.insumo_id}|${form.fazendaOrigemId}|${form.depositoOrigemId}`;
+                              const lotes = lotesPorInsumo[chave];
+                              // Sem lote com saldo conhecido (dado legado sem rastreio, ou ainda carregando) → texto livre
+                              if (!lotes || lotes.length === 0) {
+                                return <input type="text" value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} placeholder="Ex: L2025-001" style={{ ...inp, width: 130 }} />;
+                              }
+                              const loteSel = lotes.find(l => l.lote === it.lote_semente);
+                              const excedeSaldo = loteSel && qtd > loteSel.saldo + 0.01;
+                              return (
+                                <div>
+                                  <select value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} style={{ ...inp, width: 160, borderColor: excedeSaldo ? "#E24B4A" : undefined }}>
+                                    <option value="">— Selecione o lote —</option>
+                                    {lotes.map(l => (
+                                      <option key={l.lote} value={l.lote}>{l.lote} — {l.saldo.toLocaleString("pt-BR")} kg</option>
+                                    ))}
+                                  </select>
+                                  {excedeSaldo && (
+                                    <div style={{ fontSize: 9, color: "#E24B4A", marginTop: 2 }}>Excede o saldo do lote ({loteSel!.saldo.toLocaleString("pt-BR")} kg)</div>
+                                  )}
+                                </div>
+                              );
+                            })() : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
                           </td>
                           <td style={td}>
                             {itens.length > 1 && (

@@ -163,14 +163,16 @@ export async function POST(request: NextRequest) {
       const itens = (t.transferencias_estoque_itens ?? []) as Array<Record<string, unknown>>;
       for (const it of itens) {
         await adm.from("movimentacoes_estoque").insert({
-          fazenda_id:  t.fazenda_destino_id,
-          insumo_id:   it.insumo_id,
-          tipo:        "entrada",
-          motivo:      `Transferência ${t.numero} ← origem`,
-          quantidade:  it.quantidade,
-          data:        t.data_transferencia,
-          deposito_id: t.deposito_destino_id || null,
-          auto:        true,
+          fazenda_id:      t.fazenda_destino_id,
+          insumo_id:       it.insumo_id,
+          tipo:            "entrada",
+          motivo:          `Transferência ${t.numero} ← origem`,
+          quantidade:      it.quantidade,
+          valor_unitario:  it.custo_unitario ?? null,
+          data:            t.data_transferencia,
+          deposito_id:     t.deposito_destino_id || null,
+          lote_semente:    it.lote_semente ?? null,
+          auto:            true,
         });
       }
       await adm.from("transferencias_estoque").update({ status: "entrada_confirmada" }).eq("id", tid);
@@ -199,25 +201,29 @@ export async function POST(request: NextRequest) {
       if (status === "emitida" && itens) {
         for (const it of itens) {
           await adm.from("movimentacoes_estoque").insert({
-            fazenda_id:  transferencia.fazenda_origem_id,
-            insumo_id:   it.insumo_id,
-            tipo:        "saida",
-            motivo:      `Transferência ${transf.numero}`,
-            quantidade:  Number(it.quantidade),
-            data:        transferencia.data_transferencia,
-            deposito_id: transferencia.deposito_origem_id || null,
-            auto:        true,
+            fazenda_id:      transferencia.fazenda_origem_id,
+            insumo_id:       it.insumo_id,
+            tipo:            "saida",
+            motivo:          `Transferência ${transf.numero}`,
+            quantidade:      Number(it.quantidade),
+            valor_unitario:  it.custo_unitario ?? null,
+            data:            transferencia.data_transferencia,
+            deposito_id:     transferencia.deposito_origem_id || null,
+            lote_semente:    it.lote_semente ?? null,
+            auto:            true,
           });
           if (transferencia.entrada_automatica) {
             await adm.from("movimentacoes_estoque").insert({
-              fazenda_id:  transferencia.fazenda_destino_id,
-              insumo_id:   it.insumo_id,
-              tipo:        "entrada",
-              motivo:      `Transferência ${transf.numero}`,
-              quantidade:  Number(it.quantidade),
-              data:        transferencia.data_transferencia,
-              deposito_id: transferencia.deposito_destino_id || null,
-              auto:        true,
+              fazenda_id:      transferencia.fazenda_destino_id,
+              insumo_id:       it.insumo_id,
+              tipo:            "entrada",
+              motivo:          `Transferência ${transf.numero}`,
+              quantidade:      Number(it.quantidade),
+              valor_unitario:  it.custo_unitario ?? null,
+              data:            transferencia.data_transferencia,
+              deposito_id:     transferencia.deposito_destino_id || null,
+              lote_semente:    it.lote_semente ?? null,
+              auto:            true,
             });
           }
         }
@@ -278,27 +284,31 @@ async function _criarMovimentacoes(
 ) {
   for (const it of itens) {
     await adm.from("movimentacoes_estoque").insert({
-      fazenda_id:  t.fazenda_origem_id,
-      insumo_id:   it.insumo_id,
-      tipo:        "saida",
-      motivo:      `Transferência ${t.numero} → destino`,
-      quantidade:  it.quantidade,
-      data:        t.data_transferencia,
-      deposito_id: t.deposito_origem_id || null,
-      observacao:  `NF de Transferência — CFOP ${t.cfop}`,
-      auto:        true,
+      fazenda_id:      t.fazenda_origem_id,
+      insumo_id:       it.insumo_id,
+      tipo:            "saida",
+      motivo:          `Transferência ${t.numero} → destino`,
+      quantidade:      it.quantidade,
+      valor_unitario:  it.custo_unitario ?? null,
+      data:            t.data_transferencia,
+      deposito_id:     t.deposito_origem_id || null,
+      observacao:      `NF de Transferência — CFOP ${t.cfop}`,
+      lote_semente:    it.lote_semente ?? null,
+      auto:            true,
     });
     if (t.entrada_automatica) {
       await adm.from("movimentacoes_estoque").insert({
-        fazenda_id:  t.fazenda_destino_id,
-        insumo_id:   it.insumo_id,
-        tipo:        "entrada",
-        motivo:      `Transferência ${t.numero} ← origem`,
-        quantidade:  it.quantidade,
-        data:        t.data_transferencia,
-        deposito_id: t.deposito_destino_id || null,
-        observacao:  `NF de Transferência — CFOP ${t.cfop}`,
-        auto:        true,
+        fazenda_id:      t.fazenda_destino_id,
+        insumo_id:       it.insumo_id,
+        tipo:            "entrada",
+        motivo:          `Transferência ${t.numero} ← origem`,
+        quantidade:      it.quantidade,
+        valor_unitario:  it.custo_unitario ?? null,
+        data:            t.data_transferencia,
+        deposito_id:     t.deposito_destino_id || null,
+        observacao:      `NF de Transferência — CFOP ${t.cfop}`,
+        lote_semente:    it.lote_semente ?? null,
+        auto:            true,
       });
     }
   }
