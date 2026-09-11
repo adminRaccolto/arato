@@ -300,7 +300,8 @@ function CadastrosInner() {
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [tabProd, setTabProd]         = useState<"dados"|"ies">("dados");
   const [prodIEs, setProdIEs]         = useState<ProdutorIE[]>([]);
-  const [newIE, setNewIE]             = useState({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
+  const [newIE, setNewIE]             = useState({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
+  const [ieEditandoEndereco, setIeEditandoEndereco] = useState<number | null>(null);
 
   // ── Fazendas ──
   const [fazendas, setFazendas]       = useState<FazendaDB[]>([]);
@@ -940,7 +941,7 @@ function CadastrosInner() {
       razao_social: "", regime_tributario: "", car: "", nirf: "", itr: "", email_relatorios: "", _empresaId: "",
     });
     setTabProd("dados");
-    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
+    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
     setProdIEs(p ? await listarIEsDoProdutor(p.id, fazendaId ?? undefined) : []);
     setModalProd(true);
   };
@@ -7140,17 +7141,26 @@ function CadastrosInner() {
               <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16, fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Inscrição Estadual","Município","UF","Fazenda vinculada","Ativa",""].map(h => (
+                    {["Inscrição Estadual","Município","UF","Endereço","Fazenda vinculada","Ativa",""].map(h => (
                       <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {prodIEs.map((ie, i) => (
-                    <tr key={ie.id ?? i} style={{ borderBottom: "0.5px solid #EEF1F7" }}>
+                  {prodIEs.map((ie, i) => {
+                    const enderecoResumo = [ie.logradouro, ie.numero].filter(Boolean).join(", ");
+                    const editando = ieEditandoEndereco === i;
+                    return (
+                    <>
+                    <tr key={ie.id ?? i} style={{ borderBottom: editando ? "none" : "0.5px solid #EEF1F7" }}>
                       <td style={{ padding: "7px 10px", fontWeight: 600, color: "#111111" }}>{ie.inscricao_estadual}</td>
                       <td style={{ padding: "7px 10px" }}>{ie.municipio ?? "—"}</td>
                       <td style={{ padding: "7px 10px" }}>{ie.estado}</td>
+                      <td style={{ padding: "7px 10px" }}>
+                        <button onClick={() => setIeEditandoEndereco(editando ? null : i)} style={{ background: "none", border: "none", color: enderecoResumo ? "var(--text-1)" : "#1A4870", cursor: "pointer", fontSize: 12, padding: 0, textAlign: "left" }}>
+                          {enderecoResumo || "+ endereço"} {editando ? "▲" : "✎"}
+                        </button>
+                      </td>
                       <td style={{ padding: "7px 10px", color: "var(--text-3)" }}>
                         {ie.fazenda_id ? (fazendas.find(f => f.id === ie.fazenda_id)?.nome ?? ie.fazenda_id) : "—"}
                       </td>
@@ -7161,7 +7171,25 @@ function CadastrosInner() {
                         <button onClick={() => setProdIEs(p => p.filter((_,j) => j!==i))} style={{ background: "none", border: "none", color: "#E24B4A", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
                       </td>
                     </tr>
-                  ))}
+                    {editando && (
+                      <tr style={{ borderBottom: "0.5px solid #EEF1F7" }}>
+                        <td colSpan={7} style={{ padding: "4px 10px 14px", background: "var(--bg-page)" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 70px 1fr 1fr", gap: 8 }}>
+                            <div><label style={lbl}>CEP</label><input style={inp} value={ie.cep ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, cep: e.target.value} : x))} /></div>
+                            <div><label style={lbl}>Logradouro</label><input style={inp} value={ie.logradouro ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, logradouro: e.target.value} : x))} /></div>
+                            <div><label style={lbl}>Número</label><input style={inp} value={ie.numero ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, numero: e.target.value} : x))} /></div>
+                            <div><label style={lbl}>Complemento</label><input style={inp} value={ie.complemento ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, complemento: e.target.value} : x))} /></div>
+                            <div><label style={lbl}>Bairro</label><input style={inp} value={ie.bairro ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, bairro: e.target.value} : x))} /></div>
+                          </div>
+                          <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                            <div><label style={lbl}>Código IBGE do município (obrigatório pra emitir NF-e com essa IE)</label><input style={inp} value={ie.municipio_ibge ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, municipio_ibge: e.target.value} : x))} placeholder="7 dígitos" /></div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -7206,11 +7234,25 @@ function CadastrosInner() {
                       municipio: newIE.municipio.trim() || null,
                       estado: newIE.estado,
                       ativa: true,
+                      cep: newIE.cep.trim() || null,
+                      logradouro: newIE.logradouro.trim() || null,
+                      numero: newIE.numero.trim() || null,
+                      complemento: newIE.complemento.trim() || null,
+                      bairro: newIE.bairro.trim() || null,
+                      municipio_ibge: newIE.municipio_ibge.trim() || null,
                     }]);
-                    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
+                    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
                   }}
                   style={{ ...btnV, padding: "8px 16px", opacity: !newIE.inscricao_estadual.trim() ? 0.5 : 1, whiteSpace: "nowrap" }}
                 >+ Adicionar</button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 70px 1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
+                <div><label style={lbl}>CEP</label><input style={inp} value={newIE.cep} onChange={e => setNewIE(p => ({ ...p, cep: e.target.value }))} /></div>
+                <div><label style={lbl}>Logradouro</label><input style={inp} value={newIE.logradouro} onChange={e => setNewIE(p => ({ ...p, logradouro: e.target.value }))} /></div>
+                <div><label style={lbl}>Número</label><input style={inp} value={newIE.numero} onChange={e => setNewIE(p => ({ ...p, numero: e.target.value }))} /></div>
+                <div><label style={lbl}>Complemento</label><input style={inp} value={newIE.complemento} onChange={e => setNewIE(p => ({ ...p, complemento: e.target.value }))} /></div>
+                <div><label style={lbl}>Bairro</label><input style={inp} value={newIE.bairro} onChange={e => setNewIE(p => ({ ...p, bairro: e.target.value }))} /></div>
+                <div><label style={lbl}>Código IBGE</label><input style={inp} value={newIE.municipio_ibge} onChange={e => setNewIE(p => ({ ...p, municipio_ibge: e.target.value }))} placeholder="7 dígitos" /></div>
               </div>
             </div>
           </>)}

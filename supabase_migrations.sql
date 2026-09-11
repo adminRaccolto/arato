@@ -12317,3 +12317,19 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS cpf_cnpj_destino TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 249 — Endereço completo por Inscrição Estadual do produtor
+-- (produtor_inscricoes_estaduais já existia, com IE+município/UF+
+-- fazenda vinculada; faltava o endereço completo, necessário pro
+-- DANFE/NF-e de cada IE ter o endereço certo do imóvel dela — não
+-- o endereço único do cadastro geral do produtor).
+-- ============================================================
+ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS cep TEXT;
+ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS logradouro TEXT;
+ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS numero TEXT;
+ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS complemento TEXT;
+ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS bairro TEXT;
+ALTER TABLE produtor_inscricoes_estaduais ADD COLUMN IF NOT EXISTS municipio_ibge TEXT;
+
+NOTIFY pgrst, 'reload schema';

@@ -727,6 +727,15 @@ export type ProdutorIE = {
   municipio?: string | null;
   estado: string;
   ativa: boolean;
+  // Endereço completo desta IE — o imóvel/estabelecimento dela pode ser diferente
+  // do endereço geral do cadastro do produtor. Usado no emitente da NF-e/DANFE
+  // e nos Parâmetros Fiscais (série/número/tributação são configurados por IE).
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  municipio_ibge?: string | null;
   created_at?: string;
 };
 
