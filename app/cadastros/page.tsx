@@ -1081,14 +1081,23 @@ function CadastrosInner() {
       }
       setProdEmpresaMap(prev => ({ ...prev, [prodId]: empId }));
     }
+    // Sem o 3º argumento (fazenda_id) — salvarIEsDoProdutor então apaga/recria só
+    // por produtor_id, respeitando a "Fazenda vinculada" própria de cada IE (antes
+    // isso era sobrescrito à força pela fazenda ativa geral, em todas as IEs).
     await salvarIEsDoProdutor(prodId, prodIEs.map(ie => ({
       produtor_id: prodId,
-      fazenda_id: fazendaId ?? null,
+      fazenda_id: ie.fazenda_id ?? null,
       inscricao_estadual: ie.inscricao_estadual,
       municipio: ie.municipio ?? null,
       estado: ie.estado,
       ativa: ie.ativa,
-    })), fazendaId ?? undefined);
+      cep: ie.cep ?? null,
+      logradouro: ie.logradouro ?? null,
+      numero: ie.numero ?? null,
+      complemento: ie.complemento ?? null,
+      bairro: ie.bairro ?? null,
+      municipio_ibge: ie.municipio_ibge ?? null,
+    })));
     setModalProd(false);
   });
 
