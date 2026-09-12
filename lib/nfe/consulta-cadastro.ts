@@ -23,6 +23,14 @@
 import { soapPost, CUF_MAP } from "./transmitter";
 import type { PemPair } from "./signer";
 
+// Namespace/Action nacional do serviço — mesmo para todas as UFs (o que muda
+// por UF é só a URL do endpoint). Suffix "4" no namespace é o identificador de
+// dispatch do Axis2 (confirmado em implementações de referência); o payload
+// em si (<ConsCad versao="2.00">) continua na versão de schema 2.00, que é
+// outra coisa — não seguiu o versionamento 4.00 do restante da NF-e.
+const CAD_NAMESPACE = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro4";
+const CAD_SOAP_ACTION = `${CAD_NAMESPACE}/consultaCadastro`;
+
 interface UFCadEndpoint { prod: string }
 
 const UF_CAD_ENDPOINTS: Record<string, UFCadEndpoint> = {
@@ -52,12 +60,12 @@ function envelopeConsCad(cuf: string, uf: string, ie?: string, cnpj?: string, cp
     `<?xml version="1.0" encoding="utf-8"?>` +
     `<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">` +
     `<soap12:Header>` +
-      `<nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro2">` +
+      `<nfeCabecMsg xmlns="${CAD_NAMESPACE}">` +
         `<cUF>${cuf}</cUF><versaoDados>2.00</versaoDados>` +
       `</nfeCabecMsg>` +
     `</soap12:Header>` +
     `<soap12:Body>` +
-      `<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro2">` +
+      `<nfeDadosMsg xmlns="${CAD_NAMESPACE}">` +
         `<ConsCad versao="2.00" xmlns="http://www.portalfiscal.inf.br/nfe">` +
           `<infCons><xServ>CONS-CAD</xServ><UF>${uf}</UF>${ident}</infCons>` +
         `</ConsCad>` +
@@ -148,6 +156,6 @@ export async function consultarCadastroContribuinte(
     opts.cnpj?.replace(/\D/g, "") || undefined,
     opts.cpf?.replace(/\D/g, "") || undefined,
   );
-  const resp = await soapPost(ep.prod, body, pem);
+  const resp = await soapPost(ep.prod, body, pem, CAD_SOAP_ACTION);
   return parseConsCad(resp);
 }

@@ -129,9 +129,18 @@ function isSefazHost(hostname: string): boolean {
   return /\.gov\.br$/.test(hostname);
 }
 
-export function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
+// soapAction opcional: alguns webservices Axis2 (ex: CadConsultaCadastro4 de
+// MT) exigem a Action do SOAP 1.2 explícita — sem ela, respondem "The endpoint
+// reference (EPR) for the Operation not found ... WSA Action = null". Em SOAP
+// 1.2 essa Action vai como parâmetro do Content-Type, não como header separado
+// (isso é coisa de SOAP 1.1). Omitido, o comportamento é idêntico ao anterior
+// — NFeAutorizacao4/NFeRetAutorizacao4 nunca precisaram disso.
+export function soapPost(url: string, body: string, pem: PemPair, soapAction?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
+    const contentType = soapAction
+      ? `application/soap+xml; charset=utf-8; action="${soapAction}"`
+      : "application/soap+xml; charset=utf-8";
     const req = https.request(
       {
         hostname: u.hostname,
@@ -139,7 +148,7 @@ export function soapPost(url: string, body: string, pem: PemPair): Promise<strin
         path: u.pathname + u.search,
         method: "POST",
         headers: {
-          "Content-Type": "application/soap+xml; charset=utf-8",
+          "Content-Type": contentType,
           "Content-Length": Buffer.byteLength(body, "utf8"),
         },
         cert: pem.cert,
