@@ -966,6 +966,47 @@ function CadastrosInner() {
     } catch { /* silencioso — usuário preenche manualmente */ }
     finally { setBuscandoCep(false); }
   };
+
+  // Mesma busca de CEP (ViaCEP) já usada no cadastro do produtor, reaproveitada
+  // pro endereço de cada Inscrição Estadual — inclusive o código IBGE, que era
+  // digitado à mão até aqui.
+  const buscarCepNewIE = async (cep: string) => {
+    const limpo = cep.replace(/\D/g, "");
+    if (limpo.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
+      const d = await res.json();
+      if (!d.erro) {
+        setNewIE(p => ({
+          ...p,
+          logradouro:     d.logradouro ?? p.logradouro,
+          bairro:         d.bairro     ?? p.bairro,
+          municipio:      d.localidade ?? p.municipio,
+          municipio_ibge: d.ibge       ?? p.municipio_ibge ?? "",
+          estado:         d.uf         ?? p.estado,
+        }));
+      }
+    } catch { /* silencioso — usuário preenche manualmente */ }
+  };
+
+  const buscarCepIeExistente = async (cep: string, idx: number) => {
+    const limpo = cep.replace(/\D/g, "");
+    if (limpo.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
+      const d = await res.json();
+      if (!d.erro) {
+        setProdIEs(prev => prev.map((x, j) => j === idx ? {
+          ...x,
+          logradouro:     d.logradouro ?? x.logradouro,
+          bairro:         d.bairro     ?? x.bairro,
+          municipio:      d.localidade ?? x.municipio,
+          municipio_ibge: d.ibge       ?? x.municipio_ibge ?? "",
+          estado:         d.uf         ?? x.estado,
+        } : x));
+      }
+    } catch { /* silencioso — usuário preenche manualmente */ }
+  };
   const salvarProd = () => salvar(async () => {
     const erros: string[] = [];
     if (!fProd.nome.trim()) erros.push("Nome");
@@ -7175,7 +7216,7 @@ function CadastrosInner() {
                       <tr style={{ borderBottom: "0.5px solid #EEF1F7" }}>
                         <td colSpan={7} style={{ padding: "4px 10px 14px", background: "var(--bg-page)" }}>
                           <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 70px 1fr 1fr", gap: 8 }}>
-                            <div><label style={lbl}>CEP</label><input style={inp} value={ie.cep ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, cep: e.target.value} : x))} /></div>
+                            <div><label style={lbl}>CEP</label><input style={inp} value={ie.cep ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, cep: e.target.value} : x))} onBlur={e => buscarCepIeExistente(e.target.value, i)} /></div>
                             <div><label style={lbl}>Logradouro</label><input style={inp} value={ie.logradouro ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, logradouro: e.target.value} : x))} /></div>
                             <div><label style={lbl}>Número</label><input style={inp} value={ie.numero ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, numero: e.target.value} : x))} /></div>
                             <div><label style={lbl}>Complemento</label><input style={inp} value={ie.complemento ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, complemento: e.target.value} : x))} /></div>
@@ -7247,7 +7288,7 @@ function CadastrosInner() {
                 >+ Adicionar</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 70px 1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
-                <div><label style={lbl}>CEP</label><input style={inp} value={newIE.cep} onChange={e => setNewIE(p => ({ ...p, cep: e.target.value }))} /></div>
+                <div><label style={lbl}>CEP</label><input style={inp} value={newIE.cep} onChange={e => setNewIE(p => ({ ...p, cep: e.target.value }))} onBlur={e => buscarCepNewIE(e.target.value)} /></div>
                 <div><label style={lbl}>Logradouro</label><input style={inp} value={newIE.logradouro} onChange={e => setNewIE(p => ({ ...p, logradouro: e.target.value }))} /></div>
                 <div><label style={lbl}>Número</label><input style={inp} value={newIE.numero} onChange={e => setNewIE(p => ({ ...p, numero: e.target.value }))} /></div>
                 <div><label style={lbl}>Complemento</label><input style={inp} value={newIE.complemento} onChange={e => setNewIE(p => ({ ...p, complemento: e.target.value }))} /></div>
