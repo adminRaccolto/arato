@@ -12406,3 +12406,14 @@ WHERE insumo_id IS NOT NULL
 GROUP BY insumo_id, fazenda_id, deposito_id;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 252 — produtores.municipio_ibge nunca existiu de verdade
+-- no banco, só no tipo TypeScript (Produtor.municipio_ibge). Toda
+-- vez que o cadastro de Produtor salvava esse campo (preenchido
+-- pela busca automática de CEP), dava PGRST204 "Could not find the
+-- municipio_ibge column of produtores in the schema cache".
+-- ============================================================
+ALTER TABLE produtores ADD COLUMN IF NOT EXISTS municipio_ibge TEXT;
+
+NOTIFY pgrst, 'reload schema';
