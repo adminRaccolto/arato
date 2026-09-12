@@ -23,18 +23,20 @@
 import { soapPost, CUF_MAP } from "./transmitter";
 import type { PemPair } from "./signer";
 
-// Namespace/Action nacional do serviço — mesmo para todas as UFs (o que muda
-// por UF é só a URL do endpoint). O leiaute do payload (<ConsCad versao="2.00">,
-// XSD leiauteConsultaCadastro_v2.00.xsd) nunca foi promovido pra 4.00 como o
-// resto da NF-e — só a URL do endpoint ganhou o sufixo "4" em algumas UFs.
-// O namespace de header/body do SOAP continua "CadConsultaCadastro2": tentar
-// "CadConsultaCadastro4" aqui (por analogia com NFeAutorizacao4) despachava
-// certo mas o corpo era rejeitado ("Falha no schema XML") — o WSDL real
-// vincula a operação a este namespace específico, não ao sufixo da URL.
+// Duas coisas independentes, mapeadas empiricamente contra o Axis2 da SEFAZ MT
+// (cada combinação errada dá um erro diferente, o que permitiu isolar as duas):
+//   1. Action do SOAP 1.2 (Content-Type action=) — usada só pelo Axis2 pra
+//      DESPACHAR pra operação certa. O WSDL real da MT registra essa operação
+//      com Action "CadConsultaCadastro4/consultaCadastro" — Action errada ou
+//      ausente dá "WSA Action = null"/"Operation not found" (HTTP 500), antes
+//      de qualquer validação de conteúdo.
+//   2. Namespace do header (nfeCabecMsg) e do body (nfeDadosMsg) — validado
+//      contra o leiaute real do payload, que é leiauteConsultaCadastro_v2.00.xsd
+//      (nunca promovido pra 4.00 como o resto da NF-e). Namespace "4" aqui
+//      despacha certo mas o corpo é rejeitado ("215 - Falha no schema XML").
+// Ou seja: Action usa o sufixo "4", mas header/body usam o namespace "2".
 const CAD_NAMESPACE = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro2";
-// Sem essa Action explícita no Content-Type (SOAP 1.2), o Axis2 do MT rejeita
-// antes mesmo de tentar validar o corpo ("WSA Action = null" / HTTP 500).
-const CAD_SOAP_ACTION = CAD_NAMESPACE;
+const CAD_SOAP_ACTION = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro4/consultaCadastro";
 
 interface UFCadEndpoint { prod: string }
 
