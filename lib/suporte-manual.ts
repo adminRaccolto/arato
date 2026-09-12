@@ -788,6 +788,8 @@ Cadastro dos produtores rurais com CPF/CNPJ, inscrições estaduais por estado (
 
 **Consulta Sintegra (🔎 ao lado da IE):** na aba "Inscrições Estaduais" do produtor, tanto ao adicionar uma nova IE quanto ao editar o endereço de uma já cadastrada, existe um botão 🔎 que consulta o cadastro de contribuintes direto na SEFAZ (webservice CadConsultaCadastro4) e preenche automaticamente nome, endereço, município e código IBGE a partir da IE digitada — funciona para IEs de MT, GO, MS, SP, BA e TO; demais estados retornam aviso de "UF ainda não implementada" (adicionados sob demanda). Exige que a fazenda já tenha um certificado A1 configurado em Parâmetros → Fiscal (qualquer certificado válido serve, não precisa ser do próprio produtor consultado — a consulta de cadastro é um serviço de busca pública da SEFAZ, não uma emissão de documento).
 
+**"Fazenda ou Empresa vinculada" na IE:** ao adicionar uma Inscrição Estadual, o campo de vínculo lista tanto as Fazendas da conta quanto as Empresas (PJ) já cadastradas para aquele produtor — uma IE pode pertencer a uma propriedade física (fazenda) ou a uma empresa do produtor, nunca as duas ao mesmo tempo. Isso importa porque telas que buscam "a IE certa" para uma operação (venda de grãos, arrendamento) filtram por esse vínculo.
+
 ### 23.3 Fazendas e Talhões
 **Caminho:** Configurações → Cadastros → Fazendas e Talhões
 

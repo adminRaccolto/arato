@@ -38,7 +38,7 @@ import {
   listarPlanoContas,
   listarPrincipiosAtivos, criarPrincipioAtivo, atualizarPrincipioAtivo, excluirPrincipioAtivo,
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
-  listarIEsDoProdutor, salvarIEsDoProdutor,
+  listarIEsDoProdutor, salvarIEsDoProdutor, listarEmpresasDoProdutor,
   listarImoveisUrbanos, criarImovelUrbano, atualizarImovelUrbano, excluirImovelUrbano,
   excluirTalhao, listarArrendamentosTalhao, salvarArrendamentosTalhao, listarArrendamentosUsadosFazenda,
   listarDocumentacaoTalhao, salvarDocumentacaoTalhao,
@@ -301,7 +301,8 @@ function CadastrosInner() {
   const [consultandoSintegra, setConsultandoSintegra] = useState<string | null>(null); // "new" | `existing-${idx}` | null
   const [tabProd, setTabProd]         = useState<"dados"|"ies">("dados");
   const [prodIEs, setProdIEs]         = useState<ProdutorIE[]>([]);
-  const [newIE, setNewIE]             = useState({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
+  const [prodEmpresas, setProdEmpresas] = useState<Empresa[]>([]); // empresas (PJ) deste produtor — IE pode vincular a uma delas em vez de a uma fazenda
+  const [newIE, setNewIE]             = useState({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", empresa_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
   const [ieEditandoEndereco, setIeEditandoEndereco] = useState<number | null>(null);
 
   // ── Fazendas ──
@@ -942,13 +943,27 @@ function CadastrosInner() {
       razao_social: "", regime_tributario: "", car: "", nirf: "", itr: "", email_relatorios: "", _empresaId: "",
     });
     setTabProd("dados");
-    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
+    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", empresa_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
     // Sem filtro de fazenda — a aba Inscrições Estaduais é do produtor inteiro,
     // não só da fazenda ativa. Filtrar aqui escondia IEs vinculadas a outra
     // fazenda (ou sem fazenda) depois de salvas, parecendo que não tinham salvado.
     setProdIEs(p ? await listarIEsDoProdutor(p.id) : []);
+    setProdEmpresas(p ? await listarEmpresasDoProdutor(p.id).catch(() => []) : []);
     setModalProd(true);
   };
+
+  // "Fazenda vinculada" da IE aceita Fazenda OU Empresa (PJ) — mutuamente
+  // exclusivos — codificados num só valor de <select> como "faz:<id>"/"emp:<id>".
+  const vincIEValue = (o: { fazenda_id?: string | null; empresa_id?: string | null }) =>
+    o.empresa_id ? `emp:${o.empresa_id}` : o.fazenda_id ? `faz:${o.fazenda_id}` : "";
+  const parseVincIE = (v: string): { fazenda_id: string; empresa_id: string } =>
+    v.startsWith("emp:") ? { fazenda_id: "", empresa_id: v.slice(4) } :
+    v.startsWith("faz:") ? { fazenda_id: v.slice(4), empresa_id: "" } :
+    { fazenda_id: "", empresa_id: "" };
+  const nomeVincIE = (o: { fazenda_id?: string | null; empresa_id?: string | null }) =>
+    o.empresa_id ? (prodEmpresas.find(e => e.id === o.empresa_id)?.nome ?? o.empresa_id)
+    : o.fazenda_id ? (fazendas.find(f => f.id === o.fazenda_id)?.nome ?? o.fazenda_id)
+    : "—";
 
   const buscarCepProd = async (cep: string) => {
     const limpo = cep.replace(/\D/g, "");
@@ -1165,6 +1180,7 @@ function CadastrosInner() {
     await salvarIEsDoProdutor(prodId, prodIEs.map(ie => ({
       produtor_id: prodId,
       fazenda_id: ie.fazenda_id ?? null,
+      empresa_id: ie.empresa_id ?? null,
       inscricao_estadual: ie.inscricao_estadual,
       municipio: ie.municipio ?? null,
       estado: ie.estado,
@@ -7301,7 +7317,7 @@ function CadastrosInner() {
                         </button>
                       </td>
                       <td style={{ padding: "7px 10px", color: "var(--text-3)" }}>
-                        {ie.fazenda_id ? (fazendas.find(f => f.id === ie.fazenda_id)?.nome ?? ie.fazenda_id) : "—"}
+                        {nomeVincIE(ie)}{ie.empresa_id ? " (PJ)" : ""}
                       </td>
                       <td style={{ padding: "7px 10px" }}>
                         <input type="checkbox" checked={ie.ativa} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, ativa: e.target.checked} : x))} />
@@ -7364,10 +7380,19 @@ function CadastrosInner() {
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Fazenda vinculada</label>
-                  <select style={inp} value={newIE.fazenda_id} onChange={e => setNewIE(p => ({ ...p, fazenda_id: e.target.value }))}>
+                  <label style={lbl}>Fazenda ou Empresa vinculada</label>
+                  <select style={inp} value={vincIEValue(newIE)} onChange={e => setNewIE(p => ({ ...p, ...parseVincIE(e.target.value) }))}>
                     <option value="">Nenhuma</option>
-                    {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                    {fazendas.length > 0 && (
+                      <optgroup label="Fazendas">
+                        {fazendas.map(f => <option key={f.id} value={`faz:${f.id}`}>{f.nome}</option>)}
+                      </optgroup>
+                    )}
+                    {prodEmpresas.length > 0 && (
+                      <optgroup label="Empresas (PJ)">
+                        {prodEmpresas.map(e => <option key={e.id} value={`emp:${e.id}`}>{e.nome}</option>)}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
                 <button
@@ -7378,6 +7403,7 @@ function CadastrosInner() {
                       id: crypto.randomUUID(),
                       produtor_id: editProd?.id ?? "",
                       fazenda_id: newIE.fazenda_id || null,
+                      empresa_id: newIE.empresa_id || null,
                       inscricao_estadual: newIE.inscricao_estadual.trim(),
                       municipio: newIE.municipio.trim() || null,
                       estado: newIE.estado,
@@ -7389,7 +7415,7 @@ function CadastrosInner() {
                       bairro: newIE.bairro.trim() || null,
                       municipio_ibge: newIE.municipio_ibge.trim() || null,
                     }]);
-                    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
+                    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", empresa_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
                   }}
                   style={{ ...btnV, padding: "8px 16px", opacity: !newIE.inscricao_estadual.trim() ? 0.5 : 1, whiteSpace: "nowrap" }}
                 >+ Adicionar</button>

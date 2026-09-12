@@ -729,6 +729,9 @@ export type ProdutorIE = {
   id: string;
   produtor_id: string;
   fazenda_id?: string | null;
+  // Alternativa a fazenda_id: a IE pode pertencer a uma Empresa (PJ) do
+  // produtor em vez de a uma propriedade física — mutuamente exclusivos.
+  empresa_id?: string | null;
   inscricao_estadual: string;
   municipio?: string | null;
   estado: string;

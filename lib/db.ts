@@ -1858,6 +1858,15 @@ export async function listarEmpresas(fazenda_id: string): Promise<Empresa[]> {
   return data ?? [];
 }
 
+// Empresas (PJ) deste produtor específico, sem filtro de fazenda — usado na
+// aba Inscrições Estaduais pra permitir vincular uma IE à empresa do produtor
+// em vez de a uma fazenda (produtor pode ter empresas em mais de uma fazenda).
+export async function listarEmpresasDoProdutor(produtor_id: string): Promise<Empresa[]> {
+  const { data, error } = await supabase.from("empresas").select("*").eq("produtor_id", produtor_id).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listarEmpresasDaConta(fazendaIds: string[]): Promise<Empresa[]> {
   if (!fazendaIds.length) return [];
   const { data, error } = await supabase

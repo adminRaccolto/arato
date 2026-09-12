@@ -12417,3 +12417,18 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE produtores ADD COLUMN IF NOT EXISTS municipio_ibge TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 253 — Inscrição Estadual pode vincular a uma Empresa (PJ)
+-- em vez de a uma Fazenda. Até aqui "Fazenda vinculada" só listava
+-- fazendas — mas um produtor com empresa (PJ) pode ter uma IE que
+-- pertence à empresa, não a uma propriedade física. Mutuamente
+-- exclusivo com fazenda_id (a UI só deixa escolher um dos dois).
+-- ============================================================
+ALTER TABLE produtor_inscricoes_estaduais
+  ADD COLUMN IF NOT EXISTS empresa_id UUID REFERENCES empresas(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_prod_ies_empresa ON produtor_inscricoes_estaduais(empresa_id)
+  WHERE empresa_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
