@@ -24,12 +24,17 @@ import { soapPost, CUF_MAP } from "./transmitter";
 import type { PemPair } from "./signer";
 
 // Namespace/Action nacional do serviço — mesmo para todas as UFs (o que muda
-// por UF é só a URL do endpoint). Suffix "4" no namespace é o identificador de
-// dispatch do Axis2 (confirmado em implementações de referência); o payload
-// em si (<ConsCad versao="2.00">) continua na versão de schema 2.00, que é
-// outra coisa — não seguiu o versionamento 4.00 do restante da NF-e.
-const CAD_NAMESPACE = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro4";
-const CAD_SOAP_ACTION = `${CAD_NAMESPACE}/consultaCadastro`;
+// por UF é só a URL do endpoint). O leiaute do payload (<ConsCad versao="2.00">,
+// XSD leiauteConsultaCadastro_v2.00.xsd) nunca foi promovido pra 4.00 como o
+// resto da NF-e — só a URL do endpoint ganhou o sufixo "4" em algumas UFs.
+// O namespace de header/body do SOAP continua "CadConsultaCadastro2": tentar
+// "CadConsultaCadastro4" aqui (por analogia com NFeAutorizacao4) despachava
+// certo mas o corpo era rejeitado ("Falha no schema XML") — o WSDL real
+// vincula a operação a este namespace específico, não ao sufixo da URL.
+const CAD_NAMESPACE = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro2";
+// Sem essa Action explícita no Content-Type (SOAP 1.2), o Axis2 do MT rejeita
+// antes mesmo de tentar validar o corpo ("WSA Action = null" / HTTP 500).
+const CAD_SOAP_ACTION = CAD_NAMESPACE;
 
 interface UFCadEndpoint { prod: string }
 
