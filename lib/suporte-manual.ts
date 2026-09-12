@@ -310,6 +310,8 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 - Emitida: Visualizar NF · DANFE · Confirmar Entrada (se não automático) · Cancelar
 - Entrada Confirmada / Cancelada: Visualizar NF
 
+**CNPJ/CPF e IE do Destinatário:** vêm pré-preenchidos com o cadastro fiscal da fazenda de destino, mas são editáveis — a entrada pode ser numa IE diferente da do produtor responsável pelo depósito. Os dois campos são de texto livre com sugestão (aceitam digitar qualquer coisa): o CNPJ/CPF sugere os produtores cadastrados na conta; ao digitar/escolher um documento que bate com um produtor, o campo IE passa a sugerir as IEs daquele produtor já mostrando o município de cada uma — útil quando o mesmo produtor tem IEs em municípios diferentes.
+
 ### 9.4 Abastecimento de Máquinas
 **Caminho:** Compras & Estoque → Estoque → Abastecimento de Máquinas
 

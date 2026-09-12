@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
-import type { Fazenda, Deposito, Insumo, TransferenciaEstoque, TransferenciaEstoqueItem } from "../../../lib/supabase";
-import { saldoPorLote } from "../../../lib/db";
+import type { Fazenda, Deposito, Insumo, TransferenciaEstoque, TransferenciaEstoqueItem, Produtor, ProdutorIE } from "../../../lib/supabase";
+import { saldoPorLote, listarProdutoresDaConta, listarIEsDoProdutor } from "../../../lib/db";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -107,6 +107,12 @@ export default function TransferenciasEstoquePage() {
   const [transportadoras, setTransportadoras] = useState<TrRow[]>([]);
   const [veiculos, setVeiculos]               = useState<VeRow[]>([]);
   const [motoristas, setMotoristas]           = useState<MoRow[]>([]);
+
+  // Produtores da conta — pra sugerir CNPJ/CPF do destinatário; e as IEs do
+  // produtor selecionado — pra sugerir a IE já mostrando a qual município ela
+  // pertence (o mesmo CPF pode ter IEs em municípios diferentes).
+  const [produtoresDestino, setProdutoresDestino] = useState<Produtor[]>([]);
+  const [iesProdutorDestino, setIesProdutorDestino] = useState<ProdutorIE[]>([]);
 
   // ── Abas ──────────────────────────────────────────────────────────────────
   const [aba, setAba] = useState<"lista" | "solicitacoes">("lista");
@@ -244,6 +250,10 @@ export default function TransferenciasEstoquePage() {
       setTransportadoras(todasTransp);
       setVeiculos((veRes.data ?? []) as VeRow[]);
       setMotoristas((moRes.data ?? []) as MoRow[]);
+
+      if (contaId) {
+        listarProdutoresDaConta(contaId).then(setProdutoresDestino).catch(() => {});
+      }
     } finally {
       setCarregando(false);
     }
@@ -273,6 +283,16 @@ export default function TransferenciasEstoquePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.fazendaDestinoId]);
 
+  // Ao digitar/selecionar o CNPJ/CPF do destinatário, acha o produtor cadastrado
+  // com esse documento e carrega as IEs dele — a sugestão de IE (datalist) passa
+  // a mostrar só as IEs desse produtor, cada uma já com o município.
+  useEffect(() => {
+    const digits = form.cpfCnpjDestino.replace(/\D/g, "");
+    if (digits.length < 11) { setIesProdutorDestino([]); return; }
+    const prod = produtoresDestino.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === digits);
+    if (!prod) { setIesProdutorDestino([]); return; }
+    listarIEsDoProdutor(prod.id).then(setIesProdutorDestino).catch(() => setIesProdutorDestino([]));
+  }, [form.cpfCnpjDestino, produtoresDestino]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
   const fazendaOrigem = todasFazendas.find(f => f.id === form.fazendaOrigemId);
@@ -797,11 +817,35 @@ export default function TransferenciasEstoquePage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
                     <label style={lbl}>CNPJ/CPF Destinatário</label>
-                    <input value={form.cpfCnpjDestino} onChange={e => setForm(f => ({ ...f, cpfCnpjDestino: e.target.value }))} placeholder="Auto (editável)" style={inp} disabled={!form.fazendaDestinoId} />
+                    <input
+                      list="produtoresDestinoList"
+                      value={form.cpfCnpjDestino}
+                      onChange={e => setForm(f => ({ ...f, cpfCnpjDestino: e.target.value }))}
+                      placeholder="Auto (editável) — digite pra buscar um produtor"
+                      style={inp}
+                      disabled={!form.fazendaDestinoId}
+                    />
+                    <datalist id="produtoresDestinoList">
+                      {produtoresDestino.map(p => (
+                        <option key={p.id} value={p.cpf_cnpj ?? ""} label={p.nome} />
+                      ))}
+                    </datalist>
                   </div>
                   <div>
                     <label style={lbl}>IE Destinatário</label>
-                    <input value={form.ieDestino} onChange={e => setForm(f => ({ ...f, ieDestino: e.target.value }))} placeholder="Auto (editável)" style={inp} disabled={!form.fazendaDestinoId} />
+                    <input
+                      list="iesDestinoList"
+                      value={form.ieDestino}
+                      onChange={e => setForm(f => ({ ...f, ieDestino: e.target.value }))}
+                      placeholder="Auto (editável)"
+                      style={inp}
+                      disabled={!form.fazendaDestinoId}
+                    />
+                    <datalist id="iesDestinoList">
+                      {iesProdutorDestino.map(ie => (
+                        <option key={ie.id} value={ie.inscricao_estadual} label={`${ie.municipio ?? "—"} / ${ie.estado}`} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
                 <p style={{ fontSize: 10, color: "var(--text-3)", margin: "4px 0 0" }}>
