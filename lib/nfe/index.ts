@@ -89,7 +89,7 @@ async function tentarDownload(path: string): Promise<Buffer | null> {
   return null;
 }
 
-async function carregarPfx(
+export async function carregarPfx(
   storagePath: string,
   fazendaId: string,
 ): Promise<Buffer> {

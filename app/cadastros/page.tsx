@@ -298,6 +298,7 @@ function CadastrosInner() {
   // Mapa produtor_id → empresa_id para Produtores PJ (preenchido ao salvar/carregar)
   const [prodEmpresaMap, setProdEmpresaMap] = useState<Record<string, string>>({});
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const [consultandoSintegra, setConsultandoSintegra] = useState<string | null>(null); // "new" | `existing-${idx}` | null
   const [tabProd, setTabProd]         = useState<"dados"|"ies">("dados");
   const [prodIEs, setProdIEs]         = useState<ProdutorIE[]>([]);
   const [newIE, setNewIE]             = useState({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
@@ -1010,6 +1011,80 @@ function CadastrosInner() {
       }
     } catch { /* silencioso — usuário preenche manualmente */ }
   };
+
+  const formatCep = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 8);
+    return d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
+  };
+
+  // "Sintegra" — consulta cadastro de contribuintes na SEFAZ pela IE e
+  // preenche endereço + nome automaticamente, igual ao ícone de Sintegra do
+  // sistema de referência ao lado da Inscrição Estadual.
+  const consultarSintegraNewIE = async () => {
+    if (!newIE.inscricao_estadual.trim()) return;
+    setConsultandoSintegra("new");
+    try {
+      const res = await fetch("/api/fiscal/consultar-cadastro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: newIE.fazenda_id || fazendaId, uf: newIE.estado, ie: newIE.inscricao_estadual }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) { alert(d.error || "Falha ao consultar Sintegra"); return; }
+      if (!d.encontrados) { alert(d.xMotivo || "Nenhum cadastro encontrado para essa IE."); return; }
+      setNewIE(p => ({
+        ...p,
+        municipio:      d.municipio      || p.municipio,
+        municipio_ibge: d.municipio_ibge || p.municipio_ibge,
+        estado:         d.uf             || p.estado,
+        logradouro:     d.logradouro     || p.logradouro,
+        numero:         d.numero         || p.numero,
+        complemento:    d.complemento    || p.complemento,
+        bairro:         d.bairro         || p.bairro,
+        cep:            d.cep ? formatCep(d.cep) : p.cep,
+      }));
+      if (d.nome && !fProd.nome.trim()) setFProd(p => ({ ...p, nome: d.nome }));
+      if (d.encontrados > 1) alert(`Atenção: a SEFAZ retornou ${d.encontrados} cadastros para essa IE. Foi usado o primeiro — confira os dados antes de salvar.`);
+    } catch (e) {
+      alert(`Falha ao consultar Sintegra: ${e}`);
+    } finally {
+      setConsultandoSintegra(null);
+    }
+  };
+
+  const consultarSintegraIeExistente = async (idx: number) => {
+    const ie = prodIEs[idx];
+    if (!ie?.inscricao_estadual?.trim()) return;
+    setConsultandoSintegra(`existing-${idx}`);
+    try {
+      const res = await fetch("/api/fiscal/consultar-cadastro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: ie.fazenda_id || fazendaId, uf: ie.estado, ie: ie.inscricao_estadual }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) { alert(d.error || "Falha ao consultar Sintegra"); return; }
+      if (!d.encontrados) { alert(d.xMotivo || "Nenhum cadastro encontrado para essa IE."); return; }
+      setProdIEs(prev => prev.map((x, j) => j === idx ? {
+        ...x,
+        municipio:      d.municipio      || x.municipio,
+        municipio_ibge: d.municipio_ibge || x.municipio_ibge,
+        estado:         d.uf             || x.estado,
+        logradouro:     d.logradouro     || x.logradouro,
+        numero:         d.numero         || x.numero,
+        complemento:    d.complemento    || x.complemento,
+        bairro:         d.bairro         || x.bairro,
+        cep:            d.cep ? formatCep(d.cep) : x.cep,
+      } : x));
+      if (d.nome && !fProd.nome.trim()) setFProd(p => ({ ...p, nome: d.nome }));
+      if (d.encontrados > 1) alert(`Atenção: a SEFAZ retornou ${d.encontrados} cadastros para essa IE. Foi usado o primeiro — confira os dados antes de salvar.`);
+    } catch (e) {
+      alert(`Falha ao consultar Sintegra: ${e}`);
+    } finally {
+      setConsultandoSintegra(null);
+    }
+  };
+
   const salvarProd = () => salvar(async () => {
     const erros: string[] = [];
     if (!fProd.nome.trim()) erros.push("Nome");
@@ -7206,7 +7281,18 @@ function CadastrosInner() {
                     return (
                     <>
                     <tr key={ie.id ?? i} style={{ borderBottom: editando ? "none" : "0.5px solid #EEF1F7" }}>
-                      <td style={{ padding: "7px 10px", fontWeight: 600, color: "#111111" }}>{ie.inscricao_estadual}</td>
+                      <td style={{ padding: "7px 10px", fontWeight: 600, color: "#111111" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>{ie.inscricao_estadual}</span>
+                          <button
+                            type="button"
+                            title="Consultar Sintegra (SEFAZ) e preencher nome/endereço automaticamente"
+                            onClick={() => consultarSintegraIeExistente(i)}
+                            disabled={consultandoSintegra === `existing-${i}`}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 0, color: "#1A4870", fontWeight: 400 }}
+                          >{consultandoSintegra === `existing-${i}` ? "⟳" : "🔎"}</button>
+                        </div>
+                      </td>
                       <td style={{ padding: "7px 10px" }}>{ie.municipio ?? "—"}</td>
                       <td style={{ padding: "7px 10px" }}>{ie.estado}</td>
                       <td style={{ padding: "7px 10px" }}>
@@ -7256,7 +7342,16 @@ function CadastrosInner() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 1fr auto", gap: 10, alignItems: "flex-end" }}>
                 <div>
                   <label style={lbl}>IE *</label>
-                  <input style={inp} value={newIE.inscricao_estadual} onChange={e => setNewIE(p => ({ ...p, inscricao_estadual: e.target.value.replace(/\D/g,"") }))} placeholder="Apenas dígitos" />
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <input style={{ ...inp, flex: 1 }} value={newIE.inscricao_estadual} onChange={e => setNewIE(p => ({ ...p, inscricao_estadual: e.target.value.replace(/\D/g,"") }))} placeholder="Apenas dígitos" />
+                    <button
+                      type="button"
+                      title="Consultar Sintegra (SEFAZ) e preencher endereço/nome automaticamente"
+                      disabled={!newIE.inscricao_estadual.trim() || consultandoSintegra === "new"}
+                      onClick={consultarSintegraNewIE}
+                      style={{ ...btnR, padding: "0 10px", opacity: !newIE.inscricao_estadual.trim() ? 0.5 : 1 }}
+                    >{consultandoSintegra === "new" ? "⟳" : "🔎"}</button>
+                  </div>
                 </div>
                 <div>
                   <label style={lbl}>Município</label>
