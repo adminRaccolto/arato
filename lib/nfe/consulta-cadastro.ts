@@ -23,20 +23,17 @@
 import { soapPost, CUF_MAP } from "./transmitter";
 import type { PemPair } from "./signer";
 
-// Duas coisas independentes, mapeadas empiricamente contra o Axis2 da SEFAZ MT
-// (cada combinação errada dá um erro diferente, o que permitiu isolar as duas):
-//   1. Action do SOAP 1.2 (Content-Type action=) — usada só pelo Axis2 pra
-//      DESPACHAR pra operação certa. O WSDL real da MT registra essa operação
-//      com Action "CadConsultaCadastro4/consultaCadastro" — Action errada ou
-//      ausente dá "WSA Action = null"/"Operation not found" (HTTP 500), antes
-//      de qualquer validação de conteúdo.
-//   2. Namespace do header (nfeCabecMsg) e do body (nfeDadosMsg) — validado
-//      contra o leiaute real do payload, que é leiauteConsultaCadastro_v2.00.xsd
-//      (nunca promovido pra 4.00 como o resto da NF-e). Namespace "4" aqui
-//      despacha certo mas o corpo é rejeitado ("215 - Falha no schema XML").
-// Ou seja: Action usa o sufixo "4", mas header/body usam o namespace "2".
-const CAD_NAMESPACE = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro2";
-const CAD_SOAP_ACTION = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro4/consultaCadastro";
+// Confirmado direto contra o WSDL real da MT (curl -k .../CadConsultaCadastro4?wsdl,
+// contornando o certificado ICP-Brasil que o WebFetch não aceita): o corpo do SOAP
+// Body não é <nfeDadosMsg> solto — o elemento raiz esperado é <consultaCadastro>
+// (nome da operação, estilo document/literal wrapped), e É DENTRO DELE que
+// <nfeDadosMsg> (mixed, aceita qualquer conteúdo) entra, com o <ConsCad> lá dentro.
+// Mandar <nfeDadosMsg> direto como filho do Body (como em NFeAutorizacao4, que usa
+// um binding diferente) é o que causava "Rejeicao: Falha no schema XML" — a
+// mensagem nunca bateu com o schema declarado pelo WSDL, apesar do ConsCad em si
+// estar correto.
+const CAD_NAMESPACE = "http://www.portalfiscal.inf.br/nfe/wsdl/CadConsultaCadastro4";
+const CAD_SOAP_ACTION = `${CAD_NAMESPACE}/consultaCadastro`;
 
 interface UFCadEndpoint { prod: string }
 
@@ -72,11 +69,13 @@ function envelopeConsCad(cuf: string, uf: string, ie?: string, cnpj?: string, cp
       `</nfeCabecMsg>` +
     `</soap12:Header>` +
     `<soap12:Body>` +
-      `<nfeDadosMsg xmlns="${CAD_NAMESPACE}">` +
-        `<ConsCad versao="2.00" xmlns="http://www.portalfiscal.inf.br/nfe">` +
-          `<infCons><xServ>CONS-CAD</xServ><UF>${uf}</UF>${ident}</infCons>` +
-        `</ConsCad>` +
-      `</nfeDadosMsg>` +
+      `<consultaCadastro xmlns="${CAD_NAMESPACE}">` +
+        `<nfeDadosMsg>` +
+          `<ConsCad versao="2.00" xmlns="http://www.portalfiscal.inf.br/nfe">` +
+            `<infCons><xServ>CONS-CAD</xServ><UF>${uf}</UF>${ident}</infCons>` +
+          `</ConsCad>` +
+        `</nfeDadosMsg>` +
+      `</consultaCadastro>` +
     `</soap12:Body>` +
     `</soap12:Envelope>`
   );
