@@ -1179,8 +1179,10 @@ function CadastrosInner() {
     // isso era sobrescrito à força pela fazenda ativa geral, em todas as IEs).
     await salvarIEsDoProdutor(prodId, prodIEs.map(ie => ({
       produtor_id: prodId,
-      fazenda_id: ie.fazenda_id ?? null,
-      empresa_id: ie.empresa_id ?? null,
+      // "|| null", não "?? null": parseVincIE (edição de IE existente) usa "" pra
+      // "Nenhuma", e "" não é UUID válido pro Postgres — precisa virar NULL também.
+      fazenda_id: ie.fazenda_id || null,
+      empresa_id: ie.empresa_id || null,
       inscricao_estadual: ie.inscricao_estadual,
       municipio: ie.municipio ?? null,
       estado: ie.estado,
@@ -7336,8 +7338,24 @@ function CadastrosInner() {
                             <div><label style={lbl}>Complemento</label><input style={inp} value={ie.complemento ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, complemento: e.target.value} : x))} /></div>
                             <div><label style={lbl}>Bairro</label><input style={inp} value={ie.bairro ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, bairro: e.target.value} : x))} /></div>
                           </div>
-                          <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                          <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div><label style={lbl}>Código IBGE do município (obrigatório pra emitir NF-e com essa IE)</label><input style={inp} value={ie.municipio_ibge ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, municipio_ibge: e.target.value} : x))} placeholder="7 dígitos" /></div>
+                            <div>
+                              <label style={lbl}>Fazenda ou Empresa vinculada</label>
+                              <select style={inp} value={vincIEValue(ie)} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, ...parseVincIE(e.target.value)} : x))}>
+                                <option value="">Nenhuma</option>
+                                {fazendas.length > 0 && (
+                                  <optgroup label="Fazendas">
+                                    {fazendas.map(f => <option key={f.id} value={`faz:${f.id}`}>{f.nome}</option>)}
+                                  </optgroup>
+                                )}
+                                {prodEmpresas.length > 0 && (
+                                  <optgroup label="Empresas (PJ)">
+                                    {prodEmpresas.map(e => <option key={e.id} value={`emp:${e.id}`}>{e.nome}</option>)}
+                                  </optgroup>
+                                )}
+                              </select>
+                            </div>
                           </div>
                         </td>
                       </tr>
