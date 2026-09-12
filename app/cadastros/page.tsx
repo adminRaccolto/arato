@@ -942,7 +942,10 @@ function CadastrosInner() {
     });
     setTabProd("dados");
     setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio_ibge: "" });
-    setProdIEs(p ? await listarIEsDoProdutor(p.id, fazendaId ?? undefined) : []);
+    // Sem filtro de fazenda — a aba Inscrições Estaduais é do produtor inteiro,
+    // não só da fazenda ativa. Filtrar aqui escondia IEs vinculadas a outra
+    // fazenda (ou sem fazenda) depois de salvas, parecendo que não tinham salvado.
+    setProdIEs(p ? await listarIEsDoProdutor(p.id) : []);
     setModalProd(true);
   };
 
