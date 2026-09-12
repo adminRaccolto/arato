@@ -36,7 +36,11 @@ export async function GET(req: NextRequest) {
 
   const apenas_com_ie = req.nextUrl.searchParams.get("apenas_com_ie") === "true";
 
-  let q = admin.from("produtores").select("id,nome,cpf_cnpj,inscricao_est,email,telefone,municipio,estado,conta_id,fazenda_id").order("nome");
+  // select("*") — a lista manual de colunas já esqueceu "tipo" uma vez (quebrou a
+  // tela inteira: p.tipo.toUpperCase() em cima de undefined), e provavelmente vai
+  // esquecer de novo a cada campo novo adicionado em produtores. Usar "*" evita
+  // essa classe de bug de vez, igual ao padrão já usado em listarProdutores().
+  let q = admin.from("produtores").select("*").order("nome");
 
   if (conta_id && allFazIds.length > 0) {
     q = q.or(`conta_id.eq.${conta_id},fazenda_id.in.(${allFazIds.join(",")})`);
