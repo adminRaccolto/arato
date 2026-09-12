@@ -5,9 +5,14 @@
  * cadastral direto da base da SEFAZ. Reaproveita o mesmo certificado A1 e o
  * mesmo transporte mTLS já usados na emissão de NF-e (lib/nfe/transmitter.ts).
  *
- * Escopo atual: apenas MT, único estado com dados reais de clientes hoje.
- * Adicionar outra UF é só incluir uma entrada em UF_CAD_ENDPOINTS — o resto
- * (envelope, parsing, certificado) já é genérico por UF.
+ * Escopo atual: MT, GO, MS, SP, BA e TO. Demais UFs, sob demanda — adicionar
+ * é só incluir uma entrada em UF_CAD_ENDPOINTS (envelope, parsing e
+ * certificado já são genéricos por UF, não mudam).
+ * Fontes dos endpoints: MT/GO/MS/SP/BA — próprios de cada SEFAZ, confirmados
+ * via tabela de webservices do sped-nfe (nfephp-org), mesmo padrão já usado
+ * em transmitter.ts para NFeAutorizacao4. TO não tem autorizador próprio —
+ * usa SVRS (Sefaz Virtual RS) como processador, inclusive para consulta de
+ * cadastro: https://cad.svrs.rs.gov.br/ws/cadconsultacadastro/cadconsultacadastro4.asmx
  *
  * Diferente da emissão de NF-e, não existe noção de homologação aqui: é uma
  * consulta a um cadastro real, não a emissão de um documento — por isso
@@ -22,6 +27,12 @@ interface UFCadEndpoint { prod: string }
 
 const UF_CAD_ENDPOINTS: Record<string, UFCadEndpoint> = {
   MT: { prod: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/CadConsultaCadastro4" },
+  GO: { prod: "https://nfe.sefaz.go.gov.br/nfe/services/CadConsultaCadastro4" },
+  MS: { prod: "https://nfe.sefaz.ms.gov.br/ws/CadConsultaCadastro4" },
+  SP: { prod: "https://nfe.fazenda.sp.gov.br/ws/cadconsultacadastro4.asmx" },
+  BA: { prod: "https://nfe.sefaz.ba.gov.br/webservices/CadConsultaCadastro4/CadConsultaCadastro4.asmx" },
+  // TO não tem autorizador próprio — usa SVRS como processador (mesmo pra consulta de cadastro)
+  TO: { prod: "https://cad.svrs.rs.gov.br/ws/cadconsultacadastro/cadconsultacadastro4.asmx" },
 };
 
 function tagVal(xml: string, tag: string): string {
@@ -125,7 +136,7 @@ export async function consultarCadastroContribuinte(
   if (!ep) {
     return {
       cStat: "CFG",
-      xMotivo: `Consulta de Cadastro (Sintegra) ainda não implementada para a UF ${ufUpper}. Suporte inicial: MT.`,
+      xMotivo: `Consulta de Cadastro (Sintegra) ainda não implementada para a UF ${ufUpper}. Suporte atual: MT, GO, MS, SP, BA, TO.`,
       encontrados: 0,
     };
   }
