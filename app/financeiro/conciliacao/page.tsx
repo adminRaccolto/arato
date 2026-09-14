@@ -1517,6 +1517,13 @@ function ConciliacaoInner() {
                     const isSel = lancsSel.has(l.id);
                     const sm    = statusMeta(l);
                     const saldo = ehParcial(l) ? l.valor - (l.valor_pago ?? 0) : null;
+                    // Igual ao sistema de referência: lançamento sem NENHUMA linha
+                    // correspondente no extrato OFX importado fica com fundo cinza —
+                    // mostra de cara o que existe no sistema mas não apareceu no banco
+                    // (pago por outra conta, ainda não baixado, ou divergência real).
+                    const semCorrespondenciaNoExtrato = !extrato.linhas.some(
+                      linha => linha.lancamento_id === l.id || linha.lancamento_ids?.includes(l.id)
+                    );
                     return (
                       <div key={l.id}
                         onClick={() => {
@@ -1529,7 +1536,7 @@ function ConciliacaoInner() {
                         style={{
                           padding: "9px 14px",
                           borderBottom: i < arr.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
-                          background: isSel ? "#EBF4FF" : "transparent",
+                          background: isSel ? "#EBF4FF" : semCorrespondenciaNoExtrato ? "#EDEEF0" : "transparent",
                           borderLeft: isSel ? "3px solid #1A4870" : "3px solid transparent",
                           cursor: "pointer",
                           display: "flex", alignItems: "flex-start", gap: 8,
