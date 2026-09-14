@@ -20,7 +20,7 @@ const RELEASES = [
       { tipo: "melhoria", texto: "Resultados → Custos Totais: o seletor de Ciclos virou um dropdown com busca, mostrando a Fazenda de cada ciclo ao lado do nome — antes não dava pra saber de qual propriedade era cada ciclo selecionado." },
       { tipo: "correcao", texto: "Fiscal → Monitor de NF-e Emitidas: notas de Transferência entre Fazendas nunca apareciam nessa tela (ficavam só na tela de Transferências) — agora toda emissão e cancelamento de transferência aparece no Monitor normalmente." },
       { tipo: "correcao", texto: "NF de Serviço: erro 'violates foreign key constraint' ao salvar quando o Tomador do serviço era um Produtor ou Empresa (e não um cadastro de Pessoas) — corrigido." },
-      { tipo: "correcao", texto: "NF de Produtos e NF de Serviço: filtro por Produtor não aparecia (ou não existia) em contas com múltiplos produtores. Agora tem seletor de Produtor/Tomador com CPF/CNPJ no rótulo, e a busca por texto também aceita CPF/CNPJ digitado." },
+      { tipo: "correcao", texto: "NF de Produtos e NF de Serviço: filtro por Produtor não aparecia (ou não existia) em contas com múltiplos produtores. Agora tem seletor de Produtor/Tomador com CPF/CNPJ no rótulo, e a busca por texto também aceita CPF/CNPJ digitado. O filtro passa a casar pelo CPF/CNPJ do destinatário/tomador da nota (não só pelo vínculo interno de produtor), então pega todas as notas do produtor mesmo quando esse vínculo não foi preenchido em alguma delas." },
     ],
     onde: "Financeiro → Conciliação · Compras & Estoque → Relatórios · Resultados → Custos Totais · Fiscal → Monitor NF-e · Compras & Estoque → NF de Produtos/Serviços",
   },

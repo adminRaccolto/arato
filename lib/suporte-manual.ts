@@ -260,7 +260,7 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 - Processada: Ver, DANFE, Devolver, Reclassificar, Estornar, Excluir
 - Para desfazer: use **Estornar** — reverte estoque, CP e pendências fiscais antes de excluir.
 
-**Filtro por Produtor:** em contas com mais de um produtor cadastrado, o filtro "Produtor" aparece na barra de filtros (mostra nome + CPF/CNPJ, útil quando há nomes parecidos). A busca por texto também aceita CPF/CNPJ digitado (com ou sem pontuação), além de número e nome do emitente.
+**Filtro por Produtor:** em contas com mais de um produtor cadastrado, o filtro "Produtor" aparece na barra de filtros (mostra nome + CPF/CNPJ, útil quando há nomes parecidos). A busca por texto também aceita CPF/CNPJ digitado (com ou sem pontuação), além de número e nome do emitente. O filtro casa pelo CPF/CNPJ do destinatário da nota — funciona corretamente mesmo se o mesmo produtor tiver mais de um cadastro na tela de Produtores (duplicado por nome diferente com o mesmo documento).
 
 ### 8.3 NF de Serviços (NFS-e)
 **Caminho:** Compras & Estoque → Compras → NF de Serviços
