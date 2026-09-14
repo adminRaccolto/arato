@@ -20,6 +20,7 @@ import {
   registrarLog,
   listarPASaldos,
   listarMovimentacoesPA,
+  saldoPorLoteDetalhado,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type {
@@ -299,8 +300,12 @@ export default function Estoque() {
   const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
 
   // relatórios
-  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos"|"auditoria">("saldos");
+  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos"|"auditoria"|"lotes">("saldos");
   const [relInsumoId, setRelInsumoId] = useState("");
+  const [relLoteInsumoId, setRelLoteInsumoId] = useState("");
+  const [relLoteDepositoId, setRelLoteDepositoId] = useState("");
+  const [saldosLote, setSaldosLote] = useState<{ lote: string; entradas: number; saidas: number; saldo: number; ultima_movimentacao: string }[]>([]);
+  const [buscandoLote, setBuscandoLote] = useState(false);
   const [_depAberto, _setDepAberto]   = useState<Set<string>>(new Set());
   const [filtroDepProdutos, setFiltroDepProdutos] = useState<Set<string>>(new Set());
   const [filtroDepBusca, setFiltroDepBusca]       = useState("");
@@ -599,6 +604,18 @@ export default function Estoque() {
   const buscarHistorico = () => {
     if (!fazAtiva || !relInsumoId) return;
     listarMovimentacoes(fazAtiva, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
+  };
+
+  // ── Relatório Saldo por Lote — mesma lógica usada nos seletores de lote
+  // (transferência, plantio, tratamento de sementes), só que exposta como
+  // consulta em vez de só aparecer dentro de um dropdown.
+  const buscarSaldoLote = () => {
+    if (!fazAtiva || !relLoteInsumoId) return;
+    setBuscandoLote(true);
+    saldoPorLoteDetalhado(relLoteInsumoId, fazAtiva, relLoteDepositoId || undefined)
+      .then(setSaldosLote)
+      .catch(() => setSaldosLote([]))
+      .finally(() => setBuscandoLote(false));
   };
 
   const buscarKardex = async () => {
@@ -1341,7 +1358,7 @@ export default function Estoque() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Sub-abas — scroll horizontal no mobile */}
               <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
-                {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["depositos","Saldo por Depósito"],["posicao","Posição Financeira"],["auditoria","🔍 Auditoria de Saldo"]] as [typeof relTipo, string][]).map(([k,l]) => (
+                {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["lotes","Saldo por Lote"],["depositos","Saldo por Depósito"],["posicao","Posição Financeira"],["auditoria","🔍 Auditoria de Saldo"]] as [typeof relTipo, string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#111111" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
                 ))}
               </div>
@@ -1692,6 +1709,66 @@ export default function Estoque() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* ── Saldo por Lote ── */}
+              {relTipo === "lotes" && (
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 14 }}>
+                    <div>
+                      <label style={lbl}>Semente *</label>
+                      <select style={inp} value={relLoteInsumoId} onChange={e => setRelLoteInsumoId(e.target.value)}>
+                        <option value="">— Selecionar —</option>
+                        {insumos.filter(x => x.categoria === "semente").sort((a,b) => a.nome.localeCompare(b.nome)).map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Depósito (opcional)</label>
+                      <select style={inp} value={relLoteDepositoId} onChange={e => setRelLoteDepositoId(e.target.value)}>
+                        <option value="">Todos os depósitos</option>
+                        {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end" }}>
+                      <button style={{ ...btnV, width: "100%" }} onClick={buscarSaldoLote} disabled={!relLoteInsumoId || buscandoLote}>
+                        {buscandoLote ? "Buscando…" : "Buscar"}
+                      </button>
+                    </div>
+                  </div>
+                  {relLoteInsumoId && (() => {
+                    const ins = insumos.find(x => x.id === relLoteInsumoId);
+                    if (!ins) return null;
+                    const saldoTotal = saldosLote.reduce((s, l) => s + l.saldo, 0);
+                    return (
+                      <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{ins.nome}</span>
+                          <span style={{ fontSize: 12, color: "var(--text-2)" }}>{saldosLote.length} lote{saldosLote.length !== 1 ? "s" : ""} com movimento</span>
+                          <span style={{ fontSize: 12, color: "var(--text-2)" }}>Soma dos lotes: <strong style={{ color: saldoTotal < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(saldoTotal)} {ins.unidade}</strong></span>
+                        </div>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <TH cols={["Lote","Entradas","Saídas","Saldo Atual","Última Movimentação"]} />
+                            <tbody>
+                              {saldosLote.length === 0 && (
+                                <tr><td colSpan={5} style={{ padding: 24, textAlign: "center", color: "#444" }}>{buscandoLote ? "Buscando…" : "Nenhum lote encontrado para este item."}</td></tr>
+                              )}
+                              {saldosLote.map((l, i) => (
+                                <tr key={l.lote} style={{ borderBottom: i < saldosLote.length-1 ? "0.5px solid var(--border-row)" : "none", background: l.saldo <= 0 ? "var(--bg-page)" : "transparent" }}>
+                                  <td style={{ padding: "9px 14px", fontWeight: 600, color: "var(--text-1)" }}>{l.lote}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "center", color: "#111111" }}>+{fmtNum(l.entradas)} {ins.unidade}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "center", color: "#E24B4A" }}>-{fmtNum(l.saidas)} {ins.unidade}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 700, color: l.saldo <= 0 ? "var(--text-3)" : "var(--text-1)" }}>{fmtNum(l.saldo)} {ins.unidade}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{l.ultima_movimentacao.split("-").reverse().join("/")}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

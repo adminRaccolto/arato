@@ -523,6 +523,47 @@ export async function saldoPorLote(
     .sort((a, b) => a.lote.localeCompare(b.lote));
 }
 
+// Mesma base de saldoPorLote, mas pro relatório "Saldo por Lote" — mantém
+// entradas/saídas separadas (não só o saldo final) e não descarta lotes
+// zerados, pra dar visibilidade de todo o histórico do lote, não só do que
+// ainda sobrou.
+export async function saldoPorLoteDetalhado(
+  insumo_id: string,
+  fazenda_id: string,
+  deposito_id?: string,
+): Promise<{ lote: string; entradas: number; saidas: number; saldo: number; ultima_movimentacao: string }[]> {
+  const porLote: Record<string, { entradas: number; saidas: number; ultima: string }> = {};
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("movimentacoes_estoque")
+      .select("tipo, quantidade, lote_semente, deposito_id, data")
+      .eq("insumo_id", insumo_id)
+      .eq("fazenda_id", fazenda_id)
+      .not("lote_semente", "is", null)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    for (const m of (data ?? [])) {
+      if (deposito_id && m.deposito_id !== deposito_id) continue;
+      const lote = m.lote_semente as string;
+      if (!porLote[lote]) porLote[lote] = { entradas: 0, saidas: 0, ultima: m.data as string };
+      if (m.tipo === "entrada") porLote[lote].entradas += m.quantidade ?? 0;
+      else porLote[lote].saidas += m.quantidade ?? 0;
+      if ((m.data as string) > porLote[lote].ultima) porLote[lote].ultima = m.data as string;
+    }
+    if (!data || data.length < PAGE) break;
+  }
+  return Object.entries(porLote)
+    .map(([lote, v]) => ({
+      lote,
+      entradas: Math.round(v.entradas * 1000) / 1000,
+      saidas: Math.round(v.saidas * 1000) / 1000,
+      saldo: Math.round((v.entradas - v.saidas) * 1000) / 1000,
+      ultima_movimentacao: v.ultima,
+    }))
+    .sort((a, b) => a.lote.localeCompare(b.lote));
+}
+
 // Movimentação manual: atualiza saldo do insumo + registra movimentação
 export async function criarMovimentacaoManual(
   fazenda_id: string,
