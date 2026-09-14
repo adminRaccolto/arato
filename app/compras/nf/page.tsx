@@ -613,18 +613,13 @@ export default function NfCompraPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // ── Helper: carrega dados do wizard para uma fazenda específica ──
-  async function carregarWizardData(fId: string) {
+  // Produtores via API route com service_role (bypassa RLS — funciona para todos os usuários).
+  // Extraída do wizard pra também carregar direto na lista — achado real: com
+  // múltiplos produtores na mesma conta, o filtro por produtor/CPF só aparecia
+  // depois de abrir o wizard de Nova NF pelo menos uma vez (wProdutores começava
+  // vazio, e o <select> do filtro é condicional a wProdutores.length > 0).
+  async function carregarProdutoresFiltro(fId: string) {
     const allFazIds = fazendaIds.length > 1 ? fazendaIds : (fId ? [fId] : []);
-    const [ccData, depData, bombaData] = await Promise.all([
-      listarCentrosCustoGeralDaConta(fId).catch(() => [] as CentroCusto[]),
-      listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
-      listarBombas(fId).catch(() => [] as BombaCombustivel[]),
-    ]);
-    setWCentros(ccData);
-    setWDepositos(depData);
-    setWBombas(bombaData);
-    // Produtores via API route com service_role (bypassa RLS — funciona para todos os usuários)
     try {
       const params = new URLSearchParams();
       if (contaId) params.set("conta_id", contaId);
@@ -637,6 +632,25 @@ export default function NfCompraPage() {
         setWProdutores([]);
       }
     } catch { setWProdutores([]); }
+  }
+
+  useEffect(() => {
+    if (fazendaId) carregarProdutoresFiltro(fazendaId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazendaId, fazendaIds, contaId]);
+
+  // ── Helper: carrega dados do wizard para uma fazenda específica ──
+  async function carregarWizardData(fId: string) {
+    const allFazIds = fazendaIds.length > 1 ? fazendaIds : (fId ? [fId] : []);
+    const [ccData, depData, bombaData] = await Promise.all([
+      listarCentrosCustoGeralDaConta(fId).catch(() => [] as CentroCusto[]),
+      listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
+      listarBombas(fId).catch(() => [] as BombaCombustivel[]),
+    ]);
+    setWCentros(ccData);
+    setWDepositos(depData);
+    setWBombas(bombaData);
+    await carregarProdutoresFiltro(fId);
     try {
       const allIds = fazendaIds.length > 0 ? fazendaIds : (fId ? [fId] : []);
       if (!allIds.length) { setWPedidos([]); return; }
@@ -2178,7 +2192,13 @@ export default function NfCompraPage() {
     if (filtroDataAte && nf.data_emissao > filtroDataAte) return false;
     if (busca) {
       const b = busca.toLowerCase();
-      if (!nf.numero.includes(busca) && !nf.emitente_nome.toLowerCase().includes(b)) return false;
+      const bDigits = busca.replace(/\D/g, "");
+      const prod = nf.produtor_id ? wProdutores.find(p => p.id === nf.produtor_id) : undefined;
+      const cnpjDestino  = (nf.cnpj_destino ?? "").replace(/\D/g, "");
+      const cnpjProdutor = (prod?.cpf_cnpj ?? "").replace(/\D/g, "");
+      const bateTexto = nf.numero.includes(busca) || nf.emitente_nome.toLowerCase().includes(b);
+      const bateDoc = bDigits.length >= 3 && (cnpjDestino.includes(bDigits) || cnpjProdutor.includes(bDigits));
+      if (!bateTexto && !bateDoc) return false;
     }
     return true;
   });
@@ -2275,9 +2295,9 @@ export default function NfCompraPage() {
         {/* ── Filtros ── */}
         <div style={{ ...card, marginBottom: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <input
-            placeholder="Buscar por nº ou emitente…"
+            placeholder="Buscar por nº, emitente ou CPF/CNPJ do produtor…"
             value={busca} onChange={e => setBusca(e.target.value)}
-            style={{ ...inp, width: 240 }}
+            style={{ ...inp, width: 260 }}
           />
           <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 160 }}>
             <option value="">Todos os status</option>
@@ -2294,9 +2314,9 @@ export default function NfCompraPage() {
             <option value="sieg">SIEG</option>
           </select>
           {wProdutores.length > 0 && (
-            <select value={filtroProdutor} onChange={e => setFiltroProdutor(e.target.value)} style={{ ...inp, width: 180 }}>
+            <select value={filtroProdutor} onChange={e => setFiltroProdutor(e.target.value)} style={{ ...inp, width: 220 }}>
               <option value="">Todos os produtores</option>
-              {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
             </select>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>

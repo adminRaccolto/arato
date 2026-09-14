@@ -147,6 +147,7 @@ export default function NfServicoPage() {
   const [filtroStatus,   setFiltroStatus]   = useState("");
   const [filtroOrigem,   setFiltroOrigem]   = useState("");
   const [filtroFazenda,  setFiltroFazenda]  = useState("");
+  const [filtroTomador,  setFiltroTomador]  = useState("");
   const [selectedNfs,    setSelectedNfs]    = useState<Set<string>>(new Set());
   const [filtroDataDe,   setFiltroDataDe]   = useState("");
   const [filtroDataAte,  setFiltroDataAte]  = useState("");
@@ -746,11 +747,16 @@ export default function NfServicoPage() {
     if (filtroStatus  && nf.status !== filtroStatus) return false;
     if (filtroOrigem  && nf.origem !== filtroOrigem) return false;
     if (filtroFazenda && nf.fazenda_id !== filtroFazenda) return false;
+    if (filtroTomador && nf.tomador_id !== filtroTomador) return false;
     if (filtroDataDe  && (nf.competencia ?? nf.data_prestacao.substring(0,7)) < filtroDataDe.substring(0,7)) return false;
     if (filtroDataAte && (nf.competencia ?? nf.data_prestacao.substring(0,7)) > filtroDataAte.substring(0,7)) return false;
     if (busca) {
       const b = busca.toLowerCase();
-      if (!nf.numero_nf.includes(busca) && !nf.prestador_nome.toLowerCase().includes(b) && !(nf.prestador_cnpj ?? "").includes(busca)) return false;
+      const bDigits = busca.replace(/\D/g, "");
+      const cnpjTomador = (nf.tomador_cnpj ?? "").replace(/\D/g, "");
+      const bateTexto = nf.numero_nf.includes(busca) || nf.prestador_nome.toLowerCase().includes(b) || (nf.prestador_cnpj ?? "").includes(busca);
+      const bateDoc = bDigits.length >= 3 && (cnpjTomador.includes(bDigits) || (nf.prestador_cnpj ?? "").replace(/\D/g, "").includes(bDigits));
+      if (!bateTexto && !bateDoc) return false;
     }
     return true;
   });
@@ -842,9 +848,9 @@ export default function NfServicoPage() {
         {/* ── Filtros — mesmo padrão da NF-e ── */}
         <div style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <input
-            placeholder="Buscar por nº ou prestador…"
+            placeholder="Buscar por nº, prestador ou CPF/CNPJ do tomador…"
             value={busca} onChange={e => setBusca(e.target.value)}
-            style={{ ...inp, width: 240 }}
+            style={{ ...inp, width: 260 }}
           />
           <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 148 }}>
             <option value="">Todos os status</option>
@@ -859,6 +865,13 @@ export default function NfServicoPage() {
             <select value={filtroFazenda} onChange={e => setFiltroFazenda(e.target.value)} style={{ ...inp, width: 180 }}>
               <option value="">Todas as fazendas</option>
               {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+            </select>
+          )}
+          {(produtores.length > 0 || empresas.length > 0) && (
+            <select value={filtroTomador} onChange={e => setFiltroTomador(e.target.value)} style={{ ...inp, width: 220 }}>
+              <option value="">Todos os produtores/tomadores</option>
+              {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+              {empresas.map(e => <option key={e.id} value={e.id}>{e.nome ?? e.razao_social}{e.cpf_cnpj ? ` — ${e.cpf_cnpj}` : ""}</option>)}
             </select>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
