@@ -1457,9 +1457,11 @@ export async function excluirPessoa(id: string): Promise<void> {
 export async function listarAnosSafra(fazenda_id: string): Promise<AnoSafra[]> {
   const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
   if (faz?.conta_id) {
+    // Não usa .throwOnError — enquanto a migration da Seção 254 (anos_safra.conta_id)
+    // não roda em todo ambiente, essa query falha com "column does not exist"; sem
+    // isso o erro subia e quebrava a tela inteira em vez de cair no fallback abaixo.
     const { data, error } = await supabase.from("anos_safra").select("*").eq("conta_id", faz.conta_id).order("descricao");
-    if (error) throw error;
-    if (data && data.length > 0) return data;
+    if (!error && data && data.length > 0) return data;
   }
   const { data, error } = await supabase.from("anos_safra").select("*").eq("fazenda_id", fazenda_id).order("descricao");
   if (error) throw error;
@@ -1475,6 +1477,15 @@ export async function listarAnosSafra(fazenda_id: string): Promise<AnoSafra[]> {
 }
 export async function criarAnoSafra(a: Omit<AnoSafra, "id" | "created_at">): Promise<AnoSafra> {
   const { data, error } = await supabase.from("anos_safra").insert(a).select().single();
+  // PGRST204 = coluna não existe no cache do schema — enquanto a migration da
+  // Seção 254 (anos_safra.conta_id) não roda em todo ambiente, insere sem
+  // conta_id em vez de falhar a criação inteira.
+  if (error?.code === "PGRST204" && "conta_id" in a) {
+    const { conta_id: _drop, ...semContaId } = a;
+    const retry = await supabase.from("anos_safra").insert(semContaId).select().single();
+    if (retry.error) throw retry.error;
+    return retry.data;
+  }
   if (error) throw error;
   return data;
 }

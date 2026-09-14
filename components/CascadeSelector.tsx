@@ -132,11 +132,17 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
   useEffect(() => {
     if (!values.fazendaId) { setAnosSafra([]); setCiclos([]); setTalhoes([]); return; }
     const cidReal = contaId && !contaId.startsWith("sem_conta_") ? contaId : null;
-    const anosQuery = cidReal
-      ? supabase.from("anos_safra").select("id, descricao").eq("conta_id", cidReal)
-      : supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", values.fazendaId);
-    anosQuery.order("descricao", { ascending: false })
-      .then(({ data }) => setAnosSafra((data ?? []).map(r => ({ id: r.id, nome: r.descricao }))));
+    (async () => {
+      // Sem .throwOnError — enquanto a migration da Seção 254 (anos_safra.conta_id)
+      // não roda em todo ambiente, essa query falha com "column does not exist";
+      // cai pro fallback por fazenda_id em vez de deixar o Ano Safra vazio.
+      if (cidReal) {
+        const { data, error } = await supabase.from("anos_safra").select("id, descricao").eq("conta_id", cidReal).order("descricao", { ascending: false });
+        if (!error && data) { setAnosSafra(data.map(r => ({ id: r.id, nome: r.descricao }))); return; }
+      }
+      const { data } = await supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", values.fazendaId).order("descricao", { ascending: false });
+      setAnosSafra((data ?? []).map(r => ({ id: r.id, nome: r.descricao })));
+    })();
     supabase.from("talhoes").select("id, nome").eq("fazenda_id", values.fazendaId).order("nome")
       .then(({ data }) => setTalhoes(data ?? []));
   }, [values.fazendaId, contaId]);

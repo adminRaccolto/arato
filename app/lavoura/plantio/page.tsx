@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
-import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantiosDaConta, excluirPlantio, atualizarPlantio, listarFazendas, saldoPorLote } from "../../../lib/db";
+import { listarTalhoes, listarInsumosParaConta, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantiosDaConta, excluirPlantio, atualizarPlantio, listarFazendas, saldoPorLote } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
@@ -55,10 +55,13 @@ export default function PlantioPage() {
     listarPlantiosDaConta(fazendaId)
       .then(data => setPlantios(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
       .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
-    listarInsumos(fazendaId).then(ins => setSementes(ins.filter(i => i.categoria === "semente"))).catch(() => {});
+    // Conta-wide: a lista de plantios mostra lançamentos de qualquer fazenda
+    // da conta — o catálogo de sementes precisa cobrir todas, senão um
+    // lançamento de outra fazenda mostra o UUID do insumo em vez do nome.
+    listarInsumosParaConta(contaId, fazendaId).then(ins => setSementes(ins.filter(i => i.categoria === "semente"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId, fazendaFiltro, contaId]);
 
   // Ciclos e talhões recarregam quando fazenda do formulário muda
   useEffect(() => {

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import {
-  listarTalhoes, listarInsumos,
+  listarTalhoes, listarInsumosParaConta,
   listarAnosSafra, listarTodosCiclos,
   criarPulverizacao, criarPulverizacaoItem, processarPulverizacao,
   listarPulverizacoesDaConta, listarPulverizacaoItens, excluirPulverizacao, listarFazendas,
@@ -76,10 +76,14 @@ export default function PulverizacaoPage() {
     listarPulverizacoesDaConta(fazendaId)
       .then(data => setPulverizacoes(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
       .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
-    listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
+    // Conta-wide: a lista de pulverizações agora mostra lançamentos de qualquer
+    // fazenda da conta — o catálogo de insumos usado pra resolver nome do
+    // produto precisa cobrir todas as fazendas também, senão um lançamento de
+    // outra fazenda mostra o UUID do insumo em vez do nome.
+    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId, fazendaFiltro, contaId]);
 
   useEffect(() => {
     if (!fid) return;

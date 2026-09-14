@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import {
-  listarTodosCiclos, listarTalhoes, listarInsumos,
+  listarTodosCiclos, listarTalhoes, listarInsumosParaConta,
   listarAnosSafra,
   listarAdubacoesDaConta, criarAdubacao, criarAdubacaoItem, processarAdubacao, excluirAdubacao, listarFazendas,
 } from "../../../lib/db";
@@ -79,10 +79,13 @@ export default function AdubacaoBasePage() {
     listarAdubacoesDaConta(fazendaId)
       .then(data => setRegistros(fazendaFiltro ? data.filter(r => r.fazenda_id === fazendaFiltro) : data))
       .catch(e => setErro((e as { message?: string })?.message || JSON.stringify(e)));
-    listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
+    // Conta-wide: a lista de adubações mostra lançamentos de qualquer fazenda
+    // da conta — o catálogo de insumos precisa cobrir todas, senão um
+    // lançamento de outra fazenda mostra o UUID do insumo em vez do nome.
+    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId, fazendaFiltro, contaId]);
 
   // Ciclos e talhões — recarregam quando fazenda do formulário muda
   useEffect(() => {
