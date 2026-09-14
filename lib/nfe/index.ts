@@ -74,6 +74,46 @@ export async function buscarConfEmitente(
     }
   }
 
+  // Resolve IE: configs antigas (de antes do modelo "Parâmetros Fiscais por IE")
+  // nunca tiveram ie_emitente preenchido na config base — o cadastro de
+  // Inscrições Estaduais do produtor é que tem a IE de verdade. Sem isso,
+  // emitirNFe falhava com "IE do emitente não configurada" mesmo com o
+  // produtor tendo IE(s) cadastrada(s) e a tela de Parâmetros Fiscais
+  // mostrando os cards de IE certinhos — a config nunca chegava a consultá-los.
+  // Também traz a config granular por-IE (série/número/CRT/IBS-CBS), se
+  // existir, sobrepondo os valores da config base.
+  if (moduloKey.startsWith("fiscal_pf_") && cfg.cpf_cnpj_emitente) {
+    const digits = cfg.cpf_cnpj_emitente.replace(/\D/g, "");
+    const digitsFmt = digits.length === 11
+      ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+      : digits;
+    const { data: prodRows } = await sb()
+      .from("produtores")
+      .select("id")
+      .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`)
+      .limit(1);
+    const produtorId = prodRows?.[0]?.id as string | undefined;
+    if (produtorId) {
+      const { data: ies } = await sb()
+        .from("produtor_inscricoes_estaduais")
+        .select("id, inscricao_estadual, fazenda_id, ativa")
+        .eq("produtor_id", produtorId)
+        .eq("ativa", true);
+      const iesAtivas = ies ?? [];
+      const ieEscolhida = iesAtivas.find(i => i.fazenda_id === fazendaId) ?? iesAtivas[0];
+      if (ieEscolhida) {
+        if (!cfg.ie_emitente) cfg.ie_emitente = ieEscolhida.inscricao_estadual;
+        const { data: cfgIe } = await sb()
+          .from("configuracoes_modulo")
+          .select("config")
+          .eq("fazenda_id", fazendaId)
+          .eq("modulo", `${moduloKey}__ie_${ieEscolhida.id}`)
+          .maybeSingle();
+        if (cfgIe?.config) Object.assign(cfg, cfgIe.config as Record<string, string>);
+      }
+    }
+  }
+
   // Ambiente global sobrepõe o ambiente do emitente — é o "master switch"
   const ambienteGlobal = globalData?.config?.ambiente as string | undefined;
   return {

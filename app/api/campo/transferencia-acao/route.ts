@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
         infCpl:   `Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`,
         frete:    "9",
         tipo:     "1",
-      });
+      }, (t.ie_origem as string | null) || undefined);
 
       if (!resultado.sucesso) {
         return NextResponse.json({
