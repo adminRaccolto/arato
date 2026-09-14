@@ -2,12 +2,12 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: setembro/2026
+ * Última revisão: 14/09/2026
  */
 
 export const MANUAL_OPERACIONAL = `
 # Manual Operacional — Arato
-Versão: setembro/2026
+Versão: setembro/2026 (rev. 14/09)
 
 Este manual descreve como navegar e usar cada módulo do Arato.
 A Olívia usa este documento para responder perguntas de usuários.
@@ -85,6 +85,8 @@ Gerencia ciclos agrícolas com orçamento, comparativo planejado×realizado e ag
 **Caminho:** Lavoura → Planejamento → Safras e Ciclos
 
 Cadastra anos safra e ciclos. Todo lançamento de campo exige um ciclo previamente cadastrado aqui.
+
+**Ano Safra é da conta, não da fazenda:** um mesmo "Ano Safra" (ex: "2026/2027") vale para todas as fazendas do cliente — não é preciso recriar por propriedade. Se o Ano Safra não aparecer no seletor ao registrar uma operação, o ciclo provavelmente não está vinculado ao ano safra certo.
 
 ### 2.3 Orçamento Planejado × Realizado
 **Caminho:** Lavoura → Planejamento → Orçamento Planejado × Realizado
@@ -258,12 +260,18 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 - Processada: Ver, DANFE, Devolver, Reclassificar, Estornar, Excluir
 - Para desfazer: use **Estornar** — reverte estoque, CP e pendências fiscais antes de excluir.
 
+**Filtro por Produtor:** em contas com mais de um produtor cadastrado, o filtro "Produtor" aparece na barra de filtros (mostra nome + CPF/CNPJ, útil quando há nomes parecidos). A busca por texto também aceita CPF/CNPJ digitado (com ou sem pontuação), além de número e nome do emitente.
+
 ### 8.3 NF de Serviços (NFS-e)
 **Caminho:** Compras & Estoque → Compras → NF de Serviços
 
 Lança notas fiscais de serviços recebidos (NFS-e). Completamente separado da NF de produtos.
 
 **Wizard 3 passos:** Prestador → Serviço (código LC 116/2003, discriminação, valor) → Tributação (ISS, retenções federais: PIS, COFINS, CSLL, IRRF, INSS).
+
+**Tomador do serviço:** normalmente é a própria fazenda/produtor que contratou (advogado, agrônomo, contador), não um terceiro do cadastro de Pessoas — o sistema busca automaticamente em Produtores e Empresas pelo CNPJ/CPF antes de cair no cadastro de Pessoas.
+
+**Filtro por Produtor/Tomador:** em contas com mais de um produtor, o filtro "Produtor/Tomador" aparece na barra de filtros; a busca por texto também aceita CPF/CNPJ do tomador ou do prestador.
 
 ### 8.4 Pendências de Classificação
 **Caminho:** Compras & Estoque → Compras → Pendências de Classificação
@@ -292,7 +300,12 @@ Rastreamento completo de entradas e saídas de um produto específico, com saldo
 ### 9.3 Movimentação por Produto (Posição de Insumos)
 **Caminho:** Compras & Estoque → Estoque → Posição de Insumos → painel "Movimentação por Produto"
 
-Histórico filtrado de movimentações do produto selecionado, com as mesmas colunas Origem e Usuário do Kardex.
+Histórico filtrado de movimentações do produto selecionado, com as mesmas colunas Origem e Usuário do Kardex. A coluna "NF" mostra o número real da nota (não mais o código interno) — resolvida a partir da NF de entrada vinculada à movimentação.
+
+### 9.3b Saldo por Lote
+**Caminho:** Compras & Estoque → Estoque → Relatórios → Saldo por Lote
+
+Consulta o saldo de uma semente por lote — escolha a semente (e opcionalmente um depósito) e clique em Buscar. Mostra, por lote: entradas, saídas, saldo atual e data da última movimentação. Antes essa informação só aparecia embutida nos seletores de lote (transferência, plantio, tratamento de sementes); agora também dá pra consultar direto.
 
 ### 9.4 Transferências entre Fazendas
 **Caminho:** Compras & Estoque → Estoque de Insumos → Transferência entre Fazendas
@@ -305,12 +318,21 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 
 **CFOP:** selecionável entre 5 opções; padrão é 5152/6152 (mercadoria adquirida de terceiros, sem ST). O prefixo 5 (mesmo estado) ou 6 (inter-estadual) é calculado automaticamente pelos estados das fazendas.
 
+**Transportadora e veículo:** os campos de transportadora/placa preenchidos na transferência aparecem de verdade na NF e no DANFE.
+
 **Botões na tabela por status:**
 - Rascunho: Visualizar · **Emitir NF** · Cancelar
 - Emitida: Visualizar NF · DANFE · Confirmar Entrada (se não automático) · Cancelar
 - Entrada Confirmada / Cancelada: Visualizar NF
 
 **CNPJ/CPF e IE do Destinatário:** vêm pré-preenchidos com o cadastro fiscal da fazenda de destino, mas são editáveis — a entrada pode ser numa IE diferente da do produtor responsável pelo depósito. Os dois campos são de texto livre com sugestão (aceitam digitar qualquer coisa): o CNPJ/CPF sugere os produtores cadastrados na conta; ao digitar/escolher um documento que bate com um produtor, o campo IE passa a sugerir as IEs daquele produtor já mostrando o município de cada uma — útil quando o mesmo produtor tem IEs em municípios diferentes.
+
+**CNPJ/CPF e IE do Emitente (Origem):** mesmo padrão do Destinatário, só que do lado de quem emite. Vêm pré-preenchidos com o titular padrão cadastrado na fazenda de origem, mas são editáveis — a fazenda é só o local físico do estoque, não necessariamente quem responde fiscalmente por aquela transferência específica (ex: fazenda arrendada, depósito compartilhado entre produtores).
+
+**Cancelar uma transferência:**
+- Se a NF ainda não foi autorizada pela SEFAZ (rascunho): cancela direto, sem exigências.
+- Se a NF já foi autorizada: pede uma justificativa (mínimo 15 caracteres) e envia o **cancelamento oficial à SEFAZ** — só depois de confirmado, o sistema reverte o estoque (devolve o saldo pro depósito de origem, e desfaz a entrada no destino se houve). Sem isso a nota continuaria valendo do lado de fora mesmo cancelada aqui dentro.
+- **Prazo:** só é possível cancelar dentro de **24h** da autorização (regra da SEFAZ). Depois disso, o sistema bloqueia e é preciso emitir uma NF de devolução/estorno pra reverter a operação, ou uma Carta de Correção para erros simples de cadastro.
 
 ### 9.4 Abastecimento de Máquinas
 **Caminho:** Compras & Estoque → Estoque → Abastecimento de Máquinas
@@ -565,7 +587,15 @@ Concilia lançamentos do sistema com o extrato OFX importado do banco.
 
 **Borderô (um débito para vários lançamentos):** Clique em "Vincular" → selecione múltiplos lançamentos no painel esquerdo → Confirmar.
 
+**Lançamento CP/CR agrupado (o inverso do borderô — várias linhas do extrato para um único lançamento):** útil quando o mesmo tipo de cobrança aparece várias vezes no mesmo dia (ex: vários pedágios). Marque o checkbox de cada linha pendente do extrato que quer agrupar (mesmo dia, mesmo tipo — crédito ou débito), clique em "Lançar CP/CR agrupado", preencha descrição e operação gerencial. O sistema cria um único CP/CR (valor = soma das linhas) já baixado, e concilia todas as linhas selecionadas contra ele.
+
+**Busca por valor:** campo "Buscar por valor" ao lado da busca por descrição/FITID — aceita valor parcial ("67") ou completo ("67,17").
+
+**Sub-aba "CP/CR em Aberto":** dentro de um extrato aberto, mostra os lançamentos ainda não baixados cruzados com as linhas pendentes desse extrato (por valor e direção). O botão "Conciliar e Baixar" concilia e baixa em um clique, já na conta bancária e na data da transação bancária — sem precisar sair procurando o lançamento manualmente no painel esquerdo.
+
 **Persistência:** o extrato OFX fica salvo no banco entre sessões. Para trocar: clique em "Remover Extrato".
+
+**Lançamentos sem correspondência no extrato** aparecem com fundo cinza no painel esquerdo, facilitando ver rapidamente o que ainda não bateu com o banco.
 
 ---
 
@@ -648,7 +678,7 @@ Gerencia cotas de consórcio com cronograma de parcelas e CPs automáticas.
 ### 20.1 Monitor NF-e Emitidas
 **Caminho:** Fiscal → Emissão e Controle → Monitor NF-e Emitidas
 
-Lista todas as NF-e emitidas pela fazenda. Status: autorizada, cancelada, denegada. Acesso ao DANFE e XML.
+Lista todas as NF-e emitidas pela fazenda — incluindo NF de venda/faturamento e NF de Transferência entre Fazendas. Status: autorizada, cancelada, denegada. Acesso ao DANFE e XML.
 
 ### 20.2 Pendências Fiscais
 **Caminho:** Fiscal → Emissão e Controle → Pendências Fiscais
@@ -744,6 +774,8 @@ Comparativo de margens entre ciclos e culturas.
 
 Consolidação de todos os custos por safra com agrupamento por categoria.
 
+**Filtro de Ciclos:** dropdown com busca — mostra uma tabela com checkbox, Fazenda e Ciclo (+ área) por linha, útil quando ciclos de fazendas diferentes têm nomes parecidos (ex: "Soja 2026/2027" repetido em várias propriedades). Botões "Todos"/"Limpar" dentro do dropdown.
+
 ### 22.4 Custo / ha
 **Caminho:** Resultados → Custos → Custo / ha
 
@@ -758,6 +790,8 @@ Define como custos comuns são rateados entre ciclos por proporção configuráv
 **Caminho:** Resultados → Custos → Aplicações por Ciclo
 
 Relatório consolidado de aplicações (pulverizações, adubações) por safra/ciclo. Exportação PDF, XLSX e WhatsApp.
+
+**Filtro de Talhões:** botão "Selecionar todos"/"Limpar seleção" — evita marcar um talhão de cada vez quando o relatório precisa cobrir a fazenda inteira.
 
 ### 22.7 Manutenção de Máquinas
 **Caminho:** Resultados → Custos → Manutenção de Máquinas
