@@ -32,6 +32,8 @@ export default function PlantioPage() {
   const [sementes, setSementes]       = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra]     = useState<AnoSafra[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
+  const [fazendas, setFazendas]       = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [salvando, setSalvando]       = useState(false);
   const [modal, setModal]             = useState(false);
@@ -44,16 +46,19 @@ export default function PlantioPage() {
   });
   const [lotesDisponiveis, setLotesDisponiveis] = useState<{ lote: string; saldo: number }[]>([]);
 
-  // Dados da fazenda ativa
+  // Lista é da CONTA inteira — filtrar direto por fazendaId escondia
+  // lançamentos reais de qualquer outra fazenda do cliente. fazendaFiltro é
+  // opcional e explícito (seletor "Todas as fazendas" por padrão).
   useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
     listarPlantiosDaConta(fazendaId)
-      .then(data => setPlantios(data.filter(p => p.fazenda_id === fazendaId)))
+      .then(data => setPlantios(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
       .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
     listarInsumos(fazendaId).then(ins => setSementes(ins.filter(i => i.categoria === "semente"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId]);
+    listarFazendas(fazendaId).then(setFazendas).catch(() => {});
+  }, [fazendaId, fazendaFiltro]);
 
   // Ciclos e talhões recarregam quando fazenda do formulário muda
   useEffect(() => {
@@ -148,6 +153,16 @@ export default function PlantioPage() {
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Registro de plantio por talhão — semente, dose, datas e projeção de colheita</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select
+                value={fazendaFiltro}
+                onChange={e => setFazendaFiltro(e.target.value)}
+                style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }}
+              >
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
             <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
           </div>
         </header>

@@ -50,6 +50,8 @@ export default function PulverizacaoPage() {
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra] = useState<AnoSafra[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
+  const [fazendas, setFazendas]   = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
@@ -67,12 +69,17 @@ export default function PulverizacaoPage() {
   useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
+    // Lista é da CONTA inteira (várias fazendas) — filtrar direto por fazendaId
+    // (a fazenda "ativa"/sugerida da sessão) escondia lançamentos reais de
+    // qualquer outra fazenda do cliente, mesmo já existindo. fazendaFiltro é
+    // opcional e explícito (seletor "Todas as fazendas" por padrão).
     listarPulverizacoesDaConta(fazendaId)
-      .then(data => setPulverizacoes(data.filter(p => p.fazenda_id === fazendaId)))
+      .then(data => setPulverizacoes(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
       .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
     listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId]);
+    listarFazendas(fazendaId).then(setFazendas).catch(() => {});
+  }, [fazendaId, fazendaFiltro]);
 
   useEffect(() => {
     if (!fid) return;
@@ -156,6 +163,16 @@ export default function PulverizacaoPage() {
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select
+                value={fazendaFiltro}
+                onChange={e => setFazendaFiltro(e.target.value)}
+                style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }}
+              >
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
             <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
           </div>
         </header>
