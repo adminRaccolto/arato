@@ -40,12 +40,25 @@ function escXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+const DIACRITICOS = new RegExp("[\u0300-\u036f]", "g");
+
+function removerAcentos(s: string): string {
+  // Decompõe em base + diacrítico (NFD, ex: "ç" -> "c" + combining cedilla)
+  // e descarta os diacríticos (faixa Unicode U+0300-U+036F, via \u explícito
+  // pra não depender de caractere não-ASCII sobreviver intacto no arquivo).
+  return s.normalize("NFD").replace(DIACRITICOS, "");
+}
+
 function validarJustificativa(s: string): string {
   const trimmed = s.trim();
   if (trimmed.length < 15) {
     throw new Error("Justificativa do cancelamento precisa ter pelo menos 15 caracteres (exigência da SEFAZ)");
   }
-  return escXml(trimmed.slice(0, 255));
+  // SEFAZ MT rejeitou (cStat 402 "XML da area de dados com codificacao
+  // diferente de UTF-8") uma justificativa com acentos — confirmado testando
+  // um cancelamento real: a MESMA frase sem acentos foi aceita. Transliterar
+  // pra ASCII evita depender do usuário lembrar de não digitar acento.
+  return escXml(removerAcentos(trimmed).slice(0, 255));
 }
 
 function minifyXml(xml: string): string {
