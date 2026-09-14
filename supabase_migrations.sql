@@ -12475,3 +12475,27 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS cpf_cnpj_origem TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 256 — Cancelamento oficial de NF-e (evento SEFAZ) +
+-- reversão de estoque ao cancelar uma transferência.
+--
+-- Até aqui "cancelar" uma transferência só mudava o status aqui dentro do
+-- sistema: (1) nunca desfazia a movimentação de estoque criada na emissão
+-- (saída na origem, entrada no destino se entrada_automatica), deixando um
+-- saldo "fantasma" reduzido; (2) quando a NF já tinha sido AUTORIZADA de
+-- verdade pela SEFAZ (chave/protocolo reais), nunca avisava a SEFAZ — a nota
+-- continuava valendo do lado de fora mesmo cancelada aqui dentro.
+--
+-- nf_protocolo: protocolo de autorização (nProt) devolvido pela SEFAZ na
+-- emissão — obrigatório pro evento de cancelamento (tpEvento 110111), que
+-- exige referenciar o protocolo original. Não existia gravado até agora.
+-- nf_modulo_key: qual configuração fiscal (fiscal_pf_*/fiscal_emp_*) foi
+-- REALMENTE usada na emissão — precisa ser reusada no cancelamento (mesmo
+-- certificado/emitente), mesmo que o CNPJ/CPF Emitente da transferência seja
+-- editado depois de já ter emitido.
+-- ============================================================
+ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS nf_protocolo TEXT;
+ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS nf_modulo_key TEXT;
+
+NOTIFY pgrst, 'reload schema';

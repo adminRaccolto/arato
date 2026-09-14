@@ -484,11 +484,26 @@ export default function TransferenciasEstoquePage() {
     } finally { setAcaoId(null); }
   }
 
-  async function cancelar(id: string) {
-    if (!confirm("Cancelar esta transferência?")) return;
-    setAcaoId(id);
+  async function cancelar(t: TransferenciaComItens) {
+    let justificativa = "";
+    // NF já autorizada de verdade pela SEFAZ (chave real) — o cancelamento
+    // precisa do evento oficial, que exige justificativa com ≥15 caracteres.
+    if (t.nf_chave) {
+      const resp = window.prompt(
+        "Esta NF-e já foi autorizada pela SEFAZ. Informe a justificativa do cancelamento (mín. 15 caracteres) — será enviada oficialmente à SEFAZ:"
+      );
+      if (resp === null) return;
+      justificativa = resp.trim();
+      if (justificativa.length < 15) {
+        alert("Justificativa precisa ter pelo menos 15 caracteres.");
+        return;
+      }
+    } else {
+      if (!confirm("Cancelar esta transferência? O estoque movimentado será revertido.")) return;
+    }
+    setAcaoId(t.id);
     try {
-      const res = await acao("cancelar", id);
+      const res = await acao("cancelar", t.id, justificativa ? { justificativa } : undefined);
       if (!res.ok) alert(res.error ?? "Erro ao cancelar");
       else await carregar();
     } finally { setAcaoId(null); }
@@ -675,7 +690,7 @@ export default function TransferenciasEstoquePage() {
                         >
                           {acaoId === t.id ? "…" : "Emitir NF"}
                         </button>
-                        <button onClick={() => cancelar(t.id)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
+                        <button onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
                           Cancelar
                         </button>
                       </div>
@@ -764,7 +779,7 @@ export default function TransferenciasEstoquePage() {
                             </button>
                           )}
                           {(t.status === "rascunho" || t.status === "emitida") && (
-                            <button onClick={() => cancelar(t.id)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
+                            <button onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
                               Cancelar
                             </button>
                           )}

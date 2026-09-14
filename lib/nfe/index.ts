@@ -11,6 +11,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildNFe }        from "./builder";
 import { assinarNFe, pfxParaPem } from "./signer";
 import { transmitirNFe }   from "./transmitter";
+import { cancelarNFe }     from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
 
 export type { NFeInput, EmitenteCfg };
@@ -525,4 +526,66 @@ export async function emitirNFe(
     emit_cep:        emitente.cep,
     emit_fone:       emitente.fone,
   };
+}
+
+// ─── Resultado do cancelamento ────────────────────────────────────────────────
+export interface ResultadoCancelamento {
+  sucesso: boolean;
+  cStat: string;
+  xMotivo: string;
+  protocoloEvento?: string; // protocolo do EVENTO de cancelamento (não o da NF-e original)
+}
+
+// ─── Cancela uma NF-e já autorizada — envia o evento oficial de cancelamento
+// (tpEvento 110111) à SEFAZ. Sem isso, "cancelar" só mudava o status aqui
+// dentro do sistema e a nota continuava valendo do lado de fora. Reusa a MESMA
+// config/certificado (moduloKey) usada na emissão original — reconstrução
+// automática seria arriscada se o CNPJ/CPF Emitente da operação for editado
+// depois de emitir.
+export async function cancelarNFeEmitida(
+  fazendaId: string,
+  moduloKey: string,
+  chave: string,
+  protocoloAutorizacao: string,
+  justificativa: string,
+): Promise<ResultadoCancelamento> {
+  const confg = await buscarConfEmitente(fazendaId, moduloKey);
+  if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada para cancelamento` };
+
+  const certPath = confg.cert_a1_path;
+  const certSenha = confg.cert_a1_senha;
+  if (!certPath || !certSenha)
+    return { sucesso: false, cStat: "501", xMotivo: "Certificado A1 não configurado em Parâmetros → Fiscal" };
+
+  let pfxBuffer: Buffer;
+  try {
+    pfxBuffer = await carregarPfx(certPath, fazendaId);
+  } catch (e) {
+    return { sucesso: false, cStat: "502", xMotivo: String(e) };
+  }
+  let pem: ReturnType<typeof pfxParaPem>;
+  try {
+    pem = pfxParaPem(pfxBuffer, certSenha);
+  } catch (e) {
+    return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}` };
+  }
+
+  try {
+    const resultado = await cancelarNFe(pem, {
+      chave,
+      protocolo: protocoloAutorizacao,
+      cpfCnpjEmit: confg.cpf_cnpj_emitente ?? "",
+      uf: confg.uf_emitente ?? "MT",
+      ambiente: (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
+      justificativa,
+    });
+    return {
+      sucesso: resultado.sucesso,
+      cStat: resultado.cStat,
+      xMotivo: resultado.xMotivo,
+      protocoloEvento: resultado.protocolo,
+    };
+  } catch (e) {
+    return { sucesso: false, cStat: "505", xMotivo: `Erro ao montar/assinar evento de cancelamento: ${e}` };
+  }
 }

@@ -10,6 +10,7 @@ interface UFEndpoints {
   autorizacao: string;
   retAutorizacao: string;
   statusServico: string;
+  recepcaoEvento: string;
 }
 
 // ─── Endpoints por UF e ambiente ─────────────────────────────────────────────
@@ -18,18 +19,21 @@ const _svrs_prod: UFEndpoints = {
   autorizacao:    "https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
   retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
   statusServico:  "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
+  recepcaoEvento: "https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx",
 };
 
 const _svrs_hom: UFEndpoints = {
   autorizacao:    "https://homologacao.nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
   retAutorizacao: "https://homologacao.nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
   statusServico:  "https://homologacao.nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
+  recepcaoEvento: "https://homologacao.nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx",
 };
 
 const _svan_prod: UFEndpoints = {
   autorizacao:    "https://www.nfe.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx",
   retAutorizacao: "https://www.nfe.fazenda.gov.br/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
   statusServico:  "https://www.nfe.fazenda.gov.br/NFeStatusServico4/NFeStatusServico4.asmx",
+  recepcaoEvento: "https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
 };
 
 interface UFEntry { prod: UFEndpoints; hom: UFEndpoints }
@@ -42,11 +46,13 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4",
       retAutorizacao: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4",
       statusServico:  "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeStatusServico4",
+      recepcaoEvento: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeRecepcaoEvento4",
     },
     hom: {
       autorizacao:    "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4",
       retAutorizacao: "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4",
       statusServico:  "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeStatusServico4",
+      recepcaoEvento: "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeRecepcaoEvento4",
     },
   },
   SP: {
@@ -54,6 +60,7 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx",
       retAutorizacao: "https://nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx",
       statusServico:  "https://nfe.fazenda.sp.gov.br/ws/nfestatusservico4.asmx",
+      recepcaoEvento: "https://nfe.fazenda.sp.gov.br/ws/nferecepcaoevento4.asmx",
     },
     hom: _svrs_hom,
   },
@@ -62,6 +69,7 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeAutorizacao4",
       retAutorizacao: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeRetAutorizacao4",
       statusServico:  "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeStatusServico4",
+      recepcaoEvento: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeRecepcaoEvento4",
     },
     hom: _svrs_hom,
   },
@@ -70,6 +78,7 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
       retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
       statusServico:  "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
+      recepcaoEvento: "https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx",
     },
     hom: _svrs_hom,
   },
@@ -78,6 +87,7 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.encat.org/nfe/services/NFeAutorizacao4",
       retAutorizacao: "https://nfe.encat.org/nfe/services/NFeRetAutorizacao4",
       statusServico:  "https://nfe.encat.org/nfe/services/NFeStatusServico4",
+      recepcaoEvento: "https://nfe.encat.org/nfe/services/NFeRecepcaoEvento4",
     },
     hom: _svrs_hom,
   },
@@ -86,6 +96,7 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.sefaz.ba.gov.br/webservices/NFeAutorizacao4/NFeAutorizacao4.asmx",
       retAutorizacao: "https://nfe.sefaz.ba.gov.br/webservices/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
       statusServico:  "https://nfe.sefaz.ba.gov.br/webservices/NFeStatusServico4/NFeStatusServico4.asmx",
+      recepcaoEvento: "https://nfe.sefaz.ba.gov.br/webservices/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
     },
     hom: _svrs_hom,
   },
@@ -94,6 +105,7 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeAutorizacao4",
       retAutorizacao: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeRetAutorizacao4",
       statusServico:  "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeStatusServico4",
+      recepcaoEvento: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeRecepcaoEvento4",
     },
     hom: _svrs_hom,
   },
@@ -102,6 +114,7 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.sefaz.am.gov.br/services2/services/NfeAutorizacao4",
       retAutorizacao: "https://nfe.sefaz.am.gov.br/services2/services/NfeRetAutorizacao4",
       statusServico:  "https://nfe.sefaz.am.gov.br/services2/services/NfeStatusServico4",
+      recepcaoEvento: "https://nfe.sefaz.am.gov.br/services2/services/NfeRecepcaoEvento4",
     },
     hom: _svrs_hom,
   },
@@ -243,6 +256,32 @@ function envelopeRetAutorizacao(recibo: string, cuf: string, tpAmb: "1" | "2"): 
 </soap12:Envelope>`;
 }
 
+// Envelope de recepção de evento (cancelamento, carta de correção, etc.) —
+// mesmo padrão SOAP 1.2 da autorização, mas com wsdl/versaoDados próprios do
+// serviço NFeRecepcaoEvento4 (versaoDados do evento é "1.00", não "4.00").
+function envelopeRecepcaoEvento(eventoXmlAssinado: string, cuf: string): string {
+  const body = eventoXmlAssinado.replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
+  return (
+    `<?xml version="1.0" encoding="utf-8"?>` +
+    `<soap12:Envelope` +
+      ` xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"` +
+      ` xmlns:xsd="http://www.w3.org/2001/XMLSchema"` +
+      ` xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">` +
+    `<soap12:Header>` +
+      `<nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4">` +
+        `<cUF>${cuf}</cUF>` +
+        `<versaoDados>1.00</versaoDados>` +
+      `</nfeCabecMsg>` +
+    `</soap12:Header>` +
+    `<soap12:Body>` +
+      `<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4">` +
+        body +
+      `</nfeDadosMsg>` +
+    `</soap12:Body>` +
+    `</soap12:Envelope>`
+  );
+}
+
 // ─── Parser de resposta ───────────────────────────────────────────────────────
 
 // tagVal: extrai texto de uma tag simples, aceita prefixo de namespace
@@ -362,6 +401,66 @@ export async function transmitirNFe(
   }
 
   return result;
+}
+
+// ─── Parser de resposta de evento (cancelamento, CC-e, etc.) ─────────────────
+// Estrutura difere da autorização: retorna <infEvento> em vez de <infProt>.
+// cStat 135 = "Evento registrado e vinculado a NF-e" (sucesso do cancelamento).
+function parseRespostaEvento(soapResp: string): RespostaSEFAZ {
+  const fault = blocoTag(soapResp, "Fault");
+  if (fault) {
+    const motivo =
+      tagVal(fault, "faultstring") ||
+      tagVal(fault, "Text")        ||
+      tagVal(fault, "Value")       ||
+      "SOAP Fault sem descrição";
+    console.error(`[NF-e evento] SOAP Fault: ${motivo}\n${soapResp.slice(0, 600)}`);
+    return { cStat: "999", xMotivo: `SOAP Fault: ${motivo}` };
+  }
+
+  const infEvento = blocoTag(soapResp, "infEvento");
+  if (infEvento) {
+    const cStat        = tagVal(infEvento, "cStat");
+    const xMotivo       = tagVal(infEvento, "xMotivo");
+    const protocolo     = tagVal(infEvento, "nProt");
+    const dhRegEvento   = tagVal(infEvento, "dhRegEvento");
+    const chave         = tagVal(infEvento, "chNFe");
+    if (!cStat) {
+      console.error(`[NF-e evento] cStat vazio em infEvento — resposta (800 chars):\n${soapResp.slice(0, 800)}`);
+    }
+    return {
+      cStat,
+      xMotivo,
+      protocolo: protocolo   || undefined,
+      dhRecbto:  dhRegEvento || undefined,
+      chave:     chave       || undefined,
+    };
+  }
+
+  const cStat   = tagVal(soapResp, "cStat");
+  const xMotivo = tagVal(soapResp, "xMotivo");
+  if (!cStat) {
+    console.error(`[NF-e evento] cStat vazio (sem infEvento) — resposta (800 chars):\n${soapResp.slice(0, 800)}`);
+  }
+  return { cStat, xMotivo };
+}
+
+// ─── Transmissão de evento (cancelamento, CC-e) ──────────────────────────────
+export async function transmitirEvento(
+  eventoXmlAssinado: string,
+  pem: PemPair,
+  uf: string,
+  ambiente: "producao" | "homologacao"
+): Promise<RespostaSEFAZ> {
+  const ep  = endpoints(uf, ambiente);
+  const cuf = CUF_MAP[uf] ?? "51";
+
+  const soapBody = envelopeRecepcaoEvento(eventoXmlAssinado, cuf);
+  console.log("[NF-e evento SOAP] corpo enviado (primeiros 3000 chars):", soapBody.slice(0, 3000));
+
+  const resp = await soapPost(ep.recepcaoEvento, soapBody, pem);
+  console.log("[NF-e evento SOAP] resposta SEFAZ (primeiros 2000 chars):", resp.slice(0, 2000));
+  return parseRespostaEvento(resp);
 }
 
 export { endpoints };

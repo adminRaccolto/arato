@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { emitirNFe, buscarConfEmitente } from "../../../../lib/nfe/index";
+import { emitirNFe, buscarConfEmitente, cancelarNFeEmitida } from "../../../../lib/nfe/index";
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge que precisa de Node
 export const dynamic = "force-dynamic";
@@ -91,10 +91,86 @@ export async function POST(request: NextRequest) {
 
     // ── CANCELAR ─────────────────────────────────────────────────────────────
     if (body.acao === "cancelar") {
+      const tidCancel = body.transferencia_id!;
+      const justificativa = (body.transferencia?.justificativa as string | undefined) ?? "";
+
+      const { data: t, error: tErr } = await adm
+        .from("transferencias_estoque")
+        .select("*")
+        .eq("id", tidCancel)
+        .single();
+      if (tErr) return NextResponse.json({ ok: false, error: tErr.message }, { status: 500 });
+
+      if (t.status === "cancelada") {
+        return NextResponse.json({ ok: false, error: "Esta transferência já está cancelada." }, { status: 400 });
+      }
+
+      // Se a NF já foi de fato AUTORIZADA pela SEFAZ (tem chave real), o
+      // cancelamento aqui dentro precisa ser acompanhado do evento oficial —
+      // senão a nota continua valendo do lado de fora mesmo cancelada aqui.
+      if (t.nf_chave) {
+        if (!justificativa || justificativa.trim().length < 15) {
+          return NextResponse.json({
+            ok: false,
+            error: "Informe uma justificativa com pelo menos 15 caracteres — exigência da SEFAZ para cancelar uma NF-e já autorizada.",
+          }, { status: 422 });
+        }
+        const refEmissao = t.data_emissao ? new Date(t.data_emissao as string).getTime() : NaN;
+        const horasDesdeEmissao = isNaN(refEmissao) ? Infinity : (Date.now() - refEmissao) / 3_600_000;
+        if (horasDesdeEmissao > 24) {
+          return NextResponse.json({
+            ok: false,
+            error: "Esta NF-e foi autorizada há mais de 24h e não pode mais ser cancelada pela SEFAZ. Emita uma NF de devolução/estorno para reverter a operação, ou uma Carta de Correção para erros de dados cadastrais.",
+          }, { status: 422 });
+        }
+        if (!t.nf_protocolo) {
+          return NextResponse.json({
+            ok: false,
+            error: "Protocolo de autorização não encontrado nesta transferência — não é possível montar o evento de cancelamento.",
+          }, { status: 422 });
+        }
+
+        const fazIdCancel = t.fazenda_origem_id as string;
+        let moduloKeyCancel = (t.nf_modulo_key as string | null) ?? "";
+        if (!moduloKeyCancel && t.cpf_cnpj_origem) {
+          moduloKeyCancel = (await resolverModuloKeyPorCpfCnpj(adm, fazIdCancel, t.cpf_cnpj_origem as string)) ?? "";
+        }
+        if (!moduloKeyCancel) moduloKeyCancel = await resolverModuloKeyFiscal(adm, fazIdCancel);
+        if (!moduloKeyCancel) {
+          return NextResponse.json({ ok: false, error: "Configuração fiscal do emitente não encontrada para cancelar esta NF-e." }, { status: 422 });
+        }
+
+        const resultadoEvento = await cancelarNFeEmitida(
+          fazIdCancel,
+          moduloKeyCancel,
+          t.nf_chave as string,
+          t.nf_protocolo as string,
+          justificativa.trim(),
+        );
+        if (!resultadoEvento.sucesso) {
+          return NextResponse.json({
+            ok: false,
+            error: `SEFAZ recusou o cancelamento (${resultadoEvento.cStat}): ${resultadoEvento.xMotivo}`,
+            cStat: resultadoEvento.cStat,
+          }, { status: 422 });
+        }
+      }
+
+      // Reverte as movimentações de estoque geradas por esta transferência —
+      // antes disso, cancelar só mudava o status e nunca desfazia a saída na
+      // origem (nem a entrada no destino, quando entrada_automatica), deixando
+      // um saldo "fantasma" reduzido no depósito de origem.
+      await _reverterMovimentacoes(t, adm);
+
+      const observacaoFinal = [
+        t.observacao as string | null,
+        justificativa.trim() ? `Cancelada — ${justificativa.trim()}` : "Cancelada",
+      ].filter(Boolean).join(" | ");
+
       const { error } = await adm
         .from("transferencias_estoque")
-        .update({ status: "cancelada" })
-        .eq("id", body.transferencia_id!);
+        .update({ status: "cancelada", observacao: observacaoFinal })
+        .eq("id", tidCancel);
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
     }
@@ -251,11 +327,16 @@ export async function POST(request: NextRequest) {
       }
 
       // 6. Atualiza transferência com dados da NF-e autorizada
+      // nf_protocolo e nf_modulo_key ficam gravados pra permitir o cancelamento
+      // oficial depois — o evento de cancelamento exige o protocolo original, e
+      // precisa reusar a MESMA config/certificado usados aqui na emissão.
       await adm.from("transferencias_estoque").update({
-        status:       "emitida",
-        data_emissao: new Date().toISOString(),
-        nf_numero:    resultado.numero,
-        nf_chave:     resultado.chave,
+        status:        "emitida",
+        data_emissao:  new Date().toISOString(),
+        nf_numero:     resultado.numero,
+        nf_chave:      resultado.chave,
+        nf_protocolo:  resultado.protocolo,
+        nf_modulo_key: moduloKey,
       }).eq("id", tid);
 
       // 7. Movimentações de estoque
@@ -433,5 +514,42 @@ async function _criarMovimentacoes(
         auto:            true,
       });
     }
+  }
+}
+
+// ── Helper: reverte as movimentações de estoque de uma transferência ────────
+// Busca todas as movimentações "auto" cujo motivo começa com "Transferência
+// {numero}" (padrão usado por _criarMovimentacoes, pela ação "salvar" e por
+// "confirmar_entrada") e lança o inverso de cada uma — saída volta a entrar,
+// entrada volta a saír — em vez de tentar deduzir de novo qual fluxo gerou
+// qual movimentação (entrada_automatica, confirmação manual, etc.). Reverte
+// exatamente o que foi lançado de verdade, então funciona pra qualquer
+// combinação de status em que a transferência estava antes de cancelar.
+async function _reverterMovimentacoes(
+  t: Record<string, unknown>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adm: any,
+) {
+  const numero = t.numero as string | null;
+  if (!numero) return;
+  const { data: movs } = await adm
+    .from("movimentacoes_estoque")
+    .select("*")
+    .ilike("motivo", `Transferência ${numero}%`)
+    .eq("auto", true);
+  for (const m of (movs ?? []) as Array<Record<string, unknown>>) {
+    await adm.from("movimentacoes_estoque").insert({
+      fazenda_id:      m.fazenda_id,
+      insumo_id:       m.insumo_id,
+      tipo:            m.tipo === "saida" ? "entrada" : "saida",
+      motivo:          `Cancelamento — Transferência ${numero}`,
+      quantidade:      m.quantidade,
+      valor_unitario:  m.valor_unitario ?? null,
+      data:            new Date().toISOString().slice(0, 10),
+      deposito_id:     m.deposito_id ?? null,
+      observacao:      `Reversão de estoque — transferência cancelada`,
+      lote_semente:    m.lote_semente ?? null,
+      auto:            true,
+    });
   }
 }

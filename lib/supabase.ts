@@ -1148,6 +1148,8 @@ export type TransferenciaEstoque = {
   data_emissao?: string | null;
   nf_numero?: string | null;
   nf_chave?: string | null;
+  nf_protocolo?: string | null;    // protocolo de autorização — necessário pro evento de cancelamento
+  nf_modulo_key?: string | null;   // config fiscal usada na emissão — reusada no cancelamento
   nf_destino_numero?: string | null;
   nf_destino_chave?: string | null;
   observacao?: string | null;

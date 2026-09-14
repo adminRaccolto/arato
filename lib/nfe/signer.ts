@@ -53,13 +53,11 @@ function pemBody(pem: string): string {
     .trim();
 }
 
-// ─── Assina o XML da NF-e ────────────────────────────────────────────────────
-export function assinarNFe(xmlSemAssinatura: string, pem: PemPair): string {
-  // Extrair chave do Id da infNFe (ex: "NFe51...")
-  const match = xmlSemAssinatura.match(/Id="(NFe\d{44})"/);
-  if (!match) throw new Error("Id da NF-e não encontrado no XML");
-  const id = match[1];
-
+// ─── Assina qualquer elemento XML pelo seu atributo Id (genérico) ────────────
+// Usado tanto pra NF-e (Id="NFe...") quanto pra eventos (Id="ID110111..." —
+// cancelamento, carta de correção, etc.) — a lógica de assinatura xmldsig é
+// idêntica, só muda qual elemento é referenciado.
+export function assinarXmlPorId(xmlSemAssinatura: string, pem: PemPair, id: string): string {
   const sig = new SignedXml({
     privateKey:  pem.key,
     // publicCert garante que xml-crypto gere o bloco <X509Certificate> no KeyInfo
@@ -105,4 +103,12 @@ export function assinarNFe(xmlSemAssinatura: string, pem: PemPair): string {
   );
 
   return signed;
+}
+
+// ─── Assina o XML da NF-e ────────────────────────────────────────────────────
+export function assinarNFe(xmlSemAssinatura: string, pem: PemPair): string {
+  // Extrair chave do Id da infNFe (ex: "NFe51...")
+  const match = xmlSemAssinatura.match(/Id="(NFe\d{44})"/);
+  if (!match) throw new Error("Id da NF-e não encontrado no XML");
+  return assinarXmlPorId(xmlSemAssinatura, pem, match[1]);
 }

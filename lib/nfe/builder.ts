@@ -82,7 +82,7 @@ export interface NFeBuiltResult {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function soDigitos(s: string): string {
+export function soDigitos(s: string): string {
   return s.replace(/\D/g, "");
 }
 
@@ -178,7 +178,7 @@ const UF_OFFSET: Record<string, string> = {
   RR: "-04:00",
 };
 
-function gerarDhEmi(uf: string): string {
+export function gerarDhEmi(uf: string): string {
   const offset = UF_OFFSET[uf] ?? "-03:00";
   const offsetH = parseInt(offset.slice(1, 3), 10) * (offset.startsWith("-") ? -1 : 1);
   // Converte UTC atual para horário local da UF
