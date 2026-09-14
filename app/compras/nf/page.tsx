@@ -2183,11 +2183,24 @@ export default function NfCompraPage() {
   const totalItens = itens.reduce((s, i) => s + i.valor_total, 0);
 
   // ── Lista filtrada ────────────────────────────────────────
+  // CPF/CNPJ do produtor selecionado no filtro — usado como critério principal
+  // (ver abaixo). nf.produtor_id sozinho não é confiável: só é preenchido
+  // quando o auto-preenchimento por CNPJ rodou com sucesso ao processar a NF,
+  // então muitas notas do MESMO produtor (mesmo CNPJ em cnpj_destino) ficavam
+  // de fora do filtro por terem produtor_id vazio ou de outra tentativa.
+  const cpfProdutorFiltro = filtroProdutor
+    ? (wProdutores.find(p => p.id === filtroProdutor)?.cpf_cnpj ?? "").replace(/\D/g, "")
+    : "";
+
   const nfsFiltradas = nfs.filter(nf => {
     if (filtroStatus   && nf.status !== filtroStatus) return false;
     if (filtroTipo     && nf.tipo_entrada !== filtroTipo) return false;
     if (filtroOrigem   && nf.origem !== filtroOrigem) return false;
-    if (filtroProdutor && nf.produtor_id !== filtroProdutor) return false;
+    if (filtroProdutor) {
+      const bateId  = nf.produtor_id === filtroProdutor;
+      const bateDoc = cpfProdutorFiltro && (nf.cnpj_destino ?? "").replace(/\D/g, "") === cpfProdutorFiltro;
+      if (!bateId && !bateDoc) return false;
+    }
     if (filtroDataDe  && nf.data_emissao < filtroDataDe)  return false;
     if (filtroDataAte && nf.data_emissao > filtroDataAte) return false;
     if (busca) {

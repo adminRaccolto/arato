@@ -742,12 +742,25 @@ export default function NfServicoPage() {
     finally { setSiegSyncing(false); }
   }
 
+  // CPF/CNPJ do produtor/empresa selecionado no filtro — critério principal.
+  // nf.tomador_id sozinho não é confiável: só fica preenchido quando o match
+  // automático por CNPJ rodou com sucesso ao processar aquela NF específica,
+  // então várias notas do MESMO tomador (mesmo CNPJ em tomador_cnpj) ficavam
+  // de fora do filtro por terem tomador_id vazio ou de um cadastro duplicado.
+  const cpfTomadorFiltro = filtroTomador
+    ? ((produtores.find(p => p.id === filtroTomador)?.cpf_cnpj ?? empresas.find(e => e.id === filtroTomador)?.cpf_cnpj) ?? "").replace(/\D/g, "")
+    : "";
+
   // ── Lista filtrada ───────────────────────────────────────────
   const nfsFilt = nfs.filter(nf => {
     if (filtroStatus  && nf.status !== filtroStatus) return false;
     if (filtroOrigem  && nf.origem !== filtroOrigem) return false;
     if (filtroFazenda && nf.fazenda_id !== filtroFazenda) return false;
-    if (filtroTomador && nf.tomador_id !== filtroTomador) return false;
+    if (filtroTomador) {
+      const bateId  = nf.tomador_id === filtroTomador;
+      const bateDoc = cpfTomadorFiltro && (nf.tomador_cnpj ?? "").replace(/\D/g, "") === cpfTomadorFiltro;
+      if (!bateId && !bateDoc) return false;
+    }
     if (filtroDataDe  && (nf.competencia ?? nf.data_prestacao.substring(0,7)) < filtroDataDe.substring(0,7)) return false;
     if (filtroDataAte && (nf.competencia ?? nf.data_prestacao.substring(0,7)) > filtroDataAte.substring(0,7)) return false;
     if (busca) {
