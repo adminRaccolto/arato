@@ -64,9 +64,14 @@ export function montarEnvEventoCancelamento(input: CancelamentoInput): { xml: st
   const cOrgao = chave.slice(0, 2); // os 2 primeiros dígitos da chave já são o código UF (cUF)
   const tpAmb = input.ambiente === "producao" ? "1" : "2";
   const dhEvento = gerarDhEmi(input.uf);
-  const nSeqEvento = "01";
+  // O atributo Id usa nSeqEvento com 2 dígitos (padrão da NT), mas o elemento
+  // <nSeqEvento> em si é xs:positiveInteger — schema rejeita zero à esquerda
+  // (cStat 215 "valor '01' de nSeqEvento não é válido" — confirmado testando
+  // um cancelamento real).
+  const nSeqEventoId = "01";
+  const nSeqEvento = "1";
   const tpEvento = "110111";
-  const id = `ID${tpEvento}${chave}${nSeqEvento}`;
+  const id = `ID${tpEvento}${chave}${nSeqEventoId}`;
   const xJust = validarJustificativa(input.justificativa);
 
   const xml =
