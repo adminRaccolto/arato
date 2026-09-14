@@ -49,6 +49,18 @@ export interface ItemNFe {
   valor_desconto?: number;
 }
 
+export interface TransportadoraCfg {
+  cnpj_cpf?: string;
+  nome?: string;
+  ie?: string;
+  logradouro?: string;
+  municipio?: string;
+  uf?: string;
+  placa?: string;
+  uf_placa?: string;
+  rntrc?: string;
+}
+
 export interface NFeInput {
   emitente: EmitenteCfg;
   destinatario: DestinatarioCfg;
@@ -58,6 +70,7 @@ export interface NFeInput {
   frete?: "0" | "1" | "2" | "9"; // 0=emitente, 1=dest, 2=3rd, 9=sem
   nfe_ref?: string;       // chave da NF-e referenciada (devolução/complemento)
   tipo?: "0" | "1";       // 1=saída (padrão), 0=entrada
+  transportadora?: TransportadoraCfg;
 }
 
 export interface NFeBuiltResult {
@@ -275,6 +288,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     frete = "9",
     nfe_ref,
     tipo = "1",
+    transportadora,
   } = input;
 
   if (!itens.length) throw new Error("NF-e sem itens");
@@ -514,7 +528,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       ${emitIdTag}
       <xNome>${escXml(emit.razao_social.substring(0, 60))}</xNome>
       ${enderEmit}
-      ${emit.ie.trim() ? `<IE>${escXml(emit.ie.trim())}</IE>` : ""}
+      ${emit.ie.trim() ? `<IE>${soDigitos(emit.ie)}</IE>` : ""}
       ${emit.im ? `<IM>${escXml(emit.im)}</IM>` : ""}
       <CRT>${emit.crt}</CRT>
     </emit>
@@ -523,7 +537,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <xNome>${escXml(nomeDestinatario.substring(0, 60))}</xNome>
       ${enderDest}
       <indIEDest>${indIEDest}</indIEDest>
-      ${indIEDest === "1" && dest.ie ? `<IE>${escXml(dest.ie)}</IE>` : ""}
+      ${indIEDest === "1" && dest.ie ? `<IE>${soDigitos(dest.ie)}</IE>` : ""}
       ${dest.email ? `<email>${escXml(dest.email)}</email>` : ""}
     </dest>
     ${itensXml}
@@ -561,6 +575,30 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     </total>
     <transp>
       <modFrete>${frete}</modFrete>
+      ${(() => {
+        if (!transportadora) return "";
+        const digitsTransp = soDigitos(transportadora.cnpj_cpf ?? "");
+        const idTranspTag = digitsTransp.length === 11 ? `<CPF>${digitsTransp}</CPF>`
+          : digitsTransp.length === 14 ? `<CNPJ>${digitsTransp}</CNPJ>` : "";
+        const temTransportadora = idTranspTag || transportadora.nome;
+        const transportaXml = temTransportadora ? `<transporta>${idTranspTag}${
+          transportadora.nome ? `<xNome>${escXml(transportadora.nome.substring(0, 60))}</xNome>` : ""
+        }${
+          transportadora.ie ? `<IE>${soDigitos(transportadora.ie)}</IE>` : ""
+        }${
+          transportadora.logradouro ? `<xEnder>${escXml(transportadora.logradouro.substring(0, 60))}</xEnder>` : ""
+        }${
+          transportadora.municipio ? `<xMun>${escXml(transportadora.municipio.substring(0, 60))}</xMun>` : ""
+        }${
+          transportadora.uf ? `<UF>${transportadora.uf}</UF>` : ""
+        }</transporta>` : "";
+        const veicXml = transportadora.placa ? `<veicTransp><placa>${escXml(transportadora.placa.replace(/[^A-Za-z0-9]/g, "").toUpperCase())}</placa>${
+          transportadora.uf_placa ? `<UF>${transportadora.uf_placa}</UF>` : ""
+        }${
+          transportadora.rntrc ? `<RNTC>${escXml(transportadora.rntrc)}</RNTC>` : ""
+        }</veicTransp>` : "";
+        return transportaXml + veicXml;
+      })()}
     </transp>
     <pag>
       <detPag>

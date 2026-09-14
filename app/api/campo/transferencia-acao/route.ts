@@ -162,13 +162,52 @@ export async function POST(request: NextRequest) {
         };
       });
 
+      // 5b. Transportadora e veículo informados na transferência — antes o
+      // XML só gravava <modFrete>, nunca <transporta>/<veicTransp>, então a
+      // transportadora/placa preenchidas na tela nunca apareciam na NF/DANFE.
+      let transportadoraNfe: import("../../../../lib/nfe/builder").TransportadoraCfg | undefined;
+      if (t.transportadora_id) {
+        const { data: transp } = await adm
+          .from("transportadoras")
+          .select("cnpj, cpf, razao_social, nome_fantasia, ie, rntrc, logradouro, municipio, uf")
+          .eq("id", t.transportadora_id)
+          .maybeSingle();
+        if (transp) {
+          transportadoraNfe = {
+            cnpj_cpf:   transp.cnpj || transp.cpf || undefined,
+            nome:       transp.razao_social || transp.nome_fantasia || undefined,
+            ie:         transp.ie || undefined,
+            logradouro: transp.logradouro || undefined,
+            municipio:  transp.municipio || undefined,
+            uf:         transp.uf || undefined,
+            rntrc:      transp.rntrc || undefined,
+          };
+        }
+      }
+      if (t.veiculo_id) {
+        const { data: veic } = await adm
+          .from("veiculos")
+          .select("placa, uf_placa, rntrc")
+          .eq("id", t.veiculo_id)
+          .maybeSingle();
+        if (veic) {
+          transportadoraNfe = {
+            ...transportadoraNfe,
+            placa:    veic.placa || undefined,
+            uf_placa: veic.uf_placa || undefined,
+            rntrc:    transportadoraNfe?.rntrc || veic.rntrc || undefined,
+          };
+        }
+      }
+
       const resultado = await emitirNFe(fazId, moduloKey, {
         destinatario: destinatarioDados,
         itens: itenNfe,
         natureza: "Transferência de mercadoria de produção própria",
         infCpl:   `Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`,
-        frete:    "9",
+        frete:    (t.frete_conta as "0"|"1"|"2"|"9" | null) ?? "9",
         tipo:     "1",
+        transportadora: transportadoraNfe,
       }, (t.ie_origem as string | null) || undefined);
 
       if (!resultado.sucesso) {
