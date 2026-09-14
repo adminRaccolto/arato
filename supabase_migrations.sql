@@ -12499,3 +12499,24 @@ ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS nf_protocolo TEXT;
 ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS nf_modulo_key TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 257 — nf_servicos.tomador_id não pode ficar preso só a "pessoas"
+--
+-- O tomador de uma NFS-e quase sempre é a própria fazenda/produtor que
+-- contratou o serviço (advogado, agrônomo, contador etc.) — não um terceiro
+-- do cadastro de Pessoas. Mas tomador_id tinha FK só pra pessoas(id), então
+-- toda vez que o match automático (ou a seleção manual) resolvia o tomador
+-- num Produtor ou numa Empresa, o INSERT/UPDATE falhava com
+-- "violates foreign key constraint nf_servicos_tomador_id_fkey".
+--
+-- Não existe hoje nenhum JOIN/consumo de tomador_id no código (é só um
+-- campo de rastreabilidade — tomador_nome/tomador_cnpj já carregam a
+-- informação legível) — então a correção certa é soltar o FK de tabela
+-- única e guardar QUAL tabela o id referencia em tomador_tipo, em vez de
+-- inventar uma segunda tabela-ponte só pra isso.
+-- ============================================================
+ALTER TABLE nf_servicos DROP CONSTRAINT IF EXISTS nf_servicos_tomador_id_fkey;
+ALTER TABLE nf_servicos ADD COLUMN IF NOT EXISTS tomador_tipo TEXT CHECK (tomador_tipo IN ('produtor','empresa','pessoa'));
+
+NOTIFY pgrst, 'reload schema';

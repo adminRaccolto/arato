@@ -71,6 +71,7 @@ interface NfServico {
   prestador_nome: string;
   prestador_cnpj?: string;
   tomador_id?: string;
+  tomador_tipo?: "produtor" | "empresa" | "pessoa" | "";
   tomador_nome?: string;
   tomador_cnpj?: string;
   municipio_prestacao?: string;
@@ -112,7 +113,7 @@ const CAB_VAZIO = () => ({
   fazenda_id: "",
   numero_nf: "", serie: "1", chave_nfse: "",
   prestador_id: "", prestador_nome: "", prestador_cnpj: "",
-  tomador_id: "", tomador_nome: "", tomador_cnpj: "",
+  tomador_id: "", tomador_tipo: "" as "produtor" | "empresa" | "pessoa" | "", tomador_nome: "", tomador_cnpj: "",
   municipio_prestacao: "",
   data_prestacao: new Date().toISOString().split("T")[0],
   competencia: new Date().toISOString().substring(0, 7),
@@ -305,13 +306,19 @@ export default function NfServicoPage() {
     return pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm);
   }
   // Tomador é quase sempre a própria fazenda — busca em Produtores e Empresas
-  // antes de cair no cadastro geral de Pessoas.
-  function tomadorPorCnpjNFS(cnpj: string): (Produtor | Empresa | Pessoa) | undefined {
+  // antes de cair no cadastro geral de Pessoas. Marca de qual tabela veio
+  // (tomador_tipo) — necessário desde que tomador_id deixou de ter FK única
+  // pra pessoas(id) (Seção 257: o tomador real quase nunca está lá).
+  function tomadorPorCnpjNFS(cnpj: string): { item: Produtor | Empresa | Pessoa; tipo: "produtor" | "empresa" | "pessoa" } | undefined {
     if (!cnpj) return undefined;
     const norm = cnpj.replace(/\D/g, "");
-    return produtores.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm)
-      ?? empresas.find(e => (e.cpf_cnpj ?? "").replace(/\D/g, "") === norm)
-      ?? pessoaPorCnpjNFS(cnpj);
+    const prod = produtores.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === norm);
+    if (prod) return { item: prod, tipo: "produtor" };
+    const emp = empresas.find(e => (e.cpf_cnpj ?? "").replace(/\D/g, "") === norm);
+    if (emp) return { item: emp, tipo: "empresa" };
+    const pess = pessoaPorCnpjNFS(cnpj);
+    if (pess) return { item: pess, tipo: "pessoa" };
+    return undefined;
   }
 
   // Reforço: se as listas só terminarem de carregar depois que a NFS-e já foi
@@ -325,7 +332,7 @@ export default function NfServicoPage() {
     }
     if (!cab.tomador_id && cab.tomador_cnpj) {
       const m = tomadorPorCnpjNFS(cab.tomador_cnpj);
-      if (m) setCab(p => ({ ...p, tomador_id: m.id, municipio_prestacao: p.municipio_prestacao || (m as Produtor).municipio || "" }));
+      if (m) setCab(p => ({ ...p, tomador_id: m.item.id, tomador_tipo: m.tipo, municipio_prestacao: p.municipio_prestacao || (m.item as Produtor).municipio || "" }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pessoas, produtores, empresas, nfEdit]);
@@ -352,17 +359,20 @@ export default function NfServicoPage() {
   function onTomadorChange(id: string) {
     const prod = produtores.find(x => x.id === id);
     const emp  = empresas.find(x => x.id === id);
-    const p    = prod ?? emp ?? pessoas.find(x => x.id === id);
+    const pess = pessoas.find(x => x.id === id);
+    const p    = prod ?? emp ?? pess;
+    const tipo: "produtor" | "empresa" | "pessoa" | "" = prod ? "produtor" : emp ? "empresa" : pess ? "pessoa" : "";
     if (p) {
       setCab(prev => ({
         ...prev,
         tomador_id:   id,
+        tomador_tipo: tipo,
         tomador_nome: p.nome ?? prev.tomador_nome,
         tomador_cnpj: p.cpf_cnpj ?? prev.tomador_cnpj,
         municipio_prestacao: prev.municipio_prestacao || (prod?.municipio ?? ""),
       }));
     } else {
-      setCab(prev => ({ ...prev, tomador_id: id }));
+      setCab(prev => ({ ...prev, tomador_id: id, tomador_tipo: "" }));
     }
   }
 
@@ -397,12 +407,13 @@ export default function NfServicoPage() {
       prestador_id:         nf.prestador_id ?? prestadorMatch?.id ?? "",
       prestador_nome:       nf.prestador_nome,
       prestador_cnpj:       nf.prestador_cnpj ?? "",
-      tomador_id:           nf.tomador_id ?? tomadorMatch?.id ?? "",
+      tomador_id:           nf.tomador_id ?? tomadorMatch?.item.id ?? "",
+      tomador_tipo:         nf.tomador_tipo ?? tomadorMatch?.tipo ?? "",
       tomador_nome:         nf.tomador_nome ?? "",
       tomador_cnpj:         nf.tomador_cnpj ?? "",
       // Município não vem na NFS-e para o tomador — quando o cadastro já
       // conhecido tem endereço, aproveita em vez de deixar em branco.
-      municipio_prestacao:  nf.municipio_prestacao || tomadorMatch?.municipio || "",
+      municipio_prestacao:  nf.municipio_prestacao || (tomadorMatch?.item as Produtor | undefined)?.municipio || "",
       data_prestacao:       nf.data_prestacao,
       competencia:          nf.competencia ?? nf.data_prestacao.substring(0, 7),
       codigo_servico:       nf.codigo_servico ?? "",
@@ -471,6 +482,7 @@ export default function NfServicoPage() {
       prestador_nome:        cab.prestador_nome,
       prestador_cnpj:        cab.prestador_cnpj || undefined,
       tomador_id:            cab.tomador_id     || undefined,
+      tomador_tipo:          cab.tomador_tipo   || undefined,
       tomador_nome:          cab.tomador_nome   || undefined,
       tomador_cnpj:          cab.tomador_cnpj   || undefined,
       municipio_prestacao:   cab.municipio_prestacao || undefined,
