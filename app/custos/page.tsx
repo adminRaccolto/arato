@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
 import { listarSafras } from "../../lib/db";
@@ -11,7 +11,8 @@ import PlanoGate from "../../components/PlanoGate";
 type Aba = "dre" | "custoha" | "produtividade" | "custostotais";
 
 interface AnoSafra   { id: string; descricao: string }
-interface Ciclo      { id: string; ano_safra_id: string; cultura: string; descricao: string; area_plantada_ha?: number }
+interface Ciclo      { id: string; ano_safra_id: string; cultura: string; descricao: string; area_plantada_ha?: number; fazenda_id?: string }
+interface FazendaMin { id: string; nome: string }
 interface CntSimples { id: string; ciclo_id?: string; produto: string; moeda: string; preco: number; quantidade_sc: number; confirmado?: boolean; status: string }
 interface MovSimples { id: string; insumo_id: string; quantidade: number; ciclo_id?: string; motivo?: string }
 interface InsSimples { id: string; custo_medio: number; categoria: string; nome: string }
@@ -83,7 +84,7 @@ function DreRow({ label, valor, ha, sc, base, bold, bg, indent, cor, negativo, n
 }
 
 // ─── Barra de filtros (Ano Safra + Ciclos) ───────────────────
-function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, setCicloIds, dreLoading }: {
+function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, setCicloIds, dreLoading, fazendasMin }: {
   anosSafra: AnoSafra[];
   anoSafraId: string;
   setAnoSafraId: (v: string) => void;
@@ -91,7 +92,21 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
   cicloIds: string[];
   setCicloIds: React.Dispatch<React.SetStateAction<string[]>>;
   dreLoading: boolean;
+  fazendasMin: FazendaMin[];
 }) {
+  const [dropdownAberto, setDropdownAberto] = useState(false);
+  const [buscaCiclo, setBuscaCiclo] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const fazendaNome = (id?: string) => fazendasMin.find(f => f.id === id)?.nome ?? "—";
+
+  useEffect(() => {
+    if (!dropdownAberto) return;
+    function onClickFora(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownAberto(false);
+    }
+    document.addEventListener("mousedown", onClickFora);
+    return () => document.removeEventListener("mousedown", onClickFora);
+  }, [dropdownAberto]);
   // Uma conta pode ter várias fazendas, cada uma com seu próprio registro de
   // "Safra 2026/2027" (ids diferentes, mesmo rótulo) — normal, não é duplicata
   // de cadastro. Sem agrupar por descrição, o seletor listava a mesma safra
@@ -132,27 +147,83 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
             {anosSafraUnicos.map(a => <option key={a.descricao} value={a.descricao}>{a.descricao}</option>)}
           </select>
         </div>
-        <div>
+        <div ref={dropdownRef} style={{ position: "relative" }}>
           <label style={lbl}>Ciclos</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {ciclosFiltrados.map(c => {
-              const sel = cicloIds.includes(c.id);
-              return (
-                <button key={c.id}
-                  onClick={() => setCicloIds(prev => sel ? prev.filter(id => id !== c.id) : [...prev, c.id])}
-                  style={{
-                    padding: "5px 12px", borderRadius: 20,
-                    border: `0.5px solid ${sel ? "#111111" : "var(--border-table)"}`,
-                    background: sel ? "#E8E8E8" : "var(--bg-card)",
-                    color: sel ? "#0D0D0D" : "var(--text-2)",
-                    cursor: "pointer", fontSize: 12, fontWeight: sel ? 600 : 400,
-                  }}>
-                  {c.descricao}{c.area_plantada_ha ? ` · ${fmtNum(c.area_plantada_ha)} ha` : ""}
+          <button onClick={() => setDropdownAberto(v => !v)} style={{
+            ...inp, display: "flex", justifyContent: "space-between", alignItems: "center",
+            cursor: "pointer", textAlign: "left", background: "var(--bg-card)",
+          }}>
+            <span>
+              {ciclosSel.length === 0
+                ? "Selecionar ciclos…"
+                : `${ciclosSel.length} ciclo${ciclosSel.length !== 1 ? "s" : ""} selecionado${ciclosSel.length !== 1 ? "s" : ""}${areaTotal > 0 ? ` · ${fmtNum(areaTotal, 0)} ha` : ""}`}
+            </span>
+            <span style={{ color: "var(--text-3)", fontSize: 11 }}>{dropdownAberto ? "▲" : "▼"}</span>
+          </button>
+
+          {dropdownAberto && (
+            <div style={{
+              position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, zIndex: 20,
+              background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxHeight: 380, display: "flex", flexDirection: "column",
+            }}>
+              <div style={{ padding: "8px 10px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  value={buscaCiclo}
+                  onChange={e => setBuscaCiclo(e.target.value)}
+                  placeholder="Buscar por fazenda ou ciclo…"
+                  style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 12 }}
+                />
+                <button onClick={() => setCicloIds(ciclosFiltrados.map(c => c.id))}
+                  style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  Todos
                 </button>
-              );
-            })}
-            {ciclosFiltrados.length === 0 && <span style={{ fontSize: 12, color: "#999" }}>Nenhum ciclo cadastrado</span>}
-          </div>
+                <button onClick={() => setCicloIds([])}
+                  style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  Limpar
+                </button>
+              </div>
+              <div style={{ overflowY: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ position: "sticky", top: 0, background: "var(--bg-page)" }}>
+                      <th style={{ width: 32 }} />
+                      <th style={{ textAlign: "left", padding: "6px 10px", fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Fazenda</th>
+                      <th style={{ textAlign: "left", padding: "6px 10px", fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Ciclo</th>
+                      <th style={{ textAlign: "right", padding: "6px 10px", fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Área</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ciclosFiltrados
+                      .filter(c => {
+                        if (!buscaCiclo.trim()) return true;
+                        const q = buscaCiclo.toLowerCase();
+                        return fazendaNome(c.fazenda_id).toLowerCase().includes(q) || c.descricao.toLowerCase().includes(q) || c.cultura?.toLowerCase().includes(q);
+                      })
+                      .sort((a, b) => fazendaNome(a.fazenda_id).localeCompare(fazendaNome(b.fazenda_id)) || a.descricao.localeCompare(b.descricao))
+                      .map(c => {
+                        const sel = cicloIds.includes(c.id);
+                        return (
+                          <tr key={c.id}
+                            onClick={() => setCicloIds(prev => sel ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                            style={{ cursor: "pointer", background: sel ? "#F0F4FF" : "transparent", borderBottom: "0.5px solid var(--border-row)" }}>
+                            <td style={{ padding: "6px 10px" }}>
+                              <input type="checkbox" checked={sel} readOnly style={{ cursor: "pointer" }} />
+                            </td>
+                            <td style={{ padding: "6px 10px", fontSize: 12, color: "var(--text-2)" }}>{fazendaNome(c.fazenda_id)}</td>
+                            <td style={{ padding: "6px 10px", fontSize: 12, fontWeight: sel ? 600 : 400, color: "var(--text-1)" }}>{c.descricao}</td>
+                            <td style={{ padding: "6px 10px", fontSize: 12, textAlign: "right", color: "var(--text-3)" }}>{c.area_plantada_ha ? `${fmtNum(c.area_plantada_ha)} ha` : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    {ciclosFiltrados.length === 0 && (
+                      <tr><td colSpan={4} style={{ padding: 16, textAlign: "center", fontSize: 12, color: "#999" }}>Nenhum ciclo cadastrado</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 16, alignItems: "center" }}>
@@ -173,6 +244,7 @@ function CustosInner() {
   const [safras, setSafras]       = useState<Safra[]>([]);
   const [anosSafra, setAnosSafra] = useState<AnoSafra[]>([]);
   const [ciclos, setCiclos]       = useState<Ciclo[]>([]);
+  const [fazendasMin, setFazendasMin] = useState<FazendaMin[]>([]);
   const [initLoading, setInitLoading] = useState(true);
 
   // Filtro unificado
@@ -195,13 +267,15 @@ function CustosInner() {
     Promise.all([
       listarSafras(fazendaId),
       supabase.from("anos_safra").select("id,descricao").in("fazenda_id", fazendaIds).order("descricao", { ascending: false }),
-      supabase.from("ciclos").select("id,ano_safra_id,cultura,descricao,area_plantada_ha").in("fazenda_id", fazendaIds).order("descricao"),
-    ]).then(([sfrs, aR, cR]) => {
+      supabase.from("ciclos").select("id,ano_safra_id,cultura,descricao,area_plantada_ha,fazenda_id").in("fazenda_id", fazendaIds).order("descricao"),
+      supabase.from("fazendas").select("id,nome").in("id", fazendaIds).order("nome"),
+    ]).then(([sfrs, aR, cR, fR]) => {
       setSafras(sfrs);
       const as = (aR.data ?? []) as AnoSafra[];
       const cs = (cR.data ?? []) as Ciclo[];
       setAnosSafra(as);
       setCiclos(cs);
+      setFazendasMin((fR.data ?? []) as FazendaMin[]);
       if (as.length > 0) {
         const anoId = as[0].id;
         setAnoSafraId(anoId);
@@ -395,6 +469,7 @@ function CustosInner() {
           <FiltroBar
             anosSafra={anosSafra} anoSafraId={anoSafraId} setAnoSafraId={setAnoSafraId}
             ciclos={ciclos} cicloIds={cicloIds} setCicloIds={setCicloIds} dreLoading={dreLoading}
+            fazendasMin={fazendasMin}
           />
         )}
 
