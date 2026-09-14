@@ -172,6 +172,14 @@ export async function POST(request: NextRequest) {
         .update({ status: "cancelada", observacao: observacaoFinal })
         .eq("id", tidCancel);
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+
+      // Espelha o cancelamento em notas_fiscais — mesma lógica do 6b na
+      // emissão: sem isso, o Monitor de NF-e Emitidas continuaria mostrando
+      // "autorizada" numa nota que já foi cancelada de verdade na SEFAZ.
+      if (t.nf_chave) {
+        await adm.from("notas_fiscais").update({ status: "cancelada" }).eq("chave_acesso", t.nf_chave);
+      }
+
       return NextResponse.json({ ok: true });
     }
 
@@ -338,6 +346,48 @@ export async function POST(request: NextRequest) {
         nf_protocolo:  resultado.protocolo,
         nf_modulo_key: moduloKey,
       }).eq("id", tid);
+
+      // 6b. Espelha em notas_fiscais — sem isso a NF de transferência nunca
+      // aparecia em Fiscal → Monitor de NF-e Emitidas, que só lê dessa tabela
+      // (transferencias_estoque é uma tabela totalmente separada).
+      const valorTotalItens = itenNfe.reduce((s, it) => s + it.quantidade * it.valor_unitario, 0);
+      const cfopFmt = cfop.length === 4 ? `${cfop.slice(0, 1)}.${cfop.slice(1)}` : cfop;
+      await adm.from("notas_fiscais").insert({
+        fazenda_id:        fazId,
+        numero:            resultado.numero,
+        serie:             confEmit?.serie_nfe ?? "1",
+        tipo:              "saida",
+        cfop:              cfopFmt,
+        natureza:          "Transferência de mercadoria de produção própria",
+        destinatario:      destinatarioDados.nome,
+        cnpj_destinatario: (destinatarioDados.cpf_cnpj ?? "").replace(/\D/g, "") || undefined,
+        valor_total:       valorTotalItens,
+        data_emissao:      new Date().toISOString().slice(0, 10),
+        status:            "autorizada",
+        chave_acesso:      resultado.chave,
+        xml_url:           resultado.xmlUrl,
+        auto:              true,
+        tipo_emissao:      1,
+        observacao:        `Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`,
+        itens_json: itenNfe.map(it => ({
+          item: it.descricao, ncm: it.ncm, cfop: it.cfop, unidade: it.unidade,
+          quantidade: it.quantidade, valor_unitario: it.valor_unitario,
+          valor_total: it.quantidade * it.valor_unitario,
+        })),
+        dados_nf_json: {
+          protocolo_autorizacao: resultado.protocolo,
+          emit_razao:     resultado.emit_razao,
+          emit_cnpj:      resultado.emit_cnpj,
+          emit_ie:        resultado.emit_ie,
+          emit_endereco:  resultado.emit_endereco,
+          emit_numero:    resultado.emit_numero,
+          emit_bairro:    resultado.emit_bairro,
+          emit_municipio: resultado.emit_municipio,
+          emit_uf:        resultado.emit_uf,
+          emit_cep:       resultado.emit_cep,
+          emit_fone:      resultado.emit_fone,
+        },
+      });
 
       // 7. Movimentações de estoque
       await _criarMovimentacoes(t, itensTransf, adm);
