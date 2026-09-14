@@ -506,7 +506,12 @@ export default function ComprasPage() {
         setIeMap(map);
       }
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao carregar");
+      // Erros do Supabase/Postgrest são objetos simples, não instâncias de
+      // Error — "e instanceof Error ? e.message : genérico" escondia a causa
+      // real (ex: PGRST204/42703 coluna inexistente) atrás de "Erro ao carregar".
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message;
+      console.error("[compras] erro ao carregar:", e);
+      setErro(msg || "Erro ao carregar");
     } finally {
       setLoading(false);
     }
