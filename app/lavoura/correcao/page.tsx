@@ -35,6 +35,18 @@ const CULTURAS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª", mi
 
 type ItemForm = { insumo_id: string; produto_nome: string; dose_ton_ha: string; };
 
+// Mesma tabela de conversão já usada em processarCorrecao/excluirCorrecao
+// (lib/db.ts) pra debitar o estoque — precisa ser idêntica aqui pro custo
+// bater com a baixa real de estoque.
+function converterTonParaUnidadeNativa(ton: number, unidade?: string): number {
+  switch (unidade) {
+    case "t":  return ton;
+    case "g":  return ton * 1_000_000;
+    case "sc": return (ton * 1000) / 60;
+    default:   return ton * 1000; // kg (padrão) ou não reconhecida
+  }
+}
+
 export default function CorrecaoSoloPage() {
   const { fazendaId, contaId } = useAuth();
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
@@ -89,12 +101,17 @@ export default function CorrecaoSoloPage() {
     const dose = parseFloat(it.dose_ton_ha) || 0;
     const qtdTon = dose * areaHa;
     const vu = ins?.custo_medio ?? ins?.valor_unitario ?? 0;
+    // custo_medio é por unidade NATIVA do insumo, não sempre "kg" — o "* 1000"
+    // fixo aqui assumia isso e inflava o custo em até 1000x pra corretivo
+    // estocado em tonelada (o mais comum pra calcário/gesso). Mesma tabela de
+    // conversão já usada em processarCorrecao/excluirCorrecao (lib/db.ts).
+    const qtdNativa = converterTonParaUnidadeNativa(qtdTon, ins?.unidade);
     return {
       ...it,
       dose_ton_ha: dose,
       quantidade_ton: qtdTon,
       valor_unitario: vu,
-      custo_total: vu * qtdTon * 1000, // valor em R$ por tonelada × toneladas
+      custo_total: vu * qtdNativa,
       nome: ins?.nome ?? it.produto_nome,
     };
   });
@@ -313,7 +330,7 @@ export default function CorrecaoSoloPage() {
                   </div>
                   <button style={btnX} onClick={() => removeItem(idx)}>✕</button>
                   {ins && <div style={{ gridColumn: "1/-1", fontSize: 10, color: "#111111", marginTop: -4 }}>
-                    Estoque atual: {fmtN(ins.estoque, 0)} {ins.unidade} · Custo médio: {fmtBRL(ins.custo_medio ?? ins.valor_unitario ?? 0)}/kg
+                    Estoque atual: {fmtN(ins.estoque, 0)} {ins.unidade} · Custo médio: {fmtBRL(ins.custo_medio ?? ins.valor_unitario ?? 0)}/{ins.unidade || "kg"}
                   </div>}
                 </div>
               );
