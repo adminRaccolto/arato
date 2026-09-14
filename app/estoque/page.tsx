@@ -1326,7 +1326,7 @@ export default function Estoque() {
                           {badge(m.origem_tipo === "nf_entrada" ? "NF" : m.origem_tipo === "bot" ? "BOT" : m.origem_tipo ?? "manual", "var(--bg-page)", "var(--text-2)")}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>
-                          {m.nf_entrada_id ? m.nf_entrada_id.slice(0, 8) + "…" : "—"}
+                          {m.nf_entradas?.numero ? `NF ${m.nf_entradas.numero}` : "—"}
                         </td>
                       </tr>
                     ))}
@@ -1533,7 +1533,11 @@ export default function Estoque() {
                                     {g.movs.map((m, mi) => {
                                       const dep = depositos.find(d => d.id === m.deposito_id);
                                       const isAdj2 = m.tipo === "ajuste";
-                                      const nfNum = m.nf_entrada ?? (m.observacao?.match(/NF\s+([\w-]+)/)?.[1]);
+                                      // Prioriza o número real da NF (via FK nf_entrada_id → nf_entradas.numero)
+                                      // — m.nf_entrada nunca é gravado na criação, e o regex em cima da
+                                      // observação acabava capturando o UUID de nf_entrada_id, que também
+                                      // é escrito ali como texto.
+                                      const nfNum = m.nf_entradas?.numero ?? m.nf_entrada;
                                       const origem = (() => {
                                         if (nfNum) return (
                                           <a href="/compras/nf" target="_blank" title={`Ver NF ${nfNum}`}

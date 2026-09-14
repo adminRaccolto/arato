@@ -473,7 +473,12 @@ export async function listarSaldoPorDeposito(fazenda_id: string): Promise<{ insu
 }
 
 export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoEstoque[]> {
-  let q = supabase.from("movimentacoes_estoque").select("*").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
+  // Embed nf_entradas(numero) — a coluna nf_entrada nunca foi populada na
+  // gravação, então a tela mostrava o UUID de nf_entrada_id (ou tentava
+  // "adivinhar" o número fazendo regex em cima do texto da observação, que
+  // também guardava o UUID). Resolver pela FK de verdade corrige até o
+  // histórico já gravado, sem precisar de backfill.
+  let q = supabase.from("movimentacoes_estoque").select("*, nf_entradas(numero)").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
   if (insumo_id) q = q.eq("insumo_id", insumo_id);
   if (dataInicio) q = q.gte("data", dataInicio);
   if (dataFim)    q = q.lte("data", dataFim);
@@ -5504,7 +5509,7 @@ export async function registrarSaidaPA(params: {
 
 export async function listarMovimentacoesPA(fazendaId: string, principioAtivoId?: string): Promise<MovimentacaoPA[]> {
   let q = supabase.from("movimentacoes_pa")
-    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade)")
+    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade), nf_entradas(numero)")
     .eq("fazenda_id", fazendaId)
     .order("data", { ascending: false })
     .order("created_at", { ascending: false });

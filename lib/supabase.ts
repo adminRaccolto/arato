@@ -215,6 +215,9 @@ export type MovimentacaoEstoque = {
   // no meio do processamento). Toda limpeza de movimentações por NF deve usar
   // este campo, não nf_entrada_item_id sozinho.
   nf_entrada_id?: string | null;
+  // Embed via nf_entrada_id — número real da NF (o que aparece impresso/no
+  // sistema), pra nunca precisar exibir o UUID de nf_entrada_id na tela.
+  nf_entradas?: { numero: string } | null;
   nf_entrada_item_id?: string | null;
   deposito_id?: string;
   observacao?: string;
@@ -1383,6 +1386,7 @@ export type MovimentacaoPA = {
   obs?: string;
   created_at?: string;
   principio_ativo?: PrincipioAtivo;
+  nf_entradas?: { numero: string } | null;
 };
 
 export type NfServico = {

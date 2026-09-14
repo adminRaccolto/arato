@@ -160,7 +160,11 @@ export default function Kardex() {
 
     for (const m of (periodo ?? []) as MovComCiclo[]) {
       const unit = m.custo_unitario_na_baixa ?? m.valor_unitario ?? cm;
-      const nf_ref = m.nf_entrada ?? undefined;
+      // nf_ref precisa ser o ID (nf_entrada_id) — é isso que a resolução em
+      // lote logo abaixo (nfIds/nfMap) usa pra buscar o número real em
+      // nf_entradas. m.nf_entrada (sem "_id") nunca é gravado na criação —
+      // usá-lo aqui fazia nf_ref ficar sempre undefined e nunca mostrar NF nenhuma.
+      const nf_ref = m.nf_entrada_id ?? undefined;
       const ciclo_descricao = m.ciclos?.descricao ?? undefined;
 
       if (m.tipo === "entrada") {
