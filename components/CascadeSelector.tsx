@@ -125,13 +125,21 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
   }, [values.produtorId, contaId, fazendaIdFallback]);
 
   // 4. Anos Safra e Talhões quando Fazenda muda
+  // Ano Safra é do cliente inteiro, não da fazenda (ver Seção 254 da migration)
+  // — filtrar por fazenda_id fazia o Ano Safra não bater com o ciclo já
+  // auto-selecionado (o ciclo de uma fazenda pode referenciar a linha de
+  // anos_safra criada originalmente noutra fazenda do mesmo cliente).
   useEffect(() => {
     if (!values.fazendaId) { setAnosSafra([]); setCiclos([]); setTalhoes([]); return; }
-    supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", values.fazendaId).order("descricao", { ascending: false })
+    const cidReal = contaId && !contaId.startsWith("sem_conta_") ? contaId : null;
+    const anosQuery = cidReal
+      ? supabase.from("anos_safra").select("id, descricao").eq("conta_id", cidReal)
+      : supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", values.fazendaId);
+    anosQuery.order("descricao", { ascending: false })
       .then(({ data }) => setAnosSafra((data ?? []).map(r => ({ id: r.id, nome: r.descricao }))));
     supabase.from("talhoes").select("id, nome").eq("fazenda_id", values.fazendaId).order("nome")
       .then(({ data }) => setTalhoes(data ?? []));
-  }, [values.fazendaId]);
+  }, [values.fazendaId, contaId]);
 
   // 5. Ciclos quando Fazenda ou Ano Safra muda
   useEffect(() => {

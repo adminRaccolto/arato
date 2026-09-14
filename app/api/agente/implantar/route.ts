@@ -351,6 +351,7 @@ async function executeTool(
         .from("anos_safra")
         .insert({
           fazenda_id: onboarding.fazenda_id,
+          conta_id: onboarding.conta_id,
           descricao: anoSafra,
           data_inicio: dataInicio,
           data_fim: dataFim,

@@ -1868,7 +1868,7 @@ function CadastrosInner() {
       const existentes = new Set(anosSafra.map(a => anoRange(a.descricao)));
       for (const s of safrasPadrao) {
         if (!existentes.has(anoRange(s.descricao))) {
-          const n = await criarAnoSafra({ ...s, fazenda_id: fazendaId });
+          const n = await criarAnoSafra({ ...s, fazenda_id: fazendaId, conta_id: contaId });
           setAnosSafra(p => [...p, n]);
         }
       }
@@ -1889,7 +1889,7 @@ function CadastrosInner() {
     if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
     setErroModal("");
     if (editAno) { await atualizarAnoSafra(editAno.id, fAno); setAnosSafra(p => p.map(x => x.id === editAno.id ? { ...x, ...fAno } : x)); }
-    else { const n = await criarAnoSafra({ ...fAno, fazenda_id: (fazIdEff)! }); setAnosSafra(p => [...p, n]); }
+    else { const n = await criarAnoSafra({ ...fAno, fazenda_id: (fazIdEff)!, conta_id: contaId }); setAnosSafra(p => [...p, n]); }
     setModalAno(false);
   });
   // Calcula quantos ha cada talhão já tem comprometido em ciclos que se sobrepõem

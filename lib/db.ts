@@ -1450,11 +1450,21 @@ export async function excluirPessoa(id: string): Promise<void> {
 // ANOS SAFRA
 // ————————————————————————————————————————
 
+// Ano Safra é um período de calendário do CLIENTE (conta) inteiro, não de uma
+// fazenda específica — "2026/2027" é o mesmo ano safra pra todas as fazendas
+// do mesmo cliente. Resolve a conta da fazenda pedida e busca por conta_id;
+// fazenda_id vira fallback só pra contas antigas sem conta_id preenchido.
 export async function listarAnosSafra(fazenda_id: string): Promise<AnoSafra[]> {
+  const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  if (faz?.conta_id) {
+    const { data, error } = await supabase.from("anos_safra").select("*").eq("conta_id", faz.conta_id).order("descricao");
+    if (error) throw error;
+    if (data && data.length > 0) return data;
+  }
   const { data, error } = await supabase.from("anos_safra").select("*").eq("fazenda_id", fazenda_id).order("descricao");
   if (error) throw error;
   if (data && data.length > 0) return data;
-  // Fallback: anos_safra referenciados pelos ciclos desta fazenda (dados sem fazenda_id direto)
+  // Fallback: anos_safra referenciados pelos ciclos desta fazenda (dados sem fazenda_id/conta_id direto)
   const { data: ciclosData } = await supabase.from("ciclos").select("ano_safra_id").eq("fazenda_id", fazenda_id);
   if (!ciclosData || ciclosData.length === 0) return [];
   const anoIds = [...new Set(ciclosData.map((c: { ano_safra_id: string }) => c.ano_safra_id).filter(Boolean))];

@@ -808,6 +808,9 @@ export type Pessoa = {
 export type AnoSafra = {
   id: string;
   fazenda_id: string;
+  // Coluna técnica de armazenamento pro conta_id, único filtro real usado nas
+  // leituras — ano safra é do cliente inteiro, não de uma fazenda (ver Seção 254).
+  conta_id?: string | null;
   descricao: string;
   data_inicio: string;
   data_fim: string;

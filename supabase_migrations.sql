@@ -12432,3 +12432,30 @@ CREATE INDEX IF NOT EXISTS idx_prod_ies_empresa ON produtor_inscricoes_estaduais
   WHERE empresa_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 254 — anos_safra ganha conta_id. Ano Safra é um período de
+-- calendário do CLIENTE inteiro (ex: "2026/2027"), não de uma fazenda
+-- específica — mas a tabela só tinha fazenda_id (NOT NULL), então cada
+-- fazenda do mesmo cliente acabava criando sua PRÓPRIA linha "2026/2027"
+-- com um id diferente. Ciclos de fazendas diferentes acabavam
+-- referenciando ora uma linha ora outra, e qualquer tela que filtrasse
+-- anos_safra por fazenda_id (em vez de conta_id) podia não achar a linha
+-- que os ciclos da fazenda ativa realmente usavam — sintoma real: ano
+-- safra não vinha selecionado, ciclos "sumiam" de telas que cruzavam por
+-- ano_safra_id.
+--
+-- fazenda_id continua existindo (NOT NULL, dado técnico de armazenamento)
+-- mas para de ser usado como filtro de leitura — mesmo padrão já adotado
+-- em produtor_inscricoes_estaduais e configuracoes_modulo (ver memória
+-- "sem fazenda ativa").
+-- ============================================================
+ALTER TABLE anos_safra ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_anos_safra_conta ON anos_safra(conta_id);
+
+UPDATE anos_safra a
+SET conta_id = f.conta_id
+FROM fazendas f
+WHERE a.fazenda_id = f.id AND a.conta_id IS NULL AND f.conta_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

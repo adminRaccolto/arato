@@ -172,7 +172,7 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
       { descricao: "2030/2031", data_inicio: "2030-10-01", data_fim: "2031-09-30" },
       { descricao: "2031/2032", data_inicio: "2031-10-01", data_fim: "2032-09-30" },
     ];
-    await supabase.from("anos_safra").insert(SAFRAS.map(s => ({ ...s, fazenda_id: fazendaId })));
+    await supabase.from("anos_safra").insert(SAFRAS.map(s => ({ ...s, fazenda_id: fazendaId, conta_id: contaId })));
   } catch { /* não bloqueia o onboarding */ }
 
   // ── 9. Enviar e-mail de boas-vindas ──
