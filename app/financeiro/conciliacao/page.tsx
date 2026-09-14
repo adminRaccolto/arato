@@ -209,6 +209,20 @@ function ConciliacaoInner() {
   const [contaSel, setContaSel]     = useState<string>("");
   const [filtroPend, setFiltroPend] = useState(() => searchParams.get("pendentes") === "true");
   const [busca, setBusca]           = useState("");
+  const [buscaValor, setBuscaValor] = useState("");
+
+  // Visão dentro do extrato aberto: linhas do OFX (padrão) ou CP/CR em aberto
+  // cruzadas com o extrato atual (pra achar quem já está no banco mas ainda
+  // não foi baixado no sistema).
+  const [abaExtratoView, setAbaExtratoView] = useState<"linhas" | "abertos">("linhas");
+
+  // Seleção múltipla de linhas OFX pendentes — pra lançar um único CP/CR
+  // agrupado (ex: vários pedágios do mesmo dia) e conciliar todas de uma vez.
+  const [selecaoMultipla, setSelecaoMultipla] = useState<Set<string>>(new Set());
+  const [modalAgrupado, setModalAgrupado]     = useState(false);
+  const [descAgrupado, setDescAgrupado]       = useState("");
+  const [ogAgrupado, setOgAgrupado]           = useState("");
+  const [savingAgrupado, setSavingAgrupado]   = useState(false);
 
   // Painel esquerdo — filtros
   const [buscaLanc, setBuscaLanc]           = useState("");
@@ -471,11 +485,14 @@ function ConciliacaoInner() {
 
   // ── Confirmar vínculo — Baixar + Conciliar em um passo ────────────────────
   // linhaParam: usado quando chamado direto do botão OFX (estado ainda não atualizou)
-  async function confirmarVinculo(linhaParam?: LinhaOFX) {
+  // idsParam: usado pela aba "CP/CR em Aberto" — evita depender de lancsSel
+  // (que teria valor desatualizado se setado no mesmo ciclo de render)
+  async function confirmarVinculo(linhaParam?: LinhaOFX, idsParam?: string[]) {
     const linha = linhaParam ?? linhaAtiva;
-    if (!linha || lancsSel.size === 0 || !extrato || !fazendaId) return;
+    const idsSel = idsParam ?? Array.from(lancsSel);
+    if (!linha || idsSel.length === 0 || !extrato || !fazendaId) return;
     setSalvando(true);
-    const ids = Array.from(lancsSel);
+    const ids = idsSel;
 
     // Lançamentos a baixar (somente os que ainda não foram baixados nem parcialmente pagos)
     // "parcial" = já tem valor_pago registrado; conciliar apenas vincula o OFX, não reprocessa baixa
@@ -487,7 +504,7 @@ function ConciliacaoInner() {
     if (paraBaixar.length > 0) {
       setLancamentos(prev => prev.map(l => {
         if (!ids.includes(l.id) || l.status === "baixado") return l;
-        return { ...l, status: "baixado", data_baixa: linha.data, valor_pago: l.valor_pago ?? l.valor };
+        return { ...l, status: "baixado", data_baixa: linha.data, valor_pago: l.valor_pago ?? l.valor, conta_bancaria: extrato.conta_id || l.conta_bancaria };
       }));
     }
 
@@ -514,6 +531,7 @@ function ConciliacaoInner() {
           id: l.id,
           data_baixa: linha.data,
           valor_pago: l.valor_pago ?? l.valor,
+          conta_bancaria: extrato.conta_id || undefined,
         })),
       },
     );
@@ -653,6 +671,88 @@ function ConciliacaoInner() {
     setSavingTes(false);
   }
 
+  // ── Lançamento agrupado — várias linhas OFX pendentes (mesmo dia, mesma
+  // natureza — ex: vários pedágios) viram UM único CP/CR, já baixado, e todas
+  // as linhas selecionadas ficam conciliadas contra esse mesmo lançamento.
+  async function salvarLancamentoAgrupado() {
+    if (!extrato || !fazendaId || selecaoMultipla.size < 2) return;
+    const linhasSel = extrato.linhas.filter(l => selecaoMultipla.has(l.id));
+    if (linhasSel.length < 2) return;
+
+    const tipos = new Set(linhasSel.map(l => l.tipo));
+    if (tipos.size > 1) {
+      alert("As linhas selecionadas misturam crédito e débito — selecione apenas linhas do mesmo tipo pra agrupar num único CP/CR.");
+      return;
+    }
+    const datas = new Set(linhasSel.map(l => l.data));
+    if (datas.size > 1) {
+      alert("As linhas selecionadas são de datas diferentes — selecione linhas do mesmo dia pra agrupar num único CP/CR.");
+      return;
+    }
+    if (!descAgrupado.trim()) {
+      alert("Informe uma descrição para o lançamento agrupado.");
+      return;
+    }
+
+    setSavingAgrupado(true);
+    const tipoLanc: "pagar" | "receber" = linhasSel[0].tipo === "credito" ? "receber" : "pagar";
+    const dataComum = linhasSel[0].data;
+    const valorTotal = linhasSel.reduce((s, l) => s + l.valor, 0);
+    const ogSel = ogsDisponiveis.find(o => o.id === ogAgrupado);
+
+    const { data: novoLanc, error } = await supabase
+      .from("lancamentos")
+      .insert({
+        fazenda_id: fazendaId,
+        tipo: tipoLanc,
+        descricao: descAgrupado.trim(),
+        valor: valorTotal,
+        valor_pago: valorTotal,
+        data_lancamento: dataComum,
+        data_vencimento: dataComum,
+        data_baixa: dataComum,
+        status: "baixado",
+        categoria: ogSel?.descricao ?? "Conciliação agrupada",
+        operacao_gerencial_id: ogAgrupado || null,
+        conta_bancaria: extrato.conta_id,
+      })
+      .select()
+      .single();
+
+    if (error || !novoLanc) {
+      alert("Erro ao salvar lançamento agrupado: " + (error?.message ?? "erro desconhecido"));
+      setSavingAgrupado(false);
+      return;
+    }
+
+    setLancamentos(prev => [novoLanc as Lancamento, ...prev]);
+
+    const idsLinhas = new Set(linhasSel.map(l => l.id));
+    const novasLinhas = extrato.linhas.map(l =>
+      idsLinhas.has(l.id)
+        ? { ...l, conciliado: true, lancamento_id: novoLanc.id, lancamento_ids: [novoLanc.id], lancamento_desc: descAgrupado.trim(), lancamento_valor: l.valor }
+        : l
+    );
+    const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
+    persistExtrato(
+      { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
+      { conciliarIds: [novoLanc.id] },
+    );
+
+    if (fazendaId) {
+      for (const l of linhasSel) {
+        supabase.from("conciliacao_pendencias")
+          .update({ status: "resolvido", lancamento_id: novoLanc.id })
+          .eq("fazenda_id", fazendaId).eq("fitid", l.id);
+        registrarHistorico(l, "conciliado", [novoLanc.id], descAgrupado.trim());
+      }
+    }
+
+    setSelecaoMultipla(new Set());
+    setModalAgrupado(false);
+    setSavingAgrupado(false);
+  }
+
   // ── Desvincular ────────────────────────────────────────────────────────────
   function desvincular(linhaId: string) {
     if (!extrato) return;
@@ -714,6 +814,16 @@ function ConciliacaoInner() {
       const q = busca.toLowerCase();
       if (!l.descricao.toLowerCase().includes(q) && !l.id.toLowerCase().includes(q)) return false;
     }
+    if (buscaValor) {
+      // Aceita "67", "67,17" ou "67.17" — compara pelo valor formatado (sem
+      // símbolo de moeda) pra casar mesmo com busca parcial, e também pelo
+      // número exato quando o usuário digita um valor completo.
+      const q = buscaValor.trim().replace(",", ".");
+      const alvo = parseFloat(q);
+      const bateExato = !isNaN(alvo) && Math.abs(l.valor - alvo) < 0.01;
+      const bateTexto = l.valor.toFixed(2).replace(".", ",").includes(buscaValor.trim().replace(".", ","));
+      if (!bateExato && !bateTexto) return false;
+    }
     return true;
   });
 
@@ -754,6 +864,23 @@ function ConciliacaoInner() {
     }
     return true;
   });
+
+  // ── CP/CR em aberto cruzados com o extrato atual (sub-aba "CP/CR em Aberto") ──
+  const cpcrAbertos = lancamentos.filter(l => !["baixado", "cancelado"].includes(l.status));
+
+  function acharCorrespondencia(l: Lancamento): LinhaOFX | undefined {
+    if (!extrato) return undefined;
+    const alvo = l.valor_pago ?? l.valor;
+    return extrato.linhas.find(linha => {
+      if (linha.conciliado) return false;
+      if (Math.abs(linha.valor - alvo) > 0.02) return false;
+      if (l.tipo === "pagar"   && linha.tipo !== "debito")  return false;
+      if (l.tipo === "receber" && linha.tipo !== "credito") return false;
+      return true;
+    });
+  }
+
+  const cpcrAbertosComMatch = cpcrAbertos.filter(l => !!acharCorrespondencia(l));
 
   // Contagens para badges do filtro de status
   const cntAberto  = lancamentos.filter(l => ["aberto","vencido","em_aberto"].includes(l.status)).length;
@@ -933,6 +1060,71 @@ function ConciliacaoInner() {
           </div>
         </div>
       )}
+
+      {/* ── Modal Lançamento Agrupado ─────────────────────────────────────── */}
+      {modalAgrupado && extrato && (() => {
+        const linhasSel = extrato.linhas.filter(l => selecaoMultipla.has(l.id));
+        const tipoLanc: "pagar" | "receber" = linhasSel[0]?.tipo === "credito" ? "receber" : "pagar";
+        const valorTotal = linhasSel.reduce((s, l) => s + l.valor, 0);
+        const dataComum = linhasSel[0]?.data;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+              <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Lançamento CP/CR Agrupado</div>
+                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Um único lançamento, conciliado contra {linhasSel.length} linhas do extrato</div>
+                </div>
+                <button onClick={() => setModalAgrupado(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              </div>
+
+              <div style={{ margin: "14px 20px 0", padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>Linhas selecionadas — {fmtDt(dataComum)}</div>
+                {linhasSel.map(l => (
+                  <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-2)", padding: "2px 0" }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300 }}>{l.descricao}</span>
+                    <span style={{ fontWeight: 600 }}>{fmtBRL(l.valor)}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: "var(--text-1)", borderTop: "0.5px solid var(--border)", marginTop: 6, paddingTop: 6 }}>
+                  <span>Total ({tipoLanc === "pagar" ? "CP" : "CR"})</span>
+                  <span>{fmtBRL(valorTotal)}</span>
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Descrição</label>
+                  <input value={descAgrupado} onChange={e => setDescAgrupado(e.target.value)} placeholder="Ex: Pedágios do dia"
+                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${descAgrupado.trim() ? "var(--border)" : "#E24B4A"}`, borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação Gerencial (opcional)</label>
+                  <select value={ogAgrupado} onChange={e => setOgAgrupado(e.target.value)}
+                    style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
+                    <option value="">— Sem vínculo —</option>
+                    {ogsDisponiveis.filter(g => g.tipo === (tipoLanc === "pagar" ? "despesa" : "receita")).map(g => (
+                      <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button onClick={() => setModalAgrupado(false)} disabled={savingAgrupado}
+                    style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>
+                    Cancelar
+                  </button>
+                  <button onClick={salvarLancamentoAgrupado} disabled={savingAgrupado || !descAgrupado.trim()}
+                    style={{ flex: 2, padding: "9px", border: "none", borderRadius: 8, background: savingAgrupado ? "#999" : "#1A5CB8", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingAgrupado ? "default" : "pointer" }}>
+                    {savingAgrupado ? "Salvando..." : "✓ Lançar e Conciliar Todas"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div style={{ maxWidth: 1700, margin: "0 auto", padding: "18px 20px" }}>
 
@@ -1419,7 +1611,27 @@ function ConciliacaoInner() {
               </div>
             </div>
 
-            {/* ═══ DOIS PAINÉIS ═══ */}
+            {/* Sub-abas dentro do extrato aberto */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {([
+                ["linhas",  "Linhas do Extrato"],
+                ["abertos", `CP/CR em Aberto${cpcrAbertosComMatch.length > 0 ? ` (${cpcrAbertosComMatch.length} com correspondência)` : ""}`],
+              ] as const).map(([k, lbl]) => (
+                <button key={k} onClick={() => setAbaExtratoView(k)}
+                  style={{
+                    padding: "6px 14px", borderRadius: 8,
+                    border: `0.5px solid ${abaExtratoView === k ? "#1A5CB8" : "var(--border)"}`,
+                    background: abaExtratoView === k ? "#1A5CB8" : "var(--bg-card)",
+                    color: abaExtratoView === k ? "#fff" : "var(--text-2)",
+                    fontSize: 12, fontWeight: abaExtratoView === k ? 700 : 400, cursor: "pointer",
+                  }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+
+            {/* ═══ DOIS PAINÉIS — Linhas do Extrato ═══ */}
+            {abaExtratoView === "linhas" && (
             <div style={{ display: "grid", gridTemplateColumns: "540px 1fr", gap: 12, alignItems: "start" }}>
 
               {/* ─── PAINEL ESQUERDO: Lançamentos CP/CR ─────────────────── */}
@@ -1599,6 +1811,8 @@ function ConciliacaoInner() {
                 <div style={{ padding: "10px 12px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 10, alignItems: "center" }}>
                   <input placeholder="Buscar por descrição ou FITID..." value={busca} onChange={e => setBusca(e.target.value)}
                     style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, width: 260, outline: "none" }} />
+                  <input placeholder="Buscar por valor..." value={buscaValor} onChange={e => setBuscaValor(e.target.value)}
+                    style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, width: 130, outline: "none" }} />
                   <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
                     <input type="checkbox" checked={filtroPend} onChange={e => setFiltroPend(e.target.checked)} />
                     Apenas pendentes
@@ -1611,6 +1825,30 @@ function ConciliacaoInner() {
                     ⟳ Colunas
                   </button>
                 </div>
+
+                {/* Barra de ação em lote — lançar CP/CR agrupado a partir de várias linhas
+                    pendentes (ex: vários pedágios do mesmo dia numa única cobrança de CP) */}
+                {selecaoMultipla.size > 0 && (
+                  <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", background: "#EBF4FF", display: "flex", gap: 10, alignItems: "center" }}>
+                    <span style={{ fontSize: 12, color: "#1A4870", fontWeight: 600 }}>
+                      {selecaoMultipla.size} linha{selecaoMultipla.size > 1 ? "s" : ""} selecionada{selecaoMultipla.size > 1 ? "s" : ""}
+                      {selecaoMultipla.size > 1 && ` · Total ${fmtBRL(
+                        Array.from(selecaoMultipla).reduce((s, id) => s + (extrato.linhas.find(l => l.id === id)?.valor ?? 0), 0)
+                      )}`}
+                    </span>
+                    <button
+                      disabled={selecaoMultipla.size < 2}
+                      onClick={() => { setDescAgrupado(""); setOgAgrupado(""); setModalAgrupado(true); }}
+                      title={selecaoMultipla.size < 2 ? "Selecione pelo menos 2 linhas" : undefined}
+                      style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #1A5CB8", background: selecaoMultipla.size < 2 ? "var(--bg-card)" : "#1A5CB8", color: selecaoMultipla.size < 2 ? "#1A5CB8" : "#fff", fontSize: 11, fontWeight: 600, cursor: selecaoMultipla.size < 2 ? "default" : "pointer" }}>
+                      Lançar CP/CR agrupado
+                    </button>
+                    <button onClick={() => setSelecaoMultipla(new Set())}
+                      style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>
+                      Limpar seleção
+                    </button>
+                  </div>
+                )}
 
                 {/* Tabela OFX */}
                 <div style={{ overflowX: "auto" }}>
@@ -1640,7 +1878,22 @@ function ConciliacaoInner() {
                             borderBottom: i < linhasFiltradas.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
                             background: isAtiva ? "#FBF3E0" : l.conciliado ? "transparent" : "#FFFEF8",
                           }}>
-                            <td style={{ padding: "9px 10px", color: "var(--text-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fmtDt(l.data)}</td>
+                            <td style={{ padding: "9px 10px", color: "var(--text-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {!l.conciliado && (
+                                <input
+                                  type="checkbox"
+                                  checked={selecaoMultipla.has(l.id)}
+                                  onChange={e => setSelecaoMultipla(prev => {
+                                    const next = new Set(prev);
+                                    if (e.target.checked) next.add(l.id); else next.delete(l.id);
+                                    return next;
+                                  })}
+                                  style={{ marginRight: 6, verticalAlign: "middle", cursor: "pointer" }}
+                                  title="Selecionar pra lançamento agrupado"
+                                />
+                              )}
+                              {fmtDt(l.data)}
+                            </td>
                             <td style={{ padding: "9px 10px", overflow: "hidden" }}>
                               <div style={{ fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>
                               <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.id}</div>
@@ -1720,9 +1973,72 @@ function ConciliacaoInner() {
                 </div>
               </div>
             </div>
+            )}
+
+            {/* ═══ CP/CR EM ABERTO — cruza lançamentos ainda não baixados com o extrato atual ═══ */}
+            {abaExtratoView === "abertos" && (
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                <div style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 12, color: "var(--text-2)" }}>
+                  Lançamentos ainda não baixados, cruzados por valor com as linhas pendentes deste extrato — conciliar aqui já baixa o lançamento na conta e na data da transação bancária.
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {["Vencimento", "Descrição", "Tipo", "Valor", "Correspondência no Extrato", "Ação"].map(h => (
+                          <th key={h} style={thStyle}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cpcrAbertos.map((l, i) => {
+                        const match = acharCorrespondencia(l);
+                        return (
+                          <tr key={l.id} style={{ borderBottom: i < cpcrAbertos.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
+                            <td style={{ padding: "9px 10px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
+                            <td style={{ padding: "9px 10px", color: "var(--text-1)" }}>{l.descricao}</td>
+                            <td style={{ padding: "9px 10px" }}>
+                              <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: l.tipo === "pagar" ? "#FCEBEB" : "#E8F5E9", color: l.tipo === "pagar" ? "#791F1F" : "#1A6B3C" }}>
+                                {l.tipo === "pagar" ? "CP" : "CR"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "9px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtBRL(l.valor)}</td>
+                            <td style={{ padding: "9px 10px" }}>
+                              {match ? (
+                                <div>
+                                  <div style={{ fontSize: 12, color: "var(--text-1)" }}>{match.descricao}</div>
+                                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDt(match.data)} · {fmtBRL(match.valor)}</div>
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Sem correspondência neste extrato</span>
+                              )}
+                            </td>
+                            <td style={{ padding: "9px 10px" }}>
+                              {match ? (
+                                <button
+                                  disabled={salvando}
+                                  onClick={() => confirmarVinculo(match, [l.id])}
+                                  style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid #16A34A", background: "#16A34A", color: "#fff", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                  ✓ Conciliar e Baixar
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {cpcrAbertos.length === 0 && (
+                        <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum CP/CR em aberto no período carregado.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Avisos finais */}
-            {extrato.pendentes > 0 && (
+            {abaExtratoView === "linhas" && extrato.pendentes > 0 && (
               <div style={{ marginTop: 14, background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#7A5A12" }}>
                 <strong>{extrato.pendentes} transações pendentes.</strong> Clique "Vincular CP/CR" em uma linha do extrato e selecione os lançamentos no painel esquerdo. Para bordero, selecione múltiplos. Para tarifas e IOF sem CP/CR, use "+ Tesouraria".
               </div>

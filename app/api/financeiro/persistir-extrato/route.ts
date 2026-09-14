@@ -21,6 +21,7 @@ type BaixarItem = {
   id: string;
   data_baixa: string;
   valor_pago: number;
+  conta_bancaria?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Baixa lançamentos (N:1 bordero) — usa service_role para evitar JWT expirado
+    // conta_bancaria: sem isso, um lançamento conciliado pelo extrato nunca
+    // ficava marcado como pago POR ESSA conta — baixa "solta", sem conta.
     if (body.baixar?.length) {
       await Promise.all(
         body.baixar.map(item =>
@@ -60,6 +63,7 @@ export async function POST(req: NextRequest) {
             status:     "baixado",
             data_baixa: item.data_baixa,
             valor_pago: item.valor_pago,
+            ...(item.conta_bancaria ? { conta_bancaria: item.conta_bancaria } : {}),
           }).eq("id", item.id)
         )
       );
