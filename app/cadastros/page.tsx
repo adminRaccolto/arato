@@ -1860,9 +1860,14 @@ function CadastrosInner() {
         { descricao: "SAFRA 2033/2034", data_inicio: "2033-07-01", data_fim: "2034-06-30" },
         { descricao: "SAFRA 2034/2035", data_inicio: "2034-07-01", data_fim: "2035-06-30" },
       ];
-      const existentes = new Set(anosSafra.map(a => a.descricao));
+      // Compara só o intervalo de anos (ex: "2026/2027"), não a descrição inteira —
+      // registros antigos podem estar como "Safra 2026/2027" e o literal aqui como
+      // "SAFRA 2026/2027"; comparar a string exata deixava passar duplicata por
+      // causa só da caixa/prefixo (causou duplicação real numa fazenda em set/2026).
+      const anoRange = (s: string) => s.match(/\d{4}\/\d{4}/)?.[0] ?? s;
+      const existentes = new Set(anosSafra.map(a => anoRange(a.descricao)));
       for (const s of safrasPadrao) {
-        if (!existentes.has(s.descricao)) {
+        if (!existentes.has(anoRange(s.descricao))) {
           const n = await criarAnoSafra({ ...s, fazenda_id: fazendaId });
           setAnosSafra(p => [...p, n]);
         }
