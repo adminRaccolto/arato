@@ -3652,17 +3652,11 @@ export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoS
       });
     }
   }
-  if (correcao.custo_total && correcao.custo_total > 0) {
-    const ogCorrecao = await resolverOperacaoGerencialPorClassificacao(correcao.fazenda_id, "2.01.01.01.002");
-    await supabase.from("lancamentos").insert({
-      fazenda_id: correcao.fazenda_id, tipo: "pagar",
-      descricao: `Correção de Solo — ${correcao.area_ha} ha`,
-      valor: correcao.custo_total, data_vencimento: correcao.data_aplicacao,
-      status: "pendente", categoria: "Insumos — Corretivos",
-      operacao_gerencial_id: ogCorrecao ?? null,
-      ciclo_id: correcao.ciclo_id,
-    });
-  }
+  // Não cria Conta a Pagar aqui — o insumo já foi pago (ou entrou em CP) na
+  // NF de compra. Aplicar do estoque só consome o que já é do produtor; o
+  // custo pra DRE/Custos já fica registrado em movimentacoes_estoque
+  // (custo_unitario_na_baixa) acima. Criar CP de novo aqui duplicava a
+  // dívida — reportado pelo dono como CP "fantasma" sem NF, origem sistema.
 }
 
 // ————————————————————————————————————————
@@ -3747,16 +3741,11 @@ export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoB
       });
     }
   }
-  // Lançamento CP obrigatório — sempre criado
-  const ogAdubacao = await resolverOperacaoGerencialPorClassificacao(adubacao.fazenda_id, "2.01.01.01.004");
-  await supabase.from("lancamentos").insert({
-    fazenda_id: adubacao.fazenda_id, tipo: "pagar",
-    descricao: `Adubação de Base — ${adubacao.area_ha} ha`,
-    valor: adubacao.custo_total ?? 0, data_vencimento: adubacao.data_aplicacao,
-    status: "pendente", categoria: "Insumos — Fertilizantes",
-    operacao_gerencial_id: ogAdubacao ?? null,
-    ciclo_id: adubacao.ciclo_id,
-  });
+  // Não cria Conta a Pagar aqui — o insumo já foi pago (ou entrou em CP) na
+  // NF de compra. Aplicar do estoque só consome o que já é do produtor; o
+  // custo pra DRE/Custos já fica registrado em movimentacoes_estoque
+  // (custo_unitario_na_baixa) acima. Criar CP de novo aqui duplicava a
+  // dívida — reportado pelo dono como CP "fantasma" sem NF, origem sistema.
 }
 
 export async function listarPlantios(fazenda_id: string): Promise<Plantio[]> {
@@ -3798,11 +3787,9 @@ export async function excluirPlantio(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// Processa plantio: baixa estoque de semente + lança CP custo
+// Processa plantio: baixa estoque de semente
 export async function processarPlantio(plantio: Plantio, insumoNome: string): Promise<string | null> {
   const qty = plantio.quantidade_kg ?? 0;
-  const custo = plantio.custo_sementes ?? 0;
-  const hoje = new Date().toISOString().slice(0, 10);
 
   // Baixa de estoque
   if (plantio.insumo_id && qty > 0) {
@@ -3825,26 +3812,12 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
     }
   }
 
-  // Lançamento CP obrigatório — sempre criado (valor 0 se custo_sementes não configurado)
-  {
-    const ogPlantio = await resolverOperacaoGerencialPorClassificacao(plantio.fazenda_id, "2.01.01.01.003");
-    const { data: lanc } = await supabase.from("lancamentos").insert({
-      fazenda_id: plantio.fazenda_id,
-      tipo: "pagar", moeda: "BRL",
-      descricao: `Plantio — ${insumoNome}${plantio.variedade ? ` (${plantio.variedade})` : ""}`,
-      categoria: "Insumos — Sementes",
-      operacao_gerencial_id: ogPlantio ?? null,
-      data_lancamento: hoje,
-      data_vencimento: plantio.data_plantio,
-      valor: custo,
-      ciclo_id: plantio.ciclo_id,
-      status: "em_aberto", auto: true,
-    }).select().single();
-    if (lanc) {
-      await supabase.from("plantios").update({ lancamento_id: lanc.id }).eq("id", plantio.id);
-      return lanc.id;
-    }
-  }
+  // Não cria Conta a Pagar aqui — a semente já foi pago (ou entrou em CP) na
+  // NF de compra. Plantar do estoque só consome o que já é do produtor; o
+  // custo pra DRE/Custos já fica registrado em movimentacoes_estoque
+  // (custo_unitario_na_baixa) e em plantios.custo_sementes (calculado pela
+  // página antes de chamar esta função). Criar CP de novo aqui duplicava a
+  // dívida — reportado pelo dono como CP "fantasma" sem NF, origem sistema.
   return null;
 }
 
@@ -3930,20 +3903,12 @@ export async function processarPulverizacao(
   // Atualiza custo_total na pulverização
   await supabase.from("pulverizacoes").update({ custo_total: custoTotal }).eq("id", pulv.id);
 
-  // Lançamento CP obrigatório — sempre criado
-  const ogPulverizacao = await resolverOperacaoGerencialPorClassificacao(pulv.fazenda_id, "2.01.01.01.001");
-  await supabase.from("lancamentos").insert({
-    fazenda_id: pulv.fazenda_id,
-    tipo: "pagar", moeda: "BRL",
-    descricao: `Pulverização — ${TIPO_PULV_LABEL[pulv.tipo] ?? pulv.tipo}`,
-    categoria: "Insumos — Defensivos",
-    operacao_gerencial_id: ogPulverizacao ?? null,
-    data_lancamento: new Date().toISOString().slice(0, 10),
-    data_vencimento: pulv.data_inicio,
-    valor: custoTotal,
-    ciclo_id: pulv.ciclo_id,
-    status: "em_aberto", auto: true,
-  });
+  // Não cria Conta a Pagar aqui — o defensivo já foi pago (ou entrou em CP)
+  // na NF de compra. Pulverizar do estoque só consome o que já é do
+  // produtor; o custo pra DRE/Custos já fica registrado em
+  // movimentacoes_estoque (custo_unitario_na_baixa) e em
+  // pulverizacoes.custo_total acima. Criar CP de novo aqui duplicava a
+  // dívida — reportado pelo dono como CP "fantasma" sem NF, origem sistema.
 }
 
 const TIPO_PULV_LABEL: Record<string, string> = {
