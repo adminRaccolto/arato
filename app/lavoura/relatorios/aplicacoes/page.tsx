@@ -754,7 +754,16 @@ export default function RelAplicacoesPage() {
               </div>
 
               <div style={{ marginBottom: 18 }}>
-                <label style={{ ...lbl, marginBottom: 8 }}>Talhões <span style={{ color: "var(--text-3)", fontWeight: 400 }}>— {fTalhoes.length === 0 ? "todos" : `${fTalhoes.length} selecionado(s)`}</span></label>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Talhões <span style={{ color: "var(--text-3)", fontWeight: 400 }}>— {fTalhoes.length === 0 ? "todos" : `${fTalhoes.length} selecionado(s)`}</span></label>
+                  <button
+                    type="button"
+                    onClick={() => setFTalhoes(fTalhoes.length === talhoes.length ? [] : talhoes.map(t => t.id))}
+                    style={{ background: "none", border: "none", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
+                  >
+                    {fTalhoes.length === talhoes.length && talhoes.length > 0 ? "Limpar seleção" : "Selecionar todos"}
+                  </button>
+                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {talhoes.map(t => {
                     const sel = fTalhoes.includes(t.id);
