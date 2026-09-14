@@ -46,13 +46,16 @@ const UF_ENDPOINTS: Record<string, UFEntry> = {
       autorizacao:    "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4",
       retAutorizacao: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4",
       statusServico:  "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeStatusServico4",
-      recepcaoEvento: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeRecepcaoEvento4",
+      // Confirmado via WSDL (?wsdl retorna 200 só nesse path, sem prefixo "Nfe" —
+      // mesmo padrão de CadConsultaCadastro4): namespace interno continua sendo
+      // .../wsdl/NFeRecepcaoEvento4 (usado no envelope SOAP), só o path da URL difere.
+      recepcaoEvento: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/RecepcaoEvento4",
     },
     hom: {
       autorizacao:    "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4",
       retAutorizacao: "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4",
       statusServico:  "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeStatusServico4",
-      recepcaoEvento: "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeRecepcaoEvento4",
+      recepcaoEvento: "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/RecepcaoEvento4",
     },
   },
   SP: {
