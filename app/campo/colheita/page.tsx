@@ -53,11 +53,11 @@ export default function CampoColheitaPage() {
 
     const [{ data: tal }, { data: cic }, { data: dep }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, ano_safra:anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("depositos").select("id, nome").eq("fazenda_id", fazendaId).order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
-    const cicRes = (cic ?? []) as Ciclo[];
+    const cicRes = (cic ?? []) as unknown as Ciclo[];
     const depRes = (dep ?? []) as Deposito[];
     setTalhoes(talRes); setCiclos(cicRes); setDepositos(depRes);
     salvarCache(`talhoes_${fazendaId}`, talRes);

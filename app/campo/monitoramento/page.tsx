@@ -79,11 +79,11 @@ export default function CampoMonitoramentoPage() {
     if (!fazendaId) return;
     const [{ data: tal }, { data: cic }, { data: recsData }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, ano_safra:anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("recomendacoes").select("id, tipo, data_recomendacao").eq("fazenda_id", fazendaId).order("data_recomendacao", { ascending: false }).limit(20),
     ]);
     setTalhoes((tal ?? []) as Talhao[]);
-    setCiclos((cic ?? []) as Ciclo[]);
+    setCiclos((cic ?? []) as unknown as Ciclo[]);
     setRecs((recsData ?? []) as Rec[]);
   }, [fazendaId]);
 

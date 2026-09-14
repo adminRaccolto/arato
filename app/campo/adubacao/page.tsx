@@ -59,14 +59,14 @@ export default function CampoAdubacaoPage() {
     const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [{ data: tal }, { data: cic }, { data: ins }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, ano_safra:anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade")
         .in("fazenda_id", fids)
         .in("categoria", ["fertilizante", "micronutriente", "corretivo", "organico"])
         .order("nome"),
     ]);
     const talRes = (tal ?? []) as Talhao[];
-    const cicRes = (cic ?? []) as Ciclo[];
+    const cicRes = (cic ?? []) as unknown as Ciclo[];
     const insRes = (ins ?? []) as Insumo[];
     setTalhoes(talRes); setCiclos(cicRes); setInsumos(insRes);
     // Auto-detecta ciclo ativo pela data atual

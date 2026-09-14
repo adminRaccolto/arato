@@ -141,11 +141,14 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
     q.order("descricao").then(({ data }) => {
       const lista = (data ?? []).map(r => ({ id: r.id, nome: r.descricao ?? "", ano_safra_id: r.ano_safra_id, cultura: r.cultura, descricao: r.descricao, data_inicio: r.data_inicio, data_fim: r.data_fim }));
       setCiclos(lista);
-      // Auto-seleciona o ciclo ativo pela data atual (só se cicloId ainda não foi escolhido)
+      // Auto-seleciona o ciclo ativo pela data atual (só se cicloId ainda não foi escolhido).
+      // Também preenche anoSafraId com o ano safra do próprio ciclo — sem isso o
+      // select de Ano Safra ficava vazio na tela mesmo com o ciclo certo já selecionado
+      // (o campo "Ano Safra" nunca era escrito, só "Ciclo").
       if (!values.cicloId) {
         const hoje = new Date().toISOString().slice(0, 10);
         const ativo = lista.find(c => c.data_inicio && c.data_fim && c.data_inicio <= hoje && hoje <= c.data_fim);
-        if (ativo) onChange({ ...values, cicloId: ativo.id });
+        if (ativo) onChange({ ...values, cicloId: ativo.id, anoSafraId: values.anoSafraId || ativo.ano_safra_id });
       }
     });
   }, [values.fazendaId, values.anoSafraId]);

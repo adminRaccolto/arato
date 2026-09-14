@@ -87,7 +87,7 @@ export default function CampoAereaPage() {
     const [{ data: tal }, { data: anos }, { data: cic }, { data: ins }, { data: emp }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-      supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, ano_safra_id, anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, ano_safra_id, ano_safra:anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade_medida, custo_medio")
         .eq("fazenda_id", fazendaId)
         .in("categoria", ["defensivo", "fertilizante", "adjuvante"])
@@ -99,7 +99,7 @@ export default function CampoAereaPage() {
     ]);
     setTalhoes((tal ?? []) as Talhao[]);
     setAnosSafra((anos ?? []) as AnoSafra[]);
-    const cicRes = (cic ?? []) as Ciclo[];
+    const cicRes = (cic ?? []) as unknown as Ciclo[];
     setCiclos(cicRes);
     // Auto-detecta ciclo ativo pela data atual
     const hoje = new Date().toISOString().slice(0, 10);
