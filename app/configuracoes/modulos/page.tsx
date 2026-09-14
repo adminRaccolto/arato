@@ -463,6 +463,11 @@ function ParametrosSistemaContent() {
   const [logoUploading,  setLogoUploading]  = useState(false);
   const [logoOk,         setLogoOk]         = useState(false);
   const [resolvedContaId, setResolvedContaId] = useState<string | null>(null);
+  // Todas as fazendas da conta — necessário pra carregar emitentes/config fiscal
+  // (empresas) que são do CLIENTE, não da fazenda ativa. `empresas` não tem
+  // conta_id (só fazenda_id), então precisa da lista de fazendas pra buscar por
+  // .in("fazenda_id", ...) em vez de .eq("fazenda_id", fazendaAtiva).
+  const [contaFazendaIds, setContaFazendaIds] = useState<string[]>([]);
 
   // ── Paleta de cores
   const [paletaAtual, setPaletaAtual] = useState<string>("default");
@@ -521,17 +526,77 @@ function ParametrosSistemaContent() {
         if (!data) return;
         const map: { [mod: string]: CfgModulo } = {};
         data.forEach(r => { if (r.config) map[r.modulo] = r.config as CfgModulo; });
-        setCfgs(map);
+        setCfgs(prev => ({ ...map, ...prev })); // prev pode já ter os fiscal_* carregados conta-wide (ver efeito abaixo) — não sobrescrever com a versão fazenda-scoped
       });
-    supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
-      .then(({ data }) => data && setEmpresas(data as EmpresaMin[]));
-    supabase.from("produtores").select("id, nome, cpf_cnpj, inscricao_est, logradouro, numero, complemento, bairro, municipio, estado, cep, telefone").eq("fazenda_id", fazendaId)
-      .then(({ data }) => data && setProdutores(data as ProdutorMin[]));
     supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm")
       .then(({ data }) => data && setNcms(data as NcmTributacao[]));
     supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome")
       .then(({ data }) => data && setOperacoes(data as OperacaoFiscal[]));
   }, [fazendaId]);
+
+  // ── Emitentes (produtores/empresas) e config fiscal são do CLIENTE (conta),
+  // não da fazenda ativa — um cliente com 7 fazendas continua tendo os mesmos
+  // produtores/empresas em todas. Filtrar por fazenda_id aqui fazia a aba
+  // inteira de Parâmetros Fiscais "sumir" sempre que a fazenda ativa não fosse
+  // a mesma que originalmente recebeu o cadastro (bug real, reportado em
+  // set/2026 — "sumiram todos os parâmetros fiscais" era só a fazenda ativa
+  // ter trocado pra uma sem produtor/empresa próprios).
+  useEffect(() => {
+    const cid = resolvedContaId ?? contaId;
+    if (!cid) return;
+    fetch("/api/fazenda/da-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conta_id: cid, fazenda_id: fazendaId }),
+    })
+      .then(r => r.json())
+      .then(json => setContaFazendaIds((json.fazendas ?? []).map((f: { id: string }) => f.id)))
+      .catch(() => {});
+  }, [resolvedContaId, contaId, fazendaId]);
+
+  useEffect(() => {
+    const cid = resolvedContaId ?? contaId;
+    if (!cid || contaFazendaIds.length === 0) return;
+
+    fetch(`/api/produtores/listar?conta_id=${cid}`)
+      .then(r => r.json())
+      .then(json => setProdutores((json.produtores ?? []) as ProdutorMin[]))
+      .catch(() => {});
+
+    supabase.from("empresas")
+      .select("id, razao_social, nome, cpf_cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone")
+      .in("fazenda_id", contaFazendaIds)
+      .then(({ data }) => {
+        if (!data) return;
+        // Mesma empresa pode estar registrada em mais de uma fazenda (cadastro
+        // legado por fazenda) — dedup por CNPJ, senão por nome
+        const seen = new Set<string>();
+        const dedup = data.filter(e => {
+          const key = (e.cpf_cnpj ?? "").replace(/\D/g, "") || e.nome?.trim().toUpperCase() || e.id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setEmpresas(dedup as EmpresaMin[]);
+      });
+
+    // Config fiscal (fiscal_global, fiscal_pf_*, fiscal_emp_*, e as chaves
+    // __ie_* granulares) também precisa ser conta-wide pelo mesmo motivo.
+    // Se existir mais de uma linha pro mesmo modulo (aconteceu de verdade —
+    // salvar com a fazenda ativa errada criava uma linha duplicada em vez de
+    // atualizar a certa), fica com a mais recente.
+    supabase.from("configuracoes_modulo")
+      .select("modulo, config, updated_at")
+      .in("fazenda_id", contaFazendaIds)
+      .like("modulo", "fiscal_%")
+      .order("updated_at", { ascending: true })
+      .then(({ data }) => {
+        if (!data) return;
+        const map: { [mod: string]: CfgModulo } = {};
+        data.forEach(r => { if (r.config) map[r.modulo] = r.config as CfgModulo; }); // ascending — último sobrescreve, fica o mais recente
+        setCfgs(prev => ({ ...prev, ...map }));
+      });
+  }, [resolvedContaId, contaId, contaFazendaIds]);
 
   useEffect(() => {
     if (!fazendaId) return;
@@ -604,8 +669,29 @@ function ParametrosSistemaContent() {
     if (!fazendaId) return;
     setSalvando(modulo);
     setCfgs(prev => ({ ...prev, [modulo]: newCfg }));
+
+    // Config fiscal (fiscal_global, fiscal_pf_*, fiscal_emp_*) é do cliente
+    // inteiro, não da fazenda ativa — mas a coluna fazenda_id é NOT NULL e o
+    // upsert usa onConflict (fazenda_id, modulo). Sem isso, editar um emitente
+    // com uma fazenda ativa diferente da que criou o registro original inseria
+    // uma linha NOVA e duplicada em vez de atualizar a existente (causa real do
+    // bug "sumiram os parâmetros fiscais" — a leitura conta-wide pegava a linha
+    // errada/mais antiga). Reaproveita a fazenda_id do registro já existente
+    // (se houver, em qualquer fazenda da conta) em vez de sempre usar a ativa.
+    let fazendaIdParaSalvar = fazendaId;
+    if (modulo.startsWith("fiscal_") && contaFazendaIds.length > 0) {
+      const { data: existente } = await supabase
+        .from("configuracoes_modulo")
+        .select("fazenda_id")
+        .in("fazenda_id", contaFazendaIds)
+        .eq("modulo", modulo)
+        .limit(1)
+        .maybeSingle();
+      if (existente?.fazenda_id) fazendaIdParaSalvar = existente.fazenda_id;
+    }
+
     await supabase.from("configuracoes_modulo").upsert(
-      { fazenda_id: fazendaId, modulo, config: newCfg, updated_at: new Date().toISOString() },
+      { fazenda_id: fazendaIdParaSalvar, modulo, config: newCfg, updated_at: new Date().toISOString() },
       { onConflict: "fazenda_id,modulo" }
     );
     setSalvando(null); setOk(modulo);

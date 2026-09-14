@@ -831,6 +831,8 @@ Cadastro das contas bancárias da fazenda para vinculação com CP/CR e concilia
 
 Configura ambiente (homologação/produção), série, CNPJ emitente, IE, UF, código IBGE do município, CRT, CFOPs padrão, CSTs, NCMs por commodity, caminho do certificado A1.
 
+**Emitentes (produtores/empresas) e a lista de configurações são do cliente inteiro, não da fazenda selecionada no momento** — a lista de emitentes e o ambiente SEFAZ (Homologação/Produção) aparecem iguais não importa qual fazenda esteja ativa no topo da tela. Se a tela aparecer com "Nenhum emitente cadastrado" quando você sabe que já cadastrou algum, é sinal de bug de regressão (não normal) — cheque se a busca de produtores/empresas/configuracoes_modulo voltou a ficar filtrada por fazenda_id antes de suspeitar de perda de dados.
+
 ### 24.2 Operações Fiscais / CFOP
 **Caminho:** Configurações → Sistema → Operações Fiscais / CFOP
 
