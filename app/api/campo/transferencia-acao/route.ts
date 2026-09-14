@@ -6,15 +6,40 @@ import { emitirNFe, buscarConfEmitente } from "../../../../lib/nfe/index";
 export const runtime = "nodejs"; // lib/nfe usa node-forge que precisa de Node
 export const dynamic = "force-dynamic";
 
-// Resolve qual config fiscal (fiscal_pf_*/fiscal_emp_*) usar pra uma fazenda.
+// Resolve moduloKey a partir de um CPF/CNPJ EXPLÍCITO (override por transferência
+// — campo "CNPJ/CPF Emitente", editável, ver cpf_cnpj_origem). A fazenda é só o
+// local físico do estoque; quem responde fiscalmente por uma transferência
+// específica é uma decisão por operação, não o titular padrão da fazenda. Só
+// retorna a chave se a config realmente existir pra essa fazenda — senão quem
+// chamou cai no default (resolverModuloKeyFiscal).
+async function resolverModuloKeyPorCpfCnpj(
+  adm: SupabaseClient,
+  fazendaId: string,
+  cpfCnpj: string,
+): Promise<string | null> {
+  const digits = cpfCnpj.replace(/\D/g, "");
+  if (!digits) return null;
+  const key = `${digits.length === 14 ? "fiscal_emp_" : "fiscal_pf_"}${digits}`;
+  const { data: cfg } = await adm
+    .from("configuracoes_modulo")
+    .select("modulo")
+    .eq("fazenda_id", fazendaId)
+    .eq("modulo", key)
+    .maybeSingle();
+  return cfg ? key : null;
+}
+
+// Resolve qual config fiscal (fiscal_pf_*/fiscal_emp_*) usar pra uma fazenda
+// QUANDO NÃO HÁ override explícito (cpf_cnpj_origem/cpf_cnpj_destino) na
+// transferência — funciona como default/sugestão, nunca como restrição.
 // Antes disso, o "qualquer módulo fiscal da fazenda" (.limit(1) sem ORDER BY)
 // pegava uma config aleatória entre vários produtores/empresas cadastrados na
 // mesma fazenda — uma fazenda com 5+ emitentes configurados podia cair ora
 // num ora noutro a cada emissão, inclusive num que nunca teve a senha do
 // certificado preenchida, mesmo com o certificado CERTO configurado e visível
-// na tela. fazendas.cpf_cnpj_fiscal é o titular fiscal DESSA fazenda
-// especificamente (arquitetura de Entidade Contábil por Fazenda) — usa ele
-// primeiro; cai no "qualquer um" só se a fazenda não tiver isso configurado.
+// na tela. fazendas.cpf_cnpj_fiscal é o titular fiscal PADRÃO dessa fazenda
+// (arquitetura de Entidade Contábil por Fazenda) — usa ele primeiro; cai no
+// "qualquer um" só se a fazenda não tiver isso configurado.
 async function resolverModuloKeyFiscal(
   adm: SupabaseClient,
   fazendaId: string,
@@ -88,9 +113,15 @@ export async function POST(request: NextRequest) {
 
       const itensTransf = (t.transferencias_estoque_itens ?? []) as Array<Record<string, unknown>>;
 
-      // 2. Resolve modulo_key fiscal da fazenda de origem
+      // 2. Resolve modulo_key fiscal da fazenda de origem — o CNPJ/CPF Emitente
+      // informado manualmente na transferência (cpf_cnpj_origem) tem prioridade
+      // sobre o titular padrão da fazenda: a fazenda é só o local do estoque,
+      // não necessariamente o responsável fiscal desta operação específica.
       const fazId = t.fazenda_origem_id as string;
       let moduloKey: string = body.modulo_key ?? "";
+      if (!moduloKey && t.cpf_cnpj_origem) {
+        moduloKey = (await resolverModuloKeyPorCpfCnpj(adm, fazId, t.cpf_cnpj_origem as string)) ?? "";
+      }
       if (!moduloKey) moduloKey = await resolverModuloKeyFiscal(adm, fazId);
 
       if (!moduloKey) {

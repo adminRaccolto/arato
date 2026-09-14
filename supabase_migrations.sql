@@ -12459,3 +12459,19 @@ FROM fazendas f
 WHERE a.fazenda_id = f.id AND a.conta_id IS NULL AND f.conta_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 255 — CNPJ/CPF Emitente editável na transferência (origem).
+-- transferencias_estoque já tinha ie_origem (usado como emitIeOverride
+-- na emissão), mas nunca teve cpf_cnpj_origem — então não existia como
+-- escolher QUEM é o responsável fiscal daquela operação de origem; o
+-- sistema sempre derivava isso de fazendas.cpf_cnpj_fiscal (o titular
+-- PADRÃO da fazenda). O dono apontou que uma fazenda é só o LOCAL onde
+-- o estoque está — não necessariamente o responsável fiscal da NF de
+-- transferência que sai dali. Mesmo raciocínio já aplicado no
+-- destinatário (cpf_cnpj_destino/ie_destino): a fazenda só sugere um
+-- padrão, o emitente real é editável por transferência.
+-- ============================================================
+ALTER TABLE transferencias_estoque ADD COLUMN IF NOT EXISTS cpf_cnpj_origem TEXT;
+
+NOTIFY pgrst, 'reload schema';

@@ -108,10 +108,12 @@ export default function TransferenciasEstoquePage() {
   const [veiculos, setVeiculos]               = useState<VeRow[]>([]);
   const [motoristas, setMotoristas]           = useState<MoRow[]>([]);
 
-  // Produtores da conta — pra sugerir CNPJ/CPF do destinatário; e as IEs do
-  // produtor selecionado — pra sugerir a IE já mostrando a qual município ela
-  // pertence (o mesmo CPF pode ter IEs em municípios diferentes).
+  // Produtores da conta — pra sugerir CNPJ/CPF do emitente/destinatário; e as
+  // IEs do produtor selecionado — pra sugerir a IE já mostrando a qual
+  // município ela pertence (o mesmo CPF pode ter IEs em municípios diferentes).
+  // A lista de produtores é uma só (da conta inteira); usada nos dois lados.
   const [produtoresDestino, setProdutoresDestino] = useState<Produtor[]>([]);
+  const [iesProdutorOrigem, setIesProdutorOrigem] = useState<ProdutorIE[]>([]);
   const [iesProdutorDestino, setIesProdutorDestino] = useState<ProdutorIE[]>([]);
 
   // ── Abas ──────────────────────────────────────────────────────────────────
@@ -132,6 +134,12 @@ export default function TransferenciasEstoquePage() {
     veiculoId: "",
     motoristaId: "",
     freteConta: "9",   // 9 = sem frete
+    // CNPJ/CPF e IE do emitente (origem) — pré-preenchidos com o titular padrão
+    // cadastrado pra fazenda de origem, mas editáveis: a fazenda é só o LOCAL
+    // do estoque, não necessariamente quem responde fiscalmente por essa
+    // transferência específica (ex: fazenda arrendada, depósito compartilhado).
+    cpfCnpjOrigem: "",
+    ieOrigem: "",
     // CNPJ/CPF e IE do destinatário — pré-preenchidos com o cadastro fiscal da fazenda
     // de destino, mas editáveis: a entrada pode ser numa IE diferente da do produtor
     // responsável (ex: IE própria daquele imóvel/depósito).
@@ -264,6 +272,26 @@ export default function TransferenciasEstoquePage() {
     if (fazendaId) setForm(f => ({ ...f, fazendaOrigemId: fazendaId }));
   }, [fazendaId]);
 
+  // Pré-preenche CNPJ/CPF e IE do emitente com o cadastro fiscal da fazenda de
+  // origem ao selecioná-la — só sugestão: a fazenda é só o local do estoque,
+  // não necessariamente quem responde fiscalmente por essa transferência. Só
+  // preenche se os campos ainda estiverem vazios, pra não sobrescrever um
+  // valor que o operador já editou manualmente.
+  useEffect(() => {
+    if (!form.fazendaOrigemId || (form.cpfCnpjOrigem && form.ieOrigem)) return;
+    (async () => {
+      const cached = cfgFiscalCache[form.fazendaOrigemId];
+      const cfg = cached ?? await buscarCfgFiscalFazenda(form.fazendaOrigemId);
+      if (!cached) setCfgFiscalCache(prev => ({ ...prev, [form.fazendaOrigemId]: cfg }));
+      setForm(f => (f.fazendaOrigemId !== form.fazendaOrigemId ? f : {
+        ...f,
+        cpfCnpjOrigem: f.cpfCnpjOrigem || cfg.cpf_cnpj_emitente || "",
+        ieOrigem:      f.ieOrigem      || cfg.ie_emitente       || "",
+      }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.fazendaOrigemId]);
+
   // Pré-preenche CNPJ/CPF e IE do destinatário com o cadastro fiscal da fazenda de
   // destino ao selecioná-la — só se os campos ainda estiverem vazios, pra não
   // sobrescrever um valor que o operador já editou manualmente (ex: IE diferente
@@ -282,6 +310,17 @@ export default function TransferenciasEstoquePage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.fazendaDestinoId]);
+
+  // Ao digitar/selecionar o CNPJ/CPF do emitente, acha o produtor cadastrado
+  // com esse documento e carrega as IEs dele — a sugestão de IE (datalist) passa
+  // a mostrar só as IEs desse produtor, cada uma já com o município.
+  useEffect(() => {
+    const digits = form.cpfCnpjOrigem.replace(/\D/g, "");
+    if (digits.length < 11) { setIesProdutorOrigem([]); return; }
+    const prod = produtoresDestino.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === digits);
+    if (!prod) { setIesProdutorOrigem([]); return; }
+    listarIEsDoProdutor(prod.id).then(setIesProdutorOrigem).catch(() => setIesProdutorOrigem([]));
+  }, [form.cpfCnpjOrigem, produtoresDestino]);
 
   // Ao digitar/selecionar o CNPJ/CPF do destinatário, acha o produtor cadastrado
   // com esse documento e carrega as IEs dele — a sugestão de IE (datalist) passa
@@ -398,6 +437,8 @@ export default function TransferenciasEstoquePage() {
         deposito_destino_id:  form.depositoDestinoId || null,
         cfop:                 cfopCalculado,
         ie_diferentes:        estadosDiferentes,
+        cpf_cnpj_origem:      form.cpfCnpjOrigem.trim() || null,
+        ie_origem:            form.ieOrigem.trim() || null,
         cpf_cnpj_destino:     form.cpfCnpjDestino.trim() || null,
         ie_destino:           form.ieDestino.trim() || null,
         entrada_automatica:   form.entradaAutomatica,
@@ -454,7 +495,7 @@ export default function TransferenciasEstoquePage() {
   }
 
   function resetForm() {
-    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9", cpfCnpjDestino: "", ieDestino: "" });
+    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9", cpfCnpjOrigem: "", ieOrigem: "", cpfCnpjDestino: "", ieDestino: "" });
     setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
     setEditandoId(null);
@@ -507,6 +548,8 @@ export default function TransferenciasEstoquePage() {
       veiculoId:         (t as unknown as Record<string, string>).veiculo_id ?? "",
       motoristaId:       (t as unknown as Record<string, string>).motorista_id ?? "",
       freteConta:        (t as unknown as Record<string, string>).frete_conta ?? "9",
+      cpfCnpjOrigem:     t.cpf_cnpj_origem ?? "",
+      ieOrigem:          t.ie_origem ?? "",
       cpfCnpjDestino:    t.cpf_cnpj_destino ?? "",
       ieDestino:         t.ie_destino ?? "",
     });
@@ -772,7 +815,7 @@ export default function TransferenciasEstoquePage() {
                     {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                   </select>
                 </div>
-                <div>
+                <div style={{ marginBottom: 10 }}>
                   <label style={lbl}>Depósito Origem *</label>
                   {depositosOrigem.length === 0 ? (
                     <p style={{ fontSize: 12, color: "#E24B4A", margin: 0 }}>
@@ -786,6 +829,43 @@ export default function TransferenciasEstoquePage() {
                     </select>
                   )}
                 </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={lbl}>CNPJ/CPF Emitente</label>
+                    <input
+                      list="produtoresOrigemList"
+                      value={form.cpfCnpjOrigem}
+                      onChange={e => setForm(f => ({ ...f, cpfCnpjOrigem: e.target.value }))}
+                      placeholder="Auto (editável) — digite pra buscar um produtor"
+                      style={inp}
+                      disabled={!form.fazendaOrigemId}
+                    />
+                    <datalist id="produtoresOrigemList">
+                      {produtoresDestino.map(p => (
+                        <option key={p.id} value={p.cpf_cnpj ?? ""} label={p.nome} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label style={lbl}>IE Emitente</label>
+                    <input
+                      list="iesOrigemList"
+                      value={form.ieOrigem}
+                      onChange={e => setForm(f => ({ ...f, ieOrigem: e.target.value }))}
+                      placeholder="Auto (editável)"
+                      style={inp}
+                      disabled={!form.fazendaOrigemId}
+                    />
+                    <datalist id="iesOrigemList">
+                      {iesProdutorOrigem.map(ie => (
+                        <option key={ie.id} value={ie.inscricao_estadual} label={`${ie.municipio ?? "—"} / ${ie.estado}`} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+                <p style={{ fontSize: 10, color: "var(--text-3)", margin: "4px 0 0" }}>
+                  Pré-preenchido com o cadastro fiscal da fazenda — a fazenda é só o local do estoque; edite se o responsável fiscal por esta transferência for outro produtor/IE.
+                </p>
               </div>
 
               {/* Destino */}
