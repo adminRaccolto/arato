@@ -429,7 +429,8 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   if (!rawDestIbge || rawDestIbge.length !== 7) {
     throw new Error(
       `Código IBGE do município do destinatário não informado ou incompleto ("${rawDestIbge}"). ` +
-      `Acesse Cadastros → Pessoas → cadastro do comprador → informe o CEP para auto-preencher o IBGE, depois salve.`
+      `Se o destinatário é uma Pessoa/fornecedor: Cadastros → Pessoas → cadastro do comprador → informe o CEP para auto-preencher o IBGE, depois salve. ` +
+      `Se é um produtor/fazenda (ex: transferência entre propriedades): Cadastros → Produtores → aba Inscrições Estaduais → a IE usada precisa ter o CEP/endereço preenchido.`
     );
   }
   const destCMun = rawDestIbge;
@@ -439,7 +440,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     throw new Error(
       `Dígito verificador inválido no cMun do destinatário: "${destCMun}". ` +
       `O código correto deve terminar com ${dvEsperado} → "${destCMun.slice(0, 6)}${dvEsperado}". ` +
-      `Corrija em Cadastros → Pessoas → CEP auto-preenche o IBGE correto.`
+      `Corrija o endereço do destinatário: Cadastros → Pessoas (fornecedor) ou Cadastros → Produtores → Inscrições Estaduais (produtor/fazenda) — o CEP auto-preenche o IBGE correto.`
     );
   }
 

@@ -96,13 +96,24 @@ export async function buscarConfEmitente(
     if (produtorId) {
       const { data: ies } = await sb()
         .from("produtor_inscricoes_estaduais")
-        .select("id, inscricao_estadual, fazenda_id, ativa")
+        .select("id, inscricao_estadual, fazenda_id, ativa, cep, logradouro, numero, complemento, bairro, municipio, municipio_ibge")
         .eq("produtor_id", produtorId)
         .eq("ativa", true);
       const iesAtivas = ies ?? [];
       const ieEscolhida = iesAtivas.find(i => i.fazenda_id === fazendaId) ?? iesAtivas[0];
       if (ieEscolhida) {
         if (!cfg.ie_emitente) cfg.ie_emitente = ieEscolhida.inscricao_estadual;
+        // Endereço da IE é o do imóvel/estabelecimento ESPECÍFICO dessa
+        // inscrição — mais confiável que o endereço da config base, que pode
+        // estar vazio ou ser de outra propriedade do mesmo produtor. Só
+        // sobrescreve quando a IE realmente tem o campo preenchido.
+        if (ieEscolhida.municipio_ibge) cfg.municipio_ibge = ieEscolhida.municipio_ibge;
+        if (ieEscolhida.municipio)      cfg.municipio_nome = ieEscolhida.municipio;
+        if (ieEscolhida.cep)            cfg.cep = ieEscolhida.cep;
+        if (ieEscolhida.logradouro)     cfg.logradouro = ieEscolhida.logradouro;
+        if (ieEscolhida.numero)         cfg.numero = ieEscolhida.numero;
+        if (ieEscolhida.complemento)    cfg.complemento = ieEscolhida.complemento;
+        if (ieEscolhida.bairro)         cfg.bairro = ieEscolhida.bairro;
         const { data: cfgIe } = await sb()
           .from("configuracoes_modulo")
           .select("config")
@@ -253,9 +264,51 @@ export async function emitirNFe(
   const confg = await buscarConfEmitente(fazendaId, moduloKey);
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal não encontrada para ${moduloKey}` };
 
-  // Fallback: IBGE do destinatário em branco → busca no cadastro de Pessoas pelo CPF/CNPJ
-  // Compara raw + formatado, limit(1)+array — cadastros com máscara não batiam
-  // no match exato por dígitos (mesma classe de bug da auditoria de duplicatas).
+  // Fallback 1: destinatário é um PRODUTOR (não uma Pessoa/fornecedor) — típico
+  // de transferência entre fazendas/produtores da mesma conta, que nunca chega
+  // a ter cadastro em "Pessoas" (essa tabela é pra fornecedores/clientes
+  // terceiros). Resolve endereço pela Inscrição Estadual informada em
+  // destinatario.ie (mais preciso — é a IE específica usada nessa operação)
+  // ou, na falta dela, por qualquer IE ativa do produtor com esse CPF/CNPJ.
+  if (!input.destinatario.municipio_ibge && input.destinatario.cpf_cnpj) {
+    const digitsProd = input.destinatario.cpf_cnpj.replace(/\D/g, "");
+    const digitsProdFmt = digitsProd.length === 11
+      ? digitsProd.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+      : digitsProd.length === 14 ? digitsProd.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : digitsProd;
+    const { data: prodRowsDest } = await sb()
+      .from("produtores")
+      .select("id")
+      .or(`cpf_cnpj.eq.${digitsProd},cpf_cnpj.eq.${digitsProdFmt}`)
+      .limit(1);
+    const produtorIdDest = prodRowsDest?.[0]?.id as string | undefined;
+    if (produtorIdDest) {
+      const { data: iesDest } = await sb()
+        .from("produtor_inscricoes_estaduais")
+        .select("inscricao_estadual, municipio, municipio_ibge, cep, logradouro, numero, bairro")
+        .eq("produtor_id", produtorIdDest)
+        .eq("ativa", true);
+      const ieEscolhidaDest = (iesDest ?? []).find(i => i.inscricao_estadual === input.destinatario.ie) ?? (iesDest ?? [])[0];
+      if (ieEscolhidaDest?.municipio_ibge) {
+        input = {
+          ...input,
+          destinatario: {
+            ...input.destinatario,
+            municipio_ibge: ieEscolhidaDest.municipio_ibge,
+            municipio_nome: input.destinatario.municipio_nome || ieEscolhidaDest.municipio    || undefined,
+            logradouro:     input.destinatario.logradouro     || ieEscolhidaDest.logradouro   || undefined,
+            numero:         input.destinatario.numero         || ieEscolhidaDest.numero       || undefined,
+            bairro:         input.destinatario.bairro         || ieEscolhidaDest.bairro       || undefined,
+            cep:            input.destinatario.cep            || ieEscolhidaDest.cep          || undefined,
+          },
+        };
+      }
+    }
+  }
+
+  // Fallback 2: destinatário é uma Pessoa/fornecedor — busca no cadastro de
+  // Pessoas pelo CPF/CNPJ. Compara raw + formatado, limit(1)+array — cadastros
+  // com máscara não batiam no match exato por dígitos (mesma classe de bug da
+  // auditoria de duplicatas).
   if (!input.destinatario.municipio_ibge && input.destinatario.cpf_cnpj) {
     const digits = input.destinatario.cpf_cnpj.replace(/\D/g, "");
     const digitsFmt = digits.length === 14
