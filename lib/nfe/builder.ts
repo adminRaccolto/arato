@@ -358,9 +358,19 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     const rule = icmsRule(item.cfop, indIEDest === "9");
     // BC = vProd líquido (após desconto) para CST 00/51
     const vBC = (rule.cst === "00" || rule.cst === "51") ? vProdLiq : 0;
+    // <ICMSTot><vBC> tem que bater com a soma do <vBC> de TODOS os itens que
+    // declaram essa tag — inclui CST 51 (diferido), que grava <vBC> real
+    // dentro de <ICMS51> mesmo com <vICMS>0.00</vICMS>. Só somar quando
+    // CST==="00" (como estava antes) deixava o total menor que a soma dos
+    // itens sempre que havia diferimento — rejeição SEFAZ 531 "Total da BC
+    // ICMS difere do somatório dos itens". vICMSTotal continua só CST 00:
+    // o <vICMS> do item CST 51 é 0.00 (o valor diferido vai em vICMSOp/
+    // vICMSDif, que não têm campo agregado em ICMSTot).
+    if (rule.cst === "00" || rule.cst === "51") {
+      vBCTotal += vBC;
+    }
     if (rule.cst === "00") {
-      vBCTotal    += vBC;
-      vICMSTotal  += vBC * 12 / 100;
+      vICMSTotal += vBC * 12 / 100;
     }
 
     const ncm  = soDigitos(item.ncm);
