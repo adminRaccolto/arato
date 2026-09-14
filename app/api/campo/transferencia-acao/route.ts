@@ -1,10 +1,49 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { emitirNFe, buscarConfEmitente } from "../../../../lib/nfe/index";
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge que precisa de Node
 export const dynamic = "force-dynamic";
+
+// Resolve qual config fiscal (fiscal_pf_*/fiscal_emp_*) usar pra uma fazenda.
+// Antes disso, o "qualquer módulo fiscal da fazenda" (.limit(1) sem ORDER BY)
+// pegava uma config aleatória entre vários produtores/empresas cadastrados na
+// mesma fazenda — uma fazenda com 5+ emitentes configurados podia cair ora
+// num ora noutro a cada emissão, inclusive num que nunca teve a senha do
+// certificado preenchida, mesmo com o certificado CERTO configurado e visível
+// na tela. fazendas.cpf_cnpj_fiscal é o titular fiscal DESSA fazenda
+// especificamente (arquitetura de Entidade Contábil por Fazenda) — usa ele
+// primeiro; cai no "qualquer um" só se a fazenda não tiver isso configurado.
+async function resolverModuloKeyFiscal(
+  adm: SupabaseClient,
+  fazendaId: string,
+): Promise<string> {
+  const { data: faz } = await adm
+    .from("fazendas")
+    .select("cpf_cnpj_fiscal, entidade_contabil")
+    .eq("id", fazendaId)
+    .maybeSingle();
+  const digits = ((faz?.cpf_cnpj_fiscal as string | null) ?? "").replace(/\D/g, "");
+  if (digits) {
+    const prefix = faz?.entidade_contabil === "pj" || digits.length === 14 ? "fiscal_emp_" : "fiscal_pf_";
+    const key = `${prefix}${digits}`;
+    const { data: cfg } = await adm
+      .from("configuracoes_modulo")
+      .select("modulo")
+      .eq("fazenda_id", fazendaId)
+      .eq("modulo", key)
+      .maybeSingle();
+    if (cfg) return key;
+  }
+  const { data: cfgs } = await adm
+    .from("configuracoes_modulo")
+    .select("modulo")
+    .eq("fazenda_id", fazendaId)
+    .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
+    .limit(1);
+  return cfgs && cfgs.length > 0 ? cfgs[0].modulo : "";
+}
 
 export async function POST(request: NextRequest) {
   const adm = createClient(
@@ -52,15 +91,7 @@ export async function POST(request: NextRequest) {
       // 2. Resolve modulo_key fiscal da fazenda de origem
       const fazId = t.fazenda_origem_id as string;
       let moduloKey: string = body.modulo_key ?? "";
-      if (!moduloKey) {
-        const { data: cfgs } = await adm
-          .from("configuracoes_modulo")
-          .select("modulo, config")
-          .eq("fazenda_id", fazId)
-          .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
-          .limit(1);
-        if (cfgs && cfgs.length > 0) moduloKey = cfgs[0].modulo;
-      }
+      if (!moduloKey) moduloKey = await resolverModuloKeyFiscal(adm, fazId);
 
       if (!moduloKey) {
         // Sem config fiscal → só atualiza status (sem NF-e real)
@@ -90,14 +121,7 @@ export async function POST(request: NextRequest) {
       // em vez de reaproveitar a do emitente. moduloKey pode ser diferente
       // (ex: origem é fiscal_pf_X, destino é fiscal_emp_Y).
       const fazDestId = t.fazenda_destino_id as string;
-      let moduloKeyDest = "";
-      const { data: cfgsDest } = await adm
-        .from("configuracoes_modulo")
-        .select("modulo, config")
-        .eq("fazenda_id", fazDestId)
-        .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
-        .limit(1);
-      if (cfgsDest && cfgsDest.length > 0) moduloKeyDest = cfgsDest[0].modulo;
+      const moduloKeyDest = await resolverModuloKeyFiscal(adm, fazDestId);
       const confDest = moduloKeyDest ? await buscarConfEmitente(fazDestId, moduloKeyDest) : null;
       const { data: fazDestRow } = await adm.from("fazendas").select("nome").eq("id", fazDestId).single();
       if (!confDest && !(t.cpf_cnpj_destino || t.ie_destino)) {
