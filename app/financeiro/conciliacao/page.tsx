@@ -369,6 +369,14 @@ function ConciliacaoInner() {
   async function handleOFX(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !fazendaId) return;
+    // Conta bancária agora é obrigatória pra importar — sem ela, o cheque de
+    // reimportação duplicada (abaixo) não roda e o extrato fica sem
+    // conta_id, dificultando achar depois que foi importado 2x.
+    if (!contaSel) {
+      alert("Selecione a conta bancária antes de importar o OFX.");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     setLoading(true);
     const texto = await file.text();
     let linhas = parseOFX(texto);
@@ -401,35 +409,35 @@ function ConciliacaoInner() {
     const conciliadoN = linhas.filter(l => l.conciliado).length;
     const contaObj    = contas.find(c => c.id === contaSel);
 
-    // Detecta reimportação do mesmo extrato — mesma conta + período sobreposto.
-    // Sem isso, reimportar cria um SEGUNDO registro com os mesmos lançamentos
+    // Bloqueia reimportação do mesmo extrato — mesma conta + período sobreposto.
+    // Antes isso era só um confirm() dispensável (o usuário clicava "OK" e
+    // seguia); reimportar cria um SEGUNDO registro com os mesmos lançamentos
     // do banco, e as duas cópias passam a ser conciliadas de forma
     // independente e vão divergindo (achado real: 2 cópias do mesmo extrato
     // Itaú — uma ficou "esquecida" mostrando tudo pendente mesmo com
-    // conciliações já feitas na outra).
-    if (contaSel) {
-      const { data: existentes } = await supabase
-        .from("extratos_bancarios")
-        .select("id, conta_nome, data_inicio, data_fim, conciliados, pendentes, total_linhas")
-        .in("fazenda_id", fazendaIds)
-        .eq("conta_id", contaSel)
-        .lte("data_inicio", dataFim)
-        .gte("data_fim", dataInicio);
-      if (existentes && existentes.length > 0) {
-        const detalhes = existentes
-          .map(ex => `• ${fmtDt(ex.data_inicio)} → ${fmtDt(ex.data_fim)} — ${ex.conciliados}/${ex.total_linhas} já conciliado`)
-          .join("\n");
-        const prosseguir = confirm(
-          `Já existe um extrato importado para esta conta cobrindo (parte d)esse período:\n\n${detalhes}\n\n` +
-          `Importar de novo cria uma CÓPIA separada — as duas passam a ser conciliadas de forma independente e podem divergir.\n\n` +
-          `Prosseguir mesmo assim?`
-        );
-        if (!prosseguir) {
-          setLoading(false);
-          if (inputRef.current) inputRef.current.value = "";
-          return;
-        }
-      }
+    // conciliações já feitas na outra). Agora é bloqueio de verdade, sem
+    // opção de "importar mesmo assim" — quem precisar reimportar de fato
+    // (ex: corrigir um arquivo errado) exclui o extrato antigo primeiro
+    // (botão 🗑 no card) e importa de novo com o histórico limpo.
+    const { data: existentes } = await supabase
+      .from("extratos_bancarios")
+      .select("id, conta_nome, data_inicio, data_fim, conciliados, pendentes, total_linhas")
+      .in("fazenda_id", fazendaIds)
+      .eq("conta_id", contaSel)
+      .lte("data_inicio", dataFim)
+      .gte("data_fim", dataInicio);
+    if (existentes && existentes.length > 0) {
+      const detalhes = existentes
+        .map(ex => `• ${fmtDt(ex.data_inicio)} → ${fmtDt(ex.data_fim)} — ${ex.conciliados}/${ex.total_linhas} já conciliado`)
+        .join("\n");
+      alert(
+        `Este OFX não foi importado: já existe um extrato desta conta cobrindo (parte d)esse período:\n\n${detalhes}\n\n` +
+        `Reimportar criaria uma cópia separada, conciliada de forma independente, e as duas podem divergir.\n\n` +
+        `Se precisar reimportar de verdade (ex: arquivo errado), exclua o extrato antigo na lista (ícone 🗑) e importe de novo.`
+      );
+      setLoading(false);
+      if (inputRef.current) inputRef.current.value = "";
+      return;
     }
 
     const novoExtrato: Extrato = {
@@ -477,6 +485,33 @@ function ConciliacaoInner() {
     setExtratos(prev => [novoExtrato, ...prev]);
     setLoading(false);
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  // Exclui um extrato importado (uso principal: apagar cópia duplicada de uma
+  // reimportação de OFX). Remove só o registro do extrato e o arquivo OFX no
+  // Storage — não mexe nos lançamentos: se algum já foi marcado como
+  // conciliado a partir deste extrato, o lançamento continua conciliado
+  // (o vínculo é só removido daqui). Isso evita desfazer conciliações reais
+  // por engano ao limpar uma cópia velha/duplicada.
+  async function excluirExtrato(ext: Extrato) {
+    const aviso = ext.conciliados > 0
+      ? `Este extrato tem ${ext.conciliados} linha(s) já conciliada(s). Os lançamentos vinculados a partir dele CONTINUAM conciliados — só o registro deste extrato é removido.\n\n`
+      : "";
+    if (!confirm(`${aviso}Excluir o extrato "${ext.conta_nome}" (${fmtDt(ext.data_inicio)} a ${fmtDt(ext.data_fim)})?\n\nEssa ação não pode ser desfeita.`)) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("extratos_bancarios").delete().eq("id", ext.id);
+      if (error) throw error;
+      if (ext.ofx_storage_path) {
+        await supabase.storage.from("arquivos").remove([ext.ofx_storage_path]).catch(() => {});
+      }
+      setExtratos(prev => prev.filter(e => e.id !== ext.id));
+      if (extrato?.id === ext.id) setExtrato(null);
+    } catch {
+      alert("Não foi possível excluir o extrato. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ── Persistir extrato atualizado ───────────────────────────────────────────
@@ -1338,10 +1373,18 @@ function ConciliacaoInner() {
               </div>
             ) : extratos.map(e => (
               <div key={e.id} onClick={() => setExtrato(e)}
-                style={{ background: "var(--bg-card)", borderRadius: 10, border: `0.5px solid ${e.pendentes > 0 ? "#F59E0B" : "var(--border)"}`, padding: "14px 16px", cursor: "pointer", transition: "box-shadow 0.15s" }}
+                style={{ background: "var(--bg-card)", borderRadius: 10, border: `0.5px solid ${e.pendentes > 0 ? "#F59E0B" : "var(--border)"}`, padding: "14px 16px", cursor: "pointer", transition: "box-shadow 0.15s", position: "relative" }}
                 onMouseEnter={el => (el.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)")}
                 onMouseLeave={el => (el.currentTarget.style.boxShadow = "none")}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 2 }}>{e.conta_nome}</div>
+                <button
+                  title="Excluir extrato"
+                  onClick={ev => { ev.stopPropagation(); excluirExtrato(e); }}
+                  style={{ position: "absolute", top: 8, right: 8, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 5, color: "var(--text-3)", cursor: "pointer", fontSize: 13, lineHeight: 1 }}
+                  onMouseEnter={el => { el.currentTarget.style.background = "#FEE2E2"; el.currentTarget.style.color = "#E24B4A"; }}
+                  onMouseLeave={el => { el.currentTarget.style.background = "transparent"; el.currentTarget.style.color = "var(--text-3)"; }}>
+                  🗑
+                </button>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 2, paddingRight: 22 }}>{e.conta_nome}</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 10 }}>{fmtDt(e.data_inicio)} a {fmtDt(e.data_fim)} · {fmtDt(e.data_importacao)}</div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   <span style={{ padding: "2px 7px", borderRadius: 8, fontSize: 11, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{e.conciliados} ✓</span>
