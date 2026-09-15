@@ -33,12 +33,17 @@ export async function POST(req: Request) {
     const { operacao, ...payload } = body as { operacao: string } & Record<string, unknown>;
 
     // ─── listar_folhas — inclui contagem de funcionários por folha ───────────
+    // Escopo por CONTA (todas as fazendas), não só a fazenda ativa no
+    // momento — senão uma folha criada com outra fazenda ativa "some" da
+    // lista assim que o usuário troca de fazenda no TopNav (Seção 261).
     if (operacao === "listar_folhas") {
-      const { fazenda_id } = payload as { fazenda_id: string };
+      const { fazenda_id, fazenda_ids } = payload as { fazenda_id?: string; fazenda_ids?: string[] };
+      const ids = fazenda_ids?.length ? fazenda_ids : fazenda_id ? [fazenda_id] : [];
+      if (!ids.length) return NextResponse.json({ ok: true, data: [] });
       const { data, error } = await sb
         .from("folha_pagamento")
         .select("*")
-        .eq("fazenda_id", fazenda_id)
+        .in("fazenda_id", ids)
         .order("competencia", { ascending: false });
       if (error) throw error;
 
@@ -62,22 +67,43 @@ export async function POST(req: Request) {
     }
 
     // ─── upsert_folha ─────────────────────────────────────────────────────────
+    // Distingue folhas por produtor_id (produtor rural) além de empresa_id —
+    // sem isso, todo funcionário "sem empresa" (a maioria) caía numa única
+    // folha por fazenda/competência, misturando produtores diferentes
+    // (Seção 261). Se a migration da Seção 261 ainda não rodou (coluna
+    // produtor_id não existe em folha_pagamento), cai de volta pro
+    // comportamento antigo (só empresa_id) em vez de quebrar a gravação.
     if (operacao === "upsert_folha") {
-      const { fazenda_id, empresa_id, competencia, ...dados } = payload as {
-        fazenda_id: string; empresa_id: string | null; competencia: string;
+      const { fazenda_id, empresa_id, produtor_id, competencia, ...dados } = payload as {
+        fazenda_id: string; empresa_id: string | null; produtor_id?: string | null; competencia: string;
         valor_bruto: number; valor_liquido: number; inss_patronal: number; fgts_total: number; obs?: string;
       };
+      const isMissingProdutorCol = (e: { message?: string } | null) =>
+        !!e?.message?.includes("produtor_id");
+
       let q = sb.from("folha_pagamento").select("id").eq("fazenda_id", fazenda_id).eq("competencia", competencia);
       if (empresa_id) q = q.eq("empresa_id", empresa_id); else q = q.is("empresa_id", null);
-      const { data: exist } = await q.maybeSingle();
+      if (!empresa_id) q = produtor_id ? q.eq("produtor_id", produtor_id) : q.is("produtor_id", null);
+      let { data: exist, error: findErr } = await q.maybeSingle();
+      let colunaProdutorDisponivel = true;
+      if (findErr && isMissingProdutorCol(findErr)) {
+        colunaProdutorDisponivel = false;
+        let q2 = sb.from("folha_pagamento").select("id").eq("fazenda_id", fazenda_id).eq("competencia", competencia);
+        if (empresa_id) q2 = q2.eq("empresa_id", empresa_id); else q2 = q2.is("empresa_id", null);
+        ({ data: exist } = await q2.maybeSingle());
+      } else if (findErr) {
+        throw findErr;
+      }
 
       if (exist?.id) {
         const { error } = await sb.from("folha_pagamento").update(dados).eq("id", exist.id);
         if (error) throw error;
         return NextResponse.json({ ok: true, id: exist.id, criou: false });
       } else {
+        const insertPayload: Record<string, unknown> = { fazenda_id, empresa_id: empresa_id ?? null, competencia, status: "rascunho", ...dados };
+        if (colunaProdutorDisponivel) insertPayload.produtor_id = produtor_id ?? null;
         const { data, error } = await sb.from("folha_pagamento")
-          .insert({ fazenda_id, empresa_id: empresa_id ?? null, competencia, status: "rascunho", ...dados })
+          .insert(insertPayload)
           .select("id").single();
         if (error) throw error;
         return NextResponse.json({ ok: true, id: data.id, criou: true });
@@ -141,6 +167,7 @@ export async function POST(req: Request) {
         const { data: lancamento, error: lancErr } = await sb.from("lancamentos").insert({
           fazenda_id,
           empresa_id: empresa_id ?? null,
+          produtor_id: it.produtor_id ?? null,
           natureza: "real",
           tipo: "pagar",
           descricao: `Salário ${nomeMesLabel} — ${it.nome_funcionario}`,
@@ -269,11 +296,15 @@ export async function POST(req: Request) {
     }
 
     // ─── listar_adi_prem ──────────────────────────────────────────────────────
+    // Mesmo escopo por conta de listar_folhas — adiantamentos/premiações de
+    // funcionários de outras fazendas da conta não podem ficar de fora.
     if (operacao === "listar_adi_prem") {
-      const { fazenda_id } = payload as { fazenda_id: string };
+      const { fazenda_id, fazenda_ids } = payload as { fazenda_id?: string; fazenda_ids?: string[] };
+      const ids = fazenda_ids?.length ? fazenda_ids : fazenda_id ? [fazenda_id] : [];
+      if (!ids.length) return NextResponse.json({ ok: true, adis: [], prems: [] });
       const [{ data: adis, error: adiErr }, { data: prems, error: premErr }] = await Promise.all([
-        sb.from("adiantamentos_salario").select("*, funcionarios(nome)").eq("fazenda_id", fazenda_id).order("data", { ascending: false }),
-        sb.from("funcionarios_premiacoes").select("*, funcionarios(nome)").eq("fazenda_id", fazenda_id),
+        sb.from("adiantamentos_salario").select("*, funcionarios(nome)").in("fazenda_id", ids).order("data", { ascending: false }),
+        sb.from("funcionarios_premiacoes").select("*, funcionarios(nome)").in("fazenda_id", ids),
       ]);
       if (adiErr) throw adiErr;
       if (premErr) throw premErr;

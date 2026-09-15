@@ -733,7 +733,7 @@ function CadastrosInner() {
       if (produtores.length === 0) carregarProdutoresSilencioso();
     }
     if (aba === "funcionarios") {
-      listarFuncionarios(fazendaId).then(setFuncs).catch(e => setErro(e.message));
+      listarFuncionarios(fazendaIds?.length ? fazendaIds : [fazendaId]).then(setFuncs).catch(e => setErro(e.message));
       if (produtores.length === 0) carregarProdutoresSilencioso();
       if (centrosCusto.length === 0) listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
     }

@@ -7,6 +7,7 @@ import TopNav from "../../../components/TopNav";
 // ─── Tipos ────────────────────────────────────────────────────
 interface Funcionario {
   id: string;
+  fazenda_id: string;
   nome: string;
   funcao?: string;
   cargo?: string;
@@ -25,6 +26,7 @@ interface FolhaFunc {
   id?: string;
   folha_id?: string;
   funcionario_id?: string;
+  fazenda_id?: string;
   empresa_id?: string | null;
   produtor_id?: string | null;
   nome_funcionario: string;
@@ -50,6 +52,8 @@ interface Folha {
   fazenda_id: string;
   empresa_id?: string | null;
   empresa_nome?: string;
+  produtor_id?: string | null;
+  produtor_nome?: string;
   competencia: string;
   status: "rascunho" | "fechado" | "pago";
   valor_bruto: number;
@@ -231,6 +235,11 @@ export default function FolhaPagamentoPage() {
         body: JSON.stringify(body),
       }).then(r => r.json()).catch(() => ({ ok: false, error: "Erro de rede" }));
 
+      // Escopo por CONTA (todas as fazendas), não só a fazenda ativa no
+      // TopNav — senão funcionários/folhas/adiantamentos de outra fazenda
+      // da mesma conta "somem" da tela assim que o usuário troca de fazenda.
+      const fids = fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+
       const [
         funcsRes,
         folhasRes,
@@ -240,19 +249,16 @@ export default function FolhaPagamentoPage() {
       ] = await Promise.all([
         // Busca funcionários de todas as fazendas da conta via fazendaIds (join !inner
         // filtrado por conta_id falha silenciosamente no Supabase JS — usar in() diretamente)
-        (() => {
-          const fids = fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : [];
-          return supabase.from("funcionarios")
-            .select("id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
-            .in("fazenda_id", fids)
-            .eq("ativo", true)
-            .order("nome");
-        })(),
-        apiPost({ operacao: "listar_folhas", fazenda_id: fazendaId }),
-        apiPost({ operacao: "listar_adi_prem", fazenda_id: fazendaId }),
+        supabase.from("funcionarios")
+          .select("id,fazenda_id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
+          .in("fazenda_id", fids)
+          .eq("ativo", true)
+          .order("nome"),
+        apiPost({ operacao: "listar_folhas", fazenda_ids: fids }),
+        apiPost({ operacao: "listar_adi_prem", fazenda_ids: fids }),
         supabase.from("empresas")
           .select("id,nome_fantasia,razao_social")
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fids)
           .order("nome_fantasia"),
         contaId
           ? supabase.from("produtores").select("id,nome").eq("conta_id", contaId).order("nome")
@@ -284,6 +290,7 @@ export default function FolhaPagamentoPage() {
       const folhasComNome = fols.map((f: any) => ({
         ...f,
         empresa_nome: f.empresa_id ? (eMap[f.empresa_id] ?? "Empresa não encontrada") : undefined,
+        produtor_nome: f.produtor_id ? (pMap[f.produtor_id] ?? "Produtor não encontrado") : undefined,
       }));
       setFolhas(folhasComNome);
 
@@ -365,6 +372,7 @@ export default function FolhaPagamentoPage() {
           .reduce((s, a) => s + a.valor, 0);
         return recalc({
           funcionario_id: f.id,
+          fazenda_id: f.fazenda_id,
           empresa_id: f.empresa_id ?? null,
           produtor_id: f.produtor_id ?? null,
           nome_funcionario: f.nome,
@@ -409,27 +417,33 @@ export default function FolhaPagamentoPage() {
       if (funcs.length === 0) { setMsg("Selecione ao menos um funcionário."); setSaving(false); return; }
 
       if (folhaEdit.id) {
-        // Edição de folha existente — mantém empresa original
-        await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id);
+        // Edição de folha existente — mantém empregador e fazenda originais
+        await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, folhaEdit.produtor_id, folhaEdit.fazenda_id);
         setMsg("Folha salva.");
       } else {
-        // Nova folha — agrupa por empregador e gera uma folha por empresa por mês
-        const grupos = new Map<string | null, FolhaFunc[]>();
+        // Nova folha — agrupa por fazenda + empregador (empresa ou produtor
+        // rural) e gera uma folha por grupo por mês. Produtores diferentes
+        // (empresa_id nulo) NÃO podem cair na mesma folha — cada um vira um
+        // grupo/folha separado (Seção 261).
+        const grupos = new Map<string, { empresaId: string | null; produtorId: string | null; fazendaIdGrupo: string; itens: FolhaFunc[] }>();
         for (const f of funcs) {
-          const key = f.empresa_id ?? null;
-          if (!grupos.has(key)) grupos.set(key, []);
-          grupos.get(key)!.push(f);
+          const fazendaIdGrupo = f.fazenda_id ?? fazendaId!;
+          const empresaId  = f.empresa_id ?? null;
+          const produtorId = empresaId ? null : (f.produtor_id ?? null);
+          const key = `${fazendaIdGrupo}|${empresaId ?? ""}|${produtorId ?? ""}`;
+          if (!grupos.has(key)) grupos.set(key, { empresaId, produtorId, fazendaIdGrupo, itens: [] });
+          grupos.get(key)!.itens.push(f);
         }
         const meses = monthsInRange(modalCompDe, modalCompAte);
         let total = 0;
         for (const comp of meses) {
-          for (const [empresaId, gFuncs] of grupos) {
-            await salvarFolhaMes(comp, gFuncs, empresaId);
+          for (const { empresaId, produtorId, fazendaIdGrupo, itens } of grupos.values()) {
+            await salvarFolhaMes(comp, itens, empresaId, produtorId, fazendaIdGrupo);
             total++;
           }
         }
-        const quantEmpresas = grupos.size;
-        if (total > 1) setMsg(`${total} folhas geradas — ${meses.length} mês(es) × ${quantEmpresas} empregador(es).`);
+        const quantGrupos = grupos.size;
+        if (total > 1) setMsg(`${total} folhas geradas — ${meses.length} mês(es) × ${quantGrupos} empregador(es)/produtor(es).`);
         else setMsg("Folha salva.");
       }
       setModalFolha(false);
@@ -454,16 +468,21 @@ export default function FolhaPagamentoPage() {
     return json;
   }
 
-  async function salvarFolhaMes(comp: string, funcs: FolhaFunc[], empresaId?: string | null) {
+  async function salvarFolhaMes(comp: string, funcs: FolhaFunc[], empresaId?: string | null, produtorId?: string | null, fazendaIdGrupo?: string) {
+    const fazendaAlvo = fazendaIdGrupo ?? funcs[0]?.fazenda_id ?? fazendaId!;
     const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
     const totalLiq     = funcs.reduce((s, f) => s + liquido(f), 0);
     const totalINSSPat = funcs.reduce((s, f) => s + f.inss_patronal, 0);
     const totalFGTS    = funcs.reduce((s, f) => s + f.fgts, 0);
 
-    // Reutiliza o ID só quando editando a folha existente (mesmo mês e mesma empresa)
-    let folhaId = (folhaEdit.id && comp === folhaEdit.competencia && (folhaEdit.empresa_id ?? null) === (empresaId ?? null))
-      ? folhaEdit.id
-      : undefined;
+    // Reutiliza o ID só quando editando a folha existente (mesmo mês, mesma
+    // fazenda e mesmo empregador/produtor)
+    let folhaId = (
+      folhaEdit.id && comp === folhaEdit.competencia
+      && (folhaEdit.fazenda_id ?? null) === (fazendaAlvo ?? null)
+      && (folhaEdit.empresa_id ?? null) === (empresaId ?? null)
+      && (folhaEdit.produtor_id ?? null) === (produtorId ?? null)
+    ) ? folhaEdit.id : undefined;
 
     const dadosFolha = { valor_bruto: totalBruto, valor_liquido: totalLiq, inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs };
 
@@ -471,8 +490,9 @@ export default function FolhaPagamentoPage() {
       // Upsert via API route (service_role_key evita RLS 42501)
       const res = await apiFolha({
         operacao: "upsert_folha",
-        fazenda_id: fazendaId,
+        fazenda_id: fazendaAlvo,
         empresa_id: empresaId ?? null,
+        produtor_id: produtorId ?? null,
         competencia: comp,
         ...dadosFolha,
       });
@@ -481,7 +501,7 @@ export default function FolhaPagamentoPage() {
         // Folha existente: limpa funcionários para recriar
         await apiFolha({ operacao: "delete_funcionarios", folha_id: folhaId });
       }
-      if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId, empresa_id: empresaId ?? null }));
+      if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId, fazenda_id: fazendaAlvo, empresa_id: empresaId ?? null, produtor_id: produtorId ?? null }));
     } else {
       await apiFolha({ operacao: "update_folha", id: folhaId, ...dadosFolha });
       await apiFolha({ operacao: "delete_funcionarios", folha_id: folhaId });
@@ -533,7 +553,7 @@ export default function FolhaPagamentoPage() {
       await apiFolha({
         operacao: "fechar_folha",
         id: folha.id,
-        fazenda_id: fazendaId,
+        fazenda_id: folha.fazenda_id,
         empresa_id: folha.empresa_id ?? null,
         competencia: folha.competencia,
       });
@@ -548,7 +568,7 @@ export default function FolhaPagamentoPage() {
 
   // ─── Adiantamento — salvar ────────────────────────────────────
   async function reabrirFolha() {
-    if (!fazendaId || !folhaEdit.id || !folhaEdit.competencia) return;
+    if (!folhaEdit.id || !folhaEdit.competencia || !folhaEdit.fazenda_id) return;
     if (!confirm(
       `Reabrir a folha de ${nomeMes(folhaEdit.competencia)}?\n\n` +
       `Isso irá:\n• Excluir os CPs gerados (salários a pagar)\n` +
@@ -561,7 +581,7 @@ export default function FolhaPagamentoPage() {
       await apiFolha({
         operacao: "reabrir_folha",
         id: folhaEdit.id,
-        fazenda_id: fazendaId,
+        fazenda_id: folhaEdit.fazenda_id,
         competencia: folhaEdit.competencia,
       });
       setFolhaEdit(p => ({ ...p, status: "rascunho" }));
@@ -846,7 +866,9 @@ export default function FolhaPagamentoPage() {
                         <td style={S.td}>
                           {f.empresa_nome
                             ? <span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{f.empresa_nome}</span>
-                            : <span style={{ fontSize:11, color:"#888" }}>Sem empregador</span>}
+                            : f.produtor_nome
+                            ? <span style={{ fontSize:12, fontWeight:600, color:"#166534", background:"#DCFCE7", borderRadius:4, padding:"2px 8px" }}>{f.produtor_nome}</span>
+                            : <span style={{ fontSize:11, color:"#888" }}>Sem vínculo</span>}
                         </td>
                         <td style={S.td}>{(f as any).num_funcionarios ?? "—"}</td>
                         <td style={{ ...S.td, fontWeight:700, color:"#0B2D50", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_bruto)}</td>
@@ -990,7 +1012,7 @@ export default function FolhaPagamentoPage() {
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <h2 style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
                 {folhaEdit.id
-                  ? `Folha — ${nomeMes(folhaEdit.competencia ?? "")}${folhaEdit.empresa_id ? ` · ${empresasMap[folhaEdit.empresa_id] ?? ""}` : " · Sem empregador"}`
+                  ? `Folha — ${nomeMes(folhaEdit.competencia ?? "")}${folhaEdit.empresa_id ? ` · ${empresasMap[folhaEdit.empresa_id] ?? ""}` : folhaEdit.produtor_id ? ` · ${produtoresMap[folhaEdit.produtor_id] ?? ""}` : " · Sem vínculo"}`
                   : fCompAte > fComp
                     ? `Gerar Folhas — ${nomeMes(fComp)} → ${nomeMes(fCompAte)}`
                     : `Folha — ${nomeMes(fComp)}`

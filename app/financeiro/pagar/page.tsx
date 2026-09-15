@@ -528,7 +528,7 @@ function ContasPagarInner() {
     if (!fid) return;
     supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, fazenda_id").eq("fazenda_id", fid).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
     listarTalhoes(fid).then(setTalhoes).catch(() => {});
-    listarFuncionarios(fid).then(setFuncionarios).catch(() => {});
+    listarFuncionarios(fazendaIds.length ? fazendaIds : [fid]).then(setFuncionarios).catch(() => {});
     listarVeiculosUnificados(fazendaIds.length ? fazendaIds : [fid], "todos").then(setVeiculos).catch(() => {});
   }, [fid, fazendaIds.join(",")]);
 

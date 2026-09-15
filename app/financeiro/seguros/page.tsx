@@ -235,7 +235,7 @@ export default function SegurosPage() {
     const [maq, prod, func, faz] = await Promise.all([
       listarMaquinas(fazendaId),
       listarProdutoresDaConta(contaId),
-      listarFuncionarios(fazendaId),
+      listarFuncionarios(fazendaIds?.length ? fazendaIds : [fazendaId]),
       listarFazendasDaConta(contaId),
     ]);
     setMaquinas(maq);

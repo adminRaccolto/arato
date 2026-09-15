@@ -12678,3 +12678,41 @@ CREATE POLICY "simulacoes_conta" ON simulacoes
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 261 — Folha de Pagamento: produtor_id na folha + escopo por conta
+--
+-- 3 bugs relacionados reportados juntos (Folha de Pagamento / Funcionários):
+--
+-- 1) "Folhas somem": listar/salvar/fechar/reabrir folha filtravam pela
+--    fazenda ATIVA no momento (useAuth().fazendaId), não pela conta inteira.
+--    Como o operador troca de fazenda no TopNav por outros motivos, uma
+--    folha criada com a fazenda X ativa ficava invisível assim que outra
+--    fazenda virava ativa — e cada reabertura da tela com fazenda diferente
+--    podia criar uma folha rascunho NOVA pra mesma competência, em vez de
+--    achar a existente. Confirmado no banco: 22 linhas em folha_pagamento
+--    pra uma única conta, espalhadas por 5 fazenda_id diferentes, incluindo
+--    rascunhos duplicados até competência 2027-09.
+-- 2) Cadastro de Funcionários (app/cadastros) e outros 3 pontos
+--    (Seguros, Contas a Pagar, Abastecimento) tinham o mesmo problema:
+--    listarFuncionarios(fazenda_id) só buscava a fazenda ativa.
+-- 3) Funcionários vinculados a Produtor Rural (produtor_id, não
+--    empresa_id) não tinham como ser separados em folhas distintas por
+--    produtor — a tabela folha_pagamento só tinha empresa_id. Todos os
+--    funcionários "sem empresa" (a maioria — produtor rural) caíam numa
+--    única folha por fazenda/competência, misturando produtores
+--    diferentes e aparecendo como "Sem empregador" na lista.
+--
+-- Esta seção resolve o (3): adiciona produtor_id em folha_pagamento,
+-- espelhando exatamente o padrão já usado por empresa_id. Os bugs (1) e
+-- (2) são só de código (fazenda_id → fazendaIds/fazenda_ids), sem
+-- migration necessária.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE folha_pagamento
+  ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_folha_pagamento_produtor
+  ON folha_pagamento(produtor_id) WHERE produtor_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

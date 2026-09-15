@@ -1707,8 +1707,11 @@ export async function excluirBomba(id: string): Promise<void> {
 // FUNCIONÁRIOS
 // ————————————————————————————————————————
 
-export async function listarFuncionarios(fazenda_id: string): Promise<Funcionario[]> {
-  const { data, error } = await supabase.from("funcionarios").select("*").eq("fazenda_id", fazenda_id).order("nome");
+export async function listarFuncionarios(fazenda_id: string | string[]): Promise<Funcionario[]> {
+  const query = supabase.from("funcionarios").select("*").order("nome");
+  const { data, error } = Array.isArray(fazenda_id)
+    ? await query.in("fazenda_id", fazenda_id)
+    : await query.eq("fazenda_id", fazenda_id);
   if (error) throw error;
   return data ?? [];
 }

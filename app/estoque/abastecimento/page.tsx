@@ -93,7 +93,7 @@ export default function AbastecimentoPage() {
     const [b, m, f] = await Promise.all([
       listarBombas(fazendaId),
       listarMaquinas(fazendaId),
-      listarFuncionarios(fazendaId),
+      listarFuncionarios(fazendaIds?.length ? fazendaIds : [fazendaId]),
     ]);
     setBombas(b);
     setMaquinas(m);

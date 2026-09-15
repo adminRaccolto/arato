@@ -262,11 +262,11 @@ export default function FolhaEmpresaPage() {
     setSaving(true);
     try {
       const { data: itens } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", folha.id);
-      const ogSalario = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.10.001");
+      const ogSalario = await resolverOperacaoGerencialPorClassificacao(folha.fazenda_id, "2.01.01.10.001");
       for (const it of (itens ?? [])) {
         const liq = Math.max(0, it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios);
         const { data: lancamento } = await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId, empresa_id: empresaSel, tipo: "pagar",
+          fazenda_id: folha.fazenda_id, empresa_id: empresaSel, tipo: "pagar",
           descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
           valor: liq, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Salários",
           operacao_gerencial_id: ogSalario ?? null,
@@ -274,7 +274,7 @@ export default function FolhaEmpresaPage() {
         }).select("id").single();
         if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
       }
-      await supabase.from("adiantamentos_salario").update({ status: "descontado" }).eq("fazenda_id", fazendaId).eq("competencia_ref", folha.competencia).eq("status", "pendente");
+      await supabase.from("adiantamentos_salario").update({ status: "descontado" }).eq("fazenda_id", folha.fazenda_id).eq("competencia_ref", folha.competencia).eq("status", "pendente");
       await supabase.from("folha_pagamento").update({ status: "fechado" }).eq("id", folha.id);
       setMsg("Folha fechada e CPs gerados."); carregar();
     } catch (e: any) { setMsg("Erro: " + e.message); }
