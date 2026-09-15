@@ -1235,6 +1235,19 @@ function ContasPagarInner() {
         ),
   [borderosPendentes, fFornecedor, lancamentos, pessoas]);
 
+  const borderosPagosFiltrados = useMemo(() =>
+    !fFornecedor
+      ? borderosPagos
+      : borderosPagos.filter(b =>
+          (b.descricao ?? "").toLowerCase().includes(fFornecedor.toLowerCase()) ||
+          (b.itens ?? []).some(item => {
+            const lanc = item.lancamento as { descricao?: string; pessoa_id?: string } | undefined;
+            const pessoaNome = lanc?.pessoa_id ? (pessoas.find(p => p.id === lanc.pessoa_id)?.nome ?? "") : "";
+            return [pessoaNome, lanc?.descricao ?? ""].join(" ").toLowerCase().includes(fFornecedor.toLowerCase());
+          })
+        ),
+  [borderosPagos, fFornecedor, pessoas]);
+
   const disabled = salvando || (!form.pessoa_id && !form.descricao.trim()) || !form.vencimento
     || (form.moeda !== "barter" && !form.valorMask)
     || (form.moeda === "barter" && !form.sacasMask)
@@ -1552,7 +1565,7 @@ function ContasPagarInner() {
                         );
                       })}
                       {/* ── Borderôs pagos — só na aba Baixados ── */}
-                      {filtro === "baixado" && borderosPagos.map(b => {
+                      {filtro === "baixado" && borderosPagosFiltrados.map(b => {
                         const itensB    = b.itens ?? [];
                         const totalB    = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
                         const dtPago    = b.data_pagamento ? new Date(b.data_pagamento + "T00:00:00").toLocaleDateString("pt-BR") : "—";
@@ -1571,6 +1584,20 @@ function ContasPagarInner() {
                         const headerDesc = isSingle
                           ? (lancSingle?.descricao ?? b.descricao ?? "Borderô")
                           : (b.descricao || "Borderô");
+
+                        // Nomes dos fornecedores/clientes dos títulos do borderô — pra dar
+                        // um nome de verdade ao borderô em vez da descrição genérica
+                        // "Borderô DD/MM — N títulos" (que não diz do que se trata).
+                        const nomesFornecedores = !isSingle
+                          ? [...new Set(itensB.map(item => {
+                              const pid = (item.lancamento as { pessoa_id?: string } | undefined)?.pessoa_id;
+                              return pid ? pessoas.find(p => p.id === pid)?.nome : undefined;
+                            }).filter((n): n is string => !!n))]
+                          : [];
+                        const nomesResumo =
+                          nomesFornecedores.length === 0 ? null :
+                          nomesFornecedores.length <= 2 ? nomesFornecedores.join(" · ") :
+                          `${nomesFornecedores.slice(0, 2).join(" · ")} +${nomesFornecedores.length - 2}`;
 
                         // Borderô de 1 título → linha normal com botão Estornar (sem bloco verde)
                         // Borderô de N títulos → bloco verde expansível com todos os títulos
@@ -1615,32 +1642,32 @@ function ContasPagarInner() {
                           );
                         }
 
-                        // Multi-título: bloco verde expansível
+                        // Multi-título: uma linha só, sem fundo colorido, só o prefixo BDR
                         return (
                           <React.Fragment key={`bdr-${b.id}`}>
-                            <tr
-                              style={{ background: "#F0FDF4", borderLeft: "3px solid #22C55E", borderBottom: "0.5px solid #22C55E30", cursor: "pointer" }}
-                              onClick={toggleExp}
-                            >
+                            <tr style={{ borderBottom: "0.5px solid var(--border-table)", cursor: "pointer" }} onClick={toggleExp}>
                               <td style={{ padding: "10px 6px", textAlign: "center" }}>
-                                <span style={{ fontSize: 10, background: "#22C55E", color: "#fff", borderRadius: 4, padding: "2px 5px", fontWeight: 700 }}>BDR</span>
+                                <span style={{ fontSize: 9, background: "#DCFCE7", color: "#166534", borderRadius: 4, padding: "2px 5px", fontWeight: 700, border: "0.5px solid #22C55E60" }}>BDR</span>
                               </td>
-                              <td colSpan={4} style={{ padding: "10px 8px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>{headerDesc}</span>
-                                  <span style={{ fontSize: 11, color: "#166534" }}>Pago em {dtPago}</span>
-                                  {b.conta_bancaria && <span style={{ fontSize: 10, color: "#166534", background: "#DCFCE7", borderRadius: 4, padding: "1px 6px" }}>{b.conta_bancaria}</span>}
-                                  <span style={{ fontSize: 11, background: "#fff", color: "#166534", border: "0.5px solid #22C55E60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
-                                    {itensB.length} títulos
-                                  </span>
-                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginLeft: 4 }}>
-                                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
-                                  </span>
-                                  <span style={{ fontSize: 11, color: "#16A34A", marginLeft: 4 }}>{expanded ? "▲ recolher" : "▼ ver títulos"}</span>
+                              <td style={{ padding: "10px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>—</td>
+                              <td colSpan={2} style={{ padding: "10px 8px", overflow: "hidden" }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {nomesResumo ?? headerDesc}
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {itensB.length} títulos{b.conta_bancaria ? ` · ${b.conta_bancaria}` : ""}
                                 </div>
                               </td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)" }}>—</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)" }}>—</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{dtPago}</td>
+                              <td style={{ padding: "10px 8px", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+                                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                              </td>
+                              <td style={{ padding: "10px 8px", fontSize: 11, color: "var(--text-3)" }}>BRL</td>
                               <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
-                                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }} onClick={e => e.stopPropagation()}>
+                                  <span onClick={toggleExp} style={{ fontSize: 11, color: "#16A34A", cursor: "pointer", whiteSpace: "nowrap" }}>{expanded ? "▲ recolher" : "▼ ver títulos"}</span>
                                   <button
                                     onClick={() => estornarBorderoPago(b)}
                                     style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>
@@ -1650,20 +1677,23 @@ function ContasPagarInner() {
                               </td>
                             </tr>
                             {expanded && itensB.map((item, idx) => {
-                              const lanc = item.lancamento as { numero?: number; descricao?: string; valor?: number; data_vencimento?: string; categoria?: string } | undefined;
+                              const lanc = item.lancamento as { numero?: number; descricao?: string; valor?: number; data_vencimento?: string; categoria?: string; pessoa_id?: string } | undefined;
+                              const nomeItem = lanc?.pessoa_id ? pessoas.find(p => p.id === lanc.pessoa_id)?.nome : undefined;
                               return (
-                                <tr key={`bdp-item-${item.id}`} style={{ background: idx % 2 === 0 ? "#F7FEF9" : "#ECFDF5", borderLeft: "3px solid #22C55E40", borderBottom: "0.5px solid #22C55E20" }}>
+                                <tr key={`bdp-item-${item.id}`} style={{ background: idx % 2 === 0 ? "var(--bg-page)" : "transparent", borderBottom: "0.5px solid var(--border-table)" }}>
                                   <td style={{ padding: "7px 6px", textAlign: "center" }}>
-                                    <span style={{ fontSize: 9, color: "#22C55E" }}>└</span>
+                                    <span style={{ fontSize: 9, color: "var(--text-3)" }}>└</span>
                                   </td>
                                   <td style={{ padding: "7px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{lanc?.numero ?? "—"}</td>
-                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)" }}>{lanc?.descricao ?? "—"}</td>
+                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {nomeItem ? <strong>{nomeItem}</strong> : null}{nomeItem && lanc?.descricao ? " — " : ""}{lanc?.descricao ?? (nomeItem ? "" : "—")}
+                                  </td>
                                   <td colSpan={99} style={{ padding: "7px 8px" }}>
                                     <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                                       <span style={{ fontSize: 11, color: "var(--text-3)" }}>
                                         {lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
                                       </span>
-                                      <span style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>
                                         {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago ?? 0)}
                                       </span>
                                       {lanc?.categoria && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{lanc.categoria}</span>}
@@ -1676,7 +1706,7 @@ function ContasPagarInner() {
                         );
                       })}
 
-                      {filtrados.length === 0 && (filtro !== "baixado" || borderosPagos.length === 0) ? (
+                      {filtrados.length === 0 && (filtro !== "baixado" || borderosPagosFiltrados.length === 0) ? (
                         <tr><td colSpan={19} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
                       ) : filtrados.map((l, li) => {
                         const isPrevisao = l.natureza === "previsao";
