@@ -108,6 +108,23 @@ function calcularCET(c: ContratoFinanceiro, parcelas: ParcelaPagamento[]): numbe
   return xirr(fluxos);
 }
 
+// Taxa nominal implícita — quando o contrato não tem taxa_juros_aa/tipo_variavel
+// cadastrado (comum em contratos importados de PDF/planilha sem esse campo),
+// deriva a taxa a.a. embutida no próprio cronograma de parcelas: fluxo do valor
+// financiado CHEIO (sem descontar IOF/TAC — isso é o que diferencia do CET)
+// contra as parcelas reais. Serve só de estimativa, nunca a taxa contratual real.
+function calcularTaxaImplicita(c: ContratoFinanceiro, parcelas: ParcelaPagamento[]): number | null {
+  if (!parcelas.length || !c.data_contrato || !c.valor_financiado || c.valor_financiado <= 0) return null;
+  const fluxos = [
+    { data: new Date(c.data_contrato.slice(0, 10) + "T00:00:00"), valor: -c.valor_financiado },
+    ...parcelas
+      .slice()
+      .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))
+      .map(p => ({ data: new Date(p.data_vencimento.slice(0, 10) + "T00:00:00"), valor: p.valor_parcela })),
+  ];
+  return xirr(fluxos);
+}
+
 interface Produtor { id: string; nome_razao_social: string; cpf_cnpj?: string }
 
 interface ContratoEnriquecido extends ContratoFinanceiro {
@@ -1057,11 +1074,16 @@ export default function RelatorioEndividamento() {
                     const parcelaRef =
                       c.parcelas.find(p => p.status !== "pago") ??
                       c.parcelas.slice().sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))[0];
+                    const taxaEstimada = c.taxa_tipo !== "variavel" && c.taxa_juros_aa == null
+                      ? calcularTaxaImplicita(c, c.parcelas)
+                      : null;
                     const taxa =
                       c.taxa_tipo === "variavel"
                         ? `${c.indexador ?? ""} + ${fmtPct(c.spread_aa)}`.trim()
                         : c.taxa_juros_aa != null
                         ? `${fmtPct(c.taxa_juros_aa)} a.a.`
+                        : taxaEstimada != null
+                        ? `≈ ${fmtPct(taxaEstimada * 100)} a.a.`
                         : "—";
                     return (
                       <tr key={c.id} style={{ background: i % 2 === 0 ? "transparent" : "var(--bg-tag)" }}>
@@ -1072,7 +1094,10 @@ export default function RelatorioEndividamento() {
                         </td>
                         <td style={colV}>{fmtBRL((c.valor_financiado ?? 0) * (c.fatorCambio ?? 1))}</td>
                         <td style={{ ...colV, textAlign: "left" }}>{TIPO_AMORT_LABEL[c.tipo_calculo] ?? c.tipo_calculo}</td>
-                        <td style={colV}>{taxa}</td>
+                        <td style={{ ...colV, color: taxaEstimada != null ? "var(--text-3)" : undefined, fontStyle: taxaEstimada != null ? "italic" : undefined }}
+                          title={taxaEstimada != null ? "Taxa não cadastrada — estimada a partir do cronograma de parcelas (TIR do fluxo valor financiado × parcelas)" : undefined}>
+                          {taxa}
+                        </td>
                         <td style={{ ...colV, textAlign: "left" }}>{c.indexador || "—"}</td>
                         <td style={{ ...colV, fontWeight: 700, color: cet != null ? "#C0392B" : "var(--text-3)" }}>
                           {cet != null ? fmtPct(cet * 100, 2) : "—"}
@@ -1089,6 +1114,8 @@ export default function RelatorioEndividamento() {
             </div>
             <div style={{ padding: "10px 16px", fontSize: 11, color: "var(--text-3)", borderTop: "0.5px solid var(--border)" }}>
               CET calculado pela TIR (XIRR) do fluxo de caixa real de cada contrato — valor líquido recebido (já descontando IOF, TAC e outros custos) contra o cronograma efetivo de parcelas. Pode aparecer "—" quando faltam parcelas cadastradas ou o fluxo não converge.
+              <br />
+              Taxa de Juros em <em>itálico com "≈"</em>: o contrato não tem taxa cadastrada (comum em importações de PDF/planilha) — valor estimado pela TIR do cronograma de parcelas. Edite o contrato em Configurações → Contratos Financeiros para lançar a taxa real quando disponível.
             </div>
           </div>
         )}
