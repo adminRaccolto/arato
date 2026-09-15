@@ -2589,10 +2589,11 @@ function FiscalInner() {
                       />
                       {dropdownPessoa && (() => {
                         const q = buscaPessoa.toLowerCase().trim();
+                        const qDigits = q.replace(/\D/g,"");
                         const filtrados = q
                           ? pessoas.filter(p =>
                               p.nome.toLowerCase().includes(q) ||
-                              (p.cpf_cnpj ?? "").replace(/\D/g,"").includes(q.replace(/\D/g,""))
+                              (qDigits.length > 0 && (p.cpf_cnpj ?? "").replace(/\D/g,"").includes(qDigits))
                             )
                           : pessoas;
                         return (

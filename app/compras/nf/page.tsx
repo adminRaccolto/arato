@@ -3127,7 +3127,8 @@ export default function NfCompraPage() {
                                 .filter(p => {
                                   if (!pessoaBusca) return true;
                                   const q = pessoaBusca.toLowerCase();
-                                  return p.nome.toLowerCase().includes(q) || (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, ""));
+                                  const qDigits = q.replace(/\D/g, "");
+                                  return p.nome.toLowerCase().includes(q) || (qDigits.length > 0 && (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(qDigits));
                                 })
                                 .map(p => (
                                   <div
@@ -3148,7 +3149,8 @@ export default function NfCompraPage() {
                               {pessoas.filter(p => {
                                 if (!pessoaBusca) return true;
                                 const q = pessoaBusca.toLowerCase();
-                                return p.nome.toLowerCase().includes(q) || (p.cpf_cnpj ?? "").replace(/\D/g,"").includes(q.replace(/\D/g,""));
+                                const qDigits = q.replace(/\D/g,"");
+                                return p.nome.toLowerCase().includes(q) || (qDigits.length > 0 && (p.cpf_cnpj ?? "").replace(/\D/g,"").includes(qDigits));
                               }).length === 0 && (
                                 <div style={{ padding: "12px 10px", fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>Nenhum resultado</div>
                               )}

@@ -263,10 +263,11 @@ function SelectPessoa({ value, onChange, pessoas, borderColor }: {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selecionada = pessoas.find(p => p.id === value);
+  const buscaDigits = busca.replace(/\D/g, "");
   const filtradas = busca.trim()
     ? pessoas.filter(p =>
         p.nome.toLowerCase().includes(busca.toLowerCase()) ||
-        (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(busca.replace(/\D/g, ""))
+        (buscaDigits.length > 0 && (p.cpf_cnpj ?? "").replace(/\D/g, "").includes(buscaDigits))
       )
     : pessoas;
   useEffect(() => {
