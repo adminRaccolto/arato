@@ -292,10 +292,10 @@ export default function Planejamento() {
     if (!cicloSelOrc || (aba !== "comparativo")) return;
     setLoadingComp(true);
     Promise.all([
-      supabase.from("plantios").select("custo_sementes").eq("ciclo_id", cicloSelOrc),
-      supabase.from("adubacoes_base").select("custo_total").eq("ciclo_id", cicloSelOrc),
-      supabase.from("pulverizacoes").select("custo_total").eq("ciclo_id", cicloSelOrc),
-      supabase.from("correcoes_solo").select("custo_total").eq("ciclo_id", cicloSelOrc),
+      supabase.from("plantios").select("custo_sementes").eq("ciclo_id", cicloSelOrc).eq("status_campo", "aprovado"),
+      supabase.from("adubacoes_base").select("custo_total").eq("ciclo_id", cicloSelOrc).eq("status_campo", "aprovado"),
+      supabase.from("pulverizacoes").select("custo_total").eq("ciclo_id", cicloSelOrc).eq("status_campo", "aprovado"),
+      supabase.from("correcoes_solo").select("custo_total").eq("ciclo_id", cicloSelOrc).eq("status_campo", "aprovado"),
       // CPs liquidadas vinculadas ao ciclo (captura o que não está nas operações)
       supabase.from("contas_pagar").select("valor, categoria").eq("ciclo_id", cicloSelOrc).eq("status", "pago"),
     ]).then(([pR, adR, pulR, csR, cpR]) => {

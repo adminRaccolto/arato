@@ -195,6 +195,10 @@ export default function RelAplicacoesPage() {
         const q = supabase.from(table).select("*") as any;
         return fids.length === 1 ? q.eq("fazenda_id", fids[0]) : q.in("fazenda_id", fids);
       };
+      // Tabelas de cabeçalho têm status_campo (lançamento do App Campo só
+      // conta depois de aprovado — as de itens não têm essa coluna, filtro
+      // não se aplica a elas).
+      const fazQAprovado = (table: string) => fazQ(table).eq("status_campo", "aprovado");
 
       const [
         { data: pulvs }, { data: pulvItens },
@@ -202,13 +206,13 @@ export default function RelAplicacoesPage() {
         { data: adubs }, { data: aduItens },
         { data: plantios },
       ] = await Promise.all([
-        fazQ("pulverizacoes"),
+        fazQAprovado("pulverizacoes"),
         fazQ("pulverizacao_itens"),
-        fazQ("correcoes_solo").then((r: any) => r.error ? { data: [] } : r),
+        fazQAprovado("correcoes_solo").then((r: any) => r.error ? { data: [] } : r),
         fazQ("correcoes_solo_itens").then((r: any) => r.error ? { data: [] } : r),
-        fazQ("adubacoes_base").then((r: any) => r.error ? { data: [] } : r),
+        fazQAprovado("adubacoes_base").then((r: any) => r.error ? { data: [] } : r),
         fazQ("adubacoes_base_itens").then((r: any) => r.error ? { data: [] } : r),
-        fazQ("plantios"),
+        fazQAprovado("plantios"),
       ]);
 
       const nomeT   = (id?: string) => talhoes.find(t => t.id === id)?.nome ?? "Sem talhão";

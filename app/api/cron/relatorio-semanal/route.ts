@@ -134,6 +134,7 @@ export async function GET(req: NextRequest) {
       .from("plantios")
       .select("talhao_id, data_plantio, cultura")
       .eq("fazenda_id", fazenda.id)
+      .eq("status_campo", "aprovado")
       .order("data_plantio", { ascending: false })
       .limit(3);
 

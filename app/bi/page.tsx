@@ -408,8 +408,8 @@ export default function BI() {
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").in("fazenda_id", fazendaIds).order("descricao"),
       supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha,produto_agricola_id").in("fazenda_id", fids),
-      supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids),
-      supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids),
+      supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids).eq("status_campo", "aprovado"),
+      supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids).eq("status_campo", "aprovado"),
       supabase.from("arrendamento_pagamentos").select("id,arrendamento_id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
       supabase.from("arrendamentos").select("id,fazenda_id,produto_agricola_id,produto_agricola_id_milho").in("fazenda_id", fids),
       supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto").in("fazenda_id", fids),
@@ -607,13 +607,13 @@ export default function BI() {
     setOpsLoading(true);
     const [talR, pulvOpR, pulvItR, adubOpR, adubItR, csOpR, csItR, plFulR] = await Promise.allSettled([
       supabase.from("talhoes").select("id,nome").in("fazenda_id", fazendaIds),
-      supabase.from("pulverizacoes").select("id,ciclo_id,talhao_id,area_ha").in("fazenda_id", fazendaIds),
+      supabase.from("pulverizacoes").select("id,ciclo_id,talhao_id,area_ha").in("fazenda_id", fazendaIds).eq("status_campo", "aprovado"),
       supabase.from("pulverizacao_itens").select("id,pulverizacao_id,nome_produto,dose_ha,unidade,total_consumido,valor_unitario,custo_ha,custo_total").in("fazenda_id", fazendaIds),
-      supabase.from("adubacoes_base").select("id,ciclo_id,talhao_id,area_ha").in("fazenda_id", fazendaIds),
+      supabase.from("adubacoes_base").select("id,ciclo_id,talhao_id,area_ha").in("fazenda_id", fazendaIds).eq("status_campo", "aprovado"),
       supabase.from("adubacoes_base_itens").select("id,adubacao_id,produto_nome,dose_kg_ha,quantidade_kg,valor_unitario,custo_total").in("fazenda_id", fazendaIds),
-      supabase.from("correcoes_solo").select("id,ciclo_id,talhao_id,area_ha").in("fazenda_id", fazendaIds),
+      supabase.from("correcoes_solo").select("id,ciclo_id,talhao_id,area_ha").in("fazenda_id", fazendaIds).eq("status_campo", "aprovado"),
       supabase.from("correcoes_solo_itens").select("id,correcao_id,produto_nome,dose_ton_ha,quantidade_ton,valor_unitario,custo_total").in("fazenda_id", fazendaIds),
-      supabase.from("plantios").select("id,ciclo_id,talhao_id,variedade,area_ha,dose_kg_ha,quantidade_kg,custo_sementes").in("fazenda_id", fazendaIds),
+      supabase.from("plantios").select("id,ciclo_id,talhao_id,variedade,area_ha,dose_kg_ha,quantidade_kg,custo_sementes").in("fazenda_id", fazendaIds).eq("status_campo", "aprovado"),
     ]);
     if (talR.status    === "fulfilled") setTalhoes((talR.value.data ?? []) as BiTalhao[]);
     if (pulvOpR.status === "fulfilled") setPulvOps((pulvOpR.value.data ?? []) as BiPulvOp[]);

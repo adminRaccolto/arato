@@ -200,7 +200,8 @@ export default function EstoqueGraosPage() {
 
     const colQ = supabase.from("colheitas")
       .select("produto, deposito_id, total_sacas, total_kg_classificado")
-      .eq("fazenda_id", fazAtiva);
+      .eq("fazenda_id", fazAtiva)
+      .eq("status_campo", "aprovado");
     if (cicloIds.length) colQ.in("ciclo_id", cicloIds);
     const { data: colheitas } = await colQ;
 
@@ -208,6 +209,7 @@ export default function EstoqueGraosPage() {
       .select("produto_nome, deposito_id, sacas, peso_classificado_kg")
       .eq("fazenda_id", fazAtiva)
       .eq("status", "confirmado")
+      .eq("status_campo", "aprovado")
       .eq("tipo", "proprio");
     if (cicloIds.length) romQ.in("ciclo_id", cicloIds);
     const { data: romaneios } = await romQ;
@@ -318,7 +320,7 @@ export default function EstoqueGraosPage() {
     if (!fMovTipo || fMovTipo === "entrada") {
       const q = supabase.from("colheitas")
         .select("id, data_colheita, produto, deposito_id, total_sacas, total_kg_classificado, ciclo_id")
-        .eq("fazenda_id", fazAtiva).order("data_colheita", { ascending: false }).limit(200);
+        .eq("fazenda_id", fazAtiva).eq("status_campo", "aprovado").order("data_colheita", { ascending: false }).limit(200);
       if (cicloIds.length) q.in("ciclo_id", cicloIds);
       const { data: cols } = await q;
       for (const c of (cols ?? [])) {

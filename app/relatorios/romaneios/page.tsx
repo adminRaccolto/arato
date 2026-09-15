@@ -90,7 +90,7 @@ function RelatorioRomaneios() {
     try {
       if (aba === "entrada") {
         const ids = filtFaz ? [filtFaz] : (fazendaIds ?? (fazendaId ? [fazendaId] : []));
-        let q = supabase.from("romaneios_entrada").select("*").in("fazenda_id", ids).gte("data", filtDe).lte("data", filtAte).order("data", { ascending: false });
+        let q = supabase.from("romaneios_entrada").select("*").in("fazenda_id", ids).eq("status_campo", "aprovado").gte("data", filtDe).lte("data", filtAte).order("data", { ascending: false });
         if (filtStatus) q = q.eq("status", filtStatus);
         if (filtCiclo)  q = q.eq("ciclo_id", filtCiclo);
         const { data } = await q;
