@@ -132,6 +132,19 @@ export async function POST(req: NextRequest) {
 
     const db = sb();
 
+    // Todas as fazendas da conta — o CNPJ monitorado no SIEG pode estar
+    // configurado numa fazenda IRMÃ, diferente da fazenda ativa no momento
+    // (achado real: sync falhava com "nenhum CPF/CNPJ configurado" mesmo com
+    // CNPJ cadastrado, só que salvo noutra fazenda da mesma conta).
+    let fazendaIdsDaConta: string[] = [fazenda_id];
+    try {
+      const { data: fazRow } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+      if (fazRow?.conta_id) {
+        const { data: fazRows } = await db.from("fazendas").select("id").eq("conta_id", fazRow.conta_id);
+        if (fazRows && fazRows.length > 0) fazendaIdsDaConta = fazRows.map(f => f.id);
+      }
+    } catch { /* usa só fazenda_id como fallback */ }
+
     const { data: row } = await db
       .from("configuracoes_modulo").select("config")
       .eq("fazenda_id", fazenda_id).eq("modulo", "sieg").maybeSingle();
@@ -149,12 +162,31 @@ export async function POST(req: NextRequest) {
     } else if (cfg.cnpj_destino) {
       cnpjs = [cfg.cnpj_destino.replace(/\D/g, "")];
     }
+    if (cnpjs.length === 0 && fazendaIdsDaConta.length > 1) {
+      const { data: siegRows } = await db
+        .from("configuracoes_modulo").select("config")
+        .in("fazenda_id", fazendaIdsDaConta).eq("modulo", "sieg");
+      for (const r of (siegRows ?? [])) {
+        const c = (r.config ?? {}) as Record<string, string>;
+        if (Array.isArray(c.cnpjs_destino)) {
+          for (const doc of (c.cnpjs_destino as unknown as string[])) {
+            const n = doc.replace(/\D/g, "");
+            if (n && !cnpjs.includes(n)) cnpjs.push(n);
+          }
+        } else if (c.cnpj_destino) {
+          const n = c.cnpj_destino.replace(/\D/g, "");
+          if (n && !cnpjs.includes(n)) cnpjs.push(n);
+        }
+      }
+    }
     if (cnpjs.length === 0) {
       const { data: fr } = await db
         .from("configuracoes_modulo").select("config")
-        .eq("fazenda_id", fazenda_id).like("modulo", "fiscal%").limit(1);
-      const doc = (fr?.[0]?.config as Record<string, string> | undefined)?.cpf_cnpj_emitente?.replace(/\D/g, "");
-      if (doc) cnpjs = [doc];
+        .in("fazenda_id", fazendaIdsDaConta).like("modulo", "fiscal%");
+      for (const r of (fr ?? [])) {
+        const doc = (r.config as Record<string, string> | undefined)?.cpf_cnpj_emitente?.replace(/\D/g, "");
+        if (doc && !cnpjs.includes(doc)) cnpjs.push(doc);
+      }
     }
     if (cnpjs.length === 0) {
       return NextResponse.json({ erro: "Nenhum CPF/CNPJ configurado — acesse Configurações → Integrações → Sieg." }, { status: 400 });

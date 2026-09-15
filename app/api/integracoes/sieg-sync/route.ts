@@ -79,16 +79,43 @@ export async function POST(req: NextRequest) {
       cnpjs = [cfg.cnpj_destino.replace(/\D/g, "")];
     }
 
+    // Não achou na fazenda enviada — o CNPJ pode estar configurado numa
+    // fazenda IRMÃ da mesma conta (achado real: sync falhava com "nenhum
+    // CPF/CNPJ configurado" mesmo com CNPJ cadastrado, só que salvo noutra
+    // fazenda da conta — fazenda_id aqui é só a fazenda ativa no momento,
+    // nunca deveria restringir a busca de config sozinha). Busca em todas as
+    // fazendas da conta antes de desistir.
+    if (cnpjs.length === 0 && fazendaIdsDaConta.length > 1) {
+      const { data: siegRows } = await db
+        .from("configuracoes_modulo")
+        .select("config")
+        .in("fazenda_id", fazendaIdsDaConta)
+        .eq("modulo", "sieg");
+      for (const r of (siegRows ?? [])) {
+        const c = (r.config ?? {}) as Record<string, string>;
+        if (Array.isArray(c.cnpjs_destino)) {
+          for (const doc of (c.cnpjs_destino as unknown as string[])) {
+            const n = doc.replace(/\D/g, "");
+            if (n && !cnpjs.includes(n)) cnpjs.push(n);
+          }
+        } else if (c.cnpj_destino) {
+          const n = c.cnpj_destino.replace(/\D/g, "");
+          if (n && !cnpjs.includes(n)) cnpjs.push(n);
+        }
+      }
+    }
+
     if (cnpjs.length === 0) {
-      // Tenta auto-detectar do módulo fiscal
+      // Tenta auto-detectar do módulo fiscal — também em todas as fazendas da conta
       const { data: fiscalRows } = await db
         .from("configuracoes_modulo")
         .select("config")
-        .eq("fazenda_id", fazenda_id)
-        .like("modulo", "fiscal%")
-        .limit(1);
-      const doc = (fiscalRows?.[0]?.config as Record<string, string>)?.cpf_cnpj_emitente?.replace(/\D/g, "");
-      if (doc) cnpjs = [doc];
+        .in("fazenda_id", fazendaIdsDaConta)
+        .like("modulo", "fiscal%");
+      for (const r of (fiscalRows ?? [])) {
+        const doc = (r.config as Record<string, string>)?.cpf_cnpj_emitente?.replace(/\D/g, "");
+        if (doc && !cnpjs.includes(doc)) cnpjs.push(doc);
+      }
     }
 
     if (cnpjs.length === 0) {
