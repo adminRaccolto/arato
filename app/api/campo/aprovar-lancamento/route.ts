@@ -86,13 +86,15 @@ async function consumirEstoque(
       .single();
     if (!ins) return { ok: false, erro: "insumo do plantio não encontrado" };
 
+    const custoUnit = ins.custo_medio ?? ins.valor_unitario ?? 0;
+
     await adm.from("insumos").update({ estoque: (ins.estoque ?? 0) - qty }).eq("id", p.insumo_id);
     const { error: movErro } = await adm.from("movimentacoes_estoque").insert({
       insumo_id: p.insumo_id,
       fazenda_id: p.fazenda_id,
       tipo: "saida",
       quantidade: qty,
-      custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
+      custo_unitario_na_baixa: custoUnit || undefined,
       data: p.data_plantio,
       ciclo_id: p.ciclo_id,
       operacao: "plantio",
@@ -101,6 +103,11 @@ async function consumirEstoque(
       lote_semente: p.lote_semente ?? null,
     });
     if (movErro) return { ok: false, erro: movErro.message };
+
+    // Mesmo campo que o desktop preenche na criação (processarPlantio em
+    // lib/db.ts) — sem isso o DRE subestimava o custo de plantio vindo do
+    // App Campo (achado 15/set/2026).
+    await adm.from("plantios").update({ custo_sementes: custoUnit * qty }).eq("id", id);
     return { ok: true };
   }
 
@@ -166,6 +173,7 @@ async function consumirEstoque(
       .eq("adubacao_id", id);
     if (itensErro) return { ok: false, erro: itensErro.message };
 
+    let custoTotal = 0;
     for (const item of itens ?? []) {
       if (!item.insumo_id || !item.dose_kg_ha) continue;
       const kg = item.dose_kg_ha * adub.area_ha;
@@ -189,19 +197,27 @@ async function consumirEstoque(
         default: qtdNativa = kg; break;
       }
 
+      const custoUnit = ins.custo_medio ?? ins.valor_unitario ?? 0;
+      custoTotal += custoUnit * qtdNativa;
+
       await adm.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", item.insumo_id);
       await adm.from("movimentacoes_estoque").insert({
         insumo_id: item.insumo_id,
         fazenda_id: adub.fazenda_id,
         tipo: "saida",
         quantidade: qtdNativa,
-        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
+        custo_unitario_na_baixa: custoUnit || undefined,
         data: adub.data_aplicacao,
         ciclo_id: adub.ciclo_id,
         motivo: "adubacao_base",
         observacao: `Adubação de Base — ${ins.nome}`,
       });
     }
+
+    // Mesmo campo que o desktop preenche na criação (processarAdubacao em
+    // lib/db.ts) — sem isso o DRE subestimava o custo de adubação vindo do
+    // App Campo (achado 15/set/2026).
+    await adm.from("adubacoes_base").update({ custo_total: custoTotal }).eq("id", id);
     return { ok: true };
   }
 
@@ -219,6 +235,7 @@ async function consumirEstoque(
       .eq("correcao_id", id);
     if (itensErro) return { ok: false, erro: itensErro.message };
 
+    let custoTotal = 0;
     for (const item of itens ?? []) {
       if (!item.insumo_id || !item.dose_ton_ha) continue;
       const ton = item.dose_ton_ha * correcao.area_ha;
@@ -241,32 +258,44 @@ async function consumirEstoque(
         default: qtdNativa = ton * 1000; break;
       }
 
+      const custoUnit = ins.custo_medio ?? ins.valor_unitario ?? 0;
+      custoTotal += custoUnit * qtdNativa;
+
       await adm.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", item.insumo_id);
       await adm.from("movimentacoes_estoque").insert({
         insumo_id: item.insumo_id,
         fazenda_id: correcao.fazenda_id,
         tipo: "saida",
         quantidade: qtdNativa,
-        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
+        custo_unitario_na_baixa: custoUnit || undefined,
         ciclo_id: correcao.ciclo_id,
         data: correcao.data_aplicacao,
         motivo: "correcao_solo",
         observacao: `Correção de Solo — ${ins.nome}`,
       });
     }
+
+    // Mesmo campo que o desktop preenche na criação (processarCorrecao em
+    // lib/db.ts) — sem isso o DRE subestimava o custo de correção vindo do
+    // App Campo (achado 15/set/2026).
+    await adm.from("correcoes_solo").update({ custo_total: custoTotal }).eq("id", id);
     return { ok: true };
   }
 
-  // abastecimentos — baixa da bomba (bombas_combustivel.estoque_atual_l) se
-  // a bomba consome estoque próprio; senão baixa direto do insumo
-  // combustível, mesmo padrão das outras operações. Espelha
-  // app/estoque/abastecimento/page.tsx (desktop) — mas, diferente do
-  // desktop, NUNCA gera lançamento financeiro (Conta a Pagar): essa decisão
-  // de faturamento é do gestor, fora do escopo do operador de campo
-  // (CLAUDE.md do App Campo, seção 3.2).
+  // abastecimentos — baixa SÓ da bomba (bombas_combustivel.estoque_atual_l),
+  // e só quando ela controla estoque próprio (consume_estoque !== false).
+  // Espelha exatamente o comportamento real do desktop
+  // (app/estoque/abastecimento/page.tsx): sem bomba, ou bomba "posto
+  // externo" (consume_estoque=false), o desktop não baixa nada — abastecer
+  // fora não consome o diesel que a fazenda tem guardado. Corrigido
+  // 15/set/2026: esta rota antes caía num fallback que baixava
+  // `insumos.estoque` direto nesse caso, o que o desktop nunca fez — ficava
+  // inconsistente com `excluir()` do desktop, que só sabe devolver estoque
+  // de bomba, nunca de insumo direto. `insumo_id` no abastecimento continua
+  // gravado (é só informativo, pra saber qual combustível foi usado).
   const { data: abastecimento, error: erroAbastecimento } = await adm
     .from("abastecimentos")
-    .select("fazenda_id, bomba_id, insumo_id, quantidade_l, ciclo_id, data")
+    .select("bomba_id, quantidade_l")
     .eq("id", id)
     .single();
   if (erroAbastecimento || !abastecimento) {
@@ -285,29 +314,6 @@ async function consumirEstoque(
         .from("bombas_combustivel")
         .update({ estoque_atual_l: Math.max(0, (bomba.estoque_atual_l ?? 0) - abastecimento.quantidade_l) })
         .eq("id", abastecimento.bomba_id);
-      return { ok: true };
-    }
-  }
-
-  if (abastecimento.insumo_id) {
-    const { data: ins } = await adm
-      .from("insumos")
-      .select("estoque, custo_medio, valor_unitario, nome")
-      .eq("id", abastecimento.insumo_id)
-      .single();
-    if (ins) {
-      await adm.from("insumos").update({ estoque: (ins.estoque ?? 0) - abastecimento.quantidade_l }).eq("id", abastecimento.insumo_id);
-      await adm.from("movimentacoes_estoque").insert({
-        insumo_id: abastecimento.insumo_id,
-        fazenda_id: abastecimento.fazenda_id,
-        tipo: "saida",
-        quantidade: abastecimento.quantidade_l,
-        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
-        ciclo_id: abastecimento.ciclo_id,
-        data: abastecimento.data,
-        motivo: "abastecimento",
-        observacao: `Abastecimento — ${ins.nome}`,
-      });
     }
   }
   return { ok: true };
