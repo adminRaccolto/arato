@@ -198,6 +198,12 @@ export async function POST(req: NextRequest) {
     const trintaDias = new Date(Date.now() - 30 * 86_400_000).toISOString();
     const iniStr  = dtIni ? toISO(dtIni) : (cfg.ultima_sync_nfse_ts ?? trintaDias);
     const fimStr  = dtFim ? toISO(dtFim).replace("T00:00:00.000Z", "T23:59:59.999Z") : new Date().toISOString();
+    // Para NFSe (TipoXml 3), a SIEG rejeita DataEmissaoInicio/Fim com hora —
+    // exige só dia/mês/ano ("Certifique-se de apenas passar dia/mês/ano em
+    // NFSe", HTTP 400). DataUpload aceita datetime completo normalmente —
+    // só o filtro por DataEmissao é exigente com o formato.
+    const iniData = iniStr.slice(0, 10);
+    const fimData = fimStr.slice(0, 10);
 
     console.log(`[nfse] fazenda=${fazenda_id} cnpjs=${cnpjs.join(",")} ${iniStr.slice(0,10)}→${fimStr.slice(0,10)}`);
 
@@ -237,8 +243,8 @@ export async function POST(req: NextRequest) {
 
       await tentar("CnpjTom+DataUpload",   { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjTom: cnpj });
       await tentar("CnpjDest+DataUpload",  { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjDest: cnpj });
-      await tentar("CnpjTom+DataEmissao",  { TipoXml: 3, DataEmissaoInicio: iniStr, DataEmissaoFim: fimStr, CnpjTom: cnpj });
-      await tentar("CnpjDest+DataEmissao", { TipoXml: 3, DataEmissaoInicio: iniStr, DataEmissaoFim: fimStr, CnpjDest: cnpj });
+      await tentar("CnpjTom+DataEmissao",  { TipoXml: 3, DataEmissaoInicio: iniData, DataEmissaoFim: fimData, CnpjTom: cnpj });
+      await tentar("CnpjDest+DataEmissao", { TipoXml: 3, DataEmissaoInicio: iniData, DataEmissaoFim: fimData, CnpjDest: cnpj });
 
       // Nível 5 — Fallback geral sem filtro CNPJ + filtro client-side no XML
       if (docs.length === 0) {
@@ -253,7 +259,7 @@ export async function POST(req: NextRequest) {
             allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr });
             if (allXmls.length === 0) {
               await sleep(800);
-              allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataEmissaoInicio: iniStr, DataEmissaoFim: fimStr });
+              allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataEmissaoInicio: iniData, DataEmissaoFim: fimData });
             }
           } catch (e) {
             tentativas.push(`Fallback: ERRO (${String(e).slice(0, 220)})`);
