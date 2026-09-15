@@ -199,7 +199,7 @@ async function consumirEstoque(
         data: adub.data_aplicacao,
         ciclo_id: adub.ciclo_id,
         motivo: "adubacao_base",
-        descricao: `Adubação de Base — ${ins.nome}`,
+        observacao: `Adubação de Base — ${ins.nome}`,
       });
     }
     return { ok: true };
@@ -251,7 +251,7 @@ async function consumirEstoque(
         ciclo_id: correcao.ciclo_id,
         data: correcao.data_aplicacao,
         motivo: "correcao_solo",
-        descricao: `Correção de Solo — ${ins.nome}`,
+        observacao: `Correção de Solo — ${ins.nome}`,
       });
     }
     return { ok: true };
@@ -306,7 +306,7 @@ async function consumirEstoque(
         ciclo_id: abastecimento.ciclo_id,
         data: abastecimento.data,
         motivo: "abastecimento",
-        descricao: `Abastecimento — ${ins.nome}`,
+        observacao: `Abastecimento — ${ins.nome}`,
       });
     }
   }

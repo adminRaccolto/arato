@@ -3665,11 +3665,12 @@ export async function excluirCorrecao(id: string): Promise<void> {
           default:   qtd = ton * 1000; break;
         }
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + qtd }).eq("id", it.insumo_id);
-        await supabase.from("movimentacoes_estoque").insert({
+        const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: it.insumo_id, fazenda_id: correcao.fazenda_id,
           tipo: "entrada", quantidade: qtd, data: new Date().toISOString().slice(0, 10),
-          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de correção de solo", auto: true,
+          motivo: "estorno_exclusao", observacao: "Estorno por exclusão de correção de solo", auto: true,
         });
+        if (errMov) throw errMov;
       }
     }
   }
@@ -3694,13 +3695,14 @@ export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoS
         default:    qtdNativa = ton * 1000; break;
       }
       await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", it.insumo_id);
-      await supabase.from("movimentacoes_estoque").insert({
+      const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
         insumo_id:               it.insumo_id, fazenda_id: correcao.fazenda_id,
         tipo:                    "saida", quantidade: qtdNativa, data: correcao.data_aplicacao,
         custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
         ciclo_id: correcao.ciclo_id, motivo: "correcao_solo",
-        descricao: `Correção de Solo — ${nomes[it.insumo_id] ?? "produto"}`,
+        observacao: `Correção de Solo — ${nomes[it.insumo_id] ?? "produto"}`,
       });
+      if (errMov) throw errMov;
     }
   }
   // Não cria Conta a Pagar aqui — o insumo já foi pago (ou entrou em CP) na
@@ -3753,11 +3755,12 @@ export async function excluirAdubacao(id: string): Promise<void> {
           default:   qtd = kg; break;
         }
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + qtd }).eq("id", it.insumo_id);
-        await supabase.from("movimentacoes_estoque").insert({
+        const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: it.insumo_id, fazenda_id: adub.fazenda_id,
           tipo: "entrada", quantidade: qtd, data: new Date().toISOString().slice(0, 10),
-          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de adubação de base", auto: true,
+          motivo: "estorno_exclusao", observacao: "Estorno por exclusão de adubação de base", auto: true,
         });
+        if (errMov) throw errMov;
       }
     }
   }
@@ -3783,13 +3786,14 @@ export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoB
         default:    qtdNativa = kg; break;
       }
       await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", it.insumo_id);
-      await supabase.from("movimentacoes_estoque").insert({
+      const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
         insumo_id:               it.insumo_id, fazenda_id: adubacao.fazenda_id,
         tipo:                    "saida", quantidade: qtdNativa, data: adubacao.data_aplicacao,
         custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
         ciclo_id: adubacao.ciclo_id, motivo: "adubacao_base",
-        descricao: `Adubação de Base — ${nomes[it.insumo_id] ?? "fertilizante"}`,
+        observacao: `Adubação de Base — ${nomes[it.insumo_id] ?? "fertilizante"}`,
       });
+      if (errMov) throw errMov;
     }
   }
   // Não cria Conta a Pagar aqui — o insumo já foi pago (ou entrou em CP) na
@@ -3823,11 +3827,12 @@ export async function excluirPlantio(id: string): Promise<void> {
       const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", p.insumo_id).single();
       if (ins) {
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + p.quantidade_kg }).eq("id", p.insumo_id);
-        await supabase.from("movimentacoes_estoque").insert({
+        const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: p.insumo_id, fazenda_id: p.fazenda_id,
           tipo: "entrada", quantidade: p.quantidade_kg, data: new Date().toISOString().slice(0, 10),
-          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de plantio", auto: true,
+          motivo: "estorno_exclusao", observacao: "Estorno por exclusão de plantio", auto: true,
         });
+        if (errMov) throw errMov;
       }
     }
     if (p.lancamento_id) {
@@ -3909,11 +3914,12 @@ export async function excluirPulverizacao(id: string): Promise<void> {
       const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", it.insumo_id).single();
       if (ins) {
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + it.total_consumido }).eq("id", it.insumo_id);
-        await supabase.from("movimentacoes_estoque").insert({
+        const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: it.insumo_id, fazenda_id: pulv.fazenda_id,
           tipo: "entrada", quantidade: it.total_consumido, data: new Date().toISOString().slice(0, 10),
-          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de pulverização", auto: true,
+          motivo: "estorno_exclusao", observacao: "Estorno por exclusão de pulverização", auto: true,
         });
+        if (errMov) throw errMov;
       }
     }
   }
