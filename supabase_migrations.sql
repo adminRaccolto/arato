@@ -12715,4 +12715,12 @@ ALTER TABLE folha_pagamento
 CREATE INDEX IF NOT EXISTS idx_folha_pagamento_produtor
   ON folha_pagamento(produtor_id) WHERE produtor_id IS NOT NULL;
 
+-- Guarda a CP gerada de FGTS e de INSS Patronal ao fechar a folha (uma de
+-- cada por folha, não por funcionário) — sem isso, reabrir a folha não
+-- consegue achar/excluir essas CPs (só rastreava as de salário, por
+-- funcionário, via folha_funcionarios.cp_lancamento_id).
+ALTER TABLE folha_pagamento
+  ADD COLUMN IF NOT EXISTS cp_fgts_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS cp_inss_patronal_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL;
+
 NOTIFY pgrst, 'reload schema';

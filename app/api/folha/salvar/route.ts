@@ -187,6 +187,55 @@ export async function POST(req: Request) {
         }
       }
 
+      // Encargos patronais — FGTS e INSS Patronal, uma CP cada (não por
+      // funcionário) sobre o total da folha. Vencimento unificado dia 20 do
+      // mês seguinte (FGTS Digital/eSocial). INSS Patronal só para
+      // empregador Empresa (empresa_id) — Produtor Rural (produtor_id)
+      // recolhe Funrural em vez disso, calculado fora da folha.
+      const produtorIdFolha = (itens ?? []).find((it: any) => it.produtor_id)?.produtor_id ?? null;
+      const totalFGTS       = (itens ?? []).reduce((s: number, it: any) => s + (it.fgts ?? 0), 0);
+      const totalINSSPat    = (itens ?? []).reduce((s: number, it: any) => s + (it.inss_patronal ?? 0), 0);
+      const vencimentoEncargo = (() => {
+        const [ano, mes] = competencia.split("-").map(Number);
+        const prox = mes === 12 ? { a: ano + 1, m: 1 } : { a: ano, m: mes + 1 };
+        return `${prox.a}-${String(prox.m).padStart(2, "0")}-20`;
+      })();
+
+      if (totalFGTS > 0.005) {
+        const ogFgts = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.013");
+        const { data: fgtsLanc, error: fgtsErr } = await sb.from("lancamentos").insert({
+          fazenda_id, empresa_id: empresa_id ?? null, produtor_id: produtorIdFolha,
+          natureza: "real", tipo: "pagar",
+          descricao: `FGTS ${nomeMesLabel}`,
+          valor: Math.round(totalFGTS * 100) / 100,
+          moeda: "BRL", status: "em_aberto",
+          categoria: "Pessoal / Encargos",
+          operacao_gerencial_id: ogFgts,
+          data_vencimento: vencimentoEncargo, data_lancamento: hoje,
+        }).select("id").single();
+        if (fgtsErr) throw new Error(`CP FGTS: ${fgtsErr.message}`);
+        // Se a Seção 261 (migration) ainda não rodou, folha_pagamento não tem
+        // essa coluna — a CP é criada normalmente, só não fica rastreada pra
+        // reabrir excluir sozinho depois (precisaria excluir manualmente).
+        if (fgtsLanc?.id) await sb.from("folha_pagamento").update({ cp_fgts_id: fgtsLanc.id }).eq("id", id);
+      }
+
+      if (empresa_id && totalINSSPat > 0.005) {
+        const ogInssPat = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.014");
+        const { data: inssLanc, error: inssErr } = await sb.from("lancamentos").insert({
+          fazenda_id, empresa_id, produtor_id: null,
+          natureza: "real", tipo: "pagar",
+          descricao: `INSS Patronal ${nomeMesLabel}`,
+          valor: Math.round(totalINSSPat * 100) / 100,
+          moeda: "BRL", status: "em_aberto",
+          categoria: "Pessoal / Encargos",
+          operacao_gerencial_id: ogInssPat,
+          data_vencimento: vencimentoEncargo, data_lancamento: hoje,
+        }).select("id").single();
+        if (inssErr) throw new Error(`CP INSS Patronal: ${inssErr.message}`);
+        if (inssLanc?.id) await sb.from("folha_pagamento").update({ cp_inss_patronal_id: inssLanc.id }).eq("id", id);
+      }
+
       // Marca como "descontado" SOMENTE os adiantamentos cujo funcionário
       // tem adiantamento > 0 na folha — evita marcar adiantamentos não incluídos.
       const funcIdsComAdiantamento = (itens ?? [])
@@ -223,7 +272,23 @@ export async function POST(req: Request) {
         .eq("folha_id", id);
       if (itErr) throw itErr;
 
-      const cpIds = (itens ?? []).map((i: any) => i.cp_lancamento_id).filter(Boolean) as string[];
+      // CPs de encargos (FGTS/INSS Patronal) gerados pela folha inteira, não
+      // por funcionário — busca defensiva: se a Seção 261 ainda não rodou,
+      // essas colunas não existem, e simplesmente não há nada pra reverter
+      // aqui (a CP fica órfã, precisa ser excluída manualmente uma vez).
+      let cpFgtsId: string | null = null;
+      let cpInssPatId: string | null = null;
+      const { data: folhaRow, error: folhaRowErr } = await sb
+        .from("folha_pagamento").select("cp_fgts_id, cp_inss_patronal_id").eq("id", id).maybeSingle();
+      if (!folhaRowErr) {
+        cpFgtsId = (folhaRow as any)?.cp_fgts_id ?? null;
+        cpInssPatId = (folhaRow as any)?.cp_inss_patronal_id ?? null;
+      }
+
+      const cpIds = [
+        ...(itens ?? []).map((i: any) => i.cp_lancamento_id).filter(Boolean),
+        cpFgtsId, cpInssPatId,
+      ].filter(Boolean) as string[];
 
       // Bloqueia se qualquer CP já foi baixado
       if (cpIds.length > 0) {
@@ -245,6 +310,10 @@ export async function POST(req: Request) {
       await sb.from("folha_funcionarios")
         .update({ cp_lancamento_id: null })
         .eq("folha_id", id);
+
+      if (cpFgtsId || cpInssPatId) {
+        await sb.from("folha_pagamento").update({ cp_fgts_id: null, cp_inss_patronal_id: null }).eq("id", id);
+      }
 
       // Reverte adiantamentos "descontado" → "pendente" para os funcionários da folha
       const funcIds = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];

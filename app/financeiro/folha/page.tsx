@@ -132,10 +132,14 @@ function liquido(f: FolhaFunc) {
   ) * 100) / 100);
 }
 
+// INSS Patronal só se aplica a funcionário vinculado a Empresa (empresa_id).
+// Vinculado a Produtor Rural (CPF): o empregador PF recolhe Funrural em vez
+// de INSS Patronal sobre a folha — não faz sentido gerar/mostrar esse encargo
+// aqui (Funrural é calculado sobre a comercialização, fora da folha).
 function recalc(f: FolhaFunc): FolhaFunc {
   const bruto = (f.salario_base || 0) + (f.gratificacao || 0);
   const inss  = calcINSS(bruto);
-  return { ...f, salario_bruto: bruto, inss_trabalhador: inss, irrf: calcIRRF(bruto, inss), fgts: calcFGTS(bruto), inss_patronal: calcINSSPat(bruto) };
+  return { ...f, salario_bruto: bruto, inss_trabalhador: inss, irrf: calcIRRF(bruto, inss), fgts: calcFGTS(bruto), inss_patronal: f.empresa_id ? calcINSSPat(bruto) : 0 };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
