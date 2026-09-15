@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15-h",
+    data: "15/09/2026",
+    titulo: "Custo Total Est. de Funcionários não somava o complemento salarial",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastros → Funcionários: a coluna 'Custo Total Est.' da lista mostrava só salário base + encargos, esquecendo o complemento salarial (por fora). Agora soma os três, igual ao painel 'Custo mensal estimado' dentro do cadastro do funcionário. Os encargos (FGTS, INSS, provisões) continuam incidindo só sobre o salário base — isso já estava certo." },
+    ],
+    onde: "Cadastros → Funcionários",
+  },
+  {
     versao: "2026.09.15-g",
     data: "15/09/2026",
     titulo: "Busca por fornecedor não filtrava por nome",
