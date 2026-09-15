@@ -18,6 +18,8 @@ const NAV: NavItem[] = [
   { type: "link",    id: "novo",      label: "Novo Cliente",           icon: "＋", path: "/admin/clientes/novo" },
   { type: "link",    id: "onboarding",label: "Agente Implantador",     icon: "🤖", path: "/admin/onboarding"   },
   { type: "link",    id: "dados",     label: "Dados & Limpeza",        icon: "🗑️", path: "/admin/dados"       },
+  { type: "divider", label: "App Campo" },
+  { type: "link",    id: "campo",     label: "App Campo",              icon: "🚜", path: "/admin/campo"    },
   { type: "divider", label: "Produto" },
   { type: "link",    id: "planos",    label: "Planos & Preços",        icon: "💰", path: "/admin/planos"   },
   { type: "link",    id: "modulos",   label: "Módulos do Sistema",     icon: "⬡",  path: "/admin/modulos"  },
