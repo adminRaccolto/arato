@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15-f",
+    data: "15/09/2026",
+    titulo: "Funcionários e Folha de Pagamento — correções e novos encargos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastro de Funcionários (e os seletores de funcionário em Seguros, Contas a Pagar e Abastecimento) mostravam só os funcionários da fazenda ativa no momento — trocar de fazenda no topo da tela fazia funcionários reais 'sumirem' da lista. Agora mostram todos os funcionários da conta, de qualquer fazenda." },
+      { tipo: "correcao", texto: "Financeiro → Folha de Pagamento (Produtor Rural): folhas criadas/fechadas 'sumiam' da lista — a tela listava e salvava folhas só pela fazenda ativa no momento, então trocar de fazenda escondia folhas já lançadas (e podia até criar uma folha rascunho duplicada pra mesma competência). Corrigido: a lista e o fechamento/reabertura de folha agora usam a fazenda certa (a da própria folha), independente de qual está ativa no topo da tela." },
+      { tipo: "correcao", texto: "Folha de Pagamento do Produtor Rural misturava funcionários de produtores diferentes numa única folha 'Sem empregador' — agora cada produtor rural tem sua própria folha, com o nome do produtor aparecendo na lista (antes só a folha de Empresa/PJ aparecia identificada)." },
+      { tipo: "novo", texto: "Fechar uma folha agora também gera a Conta a Pagar do FGTS e, quando o empregador é uma Empresa (PJ), do INSS Patronal — antes só o salário líquido de cada funcionário virava CP. Folha de Produtor Rural (CPF) não gera INSS Patronal, porque o produtor rural recolhe Funrural em vez disso (calculado fora da folha)." },
+    ],
+    onde: "Cadastros → Funcionários · Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.09.15-e",
     data: "15/09/2026",
     titulo: "Adubação de Base e Correção de Solo não estavam baixando estoque",

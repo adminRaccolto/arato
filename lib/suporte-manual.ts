@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 15/09/2026 (d)
+ * Última revisão: 15/09/2026 (e)
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -531,7 +531,11 @@ Registra pagamentos antecipados a fornecedores antes da entrega do produto ou se
 ### 15.4 Folha de Pagamento
 **Caminho:** Financeiro → Atividade Rural → Folha de Pagamento
 
-Gerencia folha de pagamento dos funcionários vinculados ao produtor rural (CPF).
+Ao montar uma folha nova, a tela mostra TODOS os funcionários ativos da conta (de qualquer fazenda, vinculados a Empresa/PJ ou a Produtor Rural/CPF) numa lista única pra seleção. Ao salvar, o sistema separa automaticamente em uma folha por empregador — uma por Empresa e uma por Produtor Rural — nunca mistura funcionários de produtores diferentes numa mesma folha. Cada folha salva mostra o nome do empregador (empresa ou produtor) na lista.
+
+**Fechar folha:** gera CP do salário líquido de cada funcionário, mais a CP de FGTS. Se o empregador for uma Empresa (PJ), gera também a CP de INSS Patronal. Produtor Rural (CPF) não gera INSS Patronal — o produtor recolhe Funrural em vez disso, calculado fora da folha (não é a mesma coisa que INSS Patronal).
+**Reabrir folha:** exclui as CPs geradas (salário, FGTS e INSS Patronal), reverte adiantamentos descontados e volta a folha pra rascunho. Bloqueado se algum CP já foi baixado em borderô — nesse caso, estorne o borderô primeiro.
+**Correção 15/09/2026:** a lista de folhas e as ações de fechar/reabrir usavam a fazenda ativa no topo da tela, não a da própria folha — trocar de fazenda podia fazer folhas já lançadas "sumirem" da lista, ou até gerar uma folha rascunho duplicada pra mesma competência. Corrigido.
 
 ---
 
@@ -550,7 +554,7 @@ CR da pessoa jurídica.
 ### 16.3 Folha de Pagamento — Empresa
 **Caminho:** Financeiro → Empresa → Folha de Pagamento — Empresa
 
-Folha de pagamento dos funcionários da empresa (CNPJ).
+Folha de pagamento dos funcionários da empresa (CNPJ) selecionada no topo da tela. Fechar folha gera CP do salário líquido por funcionário, mais FGTS e INSS Patronal (aqui sempre gera os dois, já que o empregador é Empresa).
 
 ### 16.4 Cartões de Crédito
 **Caminho:** Financeiro → Empresa → Cartões de Crédito
@@ -851,7 +855,7 @@ Cadastro completo de fazendas (dados gerais, matrículas, certidões CAR/ITR/CCI
 ### 23.4 Funcionários
 **Caminho:** Configurações → Cadastros → Funcionários
 
-Cadastro de funcionários para folha de pagamento (produtor PF e empresa PJ).
+Cadastro de funcionários para folha de pagamento (produtor PF e empresa PJ) — mostra os de todas as fazendas da conta, não só a fazenda ativa (corrigido 15/09/2026: a lista ficava vazia dependendo de qual fazenda estava ativa no topo da tela).
 
 ### 23.5 Catálogo de Insumos
 **Caminho:** Configurações → Cadastros → Catálogo de Insumos
