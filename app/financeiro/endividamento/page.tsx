@@ -58,6 +58,56 @@ const fmtData = (s?: string | null) => {
 const hoje = new Date().toISOString().slice(0, 10);
 const anoAtual = hoje.slice(0, 4);
 
+const TIPO_AMORT_LABEL: Record<string, string> = {
+  sac:            "SAC",
+  sac_crescente:  "SAC Crescente",
+  price:          "PRICE",
+  outros:         "Outros",
+};
+
+// ─── CET (Custo Efetivo Total) — TIR do fluxo de caixa real do contrato ──────
+// Fluxo: -(valor líquido recebido, já descontado IOF/TAC/outros custos) na
+// data do contrato, + cada parcela na sua data de vencimento. A taxa que
+// zera o VPL desse fluxo, anualizada, é o CET — inclui juros E os custos
+// iniciais da operação, não só a taxa de juros nominal do contrato.
+function xirr(fluxos: { data: Date; valor: number }[]): number | null {
+  if (fluxos.length < 2) return null;
+  const t0 = fluxos[0].data.getTime();
+  const vpl = (taxaAA: number) =>
+    fluxos.reduce((s, f) => {
+      const dias = (f.data.getTime() - t0) / 86_400_000;
+      return s + f.valor / Math.pow(1 + taxaAA, dias / 365);
+    }, 0);
+  let lo = -0.9999, hi = 50; // -99,99% a 5000% a.a. — cobre qualquer operação real
+  let vplLo = vpl(lo);
+  const vplHi = vpl(hi);
+  if (!isFinite(vplLo) || !isFinite(vplHi) || vplLo * vplHi > 0) return null; // sem raiz no intervalo
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    const vplMid = vpl(mid);
+    if (!isFinite(vplMid)) return null;
+    if (Math.abs(vplMid) < 0.005) return mid;
+    if ((vplMid > 0) === (vplLo > 0)) { lo = mid; vplLo = vplMid; } else { hi = mid; }
+  }
+  return (lo + hi) / 2;
+}
+
+function calcularCET(c: ContratoFinanceiro, parcelas: ParcelaPagamento[]): number | null {
+  if (!parcelas.length || !c.data_contrato) return null;
+  const custosIniciais =
+    (c.valor_financiado * ((c.iof_pct ?? 0) / 100)) + (c.tac_valor ?? 0) + (c.outros_custos ?? 0);
+  const valorLiquido = c.valor_financiado - custosIniciais;
+  if (valorLiquido <= 0) return null;
+  const fluxos = [
+    { data: new Date(c.data_contrato.slice(0, 10) + "T00:00:00"), valor: -valorLiquido },
+    ...parcelas
+      .slice()
+      .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))
+      .map(p => ({ data: new Date(p.data_vencimento.slice(0, 10) + "T00:00:00"), valor: p.valor_parcela })),
+  ];
+  return xirr(fluxos);
+}
+
 interface Produtor { id: string; nome_razao_social: string; cpf_cnpj?: string }
 
 interface ContratoEnriquecido extends ContratoFinanceiro {
@@ -93,6 +143,10 @@ export default function RelatorioEndividamento() {
   const [anoFim,    setAnoFim]    = useState(String(Number(anoAtual) + 5));
   // Mostrar só parcelas em aberto (padrão) ou todas
   const [apenasEmAberto, setApenasEmAberto] = useState(true);
+
+  // Aba: evolução temporal (padrão, tabela N1/N2/N3 por ano) ou condições
+  // contratuais (uma linha por contrato — taxa, indexador, CET, etc.)
+  const [abaRel, setAbaRel] = useState<"evolucao" | "condicoes">("evolucao");
 
   // Linhas expandidas (Set para suportar N1 + N2 abertos simultaneamente)
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
@@ -637,8 +691,25 @@ export default function RelatorioEndividamento() {
           ))}
         </div>
 
+        {/* Abas do relatório */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          {([
+            ["evolucao",  "Evolução por Ano"],
+            ["condicoes", "Condições Contratuais"],
+          ] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setAbaRel(k)}
+              style={{
+                padding: "7px 16px", borderRadius: 8, border: `0.5px solid ${abaRel === k ? "#111111" : "var(--border)"}`,
+                background: abaRel === k ? "#111111" : "var(--bg-card)", color: abaRel === k ? "#fff" : "var(--text-2)",
+                fontSize: 13, fontWeight: abaRel === k ? 700 : 400, cursor: "pointer",
+              }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
         {/* Corpo */}
-        {loading ? (
+        {abaRel === "evolucao" && (loading ? (
           <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)" }}>Carregando contratos...</div>
         ) : erro ? (
           <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #FCA5A5" }}>
@@ -837,10 +908,10 @@ export default function RelatorioEndividamento() {
               </table>
             </div>
           </div>
-        )}
+        ))}
 
         {/* ── Bloco Compra de Imóveis Rurais ───────────────────────────────── */}
-        {cctImoveisView.length > 0 && (
+        {abaRel === "evolucao" && cctImoveisView.length > 0 && (
           <div style={{ marginTop: 28 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>
@@ -952,6 +1023,72 @@ export default function RelatorioEndividamento() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {abaRel === "condicoes" && (
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
+                <thead>
+                  <tr style={{ background: "#111111" }}>
+                    <th style={{ ...thStyle, textAlign: "left", minWidth: 200, paddingLeft: 16 }}>Entidade</th>
+                    <th style={{ ...thStyle, textAlign: "left", minWidth: 160 }}>Operação</th>
+                    <th style={thStyle}>Valor</th>
+                    <th style={{ ...thStyle, textAlign: "left" }}>Tipo de Amortização</th>
+                    <th style={thStyle}>Taxa de Juros</th>
+                    <th style={{ ...thStyle, textAlign: "left" }}>Indexador</th>
+                    <th style={thStyle}>CET</th>
+                    <th style={thStyle}>Valor do Juros</th>
+                    <th style={thStyle}>Valor da Parcela</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                        Nenhum contrato encontrado.
+                      </td>
+                    </tr>
+                  ) : filtrados.map((c, i) => {
+                    const cet = calcularCET(c, c.parcelas);
+                    const jurosTotal = c.parcelas.reduce((s, p) => s + (p.juros ?? 0), 0);
+                    const parcelaRef =
+                      c.parcelas.find(p => p.status !== "pago") ??
+                      c.parcelas.slice().sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))[0];
+                    const taxa =
+                      c.taxa_tipo === "variavel"
+                        ? `${c.indexador ?? ""} + ${fmtPct(c.spread_aa)}`.trim()
+                        : c.taxa_juros_aa != null
+                        ? `${fmtPct(c.taxa_juros_aa)} a.a.`
+                        : "—";
+                    return (
+                      <tr key={c.id} style={{ background: i % 2 === 0 ? "transparent" : "var(--bg-tag)" }}>
+                        <td style={{ ...colV, textAlign: "left", paddingLeft: 16, fontWeight: 600 }}>{c.credor}</td>
+                        <td style={{ ...colV, textAlign: "left" }}>
+                          {c.descricao || c.codigo || "—"}
+                          <div style={{ fontSize: 10, color: "var(--text-3)" }}>{TIPO_LABEL[c.tipo] ?? c.tipo}</div>
+                        </td>
+                        <td style={colV}>{fmtBRL((c.valor_financiado ?? 0) * (c.fatorCambio ?? 1))}</td>
+                        <td style={{ ...colV, textAlign: "left" }}>{TIPO_AMORT_LABEL[c.tipo_calculo] ?? c.tipo_calculo}</td>
+                        <td style={colV}>{taxa}</td>
+                        <td style={{ ...colV, textAlign: "left" }}>{c.indexador || "—"}</td>
+                        <td style={{ ...colV, fontWeight: 700, color: cet != null ? "#C0392B" : "var(--text-3)" }}>
+                          {cet != null ? fmtPct(cet * 100, 2) : "—"}
+                        </td>
+                        <td style={colS}>{fmtBRL(jurosTotal * (c.fatorCambio ?? 1))}</td>
+                        <td style={{ ...colV, fontWeight: 600 }}>
+                          {parcelaRef ? fmtBRL(parcelaRef.valor_parcela * (c.fatorCambio ?? 1)) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: "10px 16px", fontSize: 11, color: "var(--text-3)", borderTop: "0.5px solid var(--border)" }}>
+              CET calculado pela TIR (XIRR) do fluxo de caixa real de cada contrato — valor líquido recebido (já descontando IOF, TAC e outros custos) contra o cronograma efetivo de parcelas. Pode aparecer "—" quando faltam parcelas cadastradas ou o fluxo não converge.
             </div>
           </div>
         )}
