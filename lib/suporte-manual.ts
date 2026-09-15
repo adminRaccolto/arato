@@ -641,6 +641,7 @@ Tem duas abas: **Evolução por Ano** (padrão) e **Condições Contratuais**.
 
 **Aba Condições Contratuais** — uma linha por contrato, com as colunas: Entidade (credor), Operação (descrição + tipo), Valor, Tipo de Amortização (SAC/PRICE/Crescente), Taxa de Juros (fixa a.a. ou indexador+spread quando variável), Indexador, CET, Valor do Juros (soma dos juros de todas as parcelas) e Valor da Parcela (próxima parcela em aberto, ou a mais antiga se todas já pagas). Respeita os mesmos filtros de produtor/status/moeda da outra aba.
 **CET (Custo Efetivo Total):** não é a taxa de juros nominal — é calculado de verdade pela TIR (XIRR) do fluxo de caixa real do contrato: valor líquido recebido na contratação (já descontando IOF, TAC e outros custos) contra cada parcela na sua data de vencimento. Aparece "—" quando o contrato não tem parcelas cadastradas ou o cálculo não converge (fluxo sem raiz válida).
+**Taxa de Juros estimada (≈, em itálico):** alguns contratos foram importados de PDF/planilha sem a taxa nominal ter sido capturada no cadastro. Nesses casos a coluna mostra uma taxa estimada, calculada pela TIR do fluxo valor financiado × cronograma de parcelas (sem descontar IOF/TAC, diferente do CET) — é uma aproximação, não a taxa contratual real. Para trocar pela taxa real, edite o contrato em Configurações → Complemento Financeiro → Contratos Financeiros.
 
 ### 18.6 Gastos por Classificação
 **Caminho:** Financeiro → Relatórios Financeiros → Gastos por Classificação

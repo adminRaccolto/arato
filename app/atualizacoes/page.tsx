@@ -13,6 +13,7 @@ const RELEASES = [
     itens: [
       { tipo: "novo", texto: "Relatório de Endividamento ganhou a aba 'Condições Contratuais' — uma linha por contrato com Entidade (credor), Operação, Valor, Tipo de Amortização, Taxa de Juros, Indexador, CET, Valor do Juros e Valor da Parcela. Complementa a aba 'Evolução por Ano' já existente." },
       { tipo: "novo", texto: "CET (Custo Efetivo Total) agora é calculado de verdade — não é a taxa de juros nominal do contrato. O sistema monta o fluxo de caixa real (valor líquido recebido, já descontando IOF/TAC/outros custos, contra cada parcela na data de vencimento) e resolve a taxa que zera esse fluxo (TIR/XIRR). Aparece '—' quando faltam parcelas cadastradas ou o cálculo não converge." },
+      { tipo: "melhoria", texto: "Condições Contratuais: contratos sem taxa de juros cadastrada (comum em contratos importados de PDF/planilha) agora mostram uma taxa estimada (com '≈' e em itálico) calculada a partir do próprio cronograma de parcelas — em vez de ficar em branco. É só uma estimativa: vale a pena lançar a taxa real do contrato em Configurações → Contratos Financeiros quando disponível." },
     ],
     onde: "Financeiro → Endividamento → aba Condições Contratuais",
   },
