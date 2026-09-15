@@ -8,12 +8,13 @@ const RELEASES = [
   {
     versao: "2026.09.15",
     data: "15/09/2026",
-    titulo: "Saldo por Lote — Sementes de Outras Fazendas",
-    modulos: ["Compras & Estoque"],
+    titulo: "Saldo por Lote e Sincronização SIEG entre Fazendas",
+    modulos: ["Compras & Estoque", "Fiscal"],
     itens: [
       { tipo: "correcao", texto: "Saldo por Lote: o seletor de semente mostrava só as sementes cadastradas na fazenda selecionada no topo da tela — ficava vazio em fazendas sem semente própria (ex: um armazém). Agora lista sementes de todas as fazendas da conta, indicando de qual fazenda é cada uma." },
+      { tipo: "correcao", texto: "Sincronizar SIEG (NF de Produtos e NF de Serviço): quando o CNPJ monitorado estava configurado numa fazenda diferente da fazenda selecionada no momento, a sincronização recusava com 'Nenhum CPF/CNPJ configurado' mesmo com tudo certo no cadastro. Agora busca o CNPJ em todas as fazendas da conta antes de recusar." },
     ],
-    onde: "Compras & Estoque → Estoque → Relatórios → Saldo por Lote",
+    onde: "Compras & Estoque → Estoque → Relatórios → Saldo por Lote · Compras → NF de Produtos/Serviços → Sincronizar SIEG",
   },
   {
     versao: "2026.09.14-c",

@@ -954,6 +954,8 @@ Acesse **Configurações → Cadastros → Fazendas e Talhões**. Clique em "+ N
 ### O que é o SIEG?
 Serviço que captura automaticamente todas as NF-e emitidas contra o CNPJ/CPF da fazenda. As notas aparecem em **Compras & Estoque → Integração de Documentos → Notas Capturadas (SIEG)** para serem classificadas e processadas. Para ativar/desativar: **Compras & Estoque → Integração de Documentos → ⚡ Ligar / Desligar SIEG**.
 
+O CNPJ monitorado pode estar configurado em qualquer fazenda da conta — o botão "Sincronizar SIEG" (tanto em NF de Produtos quanto em NF de Serviço) busca em todas as fazendas da conta, não só na fazenda selecionada no momento na tela.
+
 ### Como gero o arquivo do LCDPR?
 Acesse **Fiscal → Obrigações → LCDPR**. Antes da primeira exportação, preencha a aba "Cadastro LCDPR" com CAEPF e tipo de exploração de cada fazenda e os dados do contador responsável. Depois vá em "Exportação", escolha o produtor e o período (ano ou mês) e clique em "Gerar e baixar".
 
