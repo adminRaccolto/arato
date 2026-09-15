@@ -12578,3 +12578,56 @@ CREATE POLICY "contas_bancarias_tenant" ON contas_bancarias
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 259 — CRÍTICO/URGENTE: corrige recursão infinita causada pela Seção
+-- 258. A política "perfis_tenant" consultava a própria tabela perfis dentro
+-- de si mesma (USING referenciando "SELECT ... FROM perfis ..." na política
+-- DE perfis) — Postgres detecta isso e recusa com 42P17 "infinite recursion
+-- detected in policy for relation perfis".
+--
+-- Efeito real, confirmado ao vivo: como praticamente toda política de outras
+-- tabelas (fazendas, lancamentos, pessoas, contas_bancarias, abastecimentos,
+-- monitoramento_pragas, produtores, etc.) também consulta perfis pra resolver
+-- "qual a conta do usuário atual", a recursão quebrada em perfis derrubou o
+-- acesso a TODAS essas tabelas pra QUALQUER usuário logado — não só as 4 da
+-- Seção 258. Ou seja, a correção da Seção 258 causou uma indisponibilidade
+-- geral do sistema pra usuários reais, precisa rodar esta seção imediatamente
+-- depois (ou junto) da 258.
+--
+-- Correção: duas funções SECURITY DEFINER resolvem "minha conta_id" e "sou
+-- raccotlo" acessando perfis SEM RLS (rodam com o dono da função, que
+-- bypassa RLS) — evita a autorreferência que causava a recursão. É o padrão
+-- recomendado pela própria documentação do Supabase pra esse cenário exato
+-- (política de uma tabela que precisa olhar pra ela mesma).
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION public.rls_minha_conta_id()
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.rls_sou_raccotlo()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%');
+$$;
+
+DROP POLICY IF EXISTS "perfis_tenant" ON perfis;
+CREATE POLICY "perfis_tenant" ON perfis
+  USING (
+    user_id = auth.uid()
+    OR conta_id = public.rls_minha_conta_id()
+    OR public.rls_sou_raccotlo()
+  );
+
+NOTIFY pgrst, 'reload schema';
