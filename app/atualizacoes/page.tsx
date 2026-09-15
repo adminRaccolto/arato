@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15",
+    data: "15/09/2026",
+    titulo: "Saldo por Lote — Sementes de Outras Fazendas",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Saldo por Lote: o seletor de semente mostrava só as sementes cadastradas na fazenda selecionada no topo da tela — ficava vazio em fazendas sem semente própria (ex: um armazém). Agora lista sementes de todas as fazendas da conta, indicando de qual fazenda é cada uma." },
+    ],
+    onde: "Compras & Estoque → Estoque → Relatórios → Saldo por Lote",
+  },
+  {
     versao: "2026.09.14-c",
     data: "14/09/2026",
     titulo: "Conciliação Avançada + Novos Relatórios de Estoque e Custos",

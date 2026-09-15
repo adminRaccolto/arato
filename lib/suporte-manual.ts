@@ -307,6 +307,8 @@ Histórico filtrado de movimentações do produto selecionado, com as mesmas col
 
 Consulta o saldo de uma semente por lote — escolha a semente (e opcionalmente um depósito) e clique em Buscar. Mostra, por lote: entradas, saídas, saldo atual e data da última movimentação. Antes essa informação só aparecia embutida nos seletores de lote (transferência, plantio, tratamento de sementes); agora também dá pra consultar direto.
 
+O seletor de semente lista as de **todas as fazendas da conta** (não só a fazenda selecionada no topo da tela) — mostra o nome da fazenda ao lado quando há mais de uma, já que lote de semente é rotineiramente transferido entre propriedades.
+
 ### 9.4 Transferências entre Fazendas
 **Caminho:** Compras & Estoque → Estoque de Insumos → Transferência entre Fazendas
 
