@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 15/09/2026 (c)
+ * Última revisão: 15/09/2026 (d)
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -113,12 +113,16 @@ Registra o plantio por talhão. Gera baixa automática no estoque de sementes e 
 ### 3.2 Adubação de Base
 **Caminho:** Lavoura → Operações de Campo → Adubação de Base
 
-Registra aplicações de fertilizantes sólidos ou líquidos antes ou durante o plantio. Gera baixa de estoque e CP de fertilizantes.
+Registra aplicações de fertilizantes sólidos ou líquidos antes ou durante o plantio. Gera baixa de estoque do(s) fertilizante(s) usado(s) — não cria CP nova (o custo já entrou via a NF de compra do insumo; o custo pro DRE/Custos Totais vem do valor da baixa de estoque, não de um lançamento financeiro novo).
+
+Bug corrigido em 15/09/2026: a baixa de estoque dessa operação não estava sendo gravada no histórico (Kardex) nem entrando no custo do DRE/Custos Totais desde 08/09 — o saldo do insumo sempre esteve certo, só o rastro/custo é que sumia. Corrigido, com backfill das baixas que faltaram.
 
 ### 3.3 Correção de Solo
 **Caminho:** Lavoura → Operações de Campo → Correção de Solo
 
-Registra aplicações de calcário, gesso e corretivos de solo. Gera baixa de estoque e lançamento de custo.
+Registra aplicações de calcário, gesso e corretivos de solo. Gera baixa de estoque do(s) insumo(s) — mesma lógica da Adubação de Base acima, sem CP nova (custo já contabilizado na compra).
+
+Mesmo bug e mesma correção de 15/09/2026 descrita em Adubação de Base (3.2) — também afetava Correção de Solo.
 
 ### 3.4 Pulverização Terrestre
 **Caminho:** Lavoura → Operações de Campo → Pulverização Terrestre

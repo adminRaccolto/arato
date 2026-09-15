@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15-e",
+    data: "15/09/2026",
+    titulo: "Adubação de Base e Correção de Solo não estavam baixando estoque",
+    modulos: ["Compras & Estoque", "Lavoura"],
+    itens: [
+      { tipo: "correcao", texto: "Adubação de Base e Correção de Solo: a baixa de estoque desses lançamentos não estava sendo registrada no Kardex nem entrando no custo do DRE/Custos Totais desde 08/09 — um erro interno de gravação falhava silenciosamente. O saldo físico do insumo (Estoque → Posição) sempre esteve correto; só o histórico de movimentação e o custo nos relatórios ficaram incompletos. Corrigido e as 72 baixas que faltavam desde 08/09 foram lançadas retroativamente." },
+      { tipo: "correcao", texto: "O mesmo tipo de erro também podia acontecer ao excluir um lançamento de Plantio, Pulverização, Adubação de Base ou Correção de Solo (o estorno da baixa de estoque não era gravado) — corrigido." },
+    ],
+    onde: "Lavoura → Adubação de Base · Lavoura → Correção de Solo · Compras & Estoque → Estoque → Relatórios",
+  },
+  {
     versao: "2026.09.15-d",
     data: "15/09/2026",
     titulo: "Borderôs mais claros, exclusão de extrato OFX duplicado",
