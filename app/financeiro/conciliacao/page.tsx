@@ -401,6 +401,37 @@ function ConciliacaoInner() {
     const conciliadoN = linhas.filter(l => l.conciliado).length;
     const contaObj    = contas.find(c => c.id === contaSel);
 
+    // Detecta reimportação do mesmo extrato — mesma conta + período sobreposto.
+    // Sem isso, reimportar cria um SEGUNDO registro com os mesmos lançamentos
+    // do banco, e as duas cópias passam a ser conciliadas de forma
+    // independente e vão divergindo (achado real: 2 cópias do mesmo extrato
+    // Itaú — uma ficou "esquecida" mostrando tudo pendente mesmo com
+    // conciliações já feitas na outra).
+    if (contaSel) {
+      const { data: existentes } = await supabase
+        .from("extratos_bancarios")
+        .select("id, conta_nome, data_inicio, data_fim, conciliados, pendentes, total_linhas")
+        .in("fazenda_id", fazendaIds)
+        .eq("conta_id", contaSel)
+        .lte("data_inicio", dataFim)
+        .gte("data_fim", dataInicio);
+      if (existentes && existentes.length > 0) {
+        const detalhes = existentes
+          .map(ex => `• ${fmtDt(ex.data_inicio)} → ${fmtDt(ex.data_fim)} — ${ex.conciliados}/${ex.total_linhas} já conciliado`)
+          .join("\n");
+        const prosseguir = confirm(
+          `Já existe um extrato importado para esta conta cobrindo (parte d)esse período:\n\n${detalhes}\n\n` +
+          `Importar de novo cria uma CÓPIA separada — as duas passam a ser conciliadas de forma independente e podem divergir.\n\n` +
+          `Prosseguir mesmo assim?`
+        );
+        if (!prosseguir) {
+          setLoading(false);
+          if (inputRef.current) inputRef.current.value = "";
+          return;
+        }
+      }
+    }
+
     const novoExtrato: Extrato = {
       id: `ext-${Date.now()}`,
       conta_id: contaSel,
