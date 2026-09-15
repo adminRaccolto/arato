@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15-d",
+    data: "15/09/2026",
+    titulo: "Borderôs mais claros, exclusão de extrato OFX duplicado",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Contas a Pagar → aba Baixados: borderô com vários títulos agora aparece em uma única linha (sem quebrar em blocos), sem o fundo verde chapado — só o selo 'BDR' — e mostra o nome do fornecedor/cliente dos títulos em vez do texto genérico 'Borderô DD/MM — N títulos', que não dizia do que se tratava." },
+      { tipo: "correcao", texto: "Contas a Pagar → aba Baixados: o filtro 'Fornecedor / Cliente' não filtrava os borderôs pagos — agora filtra normalmente, junto com os demais lançamentos." },
+      { tipo: "novo", texto: "Conciliação: novo botão de excluir (🗑) em cada extrato OFX importado — útil pra limpar cópias duplicadas de reimportação por engano." },
+      { tipo: "melhoria", texto: "Conciliação: importar um OFX da mesma conta e período de um extrato já importado agora é bloqueado de verdade (antes era um aviso que dava pra clicar 'OK' e seguir, criando cópias duplicadas mesmo assim). A tela orienta a excluir o extrato antigo primeiro. Selecionar a conta bancária antes de importar passou a ser obrigatório." },
+    ],
+    onde: "Financeiro → Contas a Pagar → aba Baixados · Financeiro → Conciliação",
+  },
+  {
     versao: "2026.09.15-c",
     data: "15/09/2026",
     titulo: "Simulações do Fluxo de Caixa agora são do cliente, não do navegador",

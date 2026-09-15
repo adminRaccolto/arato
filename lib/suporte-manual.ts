@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 15/09/2026 (b)
+ * Última revisão: 15/09/2026 (c)
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -508,6 +508,8 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 
 **Reprogramar vencimento:** Ícone 📅 na linha → nova data → a observação recebe "[Reprogramado para DD/MM/AAAA]" automaticamente.
 
+**Borderô (selo "BDR"):** pagamento em lote de vários títulos de uma vez. Na aba Baixados, o borderô aparece em uma linha só, com o nome do(s) fornecedor(es)/cliente(s) dos títulos que ele paga (não mais um texto genérico "Borderô DD/MM — N títulos"); clique na linha para expandir e ver os títulos individuais. O filtro "Fornecedor / Cliente" também funciona sobre os borderôs pagos.
+
 ### 15.2 Contas a Receber
 **Caminho:** Financeiro → Atividade Rural → Contas a Receber
 
@@ -587,7 +589,7 @@ Concilia lançamentos do sistema com o extrato OFX importado do banco.
 2. O sistema tenta casar automaticamente por valor (±R$ 0,02) e data (±7 dias)
 3. Confirme os vínculos automáticos ou faça vínculos manuais clicando em "Vincular"
 
-Se já existir um extrato importado da mesma conta cobrindo o mesmo período, o sistema avisa antes de importar de novo — importar mesmo assim cria uma cópia separada, conciliada de forma independente da primeira (evite, a não ser que seja realmente um extrato diferente).
+Selecionar a conta bancária é obrigatório antes de importar. Se já existir um extrato importado da mesma conta cobrindo o mesmo período, a importação é recusada (não é mais um aviso que dá pra ignorar) — se realmente precisar reimportar (ex: o arquivo anterior estava errado), exclua o extrato antigo primeiro (ícone 🗑 no card do extrato, na lista) e importe de novo.
 
 **Borderô (um débito para vários lançamentos):** Clique em "Vincular" → selecione múltiplos lançamentos no painel esquerdo → Confirmar. Corrigido um bug em que a linha podia aparecer conciliada e, segundos depois, voltar sozinha para "Pendente" sem ninguém desvincular — a tela agora só dá a conciliação por concluída depois de confirmar que a gravação no banco terminou.
 
