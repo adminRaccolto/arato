@@ -21,6 +21,7 @@ import {
   listarPASaldos,
   listarMovimentacoesPA,
   saldoPorLoteDetalhado,
+  listarInsumosParaConta,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type {
@@ -306,6 +307,13 @@ export default function Estoque() {
   const [relLoteDepositoId, setRelLoteDepositoId] = useState("");
   const [saldosLote, setSaldosLote] = useState<{ lote: string; entradas: number; saidas: number; saldo: number; ultima_movimentacao: string }[]>([]);
   const [buscandoLote, setBuscandoLote] = useState(false);
+  // Sementes de TODAS as fazendas da conta — lote de semente é frequentemente
+  // transferido entre fazendas, então restringir à fazenda ativa (como o
+  // resto do catálogo de insumos faz) deixava o seletor vazio sempre que a
+  // fazenda selecionada no momento não tinha nenhuma semente cadastrada
+  // localmente (achado real: "Armazem Santa Rita" não tem). fazendasConta
+  // (nomes por id) já existe mais acima, reaproveitado aqui pro rótulo.
+  const [insumosSementeConta, setInsumosSementeConta] = useState<Insumo[]>([]);
   const [_depAberto, _setDepAberto]   = useState<Set<string>>(new Set());
   const [filtroDepProdutos, setFiltroDepProdutos] = useState<Set<string>>(new Set());
   const [filtroDepBusca, setFiltroDepBusca]       = useState("");
@@ -538,6 +546,9 @@ export default function Estoque() {
         const ids = fzs.length > 0 ? fzs.map((f: { id?: string }) => f.id!) : [fazAtiva];
         Promise.all(ids.map((id: string) => listarDepositos(id!))).then(r => setDepositos(r.flat())).catch(() => {});
       }).catch(() => listarDepositos(fazAtiva).then(setDepositos).catch(() => {}));
+    listarInsumosParaConta(contaId, fazAtiva)
+      .then(ins => setInsumosSementeConta(ins.filter(i => i.categoria === "semente")))
+      .catch(() => setInsumosSementeConta([]));
     listarBombas(fazAtiva!).then(setBombas).catch(() => {});
     listarMaquinas(fazAtiva).then(setMaquinas).catch(() => {});
     listarPessoas(fazAtiva).then(setPessoas).catch(() => {});
@@ -609,10 +620,14 @@ export default function Estoque() {
   // ── Relatório Saldo por Lote — mesma lógica usada nos seletores de lote
   // (transferência, plantio, tratamento de sementes), só que exposta como
   // consulta em vez de só aparecer dentro de um dropdown.
+  // A semente escolhida pode ser de QUALQUER fazenda da conta (cada fazenda
+  // tem sua própria linha de insumo) — usa a fazenda_id do próprio insumo
+  // selecionado, não a fazenda ativa no seletor do topo.
   const buscarSaldoLote = () => {
-    if (!fazAtiva || !relLoteInsumoId) return;
+    const insSel = insumosSementeConta.find(i => i.id === relLoteInsumoId);
+    if (!insSel?.fazenda_id || !relLoteInsumoId) return;
     setBuscandoLote(true);
-    saldoPorLoteDetalhado(relLoteInsumoId, fazAtiva, relLoteDepositoId || undefined)
+    saldoPorLoteDetalhado(relLoteInsumoId, insSel.fazenda_id, relLoteDepositoId || undefined)
       .then(setSaldosLote)
       .catch(() => setSaldosLote([]))
       .finally(() => setBuscandoLote(false));
@@ -1720,7 +1735,11 @@ export default function Estoque() {
                       <label style={lbl}>Semente *</label>
                       <select style={inp} value={relLoteInsumoId} onChange={e => setRelLoteInsumoId(e.target.value)}>
                         <option value="">— Selecionar —</option>
-                        {insumos.filter(x => x.categoria === "semente").sort((a,b) => a.nome.localeCompare(b.nome)).map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
+                        {insumosSementeConta.slice().sort((a,b) => a.nome.localeCompare(b.nome)).map(x => (
+                          <option key={x.id} value={x.id}>
+                            {x.nome}{fazendasConta.length > 1 ? ` · ${fazendasConta.find(f => f.id === x.fazenda_id)?.nome ?? "—"}` : ""}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -1737,7 +1756,7 @@ export default function Estoque() {
                     </div>
                   </div>
                   {relLoteInsumoId && (() => {
-                    const ins = insumos.find(x => x.id === relLoteInsumoId);
+                    const ins = insumosSementeConta.find(x => x.id === relLoteInsumoId);
                     if (!ins) return null;
                     const saldoTotal = saldosLote.reduce((s, l) => s + l.saldo, 0);
                     return (
