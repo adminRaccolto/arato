@@ -35,8 +35,8 @@ function adminClient() {
   );
 }
 
-type Tabela = "plantios" | "pulverizacoes" | "adubacoes_base" | "correcoes_solo";
-const TABELAS_VALIDAS: Tabela[] = ["plantios", "pulverizacoes", "adubacoes_base", "correcoes_solo"];
+type Tabela = "plantios" | "pulverizacoes" | "adubacoes_base" | "correcoes_solo" | "abastecimentos";
+const TABELAS_VALIDAS: Tabela[] = ["plantios", "pulverizacoes", "adubacoes_base", "correcoes_solo", "abastecimentos"];
 
 interface Payload {
   tabela: Tabela;
@@ -205,54 +205,110 @@ async function consumirEstoque(
     return { ok: true };
   }
 
-  // correcoes_solo
-  const { data: correcao, error } = await adm
-    .from("correcoes_solo")
-    .select("fazenda_id, ciclo_id, data_aplicacao, area_ha")
+  if (tabela === "correcoes_solo") {
+    const { data: correcao, error } = await adm
+      .from("correcoes_solo")
+      .select("fazenda_id, ciclo_id, data_aplicacao, area_ha")
+      .eq("id", id)
+      .single();
+    if (error || !correcao) return { ok: false, erro: error?.message ?? "correção de solo não encontrada" };
+
+    const { data: itens, error: itensErro } = await adm
+      .from("correcoes_solo_itens")
+      .select("insumo_id, dose_ton_ha")
+      .eq("correcao_id", id);
+    if (itensErro) return { ok: false, erro: itensErro.message };
+
+    for (const item of itens ?? []) {
+      if (!item.insumo_id || !item.dose_ton_ha) continue;
+      const ton = item.dose_ton_ha * correcao.area_ha;
+      const { data: ins } = await adm
+        .from("insumos")
+        .select("estoque, unidade, custo_medio, valor_unitario, nome")
+        .eq("id", item.insumo_id)
+        .single();
+      if (!ins) continue;
+
+      // Conversão toneladas → unidade nativa do insumo — mesma tabela de
+      // conversão de processarCorrecao (lib/db.ts).
+      const unidade: string = ins.unidade ?? "kg";
+      let qtdNativa: number;
+      switch (unidade) {
+        case "t": qtdNativa = ton; break;
+        case "kg": qtdNativa = ton * 1000; break;
+        case "g": qtdNativa = ton * 1_000_000; break;
+        case "sc": qtdNativa = (ton * 1000) / 60; break;
+        default: qtdNativa = ton * 1000; break;
+      }
+
+      await adm.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", item.insumo_id);
+      await adm.from("movimentacoes_estoque").insert({
+        insumo_id: item.insumo_id,
+        fazenda_id: correcao.fazenda_id,
+        tipo: "saida",
+        quantidade: qtdNativa,
+        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
+        ciclo_id: correcao.ciclo_id,
+        data: correcao.data_aplicacao,
+        motivo: "correcao_solo",
+        descricao: `Correção de Solo — ${ins.nome}`,
+      });
+    }
+    return { ok: true };
+  }
+
+  // abastecimentos — baixa da bomba (bombas_combustivel.estoque_atual_l) se
+  // a bomba consome estoque próprio; senão baixa direto do insumo
+  // combustível, mesmo padrão das outras operações. Espelha
+  // app/estoque/abastecimento/page.tsx (desktop) — mas, diferente do
+  // desktop, NUNCA gera lançamento financeiro (Conta a Pagar): essa decisão
+  // de faturamento é do gestor, fora do escopo do operador de campo
+  // (CLAUDE.md do App Campo, seção 3.2).
+  const { data: abastecimento, error: erroAbastecimento } = await adm
+    .from("abastecimentos")
+    .select("fazenda_id, bomba_id, insumo_id, quantidade_l, ciclo_id, data")
     .eq("id", id)
     .single();
-  if (error || !correcao) return { ok: false, erro: error?.message ?? "correção de solo não encontrada" };
+  if (erroAbastecimento || !abastecimento) {
+    return { ok: false, erro: erroAbastecimento?.message ?? "abastecimento não encontrado" };
+  }
 
-  const { data: itens, error: itensErro } = await adm
-    .from("correcoes_solo_itens")
-    .select("insumo_id, dose_ton_ha")
-    .eq("correcao_id", id);
-  if (itensErro) return { ok: false, erro: itensErro.message };
+  if (abastecimento.bomba_id) {
+    const { data: bomba } = await adm
+      .from("bombas_combustivel")
+      .select("estoque_atual_l, consume_estoque")
+      .eq("id", abastecimento.bomba_id)
+      .single();
 
-  for (const item of itens ?? []) {
-    if (!item.insumo_id || !item.dose_ton_ha) continue;
-    const ton = item.dose_ton_ha * correcao.area_ha;
+    if (bomba && bomba.consume_estoque !== false) {
+      await adm
+        .from("bombas_combustivel")
+        .update({ estoque_atual_l: Math.max(0, (bomba.estoque_atual_l ?? 0) - abastecimento.quantidade_l) })
+        .eq("id", abastecimento.bomba_id);
+      return { ok: true };
+    }
+  }
+
+  if (abastecimento.insumo_id) {
     const { data: ins } = await adm
       .from("insumos")
-      .select("estoque, unidade, custo_medio, valor_unitario, nome")
-      .eq("id", item.insumo_id)
+      .select("estoque, custo_medio, valor_unitario, nome")
+      .eq("id", abastecimento.insumo_id)
       .single();
-    if (!ins) continue;
-
-    // Conversão toneladas → unidade nativa do insumo — mesma tabela de
-    // conversão de processarCorrecao (lib/db.ts).
-    const unidade: string = ins.unidade ?? "kg";
-    let qtdNativa: number;
-    switch (unidade) {
-      case "t": qtdNativa = ton; break;
-      case "kg": qtdNativa = ton * 1000; break;
-      case "g": qtdNativa = ton * 1_000_000; break;
-      case "sc": qtdNativa = (ton * 1000) / 60; break;
-      default: qtdNativa = ton * 1000; break;
+    if (ins) {
+      await adm.from("insumos").update({ estoque: (ins.estoque ?? 0) - abastecimento.quantidade_l }).eq("id", abastecimento.insumo_id);
+      await adm.from("movimentacoes_estoque").insert({
+        insumo_id: abastecimento.insumo_id,
+        fazenda_id: abastecimento.fazenda_id,
+        tipo: "saida",
+        quantidade: abastecimento.quantidade_l,
+        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
+        ciclo_id: abastecimento.ciclo_id,
+        data: abastecimento.data,
+        motivo: "abastecimento",
+        descricao: `Abastecimento — ${ins.nome}`,
+      });
     }
-
-    await adm.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", item.insumo_id);
-    await adm.from("movimentacoes_estoque").insert({
-      insumo_id: item.insumo_id,
-      fazenda_id: correcao.fazenda_id,
-      tipo: "saida",
-      quantidade: qtdNativa,
-      custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
-      ciclo_id: correcao.ciclo_id,
-      data: correcao.data_aplicacao,
-      motivo: "correcao_solo",
-      descricao: `Correção de Solo — ${ins.nome}`,
-    });
   }
   return { ok: true };
 }
