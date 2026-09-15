@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 14/09/2026
+ * Última revisão: 15/09/2026
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -632,11 +632,15 @@ Saldo atual de cada conta bancária com histórico de movimentos.
 ### 18.5 Endividamento
 **Caminho:** Financeiro → Relatórios Financeiros → Endividamento
 
-Visão consolidada do endividamento total por credor, tipo e ano de vencimento das parcelas.
+Tem duas abas: **Evolução por Ano** (padrão) e **Condições Contratuais**.
 
+**Aba Evolução por Ano** — visão consolidada do endividamento total por credor, tipo e ano de vencimento das parcelas.
 **Estrutura:** N1 (clicável = tipo) → N2 (expande = contratos) → N3 (expande = parcelas individuais). Colunas = um ano por coluna.
 **Filtros:** produtor, status, moeda, intervalo de anos (atalhos: 12 meses / 3 anos / 5 anos / Tudo).
 **Bloco Compra de Imóveis:** tabela adicional (cabeçalho marrom) aparece quando há parcelas de compra de terra cadastradas.
+
+**Aba Condições Contratuais** — uma linha por contrato, com as colunas: Entidade (credor), Operação (descrição + tipo), Valor, Tipo de Amortização (SAC/PRICE/Crescente), Taxa de Juros (fixa a.a. ou indexador+spread quando variável), Indexador, CET, Valor do Juros (soma dos juros de todas as parcelas) e Valor da Parcela (próxima parcela em aberto, ou a mais antiga se todas já pagas). Respeita os mesmos filtros de produtor/status/moeda da outra aba.
+**CET (Custo Efetivo Total):** não é a taxa de juros nominal — é calculado de verdade pela TIR (XIRR) do fluxo de caixa real do contrato: valor líquido recebido na contratação (já descontando IOF, TAC e outros custos) contra cada parcela na sua data de vencimento. Aparece "—" quando o contrato não tem parcelas cadastradas ou o cálculo não converge (fluxo sem raiz válida).
 
 ### 18.6 Gastos por Classificação
 **Caminho:** Financeiro → Relatórios Financeiros → Gastos por Classificação

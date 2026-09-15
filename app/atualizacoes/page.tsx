@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15-b",
+    data: "15/09/2026",
+    titulo: "Endividamento — Nova Aba de Condições Contratuais",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Relatório de Endividamento ganhou a aba 'Condições Contratuais' — uma linha por contrato com Entidade (credor), Operação, Valor, Tipo de Amortização, Taxa de Juros, Indexador, CET, Valor do Juros e Valor da Parcela. Complementa a aba 'Evolução por Ano' já existente." },
+      { tipo: "novo", texto: "CET (Custo Efetivo Total) agora é calculado de verdade — não é a taxa de juros nominal do contrato. O sistema monta o fluxo de caixa real (valor líquido recebido, já descontando IOF/TAC/outros custos, contra cada parcela na data de vencimento) e resolve a taxa que zera esse fluxo (TIR/XIRR). Aparece '—' quando faltam parcelas cadastradas ou o cálculo não converge." },
+    ],
+    onde: "Financeiro → Endividamento → aba Condições Contratuais",
+  },
+  {
     versao: "2026.09.15",
     data: "15/09/2026",
     titulo: "Saldo por Lote, Sincronização SIEG e Conciliação Agrupada",
