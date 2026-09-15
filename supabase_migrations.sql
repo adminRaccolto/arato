@@ -12631,3 +12631,50 @@ CREATE POLICY "perfis_tenant" ON perfis
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 260 — Simulações do Fluxo de Caixa: ativa a tabela `simulacoes` de
+-- verdade.
+--
+-- A tela de Fluxo de Caixa (Financeiro → Relatórios Financeiros → Fluxo de
+-- Caixa) sempre gravou as simulações só em localStorage do navegador — por
+-- isso a simulação lançada por um usuário nunca aparecia pros outros
+-- usuários do mesmo cliente (parecia "restrita ao login de quem lançou",
+-- mas na real estava presa ao dispositivo/navegador). A tabela `simulacoes`
+-- e a policy por conta_id (Seção 233) já existiam prontas, só não eram
+-- usadas por essa tela — o app/financeiro/page.tsx que as usava é uma rota
+-- órfã, sem link no TopNav.
+--
+-- 1) fazenda_id vira opcional — simulação é por conta_id (todas as fazendas
+--    do cliente), igual ao resto do Fluxo de Caixa, que já lê lançamentos
+--    de fazendaIds inteiro (não de uma fazenda só).
+-- 2) Nova coluna fornecedor (nome livre do fornecedor/pagador simulado —
+--    campo que a tela sempre teve, mas a tabela nunca ganhou).
+-- 3) Fecha vazamento entre contas: a Seção 238 (bloqueio emergencial em 76
+--    tabelas) empilhou a policy "emergencial_autenticado" USING(true) em
+--    cima da policy correta da Seção 233 ("simulacoes_conta") — como
+--    policies permissivas se combinam por OR, isso deixava qualquer usuário
+--    autenticado (de QUALQUER cliente) ler/gravar simulações de qualquer
+--    conta. Não importava enquanto a tabela tinha 0 linhas (nunca foi usada
+--    de verdade); importa a partir de agora. Reaproveita as funções
+--    SECURITY DEFINER da Seção 259 (mesmo padrão, evita subquery repetida).
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE simulacoes ALTER COLUMN fazenda_id DROP NOT NULL;
+ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS fornecedor text;
+
+DROP POLICY IF EXISTS "emergencial_autenticado" ON simulacoes;
+DROP POLICY IF EXISTS "simulacoes_conta" ON simulacoes;
+
+CREATE POLICY "simulacoes_conta" ON simulacoes
+  FOR ALL
+  USING (
+    conta_id = public.rls_minha_conta_id()
+    OR public.rls_sou_raccotlo()
+  )
+  WITH CHECK (
+    conta_id = public.rls_minha_conta_id()
+    OR public.rls_sou_raccotlo()
+  );
+
+NOTIFY pgrst, 'reload schema';

@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
-import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta } from "../../../lib/db";
+import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
@@ -288,20 +288,23 @@ function FinanceiroRelatoriosInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId, temApoio, fazendaIds?.join(",")]);
 
-  // localStorage simulações — escopad por fazenda para não vazar entre clientes
-  const simKey = fazendaId ? `ractech_sim_fluxo_${fazendaId}` : null;
+  // Simulações — tabela `simulacoes` escopada por conta_id, visível a todos
+  // os usuários do cliente (antes ficava só em localStorage do navegador de
+  // quem lançou — por isso "sumia" pros demais usuários do mesmo cliente).
   useEffect(() => {
-    if (!simKey) return;
-    try {
-      const saved = localStorage.getItem(simKey);
-      setSimEntries(saved ? JSON.parse(saved) : []);
-    } catch { setSimEntries([]); }
-  }, [simKey]);
-  useEffect(() => {
-    if (!simKey) return;
-    try { localStorage.setItem(simKey, JSON.stringify(simEntries)); }
-    catch { /* ignore */ }
-  }, [simEntries, simKey]);
+    if (!contaId) { setSimEntries([]); return; }
+    listarSimulacoes(contaId)
+      .then(rows => setSimEntries(rows.map(r => ({
+        id: r.id,
+        descricao: r.descricao,
+        fornecedor: r.fornecedor ?? "",
+        valor: r.valor,
+        data: r.data,
+        tipo: r.tipo === "receber" ? "entrada" : "saida",
+        ativo: r.ativa,
+      }))))
+      .catch(() => setSimEntries([]));
+  }, [contaId]);
 
   // ─── DFC — derivados baseados nas Operações Gerenciais ────────────────────
   const MESES_DFC = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -752,17 +755,55 @@ function FinanceiroRelatoriosInner() {
                 // Atualiza ref para impressão limpa
                 printDiarioRef.current = { dias, diasMap, totalEntradas, totalSaidas, saldoFinal, saldoInicial, filtroInicio: filtro.inicio, filtroFim: filtro.fim, tipoVis: filtro.tipoVis };
 
-                const salvarSim = () => {
-                  if (!simForm.descricao || !simForm.valor || !simForm.data) return;
+                const salvarSim = async () => {
+                  if (!simForm.descricao || !simForm.valor || !simForm.data || !contaId) return;
                   const val = desmascarar(simForm.valor);
                   if (val <= 0) return;
-                  if (simEditId) {
-                    setSimEntries(prev => prev.map(s => s.id === simEditId ? { ...s, descricao: simForm.descricao, fornecedor: simForm.fornecedor, valor: val, data: simForm.data, tipo: simForm.tipo } : s));
-                    setSimEditId(null);
-                  } else {
-                    setSimEntries(prev => [...prev, { id: crypto.randomUUID(), descricao: simForm.descricao, fornecedor: simForm.fornecedor, valor: val, data: simForm.data, tipo: simForm.tipo, ativo: true }]);
+                  const tipoDb: "receber" | "pagar" = simForm.tipo === "entrada" ? "receber" : "pagar";
+                  try {
+                    if (simEditId) {
+                      const idEdit = simEditId;
+                      await atualizarSimulacao(idEdit, { descricao: simForm.descricao, fornecedor: simForm.fornecedor || undefined, valor: val, data: simForm.data, tipo: tipoDb });
+                      setSimEntries(prev => prev.map(s => s.id === idEdit ? { ...s, descricao: simForm.descricao, fornecedor: simForm.fornecedor, valor: val, data: simForm.data, tipo: simForm.tipo } : s));
+                      setSimEditId(null);
+                    } else {
+                      const nova = await criarSimulacao({ conta_id: contaId, tipo: tipoDb, descricao: simForm.descricao, fornecedor: simForm.fornecedor || undefined, data: simForm.data, valor: val, ativa: true });
+                      setSimEntries(prev => [...prev, { id: nova.id, descricao: nova.descricao, fornecedor: nova.fornecedor ?? "", valor: nova.valor, data: nova.data, tipo: nova.tipo === "receber" ? "entrada" : "saida", ativo: nova.ativa }]);
+                    }
+                    setSimForm({ descricao: "", valor: "", data: "", tipo: "entrada", fornecedor: "" });
+                  } catch {
+                    alert("Não foi possível salvar a simulação. Tente novamente.");
                   }
-                  setSimForm({ descricao: "", valor: "", data: "", tipo: "entrada", fornecedor: "" });
+                };
+
+                const alternarTodasSims = async (ativo: boolean) => {
+                  const alvo = simEntries.filter(s => s.ativo !== ativo);
+                  setSimEntries(prev => prev.map(s => ({ ...s, ativo })));
+                  try { await Promise.all(alvo.map(s => toggleSimulacao(s.id, ativo))); }
+                  catch { alert("Algumas simulações podem não ter sido atualizadas — recarregue a página."); }
+                };
+
+                const limparTodasSims = async () => {
+                  if (!confirm("Excluir todas as simulações?")) return;
+                  const ids = simEntries.map(s => s.id);
+                  setSimEntries([]);
+                  try { await Promise.all(ids.map(id => excluirSimulacao(id))); }
+                  catch { alert("Algumas simulações podem não ter sido excluídas — recarregue a página."); }
+                };
+
+                const alternarSim = async (id: string, ativo: boolean) => {
+                  setSimEntries(prev => prev.map(x => x.id === id ? { ...x, ativo } : x));
+                  try { await toggleSimulacao(id, ativo); }
+                  catch {
+                    setSimEntries(prev => prev.map(x => x.id === id ? { ...x, ativo: !ativo } : x));
+                    alert("Não foi possível atualizar a simulação.");
+                  }
+                };
+
+                const excluirSim = async (id: string) => {
+                  setSimEntries(prev => prev.filter(x => x.id !== id));
+                  try { await excluirSimulacao(id); }
+                  catch { alert("Não foi possível excluir a simulação."); }
                 };
 
                 const imprimirSimsCenarios = () => {
@@ -833,19 +874,19 @@ function FinanceiroRelatoriosInner() {
                             </div>
                             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                               {simEntries.some(s => s.ativo) && (
-                                <button onClick={() => setSimEntries(prev => prev.map(s => ({ ...s, ativo: false })))}
+                                <button onClick={() => alternarTodasSims(false)}
                                   style={{ fontSize: 12, color: "#7C3AED", background: "#EDE9FE", border: "none", borderRadius: 7, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}>
                                   Desativar todas
                                 </button>
                               )}
                               {simEntries.some(s => !s.ativo) && (
-                                <button onClick={() => setSimEntries(prev => prev.map(s => ({ ...s, ativo: true })))}
+                                <button onClick={() => alternarTodasSims(true)}
                                   style={{ fontSize: 12, color: "#16A34A", background: "#DCFCE7", border: "none", borderRadius: 7, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}>
                                   Ativar todas
                                 </button>
                               )}
                               {simEntries.length > 0 && (
-                                <button onClick={() => { if (confirm("Excluir todas as simulações?")) setSimEntries([]); }}
+                                <button onClick={limparTodasSims}
                                   style={{ fontSize: 12, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                                   Limpar tudo
                                 </button>
@@ -914,7 +955,7 @@ function FinanceiroRelatoriosInner() {
                                     <tr key={s.id} style={{ borderBottom: "0.5px solid #EEE9FD", background: s.ativo ? "#FAF5FF" : "#FAFAFA", opacity: s.ativo ? 1 : 0.5 }}>
                                       <td style={{ padding: "11px 16px", width: 40 }}>
                                         <input type="checkbox" checked={s.ativo}
-                                          onChange={() => setSimEntries(prev => prev.map(x => x.id === s.id ? { ...x, ativo: !x.ativo } : x))} />
+                                          onChange={() => alternarSim(s.id, !s.ativo)} />
                                       </td>
                                       <td style={{ padding: "11px 16px", whiteSpace: "nowrap", color: "#444" }}>
                                         {s.data ? new Date(s.data + "T12:00:00").toLocaleDateString("pt-BR") : "—"}
@@ -933,7 +974,7 @@ function FinanceiroRelatoriosInner() {
                                         <div style={{ display: "flex", gap: 8 }}>
                                           <button onClick={() => { setSimEditId(s.id); setSimForm({ descricao: s.descricao, fornecedor: s.fornecedor, valor: aplicarMascara(String(Math.round(s.valor * 100))), data: s.data, tipo: s.tipo }); }}
                                             style={{ background: "none", border: "none", cursor: "pointer", color: "#7C3AED", fontSize: 15 }}>✎</button>
-                                          <button onClick={() => setSimEntries(prev => prev.filter(x => x.id !== s.id))}
+                                          <button onClick={() => excluirSim(s.id)}
                                             style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15 }}>✕</button>
                                         </div>
                                       </td>

@@ -1215,6 +1215,11 @@ export async function toggleSimulacao(id: string, ativa: boolean): Promise<void>
   if (error) throw error;
 }
 
+export async function atualizarSimulacao(id: string, patch: Partial<Omit<Simulacao, "id" | "conta_id" | "created_at">>): Promise<void> {
+  const { error } = await supabase.from("simulacoes").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
 export async function excluirSimulacao(id: string): Promise<void> {
   const { error } = await supabase.from("simulacoes").delete().eq("id", id);
   if (error) throw error;

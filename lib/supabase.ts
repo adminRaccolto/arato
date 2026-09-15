@@ -699,6 +699,7 @@ export type Simulacao = {
   fazenda_id?: string;
   tipo: "receber" | "pagar";
   descricao: string;
+  fornecedor?: string;
   data: string;
   valor: number;
   ativa: boolean;
