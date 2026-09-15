@@ -228,7 +228,9 @@ export async function POST(req: NextRequest) {
           console.log(`[nfse] ${label} cnpj=${cnpj}: ${r.length} XMLs`);
           if (r.length > 0) docs = r;
         } catch (e) {
-          tentativas.push(`${label}: ERRO (${String(e).slice(0, 60)})`);
+          // 60 chars cortava bem no meio da mensagem de erro real da SIEG
+          // (ex: "...IsSuccess":false,"ErrorM" — nunca dava pra ver o motivo).
+          tentativas.push(`${label}: ERRO (${String(e).slice(0, 220)})`);
           console.warn(`[nfse] ${label} falhou: ${e}`);
         }
       };
@@ -254,7 +256,7 @@ export async function POST(req: NextRequest) {
               allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataEmissaoInicio: iniStr, DataEmissaoFim: fimStr });
             }
           } catch (e) {
-            tentativas.push(`Fallback: ERRO (${String(e).slice(0, 60)})`);
+            tentativas.push(`Fallback: ERRO (${String(e).slice(0, 220)})`);
           }
           // filtra client-side pelo CNPJ do tomador no XML
           for (const xml of allXmls) {
