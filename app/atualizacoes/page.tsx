@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15-g",
+    data: "15/09/2026",
+    titulo: "Busca por fornecedor não filtrava por nome",
+    modulos: ["Compras & Estoque", "Fiscal", "Comercial"],
+    itens: [
+      { tipo: "correcao", texto: "Campo de busca de Emitente/Fornecedor no lançamento de NF de Produtos (e o mesmo campo em NF-e/Fiscal e no cadastro de Contratos de grãos): digitar um nome não filtrava a lista — só filtrava quando a busca tinha algum número (CNPJ/CPF). Corrigido nas 4 telas." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos → lançamento · Fiscal → NF-e · Comercial → Contratos",
+  },
+  {
     versao: "2026.09.15-f",
     data: "15/09/2026",
     titulo: "Funcionários e Folha de Pagamento — correções e novos encargos",
