@@ -12520,3 +12520,61 @@ ALTER TABLE nf_servicos DROP CONSTRAINT IF EXISTS nf_servicos_tomador_id_fkey;
 ALTER TABLE nf_servicos ADD COLUMN IF NOT EXISTS tomador_tipo TEXT CHECK (tomador_tipo IN ('produtor','empresa','pessoa'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 258 — URGENTE: fecha o vazamento entre contas em perfis, lancamentos,
+-- pessoas e contas_bancarias.
+--
+-- Achado: as Seções 237/238 ("EMERGENCIAL") fecharam o acesso ANÔNIMO em 78
+-- tabelas, mas deixaram todas elas com uma política "emergencial_autenticado"
+-- (USING true) — QUALQUER usuário autenticado, de QUALQUER conta, lê e
+-- escreve a tabela inteira. Isso ficou documentado ali mesmo como
+-- intermediário ("fica para as fases seguintes desta auditoria"), mas essas
+-- fases seguintes nunca rodaram pras tabelas abaixo.
+--
+-- Confirmado ao vivo em produção (usuário de teste sem NENHUM vínculo de
+-- conta/fazenda, criado e removido na hora): esse usuário lia as 4 tabelas
+-- abaixo por inteiro — 11.070 lançamentos financeiros, 5.816 cadastros de
+-- pessoas (CPF/CNPJ), 87 contas bancárias e a listagem completa de perfis
+-- (todo usuário de toda conta) de TODOS os clientes reais já cadastrados.
+-- Essas são as 4 mais sensíveis; as ~70 tabelas restantes na mesma condição
+-- ficam registradas como pendência técnica separada (ver memória do projeto).
+--
+-- lancamentos: já existia uma política correta ("lancamentos_tenant",
+-- Migration 145) — só precisa soltar a "emergencial_autenticado" que foi
+-- empilhada por cima dela (políticas permissivas se combinam por OR, então
+-- a "true" sozinha já bastava pra abrir tudo de novo).
+--
+-- perfis é caso especial: outras políticas (fazendas, lancamentos, etc.)
+-- fazem JOIN em perfis pra resolver "qual a conta do usuário atual" — a
+-- política de perfis precisa deixar ver a PRÓPRIA linha (senão essas outras
+-- políticas quebram) e as linhas da MESMA conta (pra telas tipo "usuários
+-- da minha fazenda" funcionarem).
+-- ══════════════════════════════════════════════════════════════════════════
+
+DROP POLICY IF EXISTS "emergencial_autenticado" ON lancamentos;
+-- "lancamentos_tenant" (Migration 145) volta a valer sozinha — não precisa recriar.
+
+DROP POLICY IF EXISTS "emergencial_autenticado" ON perfis;
+CREATE POLICY "perfis_tenant" ON perfis
+  USING (
+    user_id = auth.uid()
+    OR conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+DROP POLICY IF EXISTS "emergencial_autenticado" ON pessoas;
+CREATE POLICY "pessoas_tenant" ON pessoas
+  USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+DROP POLICY IF EXISTS "emergencial_autenticado" ON contas_bancarias;
+CREATE POLICY "contas_bancarias_tenant" ON contas_bancarias
+  USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';
