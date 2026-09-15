@@ -14,6 +14,7 @@ const RELEASES = [
       { tipo: "correcao", texto: "Saldo por Lote: o seletor de semente mostrava só as sementes cadastradas na fazenda selecionada no topo da tela — ficava vazio em fazendas sem semente própria (ex: um armazém). Agora lista sementes de todas as fazendas da conta, indicando de qual fazenda é cada uma." },
       { tipo: "correcao", texto: "Sincronizar SIEG (NF de Produtos e NF de Serviço): quando o CNPJ monitorado estava configurado numa fazenda diferente da fazenda selecionada no momento, a sincronização recusava com 'Nenhum CPF/CNPJ configurado' mesmo com tudo certo no cadastro. Agora busca o CNPJ em todas as fazendas da conta antes de recusar." },
       { tipo: "correcao", texto: "Conciliação — Borderô (vários CP/CR para um pagamento do extrato): em alguns casos a linha aparecia conciliada e, pouco depois, voltava sozinha para 'pendente' sem ninguém desvincular. A tela agora aguarda a confirmação de gravação antes de dar por concluída a conciliação, e nunca mais troca o extrato aberto por outro em segundo plano." },
+      { tipo: "correcao", texto: "Conciliação: importar o mesmo extrato OFX duas vezes criava duas cópias separadas, conciliadas de forma independente — conciliar numa não refletia na outra, dando a impressão de que a conciliação 'sumia'. Agora, antes de importar, o sistema avisa se já existe um extrato da mesma conta cobrindo o mesmo período." },
     ],
     onde: "Compras & Estoque → Estoque → Relatórios → Saldo por Lote · Compras → NF de Produtos/Serviços → Sincronizar SIEG · Financeiro → Conciliação",
   },

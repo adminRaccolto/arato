@@ -587,6 +587,8 @@ Concilia lançamentos do sistema com o extrato OFX importado do banco.
 2. O sistema tenta casar automaticamente por valor (±R$ 0,02) e data (±7 dias)
 3. Confirme os vínculos automáticos ou faça vínculos manuais clicando em "Vincular"
 
+Se já existir um extrato importado da mesma conta cobrindo o mesmo período, o sistema avisa antes de importar de novo — importar mesmo assim cria uma cópia separada, conciliada de forma independente da primeira (evite, a não ser que seja realmente um extrato diferente).
+
 **Borderô (um débito para vários lançamentos):** Clique em "Vincular" → selecione múltiplos lançamentos no painel esquerdo → Confirmar. Corrigido um bug em que a linha podia aparecer conciliada e, segundos depois, voltar sozinha para "Pendente" sem ninguém desvincular — a tela agora só dá a conciliação por concluída depois de confirmar que a gravação no banco terminou.
 
 **Lançamento CP/CR agrupado (o inverso do borderô — várias linhas do extrato para um único lançamento):** útil quando o mesmo tipo de cobrança aparece várias vezes no mesmo dia (ex: vários pedágios). Marque o checkbox de cada linha pendente do extrato que quer agrupar (mesmo dia, mesmo tipo — crédito ou débito), clique em "Lançar CP/CR agrupado", preencha descrição e operação gerencial. O sistema cria um único CP/CR (valor = soma das linhas) já baixado, e concilia todas as linhas selecionadas contra ele.
