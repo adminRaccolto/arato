@@ -5695,13 +5695,17 @@ function CadastrosInner() {
                     }).map((f, i) => {
                       const corVinc: Record<string, [string,string]> = { clt: ["#E8E8E8","#0D0D0D"], diarista: ["#FAEEDA","#633806"], empreiteiro: ["#E6F1FB","#0C447C"], outro: ["#F1EFE8","var(--text-2)"] };
                       const [bg, cl] = corVinc[f.tipo] ?? ["#F1EFE8","var(--text-2)"];
-                      const sal = f.salario_base ?? 0;
+                      const sal  = f.salario_base ?? 0;
+                      const comp = f.complemento_salarial ?? 0;
                       const encargos = sal > 0 ? sal * (
                         (Number(f.fgts_pct ?? 8) + Number(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)) +
                          Number(f.sat_rat_pct ?? 1) + Number(f.sistema_s_pct ?? (f.usar_funrural ? 0.2 : 5.8)) +
                          Number(f.provisao_13_pct ?? 8.33) + Number(f.provisao_ferias_pct ?? 11.11)) / 100
                       ) : 0;
-                      const custoTotal = sal + encargos;
+                      // Encargos incidem só sobre o salário base (carteira) — o
+                      // complemento salarial (por fora) entra como custo real da
+                      // empresa, mas sem gerar encargo nenhum sobre ele mesmo.
+                      const custoTotal = sal + encargos + comp;
                       return (
                         <tr key={f.id} style={{ borderBottom: i < funcs.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                           <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{f.nome}</td>
