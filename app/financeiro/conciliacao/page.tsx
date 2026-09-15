@@ -296,11 +296,20 @@ function ConciliacaoInner() {
     if (exR.data) {
       const lista = exR.data as unknown as Extrato[];
       setExtratos(lista);
-      const primeiroPend = lista.find(e => e.pendentes > 0);
-      if (primeiroPend) {
-        setExtrato(primeiroPend);
-        if (searchParams.get("pendentes") === "true") setFiltroPend(true);
-      }
+      // Nunca troca/sobrescreve um extrato JÁ aberto — carregar() pode disparar
+      // de novo em segundo plano (searchParams muda de referência em várias
+      // situações do Next.js sem a URL mudar de verdade) e, se isso acontecer
+      // no meio de uma conciliação, um GET aqui podia vencer a corrida contra o
+      // POST de persistir-extrato ainda em voo e trazer a versão desatualizada
+      // do banco — a linha que o usuário acabou de conciliar "desconciliava
+      // sozinha" na tela, mesmo com o vínculo salvo (ou prestes a salvar).
+      // Só escolhe um extrato automaticamente quando NENHUM está aberto ainda.
+      setExtrato(prev => {
+        if (prev) return prev;
+        const primeiroPend = lista.find(e => e.pendentes > 0);
+        if (primeiroPend && searchParams.get("pendentes") === "true") setFiltroPend(true);
+        return primeiroPend ?? prev;
+      });
     }
   }, [fazendaId, fazendaIds, contaId, searchParams]);
 
@@ -442,29 +451,46 @@ function ConciliacaoInner() {
   // ── Persistir extrato atualizado ───────────────────────────────────────────
   // Usa API route com service_role_key — imune a JWT expirado.
   // O estado local é atualizado imediatamente (optimistic); a persistência é async.
-  function persistExtrato(
+  // Retorna se a escrita foi confirmada no banco — antes era "atire e esqueça"
+  // (não aguardava, não checava resposta): a tela já mostrava tudo conciliado
+  // via estado otimista mesmo que a escrita de verdade falhasse, e não havia
+  // como saber a diferença entre "salvou" e "pareceu salvar". Quem chama isso
+  // deve aguardar e avisar o usuário em caso de falha, em vez de deixar a
+  // tela "conciliada" sem estar realmente gravada.
+  async function persistExtrato(
     upd: Extrato,
     opts?: {
       conciliarIds?: string[];
       desconciliarIds?: string[];
-      baixar?: { id: string; data_baixa: string; valor_pago: number }[];
+      baixar?: { id: string; data_baixa: string; valor_pago: number; conta_bancaria?: string }[];
     },
-  ) {
+  ): Promise<boolean> {
     setExtrato(upd);
     setExtratos(prev => prev.map(e => e.id === upd.id ? upd : e));
-    fetch("/api/financeiro/persistir-extrato", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: upd.id,
-        linhas: upd.linhas,
-        conciliados: upd.conciliados,
-        pendentes: upd.pendentes,
-        lancamento_ids_conciliados: opts?.conciliarIds,
-        lancamento_ids_desconciliados: opts?.desconciliarIds,
-        baixar: opts?.baixar,
-      }),
-    }).catch(e => console.error("[persistExtrato]", e));
+    try {
+      const res = await fetch("/api/financeiro/persistir-extrato", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: upd.id,
+          linhas: upd.linhas,
+          conciliados: upd.conciliados,
+          pendentes: upd.pendentes,
+          lancamento_ids_conciliados: opts?.conciliarIds,
+          lancamento_ids_desconciliados: opts?.desconciliarIds,
+          baixar: opts?.baixar,
+        }),
+      });
+      const json = await res.json().catch(() => ({ ok: false }));
+      if (!res.ok || json?.ok === false) {
+        console.error("[persistExtrato] falhou:", json);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error("[persistExtrato]", e);
+      return false;
+    }
   }
 
   // ── Registrar no histórico ─────────────────────────────────────────────────
@@ -523,7 +549,7 @@ function ConciliacaoInner() {
     );
     const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
     // Persiste via service_role_key — imune a JWT expirado — inclui baixa e flag conciliado
-    persistExtrato(
+    const ok = await persistExtrato(
       { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
       {
         conciliarIds: ids,
@@ -535,6 +561,12 @@ function ConciliacaoInner() {
         })),
       },
     );
+
+    if (!ok) {
+      alert("Não foi possível salvar a conciliação — tente novamente. A tela pode estar mostrando um estado que ainda não foi gravado.");
+      setSalvando(false);
+      return;
+    }
 
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
@@ -605,10 +637,15 @@ function ConciliacaoInner() {
           : l
       );
       const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
-      persistExtrato(
+      const okTransf = await persistExtrato(
         { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
         { conciliarIds: ids },
       );
+      if (!okTransf) {
+        alert("Lançamento criado, mas não foi possível salvar a conciliação — tente vincular de novo.");
+        setSavingTes(false);
+        return;
+      }
       if (fazendaId) {
         supabase.from("conciliacao_pendencias")
           .update({ status: "resolvido", lancamento_id: lancToLink.id })
@@ -655,10 +692,15 @@ function ConciliacaoInner() {
         : l
     );
     const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
-    persistExtrato(
+    const okTes = await persistExtrato(
       { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
       { conciliarIds: ids },
     );
+    if (!okTes) {
+      alert("Lançamento criado, mas não foi possível salvar a conciliação — tente vincular de novo.");
+      setSavingTes(false);
+      return;
+    }
 
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
@@ -734,10 +776,15 @@ function ConciliacaoInner() {
         : l
     );
     const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
-    persistExtrato(
+    const okAgr = await persistExtrato(
       { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
       { conciliarIds: [novoLanc.id] },
     );
+    if (!okAgr) {
+      alert("Lançamento criado, mas não foi possível salvar a conciliação das linhas — tente vincular de novo.");
+      setSavingAgrupado(false);
+      return;
+    }
 
     if (fazendaId) {
       for (const l of linhasSel) {
@@ -754,7 +801,7 @@ function ConciliacaoInner() {
   }
 
   // ── Desvincular ────────────────────────────────────────────────────────────
-  function desvincular(linhaId: string) {
+  async function desvincular(linhaId: string) {
     if (!extrato) return;
     const linhaOriginal = extrato.linhas.find(l => l.id === linhaId);
     const idsDesconciliados = linhaOriginal?.lancamento_ids ?? (linhaOriginal?.lancamento_id ? [linhaOriginal.lancamento_id] : []);
@@ -763,10 +810,14 @@ function ConciliacaoInner() {
     );
     const conciliadoN = linhas.filter(l => l.conciliado).length;
     // Desconcilia os lançamentos (conciliado=false) para remover badge em CP/CR
-    persistExtrato(
+    const ok = await persistExtrato(
       { ...extrato, linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN },
       { desconciliarIds: idsDesconciliados.length ? idsDesconciliados : undefined },
     );
+    if (!ok) {
+      alert("Não foi possível desvincular — tente novamente.");
+      return;
+    }
     if (fazendaId && linhaOriginal) {
       registrarHistorico(linhaOriginal, "desvinculado", linhaOriginal.lancamento_ids ?? [], linhaOriginal.lancamento_desc ?? "");
     }
