@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
       const atualizacoes: Record<string, unknown> = {};
       if (body.nome !== undefined) atualizacoes.nome = body.nome;
       if (body.papel !== undefined) atualizacoes.papel = body.papel;
+      if (body.whatsapp !== undefined) atualizacoes.whatsapp = body.whatsapp || null;
       if (body.fazendas_permitidas !== undefined) atualizacoes.fazendas_permitidas = body.fazendas_permitidas;
       // Desativar = fazendas_permitidas=[] (lista vazia explícita) — é assim
       // que o App Campo já trata "bloqueado" (AuthProvider, CLAUDE.md 4.2:
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Criar operador novo ──
-    const { conta_id, fazenda_id, nome, papel, fazendas_permitidas } = body;
+    const { conta_id, fazenda_id, nome, papel, fazendas_permitidas, whatsapp } = body;
     if (!conta_id || !nome || !papel) {
       return NextResponse.json({ error: "conta_id, nome e papel são obrigatórios" }, { status: 400 });
     }
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
       produto: "campo",
       papel,
       fazendas_permitidas: fazendas_permitidas ?? null,
+      whatsapp: whatsapp || null,
     });
     if (perfilErr) {
       await admin.auth.admin.deleteUser(authData.user.id);

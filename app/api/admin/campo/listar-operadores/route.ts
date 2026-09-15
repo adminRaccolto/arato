@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   const { data: operadores, error } = await admin
     .from("perfis")
-    .select("id, user_id, nome, papel, fazendas_permitidas, fazenda_id")
+    .select("id, user_id, nome, papel, fazendas_permitidas, fazenda_id, whatsapp")
     .eq("conta_id", contaId)
     .eq("produto", "campo")
     .order("nome");

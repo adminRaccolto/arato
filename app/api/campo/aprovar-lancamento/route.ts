@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { enviarTexto } from "@/lib/whatsapp-evolution";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,13 @@ function adminClient() {
 
 type Tabela = "plantios" | "pulverizacoes" | "adubacoes_base" | "correcoes_solo" | "abastecimentos";
 const TABELAS_VALIDAS: Tabela[] = ["plantios", "pulverizacoes", "adubacoes_base", "correcoes_solo", "abastecimentos"];
+const LABEL_TABELA: Record<Tabela, string> = {
+  plantios: "Plantio",
+  pulverizacoes: "Pulverização",
+  adubacoes_base: "Adubação de Base",
+  correcoes_solo: "Correção de Solo",
+  abastecimentos: "Abastecimento",
+};
 
 interface Payload {
   tabela: Tabela;
@@ -374,7 +382,7 @@ export async function POST(req: NextRequest) {
   // porque esta rota usa service_role e por isso não passa pelo RLS.
   const { data: alvo, error: alvoErro } = await adm
     .from(tabela)
-    .select("id, fazenda_id, status_campo")
+    .select("id, fazenda_id, status_campo, lancado_por_perfil_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -413,6 +421,30 @@ export async function POST(req: NextRequest) {
     .eq("id", id);
 
   if (updErro) return jsonCors(req, { error: updErro.message }, { status: 500 });
+
+  // Avisa por WhatsApp quem lançou — best-effort, nunca falha a
+  // aprovação/rejeição em si (que já está persistida acima) por causa disso
+  // (CLAUDE.md do App Campo, decisão 15/set/2026: notificação automática).
+  if (alvo.lancado_por_perfil_id) {
+    try {
+      const { data: autor } = await adm
+        .from("perfis")
+        .select("whatsapp")
+        .eq("id", alvo.lancado_por_perfil_id)
+        .maybeSingle();
+      if (autor?.whatsapp) {
+        const { data: fazenda } = await adm.from("fazendas").select("nome").eq("id", alvo.fazenda_id).maybeSingle();
+        const mensagem =
+          decisao === "aprovado"
+            ? `✅ Seu lançamento de ${LABEL_TABELA[tabela]} em ${fazenda?.nome ?? "fazenda"} foi aprovado.`
+            : `❌ Seu lançamento de ${LABEL_TABELA[tabela]} em ${fazenda?.nome ?? "fazenda"} foi rejeitado.` +
+              (motivoRejeicao ? `\nMotivo: ${motivoRejeicao}` : "");
+        await enviarTexto(autor.whatsapp, mensagem);
+      }
+    } catch {
+      // best-effort — falha de envio não desfaz a decisão já gravada
+    }
+  }
 
   return jsonCors(req, { ok: true });
 }

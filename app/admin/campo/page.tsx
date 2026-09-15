@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -24,6 +24,7 @@ interface Operador {
   fazendas_permitidas: string[] | null;
   fazenda_id: string | null;
   email: string;
+  whatsapp: string | null;
   ativo: boolean;
 }
 
@@ -74,12 +75,22 @@ export default function AdminCampoPage() {
   const [mostrarNovo, setMostrarNovo] = useState(false);
   const [novoNome, setNovoNome] = useState("");
   const [novoPapel, setNovoPapel] = useState<Operador["papel"]>("operador");
+  const [novoWhatsapp, setNovoWhatsapp] = useState("");
   const [novasFazendas, setNovasFazendas] = useState<Set<string>>(new Set());
   const [criando, setCriando] = useState(false);
   const [credenciaisCriadas, setCredenciaisCriadas] = useState<{ email: string; pin: string } | null>(null);
 
   // Reset de PIN
   const [pinResetado, setPinResetado] = useState<{ nome: string; email: string; pin: string } | null>(null);
+
+  // Edição de operador existente (inclui telefone — pode ter sido criado
+  // antes do campo existir, ou o número mudou)
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editNome, setEditNome] = useState("");
+  const [editPapel, setEditPapel] = useState<Operador["papel"]>("operador");
+  const [editWhatsapp, setEditWhatsapp] = useState("");
+  const [editFazendas, setEditFazendas] = useState<Set<string>>(new Set());
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/listar-contas")
@@ -163,6 +174,7 @@ export default function AdminCampoPage() {
           fazenda_id: contaSel?.fazendas?.[0]?.id ?? null,
           nome: novoNome.trim(),
           papel: novoPapel,
+          whatsapp: novoWhatsapp.trim() || null,
           fazendas_permitidas: novasFazendas.size > 0 ? Array.from(novasFazendas) : null,
         }),
       });
@@ -171,6 +183,7 @@ export default function AdminCampoPage() {
       setCredenciaisCriadas({ email: data.email, pin: data.pin });
       setNovoNome("");
       setNovoPapel("operador");
+      setNovoWhatsapp("");
       setNovasFazendas(new Set());
       setMostrarNovo(false);
       carregarOperadores(contaId);
@@ -203,6 +216,49 @@ export default function AdminCampoPage() {
     });
     if (res.ok) carregarOperadores(contaId);
     else setMsg({ tipo: "erro", texto: "Erro ao atualizar" });
+  }
+
+  function iniciarEdicao(op: Operador) {
+    setEditandoId(op.id);
+    setEditNome(op.nome);
+    setEditPapel(op.papel);
+    setEditWhatsapp(op.whatsapp ?? "");
+    setEditFazendas(new Set(op.fazendas_permitidas ?? []));
+  }
+
+  function alternarFazendaEdicao(id: string) {
+    setEditFazendas((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
+  async function salvarEdicao() {
+    if (!editandoId || !editNome.trim()) return;
+    setSalvandoEdicao(true);
+    try {
+      const res = await fetch("/api/admin/campo/operador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          perfil_id: editandoId,
+          nome: editNome.trim(),
+          papel: editPapel,
+          whatsapp: editWhatsapp.trim() || null,
+          fazendas_permitidas: editFazendas.size > 0 ? Array.from(editFazendas) : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erro ao salvar");
+      setEditandoId(null);
+      carregarOperadores(contaId);
+    } catch (e) {
+      setMsg({ tipo: "erro", texto: String(e) });
+    } finally {
+      setSalvandoEdicao(false);
+    }
   }
 
   return (
@@ -305,6 +361,14 @@ export default function AdminCampoPage() {
                 </select>
               </div>
               <div>
+                <label style={lbl}>WhatsApp (opcional — recebe aviso automático de pendência/aprovação)</label>
+                <input
+                  style={inp} type="tel" value={novoWhatsapp} maxLength={15}
+                  onChange={(e) => setNovoWhatsapp(e.target.value.replace(/\D/g, ""))}
+                  placeholder="5565999990000"
+                />
+              </div>
+              <div>
                 <label style={lbl}>Fazendas liberadas (nenhuma marcada = todas as fazendas da conta)</label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 160, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 8 }}>
                   {(contaSel?.fazendas ?? []).map((f) => (
@@ -335,6 +399,7 @@ export default function AdminCampoPage() {
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--text-2)", fontWeight: 600, fontSize: 11 }}>Nome</th>
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--text-2)", fontWeight: 600, fontSize: 11 }}>Papel</th>
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--text-2)", fontWeight: 600, fontSize: 11 }}>E-mail</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--text-2)", fontWeight: 600, fontSize: 11 }}>WhatsApp</th>
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--text-2)", fontWeight: 600, fontSize: 11 }}>Fazendas</th>
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--text-2)", fontWeight: 600, fontSize: 11 }}>Status</th>
                   <th style={{ padding: "8px 6px" }} />
@@ -342,30 +407,85 @@ export default function AdminCampoPage() {
               </thead>
               <tbody>
                 {operadores.map((op) => (
-                  <tr key={op.id} style={{ borderBottom: "0.5px solid #F3F6F9" }}>
-                    <td style={{ padding: "10px 6px", fontWeight: 600 }}>{op.nome}</td>
-                    <td style={{ padding: "10px 6px" }}>{PAPEL_LABEL[op.papel]}</td>
-                    <td style={{ padding: "10px 6px", fontFamily: "monospace", fontSize: 12 }}>{op.email}</td>
-                    <td style={{ padding: "10px 6px", fontSize: 12, color: "var(--text-3)" }}>
-                      {op.fazendas_permitidas === null
-                        ? "Todas"
-                        : op.fazendas_permitidas.length === 0
-                          ? "—"
-                          : `${op.fazendas_permitidas.length} selecionada(s)`}
-                    </td>
-                    <td style={{ padding: "10px 6px" }}>
-                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 700,
-                        background: op.ativo ? "#F0FDF4" : "#FEF2F2", color: op.ativo ? "#16A34A" : "#991B1B" }}>
-                        {op.ativo ? "Ativo" : "Bloqueado"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "10px 6px", display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                      <button style={btnSecondary} onClick={() => resetarPin(op)}>Resetar PIN</button>
-                      <button style={btnSecondary} onClick={() => alternarAtivo(op)}>
-                        {op.ativo ? "Bloquear" : "Reativar"}
-                      </button>
-                    </td>
-                  </tr>
+                  <Fragment key={op.id}>
+                    <tr style={{ borderBottom: editandoId === op.id ? "none" : "0.5px solid #F3F6F9" }}>
+                      <td style={{ padding: "10px 6px", fontWeight: 600 }}>{op.nome}</td>
+                      <td style={{ padding: "10px 6px" }}>{PAPEL_LABEL[op.papel]}</td>
+                      <td style={{ padding: "10px 6px", fontFamily: "monospace", fontSize: 12 }}>{op.email}</td>
+                      <td style={{ padding: "10px 6px", fontFamily: "monospace", fontSize: 12, color: op.whatsapp ? "var(--text-1)" : "var(--text-muted)" }}>
+                        {op.whatsapp ? `+${op.whatsapp}` : "—"}
+                      </td>
+                      <td style={{ padding: "10px 6px", fontSize: 12, color: "var(--text-3)" }}>
+                        {op.fazendas_permitidas === null
+                          ? "Todas"
+                          : op.fazendas_permitidas.length === 0
+                            ? "—"
+                            : `${op.fazendas_permitidas.length} selecionada(s)`}
+                      </td>
+                      <td style={{ padding: "10px 6px" }}>
+                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 700,
+                          background: op.ativo ? "#F0FDF4" : "#FEF2F2", color: op.ativo ? "#16A34A" : "#991B1B" }}>
+                          {op.ativo ? "Ativo" : "Bloqueado"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 6px", display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button style={btnSecondary} onClick={() => (editandoId === op.id ? setEditandoId(null) : iniciarEdicao(op))}>
+                          {editandoId === op.id ? "Fechar" : "Editar"}
+                        </button>
+                        <button style={btnSecondary} onClick={() => resetarPin(op)}>Resetar PIN</button>
+                        <button style={btnSecondary} onClick={() => alternarAtivo(op)}>
+                          {op.ativo ? "Bloquear" : "Reativar"}
+                        </button>
+                      </td>
+                    </tr>
+                    {editandoId === op.id && (
+                      <tr style={{ borderBottom: "0.5px solid #F3F6F9" }}>
+                        <td colSpan={7} style={{ padding: "0 6px 14px" }}>
+                          <div style={{ padding: 14, background: "#F9FAFB", borderRadius: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+                            <div style={{ display: "flex", gap: 10 }}>
+                              <div style={{ flex: 1 }}>
+                                <label style={lbl}>Nome</label>
+                                <input style={inp} value={editNome} onChange={(e) => setEditNome(e.target.value)} />
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <label style={lbl}>Papel</label>
+                                <select style={inp} value={editPapel} onChange={(e) => setEditPapel(e.target.value as Operador["papel"])}>
+                                  <option value="gerente_campo">Gerente Campo</option>
+                                  <option value="operador">Operador</option>
+                                  <option value="apontador">Apontador</option>
+                                </select>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <label style={lbl}>WhatsApp</label>
+                                <input
+                                  style={inp} type="tel" value={editWhatsapp} maxLength={15}
+                                  onChange={(e) => setEditWhatsapp(e.target.value.replace(/\D/g, ""))}
+                                  placeholder="5565999990000"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label style={lbl}>Fazendas liberadas (nenhuma marcada = todas as fazendas da conta)</label>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 8, background: "var(--bg-card)" }}>
+                                {(contaSel?.fazendas ?? []).map((f) => (
+                                  <label key={f.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, cursor: "pointer" }}>
+                                    <input type="checkbox" checked={editFazendas.has(f.id)} onChange={() => alternarFazendaEdicao(f.id)} />
+                                    {f.nome}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button style={btnPrimary} onClick={salvarEdicao} disabled={salvandoEdicao}>
+                                {salvandoEdicao ? "Salvando..." : "Salvar"}
+                              </button>
+                              <button style={btnSecondary} onClick={() => setEditandoId(null)}>Cancelar</button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
