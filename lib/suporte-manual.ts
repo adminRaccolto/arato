@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 15/09/2026
+ * Última revisão: 15/09/2026 (b)
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -613,6 +613,8 @@ Projeção de entradas e saídas baseada em lançamentos em aberto.
 **Modos:** Diário (grid dia a dia) e Mensal (colunas por mês no período selecionado).
 **Filtros:** produtor(es), conta(s) bancária(s), período (De/Até). Botões "Selecionar Todos Produtores" e "Selecionar Todas Contas" disponíveis para agilizar.
 **Padrão:** início = hoje, fim = hoje + 12 meses.
+
+**Simulador de Cenários:** botão que abre um popup para lançar entradas/saídas hipotéticas (ex: "e se esse contrato fechar?") sem virar lançamento real — soma no saldo projetado só enquanto a simulação estiver marcada como ativa (checkbox por linha). É salvo no banco por conta (conta_id): qualquer usuário autorizado do mesmo cliente vê e edita as mesmas simulações, de qualquer computador — não é mais por navegador/login de quem lançou. Tem impressão dedicada ("Simulador de Cenários").
 
 ### 18.2 Fluxo de Caixa Realizado
 **Caminho:** Financeiro → Relatórios Financeiros → Fluxo de Caixa Realizado

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.15-c",
+    data: "15/09/2026",
+    titulo: "Simulações do Fluxo de Caixa agora são do cliente, não do navegador",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Fluxo de Caixa → Simulador de Cenários: as simulações eram salvas só no navegador de quem lançou — nenhum outro usuário do mesmo cliente enxergava. Agora ficam salvas no banco, vinculadas ao cliente (conta): qualquer usuário autorizado do mesmo cliente vê, edita e desativa as mesmas simulações, de qualquer computador." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → Fluxo de Caixa → Simulador de Cenários",
+  },
+  {
     versao: "2026.09.15-b",
     data: "15/09/2026",
     titulo: "Endividamento — Nova Aba de Condições Contratuais",
