@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16",
+    data: "16/09/2026",
+    titulo: "Seletor de produto em Adubação de Base e Correção de Solo",
+    modulos: ["Lavoura"],
+    itens: [
+      { tipo: "correcao", texto: "Lançamento de Adubação de Base e de Correção de Solo (tela web, fora do App de Campo): o campo 'Produto/Insumo' mostrava todo o catálogo de insumos (defensivos, sementes, etc.) em vez de só os fertilizantes/corretivos aplicáveis. Adubação de Base agora filtra por Fertilizantes; Correção de Solo por Corretivos de Solo." },
+    ],
+    onde: "Lavoura → Operações de Campo → Adubação de Base · Correção de Solo",
+  },
+  {
     versao: "2026.09.15-h",
     data: "15/09/2026",
     titulo: "Custo Total Est. de Funcionários não somava o complemento salarial",
