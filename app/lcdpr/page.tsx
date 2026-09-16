@@ -75,6 +75,8 @@ interface EntradaLCDPR {
   despesa: number;
   origem: "auto" | "manual" | "importado";
   lancId?: string;
+  produtorId?: string | null;   // dono do lançamento — do próprio lançamento, senão herda da fazenda
+  produtorNome?: string;        // resolvido pra exibir no relatório "Todos os Produtores"
 }
 
 interface ProdutorLcdpr { id: string; nome: string; cpf: string; }
@@ -243,20 +245,35 @@ export default function LCDPR() {
         return dt.slice(0, 4) === String(anoSel);
       });
 
-      const items: EntradaLCDPR[] = filtrados.map((l: Lancamento) => ({
-        id: l.id,
-        data: l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "",
-        historico: l.descricao ?? l.categoria ?? "",
-        tipoDoc: mapTipoDoc(l.tipo_documento_lcdpr),
-        numDoc: l.numero_documento ?? l.nfe_numero ?? "",
-        cpfCnpj: l.pessoa_id ? (pMap.get(l.pessoa_id) ?? "") : "",
-        tipoLanc: tipoLancDe(l),
-        fazendaId: l.fazenda_id,
-        contaBancariaRef: l.conta_bancaria ?? "",
-        receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor ?? 0) : 0,
-        despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor ?? 0) : 0,
-        origem: "auto", lancId: l.id,
-      }));
+      // Produtor "dono" de cada lançamento: usa lancamentos.produtor_id quando
+      // preenchido; senão herda da fazenda (fazendas.produtor_id — a maioria
+      // dos lançamentos hoje não tem produtor_id direto, mas toda fazenda tem
+      // um titular). Só usado pra exibir no relatório "Todos os Produtores" —
+      // não muda o que entra ou não no Livro Caixa.
+      const fazProdutorMap = new Map<string, string>();
+      for (const f of (fazRows ?? []) as { id: string; produtor_id?: string | null }[]) if (f.produtor_id) fazProdutorMap.set(f.id, f.produtor_id);
+      const produtorNomeMap = new Map<string, string>();
+      for (const p of (prodRows ?? []) as { id: string; nome: string }[]) produtorNomeMap.set(p.id, p.nome);
+
+      const items: EntradaLCDPR[] = filtrados.map((l: Lancamento) => {
+        const produtorId = l.produtor_id ?? fazProdutorMap.get(l.fazenda_id) ?? null;
+        return {
+          id: l.id,
+          data: l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "",
+          historico: l.descricao ?? l.categoria ?? "",
+          tipoDoc: mapTipoDoc(l.tipo_documento_lcdpr),
+          numDoc: l.numero_documento ?? l.nfe_numero ?? "",
+          cpfCnpj: l.pessoa_id ? (pMap.get(l.pessoa_id) ?? "") : "",
+          tipoLanc: tipoLancDe(l),
+          fazendaId: l.fazenda_id,
+          contaBancariaRef: l.conta_bancaria ?? "",
+          receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor ?? 0) : 0,
+          despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor ?? 0) : 0,
+          origem: "auto" as const, lancId: l.id,
+          produtorId,
+          produtorNome: produtorId ? (produtorNomeMap.get(produtorId) ?? "—") : "—",
+        };
+      });
       items.sort((a, b) => a.data.localeCompare(b.data));
       setEntradas(items);
     }).finally(() => setLoading(false));
@@ -706,11 +723,16 @@ export default function LCDPR() {
     const tdNum = td + `text-align:right;font-variant-numeric:tabular-nums;`;
 
     let saldoCorr = saldoInicialReport;
+    // Coluna Produtor só aparece com "Todos os Produtores" selecionado — é
+    // quando fica ambíguo de quem é cada lançamento; com um produtor
+    // específico selecionado, toda linha já é dele, óbvio.
+    const mostrarColunaProdutor = !isEmpresa && produtorFiltro === "todos";
     const linhasLivro = entradasReport.map((e, i) => {
       saldoCorr += e.receita - e.despesa;
       const bg = i % 2 === 0 ? "#fff" : "#F7F9FA";
       return `<tr style="background:${bg}">
         <td style="${td}">${fmtData(e.data)}</td>
+        ${mostrarColunaProdutor ? `<td style="${td}">${e.produtorNome || "—"}</td>` : ""}
         <td style="${td}"><span style="font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:3px;background:${e.tipoLanc === "2" ? "#FCEBEB" : "#EAF3DE"};color:${e.tipoLanc === "2" ? "#791F1F" : "#1A5C38"};">${TIPO_LANC_LABEL[e.tipoLanc] ?? e.tipoLanc}</span></td>
         <td style="${td}">${e.historico || "—"}</td>
         <td style="${td}">${TIPO_DOC_LABEL[e.tipoDoc] ?? e.tipoDoc}</td>
@@ -807,15 +829,15 @@ export default function LCDPR() {
       <div class="auto-fit-table" style="margin-bottom:6px;">
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr>
-            <th style="${th}">Data</th><th style="${th}">Tipo</th><th style="${th}">Histórico</th><th style="${th}">Doc.</th>
+            <th style="${th}">Data</th>${mostrarColunaProdutor ? `<th style="${th}">Produtor</th>` : ""}<th style="${th}">Tipo</th><th style="${th}">Histórico</th><th style="${th}">Doc.</th>
             <th style="${th}">CPF/CNPJ contraparte</th><th style="${thNum}">Receita</th><th style="${thNum}">Despesa</th><th style="${thNum}">Saldo</th>
           </tr></thead>
           <tbody>
-            ${linhasLivro || `<tr><td colspan="8" style="${td};text-align:center;color:#999;">Nenhum lançamento no período</td></tr>`}
+            ${linhasLivro || `<tr><td colspan="${mostrarColunaProdutor ? 9 : 8}" style="${td};text-align:center;color:#999;">Nenhum lançamento no período</td></tr>`}
           </tbody>
           <tfoot>
             <tr style="background:#EDF4FB;">
-              <td colspan="5" style="${td};font-weight:700;text-align:right;">TOTAL DO PERÍODO</td>
+              <td colspan="${mostrarColunaProdutor ? 6 : 5}" style="${td};font-weight:700;text-align:right;">TOTAL DO PERÍODO</td>
               <td style="${tdNum};font-weight:700;color:#1A5C38;">${fmtBRL(totalRecExport)}</td>
               <td style="${tdNum};font-weight:700;color:#E24B4A;">${fmtBRL(totalDespExport)}</td>
               <td style="${tdNum};font-weight:700;">${fmtBRL(saldoFinalExport)}</td>
