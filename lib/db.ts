@@ -4894,10 +4894,13 @@ async function resolverContaIdDaFazenda(fazenda_id: string | null | undefined): 
 }
 
 // Filtro OR unificado: global (ambos null) + tenant + legado por fazenda
-function ogOrFilter(conta_id: string | null, fazenda_id: string | null): string {
+function ogOrFilter(conta_id: string | null, fazenda_id: string | string[] | null): string {
   const parts: string[] = ["and(fazenda_id.is.null,conta_id.is.null)"];
   if (conta_id)  parts.push(`conta_id.eq.${conta_id}`);
-  if (fazenda_id) parts.push(`fazenda_id.eq.${fazenda_id}`);
+  if (fazenda_id) {
+    const ids = Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id];
+    parts.push(...ids.map(id => `fazenda_id.eq.${id}`));
+  }
   return parts.join(",");
 }
 
@@ -4915,8 +4918,9 @@ export async function resolverOperacaoGerencialPorClassificacao(fazenda_id: stri
   return data?.id ?? undefined;
 }
 
-export async function listarOperacoesGerenciais(fazenda_id: string): Promise<OperacaoGerencial[]> {
-  const conta_id = await resolverContaIdDaFazenda(fazenda_id);
+export async function listarOperacoesGerenciais(fazenda_id: string | string[]): Promise<OperacaoGerencial[]> {
+  const primeiroId = Array.isArray(fazenda_id) ? fazenda_id[0] : fazenda_id;
+  const conta_id = await resolverContaIdDaFazenda(primeiroId);
   const { data, error } = await supabase.from("operacoes_gerenciais")
     .select("*")
     .or(ogOrFilter(conta_id, fazenda_id))

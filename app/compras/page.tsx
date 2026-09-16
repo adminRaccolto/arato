@@ -328,7 +328,7 @@ const PEDIDO_VAZIO: FormPedido = {
 };
 
 export default function ComprasPage() {
-  const { fazendaId, contaId, podeAcessarPlano, anoSafraVigenteId, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId, contaModulosOverrides } = useAuth();
 
   const [pedidos,         setPedidos]         = useState<PedidoCompra[]>([]);
   const [pessoas,         setPessoas]         = useState<Pessoa[]>([]);
@@ -449,7 +449,7 @@ export default function ComprasPage() {
         listarTodosCiclos(fazendaId),
         listarAnosSafra(fazendaId),
         listarCentrosCustoGeral(fazendaId),
-        listarOperacoesGerenciais(fazendaId),
+        listarOperacoesGerenciais(fazendaIds?.length ? fazendaIds : [fazendaId]),
         listarFazendas(fazendaId),
         listarProdutoresDaConta(contaId ?? "", fazendaId),
         listarGruposInsumoDaConta(fazendaId),
@@ -544,10 +544,15 @@ export default function ComprasPage() {
     const CULT: Record<string,string> = { soja:"Soja", milho1:"Milho 1ª", milho2:"Milho 2ª", algodao:"Algodão", sorgo:"Sorgo", trigo:"Trigo" };
     return `${CULT[c.cultura] ?? c.cultura}${ano ? ` · ${ano}` : ""}`;
   };
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const nomeOp = (idOrText?: string) => {
     if (!idOrText) return "—";
     const op = operacoes.find(o => o.id === idOrText);
-    return op ? op.descricao : idOrText;
+    if (op) return op.descricao;
+    // Nunca mostra um id cru pro usuário — se parece com UUID e não foi
+    // encontrado (operação de outra fazenda da conta, ou já excluída), mostra
+    // "—" em vez do id; texto livre genuíno continua aparecendo normalmente.
+    return UUID_RE.test(idOrText) ? "—" : idOrText;
   };
   const ciclosFiltrados = (anoSafraId: string) =>
     anoSafraId ? ciclos.filter(c => c.ano_safra_id === anoSafraId) : ciclos;
@@ -2188,7 +2193,7 @@ export default function ComprasPage() {
                     {ehFiscal ? "NFs Vinculadas" : "Entregas"} — {nomePessoa(modalEntrega.pedido.fornecedor_id)}
                     {ehFiscal && <span style={{ fontSize: 10, background: "#E8E8E8", color: "#0D0D0D", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>Fiscal</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido #{modalEntrega.pedido.numero} · {fmtData(modalEntrega.pedido.data_registro)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido {modalEntrega.pedido.nr_pedido || `#${modalEntrega.pedido.numero}`} · {fmtData(modalEntrega.pedido.data_registro)}</div>
                 </div>
                 <button onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
               </div>
@@ -2254,7 +2259,7 @@ export default function ComprasPage() {
                       <div style={{ fontSize: 12, color: "#0D0D0D", lineHeight: 1.6 }}>
                         Para registrar uma entrega fiscal, dê entrada da Nota Fiscal pelo menu{" "}
                         <strong>Compras &amp; Estoque → NF de Produtos</strong> e selecione{" "}
-                        <strong>Pedido de Compra #{ modalEntrega.pedido.numero}</strong> no campo correspondente.
+                        <strong>Pedido de Compra {modalEntrega.pedido.nr_pedido || `#${modalEntrega.pedido.numero}`}</strong> no campo correspondente.
                         As quantidades serão somadas automaticamente aqui.
                       </div>
                     </div>
@@ -2381,7 +2386,7 @@ export default function ComprasPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 700, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>Relatório do Pedido #{modalRelatorio.pedido.numero}</div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Relatório do Pedido {modalRelatorio.pedido.nr_pedido || `#${modalRelatorio.pedido.numero}`}</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)" }}>{nomePessoa(modalRelatorio.pedido.fornecedor_id)} · {fmtData(modalRelatorio.pedido.data_registro)}</div>
               </div>
               <button onClick={() => setModalRelatorio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
