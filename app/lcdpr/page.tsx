@@ -46,12 +46,15 @@ function tipoLancDe(l: Lancamento): "1" | "2" | "3" {
   return l.tipo === "receber" ? "1" : "2";
 }
 
-// Categoria de movimentação interna entre entidades da mesma família/conta
-// (produtor↔produtor, empresa↔empresa, empresa↔produtor — via Financeiro →
-// Tesouraria → "Mútuo entre Empresas") — não é receita/despesa real, é só
-// dinheiro trocando de mão entre as próprias contas do cliente. Nunca entra
+// Categorias de movimentação interna — não são receita/despesa real, é só
+// dinheiro trocando de mão entre as próprias contas do cliente. Nunca entram
 // no Livro Caixa do LCDPR nem no relatório PDF.
-const CATEGORIA_MUTUO_INTERNO = "Mútuo entre Empresas";
+// "Mútuo entre Empresas" — Financeiro → Tesouraria, entre produtores/empresas.
+// "Transferência entre Contas" — Tesouraria (entre contas do mesmo produtor)
+// E também usada pela Conciliação Bancária ao casar um PIX do extrato — achado
+// real: 21 lançamentos "RECEBIMENTO PIX... EDINEIA OGLIARI PINHATA" (outra
+// produtora da mesma conta) todos categorizados assim, não como Mútuo.
+const CATEGORIAS_INTERNAS = new Set(["Mútuo entre Empresas", "Transferência entre Contas"]);
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -129,6 +132,11 @@ const fmtBRL   = (v: number) => v.toLocaleString("pt-BR", { style: "currency", c
 const fmtData  = (s: string) => { const [y, m, d] = (s ?? "").split("-"); return `${d}/${m}/${y}`; };
 const cpfNum   = (s: string) => (s ?? "").replace(/\D/g, "");
 const hoje     = () => new Date().toISOString().split("T")[0];
+// Normaliza texto pra comparação (maiúsculas, sem acento) — usado pra detectar
+// transferência entre produtores/empresas da mesma conta pelo nome quando o
+// lançamento não tem pessoa_id vinculado (ex: PIX importado do extrato, cujo
+// histórico só traz o nome de quem pagou/recebeu em texto livre).
+const normTxt  = (s: string) => (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
 const fmtCPF   = (s: string) => s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 // Formatação de valor monetário/numérico pro leiaute: sem separador de milhar,
 // vírgula decimal removida, sempre 2 casas. Ex: 1129998,99 -> "112999899"
@@ -238,13 +246,33 @@ export default function LCDPR() {
 
       const apoioIds = new Set((apoioBaixas ?? []).map((b: { lancamento_id: string }) => b.lancamento_id));
 
+      // Nomes dos produtores e empresas da própria conta — pra pegar
+      // transferência entre eles quando o lançamento não tem categoria
+      // "Mútuo entre Empresas" (ex: PIX importado do extrato bancário, cujo
+      // histórico só traz o nome de quem pagou/recebeu em texto livre, sem
+      // pessoa_id vinculado a nenhum cadastro). Achado real: "RECEBIMENTO
+      // PIX-PIX_CRED ... EDINEIA OGLIARI PINHATA" não tinha categoria de
+      // mútuo nem CPF/CNPJ resolvido, mas o nome da outra produtora da
+      // mesma conta aparece cru na descrição.
+      const nomesInternosConta = new Set<string>();
+      for (const p of (prodRows ?? []) as { nome?: string }[]) if (p.nome && p.nome.trim().length >= 5) nomesInternosConta.add(normTxt(p.nome.trim()));
+      for (const e of (empresasRows ?? []) as { nome?: string; razao_social?: string }[]) {
+        if (e.nome && e.nome.trim().length >= 5) nomesInternosConta.add(normTxt(e.nome.trim()));
+        if (e.razao_social && e.razao_social.trim().length >= 5) nomesInternosConta.add(normTxt(e.razao_social.trim()));
+      }
+      const listaNomesInternos = [...nomesInternosConta];
+
       const filtrados = lans.filter((l: Lancamento) => {
         // LCDPR é regime de caixa — só o que realmente baixou entra. "Previsão" é
         // rascunho de planejamento, pode ter valor/data ainda alterados antes de confirmar.
         if (l.status !== "baixado") return false;
         if (apoioIds.has(l.id)) return false;
         if (l.entidade_contabil !== "pf") return false;
-        if (l.categoria === CATEGORIA_MUTUO_INTERNO) return false;
+        if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) return false;
+        if (l.descricao) {
+          const descNorm = normTxt(l.descricao);
+          if (listaNomesInternos.some(n => descNorm.includes(n))) return false;
+        }
         // vinculo_atividade nulo é tratado como rural (comportamento atual da imensa
         // maioria dos lançamentos) — só exclui quando está explicitamente marcado como
         // outra coisa (investimento, pessoa física, não tributável).
@@ -689,8 +717,19 @@ export default function LCDPR() {
       const { data: pjLans } = await supabase.from("lancamentos")
         .select("*").in("fazenda_id", fids).eq("empresa_id", empresaSel.id).eq("status", "baixado");
       const chaveAlvo = modoExport === "mensal" ? `${anoSel}-${mm}` : String(anoSel);
+      const nomesInternosPJ = new Set<string>();
+      for (const p of produtoresDados) if (p.nome && p.nome.trim().length >= 5) nomesInternosPJ.add(normTxt(p.nome.trim()));
+      for (const e of empresasDados) {
+        if (e.nome && e.nome.trim().length >= 5) nomesInternosPJ.add(normTxt(e.nome.trim()));
+        if (e.razao_social && e.razao_social.trim().length >= 5) nomesInternosPJ.add(normTxt(e.razao_social.trim()));
+      }
+      const listaNomesInternosPJ = [...nomesInternosPJ];
       const filtradosPJ = ((pjLans ?? []) as Lancamento[]).filter(l => {
-        if (l.categoria === CATEGORIA_MUTUO_INTERNO) return false;
+        if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) return false;
+        if (l.descricao) {
+          const descNorm = normTxt(l.descricao);
+          if (listaNomesInternosPJ.some(n => descNorm.includes(n))) return false;
+        }
         const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
         return modoExport === "mensal" ? dt.slice(0, 7) === chaveAlvo : dt.slice(0, 4) === chaveAlvo;
       });
