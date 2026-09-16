@@ -6,9 +6,10 @@ import { useAuth } from "../../components/AuthProvider";
 import {
   listarLancamentos,
   listarProdutoresDaConta,
+  listarEmpresasDaConta,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
-import type { Lancamento } from "../../lib/supabase";
+import type { Lancamento, Empresa } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import { abrirPreviewImpressao } from "../../lib/print";
 
@@ -44,6 +45,13 @@ function tipoLancDe(l: Lancamento): "1" | "2" | "3" {
   if (l.tipo === "receber" && l.moeda === "barter") return "3";
   return l.tipo === "receber" ? "1" : "2";
 }
+
+// Categoria de movimentação interna entre entidades da mesma família/conta
+// (produtor↔produtor, empresa↔empresa, empresa↔produtor — via Financeiro →
+// Tesouraria → "Mútuo entre Empresas") — não é receita/despesa real, é só
+// dinheiro trocando de mão entre as próprias contas do cliente. Nunca entra
+// no Livro Caixa do LCDPR nem no relatório PDF.
+const CATEGORIA_MUTUO_INTERNO = "Mútuo entre Empresas";
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -145,6 +153,7 @@ export default function LCDPR() {
 
   const [fazDados, setFazDados]               = useState<FazLcdpr[]>([]);
   const [produtoresDados, setProdutoresDados] = useState<ProdutorLcdpr[]>([]);
+  const [empresasDados, setEmpresasDados]     = useState<Empresa[]>([]); // PJ — só usadas no relatório PDF de conferência, LCDPR em si é PF
   const [contasDados, setContasDados]         = useState<ContaLcdpr[]>([]);
   const [bancosMap, setBancosMap]             = useState<Map<string, string>>(new Map()); // nome normalizado → codigo_compe
   const [pessoasCpfMap, setPessoasCpfMap]     = useState<Map<string, string>>(new Map()); // pessoa_id → cpf_cnpj
@@ -189,8 +198,10 @@ export default function LCDPR() {
       sb.from("bancos").select("nome,nome_curto,codigo_compe"),
       sb.from("pessoas").select("id,cpf_cnpj").in("fazenda_id", ids),
       contaId ? sb.from("lcdpr_contador").select("*").eq("conta_id", contaId).maybeSingle() : Promise.resolve({ data: null }),
-    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }]) => {
+      listarEmpresasDaConta(ids),
+    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows]) => {
       setFazDados((fazRows ?? []) as FazLcdpr[]);
+      setEmpresasDados(empresasRows ?? []);
       setProdutoresDados(
         (prodRows ?? [])
           .map((p: { id: string; nome: string; cpf_cnpj?: string }) => ({ id: p.id, nome: p.nome, cpf: cpfNum(p.cpf_cnpj ?? "") }))
@@ -223,6 +234,7 @@ export default function LCDPR() {
         if (l.status !== "baixado") return false;
         if (apoioIds.has(l.id)) return false;
         if (l.entidade_contabil !== "pf") return false;
+        if (l.categoria === CATEGORIA_MUTUO_INTERNO) return false;
         // vinculo_atividade nulo é tratado como rural (comportamento atual da imensa
         // maioria dos lançamentos) — só exclui quando está explicitamente marcado como
         // outra coisa (investimento, pessoa física, não tributável).
@@ -625,28 +637,76 @@ export default function LCDPR() {
 
   // ── Relatório PDF — visão estruturada do Livro Caixa (não é o arquivo
   // oficial de entrega, que é o .txt leiaute 1.3 gerado acima) ──────────────
-  const gerarPDF = () => {
-    const cpfSel   = produtorFiltro !== "todos" ? produtorFiltro : (produtoresLcdpr[0]?.cpf ?? "");
-    const nomeProd = produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "Produtor Rural";
+  const gerarPDF = async () => {
+    const isEmpresa = produtorFiltro.startsWith("emp:");
+    const empresaSel = isEmpresa ? empresasDados.find(e => `emp:${e.id}` === produtorFiltro) : undefined;
+
     const mm       = String(mesExport).padStart(2, "0");
     const periodo  = modoExport === "mensal"
       ? new Date(anoSel, mesExport - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })
       : `01/01/${anoSel} a 31/12/${anoSel}`;
 
+    let nomeProd: string;
+    let cpfCnpjSel: string;
+    let entidadeLabel: string;
+    let entradasReport: EntradaLCDPR[];
+    let saldoInicialReport: number;
+
+    if (isEmpresa && empresaSel) {
+      // Empresa (PJ) — só existe no relatório PDF de conferência; não é
+      // obrigação do LCDPR (que é exclusivo de Pessoa Física), então busca os
+      // lançamentos PJ dessa empresa na hora, à parte do estado da tela
+      // (que só carrega PF). Sem quota-parte — sempre 100%.
+      nomeProd = empresaSel.razao_social || empresaSel.nome;
+      cpfCnpjSel = empresaSel.cpf_cnpj ?? "";
+      entidadeLabel = "Pessoa Jurídica";
+      const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+      const { data: pjLans } = await supabase.from("lancamentos")
+        .select("*").in("fazenda_id", fids).eq("empresa_id", empresaSel.id).eq("status", "baixado");
+      const chaveAlvo = modoExport === "mensal" ? `${anoSel}-${mm}` : String(anoSel);
+      const filtradosPJ = ((pjLans ?? []) as Lancamento[]).filter(l => {
+        if (l.categoria === CATEGORIA_MUTUO_INTERNO) return false;
+        const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
+        return modoExport === "mensal" ? dt.slice(0, 7) === chaveAlvo : dt.slice(0, 4) === chaveAlvo;
+      });
+      entradasReport = filtradosPJ.map(l => ({
+        id: l.id,
+        data: l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "",
+        historico: l.descricao ?? l.categoria ?? "",
+        tipoDoc: mapTipoDoc(l.tipo_documento_lcdpr),
+        numDoc: l.numero_documento ?? l.nfe_numero ?? "",
+        cpfCnpj: l.pessoa_id ? (pessoasCpfMap.get(l.pessoa_id) ?? "") : "",
+        tipoLanc: tipoLancDe(l),
+        fazendaId: l.fazenda_id,
+        contaBancariaRef: l.conta_bancaria ?? "",
+        receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor ?? 0) : 0,
+        despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor ?? 0) : 0,
+        origem: "auto" as const, lancId: l.id,
+      })).sort((a, b) => a.data.localeCompare(b.data));
+      saldoInicialReport = 0; // sem saldo inicial configurado pra PJ neste relatório
+    } else {
+      const cpfSel = produtorFiltro !== "todos" ? produtorFiltro : "";
+      nomeProd = cpfSel ? (produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "Produtor Rural") : "Todos os Produtores";
+      cpfCnpjSel = cpfSel;
+      entidadeLabel = "Pessoa Física";
+      entradasReport = entradasExport;
+      saldoInicialReport = saldoInicialExport;
+    }
+
     const contasReaisExport = contasDados.filter(c => c.tipo_conta !== "caixa" && c.tipo_conta !== "transitoria");
     const TIPO_LANC_LABEL: Record<string, string> = { "1": "Receita", "2": "Despesa", "3": "Adiant. (barter)" };
 
-    const totalRecExport  = entradasExport.reduce((s, e) => s + e.receita, 0);
-    const totalDespExport = entradasExport.reduce((s, e) => s + e.despesa, 0);
-    const saldoFinalExport = saldoInicialExport + totalRecExport - totalDespExport;
+    const totalRecExport  = entradasReport.reduce((s, e) => s + e.receita, 0);
+    const totalDespExport = entradasReport.reduce((s, e) => s + e.despesa, 0);
+    const saldoFinalExport = saldoInicialReport + totalRecExport - totalDespExport;
 
     const th = `padding:5px 7px;text-align:left;font-size:9px;font-weight:700;color:#fff;background:#1A5C38;white-space:nowrap;`;
     const thNum = th + `text-align:right;`;
     const td = `padding:4px 7px;font-size:9.5px;color:#1a1a1a;border-bottom:0.5px solid #E8ECEF;`;
     const tdNum = td + `text-align:right;font-variant-numeric:tabular-nums;`;
 
-    let saldoCorr = saldoInicialExport;
-    const linhasLivro = entradasExport.map((e, i) => {
+    let saldoCorr = saldoInicialReport;
+    const linhasLivro = entradasReport.map((e, i) => {
       saldoCorr += e.receita - e.despesa;
       const bg = i % 2 === 0 ? "#fff" : "#F7F9FA";
       return `<tr style="background:${bg}">
@@ -661,7 +721,7 @@ export default function LCDPR() {
       </tr>`;
     }).join("");
 
-    const linhasImoveis = fazsExport.map(f => `<tr>
+    const linhasImoveis = isEmpresa ? "" : fazsExport.map(f => `<tr>
       <td style="${td}">${f.nome}</td>
       <td style="${td}">${[f.municipio, f.estado].filter(Boolean).join(" / ") || "—"}</td>
       <td style="${td}">${f.caepf || "—"}</td>
@@ -671,6 +731,19 @@ export default function LCDPR() {
       <td style="${tdNum}">${f.area_total_ha ? `${f.area_total_ha.toLocaleString("pt-BR")} ha` : "—"}</td>
     </tr>`).join("");
 
+    // Identificação da Empresa — substitui o bloco de Imóveis Rurais quando o
+    // relatório é de uma Empresa (PJ); o conceito de "imóvel rural" do LCDPR
+    // não se aplica a ela.
+    const blocoEmpresa = isEmpresa && empresaSel ? `
+      <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Identificação da Empresa</h2>
+      <table style="border-collapse:collapse;font-size:10.5px;margin-bottom:16px;">
+        <tr><td style="padding:2px 10px 2px 0;color:#666;">Razão Social</td><td style="font-weight:700;">${empresaSel.razao_social || empresaSel.nome}</td></tr>
+        ${empresaSel.razao_social && empresaSel.razao_social !== empresaSel.nome ? `<tr><td style="padding:2px 10px 2px 0;color:#666;">Nome Fantasia</td><td>${empresaSel.nome}</td></tr>` : ""}
+        <tr><td style="padding:2px 10px 2px 0;color:#666;">CNPJ</td><td>${empresaSel.cpf_cnpj || "—"}</td></tr>
+        <tr><td style="padding:2px 10px 2px 0;color:#666;">Endereço</td><td>${[empresaSel.logradouro, empresaSel.numero, empresaSel.municipio, empresaSel.estado].filter(Boolean).join(", ") || "—"}</td></tr>
+      </table>
+    ` : "";
+
     const linhasContas = contasReaisExport.length > 0 ? contasReaisExport.map(c => `<tr>
       <td style="${td}">${c.nome}</td>
       <td style="${td}">${c.banco || "—"}</td>
@@ -678,18 +751,6 @@ export default function LCDPR() {
       <td style="${td}">${c.conta || "—"}${c.conta_dv ? `-${c.conta_dv}` : ""}</td>
       <td style="${td}">${c.tipo_conta === "corrente" ? "Corrente" : c.tipo_conta === "poupanca" ? "Poupança" : c.tipo_conta}</td>
     </tr>`).join("") : `<tr><td colspan="5" style="${td};text-align:center;color:#999;">Nenhuma conta bancária cadastrada</td></tr>`;
-
-    let saldoResumo = saldoInicial;
-    const linhasResumo = mesesResumo.map(m => {
-      saldoResumo += m.rec - m.desp;
-      const semMov = m.rec === 0 && m.desp === 0;
-      return `<tr style="${semMov ? "opacity:0.4;" : ""}">
-        <td style="${td};text-transform:capitalize;">${m.mes}</td>
-        <td style="${tdNum};color:#1A5C38;">${m.rec > 0 ? fmtBRL(m.rec) : "—"}</td>
-        <td style="${tdNum};color:#E24B4A;">${m.desp > 0 ? fmtBRL(m.desp) : "—"}</td>
-        <td style="${tdNum};font-weight:700;">${fmtBRL(saldoResumo)}</td>
-      </tr>`;
-    }).join("");
 
     const kpiBox = (label: string, valor: string, cor: string, bg: string) => `
       <div style="flex:1;background:${bg};border:0.5px solid #DDE2EE;border-radius:8px;padding:10px 12px;">
@@ -700,24 +761,26 @@ export default function LCDPR() {
     const html = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:0.5px solid #DDE2EE;font-size:11px;">
         <table style="border-collapse:collapse;">
-          <tr><td style="padding:2px 10px 2px 0;color:#666;">Produtor</td><td style="font-weight:700;">${nomeProd}</td></tr>
-          <tr><td style="padding:2px 10px 2px 0;color:#666;">CPF</td><td>${fmtCPF(cpfSel) || "—"}</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;color:#666;">${isEmpresa ? "Empresa" : "Produtor"}</td><td style="font-weight:700;">${nomeProd}</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;color:#666;">${isEmpresa ? "CNPJ" : "CPF"}</td><td>${isEmpresa ? (cpfCnpjSel || "—") : (fmtCPF(cpfCnpjSel) || "—")}</td></tr>
           <tr><td style="padding:2px 10px 2px 0;color:#666;">Período</td><td style="text-transform:capitalize;">${periodo}</td></tr>
         </table>
         <table style="border-collapse:collapse;text-align:right;">
-          <tr><td style="padding:2px 0;color:#666;">Regime</td><td style="padding-left:10px;">Caixa — Pessoa Física</td></tr>
-          <tr><td style="padding:2px 0;color:#666;">Leiaute</td><td style="padding-left:10px;">1.3 — Anexo ADE COPES nº 1/2020</td></tr>
-          ${produtorFiltro !== "todos" && fator !== 1 ? `<tr><td style="padding:2px 0;color:#666;">Quota-parte aplicada</td><td style="padding-left:10px;">${(fator * 100).toFixed(2)}%</td></tr>` : ""}
+          <tr><td style="padding:2px 0;color:#666;">Regime</td><td style="padding-left:10px;">Caixa — ${entidadeLabel}</td></tr>
+          ${!isEmpresa ? `<tr><td style="padding:2px 0;color:#666;">Leiaute</td><td style="padding-left:10px;">1.3 — Anexo ADE COPES nº 1/2020</td></tr>` : ""}
+          ${!isEmpresa && produtorFiltro !== "todos" && fator !== 1 ? `<tr><td style="padding:2px 0;color:#666;">Quota-parte aplicada</td><td style="padding-left:10px;">${(fator * 100).toFixed(2)}%</td></tr>` : ""}
         </table>
       </div>
 
       <div style="display:flex;gap:10px;margin-bottom:18px;">
-        ${kpiBox("Saldo Inicial", fmtBRL(saldoInicialExport), "#1a1a1a", "#F7F9FA")}
+        ${kpiBox("Saldo Inicial", fmtBRL(saldoInicialReport), "#1a1a1a", "#F7F9FA")}
         ${kpiBox("Total Receitas", fmtBRL(totalRecExport), "#1A5C38", "#EAF3DE")}
         ${kpiBox("Total Despesas", fmtBRL(totalDespExport), "#E24B4A", "#FCEBEB")}
         ${kpiBox("Saldo Final", fmtBRL(saldoFinalExport), saldoFinalExport >= 0 ? "#1A5C38" : "#E24B4A", saldoFinalExport >= 0 ? "#EAF3DE" : "#FCEBEB")}
       </div>
 
+      ${blocoEmpresa}
+      ${!isEmpresa ? `
       <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Imóveis Rurais</h2>
       <div class="auto-fit-table" style="margin-bottom:16px;">
         <table style="width:100%;border-collapse:collapse;">
@@ -727,10 +790,10 @@ export default function LCDPR() {
           </tr></thead>
           <tbody>${linhasImoveis || `<tr><td colspan="7" style="${td};text-align:center;color:#999;">Nenhum imóvel cadastrado</td></tr>`}</tbody>
         </table>
-      </div>
+      </div>` : ""}
 
       <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Contas Bancárias</h2>
-      <div class="auto-fit-table" style="margin-bottom:16px;">
+      <div class="auto-fit-table" style="margin-bottom:${isEmpresa ? "4px" : "16px"};">
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr>
             <th style="${th}">Nome</th><th style="${th}">Banco</th><th style="${th}">Agência</th><th style="${th}">Conta</th><th style="${th}">Tipo</th>
@@ -738,6 +801,7 @@ export default function LCDPR() {
           <tbody>${linhasContas}</tbody>
         </table>
       </div>
+      ${isEmpresa ? `<div style="font-size:8px;color:#999;margin-bottom:16px;">Lista todas as contas bancárias da conta — não há vínculo direto conta↔empresa no cadastro pra filtrar só as desta.</div>` : ""}
 
       <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Livro Caixa — Lançamentos${modoExport === "mensal" ? ` (${periodo})` : ""}</h2>
       <div class="auto-fit-table" style="margin-bottom:6px;">
@@ -760,17 +824,6 @@ export default function LCDPR() {
         </table>
       </div>
 
-      <div style="font-size:8px;color:#999;margin-bottom:16px;">Linhas esmaecidas na tabela de resumo indicam meses sem movimento.</div>
-
-      <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Resumo Mensal — ${anoSel}</h2>
-      <div class="auto-fit-table" style="margin-bottom:20px;">
-        <table style="width:60%;border-collapse:collapse;">
-          <thead><tr>
-            <th style="${th}">Mês</th><th style="${thNum}">Receitas</th><th style="${thNum}">Despesas</th><th style="${thNum}">Saldo Acumulado</th>
-          </tr></thead>
-          <tbody>${linhasResumo}</tbody>
-        </table>
-      </div>
 
       <div style="display:flex;justify-content:space-between;margin-top:30px;padding-top:14px;border-top:0.5px solid #DDE2EE;font-size:10px;">
         <div>
@@ -778,24 +831,24 @@ export default function LCDPR() {
           <div style="font-weight:700;">${contador.nome || "—"}</div>
           <div style="color:#666;">${contador.cpf_cnpj ? `CPF/CNPJ: ${contador.cpf_cnpj}` : ""}${contador.crc ? ` · CRC: ${contador.crc}` : ""}</div>
         </div>
-        <div style="text-align:right;">
+        ${!isEmpresa ? `<div style="text-align:right;">
           <div style="color:#666;margin-bottom:2px;">Prazo de entrega (junto com a DIRPF)</div>
           <div style="font-weight:700;">30/04/${anoSel + 1}</div>
-        </div>
+        </div>` : ""}
       </div>
     `;
 
     abrirPreviewImpressao(
-      `LCDPR — Livro Caixa Digital do Produtor Rural`,
+      isEmpresa ? "Livro Caixa — Empresa (PJ)" : "LCDPR — Livro Caixa Digital do Produtor Rural",
       html,
       { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: nomeProd },
     );
   };
 
-  const exportar = () => {
+  const exportar = async () => {
     if (formatoExport === "txt")  gerarLCDPR();
-    else if (formatoExport === "xlsx") gerarXLSX();
-    else gerarPDF();
+    else if (formatoExport === "xlsx") await gerarXLSX();
+    else await gerarPDF();
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1307,10 +1360,21 @@ export default function LCDPR() {
                     <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 16 }}>Configurar exportação</div>
 
                     <div style={{ marginBottom: 16 }}>
-                      <label style={lblS}>Produtor (CPF)</label>
-                      <select value={produtorFiltro} onChange={e => setProdutorFiltro(e.target.value)} style={inpS}>
-                        <option value="todos">Todos (sem aplicar quota-parte)</option>
+                      <label style={lblS}>Produtor / Empresa</label>
+                      <select value={produtorFiltro} onChange={e => {
+                        const v = e.target.value;
+                        setProdutorFiltro(v);
+                        // .txt e Excel são só PF (LCDPR é obrigação exclusiva de
+                        // Pessoa Física) — Empresa (PJ) só existe no relatório PDF.
+                        if (v.startsWith("emp:") && formatoExport !== "pdf") setFormatoExport("pdf");
+                      }} style={inpS}>
+                        <option value="todos">Todos os produtores (sem aplicar quota-parte)</option>
                         {produtoresLcdpr.map(p => <option key={p.cpf} value={p.cpf}>{fmtCPF(p.cpf)} — {p.nome}</option>)}
+                        {empresasDados.length > 0 && (
+                          <optgroup label="Empresas (PJ) — só no Relatório PDF, sem quota-parte">
+                            {empresasDados.map(e => <option key={e.id} value={`emp:${e.id}`}>{e.cpf_cnpj ? `${e.cpf_cnpj} — ` : ""}{e.razao_social || e.nome}</option>)}
+                          </optgroup>
+                        )}
                       </select>
                     </div>
 
@@ -1332,10 +1396,15 @@ export default function LCDPR() {
                     <div style={{ marginBottom: 20 }}>
                       <label style={lblS}>Formato</label>
                       <div style={{ display: "flex", gap: 8 }}>
-                        {([["txt", "📄 .txt (LCDPR)"], ["xlsx", "📊 Excel"], ["pdf", "📑 Relatório PDF"]] as [typeof formatoExport, string][]).map(([f, lbl]) => (
+                        {([["txt", "📄 .txt (LCDPR)"], ["xlsx", "📊 Excel"], ["pdf", "📑 Relatório PDF"]] as [typeof formatoExport, string][])
+                          .filter(([f]) => f === "pdf" || !produtorFiltro.startsWith("emp:"))
+                          .map(([f, lbl]) => (
                           <button key={f} onClick={() => setFormatoExport(f)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${formatoExport === f ? "#1A5C38" : "var(--border-table)"}`, background: formatoExport === f ? "#EAF3DE" : "var(--bg-card)", color: formatoExport === f ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>{lbl}</button>
                         ))}
                       </div>
+                      {produtorFiltro.startsWith("emp:") && (
+                        <div style={{ fontSize: 11, color: "#7A5A12", marginTop: 6 }}>Empresa (PJ) selecionada — LCDPR é obrigação exclusiva de Pessoa Física, então só o Relatório PDF está disponível pra essa seleção.</div>
+                      )}
                     </div>
 
                     <button onClick={exportar}
