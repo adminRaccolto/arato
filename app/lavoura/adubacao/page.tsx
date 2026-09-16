@@ -82,7 +82,7 @@ export default function AdubacaoBasePage() {
     // Conta-wide: a lista de adubações mostra lançamentos de qualquer fazenda
     // da conta — o catálogo de insumos precisa cobrir todas, senão um
     // lançamento de outra fazenda mostra o UUID do insumo em vez do nome.
-    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
+    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && i.categoria === "fertilizante"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
   }, [fazendaId, fazendaFiltro, contaId]);
