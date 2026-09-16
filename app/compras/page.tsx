@@ -2337,14 +2337,17 @@ export default function ComprasPage() {
                     <div style={{ ...secTit, marginTop: 20 }}>Histórico de Entregas</div>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead><tr style={{ background: "var(--bg-page)" }}>
-                        {["Item","Data","Qtd. Entregue","Obs.",""].map((h, i) => (
-                          <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 && i < 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                        {["Item","Un.","Data","Qtd. Entregue","Obs.",""].map((h, i) => (
+                          <th key={i} style={{ padding: "6px 10px", textAlign: i === 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                         ))}
                       </tr></thead>
                       <tbody>
-                        {entregas.map((e, i) => (
+                        {entregas.map((e, i) => {
+                          const item = modalEntrega.itens.find(it => it.id === e.item_id);
+                          return (
                           <tr key={e.id} style={{ borderBottom: i < entregas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                            <td style={{ padding: "7px 10px" }}>{modalEntrega.itens.find(it => it.id === e.item_id)?.nome_item ?? "—"}</td>
+                            <td style={{ padding: "7px 10px" }}>{item?.nome_item ?? "—"}</td>
+                            <td style={{ padding: "7px 10px", color: "var(--text-2)" }}>{item?.unidade ?? "—"}</td>
                             <td style={{ padding: "7px 10px" }}>{fmtData(e.data_entrega)}</td>
                             <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#16A34A" }}>
                               {entregaEditId === e.id ? (
@@ -2367,7 +2370,8 @@ export default function ComprasPage() {
                               )}
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </>)}
