@@ -72,6 +72,7 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "producao", label: "Produção", panel: true, minStep: 3,
     children: [
+      { id: "prod-abastecimento", label: "Abastecimento de Máquinas",       path: "/estoque/abastecimento"                    },
       { type: "divider", label: "Planejamento" },
       { id: "prod-planejamento",  label: "Planejamento de Safra",           path: "/lavoura/planejamento"                     },
       { id: "prod-safras",        label: "Safras e Ciclos",                 path: "/cadastros?tab=safras"                     },
@@ -94,7 +95,6 @@ const NAV: NavItem[] = [
       { id: "prod-classificacao", label: "Classificação de Grãos",          path: "/cadastros?tab=padroes_classificacao"      },
       { type: "divider", label: "Máquinas" },
       { id: "prod-maquinas",      label: "Máquinas e Veículos",             path: "/cadastros?tab=maquinas"                   },
-      { id: "prod-abastecimento", label: "Abastecimento de Máquinas",       path: "/estoque/abastecimento"                    },
       { id: "prod-manutencoes",   label: "Manutenções",                     path: "/relatorios/manutencao"                    },
       { id: "prod-custos-maq",    label: "Custos por Máquina",              path: "/relatorios/manutencao?aba=custos"         },
       { type: "divider", label: "Algodão" },

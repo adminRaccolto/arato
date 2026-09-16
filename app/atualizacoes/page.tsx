@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-p",
+    data: "16/09/2026",
+    titulo: "Abastecimento de Máquinas — movido para o topo do menu Produção",
+    modulos: ["Produção"],
+    itens: [
+      { tipo: "melhoria", texto: "Após o primeiro reposicionamento (dentro de Produção → Máquinas) ainda ficar pouco visível, 'Abastecimento de Máquinas' foi movido para o topo do menu Produção — primeiro item ao abrir o menu, antes de qualquer seção." },
+    ],
+    onde: "Produção → Abastecimento de Máquinas",
+  },
+  {
     versao: "2026.09.16-o",
     data: "16/09/2026",
     titulo: "Abastecimento de Máquinas — reposicionado no menu",
