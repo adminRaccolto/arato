@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-b",
+    data: "16/09/2026",
+    titulo: "LCDPR — PDF agora é um relatório de verdade",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "LCDPR → Exportação → 'Relatório PDF' deixou de ser um print cru da tela (com abas e botões) e virou um relatório estruturado: identificação do produtor, KPIs, tabela de Imóveis Rurais, Contas Bancárias, Livro Caixa completo com saldo corrente e total do período, Resumo Mensal e responsável técnico — no mesmo padrão A4 dos demais relatórios do sistema. O arquivo oficial de entrega continua sendo o .txt (leiaute 1.3); o PDF é para leitura e conferência." },
+    ],
+    onde: "Fiscal → LCDPR → aba Exportação",
+  },
+  {
     versao: "2026.09.16",
     data: "16/09/2026",
     titulo: "Seletor de produto em Adubação de Base e Correção de Solo",

@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 15/09/2026 (e)
+ * Última revisão: 16/09/2026
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -737,7 +737,7 @@ Gerador do Livro Caixa Digital do Produtor Rural — obrigação anual da Receit
 - **Produtores e Participações** — configura o % de participação de cada CPF quando o imóvel é de condomínio ou parceria (mais de um titular). Ao exportar para um produtor específico, os valores são multiplicados automaticamente pela sua quota-parte.
 - **Cadastro LCDPR** — cadastro dos dados que a Receita exige e que não fazem parte do dia a dia operacional: CAEPF e tipo de exploração de cada fazenda (individual, condomínio, arrendado, parceria, comodato ou outros), contas bancárias vinculadas e os dados do contador responsável (nome, CPF/CNPJ, CRC, e-mail, telefone). **Preencha esta aba antes da primeira exportação** — sem isso, esses campos saem em branco no arquivo.
 - **Importação** — lança dados históricos via planilha Excel/CSV (útil para anos anteriores à adoção do sistema).
-- **Exportação** — gera o arquivo .txt oficial por produtor, por ano ou por mês; também exporta em Excel para conferência antes do envio.
+- **Exportação** — gera o arquivo .txt oficial (o que realmente é entregue à Receita) por produtor, por ano ou por mês. Também tem Excel e um relatório em PDF (Imóveis Rurais, Contas Bancárias, Livro Caixa completo com saldo corrente e Resumo Mensal, em layout A4) — os dois são só para conferência, nunca substituem o .txt no envio.
 
 **Contas bancárias:** contas do tipo "espécie" (dinheiro em caixa) ou "trânsito" (sem conta bancária identificada) entram no arquivo com os códigos especiais que a própria Receita prevê para esses casos (000 e 999) — não é erro, é o comportamento correto do leiaute oficial.
 
