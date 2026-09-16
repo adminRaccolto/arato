@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-f",
+    data: "16/09/2026",
+    titulo: "LCDPR — nome do cliente e remoção dos quadros de KPI do relatório",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A linha 'Cliente' recém-adicionada ao cabeçalho do relatório PDF do LCDPR não aparecia quando um usuário Raccolto (raccotlo) gerava o relatório navegando pela conta de um cliente. Corrigido." },
+      { tipo: "melhoria", texto: "Removidos os quadros Saldo Inicial / Total Receitas / Total Despesas / Saldo Final do relatório PDF." },
+    ],
+    onde: "Fiscal → LCDPR → aba Exportação",
+  },
+  {
     versao: "2026.09.16-e",
     data: "16/09/2026",
     titulo: "LCDPR — identificação do cliente no cabeçalho do relatório",
