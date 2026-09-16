@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-q",
+    data: "16/09/2026",
+    titulo: "Performance — índices de banco e cache de telas de cadastro",
+    modulos: ["Compras & Estoque", "Lavoura", "Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Adicionados índices de banco em 10 tabelas que crescem a cada nota, operação de lavoura ou romaneio (estoque/Kardex, itens de NF, manutenções, parcelas de contratos financeiros, plantio/pulverização/colheita/adubação/correção de solo, romaneios, conciliação bancária) — consultas que ficavam mais lentas conforme o histórico do cliente crescia." },
+      { tipo: "melhoria", texto: "Telas de cadastro (fazendas, produtores, pessoas, empresas, contas bancárias, anos-safra, centros de custo, operações gerenciais, formas de pagamento, cartões) agora usam um cache rápido de 45 segundos no navegador — evita buscar os mesmos dados do zero a cada troca de tela. Nada que muda com frequência (lançamentos, notas, estoque, operações de lavoura) foi cacheado." },
+    ],
+    onde: "Sistema todo — mais perceptível em contas com histórico grande",
+  },
+  {
     versao: "2026.09.16-p",
     data: "16/09/2026",
     titulo: "Abastecimento de Máquinas — movido para o topo do menu Produção",

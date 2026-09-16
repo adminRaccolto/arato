@@ -12724,3 +12724,81 @@ ALTER TABLE folha_pagamento
   ADD COLUMN IF NOT EXISTS cp_inss_patronal_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 262 — Índices de performance: tabelas transacionais crescendo sem
+-- índice nos filtros que a aplicação realmente usa
+--
+-- Motivador: cliente relatou o sistema "ficando mais lento conforme inserimos
+-- informações". Achado real: movimentacoes_estoque (uma linha por entrada de
+-- NF, consumo ou romaneio — cresce sem parar) não tinha índice em fazenda_id
+-- nem insumo_id, diferente de lancamentos/nf_entradas que já tinham. Toda
+-- consulta de Posição de Estoque ou Kardex fazia varredura sequencial, que
+-- cresce junto com o volume — exatamente o padrão reportado.
+--
+-- Levantamento: varredura em todas as tabelas de alto volume de inserção
+-- (crescem a cada NF/operação/romaneio, nunca são "podadas") cruzando com os
+-- filtros reais usados em app/ e lib/db.ts (.eq/.in nas queries), não só
+-- supondo colunas. Mais 9 tabelas com o mesmo padrão de movimentacoes_estoque
+-- foram encontradas: nf_entrada_itens, historico_manutencao,
+-- estoque_terceiros, parcelas_pagamento, plantios, pulverizacoes, colheitas,
+-- adubacoes_base, correcoes_solo, romaneios_entrada, conciliacao_pendencias.
+--
+-- Risco: baixo. CREATE INDEX IF NOT EXISTS é aditivo — não altera dado nem
+-- comportamento, só acelera leitura. Sem CONCURRENTLY (padrão já usado em
+-- todo este arquivo) porque o volume atual de linhas por tabela é pequeno
+-- (poucos clientes reais ainda) — cada CREATE deve levar frações de segundo.
+-- Se algum dia isso for rodado contra uma tabela com milhões de linhas,
+-- trocar para CREATE INDEX CONCURRENTLY (roda fora de transação, uma
+-- instrução por vez, sem bloquear escrita).
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Posição de Estoque (WHERE fazenda_id = x) e Kardex (WHERE fazenda_id = x
+-- AND insumo_id = y AND data BETWEEN ...) — a query mais repetida do módulo
+-- de estoque, sem nenhum índice de apoio até aqui.
+CREATE INDEX IF NOT EXISTS idx_mov_estoque_faz_insumo_data
+  ON movimentacoes_estoque(fazenda_id, insumo_id, data);
+
+-- Processamento e limpeza de NF (processarNfEntrada,
+-- limparMovimentacoesEFinanceiroDaNf) filtram por nf_entrada_id o tempo todo.
+CREATE INDEX IF NOT EXISTS idx_nf_entrada_itens_nf
+  ON nf_entrada_itens(nf_entrada_id);
+
+-- Limpeza por item da NF (mesmo fluxo acima) e listagem "Manutenções" por
+-- máquina/período.
+CREATE INDEX IF NOT EXISTS idx_historico_manutencao_item
+  ON historico_manutencao(nf_entrada_item_id);
+CREATE INDEX IF NOT EXISTS idx_historico_manutencao_maquina_data
+  ON historico_manutencao(maquina_id, data);
+
+-- Limpeza por NF (VEF/remessa) e resolução de saldo de terceiro por
+-- fazenda+insumo+status ao processar uma NF de Remessa.
+CREATE INDEX IF NOT EXISTS idx_estoque_terceiros_nf
+  ON estoque_terceiros(nf_entrada_id);
+CREATE INDEX IF NOT EXISTS idx_estoque_terceiros_faz_insumo_status
+  ON estoque_terceiros(fazenda_id, insumo_id, status);
+
+-- Endividamento, BI e Contratos Financeiros carregam as parcelas de cada
+-- contrato repetidamente — sem índice, cresce com o total de parcelas de
+-- todos os clientes, não só do contrato pedido.
+CREATE INDEX IF NOT EXISTS idx_parcelas_pagamento_contrato
+  ON parcelas_pagamento(contrato_id);
+
+-- Operações de lavoura: listagem por fazenda e o filtro fazenda+ciclo usado
+-- pelo DRE Agrícola (roda para cada bloco de custo, em cada ciclo).
+CREATE INDEX IF NOT EXISTS idx_plantios_faz_ciclo        ON plantios(fazenda_id, ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_pulverizacoes_faz_ciclo    ON pulverizacoes(fazenda_id, ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_colheitas_faz_ciclo        ON colheitas(fazenda_id, ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_adubacoes_base_faz_ciclo   ON adubacoes_base(fazenda_id, ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_correcoes_solo_faz_ciclo   ON correcoes_solo(fazenda_id, ciclo_id);
+
+-- Relatório de Romaneios de Produção filtra por fazenda + período.
+CREATE INDEX IF NOT EXISTS idx_romaneios_entrada_faz_data
+  ON romaneios_entrada(fazenda_id, data);
+
+-- Fila de Conciliação Bancária pendente é carregada no Dashboard (app/page.tsx)
+-- em toda visita — fazenda + status='pendente', ordenado por data.
+CREATE INDEX IF NOT EXISTS idx_conciliacao_pendencias_faz_status_data
+  ON conciliacao_pendencias(fazenda_id, status, data);
+
+NOTIFY pgrst, 'reload schema';

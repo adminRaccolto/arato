@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "./supabase";
+import { cached, invalidateCache } from "./cache";
 import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
 
 // ————————————————————————————————————————
@@ -139,21 +140,23 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
 
 // Variante que aceita conta_id/fazenda_id já conhecidos — evita lookup auth interno
 export async function listarFazendasDaConta(conta_id?: string | null, fazenda_id_fallback?: string | null): Promise<Fazenda[]> {
-  if (conta_id) {
-    const { data, error } = await supabase.from("fazendas").select("*").eq("conta_id", conta_id).order("nome");
-    if (!error && data?.length) return data;
-  }
-  if (fazenda_id_fallback) {
-    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-    if (ids.length) {
-      const { data } = await supabase.from("fazendas").select("*").in("id", ids).order("nome");
-      if (data?.length) return data ?? [];
+  return cached(`fazendas:${conta_id ?? ""}:${fazenda_id_fallback ?? ""}`, async () => {
+    if (conta_id) {
+      const { data, error } = await supabase.from("fazendas").select("*").eq("conta_id", conta_id).order("nome");
+      if (!error && data?.length) return data;
     }
-    // último fallback: só a fazenda ativa
-    const { data } = await supabase.from("fazendas").select("*").eq("id", fazenda_id_fallback);
-    return data ?? [];
-  }
-  return listarFazendas();
+    if (fazenda_id_fallback) {
+      const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+      if (ids.length) {
+        const { data } = await supabase.from("fazendas").select("*").in("id", ids).order("nome");
+        if (data?.length) return data ?? [];
+      }
+      // último fallback: só a fazenda ativa
+      const { data } = await supabase.from("fazendas").select("*").eq("id", fazenda_id_fallback);
+      return data ?? [];
+    }
+    return listarFazendas();
+  });
 }
 
 export async function criarFazenda(f: Omit<Fazenda, "id" | "created_at">): Promise<Fazenda> {
@@ -164,6 +167,7 @@ export async function criarFazenda(f: Omit<Fazenda, "id" | "created_at">): Promi
   });
   const json = await res.json();
   if (!res.ok || json.error) throw new Error(json.error ?? "Erro ao criar fazenda.");
+  invalidateCache("fazendas");
   return json.data as Fazenda;
 }
 
@@ -175,11 +179,13 @@ export async function atualizarFazenda(id: string, f: Partial<Fazenda>): Promise
   });
   const json = await res.json();
   if (!res.ok || json.error) throw new Error(json.error ?? "Erro ao salvar fazenda.");
+  invalidateCache("fazendas");
 }
 
 export async function excluirFazenda(id: string): Promise<void> {
   const { error } = await supabase.from("fazendas").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("fazendas");
 }
 
 // ————————————————————————————————————————
@@ -884,10 +890,18 @@ export async function reabrirLancamentos(ids: string[]): Promise<void> {
   if (!ids.length) return;
   const hoje = new Date().toISOString().slice(0, 10);
   const { data: lancs } = await supabase.from("lancamentos").select("id, data_vencimento").in("id", ids);
+  // Agrupa por status resultante e faz 2 updates em lote em vez de 1 por
+  // lançamento — antes era N idas ao banco pra reabrir um borderô inteiro.
+  const idsVencidos: string[] = [];
+  const idsEmAberto: string[] = [];
   for (const l of (lancs ?? [])) {
-    const novoStatus = l.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
-    await supabase.from("lancamentos").update({ status: novoStatus, data_baixa: null, valor_pago: null, lote_id: null }).eq("id", l.id);
+    (l.data_vencimento && l.data_vencimento < hoje ? idsVencidos : idsEmAberto).push(l.id);
   }
+  const base = { data_baixa: null, valor_pago: null, lote_id: null };
+  await Promise.all([
+    idsVencidos.length ? supabase.from("lancamentos").update({ ...base, status: "vencido" }).in("id", idsVencidos) : null,
+    idsEmAberto.length ? supabase.from("lancamentos").update({ ...base, status: "em_aberto" }).in("id", idsEmAberto) : null,
+  ]);
 }
 
 /**
@@ -1256,15 +1270,18 @@ export async function criarProdutor(p: Omit<Produtor, "id" | "created_at">): Pro
   }
 
   if (!res.ok) throw new Error(json.error ?? "Erro ao criar produtor");
+  invalidateCache("produtores");
   return json.produtor as Produtor;
 }
 export async function atualizarProdutor(id: string, p: Partial<Produtor>): Promise<void> {
   const { error } = await supabase.from("produtores").update(p).eq("id", id);
   if (error) throw error;
+  invalidateCache("produtores");
 }
 export async function excluirProdutor(id: string): Promise<void> {
   const { error } = await supabase.from("produtores").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("produtores");
 }
 
 // Busca produtores via owner_user_id da fazenda (admin raccotlo sem conta real do cliente)
@@ -1283,13 +1300,15 @@ export async function listarProdutoresViaFazenda(fazenda_id: string): Promise<Pr
 }
 
 export async function listarProdutoresDaConta(conta_id: string, fazenda_id?: string): Promise<Produtor[]> {
-  // Usa API route com service_role_key para evitar falha de RLS quando JWT expira
-  const params = new URLSearchParams({ conta_id });
-  if (fazenda_id) params.set("fazenda_id", fazenda_id);
-  const res = await fetch(`/api/produtores/listar?${params}`);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error ?? "Erro ao listar produtores");
-  return (json.produtores ?? []) as Produtor[];
+  return cached(`produtores:${conta_id}:${fazenda_id ?? ""}`, async () => {
+    // Usa API route com service_role_key para evitar falha de RLS quando JWT expira
+    const params = new URLSearchParams({ conta_id });
+    if (fazenda_id) params.set("fazenda_id", fazenda_id);
+    const res = await fetch(`/api/produtores/listar?${params}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? "Erro ao listar produtores");
+    return (json.produtores ?? []) as Produtor[];
+  });
 }
 
 // ————————————————————————————————————————
@@ -1434,28 +1453,32 @@ async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): P
 
 // Carrega pessoas de TODAS as fazendas da conta (nova arquitetura multi-fazenda)
 export async function listarPessoasDaConta(fazenda_id_fallback?: string | null): Promise<Pessoa[]> {
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
-  const PAGE = 1000;
-  let all: Pessoa[] = [];
-  let from = 0;
-  while (true) {
-    const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome").range(from, from + PAGE - 1);
-    if (error) throw error;
-    all = [...all, ...(data ?? [])];
-    if (!data || data.length < PAGE) break;
-    from += PAGE;
-  }
-  return sortPessoas(dedupPessoas(all));
+  return cached(`pessoas:${fazenda_id_fallback ?? ""}`, async () => {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (!ids.length) return [];
+    const PAGE = 1000;
+    let all: Pessoa[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome").range(from, from + PAGE - 1);
+      if (error) throw error;
+      all = [...all, ...(data ?? [])];
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    return sortPessoas(dedupPessoas(all));
+  });
 }
 
 // Carrega contas bancárias de TODAS as fazendas da conta
 export async function listarContasBancariasDaConta(fazenda_id_fallback?: string | null): Promise<{ id: string; nome: string; banco: string; agencia: string; conta: string; fazenda_id: string }[]> {
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
-  const { data, error } = await supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, fazenda_id").in("fazenda_id", ids).eq("ativa", true).order("nome");
-  if (error) throw error;
-  return data ?? [];
+  return cached(`contasBancarias:${fazenda_id_fallback ?? ""}`, async () => {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (!ids.length) return [];
+    const { data, error } = await supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, fazenda_id").in("fazenda_id", ids).eq("ativa", true).order("nome");
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 export async function criarPessoa(p: Omit<Pessoa, "id" | "created_at">): Promise<Pessoa> {
   if (p.cpf_cnpj) {
@@ -1481,11 +1504,13 @@ export async function criarPessoa(p: Omit<Pessoa, "id" | "created_at">): Promise
   }
   const { data, error } = await supabase.from("pessoas").insert(p).select().single();
   if (error) throw error;
+  invalidateCache("pessoas");
   return data;
 }
 export async function atualizarPessoa(id: string, p: Partial<Pessoa>): Promise<void> {
   const { error } = await supabase.from("pessoas").update(p).eq("id", id);
   if (error) throw error;
+  invalidateCache("pessoas");
 }
 export async function excluirPessoa(id: string): Promise<void> {
   // Null out FK references that lack ON DELETE SET NULL before deleting
@@ -1495,6 +1520,7 @@ export async function excluirPessoa(id: string): Promise<void> {
   await supabase.from("nf_servicos").update({ prestador_id: null }).eq("prestador_id", id);
   const { error } = await supabase.from("pessoas").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("pessoas");
 }
 
 // ————————————————————————————————————————
@@ -1506,25 +1532,27 @@ export async function excluirPessoa(id: string): Promise<void> {
 // do mesmo cliente. Resolve a conta da fazenda pedida e busca por conta_id;
 // fazenda_id vira fallback só pra contas antigas sem conta_id preenchido.
 export async function listarAnosSafra(fazenda_id: string): Promise<AnoSafra[]> {
-  const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
-  if (faz?.conta_id) {
-    // Não usa .throwOnError — enquanto a migration da Seção 254 (anos_safra.conta_id)
-    // não roda em todo ambiente, essa query falha com "column does not exist"; sem
-    // isso o erro subia e quebrava a tela inteira em vez de cair no fallback abaixo.
-    const { data, error } = await supabase.from("anos_safra").select("*").eq("conta_id", faz.conta_id).order("descricao");
-    if (!error && data && data.length > 0) return data;
-  }
-  const { data, error } = await supabase.from("anos_safra").select("*").eq("fazenda_id", fazenda_id).order("descricao");
-  if (error) throw error;
-  if (data && data.length > 0) return data;
-  // Fallback: anos_safra referenciados pelos ciclos desta fazenda (dados sem fazenda_id/conta_id direto)
-  const { data: ciclosData } = await supabase.from("ciclos").select("ano_safra_id").eq("fazenda_id", fazenda_id);
-  if (!ciclosData || ciclosData.length === 0) return [];
-  const anoIds = [...new Set(ciclosData.map((c: { ano_safra_id: string }) => c.ano_safra_id).filter(Boolean))];
-  if (anoIds.length === 0) return [];
-  const { data: anos, error: e2 } = await supabase.from("anos_safra").select("*").in("id", anoIds).order("descricao");
-  if (e2) throw e2;
-  return anos ?? [];
+  return cached(`anosSafra:${fazenda_id}`, async () => {
+    const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+    if (faz?.conta_id) {
+      // Não usa .throwOnError — enquanto a migration da Seção 254 (anos_safra.conta_id)
+      // não roda em todo ambiente, essa query falha com "column does not exist"; sem
+      // isso o erro subia e quebrava a tela inteira em vez de cair no fallback abaixo.
+      const { data, error } = await supabase.from("anos_safra").select("*").eq("conta_id", faz.conta_id).order("descricao");
+      if (!error && data && data.length > 0) return data;
+    }
+    const { data, error } = await supabase.from("anos_safra").select("*").eq("fazenda_id", fazenda_id).order("descricao");
+    if (error) throw error;
+    if (data && data.length > 0) return data;
+    // Fallback: anos_safra referenciados pelos ciclos desta fazenda (dados sem fazenda_id/conta_id direto)
+    const { data: ciclosData } = await supabase.from("ciclos").select("ano_safra_id").eq("fazenda_id", fazenda_id);
+    if (!ciclosData || ciclosData.length === 0) return [];
+    const anoIds = [...new Set(ciclosData.map((c: { ano_safra_id: string }) => c.ano_safra_id).filter(Boolean))];
+    if (anoIds.length === 0) return [];
+    const { data: anos, error: e2 } = await supabase.from("anos_safra").select("*").in("id", anoIds).order("descricao");
+    if (e2) throw e2;
+    return anos ?? [];
+  });
 }
 export async function criarAnoSafra(a: Omit<AnoSafra, "id" | "created_at">): Promise<AnoSafra> {
   const { data, error } = await supabase.from("anos_safra").insert(a).select().single();
@@ -1535,18 +1563,22 @@ export async function criarAnoSafra(a: Omit<AnoSafra, "id" | "created_at">): Pro
     const { conta_id: _drop, ...semContaId } = a;
     const retry = await supabase.from("anos_safra").insert(semContaId).select().single();
     if (retry.error) throw retry.error;
+    invalidateCache("anosSafra");
     return retry.data;
   }
   if (error) throw error;
+  invalidateCache("anosSafra");
   return data;
 }
 export async function atualizarAnoSafra(id: string, a: Partial<AnoSafra>): Promise<void> {
   const { error } = await supabase.from("anos_safra").update(a).eq("id", id);
   if (error) throw error;
+  invalidateCache("anosSafra");
 }
 export async function excluirAnoSafra(id: string): Promise<void> {
   const { error } = await supabase.from("anos_safra").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("anosSafra");
 }
 
 export async function encerrarAnoSafra(id: string, fazendaId: string): Promise<number> {
@@ -1944,19 +1976,21 @@ export async function listarEmpresasDoProdutor(produtor_id: string): Promise<Emp
 
 export async function listarEmpresasDaConta(fazendaIds: string[]): Promise<Empresa[]> {
   if (!fazendaIds.length) return [];
-  const { data, error } = await supabase
-    .from("empresas")
-    .select("*")
-    .in("fazenda_id", fazendaIds)
-    .order("nome");
-  if (error) throw error;
-  // Deduplica por nome: cliente com múltiplas fazendas registra a mesma empresa em cada uma
-  const seen = new Set<string>();
-  return (data ?? []).filter(e => {
-    const key = e.nome?.trim().toUpperCase() ?? e.id;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  return cached(`empresas:${[...fazendaIds].sort().join(",")}`, async () => {
+    const { data, error } = await supabase
+      .from("empresas")
+      .select("*")
+      .in("fazenda_id", fazendaIds)
+      .order("nome");
+    if (error) throw error;
+    // Deduplica por nome: cliente com múltiplas fazendas registra a mesma empresa em cada uma
+    const seen = new Set<string>();
+    return (data ?? []).filter(e => {
+      const key = e.nome?.trim().toUpperCase() ?? e.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   });
 }
 
@@ -2017,17 +2051,20 @@ export async function baixarEmpresaLancamento(
 export async function criarEmpresa(e: Omit<Empresa, "id" | "created_at">): Promise<Empresa> {
   const { data, error } = await supabase.from("empresas").insert(e).select().single();
   if (error) throw error;
+  invalidateCache("empresas");
   return data;
 }
 
 export async function atualizarEmpresa(id: string, e: Partial<Empresa>): Promise<void> {
   const { error } = await supabase.from("empresas").update(e).eq("id", id);
   if (error) throw error;
+  invalidateCache("empresas");
 }
 
 export async function excluirEmpresa(id: string): Promise<void> {
   const { error } = await supabase.from("empresas").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("empresas");
 }
 
 // ————————————————————————————————————————
@@ -2055,17 +2092,20 @@ export async function listarContasPorEmpresa(empresa_id: string): Promise<ContaB
 export async function criarConta(c: Omit<ContaBancaria, "id" | "created_at">): Promise<ContaBancaria> {
   const { data, error } = await supabase.from("contas_bancarias").insert(c).select().single();
   if (error) throw error;
+  invalidateCache("contasBancarias");
   return data;
 }
 
 export async function atualizarContaBancaria(id: string, c: Partial<ContaBancaria>): Promise<void> {
   const { error } = await supabase.from("contas_bancarias").update(c).eq("id", id);
   if (error) throw error;
+  invalidateCache("contasBancarias");
 }
 
 export async function excluirConta(id: string): Promise<void> {
   const { error } = await supabase.from("contas_bancarias").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("contasBancarias");
 }
 
 // ————————————————————————————————————————
@@ -4111,24 +4151,29 @@ export async function listarGruposInsumo(fazenda_id: string): Promise<GrupoInsum
   return data ?? [];
 }
 export async function listarGruposInsumoDaConta(fazenda_id_fallback?: string | null): Promise<GrupoInsumo[]> {
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
-  const { data, error } = await supabase.from("grupos_insumos").select("*").in("fazenda_id", ids).order("nome");
-  if (error) throw error;
-  return data ?? [];
+  return cached(`gruposInsumo:${fazenda_id_fallback ?? ""}`, async () => {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (!ids.length) return [];
+    const { data, error } = await supabase.from("grupos_insumos").select("*").in("fazenda_id", ids).order("nome");
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 export async function criarGrupoInsumo(g: Omit<GrupoInsumo, "id" | "created_at">): Promise<GrupoInsumo> {
   const { data, error } = await supabase.from("grupos_insumos").insert(g).select().single();
   if (error) throw error;
+  invalidateCache("gruposInsumo");
   return data;
 }
 export async function atualizarGrupoInsumo(id: string, g: Partial<GrupoInsumo>): Promise<void> {
   const { error } = await supabase.from("grupos_insumos").update(g).eq("id", id);
   if (error) throw error;
+  invalidateCache("gruposInsumo");
 }
 export async function excluirGrupoInsumo(id: string): Promise<void> {
   const { error } = await supabase.from("grupos_insumos").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("gruposInsumo");
 }
 
 // Subgrupos de Insumos
@@ -4140,26 +4185,31 @@ export async function listarSubgruposInsumo(fazenda_id: string, grupo_id?: strin
   return data ?? [];
 }
 export async function listarSubgruposInsumoDaConta(fazenda_id_fallback?: string | null, grupo_id?: string): Promise<SubgrupoInsumo[]> {
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
-  let q = supabase.from("subgrupos_insumos").select("*").in("fazenda_id", ids).order("nome");
-  if (grupo_id) q = q.eq("grupo_id", grupo_id);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data ?? [];
+  return cached(`subgruposInsumo:${fazenda_id_fallback ?? ""}:${grupo_id ?? ""}`, async () => {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (!ids.length) return [];
+    let q = supabase.from("subgrupos_insumos").select("*").in("fazenda_id", ids).order("nome");
+    if (grupo_id) q = q.eq("grupo_id", grupo_id);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 export async function criarSubgrupoInsumo(s: Omit<SubgrupoInsumo, "id" | "created_at">): Promise<SubgrupoInsumo> {
   const { data, error } = await supabase.from("subgrupos_insumos").insert(s).select().single();
   if (error) throw error;
+  invalidateCache("subgruposInsumo");
   return data;
 }
 export async function atualizarSubgrupoInsumo(id: string, s: Partial<SubgrupoInsumo>): Promise<void> {
   const { error } = await supabase.from("subgrupos_insumos").update(s).eq("id", id);
   if (error) throw error;
+  invalidateCache("subgruposInsumo");
 }
 export async function excluirSubgrupoInsumo(id: string): Promise<void> {
   const { error } = await supabase.from("subgrupos_insumos").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("subgruposInsumo");
 }
 
 // Seed — popula grupos e subgrupos padrão para produção agrícola (MT: soja, milho, algodão)
@@ -4228,6 +4278,8 @@ export async function seederGruposInsumo(fazenda_id: string): Promise<{ grupos: 
     }
   }
 
+  invalidateCache("gruposInsumo");
+  invalidateCache("subgruposInsumo");
   return { grupos: totalGrupos, subgrupos: totalSubgrupos };
 }
 
@@ -4238,24 +4290,29 @@ export async function listarTiposPessoa(fazenda_id: string): Promise<TipoPessoa[
   return data ?? [];
 }
 export async function listarTiposPessoaDaConta(fazenda_id_fallback?: string | null): Promise<TipoPessoa[]> {
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
-  const { data, error } = await supabase.from("tipos_pessoa").select("*").in("fazenda_id", ids).order("nome");
-  if (error) throw error;
-  return data ?? [];
+  return cached(`tiposPessoa:${fazenda_id_fallback ?? ""}`, async () => {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (!ids.length) return [];
+    const { data, error } = await supabase.from("tipos_pessoa").select("*").in("fazenda_id", ids).order("nome");
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 export async function criarTipoPessoa(t: Omit<TipoPessoa, "id" | "created_at">): Promise<TipoPessoa> {
   const { data, error } = await supabase.from("tipos_pessoa").insert(t).select().single();
   if (error) throw error;
+  invalidateCache("tiposPessoa");
   return data;
 }
 export async function atualizarTipoPessoa(id: string, t: Partial<TipoPessoa>): Promise<void> {
   const { error } = await supabase.from("tipos_pessoa").update(t).eq("id", id);
   if (error) throw error;
+  invalidateCache("tiposPessoa");
 }
 export async function excluirTipoPessoa(id: string): Promise<void> {
   const { error } = await supabase.from("tipos_pessoa").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("tiposPessoa");
 }
 
 // Centros de Custo (tabela de dados mestres — diferente de centros_custo_contrato)
@@ -4265,24 +4322,29 @@ export async function listarCentrosCustoGeral(fazenda_id: string): Promise<Centr
   return data ?? [];
 }
 export async function listarCentrosCustoGeralDaConta(fazenda_id_fallback?: string | null): Promise<CentroCusto[]> {
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
-  const { data, error } = await supabase.from("centros_custo").select("*").in("fazenda_id", ids).order("codigo");
-  if (error) throw error;
-  return data ?? [];
+  return cached(`centrosCusto:${fazenda_id_fallback ?? ""}`, async () => {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (!ids.length) return [];
+    const { data, error } = await supabase.from("centros_custo").select("*").in("fazenda_id", ids).order("codigo");
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 export async function criarCentroCusto(c: Omit<CentroCusto, "id" | "created_at">): Promise<CentroCusto> {
   const { data, error } = await supabase.from("centros_custo").insert(c).select().single();
   if (error) throw error;
+  invalidateCache("centrosCusto");
   return data;
 }
 export async function atualizarCentroCusto(id: string, c: Partial<CentroCusto>): Promise<void> {
   const { error } = await supabase.from("centros_custo").update(c).eq("id", id);
   if (error) throw error;
+  invalidateCache("centrosCusto");
 }
 export async function excluirCentroCusto(id: string): Promise<void> {
   const { error } = await supabase.from("centros_custo").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("centrosCusto");
 }
 
 // Categorias de Lançamento
@@ -4877,24 +4939,29 @@ export async function listarFormasPagamento(fazenda_id: string): Promise<FormaPa
   return data ?? [];
 }
 export async function listarFormasPagamentoDaConta(fazenda_id_fallback?: string | null): Promise<FormaPagamento[]> {
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
-  if (!ids.length) return [];
-  const { data, error } = await supabase.from("formas_pagamento").select("*").in("fazenda_id", ids).order("nome");
-  if (error) throw error;
-  return data ?? [];
+  return cached(`formasPagamento:${fazenda_id_fallback ?? ""}`, async () => {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (!ids.length) return [];
+    const { data, error } = await supabase.from("formas_pagamento").select("*").in("fazenda_id", ids).order("nome");
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 export async function criarFormaPagamento(f: Omit<FormaPagamento, "id" | "created_at">): Promise<FormaPagamento> {
   const { data, error } = await supabase.from("formas_pagamento").insert(f).select().single();
   if (error) throw error;
+  invalidateCache("formasPagamento");
   return data;
 }
 export async function atualizarFormaPagamento(id: string, f: Partial<FormaPagamento>): Promise<void> {
   const { error } = await supabase.from("formas_pagamento").update(f).eq("id", id);
   if (error) throw error;
+  invalidateCache("formasPagamento");
 }
 export async function excluirFormaPagamento(id: string): Promise<void> {
   const { error } = await supabase.from("formas_pagamento").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("formasPagamento");
 }
 
 // ————————————————————————————————————————
@@ -4935,32 +5002,34 @@ export async function resolverOperacaoGerencialPorClassificacao(fazenda_id: stri
 }
 
 export async function listarOperacoesGerenciais(fazenda_id: string | string[]): Promise<OperacaoGerencial[]> {
-  const primeiroId = Array.isArray(fazenda_id) ? fazenda_id[0] : fazenda_id;
-  // Resolve a lista de fazendas da conta direto no servidor (via
-  // resolverFazendaIdsDaConta / /api/fazenda/da-conta) em vez de confiar só
-  // no array que o chamador passou — useAuth().fazendaIds pode vir
-  // incompleto (ex: sessão raccotlo navegando pela conta de um cliente),
-  // exatamente como já visto no LCDPR (contaNome). Sem isso, uma operação
-  // gerencial cadastrada numa fazenda que não seja a "ativa" nunca resolvia,
-  // mesmo já tendo o array (às vezes incompleto) do caller como reforço.
-  const [conta_id, idsConta] = await Promise.all([
-    resolverContaIdDaFazenda(primeiroId),
-    resolverFazendaIdsDaConta(primeiroId),
-  ]);
   const idsCallerArr = Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id];
-  const idsFiltro = [...new Set([...idsConta, ...idsCallerArr])];
-  const { data, error } = await supabase.from("operacoes_gerenciais")
-    .select("*")
-    .or(ogOrFilter(conta_id, idsFiltro.length ? idsFiltro : primeiroId))
-    .order("classificacao");
-  if (error) throw error;
-  // Deduplicar por classificação: global tem prioridade, depois tenant, depois legado
-  const seen = new Set<string>();
-  return (data ?? []).filter(op => {
-    const key = op.classificacao ?? op.id;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  return cached(`operacoesGerenciais:list:${[...idsCallerArr].sort().join(",")}`, async () => {
+    const primeiroId = Array.isArray(fazenda_id) ? fazenda_id[0] : fazenda_id;
+    // Resolve a lista de fazendas da conta direto no servidor (via
+    // resolverFazendaIdsDaConta / /api/fazenda/da-conta) em vez de confiar só
+    // no array que o chamador passou — useAuth().fazendaIds pode vir
+    // incompleto (ex: sessão raccotlo navegando pela conta de um cliente),
+    // exatamente como já visto no LCDPR (contaNome). Sem isso, uma operação
+    // gerencial cadastrada numa fazenda que não seja a "ativa" nunca resolvia,
+    // mesmo já tendo o array (às vezes incompleto) do caller como reforço.
+    const [conta_id, idsConta] = await Promise.all([
+      resolverContaIdDaFazenda(primeiroId),
+      resolverFazendaIdsDaConta(primeiroId),
+    ]);
+    const idsFiltro = [...new Set([...idsConta, ...idsCallerArr])];
+    const { data, error } = await supabase.from("operacoes_gerenciais")
+      .select("*")
+      .or(ogOrFilter(conta_id, idsFiltro.length ? idsFiltro : primeiroId))
+      .order("classificacao");
+    if (error) throw error;
+    // Deduplicar por classificação: global tem prioridade, depois tenant, depois legado
+    const seen = new Set<string>();
+    return (data ?? []).filter(op => {
+      const key = op.classificacao ?? op.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   });
 }
 
@@ -4969,27 +5038,29 @@ export async function listarOperacoesGerenciaisAtivas(
   fazenda_id: string,
   filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" }
 ): Promise<OperacaoGerencial[]> {
-  const conta_id = await resolverContaIdDaFazenda(fazenda_id);
-  let q = supabase.from("operacoes_gerenciais").select("*")
-    .or(ogOrFilter(conta_id, fazenda_id))
-    .eq("inativo", false)
-    .order("classificacao");
-  if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
-  if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
-  if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
-  if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
-  if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
-  const { data, error } = await q;
-  if (error) throw error;
-  // Exclui nós de grupo; deduplicar por classificação
-  const seen = new Set<string>();
-  return (data ?? []).filter(op => {
-    if (!(op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
-          op.permite_adiantamentos || op.permite_baixas || op.permite_estoque)) return false;
-    const key = op.classificacao ?? op.id;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  return cached(`operacoesGerenciais:ativas:${fazenda_id}:${JSON.stringify(filtro ?? {})}`, async () => {
+    const conta_id = await resolverContaIdDaFazenda(fazenda_id);
+    let q = supabase.from("operacoes_gerenciais").select("*")
+      .or(ogOrFilter(conta_id, fazenda_id))
+      .eq("inativo", false)
+      .order("classificacao");
+    if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
+    if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
+    if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
+    if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
+    if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
+    const { data, error } = await q;
+    if (error) throw error;
+    // Exclui nós de grupo; deduplicar por classificação
+    const seen = new Set<string>();
+    return (data ?? []).filter(op => {
+      if (!(op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
+            op.permite_adiantamentos || op.permite_baixas || op.permite_estoque)) return false;
+      const key = op.classificacao ?? op.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   });
 }
 
@@ -4998,47 +5069,49 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
   filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque"; semDedup?: boolean },
   fazenda_id_fallback?: string | null,
 ): Promise<OperacaoGerencial[]> {
-  const conta_id = await resolverContaIdDaFazenda(fazenda_id_fallback);
-  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  return cached(`operacoesGerenciais:ativasConta:${JSON.stringify(filtro ?? {})}:${fazenda_id_fallback ?? ""}`, async () => {
+    const conta_id = await resolverContaIdDaFazenda(fazenda_id_fallback);
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
 
-  // Monta filtro OR: global + conta + fazendas legadas
-  const parts: string[] = ["and(fazenda_id.is.null,conta_id.is.null)"];
-  if (conta_id) parts.push(`conta_id.eq.${conta_id}`);
-  if (ids.length) parts.push(...ids.map(id => `fazenda_id.eq.${id}`));
+    // Monta filtro OR: global + conta + fazendas legadas
+    const parts: string[] = ["and(fazenda_id.is.null,conta_id.is.null)"];
+    if (conta_id) parts.push(`conta_id.eq.${conta_id}`);
+    if (ids.length) parts.push(...ids.map(id => `fazenda_id.eq.${id}`));
 
-  let q = supabase.from("operacoes_gerenciais").select("*")
-    .or(parts.join(","))
-    .eq("inativo", false)
-    .order("classificacao");
-  if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
-  if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
-  if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
-  if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
-  if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
-  const { data, error } = await q;
-  if (error) throw error;
+    let q = supabase.from("operacoes_gerenciais").select("*")
+      .or(parts.join(","))
+      .eq("inativo", false)
+      .order("classificacao");
+    if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
+    if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
+    if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
+    if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
+    if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
+    const { data, error } = await q;
+    if (error) throw error;
 
-  const comPermissao = (data ?? []).filter(op =>
-    op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
-    op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
-  );
+    const comPermissao = (data ?? []).filter(op =>
+      op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
+      op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
+    );
 
-  // semDedup=true: retorna todas as OGs sem deduplicar — usado para lookup de ids em lançamentos
-  if (filtro?.semDedup) return comPermissao;
+    // semDedup=true: retorna todas as OGs sem deduplicar — usado para lookup de ids em lançamentos
+    if (filtro?.semDedup) return comPermissao;
 
-  // Deduplica por classificação: mesma operação pode existir em múltiplas fazendas da conta
-  // (resultado de seed de templates). Prefere mais específica: fazenda > conta > global.
-  const scored = comPermissao.map(op => ({
-    op,
-    score: op.fazenda_id ? 2 : op.conta_id ? 1 : 0,
-  }));
-  scored.sort((a, b) => b.score - a.score || (a.op.classificacao ?? "").localeCompare(b.op.classificacao ?? ""));
-  const seen = new Set<string>();
-  return scored.map(s => s.op).filter(op => {
-    const key = op.classificacao ?? op.id;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+    // Deduplica por classificação: mesma operação pode existir em múltiplas fazendas da conta
+    // (resultado de seed de templates). Prefere mais específica: fazenda > conta > global.
+    const scored = comPermissao.map(op => ({
+      op,
+      score: op.fazenda_id ? 2 : op.conta_id ? 1 : 0,
+    }));
+    scored.sort((a, b) => b.score - a.score || (a.op.classificacao ?? "").localeCompare(b.op.classificacao ?? ""));
+    const seen = new Set<string>();
+    return scored.map(s => s.op).filter(op => {
+      const key = op.classificacao ?? op.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   });
 }
 
@@ -5094,21 +5167,25 @@ export async function criarOperacaoGerencialCustom(
     .insert({ ...o, conta_id, fazenda_id: null })
     .select().single();
   if (error) throw error;
+  invalidateCache("operacoesGerenciais");
   return data;
 }
 
 export async function criarOperacaoGerencial(o: Omit<OperacaoGerencial, "id" | "created_at">): Promise<OperacaoGerencial> {
   const { data, error } = await supabase.from("operacoes_gerenciais").insert(o).select().single();
   if (error) throw error;
+  invalidateCache("operacoesGerenciais");
   return data;
 }
 export async function atualizarOperacaoGerencial(id: string, o: Partial<OperacaoGerencial>): Promise<void> {
   const { error } = await supabase.from("operacoes_gerenciais").update(o).eq("id", id);
   if (error) throw error;
+  invalidateCache("operacoesGerenciais");
 }
 export async function excluirOperacaoGerencial(id: string): Promise<void> {
   const { error } = await supabase.from("operacoes_gerenciais").delete().eq("id", id);
   if (error) throw error;
+  invalidateCache("operacoesGerenciais");
 }
 
 // ————————————————————————————————————————
@@ -6570,14 +6647,16 @@ export async function atualizarNfRemessaLogistica(
 import type { CartaoCredito, FaturaCartao } from "./supabase";
 
 export async function listarCartoesDaConta(contaId: string): Promise<CartaoCredito[]> {
-  const { data, error } = await supabase
-    .from("cartoes_credito")
-    .select("*")
-    .eq("conta_id", contaId)
-    .eq("ativo", true)
-    .order("titular");
-  if (error) throw error;
-  return (data ?? []) as CartaoCredito[];
+  return cached(`cartoes:${contaId}`, async () => {
+    const { data, error } = await supabase
+      .from("cartoes_credito")
+      .select("*")
+      .eq("conta_id", contaId)
+      .eq("ativo", true)
+      .order("titular");
+    if (error) throw error;
+    return (data ?? []) as CartaoCredito[];
+  });
 }
 
 export async function criarCartao(cartao: Omit<CartaoCredito, "id" | "created_at">): Promise<CartaoCredito> {
@@ -6587,17 +6666,20 @@ export async function criarCartao(cartao: Omit<CartaoCredito, "id" | "created_at
     .select()
     .single();
   if (error) throw error;
+  invalidateCache("cartoes");
   return data as CartaoCredito;
 }
 
 export async function atualizarCartao(id: string, dados: Partial<CartaoCredito>): Promise<void> {
   const { error } = await supabase.from("cartoes_credito").update(dados).eq("id", id);
   if (error) throw error;
+  invalidateCache("cartoes");
 }
 
 export async function excluirCartao(id: string): Promise<void> {
   const { error } = await supabase.from("cartoes_credito").update({ ativo: false }).eq("id", id);
   if (error) throw error;
+  invalidateCache("cartoes");
 }
 
 // Calcula a competência (mes/ano) de uma fatura dado o cartão e a data da compra
