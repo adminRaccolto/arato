@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-k",
+    data: "16/09/2026",
+    titulo: "Coluna de unidade no histórico de entregas do Pedido de Compra",
+    modulos: ["Comercial & Logística"],
+    itens: [
+      { tipo: "melhoria", texto: "Modal 'Entregas' do Pedido de Compra: a tabela 'Histórico de Entregas' ganhou a coluna 'Un.' (kg, sc, L...), igual à tabela de cima — a quantidade entregue não tinha unidade, o que confundia em pedidos com itens de unidades diferentes." },
+    ],
+    onde: "Comercial & Logística → Pedidos de Compra → Entregas",
+  },
+  {
     versao: "2026.09.16-j",
     data: "16/09/2026",
     titulo: "LCDPR — filtro para excluir receitas com comprador PJ",
