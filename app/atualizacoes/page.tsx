@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-l",
+    data: "16/09/2026",
+    titulo: "Correção: erro ao processar NF de Produtos vinculada a Pedido de Compra",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Processar uma NF de Produtos vinculada a um Pedido de Compra podia falhar com o erro interno 'violates foreign key constraint nf_entradas_lancamento_id_fkey'. Acontecia quando o pedido guardava uma referência a um lançamento financeiro que já tinha sido apagado (por exemplo, ao reprocessar a NF mais de uma vez ou processar duas NFs do mesmo pedido). Agora o sistema confere se o lançamento ainda existe antes de reaproveitá-lo — se não existir mais, cria um novo normalmente." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos",
+  },
+  {
     versao: "2026.09.16-k",
     data: "16/09/2026",
     titulo: "Coluna de unidade no histórico de entregas do Pedido de Compra",
