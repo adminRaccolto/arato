@@ -2702,7 +2702,23 @@ export async function processarNfEntrada(
         .select("lancamento_id")
         .eq("id", opts.pedidoCompraId)
         .maybeSingle();
-      lancamentoIdPedido = ped?.lancamento_id ?? null;
+      const idCandidato = ped?.lancamento_id ?? null;
+      if (idCandidato) {
+        // Confirma que o lançamento apontado ainda existe antes de reutilizá-lo.
+        // Achado real: "insert or update on table nf_entradas violates foreign
+        // key constraint nf_entradas_lancamento_id_fkey" — pedidos_compra.
+        // lancamento_id ficava referenciando um lançamento já apagado (outra
+        // NF do mesmo pedido reprocessada, ou reprocessamento concorrente da
+        // mesma NF) e o código confiava nesse valor sem checar. Se sumiu,
+        // trata como se não houvesse lançamento prévio (cria um novo abaixo)
+        // e limpa a referência velha pra não repetir o problema depois.
+        const { data: lancExiste } = await supabase.from("lancamentos").select("id").eq("id", idCandidato).maybeSingle();
+        if (lancExiste) {
+          lancamentoIdPedido = idCandidato;
+        } else {
+          await supabase.from("pedidos_compra").update({ lancamento_id: null }).eq("id", opts.pedidoCompraId);
+        }
+      }
     }
 
     if (lancamentoIdPedido) {
