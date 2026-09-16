@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 16/09/2026 (d)
+ * Última revisão: 16/09/2026 (e)
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -741,7 +741,7 @@ Gerador do Livro Caixa Digital do Produtor Rural — obrigação anual da Receit
 
 **Contas bancárias:** contas do tipo "espécie" (dinheiro em caixa) ou "trânsito" (sem conta bancária identificada) entram no arquivo com os códigos especiais que a própria Receita prevê para esses casos (000 e 999) — não é erro, é o comportamento correto do leiaute oficial.
 
-**Transferências internas não entram no Livro Caixa:** lançamentos de "Mútuo entre Empresas" (Financeiro → Tesouraria — dinheiro passando de um produtor/empresa da conta pra outro) não são receita nem despesa de verdade, então não aparecem no Livro Caixa do LCDPR nem em nenhuma exportação.
+**Transferências internas não entram no Livro Caixa:** lançamentos categorizados como "Mútuo entre Empresas" ou "Transferência entre Contas" (Financeiro → Tesouraria, e também PIX importado do extrato entre contas de produtores/empresas diferentes da mesma conta) não são receita nem despesa de verdade, então não aparecem no Livro Caixa do LCDPR nem em nenhuma exportação. Como camada extra, um lançamento cujo histórico mencione o nome de outro produtor/empresa da própria conta (comum em PIX sem cadastro vinculado) também é excluído automaticamente.
 
 **Importante:** o gerador é só leitura — não altera nenhum lançamento do Financeiro. Gerar o arquivo também não corrige declarações de anos anteriores já entregues à Receita.
 

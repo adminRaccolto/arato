@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-g",
+    data: "16/09/2026",
+    titulo: "LCDPR — transferência entre produtores continuava aparecendo no Livro Caixa",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Transferências entre produtores/empresas da mesma conta continuavam aparecendo como receita no Livro Caixa do LCDPR em alguns casos. Causa: PIX importados do extrato bancário entre contas de produtores diferentes ficam categorizados como 'Transferência entre Contas' — categoria que antes só era excluída quando era 'Mútuo entre Empresas'. Agora as duas categorias são excluídas, e como camada extra, qualquer lançamento cujo histórico mencione o nome de outro produtor/empresa da própria conta (comum em PIX sem cadastro vinculado) também é excluído." },
+    ],
+    onde: "Fiscal → LCDPR",
+  },
+  {
     versao: "2026.09.16-f",
     data: "16/09/2026",
     titulo: "LCDPR — nome do cliente e remoção dos quadros de KPI do relatório",
