@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-i",
+    data: "16/09/2026",
+    titulo: "Botão Voltar em todas as telas",
+    modulos: ["Geral"],
+    itens: [
+      { tipo: "novo", texto: "Novo botão '← Voltar' no canto superior esquerdo (ao lado da logo), em toda tela do sistema — leva direto pra tela anterior, sem precisar navegar pelo menu de novo. Não aparece no Dashboard." },
+    ],
+    onde: "Topo de qualquer tela",
+  },
+  {
     versao: "2026.09.16-h",
     data: "16/09/2026",
     titulo: "Pedidos de Compra — coluna Operação e identificação do pedido nos modais",

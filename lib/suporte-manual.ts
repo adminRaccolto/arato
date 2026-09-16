@@ -2,7 +2,7 @@
  * Manual Operacional do Arato — Olívia
  * Gerado a partir do mapa real do TopNav e das páginas existentes.
  * Atualizar sempre que uma tela for criada, removida ou renomeada.
- * Última revisão: 16/09/2026 (e)
+ * Última revisão: 16/09/2026 (f)
  */
 
 export const MANUAL_OPERACIONAL = `
@@ -46,6 +46,8 @@ O menu superior do Arato tem os seguintes grupos principais:
 6. **Resultados** — DRE, custos, produtividade
 7. **Configurações** — cadastros, parâmetros, usuários
 8. **Ajuda** — aprendizado e Suporte IA (esta tela)
+
+**Botão Voltar:** no canto superior esquerdo do topo, ao lado da logo, em toda tela do sistema (exceto no Dashboard) — leva direto pra tela anterior, sem precisar navegar pelo menu de novo.
 
 ---
 
