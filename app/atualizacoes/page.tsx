@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-j",
+    data: "16/09/2026",
+    titulo: "LCDPR — filtro para excluir receitas com comprador PJ",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Novo checkbox na aba Exportação: 'Excluir receitas de PJ (comprador/pagador com CNPJ)'. Desligado por padrão. Quando marcado, remove do Livro Caixa (tela, KPIs, Resumo Mensal e todas as exportações) qualquer receita cujo comprador/pagador tenha CNPJ — sem alterar nenhum lançamento no Financeiro." },
+    ],
+    onde: "Fiscal → LCDPR → aba Exportação",
+  },
+  {
     versao: "2026.09.16-i",
     data: "16/09/2026",
     titulo: "Botão Voltar em todas as telas",
