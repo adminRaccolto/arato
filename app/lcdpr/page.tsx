@@ -143,7 +143,13 @@ type Aba = "livro" | "participacoes" | "cadastro" | "importacao" | "exportacao";
 
 // ═════════════════════════════════════════════════════════════════════════════
 export default function LCDPR() {
-  const { fazendaId, fazendaIds, contaId, contaNome, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome: contaNomeAuth, podeAcessarPlano } = useAuth();
+  // Busca contas.nome pelo contaId desta tela (não pelo do AuthProvider) —
+  // um raccotlo navegando pela conta de um cliente tem conta_id NULL no
+  // próprio perfil, então useAuth().contaNome nunca carrega pra ele, mesmo
+  // com os dados do cliente certos aparecendo em todo o resto da tela.
+  const [contaNomeFetch, setContaNomeFetch] = useState<string | null>(null);
+  const contaNome = contaNomeFetch ?? contaNomeAuth;
 
   const [aba, setAba]         = useState<Aba>("livro");
   const [anoSel, setAnoSel]   = useState(anoAtual);
@@ -201,9 +207,11 @@ export default function LCDPR() {
       sb.from("pessoas").select("id,cpf_cnpj").in("fazenda_id", ids),
       contaId ? sb.from("lcdpr_contador").select("*").eq("conta_id", contaId).maybeSingle() : Promise.resolve({ data: null }),
       listarEmpresasDaConta(ids),
-    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows]) => {
+      contaId ? sb.from("contas").select("nome").eq("id", contaId).maybeSingle() : Promise.resolve({ data: null }),
+    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows, { data: contaRow }]) => {
       setFazDados((fazRows ?? []) as FazLcdpr[]);
       setEmpresasDados(empresasRows ?? []);
+      setContaNomeFetch((contaRow as { nome?: string } | null)?.nome ?? null);
       setProdutoresDados(
         (prodRows ?? [])
           .map((p: { id: string; nome: string; cpf_cnpj?: string }) => ({ id: p.id, nome: p.nome, cpf: cpfNum(p.cpf_cnpj ?? "") }))
@@ -774,12 +782,6 @@ export default function LCDPR() {
       <td style="${td}">${c.tipo_conta === "corrente" ? "Corrente" : c.tipo_conta === "poupanca" ? "Poupança" : c.tipo_conta}</td>
     </tr>`).join("") : `<tr><td colspan="5" style="${td};text-align:center;color:#999;">Nenhuma conta bancária cadastrada</td></tr>`;
 
-    const kpiBox = (label: string, valor: string, cor: string, bg: string) => `
-      <div style="flex:1;background:${bg};border:0.5px solid #DDE2EE;border-radius:8px;padding:10px 12px;">
-        <div style="font-size:9px;color:#666;margin-bottom:3px;">${label}</div>
-        <div style="font-size:14px;font-weight:700;color:${cor};">${valor}</div>
-      </div>`;
-
     const html = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:0.5px solid #DDE2EE;font-size:11px;">
         <table style="border-collapse:collapse;">
@@ -795,12 +797,6 @@ export default function LCDPR() {
         </table>
       </div>
 
-      <div style="display:flex;gap:10px;margin-bottom:18px;">
-        ${kpiBox("Saldo Inicial", fmtBRL(saldoInicialReport), "#1a1a1a", "#F7F9FA")}
-        ${kpiBox("Total Receitas", fmtBRL(totalRecExport), "#1A5C38", "#EAF3DE")}
-        ${kpiBox("Total Despesas", fmtBRL(totalDespExport), "#E24B4A", "#FCEBEB")}
-        ${kpiBox("Saldo Final", fmtBRL(saldoFinalExport), saldoFinalExport >= 0 ? "#1A5C38" : "#E24B4A", saldoFinalExport >= 0 ? "#EAF3DE" : "#FCEBEB")}
-      </div>
 
       ${blocoEmpresa}
       ${!isEmpresa ? `
