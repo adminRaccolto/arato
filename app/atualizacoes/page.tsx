@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-e",
+    data: "16/09/2026",
+    titulo: "LCDPR — identificação do cliente no cabeçalho do relatório",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Relatório PDF do LCDPR ganhou uma linha 'Cliente' no cabeçalho (nome da conta) — antes a única forma de identificar de qual cliente era o relatório era olhando os nomes das contas bancárias na tabela. Aparece sempre, independente do produtor/empresa selecionado." },
+    ],
+    onde: "Fiscal → LCDPR → aba Exportação",
+  },
+  {
     versao: "2026.09.16-d",
     data: "16/09/2026",
     titulo: "LCDPR — coluna Produtor no relatório com 'Todos' selecionado",
