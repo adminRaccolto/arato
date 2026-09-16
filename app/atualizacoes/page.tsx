@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-c",
+    data: "16/09/2026",
+    titulo: "LCDPR — relatório inclui Empresas (PJ) e exclui transferências internas",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Relatório PDF do LCDPR com 'Todos os produtores' selecionado mostrava no cabeçalho o nome e CPF de apenas o primeiro produtor da lista, dando a impressão de que os dados eram só dele — as tabelas já traziam todos, só o cabeçalho estava errado. Corrigido: mostra 'Todos os Produtores' sem atribuir a um CPF específico." },
+      { tipo: "novo", texto: "Exportação do LCDPR: o seletor 'Produtor' virou 'Produtor / Empresa' e passou a listar também as Empresas (PJ) da conta — só para o Relatório PDF de conferência (o .txt oficial e o Excel continuam exclusivos de Pessoa Física, como exige a lei). Ao escolher uma Empresa, não se aplica quota-parte." },
+      { tipo: "correcao", texto: "Lançamentos de 'Mútuo entre Empresas' (Financeiro → Tesouraria) — transferência interna entre produtores/empresas da mesma conta — deixaram de entrar no Livro Caixa do LCDPR (tela e todas as exportações). Não é receita nem despesa real." },
+      { tipo: "melhoria", texto: "Removido o quadro 'Resumo Mensal' do relatório PDF do LCDPR — o resumo mensal já aparece na própria tela de Exportação." },
+    ],
+    onde: "Fiscal → LCDPR → aba Exportação",
+  },
+  {
     versao: "2026.09.16-b",
     data: "16/09/2026",
     titulo: "LCDPR — PDF agora é um relatório de verdade",
