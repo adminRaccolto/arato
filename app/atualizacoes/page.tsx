@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-d",
+    data: "16/09/2026",
+    titulo: "LCDPR — coluna Produtor no relatório com 'Todos' selecionado",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Relatório PDF do LCDPR com 'Todos os Produtores' selecionado: os lançamentos e o total já eram de todos os produtores combinados (conferido direto no banco), mas a tabela não mostrava de qual produtor era cada linha, dando a impressão de que vinha tudo de um só. Adicionada a coluna 'Produtor' nessa visão." },
+    ],
+    onde: "Fiscal → LCDPR → aba Exportação",
+  },
+  {
     versao: "2026.09.16-c",
     data: "16/09/2026",
     titulo: "LCDPR — relatório inclui Empresas (PJ) e exclui transferências internas",
