@@ -1,5 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+// Espelha lib/db.ts:recalcularEntregaPedidoFiscal — pedido "fiscal" nunca
+// passa por registrarEntrega; a quantidade entregue vem das NFs processadas
+// vinculadas a ele. Sem recalcular aqui, excluir a única NF de um pedido
+// deixava ele "entregue" fantasma pra sempre.
+async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: string | null | undefined): Promise<void> {
+  if (!pedido_id) return;
+  const { data: ped } = await sb.from("pedidos_compra").select("fiscal, status").eq("id", pedido_id).maybeSingle();
+  if (!ped?.fiscal) return;
+  // Nunca promove rascunho pra aprovado nem reabre um pedido cancelado.
+  if (ped.status === "rascunho" || ped.status === "cancelado") return;
+
+  const { data: itens } = await sb.from("pedidos_compra_itens").select("id, insumo_id, quantidade, qtd_cancelada, qtd_entregue").eq("pedido_id", pedido_id);
+  if (!itens?.length) return;
+
+  const { data: nfs } = await sb.from("nf_entradas").select("id").eq("pedido_compra_id", pedido_id).eq("status", "processada");
+  const nfIds = (nfs ?? []).map(n => n.id);
+
+  const qtdByInsumo = new Map<string, number>();
+  if (nfIds.length) {
+    const { data: nfItens } = await sb.from("nf_entrada_itens").select("insumo_id, quantidade").in("nf_entrada_id", nfIds);
+    for (const it of nfItens ?? []) {
+      if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
+    }
+  }
+
+  for (const it of itens) {
+    const novaQtd = it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0;
+    if (Math.abs(novaQtd - (it.qtd_entregue ?? 0)) > 0.001) {
+      await sb.from("pedidos_compra_itens").update({ qtd_entregue: novaQtd }).eq("id", it.id);
+    }
+  }
+
+  const todoEntregue = itens.every(it => {
+    const novaQtd = it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0;
+    return novaQtd >= (it.quantidade - (it.qtd_cancelada ?? 0));
+  });
+  const algumEntregue = itens.some(it => (it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0) > 0);
+  const novoStatus = todoEntregue ? "entregue" : algumEntregue ? "parcialmente_entregue" : "aprovado";
+  await sb.from("pedidos_compra").update({ status: novoStatus }).eq("id", pedido_id);
+}
 
 // POST /api/compras/excluir-nf
 // Exclusão total e segura de uma NF de entrada + todos os registros dependentes.
@@ -83,7 +124,7 @@ export async function POST(req: NextRequest) {
     // 5. Lançamento financeiro (CP)
     const { data: nfRow } = await sb
       .from("nf_entradas")
-      .select("lancamento_id")
+      .select("lancamento_id, pedido_compra_id")
       .eq("id", nf_id)
       .single();
 
@@ -106,6 +147,10 @@ export async function POST(req: NextRequest) {
       .eq("fazenda_id", fazenda_id);
 
     if (errDel) throw new Error(`Erro ao excluir NF: ${errDel.message}`);
+
+    // NF excluída pode ter sido a única entrega de um pedido fiscal —
+    // recalcula pra não ficar "entregue" fantasma.
+    if (nfRow?.pedido_compra_id) await recalcularEntregaPedidoFiscal(sb, nfRow.pedido_compra_id);
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {

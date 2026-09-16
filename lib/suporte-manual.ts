@@ -248,6 +248,8 @@ Controla o processo de compra de insumos do rascunho até a entrega, gerando aut
 
 **Abas do pedido:** Principal (fazenda, fornecedor, produtor responsável com IE, fiscal), Itens/Serviços/CC, Desconto, Entregas (pedidos não-fiscais) ou NFs Vinculadas (pedidos fiscais), Cobrança, Documentos.
 
+**Avanço automático de status:** em pedido "Fiscal" (vinculado a NF, aba "NFs Vinculadas"), o status avança sozinho para "Parcialmente Entregue"/"Entregue" ao processar uma NF de Produtos vinculada — não precisa de nenhuma ação manual. Estornar ou excluir a NF reverte o status automaticamente. Não existe hoje uma rotina de "encerrar pedido" para aceitar pequenas divergências (peso de carga, casas decimais) — se sobrar um saldo residual pequeno por causa disso, o pedido fica em "Parcialmente Entregue" até alguém decidir manualmente (editar a quantidade do item ou cancelar o saldo).
+
 **Atenção:** Pedidos com NFs de entrada vinculadas não podem ser excluídos — use status "Cancelado".
 
 ### 8.2 NF de Produtos

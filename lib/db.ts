@@ -2901,6 +2901,11 @@ export async function processarNfEntrada(
   // Marca NF como processada (e vincula pessoa + lancamento em um único update)
   const { error: nfUpdateErr } = await supabase.from("nf_entradas").update(nfUpdates).eq("id", nfId);
   if (nfUpdateErr) throw nfUpdateErr;
+
+  // Se a NF está vinculada a um Pedido de Compra fiscal, recalcula a quantidade
+  // entregue e o status do pedido — sem isso o pedido fica travado em
+  // "aprovado" mesmo depois de 100% recebido.
+  if (opts?.pedidoCompraId) await recalcularEntregaPedidoFiscal(opts.pedidoCompraId);
 }
 
 // Verifica se uma NF pode ser excluída e retorna o status do lançamento associado
@@ -2952,7 +2957,7 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
   // 4. Lançamento(s) financeiro(s) — inclui parcelas múltiplas
   await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
   const { data: nf } = await supabase.from("nf_entradas")
-    .select("lancamento_id").eq("id", nfId).single();
+    .select("lancamento_id, pedido_compra_id").eq("id", nfId).single();
   if (nf?.lancamento_id) {
     await supabase.from("lancamentos").delete().eq("id", nf.lancamento_id);
   }
@@ -2961,10 +2966,18 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
   await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);
   const { error } = await supabase.from("nf_entradas").delete().eq("id", nfId).eq("fazenda_id", fazendaId);
   if (error) throw new Error(error.message);
+
+  // NF excluída pode ter sido a única entrega de um pedido fiscal — recalcula
+  // a quantidade entregue/status do pedido pra não ficar "entregue" fantasma.
+  if (nf?.pedido_compra_id) await recalcularEntregaPedidoFiscal(nf.pedido_compra_id);
 }
 
 // Estorna processamento de uma NF sem excluí-la: reverte estoque, deleta itens e CP, volta status para "rascunho"
 export async function estornarNfProcessamento(nfId: string): Promise<void> {
+  // Captura o pedido vinculado ANTES de mexer na NF — usado no final pra
+  // recalcular a entrega/status do pedido fiscal (se houver).
+  const { data: nfAntes } = await supabase.from("nf_entradas").select("pedido_compra_id").eq("id", nfId).maybeSingle();
+
   // 1 + 4. Reverter estoque (por nf_entrada_id — robusto mesmo se algum item ficou
   // órfão) e apagar o(s) lançamento(s) financeiro(s), com a mesma lógica usada em
   // processarNfEntrada() antes de reprocessar — uma função só, não duas versões
@@ -2991,6 +3004,10 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
   // 5. Itens + volta status para pendente (pronta para reprocessar)
   await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);
   await supabase.from("nf_entradas").update({ status: "pendente" }).eq("id", nfId);
+
+  // Estorno reverte a entrega — pedido fiscal pode voltar de "entregue"/
+  // "parcialmente_entregue" pra "aprovado".
+  if (nfAntes?.pedido_compra_id) await recalcularEntregaPedidoFiscal(nfAntes.pedido_compra_id);
 }
 
 // Processa NF de Devolução de Compra:
@@ -4550,6 +4567,49 @@ async function recalcularStatusPedidoCompra(pedido_id: string): Promise<void> {
   const algumEntregue = itens.some(it => (it.qtd_entregue ?? 0) > 0);
   const novoStatus = todoEntregue ? "entregue" : algumEntregue ? "parcialmente_entregue" : "aprovado";
   await atualizarPedidoCompra(pedido_id, { status: novoStatus });
+}
+
+// Pedido "fiscal" (vinculado a NF de Produtos, em vez de entrega manual) nunca
+// passa por registrarEntrega — a quantidade entregue vem das NFs de entrada
+// processadas vinculadas ao pedido. O modal "NFs Vinculadas" já calculava isso
+// ao vivo (somando por insumo_id) só pra exibir na tela, mas nunca persistia
+// em pedidos_compra_itens.qtd_entregue — então recalcularStatusPedidoCompra()
+// nunca via entrega nenhuma e o pedido ficava travado em "aprovado" pra
+// sempre, mesmo 100% recebido. Chamado após processar/estornar/excluir uma NF
+// vinculada a um pedido. Sempre recalcula do zero (nunca soma incremental) —
+// reprocessar a mesma NF ou linkar uma NF nova nunca deve contar em dobro.
+export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | undefined): Promise<void> {
+  if (!pedido_id) return;
+  const { data: ped } = await supabase.from("pedidos_compra").select("fiscal, status").eq("id", pedido_id).maybeSingle();
+  if (!ped?.fiscal) return; // pedido manual (não-fiscal) usa registrarEntrega — não mexe aqui
+  // Nunca promove rascunho pra aprovado nem reabre um pedido cancelado — só
+  // recalcula pedidos que já passaram por aprovação.
+  if (ped.status === "rascunho" || ped.status === "cancelado") return;
+
+  const itens = await listarPedidoCompraItens(pedido_id);
+  if (!itens.length) return;
+
+  const { data: nfs } = await supabase.from("nf_entradas")
+    .select("id").eq("pedido_compra_id", pedido_id).eq("status", "processada");
+  const nfIds = (nfs ?? []).map(n => n.id);
+
+  const qtdByInsumo = new Map<string, number>();
+  if (nfIds.length) {
+    const { data: nfItens } = await supabase.from("nf_entrada_itens")
+      .select("insumo_id, quantidade").in("nf_entrada_id", nfIds);
+    for (const it of nfItens ?? []) {
+      if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
+    }
+  }
+
+  for (const it of itens) {
+    const novaQtd = it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0;
+    if (Math.abs(novaQtd - (it.qtd_entregue ?? 0)) > 0.001) {
+      await supabase.from("pedidos_compra_itens").update({ qtd_entregue: novaQtd }).eq("id", it.id);
+    }
+  }
+
+  await recalcularStatusPedidoCompra(pedido_id);
 }
 
 export async function registrarEntrega(e: Omit<PedidoCompraEntrega, "id" | "created_at">): Promise<PedidoCompraEntrega> {

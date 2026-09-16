@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-r",
+    data: "16/09/2026",
+    titulo: "Correção: Pedido de Compra vinculado a NF não avançava de status",
+    modulos: ["Comercial & Logística"],
+    itens: [
+      { tipo: "correcao", texto: "Pedido de Compra com Notas Fiscais vinculadas (modo Fiscal) ficava travado em 'Aprovado' para sempre, mesmo depois de 100% recebido — a quantidade entregue só era calculada para exibição na tela 'NFs Vinculadas', mas nunca era salva para atualizar o status do pedido. Agora processar, estornar ou excluir uma NF vinculada a um pedido recalcula a entrega e o status ('Aprovado' → 'Parcialmente Entregue' → 'Entregue') na hora. Corrigidos também 23 pedidos que já estavam travados." },
+    ],
+    onde: "Comercial & Logística → Pedidos de Compra",
+  },
+  {
     versao: "2026.09.16-q",
     data: "16/09/2026",
     titulo: "Performance — índices de banco e cache de telas de cadastro",
