@@ -1381,6 +1381,19 @@ export default function NfCompraPage() {
       setErr("Selecione uma Operação Gerencial antes de processar a NF.");
       return;
     }
+    // Guard: item de estoque/terceiro/VEF/remessa sem insumo ou princípio ativo associado
+    // não pode ser processado — antes era só um aviso (⚠️ "não serão lançados no estoque")
+    // e o item era silenciosamente ignorado, criando NF processada com valor de itens
+    // maior que o efetivamente lançado. Item "C. Custo" (tipo_apropiacao "direto") é a
+    // forma correta de lançar algo sem produto — continua permitido sem associação.
+    for (const it of itens) {
+      if (!it.descricao_nf.trim()) continue;
+      if (it.tipo_apropiacao === "direto" || it.tipo_apropiacao === "maquinario") continue;
+      if (!it.insumo_id && !it.principio_ativo_id) {
+        setErr(`Item "${it.descricao_nf}": associe um insumo ou princípio ativo do catálogo antes de processar. Se não for um produto de estoque, mude o item para "C. Custo".`);
+        return;
+      }
+    }
     // Guard: lotes de semente com número mas sem peso — bloqueia (peso é obrigatório por lote)
     for (const it of itens) {
       if (!it.lotes_semente?.length || it.lotes_semente.length < 2) continue;
@@ -4134,7 +4147,7 @@ export default function NfCompraPage() {
                   {/* Aviso para item sem associação */}
                   {tipo === "insumos" && itens.some(it => !it.insumo_id && !it.principio_ativo_id && it.tipo_apropiacao !== "direto" && it.descricao_nf.trim()) && (
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 14 }}>
-                      ⚠️ Itens sem insumo ou princípio ativo associado não serão lançados no estoque. Associe, mude para "C. Custo" ou remova-os.
+                      ⚠️ Itens sem insumo ou princípio ativo associado impedem o processamento da NF. Associe um produto do catálogo, mude o item para "C. Custo" ou remova-o.
                     </div>
                   )}
 

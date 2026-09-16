@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-m",
+    data: "16/09/2026",
+    titulo: "NF de Produtos — produto obrigatório por item ao processar",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao clicar em 'Processar', a NF de Produtos agora bloqueia se algum item de estoque (ou VEF/remessa) não tiver um insumo ou princípio ativo associado — antes era só um aviso e o item ficava de fora silenciosamente, processando a NF com valor de itens maior do que o efetivamente lançado no estoque/financeiro. Item que não é produto (frete, taxa) continua liberado usando o toggle 'C. Custo'." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos",
+  },
+  {
     versao: "2026.09.16-l",
     data: "16/09/2026",
     titulo: "Correção: erro ao processar NF de Produtos vinculada a Pedido de Compra",

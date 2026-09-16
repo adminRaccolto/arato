@@ -268,6 +268,8 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 
 **Filtro por Produtor:** em contas com mais de um produtor cadastrado, o filtro "Produtor" aparece na barra de filtros (mostra nome + CPF/CNPJ, útil quando há nomes parecidos). A busca por texto também aceita CPF/CNPJ digitado (com ou sem pontuação), além de número e nome do emitente. O filtro casa pelo CPF/CNPJ do destinatário da nota — funciona corretamente mesmo se o mesmo produtor tiver mais de um cadastro na tela de Produtores (duplicado por nome diferente com o mesmo documento).
 
+**Produto obrigatório por item:** todo item que vai para o estoque (ou VEF/remessa/estoque de terceiros) precisa estar associado a um insumo ou princípio ativo do catálogo antes de clicar em "Processar" — sem isso o sistema bloqueia o processamento com uma mensagem indicando qual item falta associar. Antes o item sem associação era só um aviso e ficava de fora silenciosamente (a NF processava com valor de itens maior que o efetivamente lançado no estoque/CP). Item que não é produto de estoque (frete, taxa, serviço embutido na NF) usa o toggle "💸 C. Custo" em vez de "📦 Estoque" — esse não exige produto, só centro de custo.
+
 ### 8.3 NF de Serviços (NFS-e)
 **Caminho:** Compras & Estoque → Compras → NF de Serviços
 
