@@ -125,6 +125,15 @@ export default function PadroesPage() {
     setFormErr("");
     setModal("editar");
   }
+  // Duplica uma operação: abre como "Nova" com toda a configuração igual
+  // (tipo, permissões, contas de débito/crédito, LCDPR etc.) — só o código
+  // fica em branco (obrigatório ser único) e a descrição ganha "(cópia)"
+  // como lembrete de ajustar antes de salvar.
+  function duplicar(op: OpTemplate) {
+    setForm({ ...op, id: undefined, classificacao: "", descricao: `${op.descricao} (cópia)`, parent_id: op.parent_id });
+    setFormErr("");
+    setModal("novo");
+  }
 
   // ── Salvar template ─────────────────────────────────────────────────────────
   async function salvar() {
@@ -320,6 +329,9 @@ export default function PadroesPage() {
                         <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
                           <button onClick={() => abrirEditar(op)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             Editar
+                          </button>
+                          <button onClick={() => duplicar(op)} title="Duplicar — cria uma nova operação com a mesma configuração" style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
+                            ⧉ Duplicar
                           </button>
                           <button
                             onClick={() => excluir(op.id)}
