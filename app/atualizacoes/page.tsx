@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-h",
+    data: "16/09/2026",
+    titulo: "Pedidos de Compra — coluna Operação e identificação do pedido nos modais",
+    modulos: ["Comercial & Logística"],
+    itens: [
+      { tipo: "correcao", texto: "Coluna 'Operação' na lista de Pedidos de Compra mostrava o código interno (UUID) em vez do nome da Operação Gerencial quando o pedido era de uma fazenda diferente da fazenda ativa no momento. Corrigido — agora resolve o nome em qualquer fazenda da conta." },
+      { tipo: "correcao", texto: "Os modais 'NFs Vinculadas' / 'Entregas' e 'Relatório do Pedido' mostravam o número sequencial interno do pedido (o mesmo da coluna 'Nº') em vez do 'Nº Pedido' que identifica o pedido de verdade. Agora mostram o Nº Pedido, igual à tela de NF de Produtos ao vincular um pedido." },
+    ],
+    onde: "Comercial & Logística → Pedidos de Compra",
+  },
+  {
     versao: "2026.09.16-g",
     data: "16/09/2026",
     titulo: "LCDPR — transferência entre produtores continuava aparecendo no Livro Caixa",
