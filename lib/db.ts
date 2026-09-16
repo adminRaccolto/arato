@@ -4920,10 +4920,22 @@ export async function resolverOperacaoGerencialPorClassificacao(fazenda_id: stri
 
 export async function listarOperacoesGerenciais(fazenda_id: string | string[]): Promise<OperacaoGerencial[]> {
   const primeiroId = Array.isArray(fazenda_id) ? fazenda_id[0] : fazenda_id;
-  const conta_id = await resolverContaIdDaFazenda(primeiroId);
+  // Resolve a lista de fazendas da conta direto no servidor (via
+  // resolverFazendaIdsDaConta / /api/fazenda/da-conta) em vez de confiar só
+  // no array que o chamador passou — useAuth().fazendaIds pode vir
+  // incompleto (ex: sessão raccotlo navegando pela conta de um cliente),
+  // exatamente como já visto no LCDPR (contaNome). Sem isso, uma operação
+  // gerencial cadastrada numa fazenda que não seja a "ativa" nunca resolvia,
+  // mesmo já tendo o array (às vezes incompleto) do caller como reforço.
+  const [conta_id, idsConta] = await Promise.all([
+    resolverContaIdDaFazenda(primeiroId),
+    resolverFazendaIdsDaConta(primeiroId),
+  ]);
+  const idsCallerArr = Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id];
+  const idsFiltro = [...new Set([...idsConta, ...idsCallerArr])];
   const { data, error } = await supabase.from("operacoes_gerenciais")
     .select("*")
-    .or(ogOrFilter(conta_id, fazenda_id))
+    .or(ogOrFilter(conta_id, idsFiltro.length ? idsFiltro : primeiroId))
     .order("classificacao");
   if (error) throw error;
   // Deduplicar por classificação: global tem prioridade, depois tenant, depois legado
