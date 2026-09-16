@@ -10,6 +10,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import type { Lancamento } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
+import { abrirPreviewImpressao } from "../../lib/print";
 
 // ─── Leiaute oficial do LCDPR — Anexo ao Ato Declaratório Executivo COPES nº
 // 1/2020 (leiaute 1.3), confirmado registro a registro contra o Manual de
@@ -327,6 +328,16 @@ export default function LCDPR() {
 
   const saldoInicialExport = saldoInicial * fator;
 
+  // Fazendas (imóveis rurais) filtradas pelo produtor selecionado na
+  // exportação — mesma lógica usada dentro de gerarLCDPR() (0040), agora
+  // compartilhada com o relatório PDF pra não duplicar o critério.
+  const fazsExport = useMemo(() => {
+    if (produtorFiltro === "todos") return fazDados;
+    const idsComCpf = new Set(produtoresDados.filter(p => p.cpf === produtorFiltro).map(p => p.id));
+    const f = fazDados.filter(fz => cpfNum(fz.cpf_cnpj_fiscal ?? "") === produtorFiltro || (fz.produtor_id && idsComCpf.has(fz.produtor_id)));
+    return f.length > 0 ? f : fazDados;
+  }, [fazDados, produtoresDados, produtorFiltro]);
+
   // Fazendas com dados incompletos pro registro 0040 (CAEPF é condicionalmente
   // obrigatório — sinalizado, mas não bloqueia a geração)
   const fazendasSemCaepf = fazDados.filter(f => !f.caepf && f.produtor_id);
@@ -440,11 +451,7 @@ export default function LCDPR() {
     const cpfSel   = produtorFiltro !== "todos" ? produtorFiltro : (produtoresLcdpr[0]?.cpf ?? "");
     const nomeProd = (produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "PRODUTOR RURAL").toUpperCase();
 
-    const idsComCpf = new Set(produtoresDados.filter(p => p.cpf === cpfSel).map(p => p.id));
-    const fazsFiltradas = produtorFiltro !== "todos"
-      ? fazDados.filter(f => cpfNum(f.cpf_cnpj_fiscal ?? "") === cpfSel || (f.produtor_id && idsComCpf.has(f.produtor_id)))
-      : fazDados;
-    const fazsLC = fazsFiltradas.length > 0 ? fazsFiltradas : fazDados;
+    const fazsLC = fazsExport;
 
     // Código sequencial de imóvel (0040) — 1 fazenda = 1 imóvel rural
     const codImovelMap = new Map<string, string>();
@@ -616,12 +623,179 @@ export default function LCDPR() {
     XLSX.writeFile(wb, `LCDPR_${nomeArq}_${cpfSel || "TODOS"}_${comp}.xlsx`);
   };
 
-  const imprimirPDF = () => { window.print(); };
+  // ── Relatório PDF — visão estruturada do Livro Caixa (não é o arquivo
+  // oficial de entrega, que é o .txt leiaute 1.3 gerado acima) ──────────────
+  const gerarPDF = () => {
+    const cpfSel   = produtorFiltro !== "todos" ? produtorFiltro : (produtoresLcdpr[0]?.cpf ?? "");
+    const nomeProd = produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "Produtor Rural";
+    const mm       = String(mesExport).padStart(2, "0");
+    const periodo  = modoExport === "mensal"
+      ? new Date(anoSel, mesExport - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })
+      : `01/01/${anoSel} a 31/12/${anoSel}`;
+
+    const contasReaisExport = contasDados.filter(c => c.tipo_conta !== "caixa" && c.tipo_conta !== "transitoria");
+    const TIPO_LANC_LABEL: Record<string, string> = { "1": "Receita", "2": "Despesa", "3": "Adiant. (barter)" };
+
+    const totalRecExport  = entradasExport.reduce((s, e) => s + e.receita, 0);
+    const totalDespExport = entradasExport.reduce((s, e) => s + e.despesa, 0);
+    const saldoFinalExport = saldoInicialExport + totalRecExport - totalDespExport;
+
+    const th = `padding:5px 7px;text-align:left;font-size:9px;font-weight:700;color:#fff;background:#1A5C38;white-space:nowrap;`;
+    const thNum = th + `text-align:right;`;
+    const td = `padding:4px 7px;font-size:9.5px;color:#1a1a1a;border-bottom:0.5px solid #E8ECEF;`;
+    const tdNum = td + `text-align:right;font-variant-numeric:tabular-nums;`;
+
+    let saldoCorr = saldoInicialExport;
+    const linhasLivro = entradasExport.map((e, i) => {
+      saldoCorr += e.receita - e.despesa;
+      const bg = i % 2 === 0 ? "#fff" : "#F7F9FA";
+      return `<tr style="background:${bg}">
+        <td style="${td}">${fmtData(e.data)}</td>
+        <td style="${td}"><span style="font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:3px;background:${e.tipoLanc === "2" ? "#FCEBEB" : "#EAF3DE"};color:${e.tipoLanc === "2" ? "#791F1F" : "#1A5C38"};">${TIPO_LANC_LABEL[e.tipoLanc] ?? e.tipoLanc}</span></td>
+        <td style="${td}">${e.historico || "—"}</td>
+        <td style="${td}">${TIPO_DOC_LABEL[e.tipoDoc] ?? e.tipoDoc}</td>
+        <td style="${td}">${e.cpfCnpj || "—"}</td>
+        <td style="${tdNum};color:#1A5C38;">${e.receita > 0 ? fmtBRL(e.receita) : "—"}</td>
+        <td style="${tdNum};color:#E24B4A;">${e.despesa > 0 ? fmtBRL(e.despesa) : "—"}</td>
+        <td style="${tdNum};font-weight:700;color:${saldoCorr >= 0 ? "#1a1a1a" : "#E24B4A"};">${fmtBRL(saldoCorr)}</td>
+      </tr>`;
+    }).join("");
+
+    const linhasImoveis = fazsExport.map(f => `<tr>
+      <td style="${td}">${f.nome}</td>
+      <td style="${td}">${[f.municipio, f.estado].filter(Boolean).join(" / ") || "—"}</td>
+      <td style="${td}">${f.caepf || "—"}</td>
+      <td style="${td}">${f.itr || "—"}</td>
+      <td style="${td}">${TIPO_EXPLORACAO_LABEL[f.tipo_exploracao ?? 1] ?? "—"}</td>
+      <td style="${tdNum}">${(f.participacao_lcdpr ?? 100).toFixed(2)}%</td>
+      <td style="${tdNum}">${f.area_total_ha ? `${f.area_total_ha.toLocaleString("pt-BR")} ha` : "—"}</td>
+    </tr>`).join("");
+
+    const linhasContas = contasReaisExport.length > 0 ? contasReaisExport.map(c => `<tr>
+      <td style="${td}">${c.nome}</td>
+      <td style="${td}">${c.banco || "—"}</td>
+      <td style="${td}">${c.agencia || "—"}</td>
+      <td style="${td}">${c.conta || "—"}${c.conta_dv ? `-${c.conta_dv}` : ""}</td>
+      <td style="${td}">${c.tipo_conta === "corrente" ? "Corrente" : c.tipo_conta === "poupanca" ? "Poupança" : c.tipo_conta}</td>
+    </tr>`).join("") : `<tr><td colspan="5" style="${td};text-align:center;color:#999;">Nenhuma conta bancária cadastrada</td></tr>`;
+
+    let saldoResumo = saldoInicial;
+    const linhasResumo = mesesResumo.map(m => {
+      saldoResumo += m.rec - m.desp;
+      const semMov = m.rec === 0 && m.desp === 0;
+      return `<tr style="${semMov ? "opacity:0.4;" : ""}">
+        <td style="${td};text-transform:capitalize;">${m.mes}</td>
+        <td style="${tdNum};color:#1A5C38;">${m.rec > 0 ? fmtBRL(m.rec) : "—"}</td>
+        <td style="${tdNum};color:#E24B4A;">${m.desp > 0 ? fmtBRL(m.desp) : "—"}</td>
+        <td style="${tdNum};font-weight:700;">${fmtBRL(saldoResumo)}</td>
+      </tr>`;
+    }).join("");
+
+    const kpiBox = (label: string, valor: string, cor: string, bg: string) => `
+      <div style="flex:1;background:${bg};border:0.5px solid #DDE2EE;border-radius:8px;padding:10px 12px;">
+        <div style="font-size:9px;color:#666;margin-bottom:3px;">${label}</div>
+        <div style="font-size:14px;font-weight:700;color:${cor};">${valor}</div>
+      </div>`;
+
+    const html = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:0.5px solid #DDE2EE;font-size:11px;">
+        <table style="border-collapse:collapse;">
+          <tr><td style="padding:2px 10px 2px 0;color:#666;">Produtor</td><td style="font-weight:700;">${nomeProd}</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;color:#666;">CPF</td><td>${fmtCPF(cpfSel) || "—"}</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;color:#666;">Período</td><td style="text-transform:capitalize;">${periodo}</td></tr>
+        </table>
+        <table style="border-collapse:collapse;text-align:right;">
+          <tr><td style="padding:2px 0;color:#666;">Regime</td><td style="padding-left:10px;">Caixa — Pessoa Física</td></tr>
+          <tr><td style="padding:2px 0;color:#666;">Leiaute</td><td style="padding-left:10px;">1.3 — Anexo ADE COPES nº 1/2020</td></tr>
+          ${produtorFiltro !== "todos" && fator !== 1 ? `<tr><td style="padding:2px 0;color:#666;">Quota-parte aplicada</td><td style="padding-left:10px;">${(fator * 100).toFixed(2)}%</td></tr>` : ""}
+        </table>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:18px;">
+        ${kpiBox("Saldo Inicial", fmtBRL(saldoInicialExport), "#1a1a1a", "#F7F9FA")}
+        ${kpiBox("Total Receitas", fmtBRL(totalRecExport), "#1A5C38", "#EAF3DE")}
+        ${kpiBox("Total Despesas", fmtBRL(totalDespExport), "#E24B4A", "#FCEBEB")}
+        ${kpiBox("Saldo Final", fmtBRL(saldoFinalExport), saldoFinalExport >= 0 ? "#1A5C38" : "#E24B4A", saldoFinalExport >= 0 ? "#EAF3DE" : "#FCEBEB")}
+      </div>
+
+      <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Imóveis Rurais</h2>
+      <div class="auto-fit-table" style="margin-bottom:16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${th}">Nome</th><th style="${th}">Município / UF</th><th style="${th}">CAEPF</th>
+            <th style="${th}">ITR</th><th style="${th}">Tipo de Exploração</th><th style="${thNum}">Participação</th><th style="${thNum}">Área</th>
+          </tr></thead>
+          <tbody>${linhasImoveis || `<tr><td colspan="7" style="${td};text-align:center;color:#999;">Nenhum imóvel cadastrado</td></tr>`}</tbody>
+        </table>
+      </div>
+
+      <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Contas Bancárias</h2>
+      <div class="auto-fit-table" style="margin-bottom:16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${th}">Nome</th><th style="${th}">Banco</th><th style="${th}">Agência</th><th style="${th}">Conta</th><th style="${th}">Tipo</th>
+          </tr></thead>
+          <tbody>${linhasContas}</tbody>
+        </table>
+      </div>
+
+      <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Livro Caixa — Lançamentos${modoExport === "mensal" ? ` (${periodo})` : ""}</h2>
+      <div class="auto-fit-table" style="margin-bottom:6px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${th}">Data</th><th style="${th}">Tipo</th><th style="${th}">Histórico</th><th style="${th}">Doc.</th>
+            <th style="${th}">CPF/CNPJ contraparte</th><th style="${thNum}">Receita</th><th style="${thNum}">Despesa</th><th style="${thNum}">Saldo</th>
+          </tr></thead>
+          <tbody>
+            ${linhasLivro || `<tr><td colspan="8" style="${td};text-align:center;color:#999;">Nenhum lançamento no período</td></tr>`}
+          </tbody>
+          <tfoot>
+            <tr style="background:#EDF4FB;">
+              <td colspan="5" style="${td};font-weight:700;text-align:right;">TOTAL DO PERÍODO</td>
+              <td style="${tdNum};font-weight:700;color:#1A5C38;">${fmtBRL(totalRecExport)}</td>
+              <td style="${tdNum};font-weight:700;color:#E24B4A;">${fmtBRL(totalDespExport)}</td>
+              <td style="${tdNum};font-weight:700;">${fmtBRL(saldoFinalExport)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div style="font-size:8px;color:#999;margin-bottom:16px;">Linhas esmaecidas na tabela de resumo indicam meses sem movimento.</div>
+
+      <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Resumo Mensal — ${anoSel}</h2>
+      <div class="auto-fit-table" style="margin-bottom:20px;">
+        <table style="width:60%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${th}">Mês</th><th style="${thNum}">Receitas</th><th style="${thNum}">Despesas</th><th style="${thNum}">Saldo Acumulado</th>
+          </tr></thead>
+          <tbody>${linhasResumo}</tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin-top:30px;padding-top:14px;border-top:0.5px solid #DDE2EE;font-size:10px;">
+        <div>
+          <div style="color:#666;margin-bottom:2px;">Responsável Técnico</div>
+          <div style="font-weight:700;">${contador.nome || "—"}</div>
+          <div style="color:#666;">${contador.cpf_cnpj ? `CPF/CNPJ: ${contador.cpf_cnpj}` : ""}${contador.crc ? ` · CRC: ${contador.crc}` : ""}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="color:#666;margin-bottom:2px;">Prazo de entrega (junto com a DIRPF)</div>
+          <div style="font-weight:700;">30/04/${anoSel + 1}</div>
+        </div>
+      </div>
+    `;
+
+    abrirPreviewImpressao(
+      `LCDPR — Livro Caixa Digital do Produtor Rural`,
+      html,
+      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: nomeProd },
+    );
+  };
 
   const exportar = () => {
     if (formatoExport === "txt")  gerarLCDPR();
     else if (formatoExport === "xlsx") gerarXLSX();
-    else imprimirPDF();
+    else gerarPDF();
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1158,7 +1332,7 @@ export default function LCDPR() {
                     <div style={{ marginBottom: 20 }}>
                       <label style={lblS}>Formato</label>
                       <div style={{ display: "flex", gap: 8 }}>
-                        {([["txt", "📄 .txt (LCDPR)"], ["xlsx", "📊 Excel"], ["pdf", "🖨 Imprimir"]] as [typeof formatoExport, string][]).map(([f, lbl]) => (
+                        {([["txt", "📄 .txt (LCDPR)"], ["xlsx", "📊 Excel"], ["pdf", "📑 Relatório PDF"]] as [typeof formatoExport, string][]).map(([f, lbl]) => (
                           <button key={f} onClick={() => setFormatoExport(f)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${formatoExport === f ? "#1A5C38" : "var(--border-table)"}`, background: formatoExport === f ? "#EAF3DE" : "var(--bg-card)", color: formatoExport === f ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>{lbl}</button>
                         ))}
                       </div>
