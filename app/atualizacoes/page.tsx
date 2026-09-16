@@ -11,7 +11,7 @@ const RELEASES = [
     titulo: "LCDPR — filtro para excluir receitas com comprador PJ",
     modulos: ["Fiscal"],
     itens: [
-      { tipo: "novo", texto: "Novo checkbox na aba Exportação: 'Excluir receitas de PJ (comprador/pagador com CNPJ)'. Desligado por padrão. Quando marcado, remove do Livro Caixa (tela, KPIs, Resumo Mensal e todas as exportações) qualquer receita cujo comprador/pagador tenha CNPJ — sem alterar nenhum lançamento no Financeiro." },
+      { tipo: "novo", texto: "Novo checkbox na aba Exportação: 'Excluir receitas de produtores PJ'. Desligado por padrão. Remove do Livro Caixa (tela, KPIs, Resumo Mensal e todas as exportações) receitas atribuídas a um 'produtor' que no cadastro é na verdade uma empresa (CNPJ) — não tem relação com quem comprou/pagou (comprador ser empresa é normal). Ajustado após a primeira versão ter saído com a lógica trocada (excluía pelo comprador, não pelo produtor)." },
     ],
     onde: "Fiscal → LCDPR → aba Exportação",
   },
