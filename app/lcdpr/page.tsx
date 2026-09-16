@@ -162,7 +162,16 @@ export default function LCDPR() {
   const [aba, setAba]         = useState<Aba>("livro");
   const [anoSel, setAnoSel]   = useState(anoAtual);
   const [loading, setLoading] = useState(true);
-  const [entradas, setEntradas] = useState<EntradaLCDPR[]>([]);
+  const [entradasRaw, setEntradas] = useState<EntradaLCDPR[]>([]);
+  // Filtro "Excluir receitas de PJ" — some receitas do Livro Caixa cujo
+  // CPF/CNPJ contraparte é CNPJ (14 dígitos, ou seja o comprador/pagador é
+  // uma empresa). Aplicado aqui, na origem, pra valer em tudo que lê
+  // `entradas` — tela, KPIs, resumo mensal e as 3 exportações (.txt/xlsx/PDF).
+  const [excluirReceitasPJ, setExcluirReceitasPJ] = useState(false);
+  const entradas = useMemo(() => {
+    if (!excluirReceitasPJ) return entradasRaw;
+    return entradasRaw.filter(e => !(e.tipoLanc !== "2" && cpfNum(e.cpfCnpj).length === 14));
+  }, [entradasRaw, excluirReceitasPJ]);
 
   const [config, setConfig]       = useState<ConfigLCDPR>(CONFIG_VAZIA);
   const [savingCfg, setSavingCfg] = useState(false);
@@ -1434,6 +1443,16 @@ export default function LCDPR() {
                           </optgroup>
                         )}
                       </select>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
+                        <input type="checkbox" checked={excluirReceitasPJ} onChange={e => setExcluirReceitasPJ(e.target.checked)} />
+                        Excluir receitas de PJ (comprador/pagador com CNPJ)
+                      </label>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3, marginLeft: 22 }}>
+                        Vale pra tela, KPIs, Resumo Mensal e todas as exportações (.txt, Excel, PDF) — não altera nenhum lançamento no Financeiro.
+                      </div>
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
