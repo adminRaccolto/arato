@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "../lib/supabase";
 import type { Fazenda } from "../lib/supabase";
@@ -305,6 +305,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const prevQtdTransfRef   = useRef<number>(0);
 
   const pathname = usePathname();
+  const router = useRouter();
   const { fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, signOut, userRole, raccotloGestor, isBpo, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente, anoSafraVigenteDesc } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
@@ -633,7 +634,21 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         background: "var(--bg-header)",
         borderBottom: "0.5px solid rgba(255,255,255,0.07)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {pathname !== "/" && (
+            <button
+              onClick={() => router.back()}
+              title="Voltar para a tela anterior"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: "var(--bg-input)", border: "0.5px solid rgba(255,255,255,0.12)",
+                borderRadius: 6, padding: "5px 10px", cursor: "pointer",
+                fontSize: 12, color: "var(--text-2)", fontWeight: 600,
+              }}
+            >
+              ← Voltar
+            </button>
+          )}
           {logoArato ? (
             <img src={logoArato} alt={nomeArato} style={{ height: 32, maxWidth: 120, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(255,255,255,0.55)) drop-shadow(0 0 2px rgba(255,255,255,0.9))" }} />
           ) : (
