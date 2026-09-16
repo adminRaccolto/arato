@@ -80,6 +80,7 @@ interface EntradaLCDPR {
   lancId?: string;
   produtorId?: string | null;   // dono do lançamento — do próprio lançamento, senão herda da fazenda
   produtorNome?: string;        // resolvido pra exibir no relatório "Todos os Produtores"
+  produtorEhPJ?: boolean;       // o "produtor" dono (cadastro produtores) é na verdade uma empresa (CNPJ)
 }
 
 interface ProdutorLcdpr { id: string; nome: string; cpf: string; }
@@ -163,14 +164,16 @@ export default function LCDPR() {
   const [anoSel, setAnoSel]   = useState(anoAtual);
   const [loading, setLoading] = useState(true);
   const [entradasRaw, setEntradas] = useState<EntradaLCDPR[]>([]);
-  // Filtro "Excluir receitas de PJ" — some receitas do Livro Caixa cujo
-  // CPF/CNPJ contraparte é CNPJ (14 dígitos, ou seja o comprador/pagador é
-  // uma empresa). Aplicado aqui, na origem, pra valer em tudo que lê
-  // `entradas` — tela, KPIs, resumo mensal e as 3 exportações (.txt/xlsx/PDF).
+  // Filtro "Excluir receitas de produtores PJ" — o cadastro `produtores`
+  // mistura pessoas físicas com empresas (CNPJ) que também são titulares de
+  // alguma fazenda; some as receitas atribuídas a um "produtor" que na
+  // verdade é PJ (não é sobre quem comprou/pagou — isso é normal ser
+  // empresa, ex: trading). Aplicado na origem, vale pra tela, KPIs, Resumo
+  // Mensal e as 3 exportações (.txt/xlsx/PDF).
   const [excluirReceitasPJ, setExcluirReceitasPJ] = useState(false);
   const entradas = useMemo(() => {
     if (!excluirReceitasPJ) return entradasRaw;
-    return entradasRaw.filter(e => !(e.tipoLanc !== "2" && cpfNum(e.cpfCnpj).length === 14));
+    return entradasRaw.filter(e => !(e.produtorEhPJ && e.tipoLanc !== "2"));
   }, [entradasRaw, excluirReceitasPJ]);
 
   const [config, setConfig]       = useState<ConfigLCDPR>(CONFIG_VAZIA);
@@ -293,12 +296,20 @@ export default function LCDPR() {
       // Produtor "dono" de cada lançamento: usa lancamentos.produtor_id quando
       // preenchido; senão herda da fazenda (fazendas.produtor_id — a maioria
       // dos lançamentos hoje não tem produtor_id direto, mas toda fazenda tem
-      // um titular). Só usado pra exibir no relatório "Todos os Produtores" —
-      // não muda o que entra ou não no Livro Caixa.
+      // um titular). Usado pra exibir no relatório "Todos os Produtores" e
+      // pro filtro "Excluir receitas de produtores PJ" — o cadastro
+      // `produtores` mistura pessoas físicas de verdade com empresas (ex:
+      // "OGLIARI AGROPECUARIA LTDA", CNPJ) que também aparecem como titular
+      // de alguma fazenda; LCDPR é exclusivo de PF, então a receita atribuída
+      // a um "produtor" que na verdade é PJ precisa poder ser excluída.
       const fazProdutorMap = new Map<string, string>();
       for (const f of (fazRows ?? []) as { id: string; produtor_id?: string | null }[]) if (f.produtor_id) fazProdutorMap.set(f.id, f.produtor_id);
       const produtorNomeMap = new Map<string, string>();
-      for (const p of (prodRows ?? []) as { id: string; nome: string }[]) produtorNomeMap.set(p.id, p.nome);
+      const produtoresPJ = new Set<string>();
+      for (const p of (prodRows ?? []) as { id: string; nome: string; cpf_cnpj?: string }[]) {
+        produtorNomeMap.set(p.id, p.nome);
+        if (cpfNum(p.cpf_cnpj ?? "").length !== 11) produtoresPJ.add(p.id);
+      }
 
       const items: EntradaLCDPR[] = filtrados.map((l: Lancamento) => {
         const produtorId = l.produtor_id ?? fazProdutorMap.get(l.fazenda_id) ?? null;
@@ -317,6 +328,7 @@ export default function LCDPR() {
           origem: "auto" as const, lancId: l.id,
           produtorId,
           produtorNome: produtorId ? (produtorNomeMap.get(produtorId) ?? "—") : "—",
+          produtorEhPJ: produtorId ? produtoresPJ.has(produtorId) : false,
         };
       });
       items.sort((a, b) => a.data.localeCompare(b.data));
@@ -1448,10 +1460,10 @@ export default function LCDPR() {
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
                         <input type="checkbox" checked={excluirReceitasPJ} onChange={e => setExcluirReceitasPJ(e.target.checked)} />
-                        Excluir receitas de PJ (comprador/pagador com CNPJ)
+                        Excluir receitas de produtores PJ
                       </label>
                       <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3, marginLeft: 22 }}>
-                        Vale pra tela, KPIs, Resumo Mensal e todas as exportações (.txt, Excel, PDF) — não altera nenhum lançamento no Financeiro.
+                        Remove receitas atribuídas a um "produtor" que na verdade é empresa (CNPJ) no cadastro — não tem relação com quem comprou/pagou. Vale pra tela, KPIs, Resumo Mensal e todas as exportações (.txt, Excel, PDF) — não altera nenhum lançamento no Financeiro.
                       </div>
                     </div>
 
