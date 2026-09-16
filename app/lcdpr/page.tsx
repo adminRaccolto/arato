@@ -143,7 +143,7 @@ type Aba = "livro" | "participacoes" | "cadastro" | "importacao" | "exportacao";
 
 // ═════════════════════════════════════════════════════════════════════════════
 export default function LCDPR() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome, podeAcessarPlano } = useAuth();
 
   const [aba, setAba]         = useState<Aba>("livro");
   const [anoSel, setAnoSel]   = useState(anoAtual);
@@ -783,6 +783,7 @@ export default function LCDPR() {
     const html = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:0.5px solid #DDE2EE;font-size:11px;">
         <table style="border-collapse:collapse;">
+          ${contaNome ? `<tr><td style="padding:2px 10px 2px 0;color:#666;">Cliente</td><td style="font-weight:700;">${contaNome}</td></tr>` : ""}
           <tr><td style="padding:2px 10px 2px 0;color:#666;">${isEmpresa ? "Empresa" : "Produtor"}</td><td style="font-weight:700;">${nomeProd}</td></tr>
           <tr><td style="padding:2px 10px 2px 0;color:#666;">${isEmpresa ? "CNPJ" : "CPF"}</td><td>${isEmpresa ? (cpfCnpjSel || "—") : (fmtCPF(cpfCnpjSel) || "—")}</td></tr>
           <tr><td style="padding:2px 10px 2px 0;color:#666;">Período</td><td style="text-transform:capitalize;">${periodo}</td></tr>
@@ -863,7 +864,7 @@ export default function LCDPR() {
     abrirPreviewImpressao(
       isEmpresa ? "Livro Caixa — Empresa (PJ)" : "LCDPR — Livro Caixa Digital do Produtor Rural",
       html,
-      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: nomeProd },
+      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: contaNome ?? nomeProd },
     );
   };
 
