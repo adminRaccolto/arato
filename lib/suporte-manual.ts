@@ -345,9 +345,9 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 - **Prazo:** só é possível cancelar dentro de **24h** da autorização (regra da SEFAZ). Depois disso, o sistema bloqueia e é preciso emitir uma NF de devolução/estorno pra reverter a operação, ou uma Carta de Correção para erros simples de cadastro.
 
 ### 9.4 Abastecimento de Máquinas
-**Caminho:** Compras & Estoque → Estoque → Abastecimento de Máquinas
+**Caminho:** Produção → Máquinas → Abastecimento de Máquinas
 
-Registra abastecimentos de combustível por máquina, com baixa automática no estoque.
+Registra abastecimentos de combustível por máquina, com baixa automática no estoque. Movido de Suprimentos → Estoque de Grãos (onde ficava sem relação com o resto da seção e passava despercebido) para junto de Máquinas e Veículos / Manutenções / Custos por Máquina.
 
 ### 9.5 Romaneios de Terceiros
 **Caminho:** Compras & Estoque → Estoque → Romaneios de Terceiros

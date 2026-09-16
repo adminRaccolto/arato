@@ -6,6 +6,26 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.16-o",
+    data: "16/09/2026",
+    titulo: "Abastecimento de Máquinas — reposicionado no menu",
+    modulos: ["Produção", "Compras & Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "'Abastecimento de Máquinas' estava em Suprimentos → Estoque de Grãos (sem relação com o resto da seção, difícil de achar). Movido para Produção → Máquinas, junto de 'Máquinas e Veículos', 'Manutenções' e 'Custos por Máquina'." },
+    ],
+    onde: "Produção → Máquinas → Abastecimento de Máquinas",
+  },
+  {
+    versao: "2026.09.16-n",
+    data: "16/09/2026",
+    titulo: "Correção: contas bancárias duplicadas em cliente com múltiplas fazendas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Uma conta com mais de uma fazenda tinha a mesma conta bancária cadastrada duas vezes (uma por fazenda), fazendo o mesmo banco aparecer repetido no select de 'Registrar pagamento' da baixa de CP. Identificadas e desativadas 6 contas bancárias duplicadas (sem lançamento, adiantamento ou contrato vinculado) — nada foi apagado." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Registrar pagamento",
+  },
+  {
     versao: "2026.09.16-m",
     data: "16/09/2026",
     titulo: "NF de Produtos — produto obrigatório por item ao processar",
