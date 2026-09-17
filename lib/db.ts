@@ -1661,7 +1661,13 @@ export async function excluirCiclo(id: string): Promise<void> {
 // ————————————————————————————————————————
 
 export async function listarMaquinas(fazenda_id: string): Promise<Maquina[]> {
-  const { data, error } = await supabase.from("maquinas").select("*").eq("fazenda_id", fazenda_id).order("nome");
+  // Máquinas são cadastradas numa fazenda só, mas em conta com várias fazendas
+  // o seletor precisa listar as de toda a conta — mesmo padrão já corrigido em
+  // Operações Gerenciais, Plano de Contas, Usuários e Grupos de Acesso. Sem
+  // isso, uma NF processada numa fazenda sem máquina cadastrada mostrava o
+  // seletor de veículo/frota vazio, mesmo a conta tendo centenas cadastradas.
+  const ids = await resolverFazendaIdsDaConta(fazenda_id);
+  const { data, error } = await supabase.from("maquinas").select("*").in("fazenda_id", ids.length ? ids : [fazenda_id]).order("nome");
   if (error) throw error;
   return data ?? [];
 }

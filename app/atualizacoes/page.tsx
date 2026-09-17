@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-e",
+    data: "18/09/2026",
+    titulo: "Correção: seletor de Veículo/Máquina vazio em conta com várias fazendas",
+    modulos: ["Compras & Estoque", "Cadastros", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Máquinas são cadastradas numa fazenda só, mas o seletor de veículo/máquina (combustível e rateio por frota na Apropriação Direta, cadastro de manutenção, seguros, etc.) só listava as da fazenda ativa — em conta com várias fazendas, processar uma NF numa fazenda sem máquina cadastrada mostrava o seletor vazio, mesmo a conta tendo centenas cadastradas em outra fazenda. Corrigido: a lista agora busca em todas as fazendas da conta, mesmo padrão já aplicado em Operações Gerenciais, Plano de Contas e Usuários." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos · Cadastros → Máquinas · Financeiro → Contratos/Seguros",
+  },
+  {
     versao: "2026.09.18-d",
     data: "18/09/2026",
     titulo: "Correção: atualizações do sistema não apareciam mesmo após publicadas",

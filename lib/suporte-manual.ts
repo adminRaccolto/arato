@@ -210,6 +210,8 @@ Gerencia padrões de classificação por commodity (parâmetros ABIOVE para soja
 
 Cadastro de tratores, colheitadeiras, caminhões e outros equipamentos da fazenda.
 
+**Seletor de veículo/máquina vazio em conta com várias fazendas (correção 18/09/2026):** máquina é cadastrada numa fazenda só, mas o seletor (na Apropriação Direta de NF, aqui mesmo, em Seguros, Contratos Financeiros etc.) só listava as da fazenda ativa de quem está vendo a tela — em conta com várias fazendas, um seletor podia aparecer vazio mesmo a conta tendo centenas de máquinas cadastradas em outra fazenda. Corrigido: a lista agora busca em todas as fazendas da conta.
+
 ### 6.2 Manutenções
 **Caminho:** Lavoura → Máquinas → Manutenções
 
