@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-c",
+    data: "18/09/2026",
+    titulo: "Apropriação Direta — aplicar o mesmo Centro de Custo a todos os itens de uma vez",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Depois de escolher o Centro de Custo em \"Vincular a um centro de custo?\" (cabeçalho), aparece o botão \"↓ Aplicar este centro de custo a todos os itens\" — preenche o CC de todos os itens da NF de uma vez, em vez de selecionar item por item. Útil em NFs com muitos itens do mesmo CC (ex: NF de mercado). Item que precisa de um CC diferente continua podendo ser ajustado individualmente depois." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos → Apropriação Direta / Peças / VEF / Remessa",
+  },
+  {
     versao: "2026.09.18-b",
     data: "18/09/2026",
     titulo: "Lista de NF de Produtos — grid mais compacto",

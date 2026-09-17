@@ -3511,6 +3511,17 @@ export default function NfCompraPage() {
                                   </div>
                                 )}
                               </div>
+                              {/* Aplica o CC escolhido aqui a todos os itens de uma vez — evita
+                                  repetir a mesma seleção item a item quando a NF inteira (ex: NF de
+                                  mercado com 20+ itens) vai pro mesmo centro de custo. Item a item
+                                  continua disponível pra quando algum item precisa de um CC diferente. */}
+                              {cab.centro_custo_id && itens.some(i => i.descricao_nf.trim()) && (
+                                <button
+                                  onClick={() => setItens(prev => prev.map(it => it.descricao_nf.trim() ? { ...it, centro_custo_id: cab.centro_custo_id, maquina_id: ccGlobalMaquinaId || it.maquina_id } : it))}
+                                  style={{ marginTop: 10, padding: "6px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                                  ↓ Aplicar este centro de custo a todos os itens
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
