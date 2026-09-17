@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-x",
+    data: "17/09/2026",
+    titulo: "LCDPR ainda incluía título de titular PJ; Plano de Contas 'não cadastrado' em conta com várias fazendas",
+    modulos: ["Fiscal", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Um lançamento cujo titular (campo Produtor do lançamento, ou o titular padrão da fazenda) é uma empresa (CNPJ) continuava entrando no LCDPR — o filtro checava só o campo Entidade Contábil, que reflete a entidade padrão da fazenda, não a do titular específico daquele lançamento. Agora qualquer lançamento cujo titular seja PJ é excluído do LCDPR, sempre — LCDPR é exclusivo de Pessoa Física." },
+      { tipo: "correcao", texto: "Em conta com várias fazendas, se o Plano de Contas foi cadastrado com a conta ativa de uma fazenda e o usuário está com outra fazenda da mesma conta ativa, a tela de Operações Gerenciais avisava 'Plano de Contas não cadastrado' mesmo ele existindo — a leitura olhava só a fazenda ativa, não a conta toda. Corrigido pra resolver em todas as fazendas da conta, igual já funciona pra Operações Gerenciais." },
+    ],
+    onde: "Fiscal → LCDPR → Livro Caixa/Exportação · Configurações → Operações Gerenciais",
+  },
+  {
     versao: "2026.09.17-w",
     data: "17/09/2026",
     titulo: "Correção: Operações Gerenciais recém-criadas não apareciam pra ninguém em contas com muitas fazendas",

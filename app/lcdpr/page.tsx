@@ -271,6 +271,22 @@ export default function LCDPR() {
       }
       const listaNomesInternos = [...nomesInternosConta];
 
+      // Titular (produtor) de cada lançamento — mesma resolução usada mais abaixo
+      // pra montar os itens (produtor_id direto, senão o titular da fazenda) — mas
+      // precisa vir antes do filtro de elegibilidade: LCDPR é exclusivo de PF, e um
+      // lançamento pode ter como titular um "produtor" que na verdade é uma empresa
+      // (CNPJ) — ex: uma transportadora do grupo cadastrada em Produtores só pra
+      // conseguir lançar custos dela no mesmo sistema. `entidade_contabil` sozinho
+      // não pega esse caso: ele reflete a entidade padrão da FAZENDA (herdada via
+      // trigger), não a do titular específico marcado no lançamento.
+      const fazProdutorMapPreFiltro = new Map<string, string>();
+      for (const f of (fazRows ?? []) as { id: string; produtor_id?: string | null }[]) if (f.produtor_id) fazProdutorMapPreFiltro.set(f.id, f.produtor_id);
+      const produtoresPJIds = new Set(
+        (prodRows ?? [])
+          .filter((p: { cpf_cnpj?: string }) => cpfNum(p.cpf_cnpj ?? "").length !== 11)
+          .map((p: { id: string }) => p.id)
+      );
+
       const filtrados = lans.filter((l: Lancamento) => {
         // LCDPR é regime de caixa — só o que realmente teve movimento de caixa
         // entra. "Previsão" é rascunho de planejamento, pode ter valor/data
@@ -284,6 +300,8 @@ export default function LCDPR() {
         if (l.status !== "baixado" && l.status !== "parcial") return false;
         if (apoioIds.has(l.id)) return false;
         if (l.entidade_contabil !== "pf") return false;
+        const titularId = l.produtor_id ?? fazProdutorMapPreFiltro.get(l.fazenda_id) ?? null;
+        if (titularId && produtoresPJIds.has(titularId)) return false;
         if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) return false;
         if (l.descricao) {
           const descNorm = normTxt(l.descricao);
@@ -301,8 +319,7 @@ export default function LCDPR() {
       // preenchido; senão herda da fazenda (fazendas.produtor_id — a maioria
       // dos lançamentos hoje não tem produtor_id direto, mas toda fazenda tem
       // um titular). Usado pra exibir no relatório "Todos os Produtores".
-      const fazProdutorMap = new Map<string, string>();
-      for (const f of (fazRows ?? []) as { id: string; produtor_id?: string | null }[]) if (f.produtor_id) fazProdutorMap.set(f.id, f.produtor_id);
+      const fazProdutorMap = fazProdutorMapPreFiltro;
       const produtorNomeMap = new Map<string, string>();
       for (const p of (prodRows ?? []) as { id: string; nome: string; cpf_cnpj?: string }[]) {
         produtorNomeMap.set(p.id, p.nome);

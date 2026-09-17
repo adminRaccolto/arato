@@ -5624,13 +5624,27 @@ export async function cancelarPendenciaOperacional(id: string): Promise<void> {
 import type { ContaContabil } from "./planoContas";
 
 export async function listarPlanoContas(fazenda_id: string): Promise<ContaContabil[]> {
+  // Plano de Contas é cadastrado uma vez por conta (não por fazenda) na prática —
+  // igual Operações Gerenciais — mas até aqui a leitura filtrava só pela fazenda
+  // ativa do chamador. Em conta com múltiplas fazendas, se o plano foi cadastrado
+  // com uma fazenda diferente da ativa (comum: o titular cadastrou numa vez só,
+  // outros usuários da conta têm fazenda ativa diferente), a tela mostrava
+  // "Plano de Contas não cadastrado" mesmo ele existindo — resolve pra todas as
+  // fazendas da conta, igual listarOperacoesGerenciais já faz.
+  const ids = await resolverFazendaIdsDaConta(fazenda_id);
   const { data, error } = await supabase
     .from("plano_contas")
     .select("*")
-    .eq("fazenda_id", fazenda_id)
+    .in("fazenda_id", ids.length ? ids : [fazenda_id])
     .order("codigo");
   if (error) throw error;
-  return (data ?? []).map(r => ({
+  const seen = new Set<string>();
+  const dedup = (data ?? []).filter(r => {
+    if (seen.has(r.codigo)) return false;
+    seen.add(r.codigo);
+    return true;
+  });
+  return dedup.map(r => ({
     codigo:      r.codigo,
     nome:        r.nome,
     tipo:        r.tipo as ContaContabil["tipo"],
