@@ -2057,6 +2057,7 @@ export type OperacaoGerencial = {
   permite_estoque?: boolean;
   permite_pedidos_venda?: boolean;
   permite_manutencao?: boolean;
+  permite_combustivel?: boolean;
   marcar_fiscal_padrao?: boolean;
   permite_energia_eletrica?: boolean;
 

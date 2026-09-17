@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-f",
+    data: "18/09/2026",
+    titulo: "Apropriação Direta — a Operação Gerencial decide o que cada item pede; CC obrigatório",
+    modulos: ["Compras & Estoque", "Configurações"],
+    itens: [
+      { tipo: "novo", texto: "Operação Gerencial agora é obrigatória antes de avançar para os itens numa NF de Apropriação Direta — não dá mais pra deixar pra escolher só no fim." },
+      { tipo: "novo", texto: "Removido o checkbox \"É combustível?\" e a exigência de marcar o Centro de Custo como \"manutenção de máquinas\" pra liberar o rateio por frota — agora é a própria Operação Gerencial que decide: OG marcada como \"Combustível e Lubrificantes\" → item só pede o veículo que abasteceu; OG marcada como \"Manutenção e Reparos\" → item permite ratear entre várias frotas por percentual, sempre somando 100%; qualquer outra OG → item pede o Centro de Custo, agora obrigatório (antes era opcional)." },
+      { tipo: "novo", texto: "Nova opção \"Combustível e Lubrificantes\" no cadastro de Operações Gerenciais (Configurações → Operações Gerenciais, aba Telas/Módulos) — marque nas suas OGs de combustível pra ativar o modo veículo na Apropriação Direta. As duas OGs padrão do catálogo global (Compra de Combustíveis e Compra de Aditivos e Lubrificantes) já saem marcadas." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos → Apropriação Direta · Configurações → Operações Gerenciais",
+  },
+  {
     versao: "2026.09.18-e",
     data: "18/09/2026",
     titulo: "Correção: seletor de Veículo/Máquina vazio em conta com várias fazendas",

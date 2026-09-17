@@ -44,6 +44,7 @@ const OG_VAZIO = {
   permite_estoque:         false,
   permite_pedidos_venda:   false,
   permite_manutencao:      false,
+  permite_combustivel:     false,
   marcar_fiscal_padrao:    false,
   permite_energia_eletrica: false,
   operacao_estoque:        "" as OperacaoGerencial["operacao_estoque"] | "",
@@ -163,6 +164,7 @@ function OperacoesGerenciaisContent() {
       permite_estoque:         o.permite_estoque ?? false,
       permite_pedidos_venda:   o.permite_pedidos_venda ?? false,
       permite_manutencao:      o.permite_manutencao ?? false,
+      permite_combustivel:     o.permite_combustivel ?? false,
       marcar_fiscal_padrao:    o.marcar_fiscal_padrao ?? false,
       permite_energia_eletrica: o.permite_energia_eletrica ?? false,
       operacao_estoque:        o.operacao_estoque ?? "",
@@ -209,7 +211,8 @@ function OperacoesGerenciaisContent() {
     }
     const nenhumaSela = !form.permite_notas_fiscais && !form.permite_cp_cr && !form.permite_adiantamentos &&
       !form.permite_tesouraria && !form.permite_baixas && !form.permite_custo_produto &&
-      !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda && !form.permite_manutencao;
+      !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda &&
+      !form.permite_manutencao && !form.permite_combustivel;
     if (nenhumaSela) {
       if (!confirm("⚠️ Esta operação não está habilitada para nenhuma tela.\n\nEla ficará invisível em todos os seletores do sistema (CP/CR, NF, Estoque, etc.).\n\nDeseja salvar assim mesmo?")) return;
     }
@@ -239,6 +242,7 @@ function OperacoesGerenciaisContent() {
         permite_estoque:         form.permite_estoque,
         permite_pedidos_venda:   form.permite_pedidos_venda,
         permite_manutencao:      form.permite_manutencao,
+        permite_combustivel:     form.permite_combustivel,
         marcar_fiscal_padrao:    form.marcar_fiscal_padrao,
         permite_energia_eletrica: form.permite_energia_eletrica,
         operacao_estoque:        form.operacao_estoque || undefined,
@@ -635,6 +639,7 @@ function OperacoesGerenciaisContent() {
               if (form.permite_contrato_financeiro) telas.push("Contratos Fin.");
               if (form.permite_pedidos_venda) telas.push("Ped. Venda");
               if (form.permite_manutencao) telas.push("Manutenção");
+              if (form.permite_combustivel) telas.push("Combustível");
               if (telas.length === 0) {
                 return (
                   <div style={{ margin: "0 20px 12px", padding: "8px 12px", background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 8, fontSize: 12, color: "#991B1B" }}>
@@ -662,7 +667,8 @@ function OperacoesGerenciaisContent() {
                 const nenhumaTela = a.key === "telas" &&
                   !form.permite_notas_fiscais && !form.permite_cp_cr && !form.permite_adiantamentos &&
                   !form.permite_tesouraria && !form.permite_baixas && !form.permite_custo_produto &&
-                  !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda && !form.permite_manutencao;
+                  !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda &&
+                  !form.permite_manutencao && !form.permite_combustivel;
                 return (
                   <button key={a.key} onClick={() => setAbaModal(a.key)} style={{
                     padding: "9px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
@@ -709,6 +715,7 @@ function OperacoesGerenciaisContent() {
                       { key: "permite_estoque",         label: "Estoque"                          },
                       { key: "permite_pedidos_venda",   label: "Pedidos de Venda"                 },
                       { key: "permite_manutencao",      label: "Manutenção e Reparos"             },
+                      { key: "permite_combustivel",     label: "Combustível e Lubrificantes"      },
                       { key: "marcar_fiscal_padrao",    label: "Marcar como Fiscal por Padrão"    },
                       { key: "permite_energia_eletrica",label: "Importação de Energia Elétrica"   },
                     ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (

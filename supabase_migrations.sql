@@ -13091,3 +13091,31 @@ ALTER TABLE nf_entrada_itens
   ADD COLUMN IF NOT EXISTS maquinas_rateio jsonb;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 272 — permite_combustivel em Operações Gerenciais
+--
+-- Apropriação Direta passa a decidir o modo de cada item pela Operação
+-- Gerencial escolhida no cabeçalho, em vez de um checkbox manual por item:
+--   OG com permite_combustivel → item só pede o veículo (frota) que abasteceu
+--   OG com permite_manutencao  → item permite ratear entre várias frotas (%)
+--   qualquer outra OG          → item só pede Centro de Custo (obrigatório)
+-- permite_manutencao já existia; faltava o equivalente pra combustível.
+-- Marca também as duas OGs padrão de combustível do catálogo global (que já
+-- têm permite_manutencao correto nas de manutenção, sem precisar de ajuste).
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE operacoes_gerenciais
+  ADD COLUMN IF NOT EXISTS permite_combustivel boolean DEFAULT false;
+
+-- Sem filtro por fazenda_id/conta_id de propósito: a maioria das contas reais
+-- tem o catálogo padrão semeado como cópia "legado por fazenda" (fazenda_id
+-- preenchido), não só no template global — restringir ao template global só
+-- corrigiria contas novas a partir de agora, deixando toda conta já existente
+-- sem o flag até editar manualmente cada cópia.
+UPDATE operacoes_gerenciais
+   SET permite_combustivel = true
+ WHERE classificacao IN ('2.01.01.02.001', '2.01.01.02.002')
+   AND permite_combustivel IS NOT true;
+
+NOTIFY pgrst, 'reload schema';

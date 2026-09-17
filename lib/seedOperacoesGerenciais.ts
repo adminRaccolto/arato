@@ -528,14 +528,14 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   // 2.01.01.02 — Combustíveis
   grp("2.01.01.02",   "COMBUSTÍVEIS",                    "despesa"),
   desp("2.01.01.02.001", "COMPRA DE COMBUSTÍVEIS", {
-    permite_notas_fiscais: true, permite_estoque: true,
+    permite_notas_fiscais: true, permite_estoque: true, permite_combustivel: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
     conta_debito: "5.5", conta_credito: "2.1.1.1",
     ref_id: 728,
   }),
   desp("2.01.01.02.002", "COMPRA DE ADITIVOS E LUBRIFICANTES", {
-    permite_notas_fiscais: true,
+    permite_notas_fiscais: true, permite_combustivel: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
     conta_debito: "5.5", conta_credito: "2.1.1.1",
     ref_id: 729,
