@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-b",
+    data: "17/09/2026",
+    titulo: "Abastecimento de Máquinas — Safra/Ciclo, busca por digitação e menu Máquinas",
+    modulos: ["Produção"],
+    itens: [
+      { tipo: "novo", texto: "Novo campo 'Safra / Ciclo' no Abastecimento de Máquinas — permite separar o custo de combustível por safra/ciclo no Orçamento Planejado × Realizado e nos relatórios. Aparece também como coluna no histórico." },
+      { tipo: "correcao", texto: "O campo de seleção de Máquina no Abastecimento não permitia buscar digitando o nome — era um select nativo, sem filtro. Trocado pelo componente de busca já usado em outras telas do sistema (Financeiro, NF de Produtos)." },
+      { tipo: "melhoria", texto: "'Máquinas' não aparecia como uma entrada própria no menu Produção — só 'Máquinas e Veículos', dentro de uma seção sem cabeçalho clicável. Agora existe um submenu 'Máquinas' (com seta ▶) dentro de Produção, reunindo Máquinas e Veículos, Abastecimento de Máquinas, Manutenções e Custos por Máquina." },
+    ],
+    onde: "Produção → Máquinas",
+  },
+  {
     versao: "2026.09.17-a",
     data: "17/09/2026",
     titulo: "Novo: Encerrar Pedido de Compra com ajuste de divergência",

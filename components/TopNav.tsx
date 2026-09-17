@@ -72,7 +72,6 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "producao", label: "Produção", panel: true, minStep: 3,
     children: [
-      { id: "prod-abastecimento", label: "Abastecimento de Máquinas",       path: "/estoque/abastecimento"                    },
       { type: "divider", label: "Planejamento" },
       { id: "prod-planejamento",  label: "Planejamento de Safra",           path: "/lavoura/planejamento"                     },
       { id: "prod-safras",        label: "Safras e Ciclos",                 path: "/cadastros?tab=safras"                     },
@@ -93,10 +92,15 @@ const NAV: NavItem[] = [
       { id: "prod-colheita",      label: "Colheita",                        path: "/lavoura/colheita"                         },
       { id: "prod-rom-producao",  label: "Romaneios de Produção",           path: "/estoque/romaneio-entrada"                 },
       { id: "prod-classificacao", label: "Classificação de Grãos",          path: "/cadastros?tab=padroes_classificacao"      },
-      { type: "divider", label: "Máquinas" },
-      { id: "prod-maquinas",      label: "Máquinas e Veículos",             path: "/cadastros?tab=maquinas"                   },
-      { id: "prod-manutencoes",   label: "Manutenções",                     path: "/relatorios/manutencao"                    },
-      { id: "prod-custos-maq",    label: "Custos por Máquina",              path: "/relatorios/manutencao?aba=custos"         },
+      {
+        type: "subgroup", id: "prod-maquinas-sub", label: "Máquinas",
+        children: [
+          { id: "prod-maquinas",      label: "Máquinas e Veículos",         path: "/cadastros?tab=maquinas"                   },
+          { id: "prod-abastecimento", label: "Abastecimento de Máquinas",   path: "/estoque/abastecimento"                    },
+          { id: "prod-manutencoes",   label: "Manutenções",                 path: "/relatorios/manutencao"                    },
+          { id: "prod-custos-maq",    label: "Custos por Máquina",          path: "/relatorios/manutencao?aba=custos"         },
+        ],
+      },
       { type: "divider", label: "Algodão" },
       { id: "alg-safra",          label: "Safra & Operações",               path: "/algodao?aba=safra",      moduleId: "algodao" },
       { id: "alg-bicudo",         label: "Monitoramento de Bicudo",         path: "/algodao?aba=bicudo",     moduleId: "algodao" },

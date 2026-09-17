@@ -5,6 +5,8 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarBombas, listarMaquinas, listarFuncionarios, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
+import SelectBusca from "../../../components/SelectBusca";
+import CascadeSelector from "../../../components/CascadeSelector";
 import type { BombaCombustivel, Maquina, Funcionario } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -25,6 +27,9 @@ type Abastecimento = {
   observacao: string | null;
   lancamento_id: string | null;
   horimetro: number | null;
+  ano_safra_id: string | null;
+  ciclo_id: string | null;
+  ciclo_nome?: string;
   created_at: string;
 };
 
@@ -53,7 +58,7 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtNum = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
 export default function AbastecimentoPage() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
 
   const [bombas,       setBombas]       = useState<BombaCombustivel[]>([]);
   const [maquinas,     setMaquinas]     = useState<Maquina[]>([]);
@@ -85,6 +90,8 @@ export default function AbastecimentoPage() {
   const [fGerarCP,      setFGerarCP]      = useState(false);
   const [fVencimento,   setFVencimento]   = useState(() => new Date().toISOString().split("T")[0]);
   const [fHorimetro,    setFHorimetro]    = useState("");
+  const [fAnoSafra,     setFAnoSafra]     = useState("");
+  const [fCiclo,        setFCiclo]        = useState("");
 
   // ─── Carga inicial ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
@@ -115,7 +122,8 @@ export default function AbastecimentoPage() {
         *,
         bombas_combustivel(nome),
         maquinas(nome),
-        funcionarios(nome)
+        funcionarios(nome),
+        ciclos(descricao, cultura)
       `)
       .in("fazenda_id", fazendaIds)
       .gte("data", inicio)
@@ -123,12 +131,16 @@ export default function AbastecimentoPage() {
       .order("data", { ascending: false })
       .order("created_at", { ascending: false });
 
-    const normalizado: Abastecimento[] = (hist ?? []).map((r: Record<string, unknown>) => ({
-      ...r,
-      bomba_nome:       (r.bombas_combustivel as Record<string, string> | null)?.nome,
-      maquina_nome:     (r.maquinas as Record<string, string> | null)?.nome,
-      funcionario_nome: (r.funcionarios as Record<string, string> | null)?.nome,
-    })) as Abastecimento[];
+    const normalizado: Abastecimento[] = (hist ?? []).map((r: Record<string, unknown>) => {
+      const ciclo = r.ciclos as Record<string, string> | null;
+      return {
+        ...r,
+        bomba_nome:       (r.bombas_combustivel as Record<string, string> | null)?.nome,
+        maquina_nome:     (r.maquinas as Record<string, string> | null)?.nome,
+        funcionario_nome: (r.funcionarios as Record<string, string> | null)?.nome,
+        ciclo_nome:       ciclo ? [ciclo.cultura, ciclo.descricao].filter(Boolean).join(" · ") : undefined,
+      };
+    }) as Abastecimento[];
 
     setHistorico(filtroBomba ? normalizado.filter(h => h.bomba_id === filtroBomba) : normalizado);
     setLoading(false);
@@ -227,6 +239,8 @@ export default function AbastecimentoPage() {
       valor_total:     totalNovo,
       data:            fData,
       horimetro:       horimetroVal,
+      ano_safra_id:    fAnoSafra || null,
+      ciclo_id:        fCiclo || null,
       observacao:      fObs || null,
     }).eq("id", ab.id);
     if (errUpd) throw new Error(errUpd.message);
@@ -264,6 +278,8 @@ export default function AbastecimentoPage() {
       valor_total:     total,
       data:            fData,
       horimetro:       horimetroVal,
+      ano_safra_id:    fAnoSafra || null,
+      ciclo_id:        fCiclo || null,
       observacao:      fObs || null,
       lancamento_id:   null,
     };
@@ -372,6 +388,7 @@ export default function AbastecimentoPage() {
     setEditando(null);
     setFBomba(""); setFDestTipo("maquina"); setFMaquina(""); setFFuncionario(""); setFDestLivre("");
     setFQuantidade(""); setFValUnit(""); setFObs(""); setFHorimetro(""); setFGerarCP(false);
+    setFAnoSafra(""); setFCiclo("");
     setFData(new Date().toISOString().split("T")[0]);
     setFVencimento(new Date().toISOString().split("T")[0]);
     setErroModal(""); setModal(true);
@@ -387,6 +404,8 @@ export default function AbastecimentoPage() {
     setFValUnit(String(ab.valor_unitario));
     setFData(ab.data);
     setFHorimetro(ab.horimetro != null ? String(ab.horimetro) : "");
+    setFAnoSafra(ab.ano_safra_id ?? "");
+    setFCiclo(ab.ciclo_id ?? "");
     setFObs(ab.observacao ?? "");
     setFGerarCP(!!ab.lancamento_id);
     setFVencimento(ab.data);
@@ -500,7 +519,7 @@ export default function AbastecimentoPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
-                  {["Data", "Bomba / Combustível", "Veículo / Máquina", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
+                  {["Data", "Bomba / Combustível", "Veículo / Máquina", "Safra / Ciclo", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
                     <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -524,6 +543,7 @@ export default function AbastecimentoPage() {
                         )}
                       </td>
                       <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)" }}>{destino}</td>
+                      <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-3)" }}>{h.ciclo_nome ?? "—"}</td>
                       <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                         {h.horimetro != null ? fmtNum(h.horimetro, 1) : "—"}
                       </td>
@@ -571,7 +591,7 @@ export default function AbastecimentoPage() {
               </tbody>
               <tfoot>
                 <tr style={{ background: "var(--bg-card)", borderTop: "0.5px solid var(--border)" }}>
-                  <td colSpan={4} style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do período</td>
+                  <td colSpan={5} style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do período</td>
                   <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#111111" }}>{fmtNum(totalLitrosMes, 0)} L</td>
                   <td style={{ padding: "10px 14px" }} />
                   <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(totalCustoMes)}</td>
@@ -663,12 +683,13 @@ export default function AbastecimentoPage() {
                   ))}
                 </div>
                 {fDestTipo === "maquina" && (
-                  <select value={fMaquina} onChange={e => setFMaquina(e.target.value)} style={inp}>
-                    <option value="">Selecione a máquina...</option>
-                    {maquinas.filter(m => m.ativa).map(m => (
-                      <option key={m.id} value={m.id}>{m.nome} — {m.tipo}</option>
-                    ))}
-                  </select>
+                  <SelectBusca
+                    value={fMaquina}
+                    onChange={setFMaquina}
+                    options={maquinas.filter(m => m.ativa).map(m => ({ value: m.id, label: `${m.nome} — ${m.tipo}` }))}
+                    placeholder="Selecione a máquina..."
+                    style={inp}
+                  />
                 )}
                 {fDestTipo === "funcionario" && (
                   <select value={fFuncionario} onChange={e => setFFuncionario(e.target.value)} style={inp}>
@@ -686,6 +707,18 @@ export default function AbastecimentoPage() {
                     style={inp}
                   />
                 )}
+              </div>
+
+              {/* Safra / Ciclo — pra separar custo de combustível por safra no DRE/Orçamento */}
+              <div>
+                <label style={lbl}>Safra / Ciclo</label>
+                <CascadeSelector
+                  contaId={contaId}
+                  fazendaIdFallback={fazendaId}
+                  levels={["anoSafra", "ciclo"]}
+                  values={{ fazendaId: fazendaId ?? "", anoSafraId: fAnoSafra, cicloId: fCiclo }}
+                  onChange={next => { setFAnoSafra(next.anoSafraId ?? ""); setFCiclo(next.cicloId ?? ""); }}
+                />
               </div>
 
               {/* Data + Quantidade + Valor */}

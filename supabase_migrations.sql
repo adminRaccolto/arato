@@ -12802,3 +12802,19 @@ CREATE INDEX IF NOT EXISTS idx_conciliacao_pendencias_faz_status_data
   ON conciliacao_pendencias(fazenda_id, status, data);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 263 — Ano Safra e Ciclo no Abastecimento de Máquinas
+--
+-- Abastecimento de combustível não tinha vínculo com safra/ciclo — impossível
+-- separar custo de diesel por safra (ex: soja 25/26 vs milho safrinha 26) no
+-- Orçamento Planejado × Realizado e no DRE por ciclo.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE abastecimentos
+  ADD COLUMN IF NOT EXISTS ano_safra_id uuid REFERENCES anos_safra(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ciclo_id     uuid REFERENCES ciclos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_abastecimentos_ciclo ON abastecimentos(ciclo_id) WHERE ciclo_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

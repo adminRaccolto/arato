@@ -349,9 +349,13 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 - **Prazo:** só é possível cancelar dentro de **24h** da autorização (regra da SEFAZ). Depois disso, o sistema bloqueia e é preciso emitir uma NF de devolução/estorno pra reverter a operação, ou uma Carta de Correção para erros simples de cadastro.
 
 ### 9.4 Abastecimento de Máquinas
-**Caminho:** Produção → Abastecimento de Máquinas (primeiro item do menu, antes de qualquer seção)
+**Caminho:** Produção → Máquinas (submenu) → Abastecimento de Máquinas
 
-Registra abastecimentos de combustível por máquina, com baixa automática no estoque. Movido de Suprimentos → Estoque de Grãos (onde ficava sem relação com o resto da seção e passava despercebido) para o topo do menu Produção, por ser uma tela de uso frequente.
+Registra abastecimentos de combustível por máquina, com baixa automática no estoque. Depois de passar por Suprimentos → Estoque de Grãos e pelo topo do menu Produção, ficou reunido dentro do submenu "Máquinas" (junto de Máquinas e Veículos, Manutenções e Custos por Máquina) — esse submenu aparece com uma seta ▶ no menu Produção.
+
+**Campo Safra/Ciclo:** cada abastecimento pode ser vinculado a um Ano Safra e Ciclo (mesmo seletor em cascata usado em outras telas — Ciclo filtra pelo Ano Safra escolhido). Serve pra separar o custo de combustível por safra no Orçamento Planejado × Realizado; aparece como coluna no histórico. Campo opcional — abastecimento sem vínculo continua funcionando normalmente.
+
+**Seleção de Máquina com busca:** o campo "Máquina" no formulário permite digitar para filtrar a lista (mesmo componente usado em Financeiro e NF de Produtos) — antes era um select comum sem busca.
 
 ### 9.5 Romaneios de Terceiros
 **Caminho:** Compras & Estoque → Estoque → Romaneios de Terceiros
