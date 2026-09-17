@@ -190,6 +190,18 @@ function OperacoesGerenciaisContent() {
     setModal(true);
   }
 
+  // Duplica uma operação: abre como "Nova" com toda a configuração igual
+  // (tipo, permissões, contas de débito/crédito, LCDPR etc.) — só o código
+  // fica em branco (obrigatório ser único) e a descrição ganha "(cópia)"
+  // como lembrete de ajustar antes de salvar. Mesmo padrão já usado em
+  // Admin → Padrões de OG (Raccolto) — faltava aqui, na tela onde o próprio
+  // cliente cria suas operações exclusivas.
+  function duplicar(o: OperacaoGerencial) {
+    abrirEditar(o);
+    setEditOp(null);
+    setForm(f => ({ ...f, classificacao: "", descricao: `${o.descricao} (cópia)` }));
+  }
+
   async function salvar() {
     if (!fazendaId || !form.classificacao || !form.descricao) {
       setErro("Classificação e Descrição são obrigatórios.");
@@ -519,6 +531,8 @@ function OperacoesGerenciaisContent() {
                           <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                             <button onClick={() => abrirEditar(o)} title="Editar"
                               style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>✎</button>
+                            <button onClick={() => duplicar(o)} title="Duplicar — cria uma nova operação com a mesma configuração"
+                              style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>⧉</button>
                             <button onClick={() => excluir(o)} title="Excluir"
                               style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "#791F1F" }}>✕</button>
                           </div>

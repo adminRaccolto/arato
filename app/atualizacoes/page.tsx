@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-u",
+    data: "17/09/2026",
+    titulo: "Operações Gerenciais — botão Duplicar; LCDPR — removida a visão de Empresa (PJ)",
+    modulos: ["Configurações", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Novo botão ⧉ Duplicar em Configurações → Operações Gerenciais — copia toda a configuração de uma operação existente pra criar uma nova rapidamente, só com o código em branco e '(cópia)' na descrição. Já existia esse botão em Admin → Padrões de OG (Raccolto); agora também disponível pro cliente na tela onde ele cria suas próprias operações." },
+      { tipo: "correcao", texto: "Revertida a opção de selecionar uma Empresa (PJ) no Relatório PDF do LCDPR (adicionada mais cedo hoje) — com o campo Entidade Contábil agora editável direto no lançamento de CP/CR, não é mais necessário uma visão em separado pra conferir o PJ: o LCDPR já reflete corretamente a origem de cada título, seja qual for a conta usada pra pagar/receber." },
+    ],
+    onde: "Configurações → Sistema → Operações Gerenciais · Fiscal → LCDPR → Exportação",
+  },
+  {
     versao: "2026.09.17-t",
     data: "17/09/2026",
     titulo: "Correção: pagamento de arrendamento em dinheiro (BRL) lançado manualmente não gerava CP",
