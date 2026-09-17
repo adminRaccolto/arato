@@ -254,6 +254,8 @@ Controla o processo de compra de insumos do rascunho até a entrega, gerando aut
 
 **Atenção:** Pedidos com NFs de entrada vinculadas não podem ser excluídos — use status "Cancelado".
 
+**Centro de Custo no lançamento de itens:** a lista de Centros de Custo mostrada ao lançar um item é da conta inteira (todas as fazendas do cliente), não só da fazenda ativa no momento — importante em contas com mais de uma fazenda, onde cada uma pode ter seus próprios centros de custo cadastrados.
+
 ### 8.2 NF de Produtos
 **Caminho:** Compras & Estoque → Compras → NF de Produtos
 
@@ -273,6 +275,8 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 **Filtro por Produtor:** em contas com mais de um produtor cadastrado, o filtro "Produtor" aparece na barra de filtros (mostra nome + CPF/CNPJ, útil quando há nomes parecidos). A busca por texto também aceita CPF/CNPJ digitado (com ou sem pontuação), além de número e nome do emitente. O filtro casa pelo CPF/CNPJ do destinatário da nota — funciona corretamente mesmo se o mesmo produtor tiver mais de um cadastro na tela de Produtores (duplicado por nome diferente com o mesmo documento).
 
 **Produto obrigatório por item:** todo item que vai para o estoque (ou VEF/remessa/estoque de terceiros) precisa estar associado a um insumo ou princípio ativo do catálogo antes de clicar em "Processar" — sem isso o sistema bloqueia o processamento com uma mensagem indicando qual item falta associar. Antes o item sem associação era só um aviso e ficava de fora silenciosamente (a NF processava com valor de itens maior que o efetivamente lançado no estoque/CP). Item que não é produto de estoque (frete, taxa, serviço embutido na NF) usa o toggle "💸 C. Custo" em vez de "📦 Estoque" — esse não exige produto, só centro de custo.
+
+**Conversão de Unidade nunca altera a NF original:** quando um item vem numa embalagem que precisa de conversão pra entrar certo no estoque (ex: "1X20L" — 1 unidade = 20 litros), o sistema converte a quantidade só para o lançamento no estoque. A quantidade e o preço por unidade **como o fornecedor emitiu** ficam guardados separadamente e nunca são sobrescritos pela conversão — importante porque uma NF de Devolução contra essa NF precisa bater com o documento original do fornecedor, não com o valor já convertido. Ao devolver, a tela mostra "NF original: X un" como referência abaixo do nome do produto sempre que o item teve conversão — use isso pra conferir contra a nota física antes de informar a quantidade a devolver (que continua sendo em unidade de estoque, igual à coluna "Unidade").
 
 ### 8.3 NF de Serviços (NFS-e)
 **Caminho:** Compras & Estoque → Compras → NF de Serviços
@@ -687,6 +691,8 @@ Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAM
 
 **Abas:** Principal, Liberação, Pagamento (tabela de amortização + baixas), Garantias, Centro de Custo, Aditivos, Movimentações.
 
+**Registrar Pagamento de uma parcela:** baixa o(s) lançamento(s) de CP reais (amortização/juros/encargos, gerados ao calcular o cronograma) — não só marca a parcela como paga na tela. Se a parcela não tiver um lançamento vinculado diretamente (comum em parcelas antigas), o sistema localiza os lançamentos certos pela combinação contrato + data de vencimento e baixa todos. "Reabrir Parcela" funciona da mesma forma, reabrindo o(s) lançamento(s) de CP correspondente(s).
+
 ### 19.2 Apoio Financeiro
 **Caminho:** Configurações → Complemento Financeiro → Apoio Financeiro
 
@@ -696,6 +702,8 @@ Ferramenta exclusiva Raccolto para projeções e estimativas financeiras. Os lan
 **Caminho:** Configurações → Complemento Financeiro → Seguros / Apólices
 
 Gerencia apólices de seguro (rural, vida, patrimonial, automóvel, máquinas). Controla prêmios e sinistros. Alerta automático de vencimento 7 dias antes.
+
+Ao cadastrar uma apólice nova com prêmio "Parcelado" ou "À Vista", o sistema gera automaticamente o(s) lançamento(s) de CP (Conta a Pagar) das parcelas do prêmio, vinculados à apólice.
 
 ### 19.4 Consórcios
 **Caminho:** Configurações → Complemento Financeiro → Consórcios

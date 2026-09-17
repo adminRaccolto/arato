@@ -6,6 +6,46 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-f",
+    data: "17/09/2026",
+    titulo: "NF de Produtos — conversão de unidade nunca mais altera a NF original",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Quando um item precisa de conversão de unidade pra entrar certo no estoque (ex: embalagem de vários litros), a quantidade e o preço como o fornecedor emitiu agora ficam guardados separadamente, sem nunca serem sobrescritos pela conversão. Antes, só a versão convertida era salva — uma NF de Devolução gerada depois ficava com números diferentes do documento original do fornecedor. A tela de Devolução agora mostra 'NF original: X un' como referência sempre que o item teve conversão." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos",
+  },
+  {
+    versao: "2026.09.17-e",
+    data: "17/09/2026",
+    titulo: "Correção: Centro de Custo sumindo no Pedido de Compra em clientes multi-fazenda",
+    modulos: ["Comercial & Logística"],
+    itens: [
+      { tipo: "correcao", texto: "O select de Centro de Custo ao lançar item de Pedido de Compra buscava só os centros de custo da fazenda ativa no momento — em contas com mais de uma fazenda, se os centros de custo estavam cadastrados numa fazenda diferente da ativa, a lista aparecia vazia. Agora busca de todas as fazendas da conta, igual a outras listas do sistema." },
+    ],
+    onde: "Comercial & Logística → Pedidos de Compra",
+  },
+  {
+    versao: "2026.09.17-d",
+    data: "17/09/2026",
+    titulo: "Correção: pagamento de parcela de Contrato Financeiro não baixava o CP real",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "'Registrar Pagamento' de uma parcela de Contrato Financeiro só marcava a parcela como paga na tela — o lançamento de Conta a Pagar real ficava 'Em Aberto'/'Vencido' pra sempre, mesmo com a parcela já quitada. Corrigido: agora localiza e baixa o(s) lançamento(s) de CP correspondentes (amortização/juros/encargos). 'Reabrir Parcela' corrigido da mesma forma." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → aba Pagamento",
+  },
+  {
+    versao: "2026.09.17-c",
+    data: "17/09/2026",
+    titulo: "Correção: CP de prêmio de Seguro não era gerado",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastrar uma apólice com prêmio parcelado ou à vista salvava a apólice, mas nunca gerava o lançamento de Conta a Pagar do prêmio — um valor não permitido no banco travava a criação silenciosamente. Corrigido; as apólices já cadastradas sem CP tiveram as parcelas geradas retroativamente." },
+    ],
+    onde: "Financeiro → Seguros / Apólices",
+  },
+  {
     versao: "2026.09.17-b",
     data: "17/09/2026",
     titulo: "Abastecimento de Máquinas — Safra/Ciclo, busca por digitação e menu Máquinas",

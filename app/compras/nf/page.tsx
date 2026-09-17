@@ -351,7 +351,12 @@ export default function NfCompraPage() {
   const [reclassErr,      setReclassErr]      = useState("");
 
   // Modal de Devolução
-  interface DevItem extends ItemDevolucao { key: string; qtdOriginal: number; }
+  interface DevItem extends ItemDevolucao {
+    key: string;
+    qtdOriginal: number; // saldo em unidade de ESTOQUE (bate com movimentacoes_estoque) — referência do saldo disponível pra devolver
+    qtdOriginalNF?: number;    // quantidade como emitida na NF do fornecedor — só exibição/conferência
+    unidadeOriginalNF?: string; // unidade original da NF — só exibição/conferência
+  }
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
   const [devItens,   setDevItens]   = useState<DevItem[]>([]);
@@ -834,7 +839,9 @@ export default function NfCompraPage() {
       if (novosItens.length > 0) {
         setItens(novosItens.map(i => {
           const fator  = i.fator_conversao ?? 1;
-          const qtdNf  = fator > 0 ? i.quantidade / fator : i.quantidade;
+          // Prefere a quantidade original persistida (qtd_nf) — só reverte por
+          // fator_conversao em itens antigos, processados antes dessa coluna existir.
+          const qtdNf  = i.qtd_nf ?? (fator > 0 ? i.quantidade / fator : i.quantidade);
           const convKey = fator !== 1
             ? (TABELA_CONVERSAO.find(c => Math.abs((c.fator ?? 1) - fator) < 0.00001)?.key ?? "")
             : "";
@@ -1003,8 +1010,9 @@ export default function NfCompraPage() {
         itensCarregadosDoBd = true;
         setItens(itensDB.map(i => {
           const fator   = i.fator_conversao ?? 1;
-          // Qtd NF original: quantidade / fator (reverso da conversão salva)
-          const qtdNf   = fator > 0 ? i.quantidade / fator : i.quantidade;
+          // Prefere a quantidade original persistida (qtd_nf) — só reverte por
+          // fator_conversao em itens antigos, processados antes dessa coluna existir.
+          const qtdNf   = i.qtd_nf ?? (fator > 0 ? i.quantidade / fator : i.quantidade);
           const convKey = fator !== 1
             ? (TABELA_CONVERSAO.find(c => Math.abs((c.fator ?? 1) - fator) < 0.00001)?.key ?? "")
             : "";
@@ -1501,6 +1509,7 @@ export default function NfCompraPage() {
           unidade_nf:          it.unidade_nf,
           fator_conversao:     it.fator_conversao ?? 1,
           quantidade:          it.quantidade,   // já em unidade catálogo (conversão aplicada no state)
+          qtd_nf:              it.qtd_nf,       // quantidade como emitida na NF — nunca é alterada pela conversão
           valor_unitario:      it.vunit_nf,     // preço original da NF (custo real = valor_total/qtd em db.ts)
           valor_total:         it.valor_total,
           tipo_apropiacao:     tipoAprp,
@@ -1717,6 +1726,7 @@ export default function NfCompraPage() {
             unidade:          uCom,
             unidade_nf:       uCom,
             quantidade:       qCom,
+            qtd_nf:           qCom,
             valor_unitario:   vUnCom,
             valor_total:      vProd,
             tipo_apropiacao:  "estoque",
@@ -1807,7 +1817,9 @@ export default function NfCompraPage() {
               ncm:               getTag(prod, "NCM"),
               cfop:              getTag(prod, "CFOP"),
               unidade:           getTag(prod, "uCom") || "UN",
+              unidade_nf:        getTag(prod, "uCom") || "UN",
               quantidade:        qCom,
+              qtd_nf:            qCom,
               valor_unitario:    vUnCom,
               valor_total:       vProd,
               tipo_apropiacao:   "estoque",
@@ -1984,6 +1996,8 @@ export default function NfCompraPage() {
           unidade:             i.unidade,
           deposito_id:         i.deposito_id,
           qtdOriginal:         i.quantidade,
+          qtdOriginalNF:       i.qtd_nf ?? undefined,
+          unidadeOriginalNF:   i.unidade_nf ?? undefined,
           quantidade_devolver: 0,
           valor_unitario:      i.valor_unitario,
           valor_total:         0,
@@ -4363,8 +4377,9 @@ export default function NfCompraPage() {
 
               {/* Info */}
               <div style={{ background: "#FCEBEB20", border: "0.5px solid #FCBCBC", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#791F1F", marginBottom: 16 }}>
-                Informe a <strong>quantidade a devolver</strong> por item. Apenas itens com quantidade &gt; 0 serão incluídos.
+                Informe a <strong>quantidade a devolver</strong> por item, na unidade de estoque (mesma da coluna "Unidade" — já convertida, se o item teve conversão ao processar a NF). Apenas itens com quantidade &gt; 0 serão incluídos.
                 A devolução irá: <strong>debitar o estoque</strong> + criar uma <strong>Conta a Receber</strong> (fornecedor deve restituir o valor).
+                Itens com "NF original" abaixo do nome foram convertidos ao processar — use essa referência pra conferir contra a nota do fornecedor.
               </div>
 
               {/* Grid de itens */}
@@ -4381,7 +4396,14 @@ export default function NfCompraPage() {
                   </div>
                   {devItens.map(it => (
                     <div key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
-                      <div style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-1)" }}>{it.descricao_produto}</div>
+                      <div style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-1)" }}>
+                        {it.descricao_produto}
+                        {it.qtdOriginalNF != null && it.unidadeOriginalNF && it.unidadeOriginalNF !== it.unidade && (
+                          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>
+                            NF original: {it.qtdOriginalNF.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {it.unidadeOriginalNF}
+                          </div>
+                        )}
+                      </div>
                       <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)" }}>{it.unidade}</div>
                       <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>
                         {it.qtdOriginal.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}

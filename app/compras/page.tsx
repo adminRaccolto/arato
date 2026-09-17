@@ -6,7 +6,7 @@ import {
   listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
   listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra,
   listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
-  listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
+  listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
@@ -457,7 +457,7 @@ export default function ComprasPage() {
         listarInsumosParaConta(contaId, fazendaId),  // catálogo de TODA a conta — não só da fazenda ativa
         listarTodosCiclos(fazendaId),
         listarAnosSafra(fazendaId),
-        listarCentrosCustoGeral(fazendaId),
+        listarCentrosCustoGeralDaConta(fazendaId),  // conta-wide — não só da fazenda ativa (bug real: sumia em clientes multi-fazenda)
         listarOperacoesGerenciais(fazendaIds?.length ? fazendaIds : [fazendaId]),
         listarFazendas(fazendaId),
         listarProdutoresDaConta(contaId ?? "", fazendaId),

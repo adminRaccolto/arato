@@ -299,7 +299,7 @@ export type Lancamento = {
   entidade_contabil?: "pf" | "pj";  // qual entidade contabiliza (PF/CNPJ ou PJ/CNPJ)
   // Rastreabilidade — de onde veio o lançamento
   numero_documento?: string;           // Nº do documento/contrato vinculado (usado por contratos_financeiros)
-  origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "consorcio" | "manual" | "compra_terra" | "nf_servico";
+  origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "consorcio" | "manual" | "compra_terra" | "nf_servico" | "seguro";
   pedido_compra_id?: string;          // FK pedidos_compra.id — quando gerado por pedido de compra
   consorcio_id?: string;              // FK consorcios.id — parcelas de consórcio
   operacao_gerencial_id?: string;     // FK operacoes_gerenciais.id — vínculo contábil (débito/crédito)
@@ -1350,7 +1350,8 @@ export type NfEntradaItem = {
   unidade_nf?: string;            // unidade original da NF
   fator_conversao?: number;       // fator se unidade_nf ≠ unidade do cadastro
   quantidade: number;
-  valor_unitario: number;
+  qtd_nf?: number;                 // quantidade original da NF (antes de qualquer conversão) — quantidade = qtd_nf já convertida
+  valor_unitario: number;         // preço por unidade ORIGINAL da NF (não muda com a conversão — custo real por unidade de estoque = valor_total/quantidade)
   valor_total: number;
   variedade?: string | null;      // cultivar / variedade da semente
   lote_semente?: string | null;   // número do lote da semente (legado — único)

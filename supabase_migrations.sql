@@ -12818,3 +12818,56 @@ ALTER TABLE abastecimentos
 CREATE INDEX IF NOT EXISTS idx_abastecimentos_ciclo ON abastecimentos(ciclo_id) WHERE ciclo_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 264 — 'seguro' faltava na constraint de origem_lancamento
+--
+-- Achado real (diagnóstico ao vivo, insert de teste reproduziu o erro):
+-- /api/financeiro/seguros grava lancamentos com origem_lancamento='seguro',
+-- mas a constraint lancamentos_origem_lancamento_check nunca incluiu esse
+-- valor. Toda tentativa de gerar o CP do prêmio de uma apólice violava a
+-- constraint (23514) — a API route cria a apólice primeiro (sempre
+-- funciona) e só depois tenta o lançamento/parcelas, que falhava sempre,
+-- em silêncio pro usuário: as 9 apólices já cadastradas em produção têm
+-- 0 linhas em pagamentos_premio_seguro.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_origem_lancamento_check
+  CHECK (origem_lancamento IN (
+    'nf_entrada','nf_saida','pedido_compra','arrendamento','tesouraria',
+    'plantio','contrato_financeiro','consorcio','manual','compra_terra',
+    'nf_servico','seguro'
+  ));
+
+NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 265 — Quantidade original da NF (qtd_nf) persistida em nf_entrada_itens
+--
+-- Achado real: quando um item de NF precisa de conversão de unidade (ex:
+-- embalagem "1X20L" — 1 un = 20L, convertida pra litros pra entrar certo no
+-- estoque), a quantidade como o fornecedor emitiu (qtd_nf) só existia em
+-- memória na tela de "Associação de Produtos" — nunca era salva no banco.
+-- Só a quantidade já convertida (quantidade, em unidade de estoque) ficava
+-- persistida. Consequência: ao reabrir a NF ou gerar uma NF de Devolução
+-- contra ela, o sistema só enxergava o valor convertido — divergindo do
+-- documento real do fornecedor que está sendo referenciado/devolvido.
+--
+-- valor_unitario já guardava o preço original por unidade da NF (não muda
+-- com a conversão) — só faltava a quantidade original. unidade_nf (unidade
+-- original) já existia também. Com qtd_nf, os três juntos reconstroem a NF
+-- exatamente como emitida, independente de qualquer conversão feita para o
+-- estoque.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS qtd_nf numeric;
+
+COMMENT ON COLUMN nf_entrada_itens.qtd_nf IS
+  'Quantidade como emitida na NF do fornecedor (antes de qualquer conversão de unidade). quantidade = qtd_nf convertida para a unidade de estoque.';
+
+NOTIFY pgrst, 'reload schema';

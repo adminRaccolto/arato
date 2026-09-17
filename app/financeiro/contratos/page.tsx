@@ -817,7 +817,9 @@ export default function ContratosFinanceiros() {
       }
       if (lancsParcelas.length > 0) {
         const { error: errLanc } = await supabase.from("lancamentos").insert(lancsParcelas);
-        if (errLanc) console.error("[aplicarCronogramaIAPdf] lancamentos insert:", errLanc);
+        // Antes essa falha era só logada — parcelas ficavam salvas sem nenhum CP
+        // gerado e o usuário via a tela como "sucesso", sem saber que faltava o CP.
+        if (errLanc) throw new Error(`Cronograma salvo, mas o CP não foi gerado: ${errLanc.message}`);
       }
 
       // 5. Atualiza estado (sucesso)
@@ -850,12 +852,41 @@ export default function ContratosFinanceiros() {
         // Baixa via lançamento — atualiza lancamentos E parcelas_pagamento automaticamente
         await baixarLancamento(modalBaixaParcela.lancamento_id, valorNum, baixaPData, baixaPConta);
       } else {
-        // Parcela sem lançamento vinculado — atualiza só parcelas_pagamento
-        const { error } = await supabase
-          .from("parcelas_pagamento")
-          .update({ status: "pago", data_pagamento: baixaPData })
-          .eq("id", modalBaixaParcela.id);
-        if (error) throw error;
+        // parcelas_pagamento.lancamento_id não é preenchido na geração (uma parcela
+        // pode virar até 3 lançamentos — amortização/juros/encargos — e o campo é
+        // 1-pra-1). Sem isso, o "Registrar Pagamento" só marcava a parcela como
+        // paga aqui, sem NUNCA baixar o CP real em lancamentos — o lançamento
+        // ficava "Em aberto"/"Vencido" pra sempre, mesmo com a parcela já paga.
+        // Acha e baixa todos os lançamentos dessa parcela pelo par
+        // contrato_financeiro_id + data_vencimento (mesma chave usada na geração).
+        const { data: lancsParcela } = await supabase
+          .from("lancamentos")
+          .select("id, valor")
+          .eq("contrato_financeiro_id", contratoModal!.id)
+          .eq("data_vencimento", modalBaixaParcela.data_vencimento)
+          .eq("tipo", "pagar")
+          .neq("status", "baixado");
+        if (lancsParcela && lancsParcela.length > 0) {
+          for (const l of lancsParcela) {
+            await baixarLancamento(l.id, l.valor, baixaPData, baixaPConta);
+          }
+          // baixarLancamento só sincroniza parcelas_pagamento via lancamento_id —
+          // que aqui não existe (ver comentário acima). Persiste o status desta
+          // parcela manualmente, senão volta pra "em aberto" ao recarregar a tela.
+          const { error } = await supabase
+            .from("parcelas_pagamento")
+            .update({ status: "pago", data_pagamento: baixaPData })
+            .eq("id", modalBaixaParcela.id);
+          if (error) throw error;
+        } else {
+          // Nenhum lançamento encontrado (ex: parcela criada antes de existir CP) —
+          // mantém o comportamento anterior como último recurso.
+          const { error } = await supabase
+            .from("parcelas_pagamento")
+            .update({ status: "pago", data_pagamento: baixaPData })
+            .eq("id", modalBaixaParcela.id);
+          if (error) throw error;
+        }
       }
       // Atualiza a lista local
       setParcelasPagamento(prev => prev.map(p =>
@@ -874,6 +905,20 @@ export default function ContratosFinanceiros() {
     try {
       if (p.lancamento_id) {
         await reabrirLancamento(p.lancamento_id);
+      } else if (contratoModal) {
+        // Mesmo motivo do confirmarBaixaParcela — lancamento_id não é preenchido
+        // na geração. Acha os lançamentos baixados dessa parcela por
+        // contrato_financeiro_id + data_vencimento e reabre todos.
+        const { data: lancsParcela } = await supabase
+          .from("lancamentos")
+          .select("id")
+          .eq("contrato_financeiro_id", contratoModal.id)
+          .eq("data_vencimento", p.data_vencimento)
+          .eq("tipo", "pagar")
+          .eq("status", "baixado");
+        for (const l of lancsParcela ?? []) {
+          await reabrirLancamento(l.id);
+        }
       }
       const hoje = new Date().toISOString().slice(0, 10);
       const novoStatus = p.data_vencimento < hoje ? "vencido" : "em_aberto";
