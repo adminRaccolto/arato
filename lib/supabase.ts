@@ -266,10 +266,16 @@ export type Lancamento = {
   agrupador?: string;
   // LCDPR — Livro Caixa Digital do Produtor Rural
   tipo_documento_lcdpr?: "RECIBO" | "NF" | "FATURA" | "BOLETO" | "DUPLICATA" | "CHEQUE" | "PIX" | "TED" | "OUTROS";
-  // Encargos
+  // Encargos — taxas PACTUADAS no cadastro do lançamento (não confundir com
+  // os valores abaixo, que são o que foi de fato aplicado na baixa)
   juros_pct?: number;
   multa_pct?: number;
   desconto_pontualidade_pct?: number;
+  // Encargos efetivamente aplicados na baixa (individual ou em lote) — em R$,
+  // já o valor final, não a taxa. Só informativo/relatório.
+  valor_multa?: number;
+  valor_juros?: number;
+  valor_desconto?: number;
   // Moedas / barter
   cotacao_usd?: number;
   sacas?: number;
@@ -377,6 +383,9 @@ export type PagamentoLoteItem = {
   lote_id: string;
   lancamento_id: string;
   valor_pago: number;
+  valor_multa?: number;
+  valor_juros?: number;
+  valor_desconto?: number;
   created_at?: string;
   lancamento?: { numero?: number; descricao?: string; pessoa_id?: string } | null;
 };
@@ -1339,6 +1348,7 @@ export type NfEntradaItem = {
   insumo_id?: string;
   principio_ativo_id?: string;    // preenchido quando o item é defensivo/fertilizante/inoculante
   nome_comercial_ref?: string;    // nome exato como veio na NF — auditoria
+  pedido_item_id?: string;        // linha específica do pedido de compra atendida (necessário quando o pedido tem o mesmo produto em mais de uma linha — senão a entrega vira ambígua por insumo_id)
   deposito_id?: string;
   bomba_id?: string;
   maquina_id?: string;

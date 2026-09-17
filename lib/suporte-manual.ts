@@ -278,6 +278,8 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 
 **Conversão de Unidade nunca altera a NF original:** quando um item vem numa embalagem que precisa de conversão pra entrar certo no estoque (ex: "1X20L" — 1 unidade = 20 litros), o sistema converte a quantidade só para o lançamento no estoque. A quantidade e o preço por unidade **como o fornecedor emitiu** ficam guardados separadamente e nunca são sobrescritos pela conversão — importante porque uma NF de Devolução contra essa NF precisa bater com o documento original do fornecedor, não com o valor já convertido. Ao devolver, a tela mostra "NF original: X un" como referência abaixo do nome do produto sempre que o item teve conversão — use isso pra conferir contra a nota física antes de informar a quantidade a devolver (que continua sendo em unidade de estoque, igual à coluna "Unidade").
 
+**Produto duplicado no pedido vinculado (17/09/2026):** quando o pedido de compra tem o mesmo produto em mais de uma linha (embalagens diferentes, ou valor fiscal por unidade diferente), a tela de Itens & Processamento mostra um segundo select "⚠ qual linha do pedido?" abaixo do produto, listando cada linha candidata com quantidade/saldo — obrigatório escolher antes de processar. Sem essa indicação, o sistema não sabia qual linha específica a NF estava atendendo e replicava o mesmo percentual de entrega nas duas (uma passava de 100%, a outra ficava travada em 0% mesmo recebendo produto de verdade). Produto sem ambiguidade (só uma linha daquele produto no pedido) continua funcionando exatamente como antes, sem pedir nada a mais.
+
 ### 8.3 NF de Serviços (NFS-e)
 **Caminho:** Compras & Estoque → Compras → NF de Serviços
 
@@ -530,6 +532,8 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 
 **Borderô (selo "BDR"):** pagamento em lote de vários títulos de uma vez. Na aba Baixados, o borderô aparece em uma linha só, com o nome do(s) fornecedor(es)/cliente(s) dos títulos que ele paga (não mais um texto genérico "Borderô DD/MM — N títulos"); clique na linha para expandir e ver os títulos individuais. O filtro "Fornecedor / Cliente" também funciona sobre os borderôs pagos.
 
+**Baixar em Lote (17/09/2026):** ao selecionar vários títulos e clicar em "Baixar em Lote", o modal agora tem colunas editáveis de Multa, Juros e Desconto por título — o valor final ("A pagar"/"A receber") é recalculado na hora, a partir do saldo restante de cada título (não perde o que já tinha sido pago num título parcial). Esses valores ficam guardados no lançamento para consulta futura.
+
 ### 15.2 Contas a Receber
 **Caminho:** Financeiro → Atividade Rural → Contas a Receber
 
@@ -608,12 +612,16 @@ Concilia lançamentos do sistema com o extrato OFX importado do banco.
 
 **Layout:** painel esquerdo (CP/CR em aberto) + painel direito (extrato OFX).
 
-**Como usar:**
-1. Clique em "Importar Extrato OFX" no painel direito → upload do arquivo .ofx do banco
-2. O sistema tenta casar automaticamente por valor (±R$ 0,02) e data (±7 dias)
-3. Confirme os vínculos automáticos ou faça vínculos manuais clicando em "Vincular"
+**Reconstrução 17/09/2026 — visão contínua por conta (fim da fragmentação):** antes, cada importação de OFX virava um card isolado na tela — um cliente que importava o extrato várias vezes por semana (períodos sobrepostos ou seguidos) acabava com vários cards da mesma conta, e uma transação já conciliada num import podia reaparecer como "não conciliado" ao abrir outro. Isso não existe mais: agora a tela mostra uma única conciliação contínua por conta bancária + período, não importa quantos arquivos OFX já foram importados. A antiga lista de cards foi substituída por um seletor "Conta bancária + Período → Ver conciliação".
 
-Selecionar a conta bancária é obrigatório antes de importar. Se já existir um extrato importado da mesma conta cobrindo o mesmo período, a importação é recusada (não é mais um aviso que dá pra ignorar) — se realmente precisar reimportar (ex: o arquivo anterior estava errado), exclua o extrato antigo primeiro (ícone 🗑 no card do extrato, na lista) e importe de novo.
+**Como usar:**
+1. Selecione a conta bancária no topo da tela
+2. Clique em "Importar OFX" → upload do arquivo .ofx do banco — a importação já mescla direto na conciliação contínua daquela conta (reimportar um período que se sobrepõe a um já importado não é mais bloqueado; o sistema funde os dados e nunca desfaz uma conciliação já feita)
+3. Ajuste o período (De/Até) se precisar ver um intervalo maior e clique em "Ver conciliação →"
+4. O sistema tenta casar automaticamente por valor (±R$ 0,02) e data (±7 dias)
+5. Confirme os vínculos automáticos ou faça vínculos manuais clicando em "Vincular"
+
+**Aba Histórico:** virou um log de auditoria das importações (quem importou, quando, qual arquivo OFX) — não é mais o lugar onde a conciliação em si é editada. O botão "Ver conciliação" nela abre a visão contínua atualizada da mesma conta/período, nunca um retrato congelado de quando o arquivo foi importado.
 
 **Borderô (um débito para vários lançamentos):** Clique em "Vincular" → selecione múltiplos lançamentos no painel esquerdo → Confirmar. Corrigido um bug em que a linha podia aparecer conciliada e, segundos depois, voltar sozinha para "Pendente" sem ninguém desvincular — a tela agora só dá a conciliação por concluída depois de confirmar que a gravação no banco terminou.
 
@@ -759,7 +767,7 @@ Gerador do Livro Caixa Digital do Produtor Rural — obrigação anual da Receit
 - **Produtores e Participações** — configura o % de participação de cada CPF quando o imóvel é de condomínio ou parceria (mais de um titular). Ao exportar para um produtor específico, os valores são multiplicados automaticamente pela sua quota-parte.
 - **Cadastro LCDPR** — cadastro dos dados que a Receita exige e que não fazem parte do dia a dia operacional: CAEPF e tipo de exploração de cada fazenda (individual, condomínio, arrendado, parceria, comodato ou outros), contas bancárias vinculadas e os dados do contador responsável (nome, CPF/CNPJ, CRC, e-mail, telefone). **Preencha esta aba antes da primeira exportação** — sem isso, esses campos saem em branco no arquivo.
 - **Importação** — lança dados históricos via planilha Excel/CSV (útil para anos anteriores à adoção do sistema).
-- **Exportação** — gera o arquivo .txt oficial (o que realmente é entregue à Receita) por produtor, por ano ou por mês. Também tem Excel e um relatório em PDF (identificação do cliente, Imóveis Rurais, Contas Bancárias, Livro Caixa completo com saldo corrente, em layout A4) — os dois são só para conferência, nunca substituem o .txt no envio. O seletor "Produtor / Empresa" também lista as Empresas (PJ) da conta — mas só pro Relatório PDF (o .txt e o Excel continuam exclusivos de Pessoa Física, como a lei exige); ao escolher uma Empresa, o PDF busca os lançamentos PJ dela, sem aplicar quota-parte, e troca "Imóveis Rurais" por "Identificação da Empresa". Com "Todos os Produtores" selecionado, o Livro Caixa do relatório ganha uma coluna extra "Produtor" pra deixar claro de quem é cada lançamento (some quando um produtor específico é selecionado — aí já é óbvio).
+- **Exportação** — gera o arquivo .txt oficial (o que realmente é entregue à Receita) por produtor, por ano ou por mês. Também tem Excel e um relatório em PDF (identificação do cliente, Imóveis Rurais, Contas Bancárias, Livro Caixa completo com saldo corrente, em layout A4) — os dois são só para conferência, nunca substituem o .txt no envio. O seletor "Produtor / Empresa" também lista as Empresas (PJ) da conta — mas só pro Relatório PDF (o .txt e o Excel continuam exclusivos de Pessoa Física, como a lei exige); ao escolher uma Empresa, o PDF busca os lançamentos PJ dela, sem aplicar quota-parte, e troca "Imóveis Rurais" por "Identificação da Empresa". Com "Todos os Produtores" selecionado, o Livro Caixa do relatório ganha uma coluna extra "Produtor" pra deixar claro de quem é cada lançamento (some quando um produtor específico é selecionado — aí já é óbvio). O PDF e o Excel (só eles, não o .txt oficial nem a tela) têm também uma coluna "O.G." com a Operação Gerencial de cada lançamento (17/09/2026).
 
 **Contas bancárias:** contas do tipo "espécie" (dinheiro em caixa) ou "trânsito" (sem conta bancária identificada) entram no arquivo com os códigos especiais que a própria Receita prevê para esses casos (000 e 999) — não é erro, é o comportamento correto do leiaute oficial.
 

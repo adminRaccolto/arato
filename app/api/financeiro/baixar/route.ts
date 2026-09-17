@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
       ano_safra_id?:     string;
       ciclo_id?:         string;
       observacao?:       string;
+      multa_valor?:      number;
+      juros_valor?:      number;
       desconto_valor?:   number;
       nova_data_vencimento?: string;
     };
@@ -72,6 +74,12 @@ export async function POST(req: NextRequest) {
     if (body.ano_safra_id)           patch.ano_safra_id           = body.ano_safra_id;
     if (body.ciclo_id)               patch.ciclo_id               = body.ciclo_id;
     if (body.observacao)             patch.observacao             = body.observacao;
+    // Detalhamento de encargos — só informativo/relatório, não entra no
+    // cálculo de status (o valor_pago_agora já vem com tudo embutido,
+    // calculado na tela antes de chegar aqui).
+    if (body.multa_valor)            patch.valor_multa            = body.multa_valor;
+    if (body.juros_valor)            patch.valor_juros            = body.juros_valor;
+    if (body.desconto_valor)         patch.valor_desconto         = body.desconto_valor;
 
     const { error } = await sb.from("lancamentos").update(patch).eq("id", id);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

@@ -168,6 +168,65 @@ function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[]): LinhaOFX[] {
   });
 }
 
+// ─── Sincronização com extrato_transacoes (fonte única de conciliação) ────────
+// Tabela criada na Fase 1 (uma transação = um registro, único por
+// conta_bancaria_id+fitid, em vez de presa dentro do JSON de um import) e
+// adotada como fonte ativa da tela na Fase 3 (carregarExtratoUnificado). Esta
+// função é o ponto único que grava nela toda vez que algo muda — tanto um
+// import de OFX quanto uma ação de conciliação (vincular/desvincular/
+// tesouraria/agrupar) — mantendo extratos_bancarios só como log histórico
+// de auditoria (quem importou, quando, arquivo original).
+//
+// modo "import": um OFX pode trazer de novo uma transação que já foi
+//   conciliada antes (por outro extrato ou ação manual) — nunca regride
+//   conciliado=true pra false nesse caso; só preenche o que ainda não tinha.
+// modo "acao": o usuário acabou de vincular/desvincular/lançar tesouraria
+//   nesta linha agora — reflete exatamente o que a tela mandou, sem
+//   comparar com o que já existia (a ação atual é que vale).
+async function syncExtratoTransacoes(
+  fazendaId: string,
+  contaId: string | null | undefined,
+  contaNome: string | null | undefined,
+  linhas: LinhaOFX[],
+  extratoId: string,
+  modo: "import" | "acao",
+): Promise<void> {
+  if (!linhas.length || !contaId) return; // sem conta vinculada não dá pra deduplicar (chave exige conta_bancaria_id)
+  const fitids = linhas.map(l => l.id);
+  const { data: existentes } = await supabase.from("extrato_transacoes")
+    .select("fitid, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id")
+    .eq("conta_bancaria_id", contaId).in("fitid", fitids);
+  const mapaExistente = new Map((existentes ?? []).map(e => [e.fitid, e]));
+
+  const rows = linhas.map(l => {
+    const ex = mapaExistente.get(l.id);
+    // Import nunca regride: se já estava conciliado, preserva o vínculo
+    // existente mesmo que esta importação não tenha encontrado o match.
+    const preservarConciliado = modo === "import" && ex?.conciliado && !l.conciliado;
+    return {
+      fazenda_id: fazendaId,
+      conta_bancaria_id: contaId,
+      conta_nome: contaNome ?? null,
+      fitid: l.id,
+      data: l.data,
+      descricao: l.descricao,
+      valor: l.valor,
+      tipo: l.tipo,
+      conciliado: preservarConciliado ? true : l.conciliado,
+      lancamento_id: preservarConciliado ? (ex?.lancamento_id ?? null) : (l.lancamento_id ?? null),
+      lancamento_ids: preservarConciliado ? (ex?.lancamento_ids ?? null) : (l.lancamento_ids ?? null),
+      lancamento_desc: preservarConciliado ? (ex?.lancamento_desc ?? null) : (l.lancamento_desc ?? null),
+      lancamento_valor: preservarConciliado ? (ex?.lancamento_valor ?? null) : (l.lancamento_valor ?? null),
+      primeiro_extrato_id: ex?.primeiro_extrato_id ?? extratoId,
+      ultimo_extrato_id: extratoId,
+      updated_at: new Date().toISOString(),
+    };
+  });
+
+  const { error } = await supabase.from("extrato_transacoes").upsert(rows, { onConflict: "conta_bancaria_id,fitid" });
+  if (error) console.error("[syncExtratoTransacoes]", error);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDt  = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
@@ -200,6 +259,9 @@ function ConciliacaoInner() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [extratos, setExtratos]       = useState<Extrato[]>([]);
   const [extrato, setExtrato]         = useState<Extrato | null>(null);
+  // Fase 3 — pendências agregadas por conta bancária, lidas de extrato_transacoes
+  // (fonte única e contínua) em vez da lista fragmentada de extratos_bancarios.
+  const [pendPorConta, setPendPorConta] = useState<{ conta_bancaria_id: string; conta_nome: string; pendentes: number }[]>([]);
   const [loading, setLoading]         = useState(false);
   const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico"|"inconsistencias">(() => searchParams.get("pendentes") === "true" ? "inconsistencias" : "extrato");
   const [historico, setHistorico]     = useState<HistoricoConciliacao[]>([]);
@@ -260,7 +322,7 @@ function ConciliacaoInner() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lR, exR, hR, ogR, gsR, pR] = await Promise.all([
+    const [cR, lR, exR, hR, ogR, gsR, pR, etR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("lancamentos")
         .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
@@ -285,6 +347,11 @@ function ConciliacaoInner() {
         .in("fazenda_id", fazendaIds)
         .neq("status", "ignorada")
         .order("data", { ascending: false }),
+      supabase.from("extrato_transacoes")
+        .select("conta_bancaria_id,conta_nome")
+        .in("fazenda_id", fazendaIds)
+        .eq("conciliado", false)
+        .not("conta_bancaria_id", "is", null),
     ]);
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     if (lR.data) setLancamentos(lR.data as Lancamento[]);
@@ -292,24 +359,22 @@ function ConciliacaoInner() {
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
     if (gsR.data) setOgsDisponiveis(gsR.data as OgMin[]);
     if (pR.data) setPendencias(pR.data as Pendencia[]);
+    if (etR.data) {
+      const mapa = new Map<string, { conta_bancaria_id: string; conta_nome: string; pendentes: number }>();
+      for (const row of etR.data as { conta_bancaria_id: string; conta_nome: string | null }[]) {
+        const atual = mapa.get(row.conta_bancaria_id);
+        if (atual) atual.pendentes++;
+        else mapa.set(row.conta_bancaria_id, { conta_bancaria_id: row.conta_bancaria_id, conta_nome: row.conta_nome ?? "—", pendentes: 1 });
+      }
+      setPendPorConta(Array.from(mapa.values()).sort((a, b) => b.pendentes - a.pendentes));
+    }
 
     if (exR.data) {
-      const lista = exR.data as unknown as Extrato[];
-      setExtratos(lista);
-      // Nunca troca/sobrescreve um extrato JÁ aberto — carregar() pode disparar
-      // de novo em segundo plano (searchParams muda de referência em várias
-      // situações do Next.js sem a URL mudar de verdade) e, se isso acontecer
-      // no meio de uma conciliação, um GET aqui podia vencer a corrida contra o
-      // POST de persistir-extrato ainda em voo e trazer a versão desatualizada
-      // do banco — a linha que o usuário acabou de conciliar "desconciliava
-      // sozinha" na tela, mesmo com o vínculo salvo (ou prestes a salvar).
-      // Só escolhe um extrato automaticamente quando NENHUM está aberto ainda.
-      setExtrato(prev => {
-        if (prev) return prev;
-        const primeiroPend = lista.find(e => e.pendentes > 0);
-        if (primeiroPend && searchParams.get("pendentes") === "true") setFiltroPend(true);
-        return primeiroPend ?? prev;
-      });
+      // Só o log de auditoria (histórico de importações) — Fase 3 não abre
+      // mais automaticamente um card isolado a partir daqui; o ponto de
+      // entrada agora é o banner de pendências por conta (pendPorConta,
+      // agregado de extrato_transacoes) ou a seleção manual de conta+período.
+      setExtratos(exR.data as unknown as Extrato[]);
     }
   }, [fazendaId, fazendaIds, contaId, searchParams]);
 
@@ -365,6 +430,82 @@ function ConciliacaoInner() {
     } finally { setLancRefresh(false); }
   }
 
+  // ── Fase 3 — visão unificada e contínua por conta bancária + período ──────────
+  // Substitui o card por-importação: lê direto de extrato_transacoes (fonte
+  // única, deduplicada por conta+fitid), monta um Extrato "virtual" com o
+  // mesmo formato de sempre (id prefixado "virtual-", nunca gravado em
+  // extratos_bancarios) e abre no mesmo editor de sempre — vincular,
+  // tesouraria e agrupar continuam funcionando sem alteração porque só
+  // enxergam extrato.linhas. persistExtrato grava a ação por lançamento_id
+  // (linha a linha) e por extrato_transacoes (fitid+conta) — nenhum dos dois
+  // depende de um extratos_bancarios.id real, então o id virtual não regride
+  // nada mesmo sem existir como linha própria naquela tabela.
+  async function carregarExtratoUnificado(contaBancariaId: string, dataIni: string, dataFim: string) {
+    if (!fazendaId || !contaBancariaId || !dataIni || !dataFim) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("extrato_transacoes")
+        .select("fitid,data,descricao,valor,tipo,conciliado,lancamento_id,lancamento_ids,lancamento_desc,lancamento_valor")
+        .eq("conta_bancaria_id", contaBancariaId)
+        .in("fazenda_id", fazendaIds)
+        .gte("data", dataIni)
+        .lte("data", dataFim)
+        .order("data", { ascending: true });
+      if (error) throw error;
+
+      const linhas: LinhaOFX[] = (data ?? []).map(t => ({
+        id: t.fitid as string,
+        data: t.data as string,
+        descricao: t.descricao as string,
+        valor: Number(t.valor),
+        tipo: t.tipo as "credito" | "debito",
+        conciliado: !!t.conciliado,
+        lancamento_id: (t.lancamento_id as string) ?? undefined,
+        lancamento_ids: (t.lancamento_ids as string[]) ?? undefined,
+        lancamento_desc: (t.lancamento_desc as string) ?? undefined,
+        lancamento_valor: t.lancamento_valor != null ? Number(t.lancamento_valor) : undefined,
+      }));
+      const contaObj = contas.find(c => c.id === contaBancariaId);
+      const conciliadoN = linhas.filter(l => l.conciliado).length;
+
+      const unificado: Extrato = {
+        id: `virtual-${contaBancariaId}-${dataIni}-${dataFim}`,
+        conta_id: contaBancariaId,
+        conta_nome: contaObj?.nome ?? "",
+        data_importacao: hoje(),
+        data_inicio: dataIni,
+        data_fim: dataFim,
+        total_linhas: linhas.length,
+        conciliados: conciliadoN,
+        pendentes: linhas.length - conciliadoN,
+        linhas,
+      };
+      setExtrato(unificado);
+      setAbaAtiva("extrato");
+      setLinhaAtiva(null);
+      setLancsSel(new Set());
+    } catch (e) {
+      console.error("[carregarExtratoUnificado]", e);
+      alert("Não foi possível carregar a conciliação desta conta. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Atalho usado pelo banner de pendências — abre a conta já com um período
+  // largo (6 meses) pra não deixar pendência antiga escondida fora do filtro.
+  function abrirContaPendente(contaBancariaId: string) {
+    setContaSel(contaBancariaId);
+    const ate = hoje();
+    const d = new Date();
+    d.setMonth(d.getMonth() - 6);
+    const de = d.toISOString().slice(0, 10);
+    setPeriodoFetchDe(de);
+    setPeriodoFetchAte(ate);
+    carregarExtratoUnificado(contaBancariaId, de, ate);
+  }
+
   // ── Upload OFX ─────────────────────────────────────────────────────────────
   async function handleOFX(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -409,37 +550,15 @@ function ConciliacaoInner() {
     const conciliadoN = linhas.filter(l => l.conciliado).length;
     const contaObj    = contas.find(c => c.id === contaSel);
 
-    // Bloqueia reimportação do mesmo extrato — mesma conta + período sobreposto.
-    // Antes isso era só um confirm() dispensável (o usuário clicava "OK" e
-    // seguia); reimportar cria um SEGUNDO registro com os mesmos lançamentos
-    // do banco, e as duas cópias passam a ser conciliadas de forma
-    // independente e vão divergindo (achado real: 2 cópias do mesmo extrato
-    // Itaú — uma ficou "esquecida" mostrando tudo pendente mesmo com
-    // conciliações já feitas na outra). Agora é bloqueio de verdade, sem
-    // opção de "importar mesmo assim" — quem precisar reimportar de fato
-    // (ex: corrigir um arquivo errado) exclui o extrato antigo primeiro
-    // (botão 🗑 no card) e importa de novo com o histórico limpo.
-    const { data: existentes } = await supabase
-      .from("extratos_bancarios")
-      .select("id, conta_nome, data_inicio, data_fim, conciliados, pendentes, total_linhas")
-      .in("fazenda_id", fazendaIds)
-      .eq("conta_id", contaSel)
-      .lte("data_inicio", dataFim)
-      .gte("data_fim", dataInicio);
-    if (existentes && existentes.length > 0) {
-      const detalhes = existentes
-        .map(ex => `• ${fmtDt(ex.data_inicio)} → ${fmtDt(ex.data_fim)} — ${ex.conciliados}/${ex.total_linhas} já conciliado`)
-        .join("\n");
-      alert(
-        `Este OFX não foi importado: já existe um extrato desta conta cobrindo (parte d)esse período:\n\n${detalhes}\n\n` +
-        `Reimportar criaria uma cópia separada, conciliada de forma independente, e as duas podem divergir.\n\n` +
-        `Se precisar reimportar de verdade (ex: arquivo errado), exclua o extrato antigo na lista (ícone 🗑) e importe de novo.`
-      );
-      setLoading(false);
-      if (inputRef.current) inputRef.current.value = "";
-      return;
-    }
-
+    // Reimportação de período sobreposto agora é segura: extrato_transacoes é
+    // deduplicada por conta+fitid e a sincronização (syncExtratoTransacoes,
+    // modo "import") nunca regride uma transação já conciliada — reimportar
+    // só preenche o que ainda faltava. O bloqueio duro que existia aqui foi
+    // removido porque ele era exatamente a causa da fragmentação reportada
+    // (cada import de período sobreposto virava um card isolado, e contas
+    // conciliadas num import "sumiam" como pendentes no outro). O registro em
+    // extratos_bancarios abaixo continua existindo só como log de auditoria
+    // (usuário, data, arquivo OFX) — não é mais a visão ativa após importar.
     const novoExtrato: Extrato = {
       id: `ext-${Date.now()}`,
       conta_id: contaSel,
@@ -481,10 +600,21 @@ function ConciliacaoInner() {
       );
     }
 
-    setExtrato(novoExtrato);
+    // Sincroniza com extrato_transacoes (fonte única). Nunca regride uma
+    // transação já conciliada.
+    await syncExtratoTransacoes(fazendaId, contaSel || null, novoExtrato.conta_nome, linhas, novoExtrato.id, "import");
+
     setExtratos(prev => [novoExtrato, ...prev]);
     setLoading(false);
     if (inputRef.current) inputRef.current.value = "";
+
+    // Fase 3 — abre a visão contínua da conta (não o card isolado deste
+    // import), estendendo o período já filtrado pra cobrir o OFX inteiro.
+    const rangeDe  = periodoFetchDe  && periodoFetchDe  < dataInicio ? periodoFetchDe  : dataInicio;
+    const rangeAte = periodoFetchAte && periodoFetchAte > dataFim    ? periodoFetchAte : dataFim;
+    setPeriodoFetchDe(rangeDe);
+    setPeriodoFetchAte(rangeAte);
+    await carregarExtratoUnificado(contaSel, rangeDe, rangeAte);
   }
 
   // Exclui um extrato importado (uso principal: apagar cópia duplicada de uma
@@ -552,6 +682,11 @@ function ConciliacaoInner() {
         console.error("[persistExtrato] falhou:", json);
         return false;
       }
+      // Mantém extrato_transacoes (fonte ativa da tela) em dia com toda ação
+      // feita aqui (vincular, desvincular, tesouraria, agrupar). Modo "acao":
+      // reflete exatamente o que o usuário acabou de decidir, sem comparar
+      // com o que já existia.
+      await syncExtratoTransacoes(fazendaId!, upd.conta_id || null, upd.conta_nome, upd.linhas, upd.id, "acao");
       return true;
     } catch (e) {
       console.error("[persistExtrato]", e);
@@ -1016,8 +1151,6 @@ function ConciliacaoInner() {
   const saldo         = totalCreditos - totalDebitos;
   const pct           = extrato ? Math.round((extrato.conciliados / extrato.total_linhas) * 100) : 0;
 
-  const extratosPend  = extratos.filter(e => e.pendentes > 0);
-
   // ─── Estilos compartilhados ────────────────────────────────────────────────
   const thStyle: React.CSSProperties = {
     padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11,
@@ -1341,60 +1474,56 @@ function ConciliacaoInner() {
           </div>
         )}
 
-        {/* Banner: extratos pendentes */}
-        {!extrato && abaAtiva === "extrato" && extratosPend.length > 0 && (
-          <div style={{ background: "#FEF3C7", border: "0.5px solid #F59E0B", borderRadius: 10, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
+        {/* Banner: pendências por conta bancária — agregado de extrato_transacoes,
+            fonte única e contínua (substitui a leitura por card de import). */}
+        {!extrato && abaAtiva === "extrato" && !contaSel && pendPorConta.length > 0 && (
+          <div style={{ background: "#FEF3C7", border: "0.5px solid #F59E0B", borderRadius: 10, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div style={{ fontSize: 20 }}>⏳</div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>
-                {extratosPend.length === 1
-                  ? `Conciliação em andamento — ${extratosPend[0].conta_nome} (${extratosPend[0].pendentes} pendentes)`
-                  : `${extratosPend.length} extratos com conciliação pendente`}
+                {pendPorConta.length === 1
+                  ? `${pendPorConta[0].conta_nome} tem ${pendPorConta[0].pendentes} transação(ões) pendente(s)`
+                  : `${pendPorConta.length} contas com transações pendentes`}
               </div>
-              <div style={{ fontSize: 12, color: "#78350F", marginTop: 2 }}>Clique no extrato abaixo para continuar de onde parou</div>
+              <div style={{ fontSize: 12, color: "#78350F", marginTop: 2 }}>Clique na conta para ver a conciliação contínua (últimos 6 meses)</div>
             </div>
-            {extratosPend.length === 1 && (
-              <button onClick={() => setExtrato(extratosPend[0])}
-                style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                Continuar →
-              </button>
-            )}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {pendPorConta.map(p => (
+                <button key={p.conta_bancaria_id} onClick={() => abrirContaPendente(p.conta_bancaria_id)}
+                  style={{ padding: "6px 14px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  {p.conta_nome} ({p.pendentes}) →
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Lista de extratos */}
+        {/* Conciliação contínua por conta bancária — substitui a lista fragmentada
+            de cards por importação. Um OFX pode ser importado várias vezes por
+            semana; todas as transações do período aparecem juntas aqui, não
+            importa quantos arquivos foram importados. */}
         {!extrato && abaAtiva === "extrato" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, marginBottom: 20 }}>
-            {extratos.length === 0 ? (
-              <div style={{ gridColumn: "1/-1", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>🏦</div>
-                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum extrato importado</div>
-                <div style={{ fontSize: 12 }}>Selecione uma conta e importe o OFX do seu banco.</div>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "22px 24px", marginBottom: 20 }}>
+            {!contaSel ? (
+              <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: 13, padding: "16px 0" }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>🏦</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Selecione uma conta bancária acima</div>
+                <div style={{ fontSize: 12 }}>A conciliação é contínua por conta — todas as transações do período selecionado aparecem juntas, não importa quantos OFX foram importados.</div>
               </div>
-            ) : extratos.map(e => (
-              <div key={e.id} onClick={() => setExtrato(e)}
-                style={{ background: "var(--bg-card)", borderRadius: 10, border: `0.5px solid ${e.pendentes > 0 ? "#F59E0B" : "var(--border)"}`, padding: "14px 16px", cursor: "pointer", transition: "box-shadow 0.15s", position: "relative" }}
-                onMouseEnter={el => (el.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)")}
-                onMouseLeave={el => (el.currentTarget.style.boxShadow = "none")}>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{contas.find(c => c.id === contaSel)?.nome ?? "—"}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Período: {fmtDt(periodoFetchDe)} até {fmtDt(periodoFetchAte)} — ajustável no filtro acima</div>
+                </div>
                 <button
-                  title="Excluir extrato"
-                  onClick={ev => { ev.stopPropagation(); excluirExtrato(e); }}
-                  style={{ position: "absolute", top: 8, right: 8, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 5, color: "var(--text-3)", cursor: "pointer", fontSize: 13, lineHeight: 1 }}
-                  onMouseEnter={el => { el.currentTarget.style.background = "#FEE2E2"; el.currentTarget.style.color = "#E24B4A"; }}
-                  onMouseLeave={el => { el.currentTarget.style.background = "transparent"; el.currentTarget.style.color = "var(--text-3)"; }}>
-                  🗑
+                  onClick={() => carregarExtratoUnificado(contaSel, periodoFetchDe, periodoFetchAte)}
+                  disabled={loading || !periodoFetchDe || !periodoFetchAte}
+                  style={{ padding: "9px 20px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1 }}>
+                  {loading ? "Carregando..." : "Ver conciliação →"}
                 </button>
-                <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 2, paddingRight: 22 }}>{e.conta_nome}</div>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 10 }}>{fmtDt(e.data_inicio)} a {fmtDt(e.data_fim)} · {fmtDt(e.data_importacao)}</div>
-                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                  <span style={{ padding: "2px 7px", borderRadius: 8, fontSize: 11, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{e.conciliados} ✓</span>
-                  {e.pendentes > 0 && <span style={{ padding: "2px 7px", borderRadius: 8, fontSize: 11, background: "#FEF3C7", color: "#92400E", fontWeight: 600 }}>{e.pendentes} pend.</span>}
-                </div>
-                <div style={{ height: 5, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.round(e.conciliados / e.total_linhas * 100)}%`, height: "100%", background: "#16A34A", borderRadius: 3 }} />
-                </div>
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -1556,11 +1685,21 @@ function ConciliacaoInner() {
             if (data?.signedUrl) window.open(data.signedUrl, "_blank");
           };
 
+          // Fase 3 — "Reabrir" não pula mais pro snapshot congelado deste import
+          // (extratos_bancarios.linhas pode estar desatualizado: ações feitas
+          // depois pela visão contínua não escrevem mais de volta aqui). Em vez
+          // disso abre a visão contínua da mesma conta+período — sempre fiel ao
+          // estado atual. Sem conta_id (import legado sem conta vinculada), cai
+          // no snapshot antigo por não ter outra fonte pra usar.
           const reabrirExtrato = (ex: Extrato) => {
-            setExtrato(ex);
-            setAbaAtiva("extrato");
-            setLinhaAtiva(null);
-            setLancsSel(new Set());
+            if (ex.conta_id) {
+              carregarExtratoUnificado(ex.conta_id, ex.data_inicio, ex.data_fim);
+            } else {
+              setExtrato(ex);
+              setAbaAtiva("extrato");
+              setLinhaAtiva(null);
+              setLancsSel(new Set());
+            }
           };
 
           return (
@@ -1568,7 +1707,7 @@ function ConciliacaoInner() {
 
               {/* Header info */}
               <div style={{ fontSize: 12, color: "var(--text-3)", padding: "4px 2px" }}>
-                {extratos.length} sessões de conciliação registradas — clique em <strong>Reabrir</strong> para re-editar uma conciliação anterior usando o OFX preservado.
+                {extratos.length} importações de OFX registradas — histórico de auditoria (quem importou, quando, arquivo original). Clique em <strong>Ver conciliação</strong> para abrir o estado atual e completo da conta neste período.
               </div>
 
               {extratos.length === 0 ? (
@@ -1628,7 +1767,14 @@ function ConciliacaoInner() {
                               onClick={() => reabrirExtrato(ex)}
                               style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#92400E", cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}
                             >
-                              Reabrir
+                              Ver conciliação
+                            </button>
+                            <button
+                              title="Excluir este registro de importação (não desfaz conciliações já feitas)"
+                              onClick={() => excluirExtrato(ex)}
+                              style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-3)", cursor: "pointer" }}
+                            >
+                              🗑
                             </button>
                             {movs.length > 0 && (
                               <button

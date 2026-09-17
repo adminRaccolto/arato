@@ -4,7 +4,7 @@ import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import {
   listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
-  listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra,
+  listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra, alocarEntregaPorLinha,
   listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
@@ -1095,16 +1095,14 @@ export default function ComprasPage() {
     if (!modalEntrega) return;
     const ehFiscal = modalEntrega.pedido.fiscal ?? false;
     const nfsProcessadasIds = new Set(nfsFiscais.filter(n => n.status === "processada").map(n => n.id));
-    const qtdByInsumo = new Map<string, number>();
-    nfsFiscaisItens
-      .filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? ""))
-      .forEach(it => {
-        if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
-      });
+    const entregaPorLinha = alocarEntregaPorLinha(
+      modalEntrega.itens,
+      nfsFiscaisItens.filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? "")),
+    );
 
     const itensAjuste = modalEntrega.itens.map(it => {
       const entregue = ehFiscal
-        ? (it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0)
+        ? (entregaPorLinha.get(it.id) ?? 0)
         : (it.qtd_entregue ?? 0);
       const cancelada = it.qtd_cancelada ?? 0;
       const saldo = Math.max(0, it.quantidade - cancelada - entregue);
@@ -2225,14 +2223,15 @@ export default function ComprasPage() {
       {modalEntrega && (() => {
         const ehFiscal = modalEntrega.pedido.fiscal ?? false;
 
-        // Agregar qtd entregue por insumo_id — apenas NFs processadas contam como entregue
+        // Aloca qtd entregue por linha do pedido — apenas NFs processadas contam
+        // como entregue. Usa pedido_item_id quando o item da NF foi vinculado a
+        // uma linha específica (necessário quando o pedido tem o mesmo produto
+        // em mais de uma linha); cai no fallback por insumo_id senão.
         const nfsProcessadasIds = new Set(nfsFiscais.filter(n => n.status === "processada").map(n => n.id));
-        const qtdByInsumo = new Map<string, number>();
-        nfsFiscaisItens
-          .filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? ""))
-          .forEach(it => {
-            if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
-          });
+        const entregaPorLinha = alocarEntregaPorLinha(
+          modalEntrega.itens,
+          nfsFiscaisItens.filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? "")),
+        );
 
         const NF_STATUS: Record<string, { label: string; bg: string; color: string }> = {
           digitando:  { label: "Digitando",  bg: "#F4F6FA",  color: "#555"     },
@@ -2271,7 +2270,7 @@ export default function ComprasPage() {
                   <tbody>
                     {modalEntrega.itens.map(it => {
                       const entregue = ehFiscal
-                        ? (it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0)
+                        ? (entregaPorLinha.get(it.id) ?? 0)
                         : (it.qtd_entregue ?? 0);
                       const cancelada = it.qtd_cancelada ?? 0;
                       const pendente  = Math.max(0, it.quantidade - cancelada - entregue);

@@ -12871,3 +12871,133 @@ COMMENT ON COLUMN nf_entrada_itens.qtd_nf IS
   'Quantidade como emitida na NF do fornecedor (antes de qualquer conversão de unidade). quantidade = qtd_nf convertida para a unidade de estoque.';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 266 — pedido_item_id em nf_entrada_itens: entrega precisa por linha
+-- do pedido, mesmo com produto duplicado no mesmo pedido
+--
+-- Achado real: pedido de compra pode ter o mesmo produto em duas linhas
+-- (embalagens diferentes, ou valor fiscal por unidade diferente — caso real:
+-- "FOX SUPRA" 760L numa linha e 560L noutra, mesmo pedido). O cálculo de
+-- "quanto foi entregue" era feito só por insumo_id — somava tudo que chegou
+-- de NFs processadas daquele produto e aplicava o MESMO total em CADA linha
+-- duplicada, em vez de dividir entre elas. Uma linha aparecia com 136%
+-- entregue (mais do que foi pedido) enquanto a outra, que não recebeu nada
+-- de verdade, aparecia igual à primeira.
+--
+-- Com pedido_item_id, a associação de um item de NF a um produto do
+-- catálogo pode (quando há ambiguidade — mais de uma linha do mesmo produto
+-- no pedido vinculado) apontar exatamente pra linha do pedido que está
+-- sendo atendida, em vez de só o produto. Nullable — NFs antigas e casos sem
+-- ambiguidade (só 1 linha daquele produto no pedido) continuam funcionando
+-- pelo fallback antigo (por insumo_id).
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS pedido_item_id uuid REFERENCES pedidos_compra_itens(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_nf_entrada_itens_pedido_item ON nf_entrada_itens(pedido_item_id) WHERE pedido_item_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 267 — Fase 1 da reconstrução da Conciliação Bancária: tabela
+-- extrato_transacoes (aditiva — não mexe em nada que já funciona)
+--
+-- Problema relatado: conciliação feita várias vezes por semana gera vários
+-- imports de OFX da mesma conta em períodos diferentes. Hoje cada import
+-- vira uma linha em extratos_bancarios com as transações embutidas num JSON
+-- (coluna `linhas`) — cada import é uma "ilha" isolada. Isso fragmenta a
+-- conciliação do mês em vários cards separados na tela, e sempre que um
+-- período novo é importado, não há visão unificada de "o que já foi
+-- conciliado" no mês inteiro — só o que está naquele import específico.
+--
+-- Esta tabela nova é o destino: cada transação bancária vira um registro
+-- PRÓPRIO, único por (conta_bancaria_id, fitid) — não mais um item dentro
+-- do blob de um import específico. extratos_bancarios continua existindo,
+-- mas passa a ser só um LOG de importações (quando, qual arquivo, quantas
+-- linhas trouxe) — auditoria, não mais a fonte de verdade da conciliação.
+--
+-- Fase 1 é só a tabela — nenhuma tela ou fluxo muda ainda. O backfill dos
+-- dados já existentes em extratos_bancarios.linhas é feito à parte (script,
+-- não faz parte desta migration) depois que esta tabela existir.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS extrato_transacoes (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  conta_bancaria_id   uuid REFERENCES contas_bancarias(id) ON DELETE SET NULL,
+  conta_nome          text,
+  fitid               text NOT NULL,
+  data                date NOT NULL,
+  descricao           text NOT NULL,
+  valor               numeric(14,2) NOT NULL,
+  tipo                text NOT NULL CHECK (tipo IN ('credito','debito')),
+  conciliado          boolean NOT NULL DEFAULT false,
+  lancamento_id       uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  lancamento_ids      uuid[],
+  lancamento_desc     text,
+  lancamento_valor    numeric(14,2),
+  -- Rastreabilidade: quais imports trouxeram/tocaram essa transação —
+  -- auditoria, não é a fonte de verdade da conciliação (essa é o próprio
+  -- registro, campo `conciliado`).
+  primeiro_extrato_id text REFERENCES extratos_bancarios(id) ON DELETE SET NULL,
+  ultimo_extrato_id    text REFERENCES extratos_bancarios(id) ON DELETE SET NULL,
+  created_at          timestamptz DEFAULT now(),
+  updated_at          timestamptz DEFAULT now(),
+  UNIQUE(conta_bancaria_id, fitid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_extrato_transacoes_fazenda ON extrato_transacoes(fazenda_id, data);
+CREATE INDEX IF NOT EXISTS idx_extrato_transacoes_conta   ON extrato_transacoes(conta_bancaria_id, data);
+CREATE INDEX IF NOT EXISTS idx_extrato_transacoes_pend    ON extrato_transacoes(fazenda_id) WHERE conciliado = false;
+
+ALTER TABLE extrato_transacoes ENABLE ROW LEVEL SECURITY;
+
+-- Mesmo padrão usado em contas_bancarias_tenant/pessoas_tenant (Seção 258) —
+-- fazenda_id precisa pertencer a uma fazenda da mesma conta (tenant) do
+-- usuário logado. Sem o padrão fraco "emergencial_autenticado" (USING true)
+-- que vazou dados entre contas em ~70 tabelas — essa tabela nasce já correta.
+-- DROP antes do CREATE torna o bloco reexecutável (ex: reconferir Seção 267
+-- junto de uma seção posterior pendente sem dar erro 42710 de policy duplicada).
+DROP POLICY IF EXISTS "extrato_transacoes_tenant" ON extrato_transacoes;
+CREATE POLICY "extrato_transacoes_tenant" ON extrato_transacoes
+  FOR ALL
+  USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR public.rls_sou_raccotlo()
+  )
+  WITH CHECK (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR public.rls_sou_raccotlo()
+  );
+
+NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 268 — Detalhamento de multa/juros/desconto na baixa de CP/CR
+--
+-- Até aqui, a baixa (individual ou em lote) só registrava o valor final já
+-- líquido em lancamentos.valor_pago — multa, juros de atraso e desconto de
+-- antecipação eram somados/subtraídos no cálculo da tela mas nunca guardados
+-- separadamente. A baixa individual já tinha os 3 campos no formulário
+-- (multa_valor/juros_valor/desconto_valor em app/financeiro/pagar e
+-- multa_pct/juros_pct/desconto_pct em app/financeiro/receber) só que
+-- desconto_valor era o único enviado à API, e nenhum dos três era
+-- persistido — só usado transitoriamente pro cálculo de status
+-- baixado/parcial. A baixa EM LOTE nem tinha os campos na tela. Sem o
+-- detalhamento persistido, não dá pra saber depois quanto foi cobrado de
+-- multa/juros no mês, só o efeito líquido no caixa.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS valor_multa    numeric(14,2),
+  ADD COLUMN IF NOT EXISTS valor_juros    numeric(14,2),
+  ADD COLUMN IF NOT EXISTS valor_desconto numeric(14,2);
+
+ALTER TABLE pagamento_lote_itens
+  ADD COLUMN IF NOT EXISTS valor_multa    numeric(14,2),
+  ADD COLUMN IF NOT EXISTS valor_juros    numeric(14,2),
+  ADD COLUMN IF NOT EXISTS valor_desconto numeric(14,2);
+
+NOTIFY pgrst, 'reload schema';

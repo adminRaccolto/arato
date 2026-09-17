@@ -6,6 +6,48 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-k",
+    data: "17/09/2026",
+    titulo: "Contas a Pagar e a Receber — multa, juros e desconto na baixa em lote",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "A baixa/recebimento em lote (múltiplos títulos de uma vez) agora tem colunas editáveis de Multa, Juros e Desconto por título, com o valor final recalculado na hora. Um título com pagamento parcial anterior não perde mais o que já tinha sido pago ao ser incluído num lote — o sistema soma sobre o saldo restante, igual à baixa individual." },
+      { tipo: "correcao", texto: "Multa, juros e desconto aplicados numa baixa (individual ou em lote) agora ficam guardados no lançamento — antes só entravam no cálculo do valor final na hora e se perdiam depois, sem dar pra saber quanto foi cobrado de encargo no mês." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → selecionar títulos → Baixar em Lote",
+  },
+  {
+    versao: "2026.09.17-j",
+    data: "17/09/2026",
+    titulo: "LCDPR — coluna de Operação Gerencial nas exportações PDF e Excel",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Os relatórios de conferência do Livro Caixa (PDF e Excel) agora mostram a Operação Gerencial de cada lançamento. Só nessas duas exportações — a tela do Livro Caixa e o arquivo oficial .txt de entrega continuam exatamente como eram." },
+    ],
+    onde: "Fiscal → LCDPR → aba Exportação → Gerar PDF / Gerar Excel",
+  },
+  {
+    versao: "2026.09.17-i",
+    data: "17/09/2026",
+    titulo: "Conciliação Bancária reconstruída — visão contínua por conta, sem mais fragmentação",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Quando o extrato era importado várias vezes por semana, cada importação virava um card isolado, e um período novo podia mostrar como 'não conciliado' algo que já tinha sido conciliado num import anterior. Agora existe uma única visão contínua por conta bancária + período, que junta tudo automaticamente — não importa quantos arquivos OFX foram importados." },
+      { tipo: "novo", texto: "Reimportar um período que já tinha sido importado antes não é mais bloqueado — o sistema funde os dados com segurança e nunca desfaz uma conciliação já feita." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
+    versao: "2026.09.17-h",
+    data: "17/09/2026",
+    titulo: "Pedido de Compra — mesmo produto em duas linhas não confunde mais a entrega",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Quando um pedido de compra tinha o mesmo produto em duas linhas (embalagens ou valor fiscal diferentes), o sistema calculava a entrega só pelo produto e aplicava o mesmo total nas duas linhas — uma aparecia com mais de 100% entregue enquanto a outra, sem receber nada de verdade, mostrava o mesmo número. Ao processar a NF, quando há ambiguidade o sistema agora pede pra indicar exatamente qual linha do pedido está sendo atendida." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos / Pedidos de Compra",
+  },
+  {
     versao: "2026.09.17-g",
     data: "17/09/2026",
     titulo: "Novo: gerar/regenerar parcelas de prêmio ao editar uma apólice de Seguro",

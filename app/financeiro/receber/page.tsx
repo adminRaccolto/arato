@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
-import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -234,6 +234,9 @@ function ContasReceberInner() {
   const [loteDesc,     setLoteDesc]     = useState("");
   const [loteSalvando, setLoteSalvando] = useState(false);
   const [loteErro,     setLoteErro]     = useState("");
+  // Multa/juros de atraso e desconto de antecipação por título, no
+  // recebimento em lote — chave é o lancamento_id.
+  const [encargosLote, setEncargosLote] = useState<Record<string, { multa: string; juros: string; desconto: string }>>({});
 
   const [baixa, setBaixa] = useState({
     valorMask: "", data: TODAY, conta: "", obs: "",
@@ -474,6 +477,8 @@ function ContasReceberInner() {
       setSalvando(true);
       const valorOriginalCR = paraBRL(modalBaixa);
       const saldoRestanteCR = Math.max(0, valorOriginalCR - (modalBaixa.valor_pago ?? 0));
+      const multaValorCR    = saldoRestanteCR * (parseFloat(baixa.multa_pct.replace(",", ".")) || 0) / 100;
+      const jurosValorCR    = saldoRestanteCR * (parseFloat(baixa.juros_pct.replace(",", ".")) || 0) / 100;
       const descontoValorCR = saldoRestanteCR * (parseFloat(baixa.desconto_pct.replace(",", ".")) || 0) / 100;
       await baixarLancamento(
         modalBaixa.id, valorPago, baixa.data, modalBaixa.moeda === "barter" ? "" : baixa.conta,
@@ -483,6 +488,8 @@ function ContasReceberInner() {
           ano_safra_id:          baixa.ano_safra_id || undefined,
           ciclo_id:              baixa.ciclo_id || undefined,
           observacao:            baixa.obs || undefined,
+          multa_valor:           multaValorCR || undefined,
+          juros_valor:           jurosValorCR || undefined,
           desconto_valor:        descontoValorCR || undefined,
         }
       );
@@ -588,6 +595,17 @@ function ContasReceberInner() {
   const itensLote = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado");
   const totalLote = itensLote.reduce((s, l) => s + paraBRL(l), 0);
 
+  // Saldo restante do título (considera recebimento parcial anterior) +
+  // encargos editados no lote — mesma lógica da baixa individual.
+  const saldoRestanteLote = (l: Lancamento) => Math.max(0, paraBRL(l) - (l.valor_pago ?? 0));
+  const encargoLoteDe = (id: string) => encargosLote[id] ?? { multa: "", juros: "", desconto: "" };
+  const valorFinalLote = (l: Lancamento) => {
+    const e = encargoLoteDe(l.id);
+    return saldoRestanteLote(l) + (Number(e.multa) || 0) + (Number(e.juros) || 0) - (Number(e.desconto) || 0);
+  };
+  const setEncargoLote = (id: string, campo: "multa" | "juros" | "desconto", valor: string) =>
+    setEncargosLote(prev => ({ ...prev, [id]: { ...encargoLoteDe(id), [campo]: valor } }));
+
   const toggleSel = (id: string) =>
     setSelecionados(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -601,9 +619,23 @@ function ContasReceberInner() {
     if (!fazendaId || itensLote.length === 0) return;
     setLoteSalvando(true); setLoteErro("");
     try {
-      const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, valor_pago: paraBRL(l) }));
+      // valor_pago aqui é o valor DESTA baixa (saldo restante ± encargos),
+      // não o valor original do título — criarPagamentoLote acumula sobre o
+      // que já tinha sido pago (título "parcial" selecionado pro lote não
+      // perde o que já tinha sido recebido).
+      const itensPayload = itensLote.map(l => {
+        const e = encargoLoteDe(l.id);
+        return {
+          lancamento_id: l.id,
+          valor_pago: valorFinalLote(l),
+          valor_multa: Number(e.multa) || undefined,
+          valor_juros: Number(e.juros) || undefined,
+          valor_desconto: Number(e.desconto) || undefined,
+        };
+      });
       await criarPagamentoLote(fazendaId, "receber", loteData, loteConta, loteDesc || `Borderô ${loteData} — ${itensLote.length} títulos`, itensPayload);
       setSelecionados(new Set());
+      setEncargosLote({});
       setModalLote(false);
       await carregar();
     } catch (e: unknown) {
@@ -1170,7 +1202,7 @@ function ContasReceberInner() {
             </span>
             {itensLote.length > 0 && (
               <button
-                onClick={() => { setLoteData(TODAY); setLoteConta(""); setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
+                onClick={() => { setLoteData(TODAY); setLoteConta(""); setLoteDesc(""); setLoteErro(""); setEncargosLote({}); setModalLote(true); }}
                 style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
               >
                 Receber em Lote ›
@@ -1418,11 +1450,11 @@ function ContasReceberInner() {
       {modalLote && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 960, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Recebimento em Lote (Borderô)</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total {fmtBRL(totalLote)}</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total original {fmtBRL(totalLote)}</div>
               </div>
               <button onClick={() => setModalLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
@@ -1450,24 +1482,34 @@ function ContasReceberInner() {
               </div>
 
               <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
-                <div style={{ background: "var(--bg-page)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase" as const, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
-                  <span>Título</span><span>Vencimento</span><span style={{ textAlign: "right" as const }}>Valor</span>
+                <div style={{ background: "var(--bg-page)", padding: "6px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase" as const, display: "grid", gridTemplateColumns: "1.5fr 68px 80px 80px 80px 80px 90px", gap: 6 }}>
+                  <span>Título</span><span>Venc.</span><span style={{ textAlign: "right" as const }}>Original</span>
+                  <span style={{ textAlign: "center" as const }}>Multa</span><span style={{ textAlign: "center" as const }}>Juros</span>
+                  <span style={{ textAlign: "center" as const }}>Desconto</span><span style={{ textAlign: "right" as const }}>A receber</span>
                 </div>
-                {itensLote.map((l, i) => (
-                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "8px 12px", borderTop: i > 0 ? "0.5px solid var(--bg-tag)" : "none", fontSize: 12, alignItems: "center" }}>
-                    <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{exibirFornecedor(l.descricao)}</span>
-                    <span style={{ color: "var(--text-2)", whiteSpace: "nowrap" as const }}>{fmtData(l.data_vencimento)}</span>
-                    <span style={{ fontWeight: 600, color: "#16A34A", textAlign: "right" as const, whiteSpace: "nowrap" as const }}>{exibirValor(l)}</span>
-                  </div>
-                ))}
-                <div style={{ background: "var(--bg-page)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border-table)" }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do lote</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#111111" }}>{fmtBRL(totalLote)}</span>
+                {itensLote.map((l, i) => {
+                  const e = encargoLoteDe(l.id);
+                  const inpMini: CSSProperties = { width: "100%", padding: "4px 6px", border: "0.5px solid var(--border)", borderRadius: 5, fontSize: 11, textAlign: "right", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+                  return (
+                    <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1.5fr 68px 80px 80px 80px 80px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid var(--bg-tag)" : "none", fontSize: 12, alignItems: "center" }}>
+                      <span style={{ color: "var(--text-1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{exibirFornecedor(l.descricao)}</span>
+                      <span style={{ color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" as const }}>{fmtData(l.data_vencimento)}</span>
+                      <span style={{ color: "var(--text-2)", textAlign: "right" as const, whiteSpace: "nowrap" as const, fontSize: 11 }}>{exibirValor(l)}</span>
+                      <InputNumerico style={inpMini} value={e.multa} onChange={v => setEncargoLote(l.id, "multa", v)} placeholder="0,00" />
+                      <InputNumerico style={inpMini} value={e.juros} onChange={v => setEncargoLote(l.id, "juros", v)} placeholder="0,00" />
+                      <InputNumerico style={inpMini} value={e.desconto} onChange={v => setEncargoLote(l.id, "desconto", v)} placeholder="0,00" />
+                      <span style={{ fontWeight: 700, color: "#16A34A", textAlign: "right" as const, whiteSpace: "nowrap" as const }}>{fmtBRL(valorFinalLote(l))}</span>
+                    </div>
+                  );
+                })}
+                <div style={{ background: "var(--bg-page)", padding: "8px 10px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border-table)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total a receber (já com encargos)</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#111111" }}>{fmtBRL(itensLote.reduce((s, l) => s + valorFinalLote(l), 0))}</span>
                 </div>
               </div>
 
               <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 7, padding: "8px 12px", fontSize: 11, color: "#0D0D0D", marginBottom: 14 }}>
-                Este lote será registrado como <strong>uma única entrada de caixa</strong> de {fmtBRL(totalLote)} na conciliação bancária.
+                Este lote será registrado como <strong>uma única entrada de caixa</strong> de {fmtBRL(itensLote.reduce((s, l) => s + valorFinalLote(l), 0))} na conciliação bancária.
                 Cada título será baixado individualmente.
               </div>
 

@@ -81,6 +81,8 @@ interface EntradaLCDPR {
   produtorId?: string | null;   // dono do lançamento — do próprio lançamento, senão herda da fazenda
   produtorNome?: string;        // resolvido pra exibir no relatório "Todos os Produtores"
   produtorEhPJ?: boolean;       // o "produtor" dono (cadastro produtores) é na verdade uma empresa (CNPJ)
+  ogClassificacao?: string;     // Operação Gerencial vinculada — só usado na coluna "O.G." do PDF/XLSX
+  ogDescricao?: string;
 }
 
 interface ProdutorLcdpr { id: string; nome: string; cpf: string; }
@@ -185,6 +187,7 @@ export default function LCDPR() {
   const [contasDados, setContasDados]         = useState<ContaLcdpr[]>([]);
   const [bancosMap, setBancosMap]             = useState<Map<string, string>>(new Map()); // nome normalizado → codigo_compe
   const [pessoasCpfMap, setPessoasCpfMap]     = useState<Map<string, string>>(new Map()); // pessoa_id → cpf_cnpj
+  const [ogMap, setOgMap]                     = useState<Map<string, { classificacao: string; descricao: string }>>(new Map()); // operacao_gerencial_id → OG — só usado na coluna "O.G." do PDF/XLSX
 
   const [contador, setContador]         = useState<ContadorInfo>(CONTADOR_VAZIO);
   const [savingContador, setSavingContador] = useState(false);
@@ -228,7 +231,8 @@ export default function LCDPR() {
       contaId ? sb.from("lcdpr_contador").select("*").eq("conta_id", contaId).maybeSingle() : Promise.resolve({ data: null }),
       listarEmpresasDaConta(ids),
       contaId ? sb.from("contas").select("nome").eq("id", contaId).maybeSingle() : Promise.resolve({ data: null }),
-    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows, { data: contaRow }]) => {
+      sb.from("operacoes_gerenciais").select("id,classificacao,descricao").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`),
+    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows, { data: contaRow }, { data: ogRows }]) => {
       setFazDados((fazRows ?? []) as FazLcdpr[]);
       setEmpresasDados(empresasRows ?? []);
       setContaNomeFetch((contaRow as { nome?: string } | null)?.nome ?? null);
@@ -250,6 +254,13 @@ export default function LCDPR() {
       const pMap = new Map<string, string>();
       for (const p of (pessoasRows ?? []) as { id: string; cpf_cnpj?: string }[]) if (p.cpf_cnpj) pMap.set(p.id, p.cpf_cnpj);
       setPessoasCpfMap(pMap);
+
+      // Operação Gerencial vinculada a cada lançamento — só usada na coluna
+      // "O.G." das exportações PDF/XLSX (não entra no arquivo oficial nem na
+      // tela do Livro Caixa).
+      const ogMapLocal = new Map<string, { classificacao: string; descricao: string }>();
+      for (const o of (ogRows ?? []) as { id: string; classificacao: string; descricao: string }[]) ogMapLocal.set(o.id, o);
+      setOgMap(ogMapLocal);
 
       if (contadorRow) setContador({
         nome: contadorRow.nome ?? "", cpf_cnpj: contadorRow.cpf_cnpj ?? "", crc: contadorRow.crc ?? "",
@@ -329,6 +340,8 @@ export default function LCDPR() {
           produtorId,
           produtorNome: produtorId ? (produtorNomeMap.get(produtorId) ?? "—") : "—",
           produtorEhPJ: produtorId ? produtoresPJ.has(produtorId) : false,
+          ogClassificacao: l.operacao_gerencial_id ? ogMapLocal.get(l.operacao_gerencial_id)?.classificacao : undefined,
+          ogDescricao:     l.operacao_gerencial_id ? ogMapLocal.get(l.operacao_gerencial_id)?.descricao : undefined,
         };
       });
       items.sort((a, b) => a.data.localeCompare(b.data));
@@ -673,11 +686,12 @@ export default function LCDPR() {
       : String(anoSel);
 
     const cabecalho = [["LCDPR — Livro Caixa e Escrituração Rural"], [`Produtor: ${nomeProd} — CPF: ${fmtCPF(cpfSel)}`], [`Período: ${periodo}`], []];
-    const header    = ["Data", "Histórico", "Tipo Doc.", "CPF/CNPJ Parte", "Tipo Lanç.", "Receitas (R$)", "Despesas (R$)"];
+    const header    = ["Data", "Histórico", "O.G.", "Tipo Doc.", "CPF/CNPJ Parte", "Tipo Lanç.", "Receitas (R$)", "Despesas (R$)"];
     const TIPO_LANC_LABEL: Record<string, string> = { "1": "Receita", "2": "Despesa", "3": "Receita — adiantamento (barter)" };
     const rows = entradasExport.map(e => [
       fmtData(e.data),
       e.historico,
+      e.ogClassificacao ? `${e.ogClassificacao} — ${e.ogDescricao ?? ""}` : "",
       TIPO_DOC_LABEL[e.tipoDoc] ?? e.tipoDoc,
       e.cpfCnpj,
       TIPO_LANC_LABEL[e.tipoLanc] ?? e.tipoLanc,
@@ -686,10 +700,10 @@ export default function LCDPR() {
     ]);
     const totalRec  = entradasExport.reduce((s, e) => s + e.receita, 0);
     const totalDesp = entradasExport.reduce((s, e) => s + e.despesa, 0);
-    const rodape    = [["", "", "", "", "TOTAL", totalRec, totalDesp]];
+    const rodape    = [["", "", "", "", "", "TOTAL", totalRec, totalDesp]];
 
     const ws = XLSX.utils.aoa_to_sheet([...cabecalho, header, ...rows, [], ...rodape]);
-    ws["!cols"] = [{ wch: 12 }, { wch: 45 }, { wch: 16 }, { wch: 18 }, { wch: 28 }, { wch: 14 }, { wch: 14 }];
+    ws["!cols"] = [{ wch: 12 }, { wch: 45 }, { wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 28 }, { wch: 14 }, { wch: 14 }];
 
     const resumoHeader = ["Mês", "Receitas (R$)", "Despesas (R$)", "Resultado (R$)"];
     const mesesResumoXlsx = Array.from({ length: 12 }, (_, i) => {
@@ -767,6 +781,8 @@ export default function LCDPR() {
         receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor ?? 0) : 0,
         despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor ?? 0) : 0,
         origem: "auto" as const, lancId: l.id,
+        ogClassificacao: l.operacao_gerencial_id ? ogMap.get(l.operacao_gerencial_id)?.classificacao : undefined,
+        ogDescricao:     l.operacao_gerencial_id ? ogMap.get(l.operacao_gerencial_id)?.descricao : undefined,
       })).sort((a, b) => a.data.localeCompare(b.data));
       saldoInicialReport = 0; // sem saldo inicial configurado pra PJ neste relatório
     } else {
@@ -803,6 +819,7 @@ export default function LCDPR() {
         ${mostrarColunaProdutor ? `<td style="${td}">${e.produtorNome || "—"}</td>` : ""}
         <td style="${td}"><span style="font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:3px;background:${e.tipoLanc === "2" ? "#FCEBEB" : "#EAF3DE"};color:${e.tipoLanc === "2" ? "#791F1F" : "#1A5C38"};">${TIPO_LANC_LABEL[e.tipoLanc] ?? e.tipoLanc}</span></td>
         <td style="${td}">${e.historico || "—"}</td>
+        <td style="${td}">${e.ogClassificacao ? `${e.ogClassificacao} — ${e.ogDescricao ?? ""}` : "—"}</td>
         <td style="${td}">${TIPO_DOC_LABEL[e.tipoDoc] ?? e.tipoDoc}</td>
         <td style="${td}">${e.cpfCnpj || "—"}</td>
         <td style="${tdNum};color:#1A5C38;">${e.receita > 0 ? fmtBRL(e.receita) : "—"}</td>
@@ -886,15 +903,15 @@ export default function LCDPR() {
       <div class="auto-fit-table" style="margin-bottom:6px;">
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr>
-            <th style="${th}">Data</th>${mostrarColunaProdutor ? `<th style="${th}">Produtor</th>` : ""}<th style="${th}">Tipo</th><th style="${th}">Histórico</th><th style="${th}">Doc.</th>
+            <th style="${th}">Data</th>${mostrarColunaProdutor ? `<th style="${th}">Produtor</th>` : ""}<th style="${th}">Tipo</th><th style="${th}">Histórico</th><th style="${th}">O.G.</th><th style="${th}">Doc.</th>
             <th style="${th}">CPF/CNPJ contraparte</th><th style="${thNum}">Receita</th><th style="${thNum}">Despesa</th><th style="${thNum}">Saldo</th>
           </tr></thead>
           <tbody>
-            ${linhasLivro || `<tr><td colspan="${mostrarColunaProdutor ? 9 : 8}" style="${td};text-align:center;color:#999;">Nenhum lançamento no período</td></tr>`}
+            ${linhasLivro || `<tr><td colspan="${mostrarColunaProdutor ? 10 : 9}" style="${td};text-align:center;color:#999;">Nenhum lançamento no período</td></tr>`}
           </tbody>
           <tfoot>
             <tr style="background:#EDF4FB;">
-              <td colspan="${mostrarColunaProdutor ? 6 : 5}" style="${td};font-weight:700;text-align:right;">TOTAL DO PERÍODO</td>
+              <td colspan="${mostrarColunaProdutor ? 7 : 6}" style="${td};font-weight:700;text-align:right;">TOTAL DO PERÍODO</td>
               <td style="${tdNum};font-weight:700;color:#1A5C38;">${fmtBRL(totalRecExport)}</td>
               <td style="${tdNum};font-weight:700;color:#E24B4A;">${fmtBRL(totalDespExport)}</td>
               <td style="${tdNum};font-weight:700;">${fmtBRL(saldoFinalExport)}</td>

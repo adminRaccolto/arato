@@ -862,6 +862,8 @@ export async function baixarLancamento(
       ano_safra_id:          extras?.ano_safra_id,
       ciclo_id:              extras?.ciclo_id,
       observacao:            extras?.observacao,
+      multa_valor:           extras?.multa_valor,
+      juros_valor:           extras?.juros_valor,
       desconto_valor:        extras?.desconto_valor,
       nova_data_vencimento:  extras?.nova_data_vencimento,
     }),
@@ -915,7 +917,9 @@ export async function criarPagamentoLote(
   data_pagamento: string | null,
   conta_bancaria: string | null,
   descricao: string,
-  itens: { lancamento_id: string; valor_pago: number }[],
+  // valor_pago aqui é o valor DESTA baixa (será acumulado ao que já foi pago,
+  // igual à baixa individual) — não o valor final do título.
+  itens: { lancamento_id: string; valor_pago: number; valor_multa?: number; valor_juros?: number; valor_desconto?: number }[],
   status: "pendente" | "pago" = "pago",
 ): Promise<import("./supabase").PagamentoLote> {
   const valor_total = itens.reduce((s, i) => s + i.valor_pago, 0);
@@ -929,16 +933,40 @@ export async function criarPagamentoLote(
   if (le) throw le;
 
   // 2. Cria os itens do lote
-  const rows = itens.map(i => ({ lote_id: lote.id, lancamento_id: i.lancamento_id, valor_pago: i.valor_pago }));
+  const rows = itens.map(i => ({
+    lote_id: lote.id, lancamento_id: i.lancamento_id, valor_pago: i.valor_pago,
+    valor_multa: i.valor_multa || null, valor_juros: i.valor_juros || null, valor_desconto: i.valor_desconto || null,
+  }));
   const { error: ie } = await supabase.from("pagamento_lote_itens").insert(rows);
   if (ie) throw ie;
 
   if (status === "pago") {
-    // 3. Baixa cada lançamento individualmente
+    // 3. Baixa cada lançamento — acumula sobre o que já tinha sido pago (um
+    // título "parcial" selecionado pro lote não pode ter o valor_pago
+    // anterior sobrescrito) e decide baixado/parcial com a mesma regra da
+    // baixa individual (/api/financeiro/baixar), agora considerando também
+    // o desconto informado por item.
+    const ids = itens.map(i => i.lancamento_id);
+    const { data: atuais } = await supabase
+      .from("lancamentos")
+      .select("id, valor, cotacao_usd, moeda, valor_pago")
+      .in("id", ids);
+    const mapaAtual = new Map((atuais ?? []).map(l => [l.id as string, l]));
+
     for (const item of itens) {
+      const at        = mapaAtual.get(item.lancamento_id);
+      const cotacao    = (at?.cotacao_usd as number | null) ?? 5.12;
+      const valorTotal = at?.moeda === "USD" ? (at.valor ?? 0) * cotacao : (at?.valor ?? 0);
+      const jaPago     = (at?.valor_pago as number | null) ?? 0;
+      const novoTotal  = jaPago + item.valor_pago;
+      const desconto   = item.valor_desconto ?? 0;
+      const novoStatus = novoTotal + desconto >= valorTotal - 0.01 ? "baixado" : "parcial";
       const { error: be } = await supabase
         .from("lancamentos")
-        .update({ status: "baixado", valor_pago: item.valor_pago, data_baixa: data_pagamento, conta_bancaria, lote_id: lote.id })
+        .update({
+          status: novoStatus, valor_pago: novoTotal, data_baixa: data_pagamento, conta_bancaria, lote_id: lote.id,
+          valor_multa: item.valor_multa || null, valor_juros: item.valor_juros || null, valor_desconto: item.valor_desconto || null,
+        })
         .eq("id", item.lancamento_id);
       if (be) throw be;
     }
@@ -4611,6 +4639,75 @@ export async function encerrarPedidoCompra(
   await recalcularStatusPedidoCompra(pedido_id);
 }
 
+// Aloca a quantidade entregue de itens de NF entre as linhas de um pedido —
+// puro, sem I/O, pra poder ser reaproveitado nas duas rotas service_role que
+// fazem a mesma limpeza de NF (estornar-nf, excluir-nf), além daqui.
+//
+// Achado real: pedido pode ter o mesmo produto em mais de uma linha
+// (embalagens ou valor fiscal por unidade diferentes — ex: "FOX SUPRA" 760L
+// numa linha e 560L noutra). Calcular a entrega só por insumo_id (somar tudo
+// que chegou daquele produto e aplicar o MESMO total em cada linha) fazia
+// uma linha aparecer com mais de 100% entregue enquanto a outra, que não
+// recebeu nada de verdade, aparecia com o mesmo número.
+//
+// Prioriza o vínculo exato (nf_entrada_itens.pedido_item_id, escolhido na
+// tela de Associação de Produtos quando há ambiguidade) — só cai no
+// fallback por insumo_id pra itens sem esse vínculo (NFs de antes dessa
+// coluna existir, ou pedidos sem ambiguidade onde o vínculo nunca foi
+// necessário). O fallback preenche as linhas em ordem (a mais antiga
+// primeiro) até completar a quantidade pedida de cada uma; sobra além da
+// capacidade de todas as linhas vai pra última, pra nunca "sumir" valor
+// que a NF realmente informou.
+export function alocarEntregaPorLinha(
+  linhas: { id: string; insumo_id?: string | null; quantidade: number }[],
+  nfItens: { insumo_id?: string | null; pedido_item_id?: string | null; quantidade: number }[],
+): Map<string, number> {
+  const entregue = new Map<string, number>();
+  const porInsumo = new Map<string, typeof linhas>();
+  for (const l of linhas) {
+    if (!l.insumo_id) continue;
+    entregue.set(l.id, 0);
+    const grupo = porInsumo.get(l.insumo_id);
+    if (grupo) grupo.push(l);
+    else porInsumo.set(l.insumo_id, [l]);
+  }
+
+  // 1. Vínculo exato primeiro
+  const naoVinculadoPorInsumo = new Map<string, number>();
+  for (const nf of nfItens) {
+    if (!nf.insumo_id) continue;
+    if (nf.pedido_item_id && entregue.has(nf.pedido_item_id)) {
+      entregue.set(nf.pedido_item_id, (entregue.get(nf.pedido_item_id) ?? 0) + nf.quantidade);
+    } else {
+      naoVinculadoPorInsumo.set(nf.insumo_id, (naoVinculadoPorInsumo.get(nf.insumo_id) ?? 0) + nf.quantidade);
+    }
+  }
+
+  // 2. Fallback: distribui o não-vinculado entre as linhas do mesmo produto,
+  // preenchendo a capacidade restante de cada uma em ordem.
+  for (const [insumoId, linhasDoProduto] of porInsumo) {
+    let restante = naoVinculadoPorInsumo.get(insumoId) ?? 0;
+    if (restante <= 0) continue;
+    for (const l of linhasDoProduto) {
+      if (restante <= 0) break;
+      const jaAlocado = entregue.get(l.id) ?? 0;
+      const capacidade = Math.max(0, l.quantidade - jaAlocado);
+      const aplicar = Math.min(restante, capacidade);
+      entregue.set(l.id, jaAlocado + aplicar);
+      restante -= aplicar;
+    }
+    // Sobra além da capacidade de todas as linhas — não perde o valor,
+    // acumula na última linha do produto (sinaliza divergência real em vez
+    // de escondê-la).
+    if (restante > 0 && linhasDoProduto.length > 0) {
+      const ultima = linhasDoProduto[linhasDoProduto.length - 1];
+      entregue.set(ultima.id, (entregue.get(ultima.id) ?? 0) + restante);
+    }
+  }
+
+  return entregue;
+}
+
 // Pedido "fiscal" (vinculado a NF de Produtos, em vez de entrega manual) nunca
 // passa por registrarEntrega — a quantidade entregue vem das NFs de entrada
 // processadas vinculadas ao pedido. O modal "NFs Vinculadas" já calculava isso
@@ -4635,17 +4732,17 @@ export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | u
     .select("id").eq("pedido_compra_id", pedido_id).eq("status", "processada");
   const nfIds = (nfs ?? []).map(n => n.id);
 
-  const qtdByInsumo = new Map<string, number>();
+  let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number }[] = [];
   if (nfIds.length) {
-    const { data: nfItens } = await supabase.from("nf_entrada_itens")
-      .select("insumo_id, quantidade").in("nf_entrada_id", nfIds);
-    for (const it of nfItens ?? []) {
-      if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
-    }
+    const { data } = await supabase.from("nf_entrada_itens")
+      .select("insumo_id, pedido_item_id, quantidade").in("nf_entrada_id", nfIds);
+    nfItens = data ?? [];
   }
 
+  const entregaPorLinha = alocarEntregaPorLinha(itens, nfItens);
+
   for (const it of itens) {
-    const novaQtd = it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0;
+    const novaQtd = entregaPorLinha.get(it.id) ?? 0;
     if (Math.abs(novaQtd - (it.qtd_entregue ?? 0)) > 0.001) {
       await supabase.from("pedidos_compra_itens").update({ qtd_entregue: novaQtd }).eq("id", it.id);
     }

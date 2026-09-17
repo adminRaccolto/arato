@@ -27,10 +27,11 @@ import {
   resolverNomeComercial,
   listarAnosSafra,
   listarCiclos,
+  listarPedidoCompraItens,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE } from "../../../lib/supabase";
+import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
@@ -194,6 +195,10 @@ interface ItemRascunho {
   insumo_id: string;
   principio_ativo_id: string;
   nome_comercial_ref: string;
+  // Linha específica do pedido vinculado — só relevante quando o pedido tem
+  // o mesmo produto em mais de uma linha (embalagens/valores fiscais
+  // diferentes); nesse caso a entrega não pode ser calculada só por produto.
+  pedido_item_id: string;
   // Resolução via princípio ativo
   pa_nome?: string;
   pa_auto?: boolean;
@@ -216,7 +221,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   qtd_nf: 0, vunit_nf: 0, valor_total: 0,
   conversao_key: "",
   quantidade: 0, valor_unitario: 0, fator_conversao: 1,
-  insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
+  insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", pedido_item_id: "",
   lotes_semente: [],
   tipo_apropiacao: "estoque",
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
@@ -249,6 +254,10 @@ export default function NfCompraPage() {
   const [centros, setCentros]     = useState<CentroCusto[]>([]);
   const [maquinas, setMaquinas]   = useState<Maquina[]>([]);
   const [pedidos, setPedidos]     = useState<PedidoMin[]>([]);
+  // Itens do pedido vinculado (cab.pedido_compra_id) — usado só pra saber
+  // quando o mesmo produto aparece em mais de uma linha do pedido, e então
+  // pedir pra escolher qual linha o item da NF está atendendo.
+  const [pedidoItensVinculado, setPedidoItensVinculado] = useState<PedidoCompraItem[]>([]);
   const [regrasClass, setRegrasClass] = useState<RegraClassificacao[]>([]);
   // Dados do wizard — recarregados para a fazenda específica de cada NF
   const [wCentros,    setWCentros]    = useState<CentroCusto[]>([]);
@@ -738,6 +747,14 @@ export default function NfCompraPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cab.produtor_id]);
 
+  // Carrega os itens do pedido vinculado — usado pra detectar produto
+  // duplicado (mais de uma linha do mesmo produto) e pedir pra escolher a
+  // linha certa na associação de produtos.
+  useEffect(() => {
+    if (!cab.pedido_compra_id) { setPedidoItensVinculado([]); return; }
+    listarPedidoCompraItens(cab.pedido_compra_id).then(setPedidoItensVinculado).catch(() => setPedidoItensVinculado([]));
+  }, [cab.pedido_compra_id]);
+
   // Carrega OGs ao abrir o modal de lote
   useEffect(() => {
     if (!batchModal || !fazendaId) return;
@@ -853,7 +870,7 @@ export default function NfCompraPage() {
             conversao_key: convKey, quantidade: i.quantidade,
             valor_unitario: i.valor_unitario, fator_conversao: fator,
             insumo_id: i.insumo_id ?? "", principio_ativo_id: i.principio_ativo_id ?? "",
-            nome_comercial_ref: i.nome_comercial_ref ?? "",
+            nome_comercial_ref: i.nome_comercial_ref ?? "", pedido_item_id: i.pedido_item_id ?? "",
             tipo_apropiacao: i.tipo_apropiacao,
             deposito_id: i.deposito_id ?? "", bomba_id: i.bomba_id ?? "",
             maquina_id: i.maquina_id ?? "", centro_custo_id: i.centro_custo_id ?? "",
@@ -899,6 +916,12 @@ export default function NfCompraPage() {
   // ── Helpers ─────────────────────────────────────────────────
   const nomeDeposito   = (id: string) => depositos.find(d => d.id === id)?.nome ?? "—";
   const nomeInsumo     = (id: string) => insumos.find(i => i.id === id)?.nome ?? "—";
+  // Linhas do pedido vinculado que correspondem a um produto — quando há mais
+  // de uma (embalagens/valores fiscais diferentes do mesmo produto no mesmo
+  // pedido), a entrega não pode ser calculada só pelo produto: precisa saber
+  // qual linha exata está sendo atendida.
+  const linhasPedidoDoProduto = (insumoId: string) =>
+    pedidoItensVinculado.filter(pi => pi.insumo_id === insumoId);
   // ccOpts: usa wCentros (específico da fazenda da NF) com fallback para centros (da conta)
   // Garante que o dropdown de CC nunca fique vazio enquanto wCentros carrega
   const ccOpts = wCentros.length > 0 ? wCentros : centros;
@@ -1032,6 +1055,7 @@ export default function NfCompraPage() {
             insumo_id:          i.insumo_id           ?? "",
             principio_ativo_id: i.principio_ativo_id  ?? "",
             nome_comercial_ref: i.nome_comercial_ref  ?? "",
+            pedido_item_id:     i.pedido_item_id       ?? "",
             tipo_apropiacao:    i.tipo_apropiacao,
             deposito_id:        i.deposito_id         ?? "",
             bomba_id:           i.bomba_id            ?? "",
@@ -1225,7 +1249,7 @@ export default function NfCompraPage() {
             quantidade:    isBag && qtdKgPreenchida > 0 ? qtdKgPreenchida : (convKey && !isBag ? qtdCatalogo : qCom),
             valor_unitario: vUnCom,
             fator_conversao: fatorDeriv,
-            insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "",
+            insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", pedido_item_id: "",
             lotes_semente: [],
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
             deposito_id: "", bomba_id: "", maquina_id: "",
@@ -1402,6 +1426,19 @@ export default function NfCompraPage() {
         return;
       }
     }
+    // Guard: pedido vinculado tem o mesmo produto em mais de uma linha e o
+    // item não diz qual linha está atendendo — sem isso a entrega do pedido
+    // fica ambígua (o sistema não sabe se essa NF atende a linha de 760L ou
+    // a de 560L, por exemplo, e a única saída seria adivinhar).
+    if (cab.pedido_compra_id) {
+      for (const it of itens) {
+        if (!it.descricao_nf.trim() || !it.insumo_id) continue;
+        if (linhasPedidoDoProduto(it.insumo_id).length > 1 && !it.pedido_item_id) {
+          setErr(`Item "${it.descricao_nf}": o pedido vinculado tem "${nomeInsumo(it.insumo_id)}" em mais de uma linha — selecione qual linha do pedido este item está atendendo.`);
+          return;
+        }
+      }
+    }
     // Guard: lotes de semente com número mas sem peso — bloqueia (peso é obrigatório por lote)
     for (const it of itens) {
       if (!it.lotes_semente?.length || it.lotes_semente.length < 2) continue;
@@ -1498,6 +1535,7 @@ export default function NfCompraPage() {
           insumo_id:           (!isPAItem && it.insumo_id) ? it.insumo_id : undefined,
           principio_ativo_id:  it.principio_ativo_id  || undefined,
           nome_comercial_ref:  it.nome_comercial_ref  || undefined,
+          pedido_item_id:      it.pedido_item_id       || undefined,
           deposito_id:         it.deposito_id         || undefined,
           bomba_id:            it.bomba_id             || undefined,
           maquina_id:          it.maquina_id          || undefined,
@@ -3792,45 +3830,69 @@ export default function NfCompraPage() {
                                       )}
                                     </div>
                                   ) : (
-                                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                      <select value={it.insumo_id} onChange={e => {
-                                          const nid = e.target.value;
-                                          const ins = insumos.find(i => i.id === nid);
-                                          const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
-                                            ? [{ numero: "", quantidade_kg: undefined }]
-                                            : it.lotes_semente;
-                                          setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes });
-                                        }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
-                                        <option value="">— catálogo —</option>
-                                        {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                      </select>
-                                      <button
-                                        onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
-                                        title="Cadastrar novo produto"
-                                        style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
-                                      >+</button>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                        <select value={it.insumo_id} onChange={e => {
+                                            const nid = e.target.value;
+                                            const ins = insumos.find(i => i.id === nid);
+                                            const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
+                                              ? [{ numero: "", quantidade_kg: undefined }]
+                                              : it.lotes_semente;
+                                            const linhas = linhasPedidoDoProduto(nid);
+                                            setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes, pedido_item_id: linhas.length === 1 ? linhas[0].id : "" });
+                                          }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
+                                          <option value="">— catálogo —</option>
+                                          {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                                        </select>
+                                        <button
+                                          onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
+                                          title="Cadastrar novo produto"
+                                          style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
+                                        >+</button>
+                                      </div>
+                                      {it.insumo_id && linhasPedidoDoProduto(it.insumo_id).length > 1 && (
+                                        <select value={it.pedido_item_id} onChange={e => setItem(it.key, { pedido_item_id: e.target.value })}
+                                          style={{ ...inp, fontSize: 10, padding: "3px 6px", background: it.pedido_item_id ? "#FFF8E6" : "#FEE2E2", border: `0.5px solid ${it.pedido_item_id ? "#F6C87A" : "#FCA5A5"}` }}>
+                                          <option value="">⚠ qual linha do pedido?</option>
+                                          {linhasPedidoDoProduto(it.insumo_id).map(pi => (
+                                            <option key={pi.id} value={pi.id}>{pi.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {pi.unidade} (saldo {Math.max(0, pi.quantidade - (pi.qtd_cancelada ?? 0) - (pi.qtd_entregue ?? 0)).toLocaleString("pt-BR", { maximumFractionDigits: 3 })})</option>
+                                          ))}
+                                        </select>
+                                      )}
                                     </div>
                                   )}
                                 </>
                               ) : (
                                 /* Sem CC (nenhum): só insumo do catálogo */
-                                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                  <select value={it.insumo_id} onChange={e => {
-                                      const nid = e.target.value;
-                                      const ins = insumos.find(i => i.id === nid);
-                                      const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
-                                        ? [{ numero: "", quantidade_kg: undefined }]
-                                        : it.lotes_semente;
-                                      setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes });
-                                    }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
-                                    <option value="">— catálogo —</option>
-                                    {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                  </select>
-                                  <button
-                                    onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
-                                    title="Cadastrar novo produto"
-                                    style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
-                                  >+</button>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                    <select value={it.insumo_id} onChange={e => {
+                                        const nid = e.target.value;
+                                        const ins = insumos.find(i => i.id === nid);
+                                        const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
+                                          ? [{ numero: "", quantidade_kg: undefined }]
+                                          : it.lotes_semente;
+                                        const linhas = linhasPedidoDoProduto(nid);
+                                        setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes, pedido_item_id: linhas.length === 1 ? linhas[0].id : "" });
+                                      }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
+                                      <option value="">— catálogo —</option>
+                                      {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                                    </select>
+                                    <button
+                                      onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
+                                      title="Cadastrar novo produto"
+                                      style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
+                                    >+</button>
+                                  </div>
+                                  {it.insumo_id && linhasPedidoDoProduto(it.insumo_id).length > 1 && (
+                                    <select value={it.pedido_item_id} onChange={e => setItem(it.key, { pedido_item_id: e.target.value })}
+                                      style={{ ...inp, fontSize: 10, padding: "3px 6px", background: it.pedido_item_id ? "#FFF8E6" : "#FEE2E2", border: `0.5px solid ${it.pedido_item_id ? "#F6C87A" : "#FCA5A5"}` }}>
+                                      <option value="">⚠ qual linha do pedido?</option>
+                                      {linhasPedidoDoProduto(it.insumo_id).map(pi => (
+                                        <option key={pi.id} value={pi.id}>{pi.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {pi.unidade} (saldo {Math.max(0, pi.quantidade - (pi.qtd_cancelada ?? 0) - (pi.qtd_entregue ?? 0)).toLocaleString("pt-BR", { maximumFractionDigits: 3 })})</option>
+                                      ))}
+                                    </select>
+                                  )}
                                 </div>
                               )}
                             </div>
