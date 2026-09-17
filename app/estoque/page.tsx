@@ -884,7 +884,10 @@ export default function Estoque() {
         quantidade: item.quantidade,
         valor_unitario: item.valor_unitario, valor_total: item.valor_total,
         tipo_apropiacao: item.tipo_apropiacao, alerta_preco: item.alerta_preco,
-        centro_custo_id: item.centro_custo_id || undefined,
+        // Item de estoque nunca leva CC — mesmo que o item já tivesse um valor
+        // salvo de antes dessa correção (ex: trocou de "direto" pra "estoque"
+        // sem limpar o campo), limpa aqui também.
+        centro_custo_id: item.tipo_apropiacao === "estoque" ? undefined : (item.centro_custo_id || undefined),
         operacao_gerencial_id: item.operacao_gerencial_id || undefined,
         variedade: item.variedade || undefined,
         lote_semente: item.lote_semente || undefined,
@@ -2713,7 +2716,8 @@ export default function Estoque() {
                       const tipo = e.target.value as NfEntradaItem["tipo_apropiacao"];
                       // Auto-preenche CFOP sugerido ao trocar tipo
                       const cfopSugerido = tipo === "vef" ? "1922" : tipo === "remessa" ? "1116" : item.cfop;
-                      atualizarItem(item.key, { tipo_apropiacao: tipo, cfop: cfopSugerido });
+                      // Estoque nunca leva CC — limpa se o item já tinha um valor de quando era outro tipo
+                      atualizarItem(item.key, { tipo_apropiacao: tipo, cfop: cfopSugerido, ...(tipo === "estoque" ? { centro_custo_id: "" } : {}) });
                     }}>
                       <option value="estoque">Estoque de insumo (compra normal)</option>
                       <option value="vef">VEF — Venda c/ Entrega Futura (CFOP 1922)</option>
@@ -2881,8 +2885,12 @@ export default function Estoque() {
                   </div>
                 )}
 
-                {/* Centro de Custo por item */}
-                {centros.length > 0 && (
+                {/* Centro de Custo por item — não se aplica a item de estoque: a
+                    apropriação de custo é no consumo (quando sai do estoque pra
+                    uma operação), não na compra. Um lote de insumo comprado hoje
+                    pode até ser usado em mais de um talhão/CC depois — não tem
+                    como saber isso no momento da entrada. */}
+                {centros.length > 0 && item.tipo_apropiacao !== "estoque" && (
                   <div style={{ marginTop: 8 }}>
                     <label style={lbl}>Centro de Custo do item (opcional)</label>
                     <select style={{ ...inp, maxWidth: 340 }} value={item.centro_custo_id} onChange={e => atualizarItem(item.key, { centro_custo_id: e.target.value })}>

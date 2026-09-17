@@ -5220,14 +5220,29 @@ export async function listarOperacoesGerenciais(fazenda_id: string | string[]): 
       resolverFazendaIdsDaConta(primeiroId),
     ]);
     const idsFiltro = [...new Set([...idsConta, ...idsCallerArr])];
-    const { data, error } = await supabase.from("operacoes_gerenciais")
-      .select("*")
-      .or(ogOrFilter(conta_id, idsFiltro.length ? idsFiltro : primeiroId))
-      .order("classificacao");
-    if (error) throw error;
+    const orFilter = ogOrFilter(conta_id, idsFiltro.length ? idsFiltro : primeiroId);
+    // Contas com múltiplas fazendas (catálogo global + legado por fazenda) passam
+    // facilmente de 1000 linhas casando esse OR — o limite padrão do Supabase por
+    // página — e a chamada sem paginação truncava silenciosamente o resultado,
+    // fazendo operações gerenciais recém-criadas (que ordenam depois do corte)
+    // desaparecerem para todo mundo, não só por permissão.
+    const PAGE = 1000;
+    let data: OperacaoGerencial[] = [];
+    let from = 0;
+    while (true) {
+      const { data: page, error } = await supabase.from("operacoes_gerenciais")
+        .select("*")
+        .or(orFilter)
+        .order("classificacao")
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      data = data.concat(page ?? []);
+      if (!page || page.length < PAGE) break;
+      from += PAGE;
+    }
     // Deduplicar por classificação: global tem prioridade, depois tenant, depois legado
     const seen = new Set<string>();
-    return (data ?? []).filter(op => {
+    return data.filter(op => {
       const key = op.classificacao ?? op.id;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -5243,20 +5258,30 @@ export async function listarOperacoesGerenciaisAtivas(
 ): Promise<OperacaoGerencial[]> {
   return cached(`operacoesGerenciais:ativas:${fazenda_id}:${JSON.stringify(filtro ?? {})}`, async () => {
     const conta_id = await resolverContaIdDaFazenda(fazenda_id);
-    let q = supabase.from("operacoes_gerenciais").select("*")
-      .or(ogOrFilter(conta_id, fazenda_id))
-      .eq("inativo", false)
-      .order("classificacao");
-    if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
-    if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
-    if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
-    if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
-    if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
-    const { data, error } = await q;
-    if (error) throw error;
+    const orFilter = ogOrFilter(conta_id, fazenda_id);
+    const PAGE = 1000;
+    let data: OperacaoGerencial[] = [];
+    let from = 0;
+    while (true) {
+      let q = supabase.from("operacoes_gerenciais").select("*")
+        .or(orFilter)
+        .eq("inativo", false)
+        .order("classificacao")
+        .range(from, from + PAGE - 1);
+      if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
+      if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
+      if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
+      if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
+      if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
+      const { data: page, error } = await q;
+      if (error) throw error;
+      data = data.concat(page ?? []);
+      if (!page || page.length < PAGE) break;
+      from += PAGE;
+    }
     // Exclui nós de grupo; deduplicar por classificação
     const seen = new Set<string>();
-    return (data ?? []).filter(op => {
+    return data.filter(op => {
       if (!(op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
             op.permite_adiantamentos || op.permite_baixas || op.permite_estoque)) return false;
       const key = op.classificacao ?? op.id;
@@ -5281,19 +5306,29 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
     if (conta_id) parts.push(`conta_id.eq.${conta_id}`);
     if (ids.length) parts.push(...ids.map(id => `fazenda_id.eq.${id}`));
 
-    let q = supabase.from("operacoes_gerenciais").select("*")
-      .or(parts.join(","))
-      .eq("inativo", false)
-      .order("classificacao");
-    if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
-    if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
-    if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
-    if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
-    if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
-    const { data, error } = await q;
-    if (error) throw error;
+    const orFilter = parts.join(",");
+    const PAGE = 1000;
+    let data: OperacaoGerencial[] = [];
+    let from = 0;
+    while (true) {
+      let q = supabase.from("operacoes_gerenciais").select("*")
+        .or(orFilter)
+        .eq("inativo", false)
+        .order("classificacao")
+        .range(from, from + PAGE - 1);
+      if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
+      if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
+      if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
+      if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
+      if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
+      const { data: page, error } = await q;
+      if (error) throw error;
+      data = data.concat(page ?? []);
+      if (!page || page.length < PAGE) break;
+      from += PAGE;
+    }
 
-    const comPermissao = (data ?? []).filter(op =>
+    const comPermissao = data.filter(op =>
       op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
       op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
     );

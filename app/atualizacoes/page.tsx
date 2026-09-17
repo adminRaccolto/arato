@@ -6,6 +6,27 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-w",
+    data: "17/09/2026",
+    titulo: "Correção: Operações Gerenciais recém-criadas não apareciam pra ninguém em contas com muitas fazendas",
+    modulos: ["Configurações", "Financeiro", "Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Em contas com várias fazendas (ex: 7 fazendas), a lista de Operações Gerenciais já passava de 1.000 linhas somando o catálogo global com o legado por fazenda — e o banco corta silenciosamente em 1.000 por página quando a busca não pede as páginas seguintes. Resultado: operações criadas depois desse corte (pela ordem de classificação) não apareciam pra nenhum usuário da conta, mesmo com permissão correta — parecia bug de permissão, mas era paginação. Corrigido nas 3 rotinas que carregam Operações Gerenciais para buscarem todas as páginas." },
+    ],
+    onde: "Configurações → Operações Gerenciais · qualquer seletor de Operação Gerencial (NF, CP/CR, Tesouraria, Estoque)",
+  },
+  {
+    versao: "2026.09.17-v",
+    data: "17/09/2026",
+    titulo: "NF de Produtos e Entrada de NF (Estoque) — apropriação direta unificada, sem CC na entrada de estoque",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Existiam dois jeitos de marcar um item pra não entrar no estoque (custo direto): o tipo de entrada 'Apropriação Direta' pra NF inteira, e um toggle por item dentro do modo Insumos. O toggle por item foi removido — agora só existe um caminho, o tipo de entrada 'Apropriação Direta'. Isso vale pra NF de Produtos (Compras & Estoque) e pra Entrada de NF (Estoque → NF Entrada)." },
+      { tipo: "correcao", texto: "Item que vai pro estoque não pede mais Centro de Custo, em nenhuma das duas telas — a apropriação de custo é no consumo (quando o insumo é usado numa operação de talhão/ciclo), não na compra. O CC continua disponível pros outros tipos de item (custo direto, peças, VEF, remessa) e como classificação financeira do pagamento (CP) gerado pela NF." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos · Estoque → NF Entrada",
+  },
+  {
     versao: "2026.09.17-u",
     data: "17/09/2026",
     titulo: "Operações Gerenciais — botão Duplicar; LCDPR — removida a visão de Empresa (PJ)",
@@ -13,6 +34,7 @@ const RELEASES = [
     itens: [
       { tipo: "novo", texto: "Novo botão ⧉ Duplicar em Configurações → Operações Gerenciais — copia toda a configuração de uma operação existente pra criar uma nova rapidamente, só com o código em branco e '(cópia)' na descrição. Já existia esse botão em Admin → Padrões de OG (Raccolto); agora também disponível pro cliente na tela onde ele cria suas próprias operações." },
       { tipo: "correcao", texto: "Revertida a opção de selecionar uma Empresa (PJ) no Relatório PDF do LCDPR (adicionada mais cedo hoje) — com o campo Entidade Contábil agora editável direto no lançamento de CP/CR, não é mais necessário uma visão em separado pra conferir o PJ: o LCDPR já reflete corretamente a origem de cada título, seja qual for a conta usada pra pagar/receber." },
+      { tipo: "correcao", texto: "Removido, junto com o item acima, o checkbox 'Excluir receitas de produtores PJ' — mesma razão: a origem PF/PJ agora é resolvida pelo campo Entidade Contábil do lançamento, não por uma heurística separada sobre o cadastro de Produtores." },
     ],
     onde: "Configurações → Sistema → Operações Gerenciais · Fiscal → LCDPR → Exportação",
   },

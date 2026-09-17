@@ -523,8 +523,9 @@ export default function NfCompraPage() {
   const [ciclosNF,    setCiclosNF]    = useState<Ciclo[]>([]);
   // Estado para cadastro rápido de fornecedor
   const [savingForn, setSavingForn] = useState(false);
-  // Modo de rateio de Centro de Custos
-  const [ccMode, setCcMode] = useState<"nenhum" | "global" | "por_produto">("nenhum");
+  // Vínculo do CP com um centro de custo — só pra tipo != "insumos" (item de
+  // estoque nunca leva CC; ver comentário no bloco de renderização).
+  const [ratearCC, setRatearCC] = useState(false);
   const [ccGlobalMaquinaId, setCcGlobalMaquinaId] = useState("");
   const [bulkOpGer, setBulkOpGer] = useState("");
 
@@ -1422,7 +1423,7 @@ export default function NfCompraPage() {
       if (!it.descricao_nf.trim()) continue;
       if (it.tipo_apropiacao === "direto" || it.tipo_apropiacao === "maquinario") continue;
       if (!it.insumo_id && !it.principio_ativo_id) {
-        setErr(`Item "${it.descricao_nf}": associe um insumo ou princípio ativo do catálogo antes de processar. Se não for um produto de estoque, mude o item para "C. Custo".`);
+        setErr(`Item "${it.descricao_nf}": associe um insumo ou princípio ativo do catálogo antes de processar. Se não for um produto de estoque, lance-o numa NF do tipo "Apropriação Direta".`);
         return;
       }
     }
@@ -1506,31 +1507,19 @@ export default function NfCompraPage() {
       // 1b. Recriar todos os itens do estado atual
       for (const it of itens) {
         if (!it.descricao_nf.trim()) continue;
-        // ccMode "global" decide só COMO o centro de custo é distribuído entre os
-        // itens (linha abaixo) — não é sobre se o item é estoque físico ou custo
-        // direto. Forçar "direto" aqui (removido) fazia um item de estoque de
-        // verdade (com insumo_id associado, toggle "📦 Estoque" ligado na tela)
-        // ser tratado como custo direto só porque a NF usava rateio Global —
-        // o item nunca gerava movimentação de estoque (lib/db.ts só lança em
-        // movimentacoes_estoque quando tipo_apropiacao === "estoque") e, como
-        // efeito colateral, também desaparecia da NF de Remessa gerada a partir
-        // dessa NF de compra (app/fiscal/page.tsx só copia itens "estoque"/
-        // "maquinario" pra lá).
+        // Insumo (tipo "insumos") é sempre "estoque" — não existe mais toggle
+        // de custo direto por item dentro desse modo (isso agora só existe
+        // como o tipo de entrada "Apropriação Direta", que troca a NF inteira).
         const tipoAprp: NfEntradaItem["tipo_apropiacao"] =
           tipo === "vef"          ? "vef"     :
           tipo === "remessa"      ? "remessa" :
           tipo === "custo_direto" ? "direto"  :
           it.tipo_apropiacao;
-        // Modo global: sobrescreve CC e maquina de todos os itens
-        if (ccMode === "global") {
-          it.centro_custo_id = cab.centro_custo_id;
-          it.maquina_id      = ccGlobalMaquinaId;
-        }
-        // Modo nenhum: garante que nenhum item herda CC
-        if (ccMode === "nenhum") {
-          it.centro_custo_id = "";
-          it.maquina_id      = "";
-        }
+        // Insumo/estoque nunca leva centro de custo na entrada — a apropriação
+        // de custo é no consumo (quando sai do estoque pra uma operação), não
+        // na compra. Limpa aqui também pra reprocessar uma NF antiga (de antes
+        // dessa mudança) já corrigir o dado, não só bloquear na tela nova.
+        if (tipo === "insumos") { it.centro_custo_id = ""; it.maquina_id = ""; }
         // Combustível: bomba vem do cabeçalho; deposito_id não se aplica
         if (cab.e_combustivel && cab.bomba_destino_id) {
           it.bomba_id    = cab.bomba_destino_id;
@@ -3446,29 +3435,23 @@ export default function NfCompraPage() {
                           style={inp}
                         />
                       </div>
-                      {/* Rateio nos centros de custos */}
-                      <div style={{ gridColumn: "1 / -1" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: ccMode !== "nenhum" ? 10 : 0 }}>
-                          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" as const }}>
-                            <input type="checkbox" checked={ccMode !== "nenhum"} onChange={e => { setCcMode(e.target.checked ? "global" : "nenhum"); if (!e.target.checked) { setCab(p=>({...p,centro_custo_id:""})); setCcGlobalMaquinaId(""); } }} />
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Ratear nos centros de custos?</span>
-                          </label>
-                          {sugestaoNome && ccMode === "nenhum" && (
-                            <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>
-                          )}
-                        </div>
-                        {ccMode !== "nenhum" && (
-                          <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
-                            {/* Toggle Global vs Por produto */}
-                            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                              {(["global", "por_produto"] as const).map(m => (
-                                <button key={m} onClick={() => setCcMode(m)}
-                                  style={{ padding: "5px 14px", borderRadius: 8, border: `0.5px solid ${ccMode === m ? "#1A4870" : "var(--border-table)"}`, background: ccMode === m ? "#1A4870" : "var(--bg-card)", color: ccMode === m ? "#fff" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-                                  {m === "global" ? "Global — um único CC para toda a NF" : "Por produto — CC individual por item"}
-                                </button>
-                              ))}
-                            </div>
-                            {ccMode === "global" && (
+                      {/* Centro de custo do lançamento (CP) — só é uma tag financeira do
+                          pagamento em si (pra relatório de caixa por CC); nunca decide se um
+                          item vai pro estoque. Itens de estoque nunca levam CC — a apropriação
+                          de custo por talhão/ciclo é no consumo, não na compra. */}
+                      {tipo !== "insumos" && (
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: ratearCC ? 10 : 0 }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" as const }}>
+                              <input type="checkbox" checked={ratearCC} onChange={e => { setRatearCC(e.target.checked); if (!e.target.checked) { setCab(p=>({...p,centro_custo_id:""})); setCcGlobalMaquinaId(""); } }} />
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Vincular a um centro de custo?</span>
+                            </label>
+                            {sugestaoNome && !ratearCC && (
+                              <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>
+                            )}
+                          </div>
+                          {ratearCC && (
+                            <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                                 <div>
                                   <label style={{ ...lbl, marginBottom: 3 }}>Centro de Custo{sugestaoNome && <span style={{ marginLeft: 6, fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>}</label>
@@ -3487,13 +3470,10 @@ export default function NfCompraPage() {
                                   </div>
                                 )}
                               </div>
-                            )}
-                            {ccMode === "por_produto" && (
-                              <div style={{ fontSize: 11, color: "var(--text-2)" }}>Atribua o centro de custo individualmente em cada produto da NF abaixo.</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <div>
                         <label style={lbl}>Ciclo</label>
                         <select value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
@@ -3677,7 +3657,7 @@ export default function NfCompraPage() {
                       </span>
                       {tipo === "insumos" && (
                         <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>
-                          Associe cada item da NF ao insumo correspondente no catálogo. Use o toggle "C. Custo" para itens que vão direto ao centro de custo sem entrar no estoque.
+                          Associe cada item da NF ao insumo correspondente no catálogo. Sem centro de custo aqui — a apropriação de custo é no consumo do estoque, não na compra. Item que não é produto de estoque (frete, taxa, serviço) use o tipo de entrada "Apropriação Direta".
                         </div>
                       )}
                       {tipo === "custo_direto" && (
@@ -3693,50 +3673,6 @@ export default function NfCompraPage() {
                       + Item
                     </button>
                   </div>
-
-                  {/* Painel CC Global — visível para tipo insumos */}
-                  {tipo === "insumos" && (
-                    <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Centro de Custo:</span>
-                        {/* Modo toggles */}
-                        <div style={{ display: "flex", gap: 4 }}>
-                          {([["nenhum", "Sem CC"], ["global", "Global"], ["por_produto", "Por item"]] as const).map(([m, label]) => (
-                            <button key={m} onClick={() => { setCcMode(m); if (m !== "global") setCab(p=>({...p,centro_custo_id:""})); }}
-                              style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: `0.5px solid ${ccMode === m ? "#1A4870" : "var(--border-table)"}`, background: ccMode === m ? "#1A4870" : "var(--bg-card)", color: ccMode === m ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                        {/* CC selector — visível no modo global */}
-                        {ccMode === "global" && (
-                          <>
-                            <select value={cab.centro_custo_id}
-                              onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); setCcGlobalMaquinaId(""); }}
-                              style={{ ...inp, fontSize: 12, padding: "4px 10px", minWidth: 200, flex: 1 }}>
-                              <option value="">— selecionar CC —</option>
-                              {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
-                                <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
-                              ))}
-                            </select>
-                            {ccManutencao(cab.centro_custo_id) && (
-                              <select value={ccGlobalMaquinaId} onChange={e => setCcGlobalMaquinaId(e.target.value)}
-                                style={{ ...inp, fontSize: 12, padding: "4px 10px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
-                                <option value="">🔧 Máquina (opcional)</option>
-                                {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                              </select>
-                            )}
-                          </>
-                        )}
-                        {ccMode === "por_produto" && (
-                          <span style={{ fontSize: 11, color: "var(--text-2)" }}>Use <strong>📦 Estoque</strong> / <strong>💸 C. Custo</strong> em cada item abaixo.</span>
-                        )}
-                        {ccMode === "nenhum" && sugestaoNome && (
-                          <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Grid de itens */}
                   <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
@@ -3798,81 +3734,9 @@ export default function NfCompraPage() {
                                   <strong>{it.pa_nome}</strong>
                                   <span style={{ color: "#666" }}>← {it.nome_comercial_ref}</span>
                                 </div>
-                              ) : ccMode === "global" ? (
-                                /* Global: mostra o CC herdado (read-only) */
-                                <div style={{ padding: "3px 8px", background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 6, fontSize: 11 }}>
-                                  {cab.centro_custo_id
-                                    ? <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{ccOpts.find(c => c.id === cab.centro_custo_id)?.nome ?? "—"}</span>
-                                    : <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>← definir CC acima</span>}
-                                  {ccManutencao(cab.centro_custo_id) && ccGlobalMaquinaId && (
-                                    <span style={{ fontSize: 10, color: "#7A5A12", marginLeft: 6 }}>
-                                      🔧 {maquinas.find(m => m.id === ccGlobalMaquinaId)?.nome ?? "máquina"}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (ccMode === "por_produto") ? (
-                                /* Por produto: toggle Estoque / C. Custo + campo correspondente */
-                                <>
-                                  <div style={{ display: "flex", gap: 2 }}>
-                                    <button
-                                      onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
-                                      style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "var(--border-table)" : "#111111"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#E8E8E8", color: it.tipo_apropiacao === "direto" ? "var(--text-3)" : "#111111", cursor: "pointer", fontWeight: 600 }}
-                                    >📦 Estoque</button>
-                                    <button
-                                      onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "" })}
-                                      style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--border-table)"}`, background: it.tipo_apropiacao === "direto" ? "#E8F5E9" : "var(--bg-card)", color: it.tipo_apropiacao === "direto" ? "#1A6B3C" : "var(--text-3)", cursor: "pointer", fontWeight: 600 }}
-                                    >💸 C. Custo</button>
-                                  </div>
-                                  {it.tipo_apropiacao === "direto" ? (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                      <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 11, padding: "4px 8px" }}>
-                                        <option value="">— selecionar CC —</option>
-                                        {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => (
-                                          <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>
-                                        ))}
-                                      </select>
-                                      {ccManutencao(it.centro_custo_id) && (
-                                        <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
-                                          <option value="">🔧 Máquina (opcional)</option>
-                                          {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                                        </select>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                        <select value={it.insumo_id} onChange={e => {
-                                            const nid = e.target.value;
-                                            const ins = insumos.find(i => i.id === nid);
-                                            const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
-                                              ? [{ numero: "", quantidade_kg: undefined }]
-                                              : it.lotes_semente;
-                                            const linhas = linhasPedidoDoProduto(nid);
-                                            setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes, pedido_item_id: linhas.length === 1 ? linhas[0].id : "" });
-                                          }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
-                                          <option value="">— catálogo —</option>
-                                          {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                        </select>
-                                        <button
-                                          onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
-                                          title="Cadastrar novo produto"
-                                          style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
-                                        >+</button>
-                                      </div>
-                                      {it.insumo_id && linhasPedidoDoProduto(it.insumo_id).length > 1 && (
-                                        <select value={it.pedido_item_id} onChange={e => setItem(it.key, { pedido_item_id: e.target.value })}
-                                          style={{ ...inp, fontSize: 10, padding: "3px 6px", background: it.pedido_item_id ? "#FFF8E6" : "#FEE2E2", border: `0.5px solid ${it.pedido_item_id ? "#F6C87A" : "#FCA5A5"}` }}>
-                                          <option value="">⚠ qual linha do pedido?</option>
-                                          {linhasPedidoDoProduto(it.insumo_id).map(pi => (
-                                            <option key={pi.id} value={pi.id}>{pi.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {pi.unidade} (saldo {Math.max(0, pi.quantidade - (pi.qtd_cancelada ?? 0) - (pi.qtd_entregue ?? 0)).toLocaleString("pt-BR", { maximumFractionDigits: 3 })})</option>
-                                          ))}
-                                        </select>
-                                      )}
-                                    </div>
-                                  )}
-                                </>
                               ) : (
-                                /* Sem CC (nenhum): só insumo do catálogo */
+                                /* Item de estoque: só insumo do catálogo — sem centro de custo
+                                   (a apropriação de custo é no consumo, não na compra). */
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                                     <select value={it.insumo_id} onChange={e => {
@@ -4230,9 +4094,9 @@ export default function NfCompraPage() {
                   </div>
 
                   {/* Aviso para item sem associação */}
-                  {tipo === "insumos" && itens.some(it => !it.insumo_id && !it.principio_ativo_id && it.tipo_apropiacao !== "direto" && it.descricao_nf.trim()) && (
+                  {tipo === "insumos" && itens.some(it => !it.insumo_id && !it.principio_ativo_id && it.descricao_nf.trim()) && (
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 14 }}>
-                      ⚠️ Itens sem insumo ou princípio ativo associado impedem o processamento da NF. Associe um produto do catálogo, mude o item para "C. Custo" ou remova-o.
+                      ⚠️ Itens sem insumo ou princípio ativo associado impedem o processamento da NF. Associe um produto do catálogo ou remova o item — item que não é produto de estoque use o tipo de entrada "Apropriação Direta".
                     </div>
                   )}
 
@@ -4258,11 +4122,10 @@ export default function NfCompraPage() {
                     {tipo === "insumos" && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
                         <div style={{ fontSize: 11, color: "var(--text-2)" }}>
-                            {itens.filter(i => i.principio_ativo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque PA ·{" "}
-                          {itens.filter(i => i.insumo_id && !i.principio_ativo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque insumo ·{" "}
-                          {itens.filter(i => i.tipo_apropiacao === "direto" && i.descricao_nf.trim()).length} item(s) → custo direto ·{" "}
-                          {itens.filter(i => !i.insumo_id && !i.principio_ativo_id && i.tipo_apropiacao !== "direto" && i.descricao_nf.trim()).length} item(s) sem associação (ignorados)
-                          {depositos.length > 0 && " · Depósito padrão: " + (nomeDeposito(itens.find(i => i.deposito_id && i.tipo_apropiacao !== "direto")?.deposito_id ?? "") || "não definido")}
+                            {itens.filter(i => i.principio_ativo_id).length} item(s) → estoque PA ·{" "}
+                          {itens.filter(i => i.insumo_id && !i.principio_ativo_id).length} item(s) → estoque insumo ·{" "}
+                          {itens.filter(i => !i.insumo_id && !i.principio_ativo_id && i.descricao_nf.trim()).length} item(s) sem associação (ignorados)
+                          {depositos.length > 0 && " · Depósito padrão: " + (nomeDeposito(itens.find(i => i.deposito_id)?.deposito_id ?? "") || "não definido")}
                         </div>
                       </div>
                     )}
