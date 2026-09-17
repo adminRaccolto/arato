@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-y",
+    data: "17/09/2026",
+    titulo: "Correção: Operação Gerencial criada pelo cliente só aparecia pra quem criou",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Criar uma nova Operação Gerencial gravava com a fazenda ativa de quem criou, em vez de vincular à conta inteira. Numa conta com várias fazendas, isso fazia a operação só aparecer pra quem criou (e outros usuários Raccolto, que têm acesso irrestrito) — todo o resto da equipe do cliente, mesmo com permissão, não via. Corrigido: nova Operação Gerencial agora é vinculada à conta, visível pra todos os usuários e fazendas da conta, como já era o comportamento esperado. ⚠️ Requer executar a Seção 270 do arquivo de migrations no Supabase (corrige a leitura das operações já criadas com esse problema)." },
+    ],
+    onde: "Configurações → Operações Gerenciais",
+  },
+  {
     versao: "2026.09.17-x",
     data: "17/09/2026",
     titulo: "LCDPR ainda incluía título de titular PJ; Plano de Contas 'não cadastrado' em conta com várias fazendas",

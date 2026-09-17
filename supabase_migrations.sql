@@ -13022,3 +13022,49 @@ ALTER TABLE transferencias_estoque
   ADD COLUMN IF NOT EXISTS nf_serie text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 270 — Operação Gerencial criada pelo cliente só aparecia pra quem criou
+--
+-- Achado em produção (Grupo Ogliari, "VENDA DE MILHETO"): a política
+-- "og_select" (Seção da Option A, migration ~9110+) só reconhece uma OG
+-- "legado por fazenda" (fazenda_id preenchido, conta_id nulo) quando
+-- fazenda_id bate com a PRÓPRIA fazenda_id ativa (perfis.fazenda_id) de
+-- quem está lendo — não com QUALQUER fazenda da mesma conta. Em conta com
+-- várias fazendas, um usuário raccotlo criando "dentro do ambiente do
+-- cliente" grava com a fazenda que estiver ativa NAQUELE MOMENTO; qualquer
+-- usuário cliente cuja fazenda ativa seja outra da mesma conta nunca via a
+-- OG — só quem criou (e outros raccotlo/raccotlo_gestor, que têm bypass
+-- total). Não era bug de permissão nem de paginação (já corrigida na Seção
+-- anterior) — a linha nunca alcançava esses usuários porque o RLS cortava
+-- antes da query da aplicação rodar.
+--
+-- Causa raiz de fundo: app/configuracoes/operacoes-gerenciais/page.tsx
+-- (tela do cliente) usava criarOperacaoGerencial() gravando fazenda_id (o
+-- shape "legado"), quando devia usar criarOperacaoGerencialCustom(conta_id)
+-- — o shape "tenant" (conta_id preenchido, fazenda_id nulo) que a política
+-- de INSERT já exige pra quem não é raccotlo, e que og_select já resolve
+-- correto via conta_id. Isso já foi corrigido no código (agora usa
+-- criarOperacaoGerencialCustom) — vale só pras OGs criadas a partir de
+-- agora. Esta migration corrige a leitura (og_select) pra também alcançar
+-- o shape legado corretamente — cobre as OGs já existentes com esse
+-- problema e qualquer nova gravação legada que ainda apareça (ex: seed do
+-- catálogo padrão, que continua por fazenda de propósito).
+-- ══════════════════════════════════════════════════════════════════════════
+
+DROP POLICY IF EXISTS "og_select" ON operacoes_gerenciais;
+
+CREATE POLICY "og_select" ON operacoes_gerenciais FOR SELECT USING (
+  (fazenda_id IS NULL AND conta_id IS NULL)
+  OR conta_id IN (
+    SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL
+  )
+  OR fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  )
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor'))
+);
+
+NOTIFY pgrst, 'reload schema';

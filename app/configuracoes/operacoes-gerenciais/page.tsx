@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import {
-  listarOperacoesGerenciais, criarOperacaoGerencial, atualizarOperacaoGerencial, excluirOperacaoGerencial,
+  listarOperacoesGerenciais, criarOperacaoGerencialCustom, atualizarOperacaoGerencial, excluirOperacaoGerencial,
   listarPlanoContas,
 } from "../../../lib/db";
 import { seedOperacoesGerenciais } from "../../../lib/seedOperacoesGerenciais";
@@ -80,7 +80,7 @@ function BadgeConta({ codigo, contas }: { codigo: string; contas: ContaContabil[
 
 // ── Componente ─────────────────────────────────────────────────────────────────
 function OperacoesGerenciaisContent() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
   const searchParams = useSearchParams();
 
   const [ops,       setOps]       = useState<OperacaoGerencial[]>([]);
@@ -215,8 +215,13 @@ function OperacoesGerenciaisContent() {
     }
     setSalvando(true); setErro(null);
     try {
-      const payload: Partial<OperacaoGerencial> & { fazenda_id?: string } = {
-        fazenda_id:              fazendaId,
+      // Sem fazenda_id aqui de propósito: uma OG nova do cliente é sempre
+      // escopada por conta_id (visível pra todos os usuários/fazendas da
+      // conta — regra "Option A"), nunca pela fazenda ativa de quem criou.
+      // Setar fazenda_id fazia a OG só aparecer pra fazenda de quem criou
+      // (e só pra quem criou, se essa fazenda não for a ativa de mais
+      // ninguém) — bug real encontrado em produção (17/09/2026).
+      const payload: Partial<OperacaoGerencial> = {
         parent_id:               form.parent_id || undefined,
         classificacao:           form.classificacao,
         descricao:               form.descricao,
@@ -257,9 +262,10 @@ function OperacoesGerenciaisContent() {
         historico_tesouraria_nome: form.historico_tesouraria_nome || undefined,
       };
       if (editOp) {
-        await atualizarOperacaoGerencial(editOp.id, payload as Partial<OperacaoGerencial>);
+        await atualizarOperacaoGerencial(editOp.id, payload);
       } else {
-        await criarOperacaoGerencial(payload as Omit<OperacaoGerencial, "id" | "created_at">);
+        if (!contaId) { setErro("Conta não identificada."); setSalvando(false); return; }
+        await criarOperacaoGerencialCustom(contaId, payload as Omit<OperacaoGerencial, "id" | "created_at" | "conta_id" | "fazenda_id">);
       }
       await carregar();
       setModal(false);
