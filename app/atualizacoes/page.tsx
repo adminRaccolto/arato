@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-a",
+    data: "17/09/2026",
+    titulo: "Novo: Encerrar Pedido de Compra com ajuste de divergência",
+    modulos: ["Comercial & Logística"],
+    itens: [
+      { tipo: "novo", texto: "Pedidos 'Parcialmente Entregue' ganharam o botão '🔒 Encerrar Pedido' (dentro do modal Entregas/NFs Vinculadas) — abre uma tela de ajuste mostrando pedido x entregue x saldo por item, com campo para cancelar o saldo residual (pré-preenchido com a diferença) e motivo obrigatório. Ao confirmar, o pedido fecha como 'Entregue' e o motivo fica registrado na observação do pedido. Não existia nenhuma rotina para isso antes — pedidos com pequena divergência de peso/casas decimais ficavam travados para sempre." },
+    ],
+    onde: "Comercial & Logística → Pedidos de Compra → Entregas/NFs Vinculadas",
+  },
+  {
     versao: "2026.09.16-r",
     data: "16/09/2026",
     titulo: "Correção: Pedido de Compra vinculado a NF não avançava de status",

@@ -248,7 +248,9 @@ Controla o processo de compra de insumos do rascunho até a entrega, gerando aut
 
 **Abas do pedido:** Principal (fazenda, fornecedor, produtor responsável com IE, fiscal), Itens/Serviços/CC, Desconto, Entregas (pedidos não-fiscais) ou NFs Vinculadas (pedidos fiscais), Cobrança, Documentos.
 
-**Avanço automático de status:** em pedido "Fiscal" (vinculado a NF, aba "NFs Vinculadas"), o status avança sozinho para "Parcialmente Entregue"/"Entregue" ao processar uma NF de Produtos vinculada — não precisa de nenhuma ação manual. Estornar ou excluir a NF reverte o status automaticamente. Não existe hoje uma rotina de "encerrar pedido" para aceitar pequenas divergências (peso de carga, casas decimais) — se sobrar um saldo residual pequeno por causa disso, o pedido fica em "Parcialmente Entregue" até alguém decidir manualmente (editar a quantidade do item ou cancelar o saldo).
+**Avanço automático de status:** em pedido "Fiscal" (vinculado a NF, aba "NFs Vinculadas"), o status avança sozinho para "Parcialmente Entregue"/"Entregue" ao processar uma NF de Produtos vinculada — não precisa de nenhuma ação manual. Estornar ou excluir a NF reverte o status automaticamente.
+
+**Encerrar Pedido (ajuste de divergência):** pedido "Parcialmente Entregue" ganha o botão "🔒 Encerrar Pedido" dentro do modal Entregas/NFs Vinculadas. Abre uma tela com o saldo em aberto de cada item (pré-preenchido pra cancelar o resíduo inteiro) e um campo de motivo obrigatório — pensado pra pequenas divergências reais (peso de carga na balança, casas decimais), não pra cancelar entregas grandes. Ao confirmar: cancela o saldo escolhido por item (soma em cima do que já estava cancelado, nunca sobrescreve — não mexe no que já foi entregue), grava o motivo na observação do pedido com carimbo de data, e o pedido fecha como "Entregue". Item com saldo maior que 5% do pedido aparece com aviso em vermelho — não bloqueia, só chama atenção antes de confirmar algo grande demais.
 
 **Atenção:** Pedidos com NFs de entrada vinculadas não podem ser excluídos — use status "Cancelado".
 

@@ -4551,6 +4551,11 @@ export async function salvarPedidoCompraItens(pedido_id: string, fazenda_id: str
   if (error) throw error;
 }
 
+export async function atualizarPedidoCompraItem(id: string, patch: Partial<PedidoCompraItem>): Promise<void> {
+  const { error } = await supabase.from("pedidos_compra_itens").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
 export async function listarPedidoCompraEntregas(pedido_id: string): Promise<PedidoCompraEntrega[]> {
   const { data, error } = await supabase.from("pedidos_compra_entregas").select("*").eq("pedido_id", pedido_id).order("data_entrega");
   if (error) throw error;
@@ -4567,6 +4572,43 @@ async function recalcularStatusPedidoCompra(pedido_id: string): Promise<void> {
   const algumEntregue = itens.some(it => (it.qtd_entregue ?? 0) > 0);
   const novoStatus = todoEntregue ? "entregue" : algumEntregue ? "parcialmente_entregue" : "aprovado";
   await atualizarPedidoCompra(pedido_id, { status: novoStatus });
+}
+
+// Encerramento de pedido com divergência pequena (peso de carga, casas
+// decimais) — não existia nenhuma rotina pra isso antes: um pedido com
+// resíduo de saldo por causa de arredondamento ficava travado em
+// "Parcialmente Entregue" pra sempre, sem forma de fechar. Cancela o saldo
+// residual escolhido por item (soma em cima do que já estava cancelado —
+// nunca sobrescreve) e registra o motivo em pedidos_compra.observacao com
+// carimbo de data. Só atua em pedido já "parcialmente_entregue" — não serve
+// pra cancelar um pedido do zero (isso já existe: status "Cancelado").
+export async function encerrarPedidoCompra(
+  pedido_id: string,
+  ajustes: { item_id: string; qtd_cancelar: number }[],
+  observacao: string,
+): Promise<void> {
+  const { data: ped } = await supabase.from("pedidos_compra").select("status, observacao").eq("id", pedido_id).maybeSingle();
+  if (ped?.status !== "parcialmente_entregue") {
+    throw new Error("Encerramento só se aplica a pedidos 'Parcialmente Entregue'.");
+  }
+
+  const itensAtuais = await listarPedidoCompraItens(pedido_id);
+  const itemById = new Map(itensAtuais.map(i => [i.id, i]));
+
+  for (const aj of ajustes) {
+    if (aj.qtd_cancelar <= 0) continue;
+    const item = itemById.get(aj.item_id);
+    if (!item) continue;
+    const novaCancelada = (item.qtd_cancelada ?? 0) + aj.qtd_cancelar;
+    await atualizarPedidoCompraItem(aj.item_id, { qtd_cancelada: novaCancelada });
+  }
+
+  const carimbo = new Date().toLocaleDateString("pt-BR");
+  const nota = `[Encerramento ${carimbo}] ${observacao.trim()}`;
+  const observacaoFinal = ped?.observacao ? `${ped.observacao}\n${nota}` : nota;
+  await atualizarPedidoCompra(pedido_id, { observacao: observacaoFinal });
+
+  await recalcularStatusPedidoCompra(pedido_id);
 }
 
 // Pedido "fiscal" (vinculado a NF de Produtos, em vez de entrega manual) nunca

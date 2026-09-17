@@ -4,7 +4,7 @@ import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import {
   listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
-  listarPedidoCompraItens, salvarPedidoCompraItens,
+  listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra,
   listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
@@ -369,6 +369,15 @@ export default function ComprasPage() {
   // NFs vinculadas (modal fiscal)
   const [nfsFiscais,      setNfsFiscais]      = useState<NfEntrada[]>([]);
   const [nfsFiscaisItens, setNfsFiscaisItens] = useState<NfEntradaItem[]>([]);
+
+  // Modal encerramento (ajuste de divergência — peso de carga, casas decimais)
+  const [modalEncerrar, setModalEncerrar] = useState<{
+    pedido: PedidoCompra;
+    itens: { item_id: string; nome_item: string; unidade: string; quantidade: number; entregue: number; saldo: number; cancelar: string }[];
+  } | null>(null);
+  const [obsEncerrar,    setObsEncerrar]    = useState("");
+  const [salvandoEncerrar, setSalvandoEncerrar] = useState(false);
+  const [erroEncerrar,   setErroEncerrar]   = useState("");
 
   // Modal relatório NFs
   const [modalRelatorio, setModalRelatorio] = useState<{ pedido: PedidoCompra; itens: PedidoCompraItem[]; entregas: PedidoCompraEntrega[] } | null>(null);
@@ -1076,6 +1085,58 @@ export default function ComprasPage() {
       setNfsFiscais([]);
       setNfsFiscaisItens([]);
       setFormEntrega({ item_id: its[0]?.id ?? "", data_entrega: hoje(), quantidade_entregue: "", observacao: "" });
+    }
+  };
+
+  // Abre o modal de encerramento a partir do modal de Entregas/NFs Vinculadas
+  // já aberto — reaproveita o mesmo cálculo de "entregue" usado lá (por NF
+  // pra pedido fiscal, por pedidos_compra_entregas pra manual).
+  const abrirEncerramento = () => {
+    if (!modalEntrega) return;
+    const ehFiscal = modalEntrega.pedido.fiscal ?? false;
+    const nfsProcessadasIds = new Set(nfsFiscais.filter(n => n.status === "processada").map(n => n.id));
+    const qtdByInsumo = new Map<string, number>();
+    nfsFiscaisItens
+      .filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? ""))
+      .forEach(it => {
+        if (it.insumo_id) qtdByInsumo.set(it.insumo_id, (qtdByInsumo.get(it.insumo_id) ?? 0) + it.quantidade);
+      });
+
+    const itensAjuste = modalEntrega.itens.map(it => {
+      const entregue = ehFiscal
+        ? (it.insumo_id ? (qtdByInsumo.get(it.insumo_id) ?? 0) : 0)
+        : (it.qtd_entregue ?? 0);
+      const cancelada = it.qtd_cancelada ?? 0;
+      const saldo = Math.max(0, it.quantidade - cancelada - entregue);
+      return {
+        item_id: it.id, nome_item: it.nome_item, unidade: it.unidade,
+        quantidade: it.quantidade, entregue, saldo,
+        cancelar: saldo > 0 ? String(saldo) : "0",
+      };
+    });
+    setModalEncerrar({ pedido: modalEntrega.pedido, itens: itensAjuste });
+    setObsEncerrar("");
+    setErroEncerrar("");
+  };
+
+  const confirmarEncerramento = async () => {
+    if (!modalEncerrar) return;
+    const ajustes = modalEncerrar.itens
+      .map(it => ({ item_id: it.item_id, qtd_cancelar: parseFloat(it.cancelar.replace(",", ".")) || 0 }))
+      .filter(a => a.qtd_cancelar > 0);
+    if (ajustes.length === 0) { setErroEncerrar("Informe ao menos uma quantidade a cancelar — se não há divergência, o pedido fecha sozinho quando 100% for entregue."); return; }
+    if (!obsEncerrar.trim()) { setErroEncerrar("Motivo do encerramento (ex: divergência de peso na balança)."); return; }
+    setSalvandoEncerrar(true);
+    setErroEncerrar("");
+    try {
+      await encerrarPedidoCompra(modalEncerrar.pedido.id, ajustes, obsEncerrar.trim());
+      setModalEncerrar(null);
+      setModalEntrega(null);
+      await carregar();
+    } catch (e: unknown) {
+      setErroEncerrar(e instanceof Error ? e.message : "Erro ao encerrar pedido");
+    } finally {
+      setSalvandoEncerrar(false);
     }
   };
 
@@ -2236,6 +2297,14 @@ export default function ComprasPage() {
                   </tbody>
                 </table>
 
+                {modalEntrega.pedido.status === "parcialmente_entregue" && (
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16, marginTop: -8 }}>
+                    <button onClick={abrirEncerramento} style={{ ...btnR, fontSize: 11, padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+                      🔒 Encerrar Pedido
+                    </button>
+                  </div>
+                )}
+
                 {/* ── MODO FISCAL: lista de NFs ── */}
                 {ehFiscal && (<>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
@@ -2382,6 +2451,83 @@ export default function ComprasPage() {
           </div>
         );
       })()}
+
+      {/* ── MODAL ENCERRAMENTO (ajuste de divergência) ── */}
+      {modalEncerrar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 720, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>🔒 Encerrar Pedido {modalEncerrar.pedido.nr_pedido || `#${modalEncerrar.pedido.numero}`}</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>{nomePessoa(modalEncerrar.pedido.fornecedor_id)}</div>
+              </div>
+              <button onClick={() => setModalEncerrar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+            </div>
+            <div style={{ padding: 22 }}>
+              <div style={{ background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 16 }}>
+                Cancela o saldo residual de cada item (não muda o que já foi entregue) e fecha o pedido como <strong>Entregue</strong>. Use só para pequenas divergências (peso de carga, casas decimais) — para saldo grande em aberto, prefira aguardar a entrega ou registrar/estornar a NF correspondente.
+              </div>
+
+              <div style={secTit}>Itens com saldo em aberto</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
+                <thead><tr style={{ background: "var(--bg-page)" }}>
+                  {["Item","Un.","Qtd. Pedida","Qtd. Entregue","Saldo","Cancelar saldo"].map((h, i) => (
+                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {modalEncerrar.itens.map(it => {
+                    const cancelarNum = parseFloat(it.cancelar.replace(",", ".")) || 0;
+                    const divergenciaAlta = it.quantidade > 0 && (cancelarNum / it.quantidade) > 0.05;
+                    return (
+                      <tr key={it.item_id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                        <td style={{ padding: "8px 10px" }}>{it.nome_item}</td>
+                        <td style={{ padding: "8px 10px" }}>{it.unidade}</td>
+                        <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtN(it.quantidade)}</td>
+                        <td style={{ padding: "8px 10px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{fmtN(it.entregue)}</td>
+                        <td style={{ padding: "8px 10px", textAlign: "right", color: it.saldo > 0 ? "#C9921B" : "#16A34A", fontWeight: 600 }}>{fmtN(it.saldo)}</td>
+                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                          {it.saldo > 0 ? (
+                            <>
+                              <InputNumerico
+                                decimais={3}
+                                value={it.cancelar}
+                                onChange={v => setModalEncerrar(p => p ? { ...p, itens: p.itens.map(x => x.item_id === it.item_id ? { ...x, cancelar: v } : x) } : null)}
+                                style={{ width: 110, textAlign: "right", padding: "4px 8px", fontSize: 12, borderRadius: 6, border: `0.5px solid ${divergenciaAlta ? "#E24B4A" : "var(--border)"}` }}
+                              />
+                              {divergenciaAlta && <div style={{ fontSize: 9, color: "#E24B4A", marginTop: 2 }}>⚠ acima de 5% do pedido</div>}
+                            </>
+                          ) : (
+                            <span style={{ color: "var(--text-3)" }}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              <label style={lbl}>Motivo do encerramento *</label>
+              <textarea
+                value={obsEncerrar}
+                onChange={e => setObsEncerrar(e.target.value)}
+                placeholder="Ex: divergência de peso na balança do fornecedor — carga pesou 1.167 kg a menos que o pedido."
+                rows={3}
+                style={{ ...inp, resize: "vertical", marginBottom: 8 }}
+              />
+
+              {erroEncerrar && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 8 }}>{erroEncerrar}</div>}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button style={btnR} onClick={() => setModalEncerrar(null)}>Cancelar</button>
+                <button style={{ ...btnV, opacity: salvandoEncerrar ? 0.5 : 1 }} disabled={salvandoEncerrar} onClick={confirmarEncerramento}>
+                  {salvandoEncerrar ? "Encerrando…" : "Confirmar Encerramento"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MODAL RELATÓRIO ── */}
       {modalRelatorio && (
