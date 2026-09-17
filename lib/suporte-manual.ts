@@ -987,6 +987,8 @@ Parâmetros contábeis por entidade (PF/PJ): método de escrituração (G/R/B), 
 
 Gerencia usuários da conta: criação, e-mail, senha, permissões por módulo.
 
+**"0 usuários"/"0 grupos" em conta com várias fazendas (correção 18/09/2026):** usuário e grupo de acesso são cadastrados numa fazenda só, mas valem pra conta inteira — igual Operações Gerenciais e Plano de Contas. Até aqui a leitura olhava só a fazenda ativa de quem está vendo a tela; se os usuários foram cadastrados numa fazenda diferente (comum quando a conta tem várias fazendas e cada sessão fica com uma ativa diferente), a tela mostrava "0 usuários" mesmo a conta tendo usuários cadastrados de verdade. Corrigido: a lista agora busca em todas as fazendas da conta.
+
 ### 25.2 Auditoria
 **Caminho:** Configurações → Usuários → Auditoria
 

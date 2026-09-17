@@ -1941,7 +1941,13 @@ export async function excluirGrupo(id: string): Promise<void> {
 
 export async function listarUsuarios(fazendaIds: string[]): Promise<Usuario[]> {
   if (!fazendaIds || fazendaIds.length === 0) return [];
-  const { data, error } = await supabase.from("usuarios").select("*").in("fazenda_id", fazendaIds).order("nome");
+  // Não confia só no array recebido — useAuth().fazendaIds pode vir incompleto
+  // (ex: sessão raccotlo navegando pela conta de um cliente com várias
+  // fazendas, exatamente como já visto em Operações Gerenciais e Plano de
+  // Contas). Resolve de novo no servidor e junta com o que veio do chamador.
+  const idsConta = await resolverFazendaIdsDaConta(fazendaIds[0]);
+  const idsFiltro = [...new Set([...idsConta, ...fazendaIds])];
+  const { data, error } = await supabase.from("usuarios").select("*").in("fazenda_id", idsFiltro).order("nome");
   if (error) throw error;
   const rows = (data ?? []) as Usuario[];
   // Enriquecer com role do perfis para exibição no cadastro

@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { GrupoUsuario, Usuario } from "../../../lib/supabase";
+import { listarUsuarios } from "../../../lib/db";
 
 // ── Estrutura de permissões ────────────────────────────────────────────────────
 type Acao = "visualizar" | "criar" | "editar" | "excluir" | "exportar" | "aprovar";
@@ -370,8 +371,7 @@ export default function UsuariosPermissoes() {
     setCarregando(true);
     Promise.all([
       carregarGrupos(fazendaId),
-      supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome")
-        .then(({ data: us }) => setUsuarios((us ?? []) as Usuario[])),
+      listarUsuarios([fazendaId]).then(us => setUsuarios(us)),
     ]).finally(() => setCarregando(false));
   }, [fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -571,8 +571,7 @@ export default function UsuariosPermissoes() {
 
     const criouCredencialCampo = await sincronizarCampo(usuarioVinculadoId);
 
-    const { data } = await supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
-    setUsuarios((data ?? []) as Usuario[]);
+    setUsuarios(await listarUsuarios([fazendaId]));
     if (editUser && !criouCredencialCampo) setModalUser(false);
     setSalvando(false);
   };

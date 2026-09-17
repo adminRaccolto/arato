@@ -2571,7 +2571,7 @@ export default function NfCompraPage() {
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 8 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                    <th key={i} style={{ padding: "6px 8px", textAlign: i >= 8 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
@@ -2582,7 +2582,7 @@ export default function NfCompraPage() {
                   const om = nf.origem ? ORIGEM_META[nf.origem] : null;
                   return (
                     <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: selectedNfs.has(nf.id) ? "#F2F2F2" : undefined }}>
-                      <td style={{ padding: "10px 12px" }}>
+                      <td style={{ padding: "7px 8px" }}>
                         <input
                           type="checkbox"
                           checked={selectedNfs.has(nf.id)}
@@ -2596,39 +2596,39 @@ export default function NfCompraPage() {
                           style={{ cursor: "pointer" }}
                         />
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
-                        {nf.numero}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
+                      <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
+                        {nf.numero}<span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-1)", overflow: "hidden" }}>
+                      <td style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)", overflow: "hidden" }}>
                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nf.emitente_nome}</div>
-                        {nf.emitente_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)", fontFamily: "monospace" }}>{nf.emitente_cnpj}</div>}
+                        {nf.emitente_cnpj && <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{nf.emitente_cnpj}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-1)", overflow: "hidden" }}>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-1)", overflow: "hidden" }}>
                         {(() => {
-                          if (nf.nome_destinatario) return <>{nf.nome_destinatario}{nf.cnpj_destino && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDoc(nf.cnpj_destino.replace(/\D/g,""))}</div>}</>;
+                          if (nf.nome_destinatario) return <>{nf.nome_destinatario}{nf.cnpj_destino && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{fmtDoc(nf.cnpj_destino.replace(/\D/g,""))}</div>}</>;
                           if (!nf.cnpj_destino) return <span style={{ color: "var(--text-3)" }}>—</span>;
                           const cnpjNum = nf.cnpj_destino.replace(/\D/g, "");
                           const prod = siegProdutores.find(p => p.cnpj === cnpjNum);
-                          return prod ? <>{prod.nome}<div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDoc(cnpjNum)}</div></> : <span style={{ fontFamily: "monospace" }}>{fmtDoc(cnpjNum)}</span>;
+                          return prod ? <>{prod.nome}<div style={{ fontSize: 10, color: "var(--text-3)" }}>{fmtDoc(cnpjNum)}</div></> : <span style={{ fontFamily: "monospace" }}>{fmtDoc(cnpjNum)}</span>;
                         })()}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{fmtData(nf.data_emissao)}</td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{fmtData(nf.data_entrada)}</td>
-                      <td style={{ padding: "10px 12px" }}>{tm ? badge(tm.label, tm.bg, "#333") : <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>}</td>
-                      <td style={{ padding: "10px 12px" }}>{om ? badge(om.label) : <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>}</td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right" }}>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(nf.data_emissao)}</td>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(nf.data_entrada)}</td>
+                      <td style={{ padding: "7px 8px" }}>{tm ? badge(tm.label, tm.bg, "#333") : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
+                      <td style={{ padding: "7px 8px" }}>{om ? badge(om.label) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
+                      <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>
                         {fmtBRL(nf.valor_total)}
                         {nf.observacao?.includes("WhatsApp") && (
-                          <div title="Lançado via WhatsApp" style={{ fontSize: 10, fontWeight: 500, color: "#25D366", marginTop: 2 }}>📱 WhatsApp</div>
+                          <div title="Lançado via WhatsApp" style={{ fontSize: 9, fontWeight: 500, color: "#25D366", marginTop: 2 }}>📱 WhatsApp</div>
                         )}
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                      <td style={{ padding: "7px 8px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                      <td style={{ padding: "7px 8px", textAlign: "right" }}>
                         {nf.processado_por
-                          ? <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{nf.processado_por}</span>
-                          : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>—</span>}
+                          ? <span style={{ fontSize: 10, color: "var(--text-2)", whiteSpace: "nowrap" }}>{nf.processado_por}</span>
+                          : <span style={{ fontSize: 10, color: "var(--text-muted)" }}>—</span>}
                       </td>
-                      <td style={{ padding: "10px 20px 10px 12px", textAlign: "right" }}>
+                      <td style={{ padding: "7px 16px 7px 8px", textAlign: "right" }}>
                         {nf.origem === "sieg" ? (() => {
                           const isBusy  = siegBusy[nf.id];
                           const manTipo = nf.manifestacao_tipo ?? null;
@@ -2640,7 +2640,7 @@ export default function NfCompraPage() {
                               <button
                                 disabled={isBusy}
                                 onClick={e => { e.stopPropagation(); setManDropdown(aberto ? null : nf.id); }}
-                                style={{ padding: "3px 7px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 11, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+                                style={{ padding: "2px 6px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 10, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
                                 {isBusy ? "⏳" : stCfg.short} {!isBusy && "▾"}
                               </button>
                               {aberto && (
@@ -2648,7 +2648,7 @@ export default function NfCompraPage() {
                                   {MAN_CFG.map(m => (
                                     <button key={m.tipo}
                                       onClick={e => { e.stopPropagation(); setManDropdown(null); manifestar(nf, m.tipo); }}
-                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+                                      style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
                                       {m.tipo === manTipo ? "✓ " : ""}{m.label}
                                     </button>
                                   ))}
@@ -2657,13 +2657,13 @@ export default function NfCompraPage() {
                               {siegErros[nf.id] && <div style={{ fontSize: 9, color: "#E24B4A", marginTop: 3 }}>{siegErros[nf.id]}</div>}
                             </div>
                           );
-                        })() : <span style={{ fontSize: 11, color: "#ccc" }}>—</span>}
+                        })() : <span style={{ fontSize: 10, color: "#ccc" }}>—</span>}
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
+                      <td style={{ padding: "7px 8px", textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
                           {/* Ver */}
                           <button onClick={() => abrirVisualizador(nf)} disabled={nfViewerLoading}
-                            style={{ padding: "4px 10px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            style={{ padding: "3px 8px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: "pointer", fontSize: 10, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
                             Ver
                           </button>
 
@@ -2671,7 +2671,7 @@ export default function NfCompraPage() {
                           {nf.chave_acesso && (
                             <a href={`/api/fiscal/danfe?chave=${nf.chave_acesso}&fazenda_id=${nf.fazenda_id}`}
                               target="_blank" rel="noopener noreferrer"
-                              style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#F0FDF4", fontSize: 11, color: "#15803D", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, whiteSpace: "nowrap" }}>
+                              style={{ padding: "3px 8px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#F0FDF4", fontSize: 10, color: "#15803D", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, whiteSpace: "nowrap" }}>
                               ↗ DANFE
                             </a>
                           )}
@@ -2683,7 +2683,7 @@ export default function NfCompraPage() {
                               <div style={{ position: "relative" }}>
                                 <button
                                   onClick={e => { e.stopPropagation(); setAcaoDropdown(aberto ? null : nf.id); setManDropdown(null); }}
-                                  style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: aberto ? "#F4F6FA" : "transparent", cursor: "pointer", fontSize: 14, color: "var(--text-2)", fontWeight: 700, lineHeight: 1 }}>
+                                  style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: aberto ? "#F4F6FA" : "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)", fontWeight: 700, lineHeight: 1 }}>
                                   ⋮
                                 </button>
                                 {aberto && (
@@ -2693,27 +2693,27 @@ export default function NfCompraPage() {
                                     {/* Pendente: processar + editar + reparar + reimport */}
                                     {nf.status === "pendente" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "#1A5C38", cursor: "pointer", fontSize: 12, color: "#fff", fontWeight: 700, textAlign: "left" }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "#1A5C38", cursor: "pointer", fontSize: 12, color: "#fff", fontWeight: 700, textAlign: "left" }}>
                                         Processar NF
                                       </button>
                                     )}
                                     {nf.status !== "processada" && nf.origem !== "sieg" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
                                         Editar NF
                                       </button>
                                     )}
                                     {nf.status === "pendente" && !!nf.chave_acesso && !nf.nome_destinatario && (
                                       <button onClick={() => { setAcaoDropdown(null); repararNf(nf); }}
                                         disabled={reparando.has(nf.id)}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: reparando.has(nf.id) ? "default" : "pointer", fontSize: 12, color: "#C9921B", fontWeight: 600, textAlign: "left", opacity: reparando.has(nf.id) ? 0.6 : 1 }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: reparando.has(nf.id) ? "default" : "pointer", fontSize: 12, color: "#C9921B", fontWeight: 600, textAlign: "left", opacity: reparando.has(nf.id) ? 0.6 : 1 }}>
                                         {reparando.has(nf.id) ? "Reparando…" : "Reparar via SEFAZ"}
                                       </button>
                                     )}
                                     {nf.origem === "sieg" && nf.status === "pendente" && (
                                       <button onClick={() => { setAcaoDropdown(null); reimportarNf(nf); }}
                                         disabled={siegReimporting[nf.id]}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 12, color: "#555", fontWeight: 600, textAlign: "left", opacity: siegReimporting[nf.id] ? 0.5 : 1 }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 12, color: "#555", fontWeight: 600, textAlign: "left", opacity: siegReimporting[nf.id] ? 0.5 : 1 }}>
                                         {siegReimporting[nf.id] ? "Re-importando…" : "↻ Re-importar SIEG"}
                                       </button>
                                     )}
@@ -2721,31 +2721,31 @@ export default function NfCompraPage() {
                                     {/* Processada: editar + devolver + remessa + reclassificar + estornar */}
                                     {nf.status === "processada" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
                                         Editar NF
                                       </button>
                                     )}
                                     {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
                                         Devolver
                                       </button>
                                     )}
                                     {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
                                       <button onClick={() => { setAcaoDropdown(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nf.id}`); }}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
                                         Emitir NF Remessa
                                       </button>
                                     )}
                                     {nf.status === "processada" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirReclassificar(nf); }}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#7B4A00", fontWeight: 600, textAlign: "left" }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#7B4A00", fontWeight: 600, textAlign: "left" }}>
                                         Reclassificar
                                       </button>
                                     )}
                                     {nf.status === "processada" && (
                                       <button onClick={() => { setAcaoDropdown(null); estornarNFClick(nf); }}
-                                        style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
+                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
                                         Estornar
                                       </button>
                                     )}
@@ -2758,7 +2758,7 @@ export default function NfCompraPage() {
                           {/* Excluir */}
                           {nf.status !== "cancelada" && (
                             <button onClick={() => iniciarExclusaoNf(nf)} title="Excluir NF"
-                              style={{ padding: "4px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 14, color: "#791F1F", lineHeight: 1 }}>
+                              style={{ padding: "3px 7px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 13, color: "#791F1F", lineHeight: 1 }}>
                               🗑
                             </button>
                           )}

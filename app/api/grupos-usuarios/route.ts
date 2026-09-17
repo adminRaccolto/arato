@@ -58,11 +58,21 @@ export async function GET(req: Request) {
 
   const db = adminClient();
 
-  // Busca grupos da fazenda E grupos globais (fazenda_id = NULL, compartilhados entre clientes)
+  // Grupo de acesso é cadastrado numa fazenda só, mas vale pra toda a conta —
+  // igual Operações Gerenciais e Plano de Contas. Sem isso, cliente com várias
+  // fazendas só via os grupos criados na fazenda ativa no momento.
+  const { data: fazAtual } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  let fazendaIds = [fazenda_id];
+  if (fazAtual?.conta_id) {
+    const { data: fazendasDaConta } = await db.from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
+    if (fazendasDaConta?.length) fazendaIds = fazendasDaConta.map(f => f.id);
+  }
+
+  // Busca grupos de qualquer fazenda da conta E grupos globais (fazenda_id = NULL, compartilhados entre clientes)
   const { data, error: dbErr } = await db
     .from("grupos_usuarios")
     .select("*")
-    .or(`fazenda_id.eq.${fazenda_id},fazenda_id.is.null`)
+    .or(`fazenda_id.in.(${fazendaIds.join(",")}),fazenda_id.is.null`)
     .order("nome");
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });

@@ -6,6 +6,26 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-b",
+    data: "18/09/2026",
+    titulo: "Lista de NF de Produtos — grid mais compacto",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Fonte e espaçamento da lista de NFs reduzidos — colunas e botões (Ver, DANFE, ⋮, manifestação, excluir) ficam menos apertados, sem quebrar linha ou cortar texto." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos",
+  },
+  {
+    versao: "2026.09.18-a",
+    data: "18/09/2026",
+    titulo: "Correção: Usuários e Grupos de Acesso não apareciam em conta com várias fazendas",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Configurações → Usuários & Permissões mostrava \"0 usuários\"/\"0 grupos\" pra contas com mais de uma fazenda, quando os usuários/grupos foram cadastrados numa fazenda diferente da que está ativa no momento — a leitura olhava só a fazenda ativa, não a conta toda. Corrigido: usuários e grupos de acesso agora aparecem pra toda a conta, de qualquer fazenda, igual já funciona em Operações Gerenciais e Plano de Contas." },
+    ],
+    onde: "Configurações → Usuários & Permissões",
+  },
+  {
     versao: "2026.09.17-z",
     data: "17/09/2026",
     titulo: "Apropriação Direta — combustível por veículo e rateio de peças entre frotas",
