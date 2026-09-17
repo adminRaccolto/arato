@@ -547,7 +547,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     ref_id: 802,
   }),
   desp("2.01.01.02.099", "GASTO COMBUSTÍVEL - CUSTO FAZENDA", {
-    permite_estoque: true,
+    permite_estoque: true, permite_combustivel: true,
     operacao_estoque: "saida", tipo_custo_estoque: "gasto",
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: true, custo_abc: true,

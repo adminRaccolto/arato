@@ -2621,6 +2621,29 @@ export async function processarNfEntrada(
         });
       }
     }
+    // ── Combustível (Apropriação Direta) → histórico de abastecimento ──
+    // Mesma tabela que o abastecimento pela bomba em Estoque já usa — aqui
+    // sem bomba (comprado direto no posto, fora da fazenda): data, tipo de
+    // combustível, valor/L e valor total já vêm da NF; só falta o
+    // hodômetro/horímetro, informado no item. Atualiza também
+    // maquinas.horimetro_atual, igual ao abastecimento pela bomba faz.
+    if (item.tipo_apropiacao === "direto" && item.e_combustivel && item.maquina_id) {
+      await supabase.from("abastecimentos").insert({
+        fazenda_id,
+        bomba_id:            null,
+        maquina_id:          item.maquina_id,
+        quantidade_l:        item.quantidade,
+        valor_unitario:      item.valor_unitario,
+        valor_total:         item.valor_total,
+        horimetro:           item.horimetro ?? null,
+        data:                dataEntrada,
+        observacao:          `NF ${nfId} — Apropriação Direta (${emitente})`,
+        nf_entrada_item_id:  item.id,
+      });
+      if (item.horimetro) {
+        await supabase.from("maquinas").update({ horimetro_atual: item.horimetro }).eq("id", item.maquina_id);
+      }
+    }
 
     // ── Estoque de terceiros (legado / seleção manual) ───────────
     if (item.tipo_apropiacao === "terceiro") {
@@ -3011,6 +3034,7 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
     await estornarMovimentacoesPA(nfId);
 
     await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
+    await supabase.from("abastecimentos").delete().in("nf_entrada_item_id", itemIds);
   }
 
   // 3. Estoque de terceiros vinculados a esta NF
@@ -3047,12 +3071,14 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
   // real de estoque e CP na NF 26967, set/2026).
   await limparMovimentacoesEFinanceiroDaNf(nfId);
 
-  // historico_manutencao (peças/manutenção) ainda só linka por item_id — mantém
-  // a limpeza por essa via, feita antes de apagar os itens abaixo.
+  // historico_manutencao (peças/manutenção) e abastecimentos (combustível)
+  // ainda só linkam por item_id — mantém a limpeza por essa via, feita antes
+  // de apagar os itens abaixo.
   const { data: itens } = await supabase.from("nf_entrada_itens").select("id").eq("nf_entrada_id", nfId);
   const itemIds = (itens ?? []).map(i => i.id as string);
   if (itemIds.length > 0) {
     await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
+    await supabase.from("abastecimentos").delete().in("nf_entrada_item_id", itemIds);
   }
 
   // 2. Reverter movimentações PA

@@ -1375,6 +1375,10 @@ export type NfEntradaItem = {
   // Apropriação Direta — peça/serviço de manutenção ratado entre várias máquinas
   // (frotas) por percentual manual — gera um historico_manutencao por máquina.
   maquinas_rateio?: { maquina_id: string; percentual: number }[];
+  // Apropriação Direta — hodômetro/horímetro do veículo no momento do
+  // abastecimento (item combustível) — alimenta abastecimentos.horimetro e
+  // maquinas.horimetro_atual, igual ao abastecimento pela bomba em Estoque.
+  horimetro?: number;
   alerta_preco: boolean;
   created_at?: string;
 };

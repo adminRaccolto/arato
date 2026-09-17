@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-h",
+    data: "18/09/2026",
+    titulo: "Combustível na Apropriação Direta alimenta o histórico de abastecimento do veículo",
+    modulos: ["Compras & Estoque", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "A OG \"GASTO COMBUSTÍVEL - CUSTO FAZENDA\" também é usada por clientes pra combustível comprado direto (posto), não só pra baixa de estoque — faltava marcar \"Combustível e Lubrificantes\" nela. Corrigido (também retroativo pras contas que já tinham essa OG)." },
+      { tipo: "novo", texto: "Item de combustível na Apropriação Direta agora também pede o hodômetro/horímetro do veículo — data, tipo de combustível, valor por litro e valor total já vêm da NF, só faltava isso. Ao processar a NF, o abastecimento é lançado no histórico de abastecimento do veículo (mesmo registro que o abastecimento pela bomba em Estoque já usa) com a quantidade em litros e o valor, e o horímetro/hodômetro atual da máquina é atualizado." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos → Apropriação Direta · Configurações → Operações Gerenciais",
+  },
+  {
     versao: "2026.09.18-g",
     data: "18/09/2026",
     titulo: "Correção: baixa automática na Conciliação Bancária não estava acontecendo",

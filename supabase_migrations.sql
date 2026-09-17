@@ -13119,3 +13119,36 @@ UPDATE operacoes_gerenciais
    AND permite_combustivel IS NOT true;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 273 — Abastecimento pela Apropriação Direta alimenta o histórico do veículo
+--
+-- Achado real (18/09/2026): "GASTO COMBUSTÍVEL - CUSTO FAZENDA"
+-- (2.01.01.02.099) também é usada de fato por clientes pra combustível
+-- comprado direto (posto), não só pra baixa de estoque — faltava marcar
+-- permite_combustivel nessa também (as duas outras, 001 e 002, já foram
+-- marcadas na Seção 272).
+--
+-- Item de combustível na Apropriação Direta agora grava também em
+-- `abastecimentos` (mesma tabela que o abastecimento pela bomba em Estoque
+-- já usa) — quantidade em litros, valor/L, valor total e o hodômetro/
+-- horímetro informado no item, e atualiza maquinas.horimetro_atual. Como
+-- não passa por bomba própria (comprado já dentro do veículo, fora da
+-- fazenda), bomba_id precisa deixar de ser obrigatório. nf_entrada_item_id
+-- permite limpar o registro se a NF for estornada/reprocessada — mesmo
+-- padrão que historico_manutencao.nf_entrada_item_id já usa pra manutenção.
+-- ══════════════════════════════════════════════════════════════════════════
+
+UPDATE operacoes_gerenciais
+   SET permite_combustivel = true
+ WHERE classificacao = '2.01.01.02.099'
+   AND permite_combustivel IS NOT true;
+
+ALTER TABLE abastecimentos
+  ALTER COLUMN bomba_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS nf_entrada_item_id uuid REFERENCES nf_entrada_itens(id) ON DELETE SET NULL;
+
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS horimetro numeric(12,1);
+
+NOTIFY pgrst, 'reload schema';

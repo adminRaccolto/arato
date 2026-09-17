@@ -216,6 +216,8 @@ interface ItemRascunho {
   // (combustível não precisa de campo próprio — usa maquina_id acima; o modo
   // do item vem da Operação Gerencial do cabeçalho, não de um estado por item)
   maquinas_rateio: { maquina_id: string; percentual: number }[];
+  // Apropriação Direta — hodômetro/horímetro do veículo, só no modo combustível.
+  horimetro: number;
 }
 
 interface PedidoMin { id: string; nr_pedido?: string; numero?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; ano_safra_id?: string; ciclo_id?: string; data_vencimento?: string; }
@@ -230,7 +232,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   lotes_semente: [],
   tipo_apropiacao: "estoque",
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
-  maquinas_rateio: [],
+  maquinas_rateio: [], horimetro: 0,
 });
 
 type Etapa = "cabecalho" | "itens";
@@ -882,6 +884,7 @@ export default function NfCompraPage() {
             deposito_id: i.deposito_id ?? "", bomba_id: i.bomba_id ?? "",
             maquina_id: i.maquina_id ?? "", centro_custo_id: i.centro_custo_id ?? "",
             maquinas_rateio: Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
+            horimetro: i.horimetro ?? 0,
             lotes_semente: Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome: i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto: !!i.principio_ativo_id,
@@ -1070,6 +1073,7 @@ export default function NfCompraPage() {
             maquina_id:         i.maquina_id          ?? "",
             centro_custo_id:    i.centro_custo_id     ?? "",
             maquinas_rateio:    Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
+            horimetro:          i.horimetro ?? 0,
             lotes_semente:      Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto:  !!i.principio_ativo_id,
@@ -1263,7 +1267,7 @@ export default function NfCompraPage() {
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
             deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
-            maquinas_rateio: [],
+            maquinas_rateio: [], horimetro: 0,
           };
         }));
       }
@@ -1471,6 +1475,10 @@ export default function NfCompraPage() {
           setErr(`Item "${it.descricao_nf}": selecione o veículo que abasteceu.`);
           return;
         }
+        if (modoDireto === "combustivel" && it.maquina_id && !it.horimetro) {
+          setErr(`Item "${it.descricao_nf}": informe o hodômetro/horímetro do veículo — obrigatório pra registrar no histórico de abastecimento.`);
+          return;
+        }
         if (modoDireto === "manutencao") {
           if (it.maquinas_rateio.length === 0) {
             setErr(`Item "${it.descricao_nf}": informe ao menos uma máquina no rateio por frota.`);
@@ -1566,7 +1574,7 @@ export default function NfCompraPage() {
         // não fazem sentido no modo atual, pra reprocessar uma NF antiga também corrigir
         // dado deixado de um modo anterior (ex: trocou a OG depois de já ter marcado).
         if (tipo === "custo_direto") {
-          if (modoDireto !== "combustivel") it.maquina_id = "";
+          if (modoDireto !== "combustivel") { it.maquina_id = ""; it.horimetro = 0; }
           if (modoDireto !== "manutencao") it.maquinas_rateio = [];
           if (modoDireto !== "cc") it.centro_custo_id = "";
         }
@@ -1606,6 +1614,7 @@ export default function NfCompraPage() {
           // processando normalmente mesmo antes da migration.
           e_combustivel:       (tipo === "custo_direto" && modoDireto === "combustivel") ? true : undefined,
           maquinas_rateio:     tipo === "custo_direto" && it.maquinas_rateio.length ? it.maquinas_rateio : undefined,
+          horimetro:           (tipo === "custo_direto" && modoDireto === "combustivel" && it.horimetro) ? it.horimetro : undefined,
           lotes_semente:       it.lotes_semente?.length ? it.lotes_semente : undefined,
           lote_semente:        it.lotes_semente?.length === 1 ? it.lotes_semente[0].numero : undefined,
           alerta_preco:        false,
@@ -3973,10 +3982,17 @@ export default function NfCompraPage() {
                                   sem alternar manualmente, sem repetir a mesma classificação da
                                   OG dentro de cada item. */}
                               {modoDireto === "combustivel" ? (
-                                <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }}>
-                                  <option value="">⛽ Veículo que abasteceu —</option>
-                                  {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                                </select>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }}>
+                                    <option value="">⛽ Veículo que abasteceu —</option>
+                                    {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                                  </select>
+                                  {/* Data, tipo de combustível, valor/L e valor total já vêm da NF —
+                                      só falta o hodômetro/horímetro pra alimentar o histórico de
+                                      abastecimento do veículo (mesmo registro que o abastecimento
+                                      pela bomba em Estoque já cria). */}
+                                  <InputNumerico decimais={1} value={it.horimetro || ""} onChange={v => setItem(it.key, { horimetro: parseFloat(v) || 0 })} placeholder="Hodômetro/Horímetro" style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }} />
+                                </div>
                               ) : modoDireto === "manutencao" ? (
                                 <span style={{ fontSize: 11, color: "var(--text-3)" }}>🔧 Rateio por frota abaixo ↓</span>
                               ) : (
