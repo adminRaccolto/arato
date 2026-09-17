@@ -2591,6 +2591,24 @@ export async function processarNfEntrada(
         nf_entrada_item_id:  item.id,
       });
     }
+    // ── Manutenção ratada entre várias frotas (Apropriação Direta) ──
+    // Mesmo destino (historico_manutencao, já usado pelo relatório de
+    // manutenção por máquina) — um registro por máquina, custo proporcional
+    // ao percentual informado no item, em vez de um único item/uma máquina.
+    if (item.tipo_apropiacao === "direto" && item.maquinas_rateio?.length) {
+      for (const r of item.maquinas_rateio) {
+        if (!r.maquina_id) continue;
+        await supabase.from("historico_manutencao").insert({
+          fazenda_id,
+          maquina_id:          r.maquina_id,
+          data:                dataEntrada,
+          tipo:                "corretiva",
+          descricao:           `${item.descricao_produto} (${r.percentual}% ratado)`,
+          custo:               item.valor_total * (r.percentual / 100),
+          nf_entrada_item_id:  item.id,
+        });
+      }
+    }
 
     // ── Estoque de terceiros (legado / seleção manual) ───────────
     if (item.tipo_apropiacao === "terceiro") {

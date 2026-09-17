@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-z",
+    data: "17/09/2026",
+    titulo: "Apropriação Direta — combustível por veículo e rateio de peças entre frotas",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Item de NF do tipo Apropriação Direta agora pode ser marcado como \"⛽ É combustível?\" — ao marcar, aparece um seletor pra indicar qual veículo abasteceu (útil pra diesel comprado direto no posto, sem passar por bomba/estoque próprio de combustível — controle de custo por frota, não movimenta estoque)." },
+      { tipo: "novo", texto: "Item de peça/serviço de manutenção (quando o Centro de Custo escolhido é de manutenção de máquinas) agora pode ratear o custo entre várias máquinas por percentual manual, em vez de indicar uma máquina só — cada máquina do rateio recebe seu custo proporcional no histórico de manutenção (mesmo relatório de custo por máquina que já existe em Relatórios → Manutenção). O rateio precisa somar 100% pra processar a NF." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos → Apropriação Direta",
+  },
+  {
     versao: "2026.09.17-y",
     data: "17/09/2026",
     titulo: "Correção: Operação Gerencial criada pelo cliente só aparecia pra quem criou",

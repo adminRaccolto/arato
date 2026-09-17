@@ -1369,6 +1369,12 @@ export type NfEntradaItem = {
   tipo_apropiacao: "estoque" | "maquinario" | "direto" | "terceiro" | "vef" | "remessa";
   centro_custo_id?: string;
   operacao_gerencial_id?: string;   // preenchido para itens direto — base da auditoria NCM×OG
+  // Apropriação Direta — combustível abastecido direto no veículo (sem bomba/estoque
+  // próprio): maquina_id acima guarda o veículo, só pra controle de custo por frota.
+  e_combustivel?: boolean;
+  // Apropriação Direta — peça/serviço de manutenção ratado entre várias máquinas
+  // (frotas) por percentual manual — gera um historico_manutencao por máquina.
+  maquinas_rateio?: { maquina_id: string; percentual: number }[];
   alerta_preco: boolean;
   created_at?: string;
 };

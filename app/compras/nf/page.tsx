@@ -211,6 +211,13 @@ interface ItemRascunho {
   bomba_id: string;
   maquina_id: string;
   centro_custo_id: string;
+  // Apropriação Direta — item é combustível (ex: diesel abastecido direto
+  // no veículo, sem passar por bomba/estoque próprio): maquina_id acima
+  // guarda o veículo abastecido, só pra controle de custo por frota.
+  e_combustivel: boolean;
+  // Apropriação Direta — peça/serviço de manutenção ratado entre várias
+  // máquinas (frotas) por percentual manual, em vez de uma máquina só.
+  maquinas_rateio: { maquina_id: string; percentual: number }[];
 }
 
 interface PedidoMin { id: string; nr_pedido?: string; numero?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; ano_safra_id?: string; ciclo_id?: string; data_vencimento?: string; }
@@ -225,6 +232,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   lotes_semente: [],
   tipo_apropiacao: "estoque",
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
+  e_combustivel: false, maquinas_rateio: [],
 });
 
 type Etapa = "cabecalho" | "itens";
@@ -875,6 +883,8 @@ export default function NfCompraPage() {
             tipo_apropiacao: i.tipo_apropiacao,
             deposito_id: i.deposito_id ?? "", bomba_id: i.bomba_id ?? "",
             maquina_id: i.maquina_id ?? "", centro_custo_id: i.centro_custo_id ?? "",
+            e_combustivel: i.e_combustivel ?? false,
+            maquinas_rateio: Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
             lotes_semente: Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome: i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto: !!i.principio_ativo_id,
@@ -1062,6 +1072,8 @@ export default function NfCompraPage() {
             bomba_id:           i.bomba_id            ?? "",
             maquina_id:         i.maquina_id          ?? "",
             centro_custo_id:    i.centro_custo_id     ?? "",
+            e_combustivel:      i.e_combustivel       ?? false,
+            maquinas_rateio:    Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
             lotes_semente:      Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto:  !!i.principio_ativo_id,
@@ -1255,6 +1267,7 @@ export default function NfCompraPage() {
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
             deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
+            e_combustivel: false, maquinas_rateio: [],
           };
         }));
       }
@@ -1451,6 +1464,28 @@ export default function NfCompraPage() {
       // Divergência de peso é permitida — o custo unitário será ajustado automaticamente
       // para manter o valor total da NF: custo/kg = valor_total / soma_lotes
     }
+    // Guard: item de Apropriação Direta marcado como combustível precisa do veículo;
+    // rateio por frota (peças/manutenção), se preenchido, precisa somar 100%.
+    if (tipo === "custo_direto") {
+      for (const it of itens) {
+        if (!it.descricao_nf.trim()) continue;
+        if (it.e_combustivel && !it.maquina_id) {
+          setErr(`Item "${it.descricao_nf}": selecione o veículo que abasteceu.`);
+          return;
+        }
+        if (it.maquinas_rateio.length > 0) {
+          if (it.maquinas_rateio.some(r => !r.maquina_id)) {
+            setErr(`Item "${it.descricao_nf}": selecione a máquina em todas as linhas do rateio por frota, ou remova a linha em branco.`);
+            return;
+          }
+          const totalPct = it.maquinas_rateio.reduce((s, r) => s + (r.percentual || 0), 0);
+          if (Math.abs(totalPct - 100) > 0.01) {
+            setErr(`Item "${it.descricao_nf}": o rateio por frota soma ${totalPct.toFixed(1)}% — precisa somar exatamente 100%.`);
+            return;
+          }
+        }
+      }
+    }
     // Guard: unidade que vai para o estoque precisa bater com a unidade do cadastro do
     // insumo — senão a quantidade da NF é creditada silenciosamente na unidade errada
     // (ex: NF em kg, insumo cadastrado em L). "ton" e "t" são tratadas como sinônimos.
@@ -1550,6 +1585,12 @@ export default function NfCompraPage() {
           valor_total:         it.valor_total,
           tipo_apropiacao:     tipoAprp,
           centro_custo_id:     it.centro_custo_id || undefined,
+          // Só envia quando usado (true / não-vazio) — evita mandar essas colunas em
+          // toda NF de Apropriação Direta enquanto a Seção 271 (novas colunas) não
+          // tiver sido executada no banco; item que não usa o recurso novo continua
+          // processando normalmente mesmo antes da migration.
+          e_combustivel:       (tipo === "custo_direto" && it.e_combustivel) ? true : undefined,
+          maquinas_rateio:     tipo === "custo_direto" && it.maquinas_rateio.length ? it.maquinas_rateio : undefined,
           lotes_semente:       it.lotes_semente?.length ? it.lotes_semente : undefined,
           lote_semente:        it.lotes_semente?.length === 1 ? it.lotes_semente[0].numero : undefined,
           alerta_preco:        false,
@@ -3884,7 +3925,7 @@ export default function NfCompraPage() {
                               {fmtBRL(it.valor_total)}
                             </div>
                             <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
-                              <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                              <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "", maquinas_rateio: [] })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">— selecionar CC —</option>
                                 {ccOpts.map(c => (
                                   <option key={c.id} value={c.id}>
@@ -3892,12 +3933,16 @@ export default function NfCompraPage() {
                                   </option>
                                 ))}
                               </select>
-                              {ccManutencao(it.centro_custo_id) && (
-                                <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
-                                  <option value="">🔧 Máquina (opcional)</option>
+                              <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#7C3A00", cursor: "pointer", userSelect: "none" as const }}>
+                                <input type="checkbox" checked={it.e_combustivel} onChange={e => setItem(it.key, { e_combustivel: e.target.checked, maquina_id: "", maquinas_rateio: [] })} />
+                                ⛽ É combustível?
+                              </label>
+                              {it.e_combustivel ? (
+                                <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }}>
+                                  <option value="">⛽ Veículo que abasteceu</option>
                                   {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
                                 </select>
-                              )}
+                              ) : null}
                             </div>
                           </>
                         ) : (
@@ -3947,6 +3992,42 @@ export default function NfCompraPage() {
                             ⚠️ Informe o peso total em kg no campo de conversão.
                           </div>
                         )}
+                        {/* Rateio de custo por frota — peça/serviço de manutenção (Apropriação Direta)
+                            apropriado a mais de uma máquina, cada uma com seu percentual do valor do item */}
+                        {tipo === "custo_direto" && !it.e_combustivel && ccManutencao(it.centro_custo_id) && (() => {
+                          const totalPct = it.maquinas_rateio.reduce((s, r) => s + (r.percentual || 0), 0);
+                          const ok = it.maquinas_rateio.length === 0 || Math.abs(totalPct - 100) < 0.01;
+                          return (
+                            <div style={{ padding: "8px 12px", background: "#FBF0D8", borderTop: "0.5px solid #F6C87A" }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#7A5A12", marginBottom: 6 }}>🔧 Rateio de custo por frota (opcional — deixe vazio pra não vincular a nenhuma máquina)</div>
+                              {it.maquinas_rateio.map((r, idx) => (
+                                <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 4, alignItems: "center" }}>
+                                  <select value={r.maquina_id} onChange={e => {
+                                    const novo = it.maquinas_rateio.map((x, i) => i === idx ? { ...x, maquina_id: e.target.value } : x);
+                                    setItem(it.key, { maquinas_rateio: novo });
+                                  }} style={{ ...inp, fontSize: 12, flex: 1, background: "#fff" }}>
+                                    <option value="">— máquina —</option>
+                                    {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                                  </select>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                    <InputNumerico decimais={1} value={r.percentual || ""} onChange={v => {
+                                      const novo = it.maquinas_rateio.map((x, i) => i === idx ? { ...x, percentual: parseFloat(v) || 0 } : x);
+                                      setItem(it.key, { maquinas_rateio: novo });
+                                    }} style={{ ...inp, fontSize: 12, width: 70, background: "#fff" }} />
+                                    <span style={{ fontSize: 11, color: "#7A5A12" }}>%</span>
+                                  </div>
+                                  <button onClick={() => setItem(it.key, { maquinas_rateio: it.maquinas_rateio.filter((_, i) => i !== idx) })} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, lineHeight: 1 }}>×</button>
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <button onClick={() => setItem(it.key, { maquinas_rateio: [...it.maquinas_rateio, { maquina_id: "", percentual: it.maquinas_rateio.length === 0 ? 100 : 0 }] })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #F6C87A", background: "#fff", cursor: "pointer", color: "#7A5A12" }}>+ Adicionar máquina</button>
+                                {it.maquinas_rateio.length > 0 && (
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: ok ? "#166534" : "#B91C1C" }}>Total: {totalPct.toFixed(1)}%{!ok ? " — deve somar 100%" : ""}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {/* Lotes de semente — aparece somente quando insumo é semente */}
                         {tipo === "insumos" && insumos.find(i => i.id === it.insumo_id)?.categoria === "semente" && (() => {
                           const unidadeItem = insumos.find(i => i.id === it.insumo_id)?.unidade ?? "kg";
@@ -4134,6 +4215,10 @@ export default function NfCompraPage() {
                         {itens.filter(i => i.centro_custo_id && i.descricao_nf.trim()).length} item(s) com centro de custo ·{" "}
                         {itens.filter(i => !i.centro_custo_id && i.descricao_nf.trim()).length} sem CC (serão lançados sem centro de custo).
                         Nenhuma movimentação de estoque será gerada.
+                        {itens.some(i => i.e_combustivel && i.descricao_nf.trim()) &&
+                          ` · ${itens.filter(i => i.e_combustivel && i.descricao_nf.trim()).length} item(s) de combustível marcado(s) por veículo.`}
+                        {itens.some(i => i.maquinas_rateio.length > 0 && i.descricao_nf.trim()) &&
+                          ` · ${itens.filter(i => i.maquinas_rateio.length > 0 && i.descricao_nf.trim()).length} item(s) com custo ratado entre frotas.`}
                       </div>
                     )}
                     {tipo === "vef" && (

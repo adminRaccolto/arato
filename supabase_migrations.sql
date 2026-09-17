@@ -13068,3 +13068,26 @@ CREATE POLICY "og_select" ON operacoes_gerenciais FOR SELECT USING (
 );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 271 — Combustível e rateio por frota em item de Apropriação Direta
+--
+-- NF de Produtos → Apropriação Direta: item de combustível (ex: diesel
+-- abastecido direto no posto, sem passar por bomba/estoque próprio) agora
+-- pode indicar qual veículo abasteceu (reaproveita maquina_id, já existente
+-- na tabela) — e_combustivel só marca a intenção pra tela saber o que
+-- mostrar; não gera nenhuma movimentação de estoque/bomba.
+--
+-- Item de peça/serviço de manutenção (CC marcado "manutencao_maquinas")
+-- agora pode ratear o custo entre várias máquinas por percentual manual,
+-- em vez de uma máquina só — cada entrada de maquinas_rateio gera um
+-- historico_manutencao próprio (mesmo relatório de custo por máquina que
+-- já existe em Relatórios → Manutenção), com o custo proporcional ao
+-- percentual informado.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS e_combustivel  boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS maquinas_rateio jsonb;
+
+NOTIFY pgrst, 'reload schema';
