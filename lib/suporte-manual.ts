@@ -432,6 +432,8 @@ Gerencia arrendamentos de terra: controla parcelas, vencimentos e pagamentos.
 - sc_soja / sc_milho / sc_soja_milho → gera contrato de grãos (compromete produção)
 - BRL → lança CP no financeiro
 
+**Correção 17/09/2026 — pagamento manual em BRL não lançava CP:** "Gerar Parcelas" (o gerador em lote, por safra) já lançava o CP normalmente. Mas adicionar ou editar uma parcela BRL manualmente (aba Pagamentos → "+ Novo Pagamento" ou editar uma existente) só salvava a parcela nesta tela — nunca criava o lançamento em Contas a Pagar, mesmo pra contratos em dinheiro. Corrigido: salvar uma parcela BRL manual agora cria (ou, se já tiver, atualiza) o CP correspondente, com status refletindo o status escolhido na tela (Pendente→Em aberto, Pago→Baixado, Parcial→Parcial).
+
 ---
 
 ## MÓDULO 12 — COMERCIAL & LOGÍSTICA → EXPEDIÇÃO
@@ -530,11 +532,15 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 
 **Aviso de título já lançado (17/09/2026):** ao salvar um lançamento manual com o mesmo fornecedor/cliente (mesma pessoa cadastrada) e o mesmo número de documento de um título já existente (não cancelado) na mesma fazenda, o sistema mostra "Título já lançado" antes de salvar, com botão "OK" (cancela e volta pro formulário) e "Ver documento" (abre o lançamento existente pra conferir). Só funciona quando o fornecedor/cliente está vinculado via cadastro — lançamento sem pessoa vinculada (só descrição em texto livre) não tem como ser comparado. NFs, Pedidos de Compra e parcelas de Contrato Financeiro/Seguro/Consórcio (lançados automaticamente) não passam por esse aviso — já têm seu próprio controle de duplicidade.
 
+**Entidade Contábil no lançamento (17/09/2026):** campo "Entidade Contábil (LCDPR/SPED)" no formulário — "Padrão da fazenda" (comportamento de sempre), "Pessoa Física" ou "Pessoa Jurídica". Decide se esse título entra no LCDPR (PF) ou no SPED ECD (PJ) — pela origem cadastrada do título, nunca pela conta bancária usada na baixa/recebimento. Use quando uma CP/CR de origem PF for paga/recebida pela conta ou fluxo de uma fazenda PJ (ou o contrário) — sem esse campo, o sistema sempre herdava a entidade da fazenda vinculada, sem chance de corrigir caso a caso.
+
 **Baixa parcial:** valor pago < total → status "parcial" (badge amarelo). O saldo permanece no mesmo registro — baixe o restante clicando novamente no ícone de baixa.
 
 **CP em dólar:** campo "Cotação (R$/US$)" não é automático — abra a CP, preencha a cotação e salve.
 
 **Reprogramar vencimento:** Ícone 📅 na linha → nova data → a observação recebe "[Reprogramado para DD/MM/AAAA]" automaticamente.
+
+**Correção 17/09/2026 — borderô "vazio" que não excluía:** cancelar/estornar/confirmar um borderô agora passa por uma rota do servidor (imune a sessão expirada) — antes, em sessões mais longas, a exclusão podia falhar silenciosamente e o borderô ficava como uma "casca vazia" (0 títulos, mas o card continuava na lista, geralmente com o texto antigo tipo "— 12 títulos" ainda no nome, porque esse texto é só um rótulo salvo na criação, não é recalculado). Se um card assim aparecer, clique em Cancelar de novo — agora deve funcionar.
 
 **Borderô (selo "BDR"):** pagamento em lote de vários títulos de uma vez. Na aba Baixados, o borderô aparece em uma linha só, com o nome do(s) fornecedor(es)/cliente(s) dos títulos que ele paga (não mais um texto genérico "Borderô DD/MM — N títulos"); clique na linha para expandir e ver os títulos individuais. O filtro "Fornecedor / Cliente" também funciona sobre os borderôs pagos.
 
@@ -770,7 +776,7 @@ Gerencia o certificado A1 usado para assinar NF-e. Alerta de vencimento 30/15/7/
 
 Gerador do Livro Caixa Digital do Produtor Rural — obrigação anual da Receita Federal para produtores Pessoa Física (CPF), entregue junto com a Declaração de Imposto de Renda até 30/04 do ano seguinte. Segue o leiaute oficial 1.3 (Anexo ao Ato Declaratório Executivo COPES nº 1/2020).
 
-**Como funciona:** o sistema lê automaticamente todos os lançamentos já baixados no Financeiro com entidade contábil "PF" e vínculo de atividade "Rural" (ou em branco) no ano selecionado — não é preciso lançar nada manualmente, exceto dados históricos anteriores ao uso do sistema.
+**Como funciona:** o sistema lê automaticamente todos os lançamentos já baixados (status "Baixado" ou "Parcial") no Financeiro com entidade contábil "PF" e vínculo de atividade "Rural" (ou em branco) no ano selecionado — não é preciso lançar nada manualmente, exceto dados históricos anteriores ao uso do sistema. **Baixa parcial (17/09/2026):** entra pelo valor efetivamente pago (campo valor_pago) na data da baixa, não pelo valor total do título — regime de caixa é sobre dinheiro que realmente se moveu, não sobre o título estar 100% liquidado. Atenção: se um título for pago em mais de uma baixa parcial em datas/meses diferentes, o sistema hoje guarda só a data da baixa MAIS RECENTE e o valor ACUMULADO total pago — o Livro Caixa mostra o total na data da última baixa, não separado por mês de cada parcela paga.
 
 **Abas:**
 - **Livro Caixa** — lista cronológica dos lançamentos do ano com saldo acumulado. A coluna "Doc." permite ajustar o tipo de documento (Nota Fiscal, Fatura, Recibo, Contrato, Folha de Pagamento, Outros) quando necessário.

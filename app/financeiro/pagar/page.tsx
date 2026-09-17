@@ -355,6 +355,7 @@ function ContasPagarInner() {
       quantidade_mao_obra:   l.quantidade_mao_obra?.toString() ?? "",
       veiculo_sel:           l.maquina_id ? `m:${l.maquina_id}` : l.veiculo_id ? `v:${l.veiculo_id}` : "",
       empresa_id:            l.empresa_id            ?? "",
+      entidade_contabil:     (l.entidade_contabil as "pf" | "pj" | undefined) ?? "",
     });
     setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
     carregarOps();
@@ -418,6 +419,11 @@ function ContasPagarInner() {
     data_emissao: TODAY,
     numero_documento: "",
     serie: "",
+    // "" = herda o padrão da fazenda (comportamento de sempre, via trigger no
+    // banco). Editável aqui pra cobrir o caso de uma CP de origem PF paga
+    // pela conta/fluxo de uma fazenda PJ (ou vice-versa) — o LCDPR filtra por
+    // este campo, nunca pela conta bancária usada na baixa.
+    entidade_contabil: "" as "" | "pf" | "pj",
     // Mão de Obra
     funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "",
     // Veículo vinculado
@@ -1071,6 +1077,7 @@ function ContasPagarInner() {
           maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : null,
           veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : null,
           empresa_id:  form.empresa_id || null,
+          entidade_contabil: form.entidade_contabil || null,
         };
         // Se mudou para recorrência, converte: atualiza lançamento existente como parcela 1 e cria as demais
         if (form.condicao === "recorrencia") {
@@ -1200,6 +1207,7 @@ function ContasPagarInner() {
         veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : undefined,
       } : {}),
       empresa_id: form.empresa_id || undefined,
+      entidade_contabil: form.entidade_contabil || undefined,
     };
 
     try {
@@ -1357,7 +1365,7 @@ function ContasPagarInner() {
                   // carregue os anos safra imediatamente sem exigir seleção manual
                   setCascade({ ...lc, fazendaId: lc.fazendaId || fazendaId || "", anoSafraId: lc.anoSafraId || anoSafraVigenteId || "" });
                   setModalTab("principal");
-                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId || anoSafraVigenteId || "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "", empresa_id: "" });
+                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId || anoSafraVigenteId || "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "", empresa_id: "", entidade_contabil: "" });
                   setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true);
                 }}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -3067,6 +3075,21 @@ function ContasPagarInner() {
                         <option value="DUPLICATA">Duplicata</option>
                         <option value="OUTROS">Outros</option>
                       </select>
+                    </div>
+                  </div>
+
+                  {/* Entidade Contábil — decide o LCDPR/SPED, independe da conta bancária usada na baixa */}
+                  <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 12, marginTop: 12, alignItems: "end" }}>
+                    <div>
+                      <label style={lbl}>Entidade Contábil (LCDPR/SPED)</label>
+                      <select style={inp} value={form.entidade_contabil} onChange={e => setForm(p => ({ ...p, entidade_contabil: e.target.value as typeof form.entidade_contabil }))}>
+                        <option value="">— Padrão da fazenda —</option>
+                        <option value="pf">Pessoa Física</option>
+                        <option value="pj">Pessoa Jurídica</option>
+                      </select>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                      Decide se esta CP entra no LCDPR (PF) ou no SPED ECD (PJ) — pela origem do título, não pela conta bancária usada na baixa. Use quando um título de origem PF for pago por conta/fluxo de uma fazenda PJ (ou vice-versa).
                     </div>
                   </div>
 

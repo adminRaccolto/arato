@@ -223,6 +223,7 @@ function ContasReceberInner() {
       serie:                 "",
       meses_diferido:        "0",
       empresa_id:            l.empresa_id ?? "",
+      entidade_contabil:     (l.entidade_contabil as "pf" | "pj" | undefined) ?? "",
     });
     setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
     carregarOps();
@@ -266,6 +267,10 @@ function ContasReceberInner() {
     serie: "",
     meses_diferido: "0",
     empresa_id: "",
+    // "" = herda o padrão da fazenda (via trigger no banco). Editável pra
+    // cobrir CR de origem PF recebido pela conta/fluxo de uma fazenda PJ (ou
+    // vice-versa) — o LCDPR filtra por este campo, nunca pela conta bancária.
+    entidade_contabil: "" as "" | "pf" | "pj",
   });
 
   // ── Filtros de coluna ─────────────────────────────────────
@@ -698,6 +703,7 @@ function ContasReceberInner() {
           forma_pagamento:       form.forma_recebimento    || null,
           numero_documento:      form.numero_documento     || null,
           empresa_id:            form.empresa_id           || null,
+          entidade_contabil:     form.entidade_contabil    || null,
         };
         const { error, count } = await supabase.from("lancamentos").update(patch, { count: "exact" }).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
@@ -744,6 +750,7 @@ function ContasReceberInner() {
       natureza:              form.natureza,
       numero_documento:      form.numero_documento      || undefined,
       empresa_id:            form.empresa_id            || undefined,
+      entidade_contabil:     form.entidade_contabil     || undefined,
     };
 
     const totalParcelas  = form.parcelar ? Math.max(1, Number(form.totalParcelas) || 1) : 1;
@@ -837,7 +844,7 @@ function ContasReceberInner() {
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>até</span>
               <input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)}
                 style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
-              <button onClick={() => { setEditandoId(null); setCascade({ fazendaId: fazendaId ?? "" }); setForm(p => ({ ...p, pessoa_id: "", descricao: "", categoria: CATS_CR[0], vencimento: "", valorMask: "", cotacaoMask: "", sacasMask: "", obs: "", parcelar: false, totalParcelas: "1", intervaloMeses: "1", chave_xml: "", centro_custo: "", ano_safra_id: anoSafraVigenteId ?? "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", data_emissao: TODAY, numero_documento: "", serie: "", meses_diferido: "0" })); setModalTab("principal"); carregarOps(); setModalNovo(true); }}
+              <button onClick={() => { setEditandoId(null); setCascade({ fazendaId: fazendaId ?? "" }); setForm(p => ({ ...p, pessoa_id: "", descricao: "", categoria: CATS_CR[0], vencimento: "", valorMask: "", cotacaoMask: "", sacasMask: "", obs: "", parcelar: false, totalParcelas: "1", intervaloMeses: "1", chave_xml: "", centro_custo: "", ano_safra_id: anoSafraVigenteId ?? "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", data_emissao: TODAY, numero_documento: "", serie: "", meses_diferido: "0", entidade_contabil: "" })); setModalTab("principal"); carregarOps(); setModalNovo(true); }}
                 style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Nova CR
               </button>
@@ -1700,6 +1707,21 @@ function ContasReceberInner() {
                         <option value="DUPLICATA">Duplicata</option><option value="CHEQUE">Cheque</option>
                         <option value="PIX">PIX</option><option value="TED">TED</option><option value="OUTROS">Outros</option>
                       </select>
+                    </div>
+                  </div>
+
+                  {/* Entidade Contábil — decide o LCDPR/SPED, independe da conta bancária usada no recebimento */}
+                  <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 12, marginBottom: 12, alignItems: "end" }}>
+                    <div>
+                      <label style={lbl}>Entidade Contábil (LCDPR/SPED)</label>
+                      <select style={inp} value={form.entidade_contabil} onChange={e => setForm(p => ({ ...p, entidade_contabil: e.target.value as typeof form.entidade_contabil }))}>
+                        <option value="">— Padrão da fazenda —</option>
+                        <option value="pf">Pessoa Física</option>
+                        <option value="pj">Pessoa Jurídica</option>
+                      </select>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-2)" }}>
+                      Decide se este CR entra no LCDPR (PF) ou no SPED ECD (PJ) — pela origem do título, não pela conta bancária usada no recebimento.
                     </div>
                   </div>
 

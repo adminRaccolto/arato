@@ -286,9 +286,16 @@ export default function LCDPR() {
       const listaNomesInternos = [...nomesInternosConta];
 
       const filtrados = lans.filter((l: Lancamento) => {
-        // LCDPR é regime de caixa — só o que realmente baixou entra. "Previsão" é
-        // rascunho de planejamento, pode ter valor/data ainda alterados antes de confirmar.
-        if (l.status !== "baixado") return false;
+        // LCDPR é regime de caixa — só o que realmente teve movimento de caixa
+        // entra. "Previsão" é rascunho de planejamento, pode ter valor/data
+        // ainda alterados antes de confirmar — nunca entra. "Parcial" TEM
+        // movimento de caixa de verdade (valor_pago, na data_baixa) mesmo
+        // sem o título estar 100% liquidado — excluir "parcial" (como era
+        // antes) fazia esse valor pago simplesmente desaparecer do Livro
+        // Caixa. O valor usado abaixo já é valor_pago (não valor cheio), e a
+        // data já é data_baixa — então incluir "parcial" aqui não precisa de
+        // mais nenhuma mudança na montagem do item.
+        if (l.status !== "baixado" && l.status !== "parcial") return false;
         if (apoioIds.has(l.id)) return false;
         if (l.entidade_contabil !== "pf") return false;
         if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) return false;
@@ -749,8 +756,10 @@ export default function LCDPR() {
       cpfCnpjSel = empresaSel.cpf_cnpj ?? "";
       entidadeLabel = "Pessoa Jurídica";
       const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+      // "parcial" também tem movimento de caixa real (valor_pago na
+      // data_baixa) — mesma razão do filtro PF acima.
       const { data: pjLans } = await supabase.from("lancamentos")
-        .select("*").in("fazenda_id", fids).eq("empresa_id", empresaSel.id).eq("status", "baixado");
+        .select("*").in("fazenda_id", fids).eq("empresa_id", empresaSel.id).in("status", ["baixado", "parcial"]);
       const chaveAlvo = modoExport === "mensal" ? `${anoSel}-${mm}` : String(anoSel);
       const nomesInternosPJ = new Set<string>();
       for (const p of produtoresDados) if (p.nome && p.nome.trim().length >= 5) nomesInternosPJ.add(normTxt(p.nome.trim()));

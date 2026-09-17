@@ -374,6 +374,10 @@ export default function Arrendamentos() {
       const ehBrl   = arr.forma_pagamento === "brl";
 
       const novosPagamentos: Omit<Pagamento, "id">[] = [];
+      // Antes um erro aqui era só engolido (catch { return null }) — a parcela
+      // era criada normalmente e o alerta final dizia "sucesso", sem nenhum
+      // sinal de que o CP real nunca foi lançado.
+      const errosLancamento: string[] = [];
 
       for (const cfg of configSafras) {
         if (!cfg.incluir) continue;
@@ -439,7 +443,10 @@ export default function Arrendamentos() {
                 ano_safra_id: cfg.ano_safra_id || undefined,
               } as Parameters<typeof criarLancamento>[0]);
               return lanc.id;
-            } catch { return null; }
+            } catch (e) {
+              errosLancamento.push(`${descricao}: ${(e as { message?: string })?.message ?? "erro desconhecido"}`);
+              return null;
+            }
           };
 
           // Lançamento SOJA (se sc/ha soja preenchido)
@@ -683,12 +690,15 @@ export default function Arrendamentos() {
         inseridos.length > 0   ? `${inseridos.length} parcela(s) nova(s) criada(s)` : "",
       ].filter(Boolean).join(", ") || "Nenhuma alteração nas parcelas.";
 
+      const avisos: string[] = [];
+      if (errosLancamento.length > 0) {
+        avisos.push(`⚠️ CP(s) não lançado(s) em Contas a Pagar:\n${errosLancamento.join("\n")}\n\nA parcela foi salva na tela, mas SEM o lançamento financeiro correspondente — tente gerar de novo, ou lance o CP manualmente.`);
+      }
       if (errosContrato.length > 0) {
-        alert(
-          `${msgParcelas}.\n\n` +
-          `⚠️ Contrato(s) de grãos não criado(s):\n${errosContrato.join("\n")}\n\n` +
-          `Verifique se as Migrations 34 e 35 foram executadas e se o sc/ha está preenchido.`
-        );
+        avisos.push(`⚠️ Contrato(s) de grãos não criado(s):\n${errosContrato.join("\n")}\n\nVerifique se as Migrations 34 e 35 foram executadas e se o sc/ha está preenchido.`);
+      }
+      if (avisos.length > 0) {
+        alert(`${msgParcelas}.\n\n${avisos.join("\n\n")}`);
       } else {
         alert(msgParcelas);
       }
@@ -716,11 +726,49 @@ export default function Arrendamentos() {
         status: fP.status,
         observacao: fP.observacao || null,
       };
+
+      // Pagamento em dinheiro (BRL) precisa de um CP real em lancamentos —
+      // sem isso a parcela existia só nesta tela, nunca em Contas a Pagar.
+      // Cria na primeira vez que a parcela é salva (ou numa parcela antiga
+      // que nunca teve lançamento, ex: criada antes desta correção); numa
+      // edição que já tem lançamento vinculado, sincroniza valor/vencimento/
+      // status em vez de criar um segundo.
+      let lancamentoId = editPag?.lancamento_id ?? null;
+      if (!ehSc && payload.valor_previsto && payload.valor_previsto > 0) {
+        const statusLanc = fP.status === "pago" ? "baixado" : fP.status === "parcial" ? "parcial" : "em_aberto";
+        const valorPagoLanc = statusLanc !== "em_aberto" ? (payload.valor_pago ?? payload.valor_previsto) : undefined;
+        const dataBaixaLanc = statusLanc !== "em_aberto" ? (payload.data_pagamento || undefined) : undefined;
+        if (lancamentoId) {
+          await supabase.from("lancamentos").update({
+            valor: payload.valor_previsto,
+            data_vencimento: payload.data_vencimento,
+            status: statusLanc,
+            valor_pago: valorPagoLanc ?? null,
+            data_baixa: dataBaixaLanc ?? null,
+          }).eq("id", lancamentoId);
+        } else {
+          const propNome = selArr.proprietario_nome ?? "Proprietário";
+          const lanc = await criarLancamento({
+            fazenda_id: selArr.fazenda_id ?? fazendaId, tipo: "pagar", moeda: "BRL",
+            descricao: `Arrendamento — ${propNome}`, categoria: "Arrendamento de Terra",
+            data_lancamento: hoje(), data_vencimento: payload.data_vencimento,
+            valor: payload.valor_previsto,
+            status: statusLanc, valor_pago: valorPagoLanc, data_baixa: dataBaixaLanc,
+            auto: true,
+            observacao: "Lançado manualmente na tela de Contratos de Arrendamento.",
+            produtor_id: selArr.produtor_id || undefined,
+            ano_safra_id: payload.ano_safra_id || undefined,
+          } as Parameters<typeof criarLancamento>[0]);
+          lancamentoId = lanc.id;
+        }
+      }
+      const payloadFinal = { ...payload, lancamento_id: lancamentoId };
+
       if (editPag) {
-        const { data } = await supabase.from("arrendamento_pagamentos").update(payload).eq("id", editPag.id).select().single();
+        const { data } = await supabase.from("arrendamento_pagamentos").update(payloadFinal).eq("id", editPag.id).select().single();
         setPagamentos(prev => prev.map(p => p.id === editPag.id ? data as Pagamento : p));
       } else {
-        const { data } = await supabase.from("arrendamento_pagamentos").insert(payload).select().single();
+        const { data } = await supabase.from("arrendamento_pagamentos").insert(payloadFinal).select().single();
         setPagamentos(prev => [...prev, data as Pagamento]);
       }
       setModalPag(false); setEditPag(null); setFP(initFP());

@@ -6,6 +6,38 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-t",
+    data: "17/09/2026",
+    titulo: "Correção: pagamento de arrendamento em dinheiro (BRL) lançado manualmente não gerava CP",
+    modulos: ["Comercial & Logística", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O gerador de parcelas em lote (por safra) já lançava o CP normalmente para arrendamentos em dinheiro. Mas adicionar ou editar uma parcela manualmente na aba Pagamentos só salvava o registro na tela do Arrendamento — nunca criava o lançamento em Contas a Pagar. Corrigido: salvar uma parcela BRL manual agora cria (ou atualiza, se já existir) o CP correspondente." },
+    ],
+    onde: "Comercial & Logística → Contratos de Arrendamento → aba Pagamentos",
+  },
+  {
+    versao: "2026.09.17-s",
+    data: "17/09/2026",
+    titulo: "Correção: borderô 'vazio' (0 títulos) que não conseguia ser excluído",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Cancelar, estornar ou confirmar um borderô agora passa por uma rota do servidor, imune a sessão expirada — antes usava o navegador direto, e em sessões mais longas a exclusão podia falhar sem aviso, deixando um card de borderô 'vazio' (0 títulos, R$ 0,00) preso na lista. Os 2 casos já encontrados em produção foram limpos." },
+      { tipo: "correcao", texto: "De passagem, corrigido também: confirmar pagamento de um borderô que inclua um título com baixa parcial anterior agora soma sobre o que já tinha sido pago, em vez de sobrescrever — mesmo ajuste feito hoje na baixa em lote direta." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Borderôs",
+  },
+  {
+    versao: "2026.09.17-r",
+    data: "17/09/2026",
+    titulo: "LCDPR — baixas parciais entram no Livro Caixa; Entidade Contábil editável no lançamento",
+    modulos: ["Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O LCDPR só considerava lançamentos com status 'Baixado' — uma baixa parcial (que já é dinheiro real saindo/entrando no caixa) ficava completamente fora do Livro Caixa, mesmo o sistema já guardando o valor efetivamente pago e a data da baixa. Agora entram também os lançamentos 'Parcial', com o valor realmente pago na data da baixa." },
+      { tipo: "novo", texto: "Novo campo 'Entidade Contábil (LCDPR/SPED)' no lançamento de Contas a Pagar e a Receber — deixa marcar manualmente se aquele título é de origem Pessoa Física ou Jurídica, independente de qual conta bancária foi usada pra pagar/receber. Por padrão continua herdando da fazenda, como sempre; o campo é só pra corrigir o caso específico de um título de uma entidade pago pela conta/fluxo da outra." },
+    ],
+    onde: "Fiscal → LCDPR · Financeiro → Contas a Pagar / Contas a Receber → Novo Lançamento",
+  },
+  {
     versao: "2026.09.17-p",
     data: "17/09/2026",
     titulo: "Correção: sincronização SIEG travando com erro 429 e AbortError em contas de volume alto",

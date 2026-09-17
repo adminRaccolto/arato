@@ -1013,67 +1013,42 @@ export async function criarPagamentoLote(
 }
 
 /** Confirma um borderô pendente: define data/conta e baixa todos os títulos. */
+// As 3 funções abaixo usam a API route /api/financeiro/bordero-acao
+// (service_role_key) em vez do supabase direto do navegador — caso real:
+// bordêros pendentes ficavam "vazios" (0 itens, mas o registro nunca era
+// excluído) porque o DELETE do cliente anônimo falhava silenciosamente por
+// RLS/JWT expirado sem dar pro usuário tentar de novo com sucesso.
+async function chamarBorderoAcao(body: {
+  acao: "cancelar" | "estornar" | "confirmar";
+  lote_id: string;
+  data_pagamento?: string;
+  conta_bancaria?: string;
+}): Promise<void> {
+  const res = await fetch("/api/financeiro/bordero-acao", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json() as { ok: boolean; error?: string };
+  if (!json.ok) throw new Error(json.error ?? "Erro ao processar borderô");
+}
+
 export async function confirmarPagamentoBordero(
   lote_id: string,
   data_pagamento: string,
   conta_bancaria: string,
 ): Promise<void> {
-  // Busca os itens do lote
-  const { data: itens, error: ie } = await supabase
-    .from("pagamento_lote_itens")
-    .select("lancamento_id, valor_pago")
-    .eq("lote_id", lote_id);
-  if (ie) throw ie;
-
-  // Atualiza o lote
-  const { error: le } = await supabase
-    .from("pagamento_lotes")
-    .update({ status: "pago", data_pagamento, conta_bancaria })
-    .eq("id", lote_id);
-  if (le) throw le;
-
-  // Baixa cada lançamento
-  for (const item of (itens ?? [])) {
-    const { error: be } = await supabase
-      .from("lancamentos")
-      .update({ status: "baixado", valor_pago: item.valor_pago, data_baixa: data_pagamento, conta_bancaria, lote_id })
-      .eq("id", item.lancamento_id);
-    if (be) throw be;
-  }
+  await chamarBorderoAcao({ acao: "confirmar", lote_id, data_pagamento, conta_bancaria });
 }
 
 /** Cancela um borderô pendente: remove vínculo dos lançamentos e exclui o lote. */
 export async function cancelarBordero(lote_id: string): Promise<void> {
-  // Remove lote_id de TODOS os lançamentos do borderô (sem reverter status dos baixados).
-  // Isso é necessário para que o DELETE em pagamento_lotes não viole a FK.
-  const { error: ue } = await supabase
-    .from("lancamentos")
-    .update({ lote_id: null })
-    .eq("lote_id", lote_id);
-  if (ue) throw ue;
-
-  // Exclui os itens
-  await supabase.from("pagamento_lote_itens").delete().eq("lote_id", lote_id);
-
-  // Exclui o lote
-  const { error: de } = await supabase.from("pagamento_lotes").delete().eq("id", lote_id);
-  if (de) throw de;
+  await chamarBorderoAcao({ acao: "cancelar", lote_id });
 }
 
 /** Estorna um borderô já confirmado/pago: reverte os lançamentos para em_aberto e exclui o lote. */
 export async function estornarBordero(lote_id: string): Promise<void> {
-  // Reverte todos os lançamentos baixados via este borderô
-  const { error: ue } = await supabase
-    .from("lancamentos")
-    .update({ status: "em_aberto", lote_id: null, valor_pago: null, data_baixa: null, conta_bancaria: null })
-    .eq("lote_id", lote_id)
-    .eq("status", "baixado");
-  if (ue) throw ue;
-
-  // Exclui os itens e o lote
-  await supabase.from("pagamento_lote_itens").delete().eq("lote_id", lote_id);
-  const { error: de } = await supabase.from("pagamento_lotes").delete().eq("id", lote_id);
-  if (de) throw de;
+  await chamarBorderoAcao({ acao: "estornar", lote_id });
 }
 
 /** Lista borderôs já pagos/confirmados de um conjunto de fazendas. */
