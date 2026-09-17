@@ -1238,6 +1238,30 @@ novo. Substituição é decisão futura, condicionada ao projeto novo atender à
 
 ---
 
+### Sessão de 17 de setembro de 2026 — App Campo vira self-service em Configurações > Usuários
+
+`/admin/campo` (Raccolto) existia com CRUD completo de operador — o dono percebeu que isso obriga
+o cliente a pedir pra Raccolto toda vez que precisa adicionar/editar um operador do App Campo, o
+que não escala e não é como o resto do produto funciona. Decisão: **Admin Raccolto cuida só de
+assinatura/liberação** (`conta_modulos`, mantido) — gestão de operador (criar, editar, resetar PIN)
+passou a ser **self-service**, feita pelo próprio gestor da fazenda dentro do Arato Web, em
+Configurações > Usuários e Permissões (`app/configuracoes/usuarios/page.tsx`), no mesmo modal onde
+ele já cadastra o resto da equipe — nova seção "Acesso ao App Campo" (toggle + papel Operador/
+Gerente Campo), só visível se a conta tiver o módulo habilitado. Só 2 papéis por enquanto
+(Apontador, que existia na modelagem original, ficou de fora — pode voltar se precisar).
+
+Mecanismo: continua sendo um perfil paralelo (tabela `perfis`, `produto='campo'`, e-mail sintético +
+PIN — não dá pra unificar com o login normal do Arato Web porque são modelos de auth diferentes),
+só que agora criado/editado via rota nova `app/api/campo/operador-conta` (self-service, autentica o
+chamador com `validateFazendaAccess` + confere `conta_modulos.app_campo.habilitado`) em vez da rota
+Raccolto-only `app/api/admin/campo/operador` (mantida, sem UI própria, só como via de suporte). Novo
+campo `perfis.usuario_vinculado_id` (migration rascunho no repo `arato-campo`, ainda não aplicada
+no momento deste commit) liga o perfil de campo ao registro em `usuarios` que o originou, pra tela
+de edição saber se aquela pessoa já tem acesso ao Campo ao reabrir o cadastro. Detalhe completo,
+raciocínio e histórico da decisão: `CLAUDE.md` do repo `arato-campo`, seção 7/8.
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.

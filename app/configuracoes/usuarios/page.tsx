@@ -311,6 +311,20 @@ export default function UsuariosPermissoes() {
   const [senhaVisivel,    setSenhaVisivel]    = useState(false);
   const [resultadoCriacao, setResultadoCriacao] = useState<{ ok: boolean; emailEnviado?: boolean; erro?: string } | null>(null);
 
+  // ── Acesso ao App Campo (self-service, 17/set/2026) — perfil paralelo
+  // (produto='campo', e-mail sintético + PIN), gerido daqui em vez de
+  // /admin/campo (que agora só cuida de assinatura). Ver
+  // app/api/campo/operador-conta no backend.
+  const [moduloCampoHabilitado, setModuloCampoHabilitado] = useState(false);
+  const [campoAtivo,      setCampoAtivo]      = useState(false);
+  const [campoPapel,      setCampoPapel]      = useState<"operador" | "gerente_campo">("operador");
+  const [campoWhatsapp,   setCampoWhatsapp]   = useState("");
+  const [campoPerfilExistente, setCampoPerfilExistente] = useState<{ id: string; email: string } | null>(null);
+  const [campoCarregando, setCampoCarregando] = useState(false);
+  const [campoSalvando,   setCampoSalvando]   = useState(false);
+  const [campoCredenciais, setCampoCredenciais] = useState<{ email: string; pin: string } | null>(null);
+  const [campoErro,       setCampoErro]       = useState<string | null>(null);
+
   useEffect(() => {
     if (!fazendaId) return;
     supabase.from("fazendas").select("nome, municipio, estado").eq("id", fazendaId).single()
@@ -318,6 +332,12 @@ export default function UsuariosPermissoes() {
     supabase.from("fazendas").select("raccolto_acesso").eq("id", fazendaId).single()
       .then(({ data }) => { if (data) setRaccoltoAcesso(!!(data as { raccolto_acesso?: boolean }).raccolto_acesso); });
   }, [fazendaId]);
+
+  useEffect(() => {
+    if (!contaId) return;
+    supabase.from("conta_modulos").select("habilitado").eq("conta_id", contaId).eq("modulo", "app_campo").maybeSingle()
+      .then(({ data }) => setModuloCampoHabilitado(Boolean((data as { habilitado?: boolean } | null)?.habilitado)));
+  }, [contaId]);
 
   const toggleRaccolto = async () => {
     if (!fazendaId) return;
@@ -400,13 +420,113 @@ export default function UsuariosPermissoes() {
     setFUser({ nome: u?.nome ?? "", email: u?.email ?? "", senha: "Arato@123", grupo_id: u?.grupo_id ?? "", ativo: u?.ativo !== false, enviarEmail: true, whatsapp: (u as { whatsapp?: string })?.whatsapp ?? "" });
     setSenhaVisivel(false);
     setResultadoCriacao(null);
+
+    setCampoCredenciais(null);
+    setCampoErro(null);
+    setCampoPerfilExistente(null);
+    setCampoAtivo(false);
+    setCampoPapel("operador");
+    setCampoWhatsapp("");
+
+    if (u && fazendaId) {
+      setCampoCarregando(true);
+      fetch(`/api/campo/operador-conta?fazenda_id=${fazendaId}&usuario_vinculado_id=${u.id}`)
+        .then(r => r.json())
+        .then((perfil: { id: string; email: string; papel: "operador" | "gerente_campo"; whatsapp: string | null; ativo: boolean } | null) => {
+          if (perfil) {
+            setCampoPerfilExistente({ id: perfil.id, email: perfil.email });
+            setCampoAtivo(perfil.ativo);
+            setCampoPapel(perfil.papel === "gerente_campo" ? "gerente_campo" : "operador");
+            setCampoWhatsapp(perfil.whatsapp ?? "");
+          }
+        })
+        .finally(() => setCampoCarregando(false));
+    }
+
     setModalUser(true);
+  };
+
+  // Cria, atualiza ou revoga o perfil de campo (produto='campo') vinculado
+  // a este usuário, conforme o estado do toggle "Acesso ao App Campo" —
+  // ver app/api/campo/operador-conta. Retorna true se algo foi criado ou
+  // um PIN foi gerado (sinaliza a salvarUser pra não fechar o modal sem
+  // mostrar a credencial).
+  const sincronizarCampo = async (usuarioVinculadoId: string | undefined): Promise<boolean> => {
+    if (!moduloCampoHabilitado || !fazendaId) return false;
+
+    // Toggle desligado e já tinha perfil de campo → revoga (mesma
+    // convenção de "bloqueado" usada no App Campo: fazendas_permitidas=[]).
+    if (!campoAtivo) {
+      if (!campoPerfilExistente) return false;
+      const res = await fetch("/api/campo/operador-conta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, perfil_id: campoPerfilExistente.id, ativo: false }),
+      });
+      if (!res.ok) { const j = await res.json(); setCampoErro(j.error ?? "Erro ao revogar acesso ao Campo."); }
+      return false;
+    }
+
+    if (campoPerfilExistente) {
+      const res = await fetch("/api/campo/operador-conta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id: fazendaId,
+          perfil_id: campoPerfilExistente.id,
+          nome: fUser.nome.trim(),
+          papel: campoPapel,
+          whatsapp: campoWhatsapp.trim() || null,
+          ativo: true,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setCampoErro(json.error ?? "Erro ao atualizar acesso ao Campo."); return false; }
+      return false;
+    }
+
+    // Novo acesso ao Campo — cria o perfil paralelo, vinculado ao usuário
+    // Arato Web sendo criado/editado agora.
+    const res = await fetch("/api/campo/operador-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fazenda_id: fazendaId,
+        nome: fUser.nome.trim(),
+        papel: campoPapel,
+        whatsapp: campoWhatsapp.trim() || null,
+        usuario_vinculado_id: usuarioVinculadoId ?? null,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) { setCampoErro(json.error ?? "Erro ao criar acesso ao Campo."); return false; }
+    setCampoCredenciais({ email: json.email, pin: json.pin });
+    return true;
+  };
+
+  const resetarPinCampo = async () => {
+    if (!campoPerfilExistente || !fazendaId) return;
+    if (!confirm("Gerar um novo PIN pro App Campo? O PIN antigo deixa de funcionar imediatamente.")) return;
+    setCampoSalvando(true);
+    setCampoErro(null);
+    const res = await fetch("/api/campo/operador-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fazenda_id: fazendaId, perfil_id: campoPerfilExistente.id, resetar_pin: true }),
+    });
+    const json = await res.json();
+    setCampoSalvando(false);
+    if (!res.ok) { setCampoErro(json.error ?? "Erro ao resetar PIN."); return; }
+    setCampoCredenciais({ email: campoPerfilExistente.email, pin: json.pin });
   };
 
   const salvarUser = async () => {
     if (!fazendaId || !fUser.nome.trim() || !fUser.email.trim()) return;
     setSalvando(true);
     setResultadoCriacao(null);
+    setCampoErro(null);
+
+    let usuarioVinculadoId: string | undefined = editUser?.id;
 
     if (editUser) {
       const res = await fetch("/api/usuarios-cliente", {
@@ -445,12 +565,15 @@ export default function UsuariosPermissoes() {
         setSalvando(false);
         return;
       }
+      usuarioVinculadoId = json.usuario_id ?? undefined;
       setResultadoCriacao({ ok: true, emailEnviado: json.email_enviado });
     }
 
+    const criouCredencialCampo = await sincronizarCampo(usuarioVinculadoId);
+
     const { data } = await supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
     setUsuarios((data ?? []) as Usuario[]);
-    if (editUser) setModalUser(false);
+    if (editUser && !criouCredencialCampo) setModalUser(false);
     setSalvando(false);
   };
 
@@ -742,19 +865,35 @@ export default function UsuariosPermissoes() {
       {/* Modal Usuário */}
       {modalUser && (
         <Modal titulo={editUser ? "Editar Usuário" : "Novo Usuário"} onClose={() => setModalUser(false)} width={520}>
-          {resultadoCriacao?.ok && (
-            <div style={{ background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "14px 16px", marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginBottom: 4 }}>✓ Usuário criado com sucesso!</div>
-              <div style={{ fontSize: 12, color: "#166534" }}>
-                {resultadoCriacao.emailEnviado
-                  ? `E-mail de boas-vindas enviado para ${fUser.email}.`
-                  : "E-mail não enviado (RESEND_API_KEY não configurado)."}
-              </div>
-              <button onClick={() => setModalUser(false)} style={{ ...btnV, marginTop: 12, fontSize: 12 }}>Fechar</button>
+          {(resultadoCriacao?.ok || campoCredenciais) && (
+            <div>
+              {resultadoCriacao?.ok && (
+                <div style={{ background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "14px 16px", marginBottom: campoCredenciais ? 12 : 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginBottom: 4 }}>✓ Usuário criado com sucesso!</div>
+                  <div style={{ fontSize: 12, color: "#166534" }}>
+                    {resultadoCriacao.emailEnviado
+                      ? `E-mail de boas-vindas enviado para ${fUser.email}.`
+                      : "E-mail não enviado (RESEND_API_KEY não configurado)."}
+                  </div>
+                </div>
+              )}
+              {campoCredenciais && (
+                <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "14px 16px", marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#7A5A12", marginBottom: 4 }}>
+                    Acesso ao App Campo — anote agora, não é mostrado de novo:
+                  </div>
+                  <div style={{ fontSize: 13, color: "#7A5A12" }}>
+                    E-mail: <strong style={{ fontFamily: "monospace" }}>{campoCredenciais.email}</strong>
+                    {"  ·  "}
+                    PIN: <strong style={{ fontFamily: "monospace", fontSize: 15 }}>{campoCredenciais.pin}</strong>
+                  </div>
+                </div>
+              )}
+              <button onClick={() => setModalUser(false)} style={{ ...btnV, fontSize: 12 }}>Fechar</button>
             </div>
           )}
 
-          {!resultadoCriacao?.ok && (
+          {!resultadoCriacao?.ok && !campoCredenciais && (
             <>
               <div style={{ display: "grid", gap: 14 }}>
                 <div><label style={lbl}>Nome completo *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} placeholder="João da Silva" /></div>
@@ -807,6 +946,52 @@ export default function UsuariosPermissoes() {
                   <input type="checkbox" id="ativo" checked={fUser.ativo} onChange={e => setFUser(p => ({ ...p, ativo: e.target.checked }))} />
                   <label htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Usuário ativo</label>
                 </div>
+
+                {moduloCampoHabilitado && (
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <input
+                        type="checkbox" id="campoAtivo" checked={campoAtivo} disabled={campoCarregando}
+                        onChange={e => setCampoAtivo(e.target.checked)} style={{ marginTop: 2 }}
+                      />
+                      <label htmlFor="campoAtivo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
+                        <span style={{ fontWeight: 600 }}>Acesso ao App Campo</span>
+                        <span style={{ display: "block", fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
+                          Login separado (e-mail sintético + PIN) pro celular, pra lançar e aprovar operações de campo.
+                        </span>
+                      </label>
+                    </div>
+
+                    {campoAtivo && (
+                      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                        <div>
+                          <label style={lbl}>Papel no Campo</label>
+                          <select style={inp} value={campoPapel} onChange={e => setCampoPapel(e.target.value as "operador" | "gerente_campo")}>
+                            <option value="operador">Operador — lança e executa tarefas</option>
+                            <option value="gerente_campo">Gerente Campo — também aprova lançamentos</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>WhatsApp do Campo (aviso de pendência/aprovação)</label>
+                          <input
+                            style={inp} type="tel" value={campoWhatsapp} maxLength={15}
+                            onChange={e => setCampoWhatsapp(e.target.value.replace(/\D/g, ""))}
+                            placeholder="5565999990000"
+                          />
+                        </div>
+                        {campoPerfilExistente && (
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: 12, color: "var(--text-2)", fontFamily: "monospace" }}>{campoPerfilExistente.email}</span>
+                            <button type="button" style={{ ...btnR, fontSize: 11, padding: "6px 10px" }} disabled={campoSalvando} onClick={resetarPinCampo}>
+                              Resetar PIN
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {campoErro && <div style={{ fontSize: 11, color: "#791F1F", marginTop: 8 }}>{campoErro}</div>}
+                  </div>
+                )}
 
                 {!editUser && (
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>

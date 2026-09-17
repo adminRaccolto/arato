@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { gerarEmailUnico, gerarPin } from "@/lib/campo-operador";
 
 function adminClient() {
   return createClient(
@@ -30,47 +31,19 @@ async function verificarAcesso(): Promise<{ ok: boolean; status?: number }> {
   return { ok: true };
 }
 
-function normalizarParaEmail(nome: string): string {
-  return nome
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // remove acentos
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2) // primeiro + último nome, evita e-mails gigantes
-    .join(".");
-}
-
-// Gera um e-mail sintético único pra esse operador (CLAUDE.md do App Campo,
-// decisão 4.2 — nunca é uma caixa de entrada de verdade, só o identificador
-// de login). Tenta "nome.sobrenome@campo.raccolto.app"; se já existir,
-// acrescenta um sufixo numérico.
-async function gerarEmailUnico(admin: ReturnType<typeof adminClient>, nome: string): Promise<string> {
-  const base = normalizarParaEmail(nome) || "operador";
-  const { data: existentes } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  const emailsExistentes = new Set((existentes?.users ?? []).map((u) => (u.email ?? "").toLowerCase()));
-
-  let candidato = `${base}@campo.raccolto.app`;
-  let n = 2;
-  while (emailsExistentes.has(candidato)) {
-    candidato = `${base}${n}@campo.raccolto.app`;
-    n++;
-  }
-  return candidato;
-}
-
-function gerarPin(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
 // POST /api/admin/campo/operador
 // Body (criar):   { conta_id, fazenda_id, nome, papel, fazendas_permitidas }
 // Body (editar):  { perfil_id, nome?, papel?, fazendas_permitidas? }
 // Body (reset PIN): { perfil_id, resetar_pin: true }
 // Sempre service_role — perfis produto='campo' não têm RLS de escrita
 // própria pra essa administração (CLAUDE.md do App Campo, decisão 4.5).
+//
+// Decisão 17/set/2026: gestão de operador passou a ser self-service, feita
+// pelo próprio gestor da fazenda em Configurações > Usuários (Arato Web),
+// via app/api/campo/operador-conta — essa rota aqui não tem mais UI própria
+// em /admin/campo (que ficou só com toggle de assinatura + lista somente
+// leitura). Mantida como via de suporte/emergência do time Raccolto (ex:
+// gestor perdeu acesso e pede ajuda) — não remover, só não linkar UI nova.
 export async function POST(req: NextRequest) {
   const acesso = await verificarAcesso();
   if (!acesso.ok) return NextResponse.json({ error: "Sem permissão" }, { status: acesso.status });
