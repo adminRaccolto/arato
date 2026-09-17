@@ -194,15 +194,24 @@ async function syncExtratoTransacoes(
   if (!linhas.length || !contaId) return; // sem conta vinculada não dá pra deduplicar (chave exige conta_bancaria_id)
   const fitids = linhas.map(l => l.id);
   const { data: existentes } = await supabase.from("extrato_transacoes")
-    .select("fitid, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id")
+    .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id")
     .eq("conta_bancaria_id", contaId).in("fitid", fitids);
   const mapaExistente = new Map((existentes ?? []).map(e => [e.fitid, e]));
 
   const rows = linhas.map(l => {
     const ex = mapaExistente.get(l.id);
+    // Alguns bancos (ex: Cresol) não geram FITID estável — é literalmente
+    // "data + sequência daquele dia dentro do arquivo", não um id do banco.
+    // Reimportar um período sobreposto pode reaproveitar o mesmo FITID pra
+    // uma transação DIFERENTE (se a ordem/quantidade de lançamentos daquele
+    // dia mudou entre os dois exports) — sem essa checagem, preservaria a
+    // conciliação antiga colada numa transação nova e diferente (valor/data
+    // sobrescritos, mas o vínculo do lançamento antigo mantido). Só confia
+    // que é a mesma transação se o valor bater; senão trata como nova linha.
+    const mesmaTransacao = !ex || Math.abs(ex.valor - l.valor) < 0.01;
     // Import nunca regride: se já estava conciliado, preserva o vínculo
     // existente mesmo que esta importação não tenha encontrado o match.
-    const preservarConciliado = modo === "import" && ex?.conciliado && !l.conciliado;
+    const preservarConciliado = modo === "import" && mesmaTransacao && ex?.conciliado && !l.conciliado;
     return {
       fazenda_id: fazendaId,
       conta_bancaria_id: contaId,
@@ -586,6 +595,45 @@ function ConciliacaoInner() {
       usuario_nome:    nomeUsuario ?? null,
       ofx_storage_path: ofxPath,
     });
+
+    // Baixa os lançamentos que o auto-match acabou de vincular — sem isso,
+    // autoMatch() só marcava conciliado=true e vinculava o lancamento_id,
+    // mas NUNCA baixava (status continuava "em_aberto"): achado real em
+    // produção (18/09/2026) — 133 de ~970 transações conciliadas com
+    // lançamento vinculado e ainda "em_aberto", em várias contas/bancos
+    // diferentes, não só Cresol. O botão manual "Conciliar e Baixar" (aba
+    // CP/CR em Aberto) já baixava corretamente — faltava esse mesmo passo
+    // aqui, no caminho automático (que é o caminho que a maioria das
+    // transações realmente segue).
+    const paraBaixarAuto = linhas
+      .filter(l => l.conciliado && (l.lancamento_ids?.length || l.lancamento_id))
+      .flatMap(l => (l.lancamento_ids?.length ? l.lancamento_ids : [l.lancamento_id!]).map(id => ({ id, linha: l })))
+      .reduce((acc, { id, linha }) => {
+        const l = lancParaMatch.find(x => x.id === id);
+        if (l && l.status !== "baixado" && l.status !== "parcial" && !acc.some(a => a.id === id)) {
+          acc.push({ id, data_baixa: linha.data, valor_pago: l.valor_pago ?? l.valor, conta_bancaria: contaSel || undefined });
+        }
+        return acc;
+      }, [] as { id: string; data_baixa: string; valor_pago: number; conta_bancaria?: string }[]);
+
+    if (paraBaixarAuto.length > 0) {
+      await fetch("/api/financeiro/persistir-extrato", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: novoExtrato.id,
+          linhas: novoExtrato.linhas,
+          conciliados: novoExtrato.conciliados,
+          pendentes: novoExtrato.pendentes,
+          baixar: paraBaixarAuto,
+        }),
+      }).catch(() => {});
+      setLancamentos(prev => prev.map(l => {
+        const bx = paraBaixarAuto.find(b => b.id === l.id);
+        if (!bx) return l;
+        return { ...l, status: "baixado" as const, data_baixa: bx.data_baixa, valor_pago: bx.valor_pago, conta_bancaria: bx.conta_bancaria ?? l.conta_bancaria };
+      }));
+    }
 
     const naoConc = linhas.filter(l => !l.conciliado);
     if (naoConc.length > 0) {
@@ -1120,15 +1168,32 @@ function ConciliacaoInner() {
   // ── CP/CR em aberto cruzados com o extrato atual (sub-aba "CP/CR em Aberto") ──
   const cpcrAbertos = lancamentos.filter(l => !["baixado", "cancelado"].includes(l.status));
 
+  // Antes só casava por valor+tipo, sem checar data — com .find() pegava a
+  // primeira transação do extrato (ordenado por data) com aquele valor,
+  // mesmo quando havia mais de uma com o mesmo valor em datas diferentes
+  // (comum: parcelas recorrentes, várias compras de cartão com valor igual).
+  // Isso sugeria a transação errada — achado real reportado como "valores
+  // aleatórios" na conciliação (18/09/2026). Agora exige estar dentro de uma
+  // janela de 15 dias do vencimento e, entre os candidatos, escolhe o de
+  // data mais próxima — mesmo princípio do autoMatch (import automático),
+  // só com janela maior porque aqui é o usuário confirmando manualmente.
   function acharCorrespondencia(l: Lancamento): LinhaOFX | undefined {
     if (!extrato) return undefined;
     const alvo = l.valor_pago ?? l.valor;
-    return extrato.linhas.find(linha => {
+    const dv = new Date(l.data_vencimento + "T00:00:00").getTime();
+    const candidatos = extrato.linhas.filter(linha => {
       if (linha.conciliado) return false;
       if (Math.abs(linha.valor - alvo) > 0.02) return false;
       if (l.tipo === "pagar"   && linha.tipo !== "debito")  return false;
       if (l.tipo === "receber" && linha.tipo !== "credito") return false;
-      return true;
+      const dl = new Date(linha.data + "T00:00:00").getTime();
+      return Math.abs((dl - dv) / 86400000) <= 15;
+    });
+    if (candidatos.length === 0) return undefined;
+    return candidatos.reduce((best, c) => {
+      const diffBest = Math.abs(new Date(best.data + "T00:00:00").getTime() - dv);
+      const diffC    = Math.abs(new Date(c.data    + "T00:00:00").getTime() - dv);
+      return diffC < diffBest ? c : best;
     });
   }
 

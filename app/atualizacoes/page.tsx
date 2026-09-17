@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-g",
+    data: "18/09/2026",
+    titulo: "Correção: baixa automática na Conciliação Bancária não estava acontecendo",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Achado real em produção: quando o extrato OFX conciliava um lançamento automaticamente ao importar o arquivo, o sistema marcava a transação como conciliada mas nunca baixava o lançamento (ficava \"em aberto\" mesmo já vinculado a uma transação do banco) — em várias contas e bancos diferentes, não só um banco específico. O caminho manual (\"✓ Conciliar e Baixar\" na aba CP/CR em Aberto) já baixava certo; faltava esse mesmo passo no caminho automático, que é o que a maioria das transações segue. Corrigido: importar o OFX agora baixa também os lançamentos conciliados automaticamente." },
+      { tipo: "correcao", texto: "A sugestão de correspondência na aba \"CP/CR em Aberto\" casava só por valor, sem considerar a data — se existisse mais de uma transação no extrato com o mesmo valor (comum em compras recorrentes de mesmo valor), podia sugerir a transação errada. Agora exige estar dentro de 15 dias do vencimento e prioriza a data mais próxima." },
+      { tipo: "correcao", texto: "Bancos cujo FITID (identificador da transação) não é realmente único — repete \"data + sequência do dia\" em vez de um código do próprio banco — podiam, ao reimportar um período que se sobrepõe a uma importação anterior, herdar a conciliação de uma transação antiga pra uma transação nova e diferente que calhou de cair na mesma posição. Agora só preserva a conciliação anterior se o valor da transação realmente bater." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.18-f",
     data: "18/09/2026",
     titulo: "Apropriação Direta — a Operação Gerencial decide o que cada item pede; CC obrigatório",

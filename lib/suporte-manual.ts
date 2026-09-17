@@ -632,6 +632,12 @@ Concilia lançamentos do sistema com o extrato OFX importado do banco.
 
 **Layout:** painel esquerdo (CP/CR em aberto) + painel direito (extrato OFX).
 
+**Baixa automática não acontecia ao importar (correção 18/09/2026):** quando o OFX conciliava um lançamento automaticamente ao importar (sem o usuário clicar em nada), o sistema marcava a transação como conciliada mas nunca baixava o lançamento — ficava "em aberto" mesmo já vinculado a uma transação real do banco. Achado em produção em várias contas/bancos diferentes, não um banco específico. O caminho manual ("✓ Conciliar e Baixar" na aba CP/CR em Aberto) já baixava certo; agora o caminho automático (o que a maioria das transações segue) também baixa.
+
+**Sugestão de correspondência em "CP/CR em Aberto" ignorava a data (correção 18/09/2026):** casava só por valor — com mais de uma transação de mesmo valor no extrato (comum em compras recorrentes), podia sugerir a errada. Agora exige estar dentro de 15 dias do vencimento e prioriza a mais próxima.
+
+**FITID de alguns bancos não é estável (correção 18/09/2026):** bancos cujo identificador de transação (FITID) é "data + sequência do dia" em vez de um código realmente único do banco (ex: Cresol) podiam, ao reimportar um período sobreposto, herdar a conciliação de uma transação antiga pra uma transação diferente que calhou de cair na mesma posição. Agora só preserva a conciliação anterior se o valor bater com o que já estava salvo.
+
 **Reconstrução 17/09/2026 — visão contínua por conta (fim da fragmentação):** antes, cada importação de OFX virava um card isolado na tela — um cliente que importava o extrato várias vezes por semana (períodos sobrepostos ou seguidos) acabava com vários cards da mesma conta, e uma transação já conciliada num import podia reaparecer como "não conciliado" ao abrir outro. Isso não existe mais: agora a tela mostra uma única conciliação contínua por conta bancária + período, não importa quantos arquivos OFX já foram importados. A antiga lista de cards foi substituída por um seletor "Conta bancária + Período → Ver conciliação".
 
 **Como usar:**
