@@ -200,6 +200,11 @@ export default function SegurosPage() {
   const [premioQtd,      setPremioQtd]      = useState("2");
   const [premioFreq,     setPremioFreq]     = useState("1"); // meses entre parcelas
   const [parcelasSeguro, setParcelasSeguro] = useState<Array<{ data: string; valor: number }>>([]);
+  // true só quando o usuário mexeu na aba "Pagamento do Prêmio" nesta edição —
+  // evita regenerar parcelas/CP por engano ao salvar uma apólice só porque
+  // corrigiu outro campo (ex: número da apólice).
+  const [parcelasAlteradas, setParcelasAlteradas] = useState(false);
+  const [qtdParcelasExistentes, setQtdParcelasExistentes] = useState(0);
 
   // Cobertura vida inline
   const [novaCobertura, setNovaCobertura] = useState({ tipo: "morte", capital: 0 });
@@ -255,8 +260,10 @@ export default function SegurosPage() {
 
   // ── CRUD Apólice ──────────────────────────────────────────────────────────
   function abrirApolice(a?: Apolice) {
+    setParcelasAlteradas(false);
     if (a) {
       setApoliceEdit(a);
+      setQtdParcelasExistentes(premios.filter(p => p.apolice_id === a.id).length);
       setAForm({
         numero_apolice: a.numero_apolice, seguradora: a.seguradora,
         ramo: a.ramo, objeto_segurado: a.objeto_segurado,
@@ -278,10 +285,15 @@ export default function SegurosPage() {
       setUploadedUrl(a.arquivo_url ?? null);
     } else {
       setApoliceEdit(null);
+      setQtdParcelasExistentes(0);
       setAForm(FORM_VAZIO());
       setUploadedUrl(null);
     }
-    setAErr(""); setUploadErro(""); setTabModal("dados"); setParcelasSeguro([]); setPremioCondicao("avista"); setPremioQtd("2"); setPremioFreq("1"); setModalApolice(true);
+    setAErr(""); setUploadErro(""); setTabModal("dados"); setParcelasSeguro([]);
+    // Reflete a condição real já salva (evita mostrar "À vista" por padrão
+    // numa apólice que na verdade é parcelada, ao abrir pra editar).
+    setPremioCondicao(a?.forma_pagamento_premio === "parcelado" ? "parcelado" : "avista");
+    setPremioQtd("2"); setPremioFreq("1"); setModalApolice(true);
   }
 
   // Busca UUID da OG para o ramo da apólice na fazenda correta
@@ -297,8 +309,13 @@ export default function SegurosPage() {
     if (!aForm.seguradora.trim())     { setAErr("Informe a seguradora."); return; }
     if (!aForm.data_fim_vigencia)     { setAErr("Informe a data de fim de vigência."); return; }
     if (aForm.premio_anual <= 0)      { setAErr("Informe o prêmio anual."); return; }
-    if (!apoliceEdit && premioCondicao === "parcelado" && parcelasSeguro.length === 0) {
+    const gerarParcelas = !apoliceEdit || parcelasAlteradas;
+    if (gerarParcelas && premioCondicao === "parcelado" && parcelasSeguro.length === 0) {
       setAErr("Gere as parcelas antes de salvar."); return;
+    }
+    if (apoliceEdit && parcelasAlteradas && qtdParcelasExistentes > 0) {
+      const ok = confirm("Essa ação substituirá as parcelas lançadas no financeiro. Salvar mesmo assim?");
+      if (!ok) return;
     }
     setASaving(true); setAErr("");
     try {
@@ -342,7 +359,7 @@ export default function SegurosPage() {
         body: JSON.stringify({
           ...(apoliceEdit ? { apolice_id: apoliceEdit.id } : {}),
           payload,
-          gerar_parcelas: !apoliceEdit,
+          gerar_parcelas: gerarParcelas,
           parcelas_explicitas: parcelasExplicitas,
           ramo_label: RAMO_META[aForm.ramo].label,
         }),
@@ -861,7 +878,7 @@ export default function SegurosPage() {
                   {/* Toggle À vista / Parcelado */}
                   <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
                     {(["avista", "parcelado"] as const).map(opt => (
-                      <button key={opt} onClick={() => { setPremioCondicao(opt); setParcelasSeguro([]); }}
+                      <button key={opt} onClick={() => { setPremioCondicao(opt); setParcelasSeguro([]); setParcelasAlteradas(true); }}
                         style={{ padding: "7px 20px", fontSize: 13, fontWeight: premioCondicao === opt ? 600 : 400, background: premioCondicao === opt ? "#1A4870" : "var(--bg-card)", color: premioCondicao === opt ? "#fff" : "var(--text-2)", border: "none", cursor: "pointer" }}>
                         {opt === "avista" ? "À vista" : "Parcelado"}
                       </button>
@@ -898,6 +915,7 @@ export default function SegurosPage() {
                           const qtd = parseInt(premioQtd) || 2;
                           const freq = parseInt(premioFreq) || 1;
                           setParcelasSeguro(gerarParcelasSeguro(aForm.data_inicio_vigencia, qtd, freq, aForm.premio_anual));
+                          setParcelasAlteradas(true);
                         }} style={{ ...btnV, whiteSpace: "nowrap" }}>Gerar</button>
                       </div>
 
@@ -926,9 +944,14 @@ export default function SegurosPage() {
                     </>
                   )}
 
-                  {apoliceEdit && (
+                  {apoliceEdit && qtdParcelasExistentes > 0 && (
                     <div style={{ fontSize: 11, color: "#C9921B", padding: "8px 12px", background: "#FBF3E0", borderRadius: 6 }}>
-                      ⚠ Parcelas existentes não são recriadas ao editar uma apólice. Para alterar o cronograma de prêmios, acesse os Prêmios Pendentes.
+                      ⚠ Esta apólice já tem {qtdParcelasExistentes} parcela(s) lançada(s) no financeiro. Mexer em "À vista"/"Parcelado" ou clicar em "Gerar" vai substituir as que ainda não foram pagas ao salvar — parcelas já pagas não são afetadas. O sistema pede confirmação antes.
+                    </div>
+                  )}
+                  {apoliceEdit && qtdParcelasExistentes === 0 && premioCondicao === "parcelado" && (
+                    <div style={{ fontSize: 11, color: "#0D47A1", padding: "8px 12px", background: "#E3F2FD", borderRadius: 6 }}>
+                      Esta apólice ainda não tem nenhuma parcela lançada no financeiro. Gere e salve para criar o CP.
                     </div>
                   )}
                 </div>

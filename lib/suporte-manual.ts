@@ -705,6 +705,8 @@ Gerencia apólices de seguro (rural, vida, patrimonial, automóvel, máquinas). 
 
 Ao cadastrar uma apólice nova com prêmio "Parcelado" ou "À Vista", o sistema gera automaticamente o(s) lançamento(s) de CP (Conta a Pagar) das parcelas do prêmio, vinculados à apólice.
 
+**Gerar/regenerar parcelas ao editar:** na aba "Financeiro" da edição, mexer no toggle À Vista/Parcelado ou clicar em "Gerar" e depois salvar recalcula o cronograma de parcelas + CP. Parcelas já pagas nunca são apagadas ou alteradas — só as que ainda não foram pagas são substituídas. Se a apólice já tem parcela lançada, o sistema pede confirmação antes de salvar ("Essa ação substituirá as parcelas lançadas no financeiro. Salvar mesmo assim?"). Editar outros campos (ex: corretora, observação) sem tocar na aba Financeiro nunca mexe nas parcelas.
+
 ### 19.4 Consórcios
 **Caminho:** Configurações → Complemento Financeiro → Consórcios
 

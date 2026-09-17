@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-g",
+    data: "17/09/2026",
+    titulo: "Novo: gerar/regenerar parcelas de prêmio ao editar uma apólice de Seguro",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Antes só era possível gerar o cronograma de parcelas/CP de uma apólice no cadastro inicial — apólice já existente sem parcelas (por qualquer motivo) ficava sem forma de corrigir isso pela tela. Agora, ao editar, mexer no toggle 'À Vista/Parcelado' ou clicar em 'Gerar' e salvar recalcula o cronograma. Parcelas já pagas nunca são tocadas; se já existir parcela lançada, o sistema pede confirmação antes de substituir." },
+    ],
+    onde: "Financeiro → Seguros / Apólices → editar apólice → aba Financeiro",
+  },
+  {
     versao: "2026.09.17-f",
     data: "17/09/2026",
     titulo: "NF de Produtos — conversão de unidade nunca mais altera a NF original",
