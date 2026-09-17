@@ -11,7 +11,7 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes, buscarLancamentoDuplicado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa, PagamentoLote } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -173,6 +173,9 @@ function ContasReceberInner() {
 
   const [modalBaixa,  setModalBaixa]  = useState<Lancamento | null>(null);
   const [modalReprog, setModalReprog] = useState<Lancamento | null>(null);
+  // Mesmo emissor (pessoa_id) + mesmo nº de documento já lançado — bloqueia
+  // duplicação de título antes de salvar (só no lançamento manual).
+  const [duplicataEncontrada, setDuplicataEncontrada] = useState<Lancamento | null>(null);
   const [reprogForm,  setReprogForm]  = useState({ nova_data: "", novo_valor: "", obs: "" });
   const [modalNovo,   setModalNovo]   = useState(false);
   const [modalTab,   setModalTab]   = useState<"principal"|"adicionais">("principal");
@@ -652,6 +655,14 @@ function ContasReceberInner() {
     if (!form.vencimento) return;
     if (form.moeda !== "barter" && !form.valorMask) return;
     if (form.moeda === "barter" && !form.sacasMask) return;
+
+    // Mesmo emissor + mesmo nº de documento já lançado — checa uma vez contra
+    // o banco antes de qualquer criação (evita falso positivo entre as
+    // parcelas de um parcelamento/recorrência que estão sendo criadas agora).
+    if (fid) {
+      const dup = await buscarLancamentoDuplicado(fid, "receber", form.pessoa_id, form.numero_documento, editandoId ?? undefined);
+      if (dup) { setDuplicataEncontrada(dup); return; }
+    }
 
     const sacas      = Number(form.sacasMask);
     const precoSaca  = desmascarar(form.precoSacaMask);
@@ -1445,6 +1456,35 @@ function ContasReceberInner() {
         </div>
         );
       })()}
+
+      {duplicataEncontrada && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 460, maxWidth: "92vw", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "20px 24px 8px", textAlign: "center" }}>
+              <div style={{ fontSize: 30, marginBottom: 6 }}>⚠️</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Título já lançado</div>
+              <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8, lineHeight: 1.5 }}>
+                Já existe um lançamento com o documento nº <strong>{duplicataEncontrada.numero_documento}</strong> para este cliente:
+              </div>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "10px 14px", margin: "12px 0", textAlign: "left", fontSize: 12 }}>
+                <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{duplicataEncontrada.descricao}</div>
+                <div style={{ color: "var(--text-3)", marginTop: 2 }}>Vencimento {fmtData(duplicataEncontrada.data_vencimento)} · {duplicataEncontrada.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · {duplicataEncontrada.status}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, padding: "8px 24px 20px" }}>
+              <button onClick={() => setDuplicataEncontrada(null)} style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+                OK
+              </button>
+              <button
+                onClick={() => { const l = duplicataEncontrada; setDuplicataEncontrada(null); abrirEditar(l); }}
+                style={{ flex: 1, padding: "9px", border: "none", borderRadius: 8, background: "#1A5CB8", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+              >
+                Ver documento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal Recebimento em Lote ────────────────────────── */}
       {modalLote && (

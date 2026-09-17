@@ -13001,3 +13001,24 @@ ALTER TABLE pagamento_lote_itens
   ADD COLUMN IF NOT EXISTS valor_desconto numeric(14,2);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 269 — NF de remessa própria histórica (implantação de cliente)
+--
+-- Na implantação, o cliente pode já ter NF de remessa (transferência entre
+-- depósitos/fazendas próprias) emitida no sistema anterior, antes de migrar
+-- pro Arato. Não tinha como registrar isso — o único jeito de marcar uma
+-- transferência como "emitida" na tela envolvia emitir de fato pela SEFAZ.
+-- Agora o modal de Transferências tem um modo "NF já emitida no sistema
+-- anterior": grava os dados que o cliente já tinha (nº, série, chave, data
+-- de emissão real) e só cria a movimentação de estoque (saída origem +
+-- entrada destino) — nunca chama a SEFAZ.
+--
+-- transferencias_estoque.nf_numero e nf_chave já existiam (preenchidos pela
+-- emissão real); só faltava nf_serie.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE transferencias_estoque
+  ADD COLUMN IF NOT EXISTS nf_serie text;
+
+NOTIFY pgrst, 'reload schema';

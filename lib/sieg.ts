@@ -222,9 +222,12 @@ const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 async function fetchComRetry(
   url: string,
   init: RequestInit,
-  maxTentativas = 4,
+  maxTentativas = 6,
 ): Promise<Response> {
-  const delays = [2000, 4000, 7000, 10000]; // backoff: 2s, 4s, 7s, 10s
+  // backoff: 2s, 4s, 7s, 10s, 10s, 10s — cap de 10s por tentativa (comentário
+  // abaixo) significa que só aumentar o array não ajuda depois da 4ª; o que
+  // ajuda é ter mais tentativas usando o cap, não esperas maiores.
+  const delays = [2000, 4000, 7000, 10000];
   let lastErr: Error | null = null;
   for (let t = 0; t < maxTentativas; t++) {
     const res = await fetch(url, init);
@@ -396,8 +399,16 @@ export async function baixarXmlsSiegChunked(
 
   const xmls: string[] = [];
   let cur = new Date(iniDate);
+  let primeiroChunk = true;
 
   while (cur < fimDate) {
+    // Pausa entre CHUNKS (não só entre páginas dentro de um chunk, já feito em
+    // baixarXmlsSieg) — sem isso, um período longo dividido em vários chunks
+    // de 55 dias disparava o próximo chunk imediatamente após o anterior,
+    // sem nenhuma folga, contribuindo pro 429 em contas com volume alto.
+    if (!primeiroChunk) await sleep(800);
+    primeiroChunk = false;
+
     const chunkFimTs = Math.min(cur.getTime() + MAX_CHUNK_DIAS * 86_400_000, fimDate.getTime());
     const chunkFim   = new Date(chunkFimTs);
 

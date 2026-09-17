@@ -771,6 +771,35 @@ export async function criarLancamento(l: Omit<Lancamento, "id" | "created_at">):
   return data;
 }
 
+/**
+ * Busca um lançamento MANUAL já existente com o mesmo emissor (pessoa_id) e
+ * número de documento — usado pra bloquear duplicação de título no
+ * lançamento manual de CP/CR antes de salvar. Sem pessoa_id ou sem número de
+ * documento não dá pra checar "mesmo emissor" — retorna null (não bloqueia).
+ * Escopo por fazenda_id + tipo (pagar/receber) — mesmo emissor pode ter
+ * títulos legítimos em fazendas diferentes; um mesmo nº como CP e CR não é a
+ * mesma situação relatada (dois CPs ou dois CRs duplicados). Cancelado nunca
+ * conta como duplicata — título cancelado e relançado com o mesmo número é
+ * correção legítima. excluir_id serve pra edição não se flagar como
+ * duplicata de si mesma.
+ */
+export async function buscarLancamentoDuplicado(
+  fazenda_id: string,
+  tipo: "pagar" | "receber",
+  pessoa_id: string | undefined | null,
+  numero_documento: string | undefined | null,
+  excluir_id?: string,
+): Promise<Lancamento | null> {
+  if (!pessoa_id || !numero_documento?.trim()) return null;
+  let q = supabase.from("lancamentos").select("*")
+    .eq("fazenda_id", fazenda_id).eq("tipo", tipo).eq("pessoa_id", pessoa_id)
+    .eq("numero_documento", numero_documento.trim())
+    .neq("status", "cancelado");
+  if (excluir_id) q = q.neq("id", excluir_id);
+  const { data } = await q.limit(1).maybeSingle();
+  return (data as Lancamento) ?? null;
+}
+
 export async function excluirLancamento(id: string): Promise<void> {
   const { error } = await supabase.from("lancamentos").delete().eq("id", id);
   if (error) throw error;

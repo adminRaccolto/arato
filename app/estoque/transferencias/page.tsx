@@ -145,6 +145,15 @@ export default function TransferenciasEstoquePage() {
     // responsável (ex: IE própria daquele imóvel/depósito).
     cpfCnpjDestino: "",
     ieDestino: "",
+    // NF de remessa própria já emitida no sistema anterior, antes da
+    // implantação do Arato — registra só o histórico (movimentação de
+    // estoque saída+entrada) com os dados da nota que o cliente já tinha,
+    // sem tentar emitir/transmitir nada de novo à SEFAZ.
+    historica: false,
+    nfNumeroHistorico: "",
+    nfSerieHistorico: "",
+    nfChaveHistorico: "",
+    dataEmissaoHistorica: hoje(),
   });
   // Cache local de config fiscal por fazenda — evita rebuscar a cada troca de destino
   const [cfgFiscalCache, setCfgFiscalCache] = useState<Record<string, Record<string, string>>>({});
@@ -430,6 +439,11 @@ export default function TransferenciasEstoquePage() {
         variedade:      it.variedade || null,
         lote_semente:   it.lote_semente || null,
       }));
+      // NF histórica (já emitida no sistema anterior): força status "emitida"
+      // direto — o "salvar" já cria as movimentações de estoque quando
+      // status="emitida" (linhas 452+ da rota), sem chamar SEFAZ (isso só
+      // acontece na ação separada "emitir", disparada pelo botão da lista).
+      const statusFinal = form.historica ? "emitida" : status;
       const payload = {
         fazenda_origem_id:    form.fazendaOrigemId,
         deposito_origem_id:   form.depositoOrigemId || null,
@@ -442,10 +456,15 @@ export default function TransferenciasEstoquePage() {
         cpf_cnpj_destino:     form.cpfCnpjDestino.trim() || null,
         ie_destino:           form.ieDestino.trim() || null,
         entrada_automatica:   form.entradaAutomatica,
-        status,
+        status:               statusFinal,
         data_transferencia:   form.dataTransferencia,
-        data_emissao:         status === "emitida" ? new Date().toISOString() : null,
-        observacao:           form.observacao || null,
+        data_emissao:         form.historica
+          ? (form.dataEmissaoHistorica || form.dataTransferencia)
+          : (statusFinal === "emitida" ? new Date().toISOString() : null),
+        nf_numero:            form.historica ? (form.nfNumeroHistorico.trim() || null) : null,
+        nf_chave:             form.historica ? (form.nfChaveHistorico.trim() || null) : null,
+        nf_serie:             form.historica ? (form.nfSerieHistorico.trim() || null) : null,
+        observacao:           [form.observacao || null, form.historica ? "NF de remessa registrada como histórico — emitida no sistema anterior à implantação, sem transmissão à SEFAZ pelo Arato." : null].filter(Boolean).join(" | ") || null,
         via_app:              false,
         transportadora_id:    transpId,
         veiculo_id:           form.veiculoId || null,
@@ -510,7 +529,7 @@ export default function TransferenciasEstoquePage() {
   }
 
   function resetForm() {
-    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9", cpfCnpjOrigem: "", ieOrigem: "", cpfCnpjDestino: "", ieDestino: "" });
+    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9", cpfCnpjOrigem: "", ieOrigem: "", cpfCnpjDestino: "", ieDestino: "", historica: false, nfNumeroHistorico: "", nfSerieHistorico: "", nfChaveHistorico: "", dataEmissaoHistorica: hoje() });
     setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
     setEditandoId(null);
@@ -567,6 +586,9 @@ export default function TransferenciasEstoquePage() {
       ieOrigem:          t.ie_origem ?? "",
       cpfCnpjDestino:    t.cpf_cnpj_destino ?? "",
       ieDestino:         t.ie_destino ?? "",
+      // Edição é sempre de uma transferência já existente (rascunho ou
+      // emitida) — o modo "histórica" só se aplica na criação.
+      historica: false, nfNumeroHistorico: "", nfSerieHistorico: "", nfChaveHistorico: "", dataEmissaoHistorica: hoje(),
     });
     setItens(
       (t.itens ?? []).length > 0
@@ -1124,6 +1146,41 @@ export default function TransferenciasEstoquePage() {
               <input type="text" value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} style={inp} placeholder="Motivo da transferência, referências…" />
             </div>
 
+            {/* NF já emitida no sistema anterior — implantação de cliente */}
+            {!editandoId && (
+              <div style={{ marginBottom: 20, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 14 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#333" }}>
+                  <input type="checkbox" checked={form.historica} onChange={e => setForm(f => ({ ...f, historica: e.target.checked }))} />
+                  📋 Esta NF de remessa já foi emitida no sistema anterior (implantação — não transmitir à SEFAZ)
+                </label>
+                {form.historica && (
+                  <>
+                    <div style={{ fontSize: 11, color: "#666", marginTop: 6, marginBottom: 10 }}>
+                      Registra só o histórico: cria a movimentação de estoque (saída na origem, entrada no destino) com os dados da nota que o cliente já tinha. Nenhuma NF-e é transmitida à SEFAZ pelo Arato.
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr 1fr", gap: 10 }}>
+                      <div>
+                        <label style={lbl}>Nº da NF</label>
+                        <input type="text" value={form.nfNumeroHistorico} onChange={e => setForm(f => ({ ...f, nfNumeroHistorico: e.target.value }))} style={inp} placeholder="Ex: 12345" />
+                      </div>
+                      <div>
+                        <label style={lbl}>Série</label>
+                        <input type="text" value={form.nfSerieHistorico} onChange={e => setForm(f => ({ ...f, nfSerieHistorico: e.target.value }))} style={inp} placeholder="Ex: 1" />
+                      </div>
+                      <div>
+                        <label style={lbl}>Chave de Acesso (opcional)</label>
+                        <input type="text" value={form.nfChaveHistorico} onChange={e => setForm(f => ({ ...f, nfChaveHistorico: e.target.value.replace(/\D/g, "").slice(0, 44) }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="44 dígitos" maxLength={44} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Data de Emissão</label>
+                        <input type="date" value={form.dataEmissaoHistorica} onChange={e => setForm(f => ({ ...f, dataEmissaoHistorica: e.target.value }))} style={inp} />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {erro && (
               <div style={{ padding: "10px 14px", background: "#FFF1F1", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 12, color: "#B91C1C", marginBottom: 14 }}>
                 {erro}
@@ -1134,8 +1191,8 @@ export default function TransferenciasEstoquePage() {
               <button onClick={() => setModal(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                 Cancelar
               </button>
-              <button onClick={() => salvar("rascunho")} disabled={salvando} style={btn("#111111")}>
-                {salvando ? "…" : editandoId ? "Salvar Alterações" : "Salvar Transferência"}
+              <button onClick={() => salvar("rascunho")} disabled={salvando} style={btn(form.historica ? "#C9921B" : "#111111")}>
+                {salvando ? "…" : form.historica ? "📋 Registrar NF Histórica" : editandoId ? "Salvar Alterações" : "Salvar Transferência"}
               </button>
             </div>
           </div>

@@ -1506,11 +1506,20 @@ export default function NfCompraPage() {
       // 1b. Recriar todos os itens do estado atual
       for (const it of itens) {
         if (!it.descricao_nf.trim()) continue;
+        // ccMode "global" decide só COMO o centro de custo é distribuído entre os
+        // itens (linha abaixo) — não é sobre se o item é estoque físico ou custo
+        // direto. Forçar "direto" aqui (removido) fazia um item de estoque de
+        // verdade (com insumo_id associado, toggle "📦 Estoque" ligado na tela)
+        // ser tratado como custo direto só porque a NF usava rateio Global —
+        // o item nunca gerava movimentação de estoque (lib/db.ts só lança em
+        // movimentacoes_estoque quando tipo_apropiacao === "estoque") e, como
+        // efeito colateral, também desaparecia da NF de Remessa gerada a partir
+        // dessa NF de compra (app/fiscal/page.tsx só copia itens "estoque"/
+        // "maquinario" pra lá).
         const tipoAprp: NfEntradaItem["tipo_apropiacao"] =
           tipo === "vef"          ? "vef"     :
           tipo === "remessa"      ? "remessa" :
           tipo === "custo_direto" ? "direto"  :
-          ccMode === "global"     ? "direto"  :
           it.tipo_apropiacao;
         // Modo global: sobrescreve CC e maquina de todos os itens
         if (ccMode === "global") {

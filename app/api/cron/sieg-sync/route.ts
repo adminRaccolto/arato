@@ -1,6 +1,9 @@
 /**
  * GET /api/cron/sieg-sync
- * Cron 2× ao dia: 11h UTC (8h BRT) e 20h UTC (17h BRT)
+ * Cron 1× ao dia: 11h UTC (8h BRT) — comentário antigo dizia "2× ao dia"
+ * (11h + 20h UTC), mas vercel.json só tem a entrada das 11h; corrigido pra
+ * refletir o agendamento real (dobrar a frequência pioraria o rate-limit
+ * já apertado da API SIEG em contas de volume alto — ver lib/sieg.ts).
  *
  * Para cada fazenda com automação SIEG ativa (configuracoes_automacao):
  * 1. Consulta API SIEG via lib/sieg.ts (paginada, NF-e + NF-Se)

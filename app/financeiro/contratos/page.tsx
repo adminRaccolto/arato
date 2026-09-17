@@ -220,7 +220,10 @@ export default function ContratosFinanceiros() {
   // dados das abas
   const [parcelasLiberacao, setParcelasLiberacao] = useState<ParcelaLiberacao[]>([]);
   const [parcelasPagamento, setParcelasPagamento] = useState<ParcelaPagamento[]>([]);
-  const [parcelasEditadas,  setParcelasEditadas]  = useState<Record<string, { data_vencimento?: string; valor_parcela?: string }>>({});
+  const [parcelasEditadas,  setParcelasEditadas]  = useState<Record<string, { data_vencimento?: string; valor_parcela?: string; juros?: string; amortizacao?: string }>>({});
+  // Libera edição manual de Juros/Amortização no grid calculado — fora disso
+  // (padrão), essas 2 colunas são só exibição, calculadas pelo método SAC/PRICE/SACRE.
+  const [editandoParcelas, setEditandoParcelas] = useState(false);
   const [garantias, setGarantias]                 = useState<GarantiaContrato[]>([]);
   const [centrosCusto, setCentrosCusto]           = useState<CentroCustoContrato[]>([]);
   const [ccAnosSafra, setCcAnosSafra]             = useState<{ id: string; descricao: string }[]>([]);
@@ -703,11 +706,6 @@ export default function ContratosFinanceiros() {
     const valorBase = parseFloat(String(fC.valor_financiado).replace(",", ".")) || contratoModal.valor_financiado;
     const tipoCalc = fC.tipo_calculo || contratoModal.tipo_calculo;
     const crescPct = Number(fC.crescimento_pct) || 0;
-    const moedaCalc = fC.moeda || contratoModal.moeda;
-    const descricaoCalc = fC.descricao || contratoModal.descricao;
-    const tipoContrato = fC.tipo || contratoModal.tipo;
-    const pessoaId = fC.pessoa_id || contratoModal.pessoa_id || undefined;
-    const nrDoc = fC.numero_documento || contratoModal.numero_documento || undefined;
 
     const n = Math.max(1, Number(fCalc.nParcelas) || 12);
     const i_mensal = (Number(fCalc.taxaMensal) || 0) / 100;
@@ -728,41 +726,14 @@ export default function ContratosFinanceiros() {
     else base = calcularPRICE(valorBase, i_periodo, n, car, carTipo);
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
     const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
-    // Remove CP automáticos não baixados — usa contrato_financeiro_id (sempre presente, não depende de numero_documento)
-    await supabase.from("lancamentos").delete()
-      .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
-      .eq("contrato_financeiro_id", contratoModal.id).neq("status", "baixado");
+    // Calcular só monta o grid (e persiste o cronograma em parcelas_pagamento,
+    // pra ter id de banco e permitir baixa/edição) — NÃO lança mais em CP aqui.
+    // O lançamento em CP só acontece quando o usuário confirma explicitamente em
+    // "Salvar Parcelas e Lançar no CP" (salvarParcelasELancarCP), que também é o
+    // botão que aplica eventuais edições manuais de Juros/Amortização.
     const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
-    // Gera CP lançamentos para cada parcela
-    const hoje = new Date().toISOString().slice(0, 10);
-    const ogMap = await buscarOgsCf(fazendaId!);
-    const produtorIdCalc = fC.produtor_id || contratoModal.produtor_id || null;
-    const OG_AMORT_CALC: Record<ContratoFinanceiro["tipo"], string> = {
-      custeio: "2.02.01.02.002", investimento: "2.02.01.02.007", securitizacao: "2.02.01.02.007",
-      cpr: "2.02.01.02.003", egf: "2.02.01.02.001", outros: "2.02.01.02.005",
-    };
-    const OG_JUROS_CALC: Record<ContratoFinanceiro["tipo"], string> = {
-      custeio: "2.02.01.03.002", investimento: "2.02.01.03.007", securitizacao: "2.02.01.03.007",
-      cpr: "2.02.01.03.003", egf: "2.02.01.03.001", outros: "2.02.01.03.005",
-    };
-    const lancsParcelas: Record<string, unknown>[] = [];
-    for (const p of salvas) {
-      const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
-      const descBase = `${descricaoCalc} — Parcela ${p.num_parcela}`;
-      const camposBase = {
-        fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar",
-        moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
-        status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro",
-        pessoa_id: pessoaId || null, produtor_id: produtorIdCalc,
-        ano_safra_id: anoSafraVigenteId || null,
-      };
-      if (p.amortizacao > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[tipoContrato], operacao_gerencial_id: ogMap.get(OG_AMORT_CALC[tipoContrato]) ?? null, valor: p.amortizacao });
-      if (p.juros > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[tipoContrato], operacao_gerencial_id: ogMap.get(OG_JUROS_CALC[tipoContrato]) ?? null, valor: p.juros });
-      if (p.despesas_acessorios > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", operacao_gerencial_id: ogMap.get("2.02.01.01.001") ?? null, valor: p.despesas_acessorios });
-      if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ ...camposBase, descricao: descBase, categoria: CAT_AMORT[tipoContrato], operacao_gerencial_id: ogMap.get(OG_AMORT_CALC[tipoContrato]) ?? null, valor: p.valor_parcela });
-    }
-    if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
     setParcelasPagamento(salvas);
+    setParcelasEditadas({});
   });
 
   // ── Aplicar cronograma extraído do PDF pela IA ──
@@ -771,13 +742,11 @@ export default function ContratosFinanceiros() {
     setErroModal(null);
     setSalvando(true);
     try {
-      // 1. Remove CP automáticos não baixados — usa contrato_financeiro_id (sempre presente)
-      await supabase.from("lancamentos").delete()
-        .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
-        .eq("contrato_financeiro_id", contratoModal.id).neq("status", "baixado");
-
-      // 2. Monta parcelas — garante que valor nunca seja null
-      const hoje = new Date().toISOString().slice(0, 10);
+      // Monta parcelas — garante que valor nunca seja null. Só popula o grid/
+      // parcelas_pagamento — o lançamento em CP fica pra quando o usuário
+      // confirmar em "Salvar Parcelas e Lançar no CP" (mesmo botão usado pelo
+      // cálculo manual SAC/PRICE/SACRE — um único ponto de persistência de CP
+      // pros dois caminhos, em vez de duas cópias divergentes da mesma lógica).
       const parcelasParaSalvar = parcelasIAPdf.map((p, idx) => ({
         num_parcela: idx + 1,
         data_vencimento: p.data_vencimento,
@@ -788,42 +757,9 @@ export default function ContratosFinanceiros() {
         saldo_devedor: 0,
         status: "em_aberto" as const,
       }));
-
-      // 3. Persiste parcelas
       const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, parcelasParaSalvar);
-
-      // 4. Cria CP lançamentos (falha silenciosa — não bloqueia o cronograma)
-      const ogMapPdf = await buscarOgsCf(fazendaId!);
-      const OG_AMORT_PDF: Record<ContratoFinanceiro["tipo"], string> = {
-        custeio: "2.02.01.02.002", investimento: "2.02.01.02.007", securitizacao: "2.02.01.02.007",
-        cpr: "2.02.01.02.003", egf: "2.02.01.02.001", outros: "2.02.01.02.005",
-      };
-      const lancsParcelas: Record<string, unknown>[] = [];
-      for (const p of salvas) {
-        const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
-        lancsParcelas.push({
-          fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar", moeda: contratoModal.moeda,
-          descricao: `${contratoModal.descricao} — Parcela ${p.num_parcela}`,
-          categoria: CAT_AMORT[contratoModal.tipo],
-          operacao_gerencial_id: ogMapPdf.get(OG_AMORT_PDF[contratoModal.tipo]) ?? null,
-          data_lancamento: p.data_vencimento,
-          data_vencimento: p.data_vencimento, valor: p.valor_parcela ?? 0, status: statusLanc,
-          auto: true, numero_documento: contratoModal.numero_documento || undefined,
-          origem_lancamento: "contrato_financeiro",
-          pessoa_id: (fC.pessoa_id || contratoModal.pessoa_id) || null,
-          produtor_id: (fC.produtor_id || contratoModal.produtor_id) || null,
-          ano_safra_id: anoSafraVigenteId || null,
-        });
-      }
-      if (lancsParcelas.length > 0) {
-        const { error: errLanc } = await supabase.from("lancamentos").insert(lancsParcelas);
-        // Antes essa falha era só logada — parcelas ficavam salvas sem nenhum CP
-        // gerado e o usuário via a tela como "sucesso", sem saber que faltava o CP.
-        if (errLanc) throw new Error(`Cronograma salvo, mas o CP não foi gerado: ${errLanc.message}`);
-      }
-
-      // 5. Atualiza estado (sucesso)
       setParcelasPagamento(salvas);
+      setParcelasEditadas({});
       setParcelasIAPdf(null);
     } catch (e) {
       const msg = (e as { message?: string })?.message ?? "Erro ao salvar cronograma.";
@@ -835,7 +771,10 @@ export default function ContratosFinanceiros() {
   };
 
   // ── Ajustes manuais de parcelas ──
-  const editarParcela = (id: string, campo: "data_vencimento" | "valor_parcela", valor: string) => {
+  // Juros e Amortização só ficam editáveis com o checkbox "Editar parcelas"
+  // ligado (editandoParcelas) — Vencimento e Valor Parcela continuam sempre
+  // editáveis, como já era antes.
+  const editarParcela = (id: string, campo: "data_vencimento" | "valor_parcela" | "juros" | "amortizacao", valor: string) => {
     setParcelasEditadas(prev => ({ ...prev, [id]: { ...prev[id], [campo]: valor } }));
   };
 
@@ -935,31 +874,79 @@ export default function ContratosFinanceiros() {
     }
   }
 
-  const salvarAjustesManuais = () => salvar(async () => {
+  // Único ponto que lança as parcelas no CP — chamado tanto sem edições
+  // (primeira vez, depois de "Calcular"/"Usar cronograma do PDF") quanto com
+  // ajustes manuais pendentes (data/valor sempre editáveis; juros/amortização
+  // só quando "Editar parcelas" está ligado). Antes, o CP era criado no
+  // instante do cálculo, sem chance de revisar/ajustar antes de virar título
+  // de verdade — recalcular/reprocessar aqui é seguro porque só afeta CP não
+  // baixado (nunca reabre nem altera o que já foi pago).
+  const salvarParcelasELancarCP = () => salvar(async () => {
     if (!contratoModal || !fazendaId) return;
     const atualizadas = parcelasPagamento.map(p => {
       const ed = parcelasEditadas[p.id];
       if (!ed) return p;
       const novaData = ed.data_vencimento ?? p.data_vencimento;
-      const novoValorStr = ed.valor_parcela;
-      if (!novoValorStr) return { ...p, data_vencimento: novaData };
-      const novoValor = parseFloat(novoValorStr.replace(/\./g, "").replace(",", "."));
-      if (isNaN(novoValor)) return { ...p, data_vencimento: novaData };
-      return {
-        ...p,
-        data_vencimento: novaData,
-        valor_parcela: novoValor,
-        amortizacao: novoValor,
-        juros: 0,
-        despesas_acessorios: 0,
-      };
+      if (ed.valor_parcela) {
+        const novoValor = parseFloat(ed.valor_parcela.replace(/\./g, "").replace(",", "."));
+        if (isNaN(novoValor)) return { ...p, data_vencimento: novaData };
+        return { ...p, data_vencimento: novaData, valor_parcela: novoValor, amortizacao: novoValor, juros: 0, despesas_acessorios: 0 };
+      }
+      if (ed.juros === undefined && ed.amortizacao === undefined) return { ...p, data_vencimento: novaData };
+      const novaAmort = ed.amortizacao !== undefined ? (parseFloat(ed.amortizacao.replace(/\./g, "").replace(",", ".")) || 0) : p.amortizacao;
+      const novoJuros = ed.juros !== undefined ? (parseFloat(ed.juros.replace(/\./g, "").replace(",", ".")) || 0) : p.juros;
+      return { ...p, data_vencimento: novaData, amortizacao: novaAmort, juros: novoJuros, valor_parcela: novaAmort + novoJuros + p.despesas_acessorios };
     });
     const salvas = await salvarParcelasPagamento(
       contratoModal.id, fazendaId,
       atualizadas.map(p => ({ ...p, status: p.status ?? "em_aberto" as const }))
     );
+
+    // Remove CP automáticos não baixados e recria a partir do estado atual das
+    // parcelas (já com os ajustes acima aplicados) — idempotente, pode ser
+    // clicado de novo depois de mais edições sem duplicar nem afetar o que já
+    // foi baixado.
+    await supabase.from("lancamentos").delete()
+      .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
+      .eq("contrato_financeiro_id", contratoModal.id).neq("status", "baixado");
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ogMap = await buscarOgsCf(fazendaId);
+    const tipoContrato   = fC.tipo || contratoModal.tipo;
+    const moedaCalc      = fC.moeda || contratoModal.moeda;
+    const descricaoCalc  = fC.descricao || contratoModal.descricao;
+    const pessoaId       = fC.pessoa_id || contratoModal.pessoa_id || undefined;
+    const nrDoc          = fC.numero_documento || contratoModal.numero_documento || undefined;
+    const produtorIdCalc = fC.produtor_id || contratoModal.produtor_id || null;
+    const OG_AMORT_CALC: Record<ContratoFinanceiro["tipo"], string> = {
+      custeio: "2.02.01.02.002", investimento: "2.02.01.02.007", securitizacao: "2.02.01.02.007",
+      cpr: "2.02.01.02.003", egf: "2.02.01.02.001", outros: "2.02.01.02.005",
+    };
+    const OG_JUROS_CALC: Record<ContratoFinanceiro["tipo"], string> = {
+      custeio: "2.02.01.03.002", investimento: "2.02.01.03.007", securitizacao: "2.02.01.03.007",
+      cpr: "2.02.01.03.003", egf: "2.02.01.03.001", outros: "2.02.01.03.005",
+    };
+    const lancsParcelas: Record<string, unknown>[] = [];
+    for (const p of salvas) {
+      const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
+      const descBase = `${descricaoCalc} — Parcela ${p.num_parcela}`;
+      const camposBase = {
+        fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar",
+        moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
+        status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro",
+        pessoa_id: pessoaId || null, produtor_id: produtorIdCalc,
+        ano_safra_id: anoSafraVigenteId || null,
+      };
+      if (p.amortizacao > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[tipoContrato], operacao_gerencial_id: ogMap.get(OG_AMORT_CALC[tipoContrato]) ?? null, valor: p.amortizacao });
+      if (p.juros > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[tipoContrato], operacao_gerencial_id: ogMap.get(OG_JUROS_CALC[tipoContrato]) ?? null, valor: p.juros });
+      if (p.despesas_acessorios > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", operacao_gerencial_id: ogMap.get("2.02.01.01.001") ?? null, valor: p.despesas_acessorios });
+      if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ ...camposBase, descricao: descBase, categoria: CAT_AMORT[tipoContrato], operacao_gerencial_id: ogMap.get(OG_AMORT_CALC[tipoContrato]) ?? null, valor: p.valor_parcela });
+    }
+    if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
+
     setParcelasPagamento(salvas);
     setParcelasEditadas({});
+    setEditandoParcelas(false);
   });
 
   // ── Garantia ──
@@ -1901,7 +1888,7 @@ export default function ContratosFinanceiros() {
                   {/* Aviso quando parcelas estão zeradas */}
                   {parcelasPagamento.length > 0 && parcelasPagamento.every(p => !p.valor_parcela || p.valor_parcela === 0) && !(parcelasIAPdf?.length) && (
                     <div style={{ background: "#FEF9C3", border: "0.5px solid #EAB308", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, color: "#854D0E" }}>
-                      ⚠ As parcelas estão zeradas (salvas sem valor). Clique em <strong>Calcular e Salvar Parcelas</strong> para recalcular com base no principal acima.
+                      ⚠ As parcelas estão zeradas (salvas sem valor). Clique em <strong>Calcular Parcelas</strong> para recalcular com base no principal acima.
                     </div>
                   )}
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
@@ -1925,7 +1912,7 @@ export default function ContratosFinanceiros() {
                           📄 Usar cronograma do PDF ({parcelasIAPdf.length} parcelas)
                         </button>
                       )}
-                      <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando}>{salvando ? "Calculando…" : "⟳ Calcular e Salvar Parcelas"}</button>
+                      <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando}>{salvando ? "Calculando…" : "⟳ Calcular Parcelas"}</button>
                     </div>
                   </div>
                   {parcelasIAPdf && parcelasIAPdf.length > 0 && parcelasPagamento.length === 0 && (
@@ -1941,19 +1928,24 @@ export default function ContratosFinanceiros() {
                         const temEdits = Object.keys(parcelasEditadas).length > 0;
                         const inpCell: React.CSSProperties = { width: "100%", border: "0.5px solid var(--border)", borderRadius: 4, padding: "2px 5px", fontSize: 12, background: "transparent", color: "var(--text-1)", outline: "none", textAlign: "right" };
                         const inpEditado: React.CSSProperties = { ...inpCell, background: "#FBF3E0", border: "0.5px solid #C9921B", fontWeight: 600 };
+                        const colsEditaveis = ["Amortização", "Juros"];
                         return (
                           <>
-                            {temEdits && (
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "8px 14px", marginBottom: 10 }}>
-                                <span style={{ fontSize: 12, color: "#7A4300" }}>✏ Há ajustes manuais não salvos. Clique em <strong>Salvar ajustes</strong> para confirmar.</span>
-                                <button style={{ ...btnV, background: "#C9921B", padding: "6px 16px", fontSize: 12 }} disabled={salvando} onClick={salvarAjustesManuais}>{salvando ? "Salvando…" : "Salvar ajustes"}</button>
-                              </div>
-                            )}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: temEdits ? "#FBF3E0" : "var(--bg-page)", border: `0.5px solid ${temEdits ? "#C9921B" : "var(--border-table)"}`, borderRadius: 8, padding: "8px 14px", marginBottom: 10 }}>
+                              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: temEdits ? "#7A4300" : "var(--text-2)", cursor: "pointer" }}>
+                                <input type="checkbox" checked={editandoParcelas} onChange={e => setEditandoParcelas(e.target.checked)} />
+                                Editar parcelas (libera Amortização e Juros pra edição manual)
+                                {temEdits && <span> — ✏ há ajustes não salvos, clique em <strong>Salvar</strong> para confirmar.</span>}
+                              </label>
+                              <button style={{ ...btnV, background: "#C9921B", padding: "6px 16px", fontSize: 12 }} disabled={salvando} onClick={salvarParcelasELancarCP}>
+                                {salvando ? "Salvando…" : "💾 Salvar Parcelas e Lançar no CP"}
+                              </button>
+                            </div>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   {["Nº", "Vencimento ✏", "Amortização", "Juros", "Encargos", "Valor Parcela ✏", "Saldo Devedor", "Status", ""].map((h, i) => (
-                                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 || i === 8 ? "center" : "right", fontSize: 11, fontWeight: 600, color: i === 1 || i === 5 ? "#C9921B" : "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+                                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 || i === 8 ? "center" : "right", fontSize: 11, fontWeight: 600, color: i === 1 || i === 5 || (editandoParcelas && colsEditaveis.includes(h)) ? "#C9921B" : "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{editandoParcelas && colsEditaveis.includes(h) ? `${h} ✏` : h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -1965,6 +1957,10 @@ export default function ContratosFinanceiros() {
                                   const dataEditada = !!ed?.data_vencimento;
                                   const valorEditado = ed?.valor_parcela !== undefined;
                                   const valorExibir = valorEditado ? ed!.valor_parcela! : String(p.valor_parcela);
+                                  const amortEditada = ed?.amortizacao !== undefined;
+                                  const jurosEditado = ed?.juros !== undefined;
+                                  const amortExibir = amortEditada ? ed!.amortizacao! : String(p.amortizacao);
+                                  const jurosExibir = jurosEditado ? ed!.juros! : String(p.juros);
                                   return (
                                     <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
                                       <td style={{ padding: "5px 10px", textAlign: "center" }}>{p.num_parcela}</td>
@@ -1976,8 +1972,20 @@ export default function ContratosFinanceiros() {
                                           style={dataEditada ? inpEditado : inpCell}
                                         />
                                       </td>
-                                      <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.amortizacao)}</td>
-                                      <td style={{ padding: "5px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(p.juros)}</td>
+                                      <td style={{ padding: editandoParcelas ? "4px 8px" : "5px 10px", textAlign: "right" }}>
+                                        {editandoParcelas ? (
+                                          <input type="number" step="0.01" min="0" value={amortExibir}
+                                            onChange={e => editarParcela(p.id, "amortizacao", e.target.value)}
+                                            style={amortEditada ? inpEditado : inpCell} />
+                                        ) : fmtV(p.amortizacao)}
+                                      </td>
+                                      <td style={{ padding: editandoParcelas ? "4px 8px" : "5px 10px", textAlign: "right", color: editandoParcelas ? undefined : "#E24B4A" }}>
+                                        {editandoParcelas ? (
+                                          <input type="number" step="0.01" min="0" value={jurosExibir}
+                                            onChange={e => editarParcela(p.id, "juros", e.target.value)}
+                                            style={jurosEditado ? inpEditado : inpCell} />
+                                        ) : fmtV(p.juros)}
+                                      </td>
                                       <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.despesas_acessorios)}</td>
                                       <td style={{ padding: "4px 8px" }}>
                                         <input
@@ -2040,7 +2048,7 @@ export default function ContratosFinanceiros() {
                                 <span>Pagas: <strong style={{ color: "#111111" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
                               </>); })()}
                               {temEdits && (
-                                <button style={{ ...btnV, background: "#C9921B", padding: "5px 14px", fontSize: 11, marginLeft: "auto" }} disabled={salvando} onClick={salvarAjustesManuais}>{salvando ? "Salvando…" : "Salvar ajustes"}</button>
+                                <button style={{ ...btnV, background: "#C9921B", padding: "5px 14px", fontSize: 11, marginLeft: "auto" }} disabled={salvando} onClick={salvarParcelasELancarCP}>{salvando ? "Salvando…" : "💾 Salvar Parcelas e Lançar no CP"}</button>
                               )}
                             </div>
                           </>

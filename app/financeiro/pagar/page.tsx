@@ -12,7 +12,7 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, listarCartoesDaConta, vincularLancamentoFatura, type VeiculoUnificado } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, listarCartoesDaConta, vincularLancamentoFatura, buscarLancamentoDuplicado, type VeiculoUnificado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa, CartaoCredito } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -211,6 +211,9 @@ function ContasPagarInner() {
   const [modalTab,   setModalTab]   = useState<"principal"|"adicionais">("principal");
   const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
   const [nfsVinculo, setNfsVinculo] = useState<NfVinculo[]>([]);
+  // Mesmo emissor (pessoa_id) + mesmo nº de documento já lançado — bloqueia
+  // duplicação de título antes de salvar (só no lançamento manual).
+  const [duplicataEncontrada, setDuplicataEncontrada] = useState<Lancamento | null>(null);
   const [nfsVinculoLoading, setNfsVinculoLoading] = useState(false);
   const [nfVinculoBusca, setNfVinculoBusca] = useState("");
   const [nfVinculoSelecionada, setNfVinculoSelecionada] = useState<NfVinculo | null>(null);
@@ -993,6 +996,14 @@ function ContasPagarInner() {
     if (!editandoId && form.condicao === "recorrencia" && !form.vencimento) erros.push("1º Vencimento é obrigatório para recorrência (aba Principal).");
     if (erros.length > 0) { setErrosForm(erros); return; }
     setErrosForm([]);
+
+    // Mesmo emissor + mesmo nº de documento já lançado — checa uma vez contra
+    // o banco antes de qualquer criação (evita falso positivo entre as
+    // parcelas de um parcelamento/recorrência que estão sendo criadas agora).
+    if (fid) {
+      const dup = await buscarLancamentoDuplicado(fid, "pagar", form.pessoa_id, form.numero_documento, editandoId ?? undefined);
+      if (dup) { setDuplicataEncontrada(dup); return; }
+    }
 
     const sacas      = Number(form.sacasMask);
     const precoSaca  = desmascarar(form.precoSacaMask);
@@ -2091,6 +2102,35 @@ function ContasPagarInner() {
       })()}
 
       {/* ── Vínculo de NF na baixa ──────────────────────────────── */}
+      {duplicataEncontrada && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 460, maxWidth: "92vw", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "20px 24px 8px", textAlign: "center" }}>
+              <div style={{ fontSize: 30, marginBottom: 6 }}>⚠️</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Título já lançado</div>
+              <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8, lineHeight: 1.5 }}>
+                Já existe um lançamento com o documento nº <strong>{duplicataEncontrada.numero_documento}</strong> para este fornecedor:
+              </div>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "10px 14px", margin: "12px 0", textAlign: "left", fontSize: 12 }}>
+                <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{duplicataEncontrada.descricao}</div>
+                <div style={{ color: "var(--text-3)", marginTop: 2 }}>Vencimento {fmtData(duplicataEncontrada.data_vencimento)} · {duplicataEncontrada.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · {duplicataEncontrada.status}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, padding: "8px 24px 20px" }}>
+              <button onClick={() => setDuplicataEncontrada(null)} style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+                OK
+              </button>
+              <button
+                onClick={() => { const l = duplicataEncontrada; setDuplicataEncontrada(null); setModalNovo(false); abrirEditar(l); }}
+                style={{ flex: 1, padding: "9px", border: "none", borderRadius: 8, background: "#1A5CB8", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+              >
+                Ver documento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {alertaNF && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 680, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>

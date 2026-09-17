@@ -280,6 +280,8 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 
 **Produto duplicado no pedido vinculado (17/09/2026):** quando o pedido de compra tem o mesmo produto em mais de uma linha (embalagens diferentes, ou valor fiscal por unidade diferente), a tela de Itens & Processamento mostra um segundo select "⚠ qual linha do pedido?" abaixo do produto, listando cada linha candidata com quantidade/saldo — obrigatório escolher antes de processar. Sem essa indicação, o sistema não sabia qual linha específica a NF estava atendendo e replicava o mesmo percentual de entrega nas duas (uma passava de 100%, a outra ficava travada em 0% mesmo recebendo produto de verdade). Produto sem ambiguidade (só uma linha daquele produto no pedido) continua funcionando exatamente como antes, sem pedir nada a mais.
 
+**Rateio Global de Centro de Custo não afeta mais se o item é estoque (correção 17/09/2026):** o modo "Ratear nos centros de custos? → Global — um único CC para toda a NF" só decide como o centro de custo é distribuído entre os itens. Antes, ligar o rateio Global também forçava TODOS os itens da NF pra "custo direto" (💸 C. Custo) mesmo os marcados como estoque (📦 Estoque) — o item nunca entrava no estoque físico de verdade. Se uma NF antiga processada com rateio Global parecer com estoque faltando, é esse o motivo mais provável — vale reprocessar a NF.
+
 ### 8.3 NF de Serviços (NFS-e)
 **Caminho:** Compras & Estoque → Compras → NF de Serviços
 
@@ -353,6 +355,8 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 - Se a NF ainda não foi autorizada pela SEFAZ (rascunho): cancela direto, sem exigências.
 - Se a NF já foi autorizada: pede uma justificativa (mínimo 15 caracteres) e envia o **cancelamento oficial à SEFAZ** — só depois de confirmado, o sistema reverte o estoque (devolve o saldo pro depósito de origem, e desfaz a entrada no destino se houve). Sem isso a nota continuaria valendo do lado de fora mesmo cancelada aqui dentro.
 - **Prazo:** só é possível cancelar dentro de **24h** da autorização (regra da SEFAZ). Depois disso, o sistema bloqueia e é preciso emitir uma NF de devolução/estorno pra reverter a operação, ou uma Carta de Correção para erros simples de cadastro.
+
+**NF já emitida no sistema anterior (implantação, 17/09/2026):** no modal de Nova Transferência, checkbox "📋 Esta NF de remessa já foi emitida no sistema anterior" — libera campos pra informar nº da NF, série, chave de acesso (opcional) e data de emissão reais. Ao salvar, cria só a movimentação de estoque (saída origem + entrada destino) com esses dados históricos — nunca chama a SEFAZ, nunca passa pelo fluxo normal Rascunho → Emitir NF. Uso: cliente que migrou pro Arato e já tinha remessas emitidas no ERP antigo antes da implantação.
 
 ### 9.4 Abastecimento de Máquinas
 **Caminho:** Produção → Máquinas (submenu) → Abastecimento de Máquinas
@@ -523,6 +527,8 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 **Origem automática (badge azul):** NF Entrada, Plantio (sementes), Pulverização (defensivos), Arrendamento, Pedido Compra, SIEG.
 
 **Criação manual:** Produtor → Fazenda → Ano Safra → Ciclo → Descrição (*), Valor (*), Moeda (BRL/USD/barter), Vencimento (*), Categoria (*), OG, Centro de Custo, Vínculo de Atividade, Entidade Contábil.
+
+**Aviso de título já lançado (17/09/2026):** ao salvar um lançamento manual com o mesmo fornecedor/cliente (mesma pessoa cadastrada) e o mesmo número de documento de um título já existente (não cancelado) na mesma fazenda, o sistema mostra "Título já lançado" antes de salvar, com botão "OK" (cancela e volta pro formulário) e "Ver documento" (abre o lançamento existente pra conferir). Só funciona quando o fornecedor/cliente está vinculado via cadastro — lançamento sem pessoa vinculada (só descrição em texto livre) não tem como ser comparado. NFs, Pedidos de Compra e parcelas de Contrato Financeiro/Seguro/Consórcio (lançados automaticamente) não passam por esse aviso — já têm seu próprio controle de duplicidade.
 
 **Baixa parcial:** valor pago < total → status "parcial" (badge amarelo). O saldo permanece no mesmo registro — baixe o restante clicando novamente no ícone de baixa.
 
@@ -700,6 +706,10 @@ Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAM
 **Abas:** Principal, Liberação, Pagamento (tabela de amortização + baixas), Garantias, Centro de Custo, Aditivos, Movimentações.
 
 **Registrar Pagamento de uma parcela:** baixa o(s) lançamento(s) de CP reais (amortização/juros/encargos, gerados ao calcular o cronograma) — não só marca a parcela como paga na tela. Se a parcela não tiver um lançamento vinculado diretamente (comum em parcelas antigas), o sistema localiza os lançamentos certos pela combinação contrato + data de vencimento e baixa todos. "Reabrir Parcela" funciona da mesma forma, reabrindo o(s) lançamento(s) de CP correspondente(s).
+
+**Calcular parcelas não lança mais em CP na hora (correção 17/09/2026):** antes, clicar em "Calcular" (ou "Usar cronograma do PDF") já criava os lançamentos de CP imediatamente, sem chance de revisar. Agora esses botões só montam/atualizam a tabela de parcelas — o CP só é criado (ou recriado, se já existia e ainda não foi baixado) ao clicar no botão explícito **"💾 Salvar Parcelas e Lançar no CP"**, que aparece sempre que há parcelas na tabela.
+
+**Editar parcelas manualmente:** checkbox "Editar parcelas" acima da tabela libera edição das colunas Amortização e Juros (Vencimento e Valor da Parcela já eram editáveis mesmo sem o checkbox). Depois de editar, clique em "Salvar Parcelas e Lançar no CP" pra confirmar — sem isso, o ajuste fica só na tela. Atenção: clicar em "Calcular" de novo depois de editar recalcula a tabela do zero pelo método SAC/PRICE/SACRE e descarta os ajustes manuais não salvos.
 
 ### 19.2 Apoio Financeiro
 **Caminho:** Configurações → Complemento Financeiro → Apoio Financeiro

@@ -706,7 +706,13 @@ export default function NfServicoPage() {
     setSiegSyncing(true); setSiegSyncMsg(""); setSiegDiag([]);
     try {
       const ctrl = new AbortController();
-      const tmo  = setTimeout(() => ctrl.abort(), 270_000); // 4 min 30s (server maxDuration=300s)
+      // 4min50s — margem de 10s sob o maxDuration=300s do servidor (era 270s/
+      // 4min30s, margem de 30s; contas com volume alto de pendências caem no
+      // fallback de 5 níveis de busca do SIEG — ver sieg-sync-nfse/route.ts —
+      // e legitimamente passavam dos 270s antes do servidor sequer terminar,
+      // abortando no cliente com "AbortError" mesmo a sincronização estando
+      // perto de concluir).
+      const tmo  = setTimeout(() => ctrl.abort(), 290_000);
       setSiegSyncMsg("⏳ Buscando NFS-e no SIEG — pode levar alguns minutos…");
       const res = await fetch("/api/integracoes/sieg-sync-nfse", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -738,7 +744,16 @@ export default function NfServicoPage() {
         setSiegDiag(diag);
         if (imp > 0) await carregar();
       }
-    } catch (e) { setSiegSyncMsg(`✗ Erro de rede: ${e}`); }
+    } catch (e) {
+      // AbortError = o próprio timeout do cliente disparou (ctrl.abort()) —
+      // não é uma falha de rede de verdade, e mostrar "AbortError: signal is
+      // aborted without reason" pro usuário não ajuda em nada. Mesma
+      // mensagem orientativa do caso de JSON inválido acima.
+      const msg = e instanceof Error && e.name === "AbortError"
+        ? "✗ A sincronização demorou muito — tente um período menor (ex: últimos 15 dias)"
+        : `✗ Erro de rede: ${e}`;
+      setSiegSyncMsg(msg);
+    }
     finally { setSiegSyncing(false); }
   }
 

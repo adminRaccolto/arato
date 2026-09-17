@@ -6,6 +6,57 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.17-p",
+    data: "17/09/2026",
+    titulo: "Correção: sincronização SIEG travando com erro 429 e AbortError em contas de volume alto",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Contas com muitas notas pendentes (NF de Produtos e NF de Serviço) podiam ter a sincronização SIEG interrompida por limite de requisições da API (erro 429) ou por timeout do navegador antes do servidor terminar (erro de rede 'AbortError'). Ajustado o espaçamento entre requisições, o número de tentativas e a margem de tempo do navegador — e o erro de timeout agora mostra uma mensagem orientativa em vez do erro técnico bruto." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos / NF de Serviço → Sincronizar SIEG",
+  },
+  {
+    versao: "2026.09.17-o",
+    data: "17/09/2026",
+    titulo: "Novo: registrar NF de remessa própria já emitida no sistema anterior",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Na implantação, o cliente pode já ter emitido uma NF de remessa (transferência entre depósitos/fazendas) no sistema anterior. O modal de Transferência de Estoque agora tem a opção 'NF já emitida no sistema anterior' — registra o número, série, chave de acesso (opcional) e data de emissão informados, cria a movimentação de estoque correspondente, e nunca transmite nada à SEFAZ." },
+    ],
+    onde: "Estoque → Transferências → Nova Transferência",
+  },
+  {
+    versao: "2026.09.17-n",
+    data: "17/09/2026",
+    titulo: "Contas a Pagar e a Receber — aviso de título já lançado (mesmo emissor + nº de documento)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Ao lançar manualmente um CP ou CR com o mesmo fornecedor/cliente e o mesmo número de documento de um título já existente, o sistema agora avisa 'Título já lançado' antes de salvar, com botão para ver o lançamento existente e conferir — evitando duplicar título por engano." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Novo Lançamento",
+  },
+  {
+    versao: "2026.09.17-m",
+    data: "17/09/2026",
+    titulo: "Contratos Financeiros — parcelas só vão para o CP ao salvar, com juros e amortização editáveis",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Calcular o cronograma de parcelas (SAC/PRICE/SACRE) ou usar o cronograma extraído de PDF já lançava as parcelas em Contas a Pagar na hora, sem chance de revisar antes. Agora calcular só monta a tabela — o lançamento em CP passou para um botão explícito 'Salvar Parcelas e Lançar no CP'." },
+      { tipo: "novo", texto: "Novo checkbox 'Editar parcelas' libera edição manual das colunas Juros e Amortização da tabela calculada (Vencimento e Valor da Parcela já eram editáveis)." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → editar contrato → aba Pagamento",
+  },
+  {
+    versao: "2026.09.17-l",
+    data: "17/09/2026",
+    titulo: "Correção: NF de Remessa gerada de uma NF de compra com rateio Global de Centro de Custo vinha sem itens",
+    modulos: ["Compras & Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Uma NF de compra processada com rateio 'Global — um único CC para toda a NF' tinha todos os itens marcados internamente como custo direto, mesmo os que o usuário indicou como estoque — o item nunca entrava no estoque de verdade, e a NF de Remessa gerada a partir dessa compra vinha sem nenhum item (o filtro da tela de Remessa corretamente ignora custo direto, que não é mercadoria física). Corrigido para o rateio Global só decidir como o centro de custo é distribuído entre os itens, sem alterar se o item é estoque ou custo direto." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos → rateio Global de Centro de Custo",
+  },
+  {
     versao: "2026.09.17-k",
     data: "17/09/2026",
     titulo: "Contas a Pagar e a Receber — multa, juros e desconto na baixa em lote",
