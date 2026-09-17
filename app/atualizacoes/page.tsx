@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-d",
+    data: "18/09/2026",
+    titulo: "Correção: atualizações do sistema não apareciam mesmo após publicadas",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "O Service Worker do App Campo (suporte offline em campo) estava registrado pra todo o site, não só pra /campo — fazendo o navegador guardar em cache páginas e arquivos de telas administrativas (ex: NF de Produtos) que nunca precisaram de suporte offline. Resultado: uma atualização publicada podia demorar bem mais que o esperado pra aparecer pro usuário, mesmo depois de aceitar o aviso do sino, porque o navegador continuava servindo versões antigas cacheadas em segundo plano. Corrigido: o Service Worker agora só é registrado dentro de /campo, e qualquer registro antigo de todo o site é removido automaticamente na próxima navegação em qualquer outra tela." },
+    ],
+    onde: "Toda a plataforma (bug de infraestrutura, sem tela específica)",
+  },
+  {
     versao: "2026.09.18-c",
     data: "18/09/2026",
     titulo: "Apropriação Direta — aplicar o mesmo Centro de Custo a todos os itens de uma vez",
