@@ -1513,7 +1513,12 @@ export default function Contratos() {
       const valor    = Math.round(parseFloat(fAdiant.valor.replace(",", ".")) * 100) / 100;
       const contrato = contratos.find(c => c.id === adiantContratoId);
       if (!contrato || valor <= 0) return;
-      // 1. CR liquidado
+      // 1. CR já baixado — o adiantamento é dinheiro que já entrou de fato
+      // (regime de caixa), só ainda não foi aplicado a nenhuma entrega/NF
+      // específica (isso é controlado por adiantamentos_cliente/aplicacoes_
+      // adiantamento). "liquidado" não existe no enum de status de
+      // Lancamento e deixava esse CR invisível pra qualquer tela que lê
+      // status baixado/parcial — LCDPR, Contas a Receber, Conciliação etc.
       const ogAdiantCliente = await resolverOperacaoGerencialPorClassificacao(contrato.fazenda_id ?? fazendaId, "1.02.01.01.004");
       const { data: crRow } = await supabase.from("lancamentos").insert({
         fazenda_id: contrato.fazenda_id ?? fazendaId,
@@ -1522,8 +1527,8 @@ export default function Contratos() {
         categoria: "Adiantamento Cliente",
         operacao_gerencial_id: ogAdiantCliente ?? null,
         data_lancamento: fAdiant.data, data_vencimento: fAdiant.data,
-        valor, moeda: contrato.moeda,
-        status: "liquidado", auto: true,
+        valor, valor_pago: valor, moeda: contrato.moeda,
+        status: "baixado", data_baixa: fAdiant.data, auto: true,
         observacao: fAdiant.descricao || null,
       }).select("id").maybeSingle();
       // 2. Registro de adiantamento

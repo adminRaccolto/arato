@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-t",
+    data: "18/09/2026",
+    titulo: "Adiantamento de Cliente nunca aparecia em nenhuma tela (LCDPR, CR, etc.)",
+    modulos: ["Comercial", "Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Registrar um \"Adiantamento\" de um contrato de venda de grãos (Comercial → Contratos → Adiantamentos) gerava um CR com status \"liquidado\" — valor que não existe no sistema. Esse CR ficava invisível em toda tela que lê status baixado/parcial: Contas a Receber, Conciliação Bancária e o Livro Caixa do LCDPR. Corrigido para gravar como \"baixado\" (é dinheiro que já entrou de fato, só ainda não aplicado a nenhuma entrega) — agora conta como receita no LCDPR na data do recebimento, como deveria desde sempre." },
+    ],
+    onde: "Comercial → Contratos → Adiantamentos",
+  },
+  {
     versao: "2026.09.18-s",
     data: "18/09/2026",
     titulo: "PDF do LCDPR mostra Produtores e Participações no cabeçalho",

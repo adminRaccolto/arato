@@ -13187,3 +13187,62 @@ ALTER TABLE insumos
   ADD COLUMN IF NOT EXISTS foto_url text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 276 — Re-execução de "ADIANTAMENTOS DE CLIENTE" (nunca foi rodada)
+--
+-- A tabela adiantamentos_cliente (e aplicacoes_adiantamento) foi escrita há
+-- meses (seção "sessão 21 — 2026-06-03", mais acima neste arquivo) mas
+-- confirmado via consulta direta em produção que NUNCA foi executada — o
+-- INSERT feito por app/contratos/page.tsx (aba Adiantamentos de Cliente)
+-- falhava silenciosamente nessa 2ª query (a 1ª, o CR em lancamentos, ainda
+-- era inserida) sempre que usado. Reexecutando aqui pra consolidar num só
+-- lugar — os comandos são idempotentes (IF NOT EXISTS), repetir não tem
+-- risco mesmo se alguma parte já tiver sido aplicada por fora.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS adiantamentos_cliente (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id       UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  contrato_id      UUID NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
+  data             DATE NOT NULL,
+  valor            NUMERIC(15,2) NOT NULL CHECK (valor > 0),
+  descricao        TEXT,
+  lancamento_id    UUID REFERENCES lancamentos(id),   -- CR gerado (status=baixado)
+  valor_aplicado   NUMERIC(15,2) NOT NULL DEFAULT 0,
+  status           TEXT NOT NULL DEFAULT 'pendente'   -- pendente | parcial | quitado
+    CHECK (status IN ('pendente','parcial','quitado')),
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS aplicacoes_adiantamento (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id       UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  adiantamento_id  UUID NOT NULL REFERENCES adiantamentos_cliente(id) ON DELETE CASCADE,
+  lancamento_id    UUID REFERENCES lancamentos(id),
+  romaneio_id      UUID REFERENCES romaneios(id),
+  data_aplicacao   DATE NOT NULL,
+  valor_aplicado   NUMERIC(15,2) NOT NULL CHECK (valor_aplicado > 0),
+  observacao       TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS adiantamento_total     NUMERIC(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS adiantamento_recebido  NUMERIC(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS adiantamento_aplicado  NUMERIC(15,2) DEFAULT 0;
+
+ALTER TABLE adiantamentos_cliente     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE aplicacoes_adiantamento   ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "adiant_cli_all" ON adiantamentos_cliente;
+CREATE POLICY "adiant_cli_all" ON adiantamentos_cliente FOR ALL
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "aplic_adiant_all" ON aplicacoes_adiantamento;
+CREATE POLICY "aplic_adiant_all" ON aplicacoes_adiantamento FOR ALL
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+NOTIFY pgrst, 'reload schema';

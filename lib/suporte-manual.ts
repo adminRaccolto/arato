@@ -420,6 +420,10 @@ Gerencia contratos de venda de grãos (soja, milho, algodão) com compradores.
 - Saldo do contrato atualizado a cada romaneio
 - Status "parcial" ou "encerrado" calculado automaticamente
 
+**Adiantamentos de cliente:** dentro do contrato, aba Adiantamentos — registra um valor recebido do comprador antes da entrega. Gera um CR já baixado (é dinheiro que já entrou de fato) e fica disponível pra abater automaticamente (FIFO, do adiantamento mais antigo primeiro) contra o CR de cada romaneio/entrega futura do mesmo contrato.
+
+**Correção 18/09/2026:** o CR gerado por um adiantamento de cliente estava sendo gravado com status "liquidado" — valor que não existe no sistema — e por isso nunca aparecia em nenhuma tela que lê status baixado/parcial: Contas a Receber, Conciliação Bancária e o Livro Caixa do LCDPR. Corrigido pra gravar como "baixado", com data e valor do recebimento — agora entra no LCDPR como receita na data em que o dinheiro de fato entrou.
+
 ### 11.2 Compromissos em Grãos
 **Caminho:** Comercial & Logística → Comercialização → Compromissos em Grãos
 
