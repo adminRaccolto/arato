@@ -844,6 +844,41 @@ export default function LCDPR() {
       </tr>`;
     }).join("");
 
+    // Produtores do LCDPR com nome, CPF e % de distribuição — vai no cabeçalho
+    // mesmo com "Todos os Produtores" selecionado (antes o cabeçalho só dizia
+    // "Todos os Produtores" e CPF "—", sem dizer quem são nem a quota de cada um).
+    const produtoresHeader = produtoresLcdpr.map(p => ({
+      nome: p.nome,
+      cpf:  fmtCPF(p.cpf) || "—",
+      pct:  config.participacoes[p.cpf] ?? 100,
+    }));
+    const somaParticipacoes = produtoresHeader.reduce((s, p) => s + p.pct, 0);
+    const thProd = `padding:4px 7px;text-align:left;font-size:8.5px;font-weight:700;color:#1A4870;border-bottom:0.5px solid #DDE2EE;white-space:nowrap;`;
+    const tdProd = `padding:3px 7px;font-size:9px;color:#1a1a1a;border-bottom:0.5px solid #F0F3F7;`;
+    // Com um produtor específico selecionado o cabeçalho já traz nome, CPF e
+    // quota-parte dele — listar todos de novo só confundiria de quem é o livro.
+    const blocoProdutores = (produtoresHeader.length === 0 || produtorFiltro !== "todos") ? "" : `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:9.5px;font-weight:700;color:#666;margin-bottom:4px;">Produtores e Participações</div>
+        <table style="border-collapse:collapse;min-width:340px;">
+          <thead><tr>
+            <th style="${thProd}">Nome</th><th style="${thProd}">CPF</th>
+            <th style="${thProd};text-align:right;">% Distribuição</th>
+          </tr></thead>
+          <tbody>
+            ${produtoresHeader.map(p => `<tr>
+              <td style="${tdProd}">${p.nome}</td>
+              <td style="${tdProd};font-variant-numeric:tabular-nums;">${p.cpf}</td>
+              <td style="${tdProd};text-align:right;font-variant-numeric:tabular-nums;font-weight:700;">${p.pct.toFixed(2)}%</td>
+            </tr>`).join("")}
+            ${produtoresHeader.length > 1 ? `<tr>
+              <td style="${tdProd};font-weight:700;color:#666;" colspan="2">Soma</td>
+              <td style="${tdProd};text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:${Math.abs(somaParticipacoes - 100) < 0.01 ? "#1A5C38" : "#E24B4A"};">${somaParticipacoes.toFixed(2)}%</td>
+            </tr>` : ""}
+          </tbody>
+        </table>
+      </div>`;
+
     const linhasImoveis = fazsExport.map(f => `<tr>
       <td style="${td}">${f.nome}</td>
       <td style="${td}">${[f.municipio, f.estado].filter(Boolean).join(" / ") || "—"}</td>
@@ -873,10 +908,11 @@ export default function LCDPR() {
         <table style="border-collapse:collapse;text-align:right;">
           <tr><td style="padding:2px 0;color:#666;">Regime</td><td style="padding-left:10px;">Caixa — ${entidadeLabel}</td></tr>
           <tr><td style="padding:2px 0;color:#666;">Leiaute</td><td style="padding-left:10px;">1.3 — Anexo ADE COPES nº 1/2020</td></tr>
-          ${produtorFiltro !== "todos" && fator !== 1 ? `<tr><td style="padding:2px 0;color:#666;">Quota-parte aplicada</td><td style="padding-left:10px;">${(fator * 100).toFixed(2)}%</td></tr>` : ""}
+          ${produtorFiltro !== "todos" ? `<tr><td style="padding:2px 0;color:#666;">Quota-parte aplicada</td><td style="padding-left:10px;">${(fator * 100).toFixed(2)}%</td></tr>` : ""}
         </table>
       </div>
 
+      ${blocoProdutores}
 
       <h2 style="font-size:12px;font-weight:700;color:#1A4870;margin:0 0 8px;">Imóveis Rurais</h2>
       <div class="auto-fit-table" style="margin-bottom:16px;">

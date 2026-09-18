@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-s",
+    data: "18/09/2026",
+    titulo: "PDF do LCDPR mostra Produtores e Participações no cabeçalho",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "No PDF do LCDPR gerado com \"Todos os Produtores\" selecionado, o cabeçalho (que antes só dizia \"Todos os Produtores\" e CPF \"—\") agora traz uma tabela com nome, CPF e % de distribuição de cada produtor PF configurado em Produtores e Participações, mais a soma das participações. Com um produtor específico selecionado, o cabeçalho continua mostrando só o nome, CPF e a quota-parte dele, como já era." },
+    ],
+    onde: "Fiscal → LCDPR → Exportação → PDF",
+  },
+  {
     versao: "2026.09.18-r",
     data: "18/09/2026",
     titulo: "Contas a Pagar: grid mais limpo — sinalizador de 3 cores no lugar dos textos coloridos",
