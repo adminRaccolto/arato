@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-v",
+    data: "18/09/2026",
+    titulo: "Correção de cadastro: fazenda Armazem Santa Rita marcada errado como Pessoa Jurídica",
+    modulos: ["Fiscal", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "A fazenda \"Armazem Santa Rita\" (Grupo Ogliari) estava com o campo Entidade Contábil marcado como \"Pessoa Jurídica\", embora seja propriedade pessoal (sem CNPJ) — o CPF fiscal já cadastrado nela era o do produtor. Esse erro fez 165 lançamentos dessa fazenda herdarem PJ automaticamente e sumirem do LCDPR, incluindo 46 receitas e 73 despesas já baixadas/parciais (R$ 2,47M e R$ 1,82M respectivamente). Corrigido o cadastro da fazenda e os 165 lançamentos para Pessoa Física — retroativo, com snapshot de rollback salvo." },
+    ],
+    onde: "Cadastros → Fazendas · Fiscal → LCDPR",
+  },
+  {
     versao: "2026.09.18-u",
     data: "18/09/2026",
     titulo: "Receitas parciais e antigas desapareciam do LCDPR",
