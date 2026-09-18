@@ -704,7 +704,7 @@ function ContasPagarInner() {
       // Exclui o próprio lançamento do adiantamento da lista — não faz sentido
       // aplicar um adiantamento nele mesmo (o CP "Adiantamento — ..." que o
       // registro de adiantamento gerou automaticamente).
-      listarAdiantamentosDisponiveis(fazendaId, l.pessoa_id, l.moeda)
+      listarAdiantamentosDisponiveis(l.fazenda_id ?? fazendaId, l.pessoa_id, l.moeda)
         .then(list => setAdiantamentosDisp(list.filter(a => a.lancamento_id !== l.id)))
         .catch(() => setAdiantamentosDisp([]));
     }

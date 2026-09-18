@@ -1434,7 +1434,7 @@ export default function NfCompraPage() {
     // forma correta de lançar algo sem produto — continua permitido sem associação.
     for (const it of itens) {
       if (!it.descricao_nf.trim()) continue;
-      if (it.tipo_apropiacao === "direto" || it.tipo_apropiacao === "maquinario") continue;
+      if (tipo === "custo_direto" || it.tipo_apropiacao === "direto" || it.tipo_apropiacao === "maquinario") continue;
       if (!it.insumo_id && !it.principio_ativo_id) {
         setErr(`Item "${it.descricao_nf}": associe um insumo ou princípio ativo do catálogo antes de processar. Se não for um produto de estoque, lance-o numa NF do tipo "Apropriação Direta".`);
         return;

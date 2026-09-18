@@ -90,6 +90,8 @@ Cadastra anos safra e ciclos. Todo lançamento de campo exige um ciclo previamen
 
 **Ano Safra é da conta, não da fazenda:** um mesmo "Ano Safra" (ex: "2026/2027") vale para todas as fazendas do cliente — não é preciso recriar por propriedade. Se o Ano Safra não aparecer no seletor ao registrar uma operação, o ciclo provavelmente não está vinculado ao ano safra certo.
 
+Os Ciclos cadastrados dentro de um Ano Safra também aparecem para qualquer fazenda da mesma conta, não só para a fazenda que estava ativa quando o ciclo foi criado — um ciclo cadastrado em uma propriedade aparece normalmente ao consultar o mesmo Ano Safra estando em outra fazenda do grupo.
+
 ### 2.3 Orçamento Planejado × Realizado
 **Caminho:** Lavoura → Planejamento → Orçamento Planejado × Realizado
 
@@ -287,6 +289,8 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 **A Operação Gerencial decide o modo do item; CC obrigatório (18/09/2026):** o checkbox "É combustível?" e a exigência de marcar o Centro de Custo como "manutenção de máquinas" foram removidos — agora é a Operação Gerencial escolhida no cabeçalho (obrigatória antes de avançar para os itens) que decide como cada item é lançado, já que uma NF é sempre homogênea (nota de posto = combustível; nota de peças = manutenção; nota de mercado = outra categoria qualquer): **OG marcada "Combustível e Lubrificantes"** → item só pede o veículo que abasteceu; **OG marcada "Manutenção e Reparos"** → item permite ratear entre várias frotas por percentual, sempre somando 100%; **qualquer outra OG** → item pede o Centro de Custo, que agora é **obrigatório** (antes era opcional, ficava "sem CC"). A marcação "Combustível e Lubrificantes" é feita na própria Operação Gerencial (Configurações → Operações Gerenciais) — as duas OGs padrão do catálogo global já vêm marcadas; se você criou uma OG própria de combustível, marque essa opção nela.
 
 **Aplicar Centro de Custo a todos os itens de uma vez (18/09/2026):** em Apropriação Direta / Peças / VEF / Remessa, depois de marcar "Vincular a um centro de custo?" e escolher o CC no cabeçalho, aparece o botão "↓ Aplicar este centro de custo a todos os itens" — preenche o CC de cada item da NF numa tacada só, em vez de repetir a mesma seleção item por item (comum em NF de mercado com 20+ itens do mesmo CC). Item que precisa de um CC diferente pode ser ajustado individualmente depois, sem perder o que já foi preenchido nos outros.
+
+**Apropriação Direta nunca exige produto do catálogo (correção 18/09/2026):** um item de NF do tipo Apropriação Direta estava caindo, em alguns casos (item importado de XML/SIEG, ou NF que trocou de tipo depois de criada), no mesmo bloqueio da entrada "Insumos/Estoque" — "associe um insumo ou princípio ativo do catálogo antes de processar". Não devia: Apropriação Direta é justamente o tipo de NF pra lançar despesa sem vincular a produto de estoque (combustível, manutenção, centro de custo). Corrigido — item de Apropriação Direta nunca exige produto, em nenhum caso.
 
 **Combustível na Apropriação Direta agora alimenta o histórico de abastecimento do veículo (18/09/2026):** ao marcar o item como combustível (OG "Combustível e Lubrificantes"), além do veículo, agora também é pedido o hodômetro/horímetro — data, tipo de combustível, valor por litro e valor total já vêm da própria NF. Ao processar, o sistema lança um registro no histórico de abastecimento do veículo (mesma tabela que o abastecimento pela bomba em Lavoura → Máquinas usa) com a quantidade em litros e o valor, e atualiza o horímetro/hodômetro atual da máquina — sem precisar lançar esse abastecimento de novo manualmente. Corrigido também: a OG "GASTO COMBUSTÍVEL - CUSTO FAZENDA" (usada por vários clientes pra combustível comprado direto no posto) não estava marcada como "Combustível e Lubrificantes" — corrigida.
 
@@ -559,6 +563,8 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 **Baixar em Lote (17/09/2026):** ao selecionar vários títulos e clicar em "Baixar em Lote", o modal agora tem colunas editáveis de Multa, Juros e Desconto por título — o valor final ("A pagar"/"A receber") é recalculado na hora, a partir do saldo restante de cada título (não perde o que já tinha sido pago num título parcial). Esses valores ficam guardados no lançamento para consulta futura.
 
 **Usar Adiantamento na baixa (18/09/2026):** ao abrir "Registrar pagamento" de um CP, se o fornecedor daquele título tiver adiantamento em aberto (mesma moeda), aparece o bloco "💰 Adiantamento disponível deste fornecedor" com o saldo e um campo pra informar quanto aplicar. Clicar em "Aplicar" abate esse valor do CP na hora — sem precisar escolher conta bancária pra essa parte, já que é crédito pago antes — e reduz o saldo do adiantamento. Se o valor aplicado cobrir o CP inteiro, ele já fica baixado e o modal fecha; se for parcial, o campo "Valor do pagamento" se ajusta automaticamente pro que ainda falta pagar via banco. Antes disso, aplicar um adiantamento só dava pra fazer na tela própria de Adiantamentos, e mesmo lá não abatia nenhum CP de verdade — só ficava um registro informativo, desconectado do lançamento real.
+
+**Correção 18/09/2026:** em conta com mais de uma fazenda, o bloco de adiantamento disponível não aparecia se a fazenda ativa no topo da tela fosse diferente da fazenda do próprio CP sendo baixado — a busca usava a fazenda ativa em vez da fazenda do lançamento. Corrigido.
 
 ### 15.2 Contas a Receber
 **Caminho:** Financeiro → Atividade Rural → Contas a Receber
@@ -943,10 +949,14 @@ Cadastro de funcionários para folha de pagamento (produtor PF e empresa PJ) —
 
 Cadastro de sementes, fertilizantes, defensivos, corretivos e outros insumos com custo médio, estoque mínimo e unidade.
 
+**Correção 18/09/2026:** se o salvamento de um item (aqui, em Produtos, ou em Itens Gerais) falhasse por qualquer motivo, a mensagem de erro era escrita atrás do próprio modal aberto — na prática, invisível: parecia que nada tinha acontecido, sem indicar o que deu errado. Corrigido pra mostrar o erro dentro do modal.
+
 ### 23.6 Itens Gerais
 **Caminho:** Configurações → Cadastros → Itens Gerais
 
 Produtos e serviços que não são insumos agrícolas (peças, ferramentas, materiais de escritório).
+
+Quando a Subcategoria escolhida é "Peças e Manutenção", o cadastro libera dois campos extras: Número de Série (do fabricante) e Foto do Produto (upload de imagem) — úteis para identificar peças parecidas visualmente ou controlar garantia por número de série. Ambos aparecem também na listagem do item.
 
 ### 23.7 Depósitos & Armazéns
 **Caminho:** Configurações → Cadastros → Depósitos & Armazéns

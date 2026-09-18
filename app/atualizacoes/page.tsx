@@ -6,6 +6,20 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-p",
+    data: "18/09/2026",
+    titulo: "5 correções: NF Apropriação Direta, Adiantamento no CP, Ciclos e Itens Gerais",
+    modulos: ["Compras & Estoque", "Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "NF de compra tipo Apropriação Direta estava exigindo vincular cada item a um produto do catálogo (insumo/princípio ativo) — bloqueava o processamento mesmo sendo justamente o tipo de NF criado para lançar despesas sem produto de estoque (combustível, manutenção, centro de custo). Corrigido: itens de Apropriação Direta nunca exigem produto." },
+      { tipo: "correcao", texto: "Adiantamento a Fornecedor não aparecia no modal de \"Registrar pagamento\" em contas com mais de uma fazenda — a busca usava a fazenda ativa selecionada no topo, não a fazenda real do CP que estava sendo baixado. Corrigido pra usar a fazenda do próprio lançamento." },
+      { tipo: "correcao", texto: "Ciclos cadastrados numa fazenda não apareciam ao consultar o Ano Safra estando em outra fazenda da mesma conta (aparecia só um aviso de \"N ciclo(s) em outras fazendas\"). Como o Ano Safra já é da conta como um todo, os ciclos agora aparecem independente de qual fazenda está ativa." },
+      { tipo: "correcao", texto: "Cadastro de \"Itens Gerais\" (peças, materiais, escritório etc.) podia falhar ao salvar sem mostrar nenhum erro na tela — a mensagem de erro era escrita atrás do próprio modal aberto. Agora qualquer erro de salvamento aparece dentro do modal." },
+      { tipo: "novo", texto: "Itens Gerais com subcategoria \"Peças e Manutenção\" agora têm campo de Número de Série e upload de foto do produto — aparecem na lista e no cadastro/edição do item." },
+    ],
+    onde: "Compras → NF de Produtos · Financeiro → Contas a Pagar · Cadastros → Anos Safra/Ciclos e Itens Gerais",
+  },
+  {
     versao: "2026.09.18-o",
     data: "18/09/2026",
     titulo: "Nova aba \"Auditoria\" no LCDPR — valida o que entra e o que fica de fora do Livro Caixa",

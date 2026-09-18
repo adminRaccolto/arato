@@ -13172,3 +13172,18 @@ ALTER TABLE adiantamentos_aplicacoes
   ADD COLUMN IF NOT EXISTS lancamento_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 275 — Nº de Série e Foto em Itens Gerais (Peças e Manutenção)
+--
+-- Cadastro de "Itens Gerais" (Cadastros Técnicos) precisava identificar
+-- peças/equipamentos por número de série e registrar uma foto do produto —
+-- útil para peças que se confundem visualmente (ex: filtros, correias) ou
+-- que têm garantia vinculada ao número de série do fabricante.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE insumos
+  ADD COLUMN IF NOT EXISTS numero_serie text,
+  ADD COLUMN IF NOT EXISTS foto_url text;
+
+NOTIFY pgrst, 'reload schema';

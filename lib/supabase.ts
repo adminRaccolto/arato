@@ -191,6 +191,8 @@ export type Insumo = {
   principio_ativo_id?: string; // FK principios_ativos — para defensivos
   lote?: string;
   validade?: string;
+  numero_serie?: string; // peças/equipamentos — nº de série do fabricante
+  foto_url?: string;     // peças/equipamentos — foto do produto
   created_at?: string;
 };
 

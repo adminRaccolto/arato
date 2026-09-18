@@ -365,7 +365,6 @@ function CadastrosInner() {
 
   // ── Safras ──
   const [anosSafra, setAnosSafra]     = useState<AnoSafra[]>([]);
-  const [ciclosTodos, setCiclosTodos] = useState<Ciclo[]>([]); // todos os ciclos do ano (sem filtro de fazenda)
   const [ciclos, setCiclos]           = useState<Ciclo[]>([]);
   const [anoSel, setAnoSel]           = useState<string | null>(null);
   const [modalAno, setModalAno]       = useState(false);
@@ -479,8 +478,9 @@ function CadastrosInner() {
     fabricante: "", estoque: "0", estoque_minimo: "0",
     valor_unitario: "0", lote: "", validade: "",
     deposito_id: "", bomba_id: "", principio_ativo_id: "",
-    cultura_id: "", ncm: "",
+    cultura_id: "", ncm: "", numero_serie: "", foto_url: "",
   });
+  const [fotoItUploading, setFotoItUploading] = useState(false);
 
   // ── Tabelas Auxiliares ──
   type SubAbaAux = "grupos_insumo" | "tipos_pessoa" | "centros_custo" | "categorias";
@@ -885,12 +885,15 @@ function CadastrosInner() {
     }
   };
 
-  // Carrega TODOS os ciclos do ano (sem filtro de fazenda); filtro de exibição é feito no cliente
+  // Carrega TODOS os ciclos do ano safra — a safra já é conta-wide
+  // (listarAnosSafra resolve por conta_id), então um ciclo cadastrado em
+  // qualquer fazenda da mesma conta deve aparecer, não só o da fazenda
+  // ativa. `listarCiclos(id, null)` já vem restrito a essa safra/conta —
+  // não há necessidade de filtrar de novo por fazenda no cliente.
   const selecionarAno = async (id: string) => {
     setAnoSel(id);
     const todos = await listarCiclos(id, null).catch(() => [] as Ciclo[]);
-    setCiclosTodos(todos);
-    setCiclos(fazIdEff ? todos.filter(c => c.fazenda_id === fazIdEff) : todos);
+    setCiclos(todos);
   };
 
   // ── Helpers de save ──
@@ -2012,12 +2015,10 @@ function CadastrosInner() {
     if (editCiclo) {
       await atualizarCiclo(editCiclo.id, payload);
       const upd = (x: Ciclo) => x.id === editCiclo.id ? { ...x, ...payload } : x;
-      setCiclosTodos(p => p.map(upd));
       setCiclos(p => p.map(upd));
       cicloId = editCiclo.id;
     } else {
       const n = await criarCiclo({ ...payload, ano_safra_id: anoSel!, fazenda_id: fazCiclo });
-      setCiclosTodos(p => [...p, n]);
       setCiclos(p => [...p, n]);
       cicloId = n.id;
     }
@@ -2880,7 +2881,7 @@ function CadastrosInner() {
                   {anoSel && <button style={{ ...btnV, padding: "6px 12px", fontSize: 12 }} onClick={() => abrirModalCiclo()}>+ Novo Ciclo</button>}
                 </div>
                 {!anoSel && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Selecione um Ano Safra para ver os ciclos</div>}
-                {anoSel && ciclos.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>{ciclosTodos.length > 0 ? `Nenhum ciclo para esta fazenda — ${ciclosTodos.length} ciclo(s) em outras fazendas` : "Nenhum ciclo cadastrado para este ano safra"}</div>}
+                {anoSel && ciclos.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Nenhum ciclo cadastrado para este ano safra</div>}
                 {ciclos.map((c, ci) => {
                   const prod = c.produtividade_esperada_sc_ha;
                   const preco = c.preco_esperado_sc;
@@ -2927,7 +2928,7 @@ function CadastrosInner() {
                         </div>
                         <div style={{ display: "flex", gap: 5 }}>
                           <button style={btnE} onClick={() => abrirModalCiclo(c)}>Editar</button>
-                          <button style={btnX} onClick={() => { if (confirm("Excluir ciclo?")) excluirCiclo(c.id).then(() => { setCiclosTodos(x => x.filter(r => r.id !== c.id)); setCiclos(x => x.filter(r => r.id !== c.id)); }); }}>✕</button>
+                          <button style={btnX} onClick={() => { if (confirm("Excluir ciclo?")) excluirCiclo(c.id).then(() => { setCiclos(x => x.filter(r => r.id !== c.id)); }); }}>✕</button>
                         </div>
                       </div>
                     </div>
@@ -3562,7 +3563,8 @@ function CadastrosInner() {
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: "", validade: "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: "", principio_ativo_id: "",
-              } : { nome: "", categoria: cat, subgrupo: "", cultura_id: "", ncm: "", unidade: defaultUnit as Insumo["unidade"], fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+                numero_serie: "", foto_url: "",
+              } : { nome: "", categoria: cat, subgrupo: "", cultura_id: "", ncm: "", unidade: defaultUnit as Insumo["unidade"], fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "", numero_serie: "", foto_url: "" });
               setModalIns(true);
             };
 
@@ -3592,7 +3594,7 @@ function CadastrosInner() {
                   setInsumos(x => [...x, n].sort((a,b) => a.nome.localeCompare(b.nome)));
                 }
                 setModalIns(false);
-              } catch (e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
+              } catch (e: unknown) { setErroModal((e as {message?:string})?.message || JSON.stringify(e)); }
               finally { setSalvando(false); }
             };
 
@@ -4675,7 +4677,8 @@ function CadastrosInner() {
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "",
                 principio_ativo_id: ins.principio_ativo_id ?? "",
-              } : { nome: "", categoria: "defensivo", subgrupo: "", cultura_id: "", ncm: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+                numero_serie: "", foto_url: "",
+              } : { nome: "", categoria: "defensivo", subgrupo: "", cultura_id: "", ncm: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "", numero_serie: "", foto_url: "" });
               setModalIns(true);
             };
 
@@ -5105,6 +5108,7 @@ function CadastrosInner() {
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: "", principio_ativo_id: "",
+                numero_serie: "", foto_url: "",
               } : {
                 nome: "", categoria: "produto_agricola" as Insumo["categoria"],
                 subgrupo: primeiraCultura?.nome ?? "Soja",
@@ -5113,6 +5117,7 @@ function CadastrosInner() {
                 unidade: "sc" as Insumo["unidade"],
                 fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0",
                 lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "",
+                numero_serie: "", foto_url: "",
               });
               setModalIns(true);
             };
@@ -5147,7 +5152,7 @@ function CadastrosInner() {
                   setInsumos(x => [...x, n].sort((a, b) => a.nome.localeCompare(b.nome)));
                 }
                 setModalIns(false);
-              } catch (e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
+              } catch (e: unknown) { setErroModal((e as {message?:string})?.message || JSON.stringify(e)); }
               finally { setSalvando(false); }
             };
 
@@ -5391,7 +5396,8 @@ function CadastrosInner() {
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "", principio_ativo_id: "",
-              } : { nome: "", categoria: "geral" as Insumo["categoria"], subgrupo: "", cultura_id: "", ncm: "", unidade: "un", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+                numero_serie: ins.numero_serie ?? "", foto_url: ins.foto_url ?? "",
+              } : { nome: "", categoria: "geral" as Insumo["categoria"], subgrupo: "", cultura_id: "", ncm: "", unidade: "un", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "", numero_serie: "", foto_url: "" });
               setModalIns(true);
             };
 
@@ -5411,6 +5417,8 @@ function CadastrosInner() {
                   valor_unitario: parseFloat(fIns.valor_unitario) || 0,
                   lote: fIns.lote || undefined, validade: fIns.validade || undefined,
                   deposito_id: fIns.deposito_id || undefined,
+                  numero_serie: fIns.numero_serie || undefined,
+                  foto_url: fIns.foto_url || undefined,
                   tipo: "produto",
                 };
                 if (editIns) {
@@ -5421,7 +5429,7 @@ function CadastrosInner() {
                   setInsumos(x => [...x, n].sort((a, b) => a.nome.localeCompare(b.nome)));
                 }
                 setModalIns(false);
-              } catch (e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
+              } catch (e: unknown) { setErroModal((e as {message?:string})?.message || JSON.stringify(e)); }
               finally { setSalvando(false); }
             };
 
@@ -5476,8 +5484,14 @@ function CadastrosInner() {
                           return (
                             <tr key={ins.id} style={{ borderBottom: i < itFiltr.length - 1 ? "0.5px solid var(--border-row)" : "none", background: abaixo ? "#FFFAF5" : "transparent" }}>
                               <td style={{ padding: "10px 14px" }}>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{ins.nome}</div>
-                                {ins.fabricante && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{ins.fabricante}</div>}
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  {ins.foto_url && <img src={ins.foto_url} alt="" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 5, border: "0.5px solid var(--border-table)", flexShrink: 0 }} />}
+                                  <div>
+                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{ins.nome}</div>
+                                    {ins.fabricante && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{ins.fabricante}</div>}
+                                    {ins.numero_serie && <div style={{ fontSize: 10, color: "var(--text-2)" }}>Nº série: {ins.numero_serie}</div>}
+                                  </div>
+                                </div>
                               </td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                 {ins.subgrupo
@@ -5564,6 +5578,39 @@ function CadastrosInner() {
                           {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                         </select>
                       </div>
+                      {fIns.subgrupo === "Peças e Manutenção" && (
+                        <>
+                          <div>
+                            <label style={lbl}>Número de Série</label>
+                            <input style={inp} placeholder="Ex: SN-2024-88231" value={fIns.numero_serie} onChange={e => setFIns(p => ({ ...p, numero_serie: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Foto do Produto</label>
+                            <input type="file" accept="image/*" style={{ ...inp, padding: 6 }}
+                              onChange={async e => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setFotoItUploading(true);
+                                try {
+                                  const ext  = file.name.split(".").pop() ?? "jpg";
+                                  const path = `itens-gerais/${fazIdEff}/${Date.now()}.${ext}`;
+                                  const { data: up, error: upErr } = await supabase.storage.from("arquivos").upload(path, file, { upsert: true });
+                                  if (upErr) throw upErr;
+                                  const { data: { publicUrl } } = supabase.storage.from("arquivos").getPublicUrl(up.path);
+                                  setFIns(p => ({ ...p, foto_url: publicUrl }));
+                                } catch (err) { setErroModal(`Erro no upload: ${(err as Error).message}`); }
+                                setFotoItUploading(false);
+                              }} />
+                            {fotoItUploading && <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>Enviando…</div>}
+                            {fIns.foto_url && !fotoItUploading && (
+                              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                                <img src={fIns.foto_url} alt="Foto do produto" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, border: "0.5px solid var(--border-table)" }} />
+                                <button style={{ ...btnR, padding: "4px 8px", fontSize: 11 }} onClick={() => setFIns(p => ({ ...p, foto_url: "" }))}>Remover</button>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
                       {parseFloat(fIns.estoque) > 0 && parseFloat(fIns.valor_unitario) > 0 && (
                         <div style={{ gridColumn: "1/-1", background: "#E8E8E8", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0D0D0D" }}>
                           Valor em estoque: <strong>{(parseFloat(fIns.estoque) * parseFloat(fIns.valor_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
