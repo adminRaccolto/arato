@@ -330,7 +330,7 @@ export default function LCDPR() {
         // mais nenhuma mudança na montagem do item.
         if (l.status !== "baixado" && l.status !== "parcial") return false;
         if (apoioIds.has(l.id)) return false;
-        if (l.entidade_contabil !== "pf") return false;
+        if (l.entidade_contabil && l.entidade_contabil !== "pf") return false;
         const titularId = l.produtor_id ?? fazProdutorMapPreFiltro.get(l.fazenda_id) ?? null;
         if (titularId && produtoresPJIds.has(titularId)) return false;
         if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) return false;
