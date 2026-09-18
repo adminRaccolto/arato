@@ -426,6 +426,8 @@ Relatório read-only de contratos de grãos originados de arrendamentos, compras
 
 Emissão de NF-e de venda de grãos. Integrada com contratos — ao emitir gera CR automaticamente.
 
+**Seletor de Safra/Ano vazio em conta com várias fazendas (correção 18/09/2026):** o seletor "Safra / Ano" na NF-e Avulsa só listava as safras cadastradas na fazenda emitente escolhida — em conta com várias fazendas, se as safras foram cadastradas noutra fazenda da mesma conta, o seletor aparecia vazio mesmo elas existindo. Corrigido pra buscar em toda a conta.
+
 ### 11.4 Compra de Terra
 **Caminho:** Comercial & Logística → Comercialização → Compra de Terra
 

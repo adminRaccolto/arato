@@ -5,7 +5,7 @@ import TopNav from "../../../components/TopNav";
 import {
   criarNotaFiscal, atualizarStatusNFe,
   listarProdutoresDaConta, listarPessoas, listarContratos,
-  listarFazendasDaConta, listarIEsDoProdutor,
+  listarFazendasDaConta, listarIEsDoProdutor, listarAnosSafra,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -227,7 +227,7 @@ function FaturamentoInner() {
       listarProdutoresDaConta(contaId ?? "", fazendaId ?? ""),
       listarPessoas(fazendaId ?? ""),
       listarContratos(fazendaId ?? ""),
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId ?? "").order("descricao", { ascending: false }),
+      listarAnosSafra(fazendaId ?? ""),
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId ?? "").eq("categoria","produto_agricola").order("nome"),
       supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazendaId ?? "").single(),
       supabase.from("textos_legais_uf").select("uf, cfop_tipo, texto"),
@@ -237,7 +237,7 @@ function FaturamentoInner() {
       setProdutores(p);
       setPessoas(pe);
       setContratos(c.filter(c => c.tipo === "venda" || !c.tipo));
-      setAnosSafra(as_.data ?? []);
+      setAnosSafra([...as_].sort((a, b) => b.descricao.localeCompare(a.descricao)));
       setProdAgricolas((pa.data ?? []) as Insumo[]);
       const fazData = (faz as {data?: {estado?: string; nome?: string; municipio?: string}}).data;
       const uf = fazData?.estado ?? "";
@@ -268,14 +268,14 @@ function FaturamentoInner() {
     Promise.all([
       listarProdutoresDaConta(contaId ?? "", fazNFe),
       listarContratos(fazNFe),
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazNFe).order("descricao", { ascending: false }),
+      listarAnosSafra(fazNFe),
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazNFe).eq("categoria","produto_agricola").order("nome"),
       supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazNFe).single(),
       supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazNFe).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
     ]).then(([p, c, as_, pa, faz, fm]) => {
       setProdutores(p);
       setContratos((c as Contrato[]).filter(c => c.tipo === "venda" || !c.tipo));
-      setAnosSafra(as_.data ?? []);
+      setAnosSafra([...as_].sort((a, b) => b.descricao.localeCompare(a.descricao)));
       setProdAgricolas((pa.data ?? []) as Insumo[]);
       const fazData = (faz as {data?: {estado?: string; nome?: string; municipio?: string}}).data;
       const uf = fazData?.estado ?? "";

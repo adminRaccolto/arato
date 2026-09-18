@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-k",
+    data: "18/09/2026",
+    titulo: "Correção: seletor de Safra/Ano vazio em conta com várias fazendas",
+    modulos: ["Comercial & Logística"],
+    itens: [
+      { tipo: "correcao", texto: "Em NF-e Avulsa (Remessa/outras), o seletor \"Safra / Ano\" só listava as safras cadastradas na fazenda emitente escolhida — em conta com várias fazendas, se as safras foram cadastradas noutra fazenda da mesma conta, o seletor aparecia vazio mesmo a conta tendo safras cadastradas. Corrigido: passa a buscar em toda a conta, mesmo padrão já usado noutras telas." },
+    ],
+    onde: "Comercial & Logística → Faturamento → NF-e Avulsa",
+  },
+  {
     versao: "2026.09.18-j",
     data: "18/09/2026",
     titulo: "Conciliação Bancária — corrigido travamento e exclusão de extrato sem efeito",
