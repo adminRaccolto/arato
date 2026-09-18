@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
-import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -678,11 +678,13 @@ function ConciliacaoInner() {
     if (!confirm(`${aviso}Excluir o extrato "${ext.conta_nome}" (${fmtDt(ext.data_inicio)} a ${fmtDt(ext.data_fim)})?\n\nEssa ação não pode ser desfeita.`)) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from("extratos_bancarios").delete().eq("id", ext.id);
-      if (error) throw error;
-      if (ext.ofx_storage_path) {
-        await supabase.storage.from("arquivos").remove([ext.ofx_storage_path]).catch(() => {});
-      }
+      // Via API route com service_role_key — o delete direto do cliente
+      // podia falhar silenciosamente com sessão/JWT expirado (achado real
+      // 18/09/2026: "não tem mais como excluir"), mesmo padrão já usado em
+      // persistExtrato pro mesmo motivo.
+      const res = await fetch(`/api/financeiro/persistir-extrato?id=${ext.id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({ ok: false }));
+      if (!res.ok || json?.ok === false) throw new Error(json?.error);
       setExtratos(prev => prev.filter(e => e.id !== ext.id));
       if (extrato?.id === ext.id) setExtrato(null);
     } catch {
@@ -1168,6 +1170,27 @@ function ConciliacaoInner() {
   // ── CP/CR em aberto cruzados com o extrato atual (sub-aba "CP/CR em Aberto") ──
   const cpcrAbertos = lancamentos.filter(l => !["baixado", "cancelado"].includes(l.status));
 
+  // Índice das linhas não conciliadas do extrato por valor arredondado (real
+  // cheio) — antes a busca de correspondência escaneava TODAS as linhas do
+  // extrato pra CADA lançamento em aberto (O(n×m), com criação de Date por
+  // candidato), recalculado sem memoização em toda renderização. Em conta
+  // com histórico grande (extrato contínuo de vários bancos/anos + centenas
+  // de CP/CR em aberto), isso travava/estourava memória da aba (achado real
+  // 18/09/2026, reportado como a tela de conciliação crashando ao recarregar
+  // depois da correção anterior, que tornou a busca ainda mais pesada por
+  // item ao adicionar o filtro de data). Bucket por valor reduz o escaneado
+  // por lançamento de "todo o extrato" para "só as linhas com valor parecido".
+  const indiceExtratoPorValor = useMemo(() => {
+    const m = new Map<number, LinhaOFX[]>();
+    for (const linha of extrato?.linhas ?? []) {
+      if (linha.conciliado) continue;
+      const bucket = Math.round(linha.valor);
+      const arr = m.get(bucket);
+      if (arr) arr.push(linha); else m.set(bucket, [linha]);
+    }
+    return m;
+  }, [extrato]);
+
   // Antes só casava por valor+tipo, sem checar data — com .find() pegava a
   // primeira transação do extrato (ordenado por data) com aquele valor,
   // mesmo quando havia mais de uma com o mesmo valor em datas diferentes
@@ -1181,8 +1204,12 @@ function ConciliacaoInner() {
     if (!extrato) return undefined;
     const alvo = l.valor_pago ?? l.valor;
     const dv = new Date(l.data_vencimento + "T00:00:00").getTime();
-    const candidatos = extrato.linhas.filter(linha => {
-      if (linha.conciliado) return false;
+    const baseBucket = Math.round(alvo);
+    const candidatos = [
+      ...(indiceExtratoPorValor.get(baseBucket - 1) ?? []),
+      ...(indiceExtratoPorValor.get(baseBucket) ?? []),
+      ...(indiceExtratoPorValor.get(baseBucket + 1) ?? []),
+    ].filter(linha => {
       if (Math.abs(linha.valor - alvo) > 0.02) return false;
       if (l.tipo === "pagar"   && linha.tipo !== "debito")  return false;
       if (l.tipo === "receber" && linha.tipo !== "credito") return false;
@@ -1197,7 +1224,10 @@ function ConciliacaoInner() {
     });
   }
 
-  const cpcrAbertosComMatch = cpcrAbertos.filter(l => !!acharCorrespondencia(l));
+  const cpcrAbertosComMatch = useMemo(
+    () => cpcrAbertos.filter(l => !!acharCorrespondencia(l)),
+    [cpcrAbertos, indiceExtratoPorValor] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   // Contagens para badges do filtro de status
   const cntAberto  = lancamentos.filter(l => ["aberto","vencido","em_aberto"].includes(l.status)).length;

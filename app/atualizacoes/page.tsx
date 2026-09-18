@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-j",
+    data: "18/09/2026",
+    titulo: "Conciliação Bancária — corrigido travamento e exclusão de extrato sem efeito",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A aba \"CP/CR em Aberto\" recalculava a sugestão de correspondência escaneando todo o extrato pra cada lançamento em aberto, sem guardar o resultado — em contas com histórico grande (muitos lançamentos + extrato de vários bancos/anos), isso deixava a tela pesada e podia travar/travar o navegador ao recarregar. Agora indexa o extrato por valor antes de comparar, e guarda o resultado até os dados realmente mudarem." },
+      { tipo: "correcao", texto: "Excluir um extrato importado (🗑 na lista de importações) podia falhar silenciosamente com a sessão mais antiga, sem aviso — a tela parecia \"sem efeito\" ao clicar em excluir. Corrigido: a exclusão agora passa por uma rota do servidor imune a esse tipo de falha, mesmo padrão já usado para vincular/baixar." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.18-i",
     data: "18/09/2026",
     titulo: "Correção: consulta Sintegra dizia \"nenhum certificado configurado\" mesmo tendo",

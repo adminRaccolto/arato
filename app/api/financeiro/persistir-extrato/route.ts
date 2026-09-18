@@ -90,3 +90,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/financeiro/persistir-extrato?id=<extrato_id>
+ *
+ * Exclui um registro de importação de extrato — via service_role_key pelo
+ * mesmo motivo do POST (o delete direto do cliente falhava silenciosamente
+ * com JWT expirado, achado real 18/09/2026: "não tem mais como excluir").
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const id = new URL(req.url).searchParams.get("id");
+    if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
+
+    const sb = admin();
+    const { data: ext } = await sb.from("extratos_bancarios").select("ofx_storage_path").eq("id", id).maybeSingle();
+
+    const { error } = await sb.from("extratos_bancarios").delete().eq("id", id);
+    if (error) {
+      console.error("[persistir-extrato][DELETE] erro:", error.message);
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+
+    if (ext?.ofx_storage_path) {
+      await sb.storage.from("arquivos").remove([ext.ofx_storage_path]).catch(() => {});
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[persistir-extrato][DELETE]", msg);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+}

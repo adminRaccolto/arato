@@ -634,6 +634,8 @@ Concilia lançamentos do sistema com o extrato OFX importado do banco.
 
 **Layout:** painel esquerdo (CP/CR em aberto) + painel direito (extrato OFX).
 
+**Tela travando/lenta em conta com histórico grande; exclusão de extrato sem efeito (correção 18/09/2026):** a aba "CP/CR em Aberto" recalculava a sugestão de correspondência escaneando todo o extrato pra cada lançamento em aberto, sem guardar o resultado — em conta com muito lançamento e muita transação de extrato acumulada, isso deixava a tela pesada, podendo travar o navegador ao recarregar. Corrigido pra indexar o extrato por valor antes de comparar. Também corrigido: excluir um extrato importado (🗑) podia falhar silenciosamente com sessão mais antiga — agora passa por uma rota do servidor imune a esse tipo de falha.
+
 **Baixa automática não acontecia ao importar (correção 18/09/2026):** quando o OFX conciliava um lançamento automaticamente ao importar (sem o usuário clicar em nada), o sistema marcava a transação como conciliada mas nunca baixava o lançamento — ficava "em aberto" mesmo já vinculado a uma transação real do banco. Achado em produção em várias contas/bancos diferentes, não um banco específico. O caminho manual ("✓ Conciliar e Baixar" na aba CP/CR em Aberto) já baixava certo; agora o caminho automático (o que a maioria das transações segue) também baixa.
 
 **Sugestão de correspondência em "CP/CR em Aberto" ignorava a data (correção 18/09/2026):** casava só por valor — com mais de uma transação de mesmo valor no extrato (comum em compras recorrentes), podia sugerir a errada. Agora exige estar dentro de 15 dias do vencimento e prioriza a mais próxima.
