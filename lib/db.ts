@@ -6107,6 +6107,60 @@ export async function buscarConfigAutomacao(fazendaId: string, automacaoId: stri
 
 import type { AdiantamentoFornecedor, AdiantamentoAplicacao } from "./supabase";
 
+// Adiantamentos do fornecedor com saldo disponível (em_aberto ou parcial),
+// pra oferecer na tela de baixa de CP — "usar adiantamento como pagamento".
+export async function listarAdiantamentosDisponiveis(
+  fazenda_id: string,
+  pessoa_id: string,
+  moeda?: string,
+): Promise<AdiantamentoFornecedor[]> {
+  if (!pessoa_id) return [];
+  const { data, error } = await supabase
+    .from("adiantamentos_fornecedor")
+    .select("*")
+    .eq("fazenda_id", fazenda_id)
+    .eq("pessoa_id", pessoa_id)
+    .in("status", ["em_aberto", "parcial"])
+    .order("data_emissao");
+  if (error) throw error;
+  return (data ?? []).filter(a =>
+    (!moeda || a.moeda === moeda) && (a.valor - (a.valor_aplicado ?? 0)) > 0.01
+  );
+}
+
+// Aplica um adiantamento diretamente na baixa de um CP — abate o saldo do
+// CP (parcial ou total, mesma lógica de baixarLancamento) e reduz o saldo
+// do adiantamento, atomicamente via service_role. Diferente de
+// aplicarAdiantamento() abaixo, que só registra uma anotação no histórico
+// do adiantamento sem tocar em nenhum CP real.
+export async function aplicarAdiantamentoEmCP(
+  adiantamento_id: string,
+  lancamento_cp_id: string,
+  valor_aplicado: number,
+  data_aplicacao: string,
+  descricao?: string,
+): Promise<{ novoStatusCp: string; novoTotalCp: number; novoSaldoAdiantamento: number }> {
+  const res = await fetch("/api/financeiro/baixar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      acao: "aplicar_adiantamento",
+      adiantamento_id,
+      lancamento_id: lancamento_cp_id,
+      valor_aplicado,
+      data_aplicacao,
+      descricao,
+    }),
+  });
+  const json = await res.json() as { ok: boolean; error?: string; novo_status_cp?: string; novo_total_cp?: number; novo_saldo_adiantamento?: number };
+  if (!json.ok) throw new Error(json.error ?? "Erro ao aplicar adiantamento");
+  return {
+    novoStatusCp: json.novo_status_cp!,
+    novoTotalCp: json.novo_total_cp!,
+    novoSaldoAdiantamento: json.novo_saldo_adiantamento!,
+  };
+}
+
 export async function listarAdiantamentos(fazenda_id: string): Promise<AdiantamentoFornecedor[]> {
   const { data, error } = await supabase
     .from("adiantamentos_fornecedor")

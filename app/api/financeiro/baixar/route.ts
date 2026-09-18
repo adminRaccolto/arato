@@ -19,7 +19,7 @@ const admin = () =>
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
-      acao:          "baixar" | "reabrir";
+      acao:          "baixar" | "reabrir" | "aplicar_adiantamento";
       lancamento_id: string;
       // baixar
       valor_pago_agora?: number;
@@ -34,6 +34,11 @@ export async function POST(req: NextRequest) {
       juros_valor?:      number;
       desconto_valor?:   number;
       nova_data_vencimento?: string;
+      // aplicar_adiantamento
+      adiantamento_id?:  string;
+      valor_aplicado?:   number;
+      data_aplicacao?:   string;
+      descricao?:        string;
     };
 
     const sb = admin();
@@ -48,6 +53,76 @@ export async function POST(req: NextRequest) {
         .eq("id", id);
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
       return NextResponse.json({ ok: true, novo_status: novoStatus });
+    }
+
+    // ── APLICAR ADIANTAMENTO ──────────────────────────────────────────────────
+    // Abate o saldo de um adiantamento a fornecedor diretamente na baixa do CP
+    // (parcial ou total) — sem conta bancária, é crédito já pago antes.
+    if (body.acao === "aplicar_adiantamento") {
+      const adiantamentoId = body.adiantamento_id;
+      const valorAplicado  = body.valor_aplicado ?? 0;
+      if (!adiantamentoId || valorAplicado <= 0) {
+        return NextResponse.json({ ok: false, error: "Adiantamento e valor a aplicar são obrigatórios" }, { status: 400 });
+      }
+
+      const { data: adiant } = await sb.from("adiantamentos_fornecedor").select("*").eq("id", adiantamentoId).single();
+      if (!adiant) return NextResponse.json({ ok: false, error: "Adiantamento não encontrado" }, { status: 404 });
+      if (adiant.lancamento_id === id) {
+        return NextResponse.json({ ok: false, error: "Não é possível aplicar um adiantamento no próprio lançamento que ele gerou." }, { status: 400 });
+      }
+      const saldoAdiantamento = adiant.valor - (adiant.valor_aplicado ?? 0);
+      if (valorAplicado > saldoAdiantamento + 0.01) {
+        return NextResponse.json({ ok: false, error: `Valor maior que o saldo do adiantamento (${saldoAdiantamento.toFixed(2)})` }, { status: 400 });
+      }
+
+      const { data: cp } = await sb.from("lancamentos").select("valor, valor_pago, cotacao_usd, moeda, contrato_financeiro_id, data_vencimento").eq("id", id).single();
+      if (!cp) return NextResponse.json({ ok: false, error: "Lançamento (CP) não encontrado" }, { status: 404 });
+      const cotacaoCp    = (cp.cotacao_usd as number | null) ?? 5.12;
+      const valorTotalCp = cp.moeda === "USD" ? (cp.valor ?? 0) * cotacaoCp : (cp.valor ?? 0);
+      const jaPagoCp     = (cp.valor_pago as number | null) ?? 0;
+      const saldoCp      = valorTotalCp - jaPagoCp;
+      if (valorAplicado > saldoCp + 0.01) {
+        return NextResponse.json({ ok: false, error: `Valor maior que o saldo devedor do CP (${saldoCp.toFixed(2)})` }, { status: 400 });
+      }
+
+      // 1. Registra a aplicação, ligada a este CP
+      const { error: eApl } = await sb.from("adiantamentos_aplicacoes").insert({
+        adiantamento_id: adiantamentoId,
+        fazenda_id:      adiant.fazenda_id,
+        descricao:       body.descricao || "Aplicado na baixa de CP",
+        valor_aplicado:  valorAplicado,
+        data_aplicacao:  body.data_aplicacao,
+        lancamento_id:   id,
+      });
+      if (eApl) return NextResponse.json({ ok: false, error: eApl.message }, { status: 400 });
+
+      // 2. Reduz o saldo do adiantamento
+      const novoTotalAdiantamento  = (adiant.valor_aplicado ?? 0) + valorAplicado;
+      const novoStatusAdiantamento = novoTotalAdiantamento >= adiant.valor - 0.01 ? "aplicado" : "parcial";
+      const { error: eAdiant } = await sb.from("adiantamentos_fornecedor")
+        .update({ valor_aplicado: novoTotalAdiantamento, status: novoStatusAdiantamento })
+        .eq("id", adiantamentoId);
+      if (eAdiant) return NextResponse.json({ ok: false, error: eAdiant.message }, { status: 400 });
+
+      // 3. Abate o CP — mesma lógica de "baixar", sem tocar conta_bancaria
+      // (nenhum dinheiro saiu de banco nesta parte, foi crédito já pago antes)
+      const novoTotalCp  = jaPagoCp + valorAplicado;
+      const novoStatusCp = novoTotalCp >= valorTotalCp - 0.01 ? "baixado" : "parcial";
+      const { error: eCp } = await sb.from("lancamentos")
+        .update({ status: novoStatusCp, valor_pago: novoTotalCp, data_baixa: body.data_aplicacao })
+        .eq("id", id);
+      if (eCp) return NextResponse.json({ ok: false, error: eCp.message }, { status: 400 });
+
+      await sb.from("parcelas_pagamento")
+        .update({ status: novoStatusCp === "baixado" ? "pago" : "parcial", data_pagamento: body.data_aplicacao })
+        .eq("lancamento_id", id);
+
+      return NextResponse.json({
+        ok: true,
+        novo_status_cp: novoStatusCp,
+        novo_total_cp: novoTotalCp,
+        novo_saldo_adiantamento: adiant.valor - novoTotalAdiantamento,
+      });
     }
 
     // ── BAIXAR ──────────────────────────────────────────────────────────────

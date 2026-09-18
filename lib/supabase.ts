@@ -2324,6 +2324,7 @@ export type AdiantamentoAplicacao = {
   data_aplicacao: string;
   nf_entrada_id?: string;
   nr_nf?: string;
+  lancamento_id?: string;  // FK lancamentos — CP abatido por esta aplicação
   created_at?: string;
 };
 

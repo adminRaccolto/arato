@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-l",
+    data: "18/09/2026",
+    titulo: "Contas a Pagar — usar Adiantamento a Fornecedor direto na baixa do CP",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Ao registrar pagamento de um CP, se o fornecedor tiver adiantamento em aberto, aparece um bloco \"💰 Adiantamento disponível deste fornecedor\" — informe quanto quer usar e clique em Aplicar. O valor abate o CP na hora (parcial ou total, sem precisar de conta bancária pra essa parte) e reduz o saldo do adiantamento. Se cobrir o CP inteiro, ele já fica baixado; se for parcial, o campo de pagamento se ajusta pro que ainda falta pagar via banco." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Registrar pagamento",
+  },
+  {
     versao: "2026.09.18-k",
     data: "18/09/2026",
     titulo: "Correção: seletor de Safra/Ano vazio em conta com várias fazendas",

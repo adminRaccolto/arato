@@ -12,8 +12,8 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, listarCartoesDaConta, vincularLancamentoFatura, buscarLancamentoDuplicado, type VeiculoUnificado } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa, CartaoCredito } from "../../../lib/supabase";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, listarCartoesDaConta, vincularLancamentoFatura, buscarLancamentoDuplicado, listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, type VeiculoUnificado } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -205,6 +205,10 @@ function ContasPagarInner() {
 
   const [popover,     setPopover]     = useState<{ l: Lancamento; x: number; y: number } | null>(null);
   const [modalBaixa,  setModalBaixa]  = useState<Lancamento | null>(null);
+  // Adiantamentos do fornecedor disponíveis pra abater direto na baixa deste CP
+  const [adiantamentosDisp, setAdiantamentosDisp] = useState<AdiantamentoFornecedor[]>([]);
+  const [valorAdiantAplicar, setValorAdiantAplicar] = useState<Record<string, number>>({});
+  const [aplicandoAdiant, setAplicandoAdiant] = useState<string | null>(null);
   const [modalReprog, setModalReprog] = useState<Lancamento | null>(null);
   const [reprogForm,  setReprogForm]  = useState({ nova_data: "", novo_valor: "", obs: "" });
   const [modalNovo,   setModalNovo]   = useState(false);
@@ -694,6 +698,16 @@ function ContasPagarInner() {
     // Recarrega contas para incluir qualquer conta criada após o mount
     listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
     setModalBaixa(l);
+    setValorAdiantAplicar({});
+    setAdiantamentosDisp([]);
+    if (l.moeda !== "barter" && l.pessoa_id && fazendaId) {
+      // Exclui o próprio lançamento do adiantamento da lista — não faz sentido
+      // aplicar um adiantamento nele mesmo (o CP "Adiantamento — ..." que o
+      // registro de adiantamento gerou automaticamente).
+      listarAdiantamentosDisponiveis(fazendaId, l.pessoa_id, l.moeda)
+        .then(list => setAdiantamentosDisp(list.filter(a => a.lancamento_id !== l.id)))
+        .catch(() => setAdiantamentosDisp([]));
+    }
     const saldoRestante = paraBRL(l) - (l.valor_pago ?? 0);
     setBaixa({
       valorMask: l.moeda === "barter" ? "" : numParaMascara(Math.max(0, saldoRestante)),
@@ -778,6 +792,38 @@ function ContasPagarInner() {
       alert("Erro: " + msgBaixa);
     } finally {
       setSalvando(false);
+    }
+  };
+
+  // ── Aplicar adiantamento na baixa do CP ─────────────────────
+  const aplicarAdiantNoModal = async (adiant: AdiantamentoFornecedor) => {
+    if (!modalBaixa) return;
+    const saldoAdiant = adiant.valor - (adiant.valor_aplicado ?? 0);
+    const saldoCp     = Math.max(0, paraBRL(modalBaixa) - (modalBaixa.valor_pago ?? 0));
+    const valor       = valorAdiantAplicar[adiant.id] ?? 0;
+    if (!valor || valor <= 0) return;
+    if (valor > saldoAdiant + 0.01) { alert(`Valor maior que o saldo do adiantamento (${fmtBRL(saldoAdiant)}).`); return; }
+    if (valor > saldoCp + 0.01)     { alert(`Valor maior que o saldo devedor do CP (${fmtBRL(saldoCp)}).`); return; }
+    setAplicandoAdiant(adiant.id);
+    try {
+      const r = await aplicarAdiantamentoEmCP(adiant.id, modalBaixa.id, valor, baixa.data, `Adiantamento aplicado — ${modalBaixa.descricao}`);
+      setModalBaixa(prev => prev ? { ...prev, status: r.novoStatusCp as Lancamento["status"], valor_pago: r.novoTotalCp } : prev);
+      setLancamentos(prev => prev.map(l => l.id !== modalBaixa.id ? l : { ...l, status: r.novoStatusCp as Lancamento["status"], valor_pago: r.novoTotalCp, data_baixa: baixa.data }));
+      setAdiantamentosDisp(prev => prev
+        .map(a => a.id === adiant.id ? { ...a, valor_aplicado: (a.valor_aplicado ?? 0) + valor } : a)
+        .filter(a => (a.valor - (a.valor_aplicado ?? 0)) > 0.01));
+      setValorAdiantAplicar(prev => { const p = { ...prev }; delete p[adiant.id]; return p; });
+      // Novo saldo devedor do CP recalculado — ajusta o valor sugerido de pagamento (banco) pro que ainda falta
+      const novoSaldo = Math.max(0, paraBRL(modalBaixa) - r.novoTotalCp);
+      setBaixa(p => ({ ...p, valorMask: numParaMascara(novoSaldo) }));
+      if (r.novoStatusCp === "baixado") {
+        alert("CP totalmente coberto pelo adiantamento — nada a pagar via banco.");
+        setModalBaixa(null);
+      }
+    } catch (e: unknown) {
+      alert("Erro ao aplicar adiantamento: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAplicandoAdiant(null);
     }
   };
 
@@ -2435,6 +2481,33 @@ function ContasPagarInner() {
               {jaPago > 0 && <span style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "2px 8px" }}>Saldo devedor: <strong style={{ color: "#C9921B", fontSize: 13 }}>{fmtBRL(valorOrig)}</strong></span>}
               <span>Vencimento: <strong style={{ color: "var(--text-1)" }}>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
             </div>
+
+            {/* ── Usar adiantamento do fornecedor como parte (ou todo) do pagamento ── */}
+            {adiantamentosDisp.length > 0 && (
+              <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>💰 Adiantamento disponível deste fornecedor</div>
+                {adiantamentosDisp.map(a => {
+                  const saldoAdiant = a.valor - (a.valor_aplicado ?? 0);
+                  const saldoCpAtual = Math.max(0, paraBRL(modalBaixa) - (modalBaixa.valor_pago ?? 0));
+                  const valorSugerido = Math.min(saldoAdiant, saldoCpAtual);
+                  const valorAtual = valorAdiantAplicar[a.id] ?? valorSugerido;
+                  return (
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <div style={{ flex: 1, fontSize: 12, color: "var(--text-1)" }}>
+                        {a.descricao} <span style={{ color: "var(--text-3)" }}>— saldo {fmtBRL(saldoAdiant)}</span>
+                      </div>
+                      <InputMonetario value={valorAtual} onChange={v => setValorAdiantAplicar(p => ({ ...p, [a.id]: v }))} style={{ ...inp, width: 130, fontSize: 12, padding: "5px 8px" }} />
+                      <button
+                        disabled={aplicandoAdiant === a.id}
+                        onClick={() => aplicarAdiantNoModal(a)}
+                        style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 600, cursor: aplicandoAdiant === a.id ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                        {aplicandoAdiant === a.id ? "Aplicando…" : "Aplicar"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {modalBaixa.moeda === "barter" ? (
               <div style={{ display: "grid", gap: 14 }}>

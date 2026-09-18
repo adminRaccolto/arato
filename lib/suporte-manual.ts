@@ -558,6 +558,8 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 
 **Baixar em Lote (17/09/2026):** ao selecionar vários títulos e clicar em "Baixar em Lote", o modal agora tem colunas editáveis de Multa, Juros e Desconto por título — o valor final ("A pagar"/"A receber") é recalculado na hora, a partir do saldo restante de cada título (não perde o que já tinha sido pago num título parcial). Esses valores ficam guardados no lançamento para consulta futura.
 
+**Usar Adiantamento na baixa (18/09/2026):** ao abrir "Registrar pagamento" de um CP, se o fornecedor daquele título tiver adiantamento em aberto (mesma moeda), aparece o bloco "💰 Adiantamento disponível deste fornecedor" com o saldo e um campo pra informar quanto aplicar. Clicar em "Aplicar" abate esse valor do CP na hora — sem precisar escolher conta bancária pra essa parte, já que é crédito pago antes — e reduz o saldo do adiantamento. Se o valor aplicado cobrir o CP inteiro, ele já fica baixado e o modal fecha; se for parcial, o campo "Valor do pagamento" se ajusta automaticamente pro que ainda falta pagar via banco. Antes disso, aplicar um adiantamento só dava pra fazer na tela própria de Adiantamentos, e mesmo lá não abatia nenhum CP de verdade — só ficava um registro informativo, desconectado do lançamento real.
+
 ### 15.2 Contas a Receber
 **Caminho:** Financeiro → Atividade Rural → Contas a Receber
 
@@ -571,6 +573,8 @@ Gerencia receitas previstas e realizadas do produtor rural.
 **Caminho:** Financeiro → Atividade Rural → Adiantamentos a Fornecedores
 
 Registra pagamentos antecipados a fornecedores antes da entrega do produto ou serviço.
+
+**Dois jeitos de "Aplicar" um adiantamento:** o botão "Aplicar" aqui nesta tela continua existindo — registra uma anotação no histórico do adiantamento (valor, data, NF opcional), útil como controle informativo, mas **não abate nenhum CP**. Pra de fato usar o saldo do adiantamento como pagamento de um CP real, aplique direto na baixa do CP (Contas a Pagar → Registrar pagamento → bloco "💰 Adiantamento disponível", novidade 18/09/2026) — essa via já reduz o saldo do adiantamento E o saldo do CP juntos.
 
 ### 15.4 Folha de Pagamento
 **Caminho:** Financeiro → Atividade Rural → Folha de Pagamento

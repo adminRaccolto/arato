@@ -13152,3 +13152,23 @@ ALTER TABLE nf_entrada_itens
   ADD COLUMN IF NOT EXISTS horimetro numeric(12,1);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 274 — Aplicar Adiantamento direto na baixa do CP
+--
+-- Adiantamentos a Fornecedores já existia (adiantamentos_fornecedor +
+-- adiantamentos_aplicacoes), mas "Aplicar" só registrava uma anotação no
+-- histórico do adiantamento — nunca abatia de fato nenhum CP real. Baixar
+-- um CP de um fornecedor com adiantamento em aberto não tinha como usar
+-- esse saldo como parte (ou todo) do pagamento; era preciso pagar o CP
+-- inteiro via banco e controlar o adiantamento por fora.
+--
+-- lancamento_id em adiantamentos_aplicacoes liga a aplicação ao CP que ela
+-- de fato abateu — antes só existia nf_entrada_id/nr_nf (pensado pra outro
+-- fluxo, nunca essa integração com a baixa).
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE adiantamentos_aplicacoes
+  ADD COLUMN IF NOT EXISTS lancamento_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';
