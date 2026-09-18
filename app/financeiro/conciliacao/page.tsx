@@ -282,6 +282,7 @@ function ConciliacaoInner() {
   const [loading, setLoading]         = useState(false);
   const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico"|"inconsistencias">(() => searchParams.get("pendentes") === "true" ? "inconsistencias" : "extrato");
   const [historico, setHistorico]     = useState<HistoricoConciliacao[]>([]);
+  const [expandedHist, setExpandedHist] = useState<string | null>(null);
   const [pendencias, setPendencias]   = useState<Pendencia[]>([]);
   const [subInconsist, setSubInconsist] = useState<"com_conta"|"sem_conta">("com_conta");
 
@@ -1806,8 +1807,6 @@ function ConciliacaoInner() {
 
         {/* ═══ ABA HISTÓRICO ═══ */}
         {!extrato && abaAtiva === "historico" && (() => {
-          const [expandedHist, setExpandedHist] = React.useState<string | null>(null);
-
           const historicoDeExtrato = (exId: string) =>
             historico.filter(h => h.extrato_id === exId);
 

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-q",
+    data: "18/09/2026",
+    titulo: "Correção grave: aba Histórico da Conciliação Bancária travava a página",
+    modulos: ["Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Ao abrir a aba \"Histórico\" da Conciliação Bancária, a página quebrava (\"This page couldn't load\") — o código chamava um hook do React de dentro de um bloco condicional, o que o React não permite; sempre que a aba fosse aberta pela primeira vez, a tela travava. Corrigido." },
+      { tipo: "novo", texto: "Auditoria do LCDPR: nova coluna \"Produtor\" na tabela (mostra o titular de cada lançamento, direto ou herdado da fazenda) e novo filtro por mês de competência, ao lado dos filtros existentes." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária → Histórico · Fiscal → LCDPR → Auditoria",
+  },
+  {
     versao: "2026.09.18-p",
     data: "18/09/2026",
     titulo: "5 correções: NF Apropriação Direta, Adiantamento no CP, Ciclos e Itens Gerais",

@@ -166,6 +166,8 @@ interface ItemAuditoriaLcdpr {
   lancamento: Lancamento;
   motivos: MotivoExclusaoLcdpr[];
   incluido: boolean;
+  produtorNome: string;
+  competencia: string; // "YYYY-MM"
 }
 
 const MOTIVO_LABEL: Record<MotivoExclusaoLcdpr, string> = {
@@ -193,6 +195,7 @@ export default function LCDPR() {
   const [entradas, setEntradas] = useState<EntradaLCDPR[]>([]);
   const [auditoriaLcdpr, setAuditoriaLcdpr] = useState<ItemAuditoriaLcdpr[]>([]);
   const [filtroAuditoria, setFiltroAuditoria] = useState<"todos" | "incluidos" | "excluidos">("excluidos");
+  const [mesAuditoria, setMesAuditoria] = useState<string>("todos"); // "todos" ou "01".."12"
 
   const [config, setConfig]       = useState<ConfigLCDPR>(CONFIG_VAZIA);
   const [savingCfg, setSavingCfg] = useState(false);
@@ -362,6 +365,16 @@ export default function LCDPR() {
         const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
         return dt.slice(0, 4) === String(anoSel);
       });
+      // Produtor "dono" de cada lançamento: usa lancamentos.produtor_id quando
+      // preenchido; senão herda da fazenda (fazendas.produtor_id — a maioria
+      // dos lançamentos hoje não tem produtor_id direto, mas toda fazenda tem
+      // um titular). Usado pra exibir no relatório "Todos os Produtores" e na
+      // coluna Produtor da Auditoria.
+      const fazProdutorMap = fazProdutorMapPreFiltro;
+      const produtorNomeMap = new Map<string, string>();
+      for (const p of (prodRows ?? []) as { id: string; nome: string; cpf_cnpj?: string }[]) {
+        produtorNomeMap.set(p.id, p.nome);
+      }
       const auditoria: ItemAuditoriaLcdpr[] = basePagosPF.map((l: Lancamento) => {
         const motivos: MotivoExclusaoLcdpr[] = [];
         if (apoioIds.has(l.id)) motivos.push("apoio_baixa");
@@ -374,19 +387,14 @@ export default function LCDPR() {
           if (listaNomesInternos.some(n => descNorm.includes(n))) motivos.push("nome_interno");
         }
         if (l.vinculo_atividade && l.vinculo_atividade !== "rural") motivos.push("vinculo_nao_rural");
-        return { lancamento: l, motivos, incluido: motivos.length === 0 };
+        const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
+        return {
+          lancamento: l, motivos, incluido: motivos.length === 0,
+          produtorNome: titularId ? (produtorNomeMap.get(titularId) ?? "—") : "—",
+          competencia: dt.slice(0, 7),
+        };
       });
       setAuditoriaLcdpr(auditoria);
-
-      // Produtor "dono" de cada lançamento: usa lancamentos.produtor_id quando
-      // preenchido; senão herda da fazenda (fazendas.produtor_id — a maioria
-      // dos lançamentos hoje não tem produtor_id direto, mas toda fazenda tem
-      // um titular). Usado pra exibir no relatório "Todos os Produtores".
-      const fazProdutorMap = fazProdutorMapPreFiltro;
-      const produtorNomeMap = new Map<string, string>();
-      for (const p of (prodRows ?? []) as { id: string; nome: string; cpf_cnpj?: string }[]) {
-        produtorNomeMap.set(p.id, p.nome);
-      }
 
       const items: EntradaLCDPR[] = filtrados.map((l: Lancamento) => {
         const produtorId = l.produtor_id ?? fazProdutorMap.get(l.fazenda_id) ?? null;
@@ -1237,8 +1245,10 @@ export default function LCDPR() {
 
             {/* ═══ ABA: AUDITORIA ═══ */}
             {aba === "auditoria" && (() => {
+              const mesesDisponiveis = [...new Set(auditoriaLcdpr.map(a => a.competencia).filter(Boolean))].sort();
               const lista = auditoriaLcdpr.filter(a =>
-                filtroAuditoria === "todos" ? true : filtroAuditoria === "incluidos" ? a.incluido : !a.incluido
+                (filtroAuditoria === "todos" ? true : filtroAuditoria === "incluidos" ? a.incluido : !a.incluido)
+                && (mesAuditoria === "todos" ? true : a.competencia === mesAuditoria)
               );
               const totalPago    = auditoriaLcdpr.reduce((s, a) => s + (a.lancamento.valor_pago ?? a.lancamento.valor ?? 0), 0);
               const totalInclu   = auditoriaLcdpr.filter(a => a.incluido).reduce((s, a) => s + (a.lancamento.valor_pago ?? a.lancamento.valor ?? 0), 0);
@@ -1283,7 +1293,7 @@ export default function LCDPR() {
                     </div>
                   )}
 
-                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
                     {([["excluidos", "Fora do LCDPR"], ["incluidos", "No LCDPR"], ["todos", "Todos"]] as const).map(([v, lbl]) => (
                       <button key={v} onClick={() => setFiltroAuditoria(v)} style={{
                         padding: "6px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)",
@@ -1294,6 +1304,15 @@ export default function LCDPR() {
                         {lbl}
                       </button>
                     ))}
+                    <select value={mesAuditoria} onChange={e => setMesAuditoria(e.target.value)} style={{
+                      padding: "6px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)",
+                      background: "var(--bg-card)", color: "var(--text-2)", fontSize: 12, marginLeft: 8,
+                    }}>
+                      <option value="todos">Todos os meses</option>
+                      {mesesDisponiveis.map(m => (
+                        <option key={m} value={m}>{fmtData(`${m}-01`).slice(3)}</option>
+                      ))}
+                    </select>
                   </div>
 
                   {lista.length === 0 ? (
@@ -1305,15 +1324,16 @@ export default function LCDPR() {
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ borderBottom: "0.5px solid var(--border-table)" }}>
-                            {["Data", "Descrição", "Valor", "Status LCDPR", "Motivo(s)"].map(h => (
+                            {["Data", "Produtor", "Descrição", "Valor", "Status LCDPR", "Motivo(s)"].map(h => (
                               <th key={h} style={{ padding: "8px 10px", textAlign: h === "Valor" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {lista.map(({ lancamento: l, motivos, incluido }, i) => (
+                          {lista.map(({ lancamento: l, motivos, incluido, produtorNome }, i) => (
                             <tr key={l.id} style={{ borderBottom: i < lista.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                               <td style={{ padding: "8px 10px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa ?? l.data_vencimento)}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{produtorNome}</td>
                               <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{l.descricao ?? l.categoria ?? "—"}</td>
                               <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtBRL(l.valor_pago ?? l.valor ?? 0)}</td>
                               <td style={{ padding: "8px 10px" }}>
