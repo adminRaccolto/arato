@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-i",
+    data: "18/09/2026",
+    titulo: "Correção: consulta Sintegra dizia \"nenhum certificado configurado\" mesmo tendo",
+    modulos: ["Cadastros", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O botão 🔎 (consultar Sintegra pela Inscrição Estadual, em Cadastros → Produtores) só procurava o certificado A1 na fazenda vinculada àquela IE específica — em conta com várias fazendas, se o certificado foi configurado em outra fazenda da mesma conta, a busca dizia \"nenhum certificado configurado\" mesmo o certificado existindo. Agora, se não encontra na fazenda da IE, procura em qualquer outra fazenda da mesma conta antes de desistir." },
+    ],
+    onde: "Cadastros → Produtores → Inscrições Estaduais",
+  },
+  {
     versao: "2026.09.18-h",
     data: "18/09/2026",
     titulo: "Combustível na Apropriação Direta alimenta o histórico de abastecimento do veículo",
