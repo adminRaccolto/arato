@@ -7,7 +7,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
-interface ContaBancaria { id: string; nome: string; banco: string; agencia?: string; conta?: string }
+interface ContaBancaria { id: string; nome: string; banco: string; agencia?: string; conta?: string; produtor_id?: string | null }
 
 interface LinhaOFX {
   id: string;
@@ -33,6 +33,7 @@ interface Lancamento {
   status: string;
   categoria?: string;
   conta_bancaria?: string;
+  produtor_id?: string | null;
 }
 
 interface Extrato {
@@ -137,7 +138,13 @@ function parseOFX(texto: string): LinhaOFX[] {
 }
 
 // ─── Auto-match ───────────────────────────────────────────────────────────────
-function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[]): LinhaOFX[] {
+// produtorTitularConta: titular (produtor_id) da conta bancária do extrato —
+// achado real 18/09/2026: sem essa checagem, um CP do produtor A podia casar
+// automaticamente com o extrato do produtor B só porque o valor bateu (conta
+// com vários titulares, cada um com contas bancárias próprias). Bloqueio
+// duro aqui: só concilia sozinho quando o titular do CP é o mesmo da conta,
+// ou quando o CP não tem titular preenchido (não dá pra provar divergência).
+function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[], produtorTitularConta?: string | null): LinhaOFX[] {
   return linhas.map(linha => {
     if (linha.conciliado) return linha;
     const dl = new Date(linha.data + "T00:00:00");
@@ -146,6 +153,7 @@ function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[]): LinhaOFX[] {
       if (Math.abs(vl - linha.valor) > 0.02) return false;
       if (linha.tipo === "credito" && l.tipo !== "receber") return false;
       if (linha.tipo === "debito"  && l.tipo !== "pagar")   return false;
+      if (produtorTitularConta && l.produtor_id && l.produtor_id !== produtorTitularConta) return false;
       const dr = new Date(((l.data_baixa ?? l.data_vencimento) + "T00:00:00"));
       return Math.abs((dl.getTime() - dr.getTime()) / 86400000) <= 7;
     });
@@ -556,7 +564,7 @@ function ConciliacaoInner() {
     const dFimMatch = new Date((linhas[linhas.length - 1]?.data ?? hoje()) + "T00:00:00");
     dFimMatch.setDate(dFimMatch.getDate() + 15);
     const { data: lancFresh } = await supabase.from("lancamentos")
-      .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria")
+      .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,produtor_id")
       .in("fazenda_id", fazendaIds)
       .not("status", "eq", "cancelado")
       .gte("data_vencimento", dIniMatch.toISOString().slice(0, 10))
@@ -568,7 +576,8 @@ function ConciliacaoInner() {
       lancParaMatch = Array.from(mapa.values()).sort((a, b) => b.data_vencimento.localeCompare(a.data_vencimento));
       setLancamentos(lancParaMatch);
     }
-    linhas = autoMatch(linhas, lancParaMatch);
+    const titularContaImport = contas.find(c => c.id === contaSel)?.produtor_id;
+    linhas = autoMatch(linhas, lancParaMatch, titularContaImport);
     const dataInicio  = linhas[0]?.data ?? hoje();
     const dataFim     = linhas[linhas.length - 1]?.data ?? hoje();
     const conciliadoN = linhas.filter(l => l.conciliado).length;
@@ -1243,6 +1252,19 @@ function ConciliacaoInner() {
     () => cpcrAbertos.filter(l => !!acharCorrespondencia(l)),
     [cpcrAbertos, indiceExtratoPorValor] // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  // Titular da conta bancária do extrato aberto — pra comparar com o titular
+  // (produtor_id) de cada CP/CR na sugestão manual. Achado real 18/09/2026:
+  // contas com vários titulares (cada um com contas bancárias próprias) não
+  // tinham NENHUMA checagem disso — um CP do produtor A podia casar com o
+  // extrato do produtor B só porque o valor bateu. No automático (autoMatch,
+  // ao importar) isso agora bloqueia de vez. Aqui, na sugestão manual (o
+  // usuário está escolhendo, não o sistema), não bloqueia — só sinaliza:
+  // fonte cinza (em vez de preta) + símbolo "≠", sem texto de aviso.
+  const titularContaAtiva = extrato ? contas.find(c => c.id === extrato.conta_id)?.produtor_id : undefined;
+  function titularDivergente(l: Lancamento): boolean {
+    return !!titularContaAtiva && !!l.produtor_id && l.produtor_id !== titularContaAtiva;
+  }
 
   // Contagens para badges do filtro de status
   const cntAberto  = lancamentos.filter(l => ["aberto","vencido","em_aberto"].includes(l.status)).length;
@@ -2137,7 +2159,10 @@ function ConciliacaoInner() {
                         <input type="checkbox" checked={isSel} readOnly
                           style={{ marginTop: 2, flexShrink: 0, accentColor: "#1A4870", cursor: "pointer" }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>
+                          <div style={{ fontSize: 12, fontWeight: 500, color: titularDivergente(l) ? "var(--text-3)" : "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {titularDivergente(l) && <span title="Titular do CP diferente do titular da conta">≠ </span>}
+                            {l.descricao}
+                          </div>
                           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
                             {l.tipo === "pagar" ? "CP" : "CR"} · {fmtDt(l.data_vencimento)}
                             {l.data_baixa ? ` · baixado ${fmtDt(l.data_baixa)}` : ""}
@@ -2374,6 +2399,7 @@ function ConciliacaoInner() {
                     <tbody>
                       {cpcrAbertos.map((l, i) => {
                         const match = acharCorrespondencia(l);
+                        const divergente = match && titularDivergente(l);
                         return (
                           <tr key={l.id} style={{ borderBottom: i < cpcrAbertos.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                             <td style={{ padding: "9px 10px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
@@ -2387,7 +2413,10 @@ function ConciliacaoInner() {
                             <td style={{ padding: "9px 10px" }}>
                               {match ? (
                                 <div>
-                                  <div style={{ fontSize: 12, color: "var(--text-1)" }}>{match.descricao}</div>
+                                  <div style={{ fontSize: 12, color: divergente ? "var(--text-3)" : "var(--text-1)" }}>
+                                    {divergente && <span title="Titular do CP diferente do titular da conta">≠ </span>}
+                                    {match.descricao}
+                                  </div>
                                   <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDt(match.data)} · {fmtBRL(match.valor)}</div>
                                 </div>
                               ) : (

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-n",
+    data: "18/09/2026",
+    titulo: "Conciliação Bancária — nunca mais casa CP de um titular com extrato de outro",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Em conta com vários titulares (cada um com contas bancárias próprias — ex: sócios, empresas do grupo), a conciliação automática (ao importar o OFX) não checava se o titular do CP era o mesmo titular da conta bancária — bastava o valor bater. Agora bloqueia: só concilia sozinho quando o titular do lançamento é o mesmo da conta (ou quando o lançamento não tem titular cadastrado)." },
+      { tipo: "novo", texto: "Na conciliação manual (aba CP/CR em Aberto e na lista de lançamentos pra vincular), quando o titular do CP é diferente do titular da conta bancária ativa, a descrição aparece em cinza com o símbolo \"≠\" na frente — sem bloquear (é uma escolha manual), só sinalizando a divergência." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.18-m",
     data: "18/09/2026",
     titulo: "Correção grave: Conciliação Bancária escondia até 58% dos lançamentos",
