@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-r",
+    data: "18/09/2026",
+    titulo: "Contas a Pagar: grid mais limpo — sinalizador de 3 cores no lugar dos textos coloridos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Removido da coluna Vencimento o texto colorido e em negrito de \"Xd atraso\"/\"Amanhã\"/\"7d\" — consumia espaço na linha e criava excesso de cor na tela. No lugar: um pequeno círculo sinalizador na primeira coluna do grid (verde = a vencer, amarelo = vence nos próximos 7 dias, vermelho = vencido) e uma nova coluna \"Dias\" com o número de dias até o vencimento (negativo se já venceu), sempre em preto e sem negrito." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.09.18-q",
     data: "18/09/2026",
     titulo: "Correção grave: aba Histórico da Conciliação Bancária travava a página",

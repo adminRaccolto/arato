@@ -550,6 +550,8 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 
 **Entidade Contábil no lançamento (17/09/2026):** campo "Entidade Contábil (LCDPR/SPED)" no formulário — "Padrão da fazenda" (comportamento de sempre), "Pessoa Física" ou "Pessoa Jurídica". Decide se esse título entra no LCDPR (PF) ou no SPED ECD (PJ) — pela origem cadastrada do título, nunca pela conta bancária usada na baixa/recebimento. Use quando uma CP/CR de origem PF for paga/recebida pela conta ou fluxo de uma fazenda PJ (ou o contrário) — sem esse campo, o sistema sempre herdava a entidade da fazenda vinculada, sem chance de corrigir caso a caso.
 
+**Sinalizador de 3 cores no lugar dos textos coloridos (18/09/2026):** a coluna Vencimento não mostra mais "Xd atraso"/"Amanhã"/"7d" em negrito e colorido embaixo da data — em vez disso, a primeira coluna do grid tem um pequeno círculo (verde = a vencer, amarelo = vence nos próximos 7 dias, vermelho = vencido) e existe uma coluna "Dias" com o número de dias até o vencimento (negativo se já venceu), sempre em preto, sem negrito.
+
 **Baixa parcial:** valor pago < total → status "parcial" (badge amarelo). O saldo permanece no mesmo registro — baixe o restante clicando novamente no ícone de baixa.
 
 **CP em dólar:** campo "Cotação (R$/US$)" não é automático — abra a CP, preencha a cotação e salve.

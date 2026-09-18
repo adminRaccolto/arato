@@ -1358,6 +1358,15 @@ function ContasPagarInner() {
     if (dias <= 7)  return { txt: `${dias}d`,        cor: "#F59E0B" };
     return null;
   };
+  // Sinalizador de 3 cores (verde a vencer / amarelo próx. 7 dias / vermelho vencido) —
+  // substitui os textos coloridos em negrito ("Xd atraso" etc.) que ocupavam espaço na linha.
+  const corSinalizador = (dias: number | null, status: string): string | null => {
+    if (status === "baixado") return null;
+    if (dias === null) return null;
+    if (dias < 0) return "#E24B4A";
+    if (dias <= 7) return "#EF9F27";
+    return "#16A34A";
+  };
 
   // ── Render ─────────────────────────────────────────────────
 
@@ -1521,11 +1530,12 @@ function ContasPagarInner() {
                 {filtradosBase.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Nenhuma conta encontrada para este filtro.</div>
                 ) : (
-                  <table style={{ tableLayout: "fixed", width: Math.max(32 + 52 + 44 + cw("fornecedor") + cw("vencimento") + cw("valor") + 36 + 36 + 36 + ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).reduce((s, k) => s + cw(k), 0), 600), borderCollapse: "collapse" }}>
+                  <table style={{ tableLayout: "fixed", width: Math.max(20 + 32 + 52 + 44 + cw("fornecedor") + cw("vencimento") + 56 + cw("valor") + 36 + 36 + 36 + ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).reduce((s, k) => s + cw(k), 0), 600), borderCollapse: "collapse" }}>
                     <thead style={{ position: "sticky", top: 0, zIndex: 3 }}
                       onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
                       title="Clique com botão direito para configurar colunas">
                       <tr style={{ background: "var(--bg-nav)" }}>
+                        <th style={{ ...thS(20), width: 20 }} title="Verde: a vencer · Amarelo: vence em até 7 dias · Vermelho: vencido"></th>
                         <th style={{ ...thS(32), width: 32 }}>
                           <input type="checkbox" style={{ cursor: "pointer", accentColor: "#60A5FA" }}
                             checked={filtrados.length > 0 && filtrados.every(l => selecionados.has(l.id))}
@@ -1535,6 +1545,7 @@ function ContasPagarInner() {
                         <th style={{ ...thS(cw("fornecedor"), "left"), width: cw("fornecedor"), position: "relative", userSelect: "none" }}>Fornecedor / Cliente<ResizeHandle onMouseDown={startResize("fornecedor")} /></th>
                         <th style={{ ...thS(44, "center"), width: 44 }}>Parc.</th>
                         <th style={{ ...thS(cw("vencimento"), "center"), width: cw("vencimento"), position: "relative", userSelect: "none" }}>Vencimento ↑<ResizeHandle onMouseDown={startResize("vencimento")} /></th>
+                        <th style={{ ...thS(56, "center"), width: 56 }}>Dias</th>
                         <th style={{ ...thS(cw("valor"), "right"), width: cw("valor"), position: "relative", userSelect: "none" }}>Valor<ResizeHandle onMouseDown={startResize("valor")} /></th>
                         {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
                           const TH_LABELS: Record<string, string> = { operacao: "Operação", safra: "Safra", ciclo: "Ciclo", venc_orig: "Venc. Original", dt_pgto: "Dt. Pgto", valor_pago: "Valor Pago", saldo_devedor: "Saldo Devedor", moeda: "Moeda", conta: "Conta", produtor: "Produtor", num_nf: "Nº NF", origem: "Origem", obs: "Observação" };
@@ -1550,6 +1561,7 @@ function ContasPagarInner() {
                       <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
                         <td></td>
                         <td></td>
+                        <td></td>
                         <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} /></td>
                         <td></td>
                         <td style={{ padding: "3px 6px" }}>
@@ -1558,6 +1570,7 @@ function ContasPagarInner() {
                             <input type="date" style={{ ...inpF, width: "50%" }} value={fVencAte} onChange={e => setFVencAte(e.target.value)} title="Vencimento até" />
                           </div>
                         </td>
+                        <td></td>
                         <td style={{ padding: "3px 6px" }}>
                           <div style={{ display: "flex", gap: 2 }}>
                             <input style={{ ...inpF, width: "100%" }} placeholder="Valor exato" value={fValor} onChange={e => setFValor(e.target.value.replace(/[^\d,]/g, ""))} title="Filtrar por valor exato" />
@@ -1795,7 +1808,7 @@ function ContasPagarInner() {
                       })}
 
                       {filtrados.length === 0 && (filtro !== "baixado" || borderosPagosFiltrados.length === 0) ? (
-                        <tr><td colSpan={19} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
+                        <tr><td colSpan={21} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
                       ) : filtrados.map((l, li) => {
                         const isPrevisao = l.natureza === "previsao";
                         const sEfet      = statusEfetivo(l);
@@ -1814,7 +1827,7 @@ function ContasPagarInner() {
                         const om         = origemMeta(l);
                         const inicial    = (fornNome[0] ?? "?").toUpperCase();
                         const dias       = diasAteVenc(l.data_vencimento);
-                        const relativo   = labelRelativo(dias, sEfet);
+                        const sinal      = corSinalizador(dias, sEfet);
                         // borda esquerda por status
                         const statusBorder = sEfet === "vencido" ? "#EF4444" : sEfet === "vencendo" ? "#F59E0B" : sEfet === "baixado" ? "#22C55E" : isPrevisao ? "#818CF8" : "#3B82F6";
                         // progresso de parcelas
@@ -1826,6 +1839,10 @@ function ContasPagarInner() {
                               setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
                             }}
                             style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid rgba(255,255,255,0.04)" : "none", background: "transparent", borderLeft: `3px solid ${statusBorder}`, cursor: "pointer" }}>
+                            {/* Sinalizador: verde a vencer / amarelo próx. 7 dias / vermelho vencido */}
+                            <td style={{ padding: "8px 4px", textAlign: "center" }}>
+                              {sinal && <span title={dias! < 0 ? "Vencido" : dias! <= 7 ? "Vence em até 7 dias" : "A vencer"} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: sinal }} />}
+                            </td>
                             {/* Checkbox */}
                             <td style={{ padding: "8px 4px", textAlign: "center" }}>
                               {l.lote_id && l.status !== "baixado" ? (
@@ -1865,14 +1882,17 @@ function ContasPagarInner() {
                             </td>
                             {/* Data de vencimento original — data_baixa fica na coluna opcional DT.PGTO */}
                             <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
-                              <div style={{ fontSize: 11, color: sEfet === "baixado" ? "#22C55E" : relativo ? relativo.cor : "var(--text-2)", fontWeight: relativo ? 700 : 400 }}>
+                              <div style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 400 }}>
                                 {sEfet !== "baixado" && sEfet !== "parcial" && l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
                                 {fmtData(l.data_vencimento)}
                               </div>
-                              {(sEfet === "baixado" || sEfet === "parcial")
-                                ? <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sEfet === "parcial" ? "Parcial" : "Pago"}</div>
-                                : relativo && <div style={{ fontSize: 9, color: relativo.cor, fontWeight: 700, marginTop: 1 }}>{relativo.txt}</div>
+                              {(sEfet === "baixado" || sEfet === "parcial") &&
+                                <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sEfet === "parcial" ? "Parcial" : "Pago"}</div>
                               }
+                            </td>
+                            {/* Dias até o vencimento (negativo se vencido) — sempre preto, sem negrito */}
+                            <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 11, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>
+                              {sEfet === "baixado" ? "—" : dias ?? "—"}
                             </td>
                             {/* Valor */}
                             <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
