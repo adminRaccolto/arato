@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-o",
+    data: "18/09/2026",
+    titulo: "Nova aba \"Auditoria\" no LCDPR — valida o que entra e o que fica de fora do Livro Caixa",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Nova aba \"Auditoria\" dentro do LCDPR: lista todo lançamento baixado/parcial de fazenda Pessoa Física no ano selecionado, comparado contra o que de fato entra no Livro Caixa — pra cada item excluído, mostra o motivo exato (entidade contábil = PJ, titular do lançamento = PJ, categoria interna de mútuo/transferência, descrição citando outro produtor/empresa da conta, ou vínculo de atividade diferente de rural). Cartões de resumo (total pago / no LCDPR / fora do LCDPR) e filtro por status. Serve pra validar se cada exclusão está certa ou é um dado de cadastro pra corrigir." },
+    ],
+    onde: "Fiscal → LCDPR → Auditoria",
+  },
+  {
     versao: "2026.09.18-n",
     data: "18/09/2026",
     titulo: "Conciliação Bancária — nunca mais casa CP de um titular com extrato de outro",

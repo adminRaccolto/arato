@@ -149,7 +149,33 @@ const TIPO_EXPLORACAO_LABEL: Record<number, string> = {
   4: "Parceria", 5: "Comodato", 6: "Outros",
 };
 
-type Aba = "livro" | "participacoes" | "cadastro" | "importacao" | "exportacao";
+type Aba = "livro" | "participacoes" | "cadastro" | "importacao" | "exportacao" | "auditoria";
+
+// Motivo pelo qual um lançamento pago (baixado/parcial), de uma fazenda PF,
+// não entra no Livro Caixa do LCDPR — cada um corresponde a uma regra real do
+// filtro de elegibilidade abaixo. Um item pode ter mais de um motivo.
+type MotivoExclusaoLcdpr =
+  | "apoio_baixa"        // baixa de apoio (ex: bordero de terceiro) — não é caixa próprio do titular
+  | "entidade_pj"        // entidade_contabil do próprio lançamento foi sobrescrita pra "pj"
+  | "titular_pj"         // titular (produtor_id do lançamento ou da fazenda) é uma empresa (CNPJ)
+  | "categoria_interna"  // Mútuo entre Empresas / Transferência entre Contas
+  | "nome_interno"       // descrição menciona outro produtor/empresa da mesma conta (PIX sem categoria)
+  | "vinculo_nao_rural";  // vinculo_atividade explicitamente diferente de "rural"
+
+interface ItemAuditoriaLcdpr {
+  lancamento: Lancamento;
+  motivos: MotivoExclusaoLcdpr[];
+  incluido: boolean;
+}
+
+const MOTIVO_LABEL: Record<MotivoExclusaoLcdpr, string> = {
+  apoio_baixa:       "Baixa de apoio (não é caixa próprio)",
+  entidade_pj:       "Entidade Contábil do lançamento = PJ",
+  titular_pj:        "Titular do lançamento é PJ (CNPJ)",
+  categoria_interna: "Categoria interna (Mútuo/Transferência)",
+  nome_interno:      "Descrição cita outro produtor/empresa da conta",
+  vinculo_nao_rural: "Vínculo de Atividade ≠ Rural",
+};
 
 // ═════════════════════════════════════════════════════════════════════════════
 export default function LCDPR() {
@@ -165,6 +191,8 @@ export default function LCDPR() {
   const [anoSel, setAnoSel]   = useState(anoAtual);
   const [loading, setLoading] = useState(true);
   const [entradas, setEntradas] = useState<EntradaLCDPR[]>([]);
+  const [auditoriaLcdpr, setAuditoriaLcdpr] = useState<ItemAuditoriaLcdpr[]>([]);
+  const [filtroAuditoria, setFiltroAuditoria] = useState<"todos" | "incluidos" | "excluidos">("excluidos");
 
   const [config, setConfig]       = useState<ConfigLCDPR>(CONFIG_VAZIA);
   const [savingCfg, setSavingCfg] = useState(false);
@@ -207,7 +235,7 @@ export default function LCDPR() {
     Promise.all([
       Promise.all(ids.map(fid => listarLancamentos(fid))).then(all => all.flat()),
       sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids),
-      sb.from("fazendas").select("id,nome,produtor_id,cpf_cnpj_fiscal,nirf,itr,municipio,estado,area_total_ha,arrendada,cep,logradouro,numero_end,complemento,bairro,caepf,tipo_exploracao,participacao_lcdpr,municipio_ibge").in("id", ids),
+      sb.from("fazendas").select("id,nome,produtor_id,cpf_cnpj_fiscal,nirf,itr,municipio,estado,area_total_ha,arrendada,cep,logradouro,numero_end,complemento,bairro,caepf,tipo_exploracao,participacao_lcdpr,municipio_ibge,entidade_contabil").in("id", ids),
       contaId ? listarProdutoresDaConta(contaId) : Promise.resolve([]),
       fazendaId
         ? sb.from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "lcdpr").maybeSingle()
@@ -314,6 +342,41 @@ export default function LCDPR() {
         const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
         return dt.slice(0, 4) === String(anoSel);
       });
+
+      // ── Auditoria: todo pagamento (baixado/parcial) de fazenda PF no
+      // período, mostrando pra cada um se entrou no LCDPR e, se não entrou,
+      // por quê — reaplica as MESMAS regras do filtro acima individualmente
+      // (em vez de parar na primeira que falhar) pra dar visibilidade
+      // completa, item a item, de todo motivo de exclusão que se aplica.
+      // Base "de fazenda PF": entidade_contabil da FAZENDA (não do
+      // lançamento — essa é uma das coisas auditadas) — fazenda sem o campo
+      // preenchido é tratada como PF (era o único caso até a Seção 76).
+      const fazendasPF = new Set(
+        (fazRows ?? [])
+          .filter((f: { entidade_contabil?: string | null }) => !f.entidade_contabil || f.entidade_contabil === "pf")
+          .map((f: { id: string }) => f.id)
+      );
+      const basePagosPF = lans.filter((l: Lancamento) => {
+        if (l.status !== "baixado" && l.status !== "parcial") return false;
+        if (!fazendasPF.has(l.fazenda_id)) return false;
+        const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
+        return dt.slice(0, 4) === String(anoSel);
+      });
+      const auditoria: ItemAuditoriaLcdpr[] = basePagosPF.map((l: Lancamento) => {
+        const motivos: MotivoExclusaoLcdpr[] = [];
+        if (apoioIds.has(l.id)) motivos.push("apoio_baixa");
+        if (l.entidade_contabil && l.entidade_contabil !== "pf") motivos.push("entidade_pj");
+        const titularId = l.produtor_id ?? fazProdutorMapPreFiltro.get(l.fazenda_id) ?? null;
+        if (titularId && produtoresPJIds.has(titularId)) motivos.push("titular_pj");
+        if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) motivos.push("categoria_interna");
+        if (l.descricao) {
+          const descNorm = normTxt(l.descricao);
+          if (listaNomesInternos.some(n => descNorm.includes(n))) motivos.push("nome_interno");
+        }
+        if (l.vinculo_atividade && l.vinculo_atividade !== "rural") motivos.push("vinculo_nao_rural");
+        return { lancamento: l, motivos, incluido: motivos.length === 0 };
+      });
+      setAuditoriaLcdpr(auditoria);
 
       // Produtor "dono" de cada lançamento: usa lancamentos.produtor_id quando
       // preenchido; senão herda da fazenda (fazendas.produtor_id — a maioria
@@ -965,6 +1028,7 @@ export default function LCDPR() {
               {([
                 ["livro",         "Livro Caixa"],
                 ["participacoes", "Produtores e Participações"],
+                ["auditoria",     "Auditoria"],
                 ["cadastro",      "Cadastro LCDPR"],
                 ["importacao",    "Importação"],
                 ["exportacao",    "Exportação"],
@@ -979,6 +1043,11 @@ export default function LCDPR() {
                   {lbl}
                   {k === "cadastro" && (fazendasSemCaepf.length > 0) && (
                     <span style={{ marginLeft: 6, fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>{fazendasSemCaepf.length}</span>
+                  )}
+                  {k === "auditoria" && auditoriaLcdpr.some(a => !a.incluido) && (
+                    <span style={{ marginLeft: 6, fontSize: 10, background: "#FCEBEB", color: "#791F1F", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>
+                      {auditoriaLcdpr.filter(a => !a.incluido).length}
+                    </span>
                   )}
                 </button>
               ))}
@@ -1165,6 +1234,105 @@ export default function LCDPR() {
                 </div>
               </div>
             )}
+
+            {/* ═══ ABA: AUDITORIA ═══ */}
+            {aba === "auditoria" && (() => {
+              const lista = auditoriaLcdpr.filter(a =>
+                filtroAuditoria === "todos" ? true : filtroAuditoria === "incluidos" ? a.incluido : !a.incluido
+              );
+              const totalPago    = auditoriaLcdpr.reduce((s, a) => s + (a.lancamento.valor_pago ?? a.lancamento.valor ?? 0), 0);
+              const totalInclu   = auditoriaLcdpr.filter(a => a.incluido).reduce((s, a) => s + (a.lancamento.valor_pago ?? a.lancamento.valor ?? 0), 0);
+              const totalExcl    = totalPago - totalInclu;
+              const qtdInclu     = auditoriaLcdpr.filter(a => a.incluido).length;
+              const qtdExcl      = auditoriaLcdpr.length - qtdInclu;
+              const porMotivo = (Object.keys(MOTIVO_LABEL) as MotivoExclusaoLcdpr[]).map(m => ({
+                motivo: m,
+                qtd: auditoriaLcdpr.filter(a => a.motivos.includes(m)).length,
+              })).filter(x => x.qtd > 0);
+              return (
+                <div style={{ padding: 20 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 16, lineHeight: 1.6 }}>
+                    Todo lançamento <strong>baixado ou parcial</strong>, de fazenda <strong>Pessoa Física</strong>, em {anoSel} —
+                    comparado contra o que de fato entra no Livro Caixa do LCDPR. Cada item excluído mostra o motivo
+                    exato — use pra validar se a exclusão está certa ou se é um dado de cadastro pra corrigir
+                    (Entidade Contábil, Vínculo de Atividade, categoria, ou o titular do lançamento).
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
+                    <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>Total pago no período ({auditoriaLcdpr.length} lançamentos)</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(totalPago)}</div>
+                    </div>
+                    <div style={{ background: "#E8F5E9", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "12px 16px" }}>
+                      <div style={{ fontSize: 11, color: "#1A6B3C" }}>✓ No LCDPR ({qtdInclu})</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#1A6B3C" }}>{fmtBRL(totalInclu)}</div>
+                    </div>
+                    <div style={{ background: qtdExcl > 0 ? "#FCEBEB" : "var(--bg-page)", border: `0.5px solid ${qtdExcl > 0 ? "#F5C6C6" : "var(--border-table)"}`, borderRadius: 10, padding: "12px 16px" }}>
+                      <div style={{ fontSize: 11, color: qtdExcl > 0 ? "#791F1F" : "var(--text-3)" }}>✗ Fora do LCDPR ({qtdExcl})</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: qtdExcl > 0 ? "#791F1F" : "var(--text-1)" }}>{fmtBRL(totalExcl)}</div>
+                    </div>
+                  </div>
+
+                  {porMotivo.length > 0 && (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+                      {porMotivo.map(({ motivo, qtd }) => (
+                        <span key={motivo} style={{ fontSize: 11, background: "#FBF3E0", color: "#7A5A12", padding: "4px 10px", borderRadius: 6, fontWeight: 600 }}>
+                          {MOTIVO_LABEL[motivo]}: {qtd}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    {([["excluidos", "Fora do LCDPR"], ["incluidos", "No LCDPR"], ["todos", "Todos"]] as const).map(([v, lbl]) => (
+                      <button key={v} onClick={() => setFiltroAuditoria(v)} style={{
+                        padding: "6px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)",
+                        background: filtroAuditoria === v ? "#1A5C38" : "var(--bg-card)",
+                        color: filtroAuditoria === v ? "#fff" : "var(--text-2)",
+                        cursor: "pointer", fontSize: 12, fontWeight: 600,
+                      }}>
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+
+                  {lista.length === 0 ? (
+                    <div style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                      Nenhum lançamento nessa condição em {anoSel}.
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ borderBottom: "0.5px solid var(--border-table)" }}>
+                            {["Data", "Descrição", "Valor", "Status LCDPR", "Motivo(s)"].map(h => (
+                              <th key={h} style={{ padding: "8px 10px", textAlign: h === "Valor" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lista.map(({ lancamento: l, motivos, incluido }, i) => (
+                            <tr key={l.id} style={{ borderBottom: i < lista.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
+                              <td style={{ padding: "8px 10px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa ?? l.data_vencimento)}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{l.descricao ?? l.categoria ?? "—"}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtBRL(l.valor_pago ?? l.valor ?? 0)}</td>
+                              <td style={{ padding: "8px 10px" }}>
+                                <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: incluido ? "#E8F5E9" : "#FCEBEB", color: incluido ? "#1A6B3C" : "#791F1F" }}>
+                                  {incluido ? "✓ No LCDPR" : "✗ Fora"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "8px 10px", color: "var(--text-3)", fontSize: 11 }}>
+                                {motivos.length > 0 ? motivos.map(m => MOTIVO_LABEL[m]).join(" · ") : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* ═══ ABA: CADASTRO LCDPR (imóveis + contador) ═══ */}
             {aba === "cadastro" && (
