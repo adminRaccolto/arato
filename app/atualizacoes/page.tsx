@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-m",
+    data: "18/09/2026",
+    titulo: "Correção grave: Conciliação Bancária escondia até 58% dos lançamentos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A tela de Conciliação carregava só os 600 lançamentos mais recentes (de todas as fazendas e produtores da conta somados) — numa conta grande, isso deixava a maioria dos lançamentos mais antigos completamente fora da memória da tela, tanto pra sugestão de correspondência quanto pra qualquer outra lista. Confirmado com dado real: conta com 1.438 lançamentos, só 600 chegavam a carregar (58% invisíveis). Corrigido pra buscar todos, paginado — deve explicar parte dos casos de \"conciliação com valor errado\" e de itens que pareciam \"desconciliar sozinhos\" ao recarregar a tela." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.18-l",
     data: "18/09/2026",
     titulo: "Contas a Pagar — usar Adiantamento a Fornecedor direto na baixa do CP",

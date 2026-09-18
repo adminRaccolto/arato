@@ -328,17 +328,43 @@ function ConciliacaoInner() {
   // Colunas redimensionáveis
   const [colWidths, setColWidths] = useState<number[]>([...COL_INIT]);
 
+  // Busca TODOS os lançamentos (não só os 600/1000 mais recentes) — o corte
+  // fixo escondia lançamentos mais antigos por completo da conciliação (achado
+  // real 18/09/2026: conta com 1438 lançamentos, só 600 chegavam a entrar em
+  // memória — quase 60% invisíveis pro matching e pra tela). Fetch normal sem
+  // paginação também bateria no limite padrão de 1000 do Supabase pra contas
+  // grandes; paginado aqui do mesmo jeito que outras funções já fazem em
+  // lib/db.ts.
+  async function buscarTodosLancamentosConciliacao(
+    fazIds: string[],
+    filtroData?: { de: string; ate: string },
+  ): Promise<Lancamento[]> {
+    const PAGE = 1000;
+    let all: Lancamento[] = [];
+    let from = 0;
+    while (true) {
+      let q = supabase.from("lancamentos")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id")
+        .in("fazenda_id", fazIds)
+        .not("status", "eq", "cancelado")
+        .order("data_vencimento", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (filtroData) q = q.gte("data_vencimento", filtroData.de).lte("data_vencimento", filtroData.ate);
+      const { data, error } = await q;
+      if (error) throw error;
+      all = all.concat((data ?? []) as Lancamento[]);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    return all;
+  }
+
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lR, exR, hR, ogR, gsR, pR, etR] = await Promise.all([
-      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta").in("fazenda_id", fazendaIds).order("nome"),
-      supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
-        .in("fazenda_id", fazendaIds)
-        .not("status", "eq", "cancelado")
-        .order("data_vencimento", { ascending: false })
-        .limit(600),
+    const [cR, lData, exR, hR, ogR, gsR, pR, etR] = await Promise.all([
+      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta,produtor_id").in("fazenda_id", fazendaIds).order("nome"),
+      buscarTodosLancamentosConciliacao(fazendaIds),
       supabase.from("extratos_bancarios").select("*").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
       supabase.from("historico_conciliacao").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(200),
       supabase.from("operacoes_tesouraria")
@@ -363,7 +389,7 @@ function ConciliacaoInner() {
         .not("conta_bancaria_id", "is", null),
     ]);
     if (cR.data) setContas(cR.data as ContaBancaria[]);
-    if (lR.data) setLancamentos(lR.data as Lancamento[]);
+    setLancamentos(lData);
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
     if (gsR.data) setOgsDisponiveis(gsR.data as OgMin[]);
@@ -406,13 +432,8 @@ function ConciliacaoInner() {
     if (!fazendaId || lancRefresh) return;
     setLancRefresh(true);
     try {
-      const { data } = await supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
-        .in("fazenda_id", fazendaIds)
-        .not("status", "eq", "cancelado")
-        .order("data_vencimento", { ascending: false })
-        .limit(600);
-      if (data) setLancamentos(data as Lancamento[]);
+      const data = await buscarTodosLancamentosConciliacao(fazendaIds);
+      setLancamentos(data);
     } finally { setLancRefresh(false); }
   }
 
@@ -422,13 +443,7 @@ function ConciliacaoInner() {
     if (!fazendaId || !dFrom || !dTo || lancRefresh) return;
     setLancRefresh(true);
     try {
-      const { data } = await supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria")
-        .in("fazenda_id", fazendaIds)
-        .not("status", "eq", "cancelado")
-        .gte("data_vencimento", dFrom)
-        .lte("data_vencimento", dTo)
-        .order("data_vencimento", { ascending: false });
+      const data = await buscarTodosLancamentosConciliacao(fazendaIds, { de: dFrom, ate: dTo });
       if (data) {
         setLancamentos(prev => {
           const mapa = new Map(prev.map(l => [l.id, l]));
