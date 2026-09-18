@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.18-u",
+    data: "18/09/2026",
+    titulo: "Receitas parciais e antigas desapareciam do LCDPR",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "LCDPR filtrava só lançamentos onde entidade_contabil = 'pf' explicitamente, excluindo NULL. Receitas parciais (status='parcial') e qualquer CR/NF criados antes da Seção 76 (que adicionou esse campo) desapareciam do Livro Caixa. Corrigido: NULL é tratado como PF padrão — só rejeita quando entidade_contabil = 'pj' mesmo (PJ). Receitas parciais agora entram no LCDPR pelo valor_pago na data_baixa." },
+    ],
+    onde: "Fiscal → LCDPR",
+  },
+  {
     versao: "2026.09.18-t",
     data: "18/09/2026",
     titulo: "Adiantamento de Cliente nunca aparecia em nenhuma tela (LCDPR, CR, etc.)",
