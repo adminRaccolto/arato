@@ -101,7 +101,7 @@ export default function TransferenciasEstoquePage() {
 
   // ── Cadastros de transporte ────────────────────────────────────────────────
   // TrRow unifica registros da tabela transportadoras + empresas com finalidade "transportadora"
-  type TrRow = { id: string; razao_social?: string; nome?: string; cnpj?: string; rntrc?: string; _origem?: "tabela" | "empresa" };
+  type TrRow = { id: string; razao_social?: string; nome?: string; nome_fantasia?: string; cnpj?: string; rntrc?: string; _origem?: "tabela" | "empresa" };
   type VeRow = { id: string; placa: string; tipo?: string; rntrc?: string };
   type MoRow = { id: string; nome: string; cpf?: string };
   const [transportadoras, setTransportadoras] = useState<TrRow[]>([]);
@@ -248,7 +248,7 @@ export default function TransferenciasEstoquePage() {
 
       // Transportadoras: tabela transportadoras + empresas com finalidade "transportadora"
       const [trRes2, veRes, moRes, empRes] = await Promise.all([
-        supabase.from("transportadoras").select("id,razao_social,nome,cnpj,rntrc").in("fazenda_id", fazIds).order("razao_social"),
+        supabase.from("transportadoras").select("id,razao_social,nome_fantasia,cnpj,rntrc").in("fazenda_id", fazIds).order("razao_social"),
         supabase.from("veiculos").select("id,placa,tipo,rntrc").in("fazenda_id", fazIds).order("placa"),
         supabase.from("motoristas").select("id,nome,cpf").in("fazenda_id", fazIds).order("nome"),
         supabase.from("empresas").select("id,razao_social,nome,cpf_cnpj,rntrc,finalidades").in("fazenda_id", fazIds).order("nome"),
@@ -418,7 +418,16 @@ export default function TransferenciasEstoquePage() {
       if (transpId) {
         const trSel = transportadoras.find(t => t.id === transpId);
         if (trSel?._origem === "empresa") {
-          // Tenta inserir na tabela transportadoras (upsert por CNPJ)
+          // Reaproveita a transportadora que já existe (mesmo CNPJ, em qualquer fazenda do cliente); só cria se não houver
+          const digitos = (trSel.cnpj ?? "").replace(/\D/g, "");
+          if (digitos) {
+            const { data: jaExiste } = await supabase.from("transportadoras").select("id, cnpj")
+              .in("fazenda_id", todasFazendas.length ? todasFazendas.map(f => f.id) : [fazendaId!]);
+            const achada = (jaExiste ?? []).find(t => (t.cnpj ?? "").replace(/\D/g, "") === digitos);
+            if (achada) transpId = achada.id;
+          }
+        }
+        if (trSel?._origem === "empresa" && transpId === form.transportadoraId) {
           const ins = {
             fazenda_id:   fazendaId,
             razao_social: trSel.razao_social ?? trSel.nome ?? "Transportadora",

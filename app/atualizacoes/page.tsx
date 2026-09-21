@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-e",
+    data: "22/09/2026",
+    titulo: "Transferências: transportadora duplicada a cada salvamento",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Cada vez que uma transferência de insumos com transportadora era salva, o sistema criava uma nova linha em Transporte → Cadastros → Transportadoras (a busca das transportadoras da tela falhava e tratava todas como \"empresas ainda não cadastradas\"). Corrigida a busca e, por segurança, o sistema agora reaproveita a transportadora que já existe pelo CNPJ antes de criar uma nova." },
+    ],
+    onde: "Estoque → Transferências",
+  },
+  {
     versao: "2026.09.22-d",
     data: "22/09/2026",
     titulo: "Fiscal: certificado A1 deixava de ser reconhecido",
