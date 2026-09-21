@@ -409,10 +409,11 @@ function ConciliacaoInner() {
   const [filtroLancDe, setFiltroLancDe]     = useState<string>(() => mesCorrente().de);
   const [filtroLancAte, setFiltroLancAte]   = useState<string>(() => mesCorrente().ate);
   // Abas do lado do sistema (esquerda): conciliados/baixados · abertos · conferência (largura total)
-  const [abaSistema, setAbaSistema]         = useState<"sugeridos" | "conciliados" | "abertos" | "conferencia">("abertos");
+  const [abaSistema, setAbaSistema]         = useState<"sugeridos" | "inconsistencias" | "conciliados" | "abertos" | "conferencia">("abertos");
   const [pessoasNomes, setPessoasNomes]     = useState<Map<string, string>>(new Map());
   const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
   const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());   // borderôs expandidos na lista
+  const [inconsEscolha, setInconsEscolha] = useState<Map<string, string>>(new Map());
   const abaAutoRef = useRef<string | null>(null);
   const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
   const [produtoresNomes, setProdutoresNomes] = useState<Map<string, string>>(new Map());
@@ -594,6 +595,7 @@ function ConciliacaoInner() {
     setFiltroLancAte(extrato.data_fim);
     setAbaSistema("abertos");
     setSugestoesIgnoradas(new Set());
+    setInconsEscolha(new Map());
     abaAutoRef.current = extrato.id;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extrato?.id]);
@@ -1662,6 +1664,50 @@ function ConciliacaoInner() {
   // Ignorar vale para esta sessão da tela (a sugestão é recalculada a cada abertura do extrato)
   const ignorarSugestao = (linhaId: string) => setSugestoesIgnoradas(prev => new Set(prev).add(linhaId));
 
+  // ── Inconsistências: linha do OFX × lançamento baixado em OUTRA conta ─────────
+  // Corrige em cascata: a baixa passa para a conta do extrato (o saldo das duas contas é derivado
+  // da conta da baixa, então sai da errada e entra na certa), o borderô acompanha e a linha é conciliada.
+  async function corrigirInconsistencias(itens: { linha: LinhaOFX; row: LinhaSis }[]) {
+    if (!extrato || itens.length === 0) return;
+    const destino = contaNomeDe(extrato.conta_id);
+    const resumo = itens.slice(0, 8).map(it => `• ${fmtBRL(it.linha.valor)} — sai de ${contaNomeDe(it.row.lote?.conta_bancaria ?? it.row.l.conta_bancaria)}`).join("\n");
+    if (!window.confirm(`Mover a baixa para ${destino} e conciliar com o OFX?\n\n${resumo}${itens.length > 8 ? `\n… e mais ${itens.length - 8}` : ""}\n\nO saldo, o fluxo de caixa e o LCDPR das duas contas mudam.`)) return;
+    setSalvando(true);
+    const usados = new Set<string>();
+    const validos = itens.filter(it => {
+      if (it.row.comps.some(c => c.conciliado || usados.has(c.id))) return false;
+      it.row.comps.forEach(c => usados.add(c.id));
+      return true;
+    });
+    const origens = new Map<string, string | null>();
+    for (const it of validos) for (const c of it.row.comps) origens.set(c.id, it.row.lote?.conta_bancaria ?? c.conta_bancaria ?? null);
+    const novasLinhas = extrato.linhas.map(x => {
+      const it = validos.find(y => y.linha.id === x.id);
+      return it ? { ...x, conciliado: true, lancamento_id: it.row.comps[0].id, lancamento_ids: it.row.comps.map(c => c.id),
+        lancamento_desc: it.row.lote ? `Borderô · ${it.row.comps.length} título(s)` : it.row.l.descricao, lancamento_valor: x.valor,
+        origem_vinculo: "manual" as const, confianca: null, sugestao_lancamento_id: null, sugestao_motivo: null } : x;
+    });
+    const conciliadoN = novasLinhas.filter(x => x.conciliado).length;
+    const idsTodos = validos.flatMap(it => it.row.comps.map(c => c.id));
+    const ok = validos.length > 0 && await persistExtrato(
+      { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
+      { conciliarIds: idsTodos, moverConta: idsTodos.map(id => ({ id, conta_bancaria: extrato.conta_id })) },
+    );
+    setSalvando(false);
+    if (!ok) { alert("Não foi possível corrigir — nada foi alterado."); carregar(); return; }
+    setLancamentos(prev => prev.map(l => origens.has(l.id) ? { ...l, conta_bancaria: extrato.conta_id, conciliado: true } : l));
+    setLotes(prev => {
+      const n = new Map(prev);
+      for (const it of validos) if (it.row.lote) n.set(it.row.lote.id, { ...it.row.lote, conta_bancaria: extrato.conta_id, conciliado: true });
+      return n;
+    });
+    recarregarLancamentos();
+    for (const it of validos) {
+      const de = contaNomeDe(it.row.lote?.conta_bancaria ?? it.row.l.conta_bancaria);
+      registrarHistorico(it.linha, "conciliado", it.row.comps.map(c => c.id), `${it.row.lote ? `Borderô · ${it.row.comps.length} título(s)` : it.row.l.descricao} (baixa movida de ${de} para ${destino})`);
+    }
+  }
+
   // ── Abrir modal tesouraria ─────────────────────────────────────────────────
   function abrirTesouraria(linha: LinhaOFX) {
     setModalTes(linha);
@@ -1910,6 +1956,37 @@ function ConciliacaoInner() {
       setAbaSistema("sugeridos");
     }
   });
+
+  // ── Inconsistências (baixado em outra conta) ────────────────────────────────
+  type Inconsistencia = { linha: LinhaOFX; opcoes: LinhaSis[]; escolhida: LinhaSis };
+  const inconsistenciasLista: Inconsistencia[] = (() => {
+    if (!extrato) return [];
+    const contaEx = extrato.conta_id;
+    const contaDe = (r: LinhaSis) => r.lote?.conta_bancaria ?? r.l.conta_bancaria;
+    const baixaDe = (r: LinhaSis) => r.lote?.data_pagamento ?? r.l.data_baixa ?? r.l.data_vencimento;
+    const valorDe = (r: LinhaSis) => (r.lote ? r.comps.reduce((sm, c) => sm + valorParaLinha(c), 0) : Number(r.l.valor_pago ?? r.l.valor));
+    const base = lancamentos.filter(l => l.status === "baixado" && !l.conciliado && !origemPorLanc.has(l.id) && (!l.moeda || l.moeda === "BRL"));
+    const rows = agruparLotes(base).filter(r => {
+      const c = contaDe(r);
+      return !!c && c !== contaEx && r.comps.every(x => x.status === "baixado" && !x.conciliado && !origemPorLanc.has(x.id));
+    });
+    if (rows.length === 0) return [];
+    const usados = new Set<string>();
+    const out: Inconsistencia[] = [];
+    const dia = (a: string, b: string) => Math.abs((new Date(a + "T00:00:00").getTime() - new Date(b + "T00:00:00").getTime()) / 86400000);
+    for (const ln of extrato.linhas.filter(x => !x.conciliado && !sugestoesMap.has(x.id)).sort((a, b) => a.data.localeCompare(b.data))) {
+      const opcoes = rows
+        .filter(r => (ln.tipo === "credito") === receberLinhaSis(r) && Math.abs(valorDe(r) - ln.valor) <= 0.02 && dia(ln.data, baixaDe(r)) <= 7)
+        .sort((a, b) => dia(ln.data, baixaDe(a)) - dia(ln.data, baixaDe(b)));
+      if (opcoes.length === 0) continue;
+      const pedida = inconsEscolha.get(ln.id);
+      const escolhida = opcoes.find(r => r.key === pedida) ?? opcoes.find(r => r.comps.every(c => !usados.has(c.id))) ?? opcoes[0];
+      escolhida.comps.forEach(c => usados.add(c.id));
+      out.push({ linha: ln, opcoes, escolhida });
+    }
+    return out;
+  })();
+  const COLS_INC = "70px minmax(120px,1.2fr) minmax(150px,1.6fr) 100px 100px";
 
   const COLS_SUG = "78px 78px minmax(150px,1.6fr) 84px 100px 132px";
   const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px";
@@ -2897,6 +2974,7 @@ function ConciliacaoInner() {
                 <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#EEF3F9" : "var(--bg-page)", flexWrap: "wrap" }}>
                   {([
                     ["sugeridos",   `Sugeridos (${sugestoesLista.length})`],
+                    ["inconsistencias", `Inconsistências (${inconsistenciasLista.length})`],
                     ["conciliados", `Baixados (${linhasConciliados.length})`],
                     ["abertos",     `CP/CR abertos (${linhasAbertos.length})`],
                     ["conferencia", `Conferência (${paresConf.length})`],
@@ -2913,7 +2991,7 @@ function ConciliacaoInner() {
                 </div>
 
                 {/* Intervalo, tipo e busca */}
-                {abaSistema !== "sugeridos" && <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {abaSistema !== "sugeridos" && abaSistema !== "inconsistencias" && <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Período</span>
                   <input type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
                     style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
@@ -2935,6 +3013,7 @@ function ConciliacaoInner() {
                 </div>}
                 <div style={{ padding: "5px 12px", fontSize: 11, color: "var(--text-3)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
                   {abaSistema === "sugeridos" && "Pares que o sistema encontrou (mesmo valor e data próxima). Confira e aceite — nada é gravado antes disso."}
+                  {abaSistema === "inconsistencias" && "Linha do OFX cujo valor foi encontrado num lançamento baixado em OUTRA conta. Corrigir move a baixa para a conta deste extrato (saldo sai da errada e entra na certa) e concilia."}
                   {abaSistema === "conciliados" && "Todos os lançamentos baixados no período (data de baixa). O sinaleiro mostra se já foram conciliados com o extrato; para conferir com o OFX, use a aba Conferência."}
                   {abaSistema === "abertos" && (linhaAtiva
                     ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong style={{ color: linhaAtiva.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
@@ -2943,7 +3022,58 @@ function ConciliacaoInner() {
                 </div>
 
                 {/* Conteúdo da aba */}
-                {abaSistema === "sugeridos" ? (
+                {abaSistema === "inconsistencias" ? (
+                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                    <div style={{ minWidth: 700, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: COLS_INC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", alignItems: "center" }}>
+                        <div>Data OFX</div><div>Histórico do OFX</div><div>Baixado em outra conta</div><div style={{ textAlign: "right" }}>Valor</div>
+                        <div style={{ textAlign: "right" }}>
+                          {inconsistenciasLista.length > 0 && (
+                            <button disabled={salvando} onClick={() => corrigirInconsistencias(inconsistenciasLista.map(x => ({ linha: x.linha, row: x.escolhida })))}
+                              style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 10, fontWeight: 700, cursor: salvando ? "default" : "pointer", textTransform: "none" }}>
+                              Corrigir todas ({inconsistenciasLista.length})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                        {inconsistenciasLista.map(ic => {
+                          const r = ic.escolhida, lt = r.lote, neg = ic.linha.tipo === "debito";
+                          return (
+                            <div key={ic.linha.id} style={{ display: "grid", gridTemplateColumns: COLS_INC, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
+                              <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(ic.linha.data)}</div>
+                              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }} title={ic.linha.descricao}>{ic.linha.descricao}</div>
+                              <div style={{ minWidth: 0 }}>
+                                {ic.opcoes.length > 1 ? (
+                                  <select value={r.key} onChange={e => setInconsEscolha(prev => new Map(prev).set(ic.linha.id, e.target.value))}
+                                    style={{ width: "100%", padding: "3px 5px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 11, background: "var(--bg-card)" }}>
+                                    {ic.opcoes.map(o => <option key={o.key} value={o.key}>{o.lote ? `Borderô · ${o.comps.length} títulos` : fornecedorDe(o.l)} · {fmtDt(o.lote?.data_pagamento ?? o.l.data_baixa ?? o.l.data_vencimento).slice(0, 5)} · {contaNomeDe(o.lote?.conta_bancaria ?? o.l.conta_bancaria)}</option>)}
+                                  </select>
+                                ) : (
+                                  <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {lt && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#E3EAF3", color: "#1A4870", marginRight: 5 }}>BORDERÔ</span>}
+                                    {lt ? `${r.comps.length} títulos` : fornecedorDe(r.l)}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: 10, color: COR_NEG }}>
+                                  baixado em {fmtDt(lt?.data_pagamento ?? r.l.data_baixa ?? r.l.data_vencimento)} na conta {contaNomeDe(lt?.conta_bancaria ?? r.l.conta_bancaria)}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: neg ? COR_NEG : "var(--text-1)" }}>{neg ? "−" : "+"}{fmtBRL(ic.linha.valor)}</div>
+                              <div style={{ textAlign: "right" }}>
+                                <button disabled={salvando} onClick={() => corrigirInconsistencias([{ linha: ic.linha, row: r }])}
+                                  style={{ padding: "3px 9px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer" }}>Corrigir</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {inconsistenciasLista.length === 0 && (
+                          <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhuma linha pendente com valor encontrado em lançamento baixado em outra conta.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : abaSistema === "sugeridos" ? (
                   <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ minWidth: 640, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: COLS_SUG, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", alignItems: "center" }}>

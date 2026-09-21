@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-p",
+    data: "21/09/2026",
+    titulo: "Conciliação: aba Inconsistências (baixa na conta errada)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Nova aba \"Inconsistências\" na conciliação: para cada linha pendente do OFX, mostra o lançamento (ou borderô) de mesmo valor que foi baixado em OUTRA conta bancária. \"Corrigir\" move a baixa para a conta do extrato, acompanha o borderô inteiro, concilia a linha e registra no histórico de onde para onde. O saldo se acerta sozinho nas duas contas. Há também \"Corrigir todas\", sempre com confirmação." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-o",
     data: "21/09/2026",
     titulo: "Conciliação: aba Baixados",

@@ -120,6 +120,22 @@ export async function POST(req: NextRequest) {
       const r = await sb.from("lancamentos").update({ conta_bancaria: d.conta_bancaria }).eq("id", d.id);
       if (r.error) falhas.push(`mover conta ${d.id}: ${r.error.message}`);
     }
+    // Borderô inteiro acompanha: o lote guarda a conta do pagamento e não pode ficar numa conta
+    // diferente da dos seus títulos (o saldo é derivado da conta da baixa).
+    if (body.mover_conta?.length) {
+      const destino = new Map(body.mover_conta.map(d => [d.id, d.conta_bancaria]));
+      const { data: ls } = await sb.from("lancamentos").select("id,lote_id").in("id", Array.from(destino.keys())).not("lote_id", "is", null);
+      const porConta = new Map<string, Set<string>>();
+      for (const l of ls ?? []) {
+        const c = destino.get(l.id as string)!;
+        if (!porConta.has(c)) porConta.set(c, new Set());
+        porConta.get(c)!.add(l.lote_id as string);
+      }
+      for (const [conta, lotes] of Array.from(porConta.entries())) {
+        const r = await sb.from("pagamento_lotes").update({ conta_bancaria: conta }).in("id", Array.from(lotes)).eq("status", "pago");
+        if (r.error) falhas.push(`mover conta do borderô: ${r.error.message}`);
+      }
+    }
 
     // 3. Marca lancamentos como conciliado=true (quando vinculados)
     if (body.lancamento_ids_conciliados?.length) {
