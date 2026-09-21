@@ -409,10 +409,12 @@ function ConciliacaoInner() {
   const [filtroLancDe, setFiltroLancDe]     = useState<string>(() => mesCorrente().de);
   const [filtroLancAte, setFiltroLancAte]   = useState<string>(() => mesCorrente().ate);
   // Abas do lado do sistema (esquerda): conciliados/baixados · abertos · conferência (largura total)
-  const [abaSistema, setAbaSistema]         = useState<"conciliados" | "abertos" | "conferencia">("abertos");
+  const [abaSistema, setAbaSistema]         = useState<"sugeridos" | "conciliados" | "abertos" | "conferencia">("abertos");
   const [pessoasNomes, setPessoasNomes]     = useState<Map<string, string>>(new Map());
   const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
   const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());   // borderôs expandidos na lista
+  const abaAutoRef = useRef<string | null>(null);
+  const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
   const [incluirBaixados, setIncluirBaixados] = useState(false);                  // aba de abertos: também baixados ainda não conciliados
   const [produtoresNomes, setProdutoresNomes] = useState<Map<string, string>>(new Map());
 
@@ -592,6 +594,8 @@ function ConciliacaoInner() {
     setFiltroLancDe(extrato.data_inicio);
     setFiltroLancAte(extrato.data_fim);
     setAbaSistema("abertos");
+    setSugestoesIgnoradas(new Set());
+    abaAutoRef.current = extrato.id;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extrato?.id]);
 
@@ -1591,59 +1595,73 @@ function ConciliacaoInner() {
     } finally { setAplicandoRegras(false); }
   }
 
-  // ── Sugestões (confiança média) ───────────────────────────────────────────
-  // Em lote e numa única gravação: aceitar várias em sequência, cada uma sobre o `extrato` do
-  // momento, faria a 2ª sobrescrever a 1ª (a conciliação anterior voltava a pendente).
-  async function aceitarSugestoes(alvo: LinhaOFX[]) {
-    if (!extrato || !fazendaId || alvo.length === 0) return;
+  // ── Sugestões ───────────────────────────────────────────────────────────────
+  // Sugestão = par (linha pendente do OFX ↔ lançamento ou borderô) que o motor de confiança propõe.
+  // Aceitar vários é feito numa única gravação: aceitar em sequência, cada um sobre o `extrato` do
+  // momento, faria o 2º sobrescrever o 1º (a conciliação anterior voltava a pendente).
+  async function aceitarPares(pares: { linha: LinhaOFX; ids: string[]; nivel: "alta" | "media" }[]) {
+    if (!extrato || !fazendaId || pares.length === 0) return;
     setSalvando(true);
     const usados = new Set<string>();
-    const aceitas: { linha: LinhaOFX; l: Lancamento }[] = [];
     const puladas: string[] = [];
-    for (const linha of alvo) {
-      const l = linha.sugestao_lancamento_id ? lancamentos.find(x => x.id === linha.sugestao_lancamento_id) : undefined;
-      if (!l) { puladas.push(`${fmtDt(linha.data)} ${linha.descricao.slice(0, 30)}: lançamento não encontrado`); continue; }
-      if (l.conciliado || usados.has(l.id)) { puladas.push(`${l.descricao.slice(0, 30)}: já conciliado com outra linha`); continue; }
-      if ((l.status === "baixado" || ehParcial(l)) && l.conta_bancaria && l.conta_bancaria !== extrato.conta_id) { puladas.push(`${l.descricao.slice(0, 30)}: baixado em outra conta`); continue; }
-      usados.add(l.id); aceitas.push({ linha, l });
+    type Aceita = { linha: LinhaOFX; ls: Lancamento[]; lote?: LoteInfo; nivel: "alta" | "media" };
+    let aceitas: Aceita[] = [];
+    const rotulo = (ln: LinhaOFX) => `${fmtDt(ln.data)} ${ln.descricao.slice(0, 28)}`;
+    for (const par of pares) {
+      const ls = par.ids.map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
+      if (ls.length === 0 || ls.length !== par.ids.length) { puladas.push(`${rotulo(par.linha)}: lançamento não encontrado`); continue; }
+      if (ls.some(l => (l.conciliado && !ehParcial(l)) || usados.has(l.id))) { puladas.push(`${rotulo(par.linha)}: já conciliado com outra linha`); continue; }
+      if (ls.some(l => (l.status === "baixado" || ehParcial(l)) && l.conta_bancaria && l.conta_bancaria !== extrato.conta_id)) { puladas.push(`${rotulo(par.linha)}: baixado em outra conta`); continue; }
+      const lts = new Map<string, LoteInfo>();
+      for (const l of ls) { const lt = loteDe(l); if (lt) lts.set(lt.id, lt); }
+      if (Array.from(lts.values()).some(lt => lt.itens.some(i => !par.ids.includes(i.lancamento_id)))) { puladas.push(`${rotulo(par.linha)}: borderô incompleto`); continue; }
+      ls.forEach(l => usados.add(l.id));
+      aceitas.push({ linha: par.linha, ls, lote: lts.size === 1 ? Array.from(lts.values())[0] : undefined, nivel: par.nivel });
+    }
+    // borderôs pendentes: confirma o pagamento com a data e a conta do banco
+    for (const ac of [...aceitas]) {
+      if (ac.lote && ac.lote.status === "pendente") {
+        const r = await authFetch("/api/financeiro/bordero-acao", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ acao: "confirmar", lote_id: ac.lote.id, data_pagamento: ac.linha.data, conta_bancaria: extrato.conta_id }),
+        }).then(x => x.json()).catch(() => null);
+        if (!r?.ok) { puladas.push(`${rotulo(ac.linha)}: não foi possível confirmar o borderô`); aceitas = aceitas.filter(x => x !== ac); }
+      }
     }
     if (aceitas.length === 0) { setSalvando(false); alert("Nenhuma sugestão pôde ser aceita:\n" + puladas.slice(0, 5).join("\n")); return; }
 
-    const ids = new Set(aceitas.map(a => a.linha.id));
     const novasLinhas = extrato.linhas.map(x => {
-      const a = aceitas.find(y => y.linha.id === x.id);
-      return a ? { ...x, conciliado: true, lancamento_id: a.l.id, lancamento_ids: [a.l.id], lancamento_desc: a.l.descricao, lancamento_valor: x.valor,
-        origem_vinculo: "sugestao" as const, confianca: "media" as const, sugestao_lancamento_id: null, sugestao_motivo: null } : x;
+      const ac = aceitas.find(y => y.linha.id === x.id);
+      return ac ? { ...x, conciliado: true, lancamento_id: ac.ls[0].id, lancamento_ids: ac.ls.map(l => l.id),
+        lancamento_desc: ac.lote ? `Borderô · ${ac.ls.length} título(s)` : ac.ls[0].descricao, lancamento_valor: x.valor,
+        origem_vinculo: "sugestao" as const, confianca: ac.nivel, sugestao_lancamento_id: null, sugestao_motivo: null } : x;
     });
     const conciliadoN = novasLinhas.filter(x => x.conciliado).length;
-    const abertas = aceitas.filter(a => a.l.status !== "baixado" && a.l.status !== "parcial");
+    // baixa só de lançamento avulso ainda em aberto (borderô já foi baixado pela confirmação do lote)
+    const abertas = aceitas.filter(ac => !ac.lote && ac.ls.length === 1 && ac.ls[0].status !== "baixado" && !ehParcial(ac.ls[0]));
+    const idsTodos = aceitas.flatMap(ac => ac.ls.map(l => l.id));
     const ok = await persistExtrato(
       { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
       {
-        conciliarIds: aceitas.map(a => a.l.id),
-        baixar: abertas.map(a => ({ id: a.l.id, data_baixa: a.linha.data, valor_pago: a.linha.valor, conta_bancaria: extrato.conta_id })),
-        definirConta: aceitas.filter(a => (a.l.status === "baixado" || ehParcial(a.l)) && !a.l.conta_bancaria).map(a => ({ id: a.l.id, conta_bancaria: extrato.conta_id })),
+        conciliarIds: idsTodos,
+        baixar: abertas.map(ac => ({ id: ac.ls[0].id, data_baixa: ac.linha.data, valor_pago: ac.linha.valor, conta_bancaria: extrato.conta_id })),
+        definirConta: aceitas.flatMap(ac => ac.ls).filter(l => (l.status === "baixado" || ehParcial(l)) && !l.conta_bancaria).map(l => ({ id: l.id, conta_bancaria: extrato.conta_id })),
       },
     );
     setSalvando(false);
-    if (!ok) { alert("Não foi possível salvar as conciliações — tente novamente."); return; }
-    setLancamentos(prev => prev.map(l => {
-      const a = aceitas.find(y => y.l.id === l.id);
-      if (!a) return l;
-      const baixa = abertas.some(b => b.l.id === l.id);
-      return { ...l, conciliado: true, conta_bancaria: extrato.conta_id, ...(baixa ? { status: "baixado", data_baixa: a.linha.data, valor_pago: a.linha.valor } : {}) };
-    }));
-    for (const a of aceitas) registrarHistorico(a.linha, "conciliado", [a.l.id], a.l.descricao);
+    if (!ok) { alert("Não foi possível salvar as conciliações — tente novamente."); carregar(); return; }
+    setLotes(prev => {
+      const n = new Map(prev);
+      for (const ac of aceitas) if (ac.lote) n.set(ac.lote.id, { ...ac.lote, status: "pago", data_pagamento: ac.lote.status === "pendente" ? ac.linha.data : ac.lote.data_pagamento, conta_bancaria: ac.lote.conta_bancaria ?? extrato.conta_id, conciliado: true });
+      return n;
+    });
+    recarregarLancamentos();
+    for (const ac of aceitas) registrarHistorico(ac.linha, "conciliado", ac.ls.map(l => l.id), ac.lote ? `Borderô · ${ac.ls.length} título(s)` : ac.ls[0].descricao);
     if (puladas.length) alert(`${aceitas.length} aceita(s). ${puladas.length} não pôde(ram) ser aceita(s):\n` + puladas.slice(0, 5).join("\n"));
-    void ids;
   }
 
-  async function ignorarSugestao(linha: LinhaOFX) {
-    if (!extrato) return;
-    const novasLinhas = extrato.linhas.map(x => x.id === linha.id ? { ...x, sugestao_lancamento_id: null, sugestao_motivo: null } : x);
-    const ok = await persistExtrato({ ...extrato, linhas: novasLinhas });
-    if (!ok) alert("Não foi possível descartar a sugestão — tente novamente.");
-  }
+  // Ignorar vale para esta sessão da tela (a sugestão é recalculada a cada abertura do extrato)
+  const ignorarSugestao = (linhaId: string) => setSugestoesIgnoradas(prev => new Set(prev).add(linhaId));
 
   // ── Abrir modal tesouraria ─────────────────────────────────────────────────
   function abrirTesouraria(linha: LinhaOFX) {
@@ -1831,6 +1849,71 @@ function ConciliacaoInner() {
     : { t: "Aberto", bg: "#F1F3F6", c: "#333", w: 600 };
 
   // Linha da tabela do sistema (abas 1 e 2) — lançamento ou borderô
+  // ── Sugestões ao vivo ───────────────────────────────────────────────────────
+  // Para cada linha PENDENTE do OFX o motor de confiança procura o lançamento (ou o borderô inteiro)
+  // de mesmo valor e data próxima. "alta" e "média" viram sugestão; nada é gravado até o usuário aceitar.
+  type Sugestao = { linha: LinhaOFX; ids: string[]; nivel: "alta" | "media"; motivos: string[]; row: LinhaSis };
+  const sugestoesLista: Sugestao[] = (() => {
+    if (!extrato) return [];
+    const pendentes = extrato.linhas.filter(l => !l.conciliado && !sugestoesIgnoradas.has(l.id));
+    if (pendentes.length === 0) return [];
+    const emLoteAgrupado = new Set<string>();
+    const cands: LancMatch[] = [];
+    const rowPorCand = new Map<string, LinhaSis>();
+    for (const lt of Array.from(lotes.values())) {
+      if (lt.itens.length < 2) continue;
+      const comps = compsDoLote(lt);
+      if (comps.length !== lt.itens.length) continue;
+      comps.forEach(c => emLoteAgrupado.add(c.id));
+      const pago = lt.status === "pago";
+      const cid = `lote:${lt.id}`;
+      cands.push({
+        id: cid, tipo: lt.tipo, descricao: lt.descricao ?? "Borderô",
+        valor: comps.reduce((sm, c) => sm + valorParaLinha(c), 0),
+        data_vencimento: comps.map(c => c.data_vencimento).sort()[0], data_baixa: pago ? lt.data_pagamento : null,
+        status: pago ? "baixado" : "em_aberto", conta_bancaria: lt.conta_bancaria,
+        produtor_id: comps[0]?.produtor_id ?? null, conciliado: lt.conciliado || comps.every(c => c.conciliado), moeda: "BRL",
+      });
+      rowPorCand.set(cid, { key: lt.id, lote: lt, comps, l: comps[0] });
+    }
+    for (const l of lancamentos) {
+      if (l.status === "cancelado" || emLoteAgrupado.has(l.id)) continue;
+      if (l.conciliado && !ehParcial(l)) continue;
+      cands.push({
+        id: l.id, tipo: l.tipo, descricao: l.descricao,
+        valor: l.status === "baixado" ? Number(l.valor_pago ?? l.valor) : valorRestante(l),
+        data_vencimento: l.data_vencimento, data_baixa: l.data_baixa, status: l.status,
+        conta_bancaria: l.conta_bancaria, produtor_id: l.produtor_id, conciliado: l.conciliado, moeda: l.moeda,
+      });
+      rowPorCand.set(l.id, { key: l.id, comps: [l], l });
+    }
+    const contaObj = contas.find(c => c.id === extrato.conta_id);
+    const titulares = [contaObj?.produtor_id, ...(contaObj?.cotitulares ?? []).map(c => c.produtor_id)].filter(Boolean) as string[];
+    const aval = avaliarLinhas(
+      pendentes.map(l => ({ id: l.id, data: l.data, valor: l.valor, tipo: l.tipo, descricao: l.descricao })),
+      cands, { conta: { id: extrato.conta_id, titulares }, lancamentosJaVinculados: new Set(origemPorLanc.keys()) },
+    );
+    const out: Sugestao[] = [];
+    for (const ln of pendentes) {
+      const a = aval.get(ln.id);
+      if (!a?.lancamento || (a.nivel !== "alta" && a.nivel !== "media")) continue;
+      const row = rowPorCand.get(a.lancamento.id);
+      if (!row) continue;
+      out.push({ linha: ln, ids: row.comps.map(c => c.id), nivel: a.nivel, motivos: a.motivos, row });
+    }
+    return out.sort((a, b) => (a.nivel === b.nivel ? 0 : a.nivel === "alta" ? -1 : 1) || a.linha.data.localeCompare(b.linha.data));
+  })();
+  const sugestoesMap = new Map(sugestoesLista.map(s => [s.linha.id, s]));
+  const sugestoesPend = sugestoesLista;
+  // Ao abrir um extrato com sugestões, a aba Sugeridos vem na frente (uma única vez)
+  useEffect(() => {
+    if (abaAutoRef.current && extrato && abaAutoRef.current === extrato.id && sugestoesLista.length > 0) {
+      abaAutoRef.current = null;
+      setAbaSistema("sugeridos");
+    }
+  });
+
+  const COLS_SUG = "78px 78px minmax(150px,1.6fr) 84px 100px 132px";
   const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px";
   const COLS_SIS_CONC    = "78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px 84px";
   const renderLinhaSistema = (r: LinhaSis, i: number, modo: "conciliados" | "abertos") => {
@@ -1938,8 +2021,6 @@ function ConciliacaoInner() {
   const saldo         = totalCreditos - totalDebitos;
   const pct           = extrato && extrato.total_linhas > 0 ? Math.round((extrato.conciliados / extrato.total_linhas) * 100) : 0;
 
-  // Sugestões (confiança média) ainda não aceitas nem descartadas
-  const sugestoesPend = (extrato?.linhas ?? []).filter(l => !l.conciliado && l.sugestao_lancamento_id);
 
   // Fechamento da conta: movimento líquido do extrato x movimento líquido baixado no sistema
   // NESTA conta, no período coberto pelas linhas. Diferença zero = conta fechada.
@@ -2796,7 +2877,7 @@ function ConciliacaoInner() {
                 </div>
               )}
               {sugestoesPend.length > 0 && (
-                <button onClick={() => aceitarSugestoes(sugestoesPend)} disabled={salvando}
+                <button onClick={() => aceitarPares(sugestoesPend.map(x => ({ linha: x.linha, ids: x.ids, nivel: x.nivel })))} disabled={salvando}
                   style={{ padding: "5px 12px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, fontWeight: 600, cursor: salvando ? "default" : "pointer" }}>
                   Aceitar todas as sugestões ({sugestoesPend.length})
                 </button>
@@ -2817,6 +2898,7 @@ function ConciliacaoInner() {
                 {/* Abas do sistema */}
                 <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#EEF3F9" : "var(--bg-page)", flexWrap: "wrap" }}>
                   {([
+                    ["sugeridos",   `Sugeridos (${sugestoesLista.length})`],
                     ["conciliados", `Conciliados / baixados (${linhasConciliados.length})`],
                     ["abertos",     `CP/CR abertos (${linhasAbertos.length})`],
                     ["conferencia", `Conferência (${paresConf.length})`],
@@ -2833,7 +2915,7 @@ function ConciliacaoInner() {
                 </div>
 
                 {/* Intervalo, tipo e busca */}
-                <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {abaSistema !== "sugeridos" && <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Período</span>
                   <input type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
                     style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
@@ -2858,8 +2940,9 @@ function ConciliacaoInner() {
                   )}
                   <input placeholder="Buscar fornecedor, descrição ou valor…" value={buscaLanc} onChange={e => setBuscaLanc(e.target.value)}
                     style={{ flex: "1 1 170px", minWidth: 150, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
-                </div>
+                </div>}
                 <div style={{ padding: "5px 12px", fontSize: 11, color: "var(--text-3)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
+                  {abaSistema === "sugeridos" && "Pares que o sistema encontrou (mesmo valor e data próxima). Confira e aceite — nada é gravado antes disso."}
                   {abaSistema === "conciliados" && "Lançamentos ligados a linhas deste extrato (baixados automaticamente ou à mão). Período por data de baixa."}
                   {abaSistema === "abertos" && (linhaAtiva
                     ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong style={{ color: linhaAtiva.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
@@ -2868,7 +2951,61 @@ function ConciliacaoInner() {
                 </div>
 
                 {/* Conteúdo da aba */}
-                {abaSistema !== "conferencia" ? (
+                {abaSistema === "sugeridos" ? (
+                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                    <div style={{ minWidth: 640, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: COLS_SUG, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", alignItems: "center" }}>
+                        <div>Vencim.</div><div>Baixa</div><div>Fornecedor / Cliente</div><div>Tipo</div><div style={{ textAlign: "right" }}>Valor</div>
+                        <div style={{ textAlign: "right" }}>
+                          {sugestoesLista.length > 0 && (
+                            <button disabled={salvando} onClick={() => aceitarPares(sugestoesLista.map(x => ({ linha: x.linha, ids: x.ids, nivel: x.nivel })))}
+                              style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 10, fontWeight: 700, cursor: salvando ? "default" : "pointer", textTransform: "none" }}>
+                              Aceitar todas ({sugestoesLista.length})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                        {sugestoesLista.map(sg => {
+                          const r = sg.row, lt = r.lote, l = r.l;
+                          const vencs = r.comps.map(c => c.data_vencimento).sort();
+                          const baixas = r.comps.map(c => c.data_baixa).filter(Boolean).sort() as string[];
+                          const neg = sg.linha.tipo === "debito";
+                          const tb = tipoBaixaMeta(l);
+                          return (
+                            <div key={sg.linha.id} style={{ display: "grid", gridTemplateColumns: COLS_SUG, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
+                              <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(vencs[0] ?? l.data_vencimento)}</div>
+                              <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{lt?.data_pagamento ? fmtDt(lt.data_pagamento) : baixas[0] ? fmtDt(baixas[baixas.length - 1]) : "—"}</div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {lt ? (<><span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#E3EAF3", color: "#1A4870", marginRight: 5 }}>BORDERÔ</span>{r.comps.length} títulos{lt.descricao ? ` · ${lt.descricao}` : ""}</>) : fornecedorDe(l)}
+                                </div>
+                                <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                  title={`${sg.linha.descricao}${sg.motivos.length ? " · Confirmar porque: " + sg.motivos.join("; ") : ""}`}>
+                                  ↔ OFX {fmtDt(sg.linha.data).slice(0, 5)} · {sg.linha.descricao}{sg.motivos.length ? ` · ${sg.motivos.join("; ")}` : " · valor, data e titular conferem"}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                <Sinal cor={COR_PEND} titulo="Pendente" />
+                                <span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 7px", borderRadius: 6, background: tb.bg, color: tb.c }}>{lt ? (lt.status === "pago" ? "Baixado" : "Aberto") : tb.t}</span>
+                              </div>
+                              <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: neg ? COR_NEG : "var(--text-1)" }}>{neg ? "−" : "+"}{fmtBRL(sg.linha.valor)}</div>
+                              <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                                <button disabled={salvando} onClick={() => aceitarPares([{ linha: sg.linha, ids: sg.ids, nivel: sg.nivel }])}
+                                  style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer" }}>Aceitar</button>
+                                <button disabled={salvando} onClick={() => ignorarSugestao(sg.linha.id)} title="Descartar a sugestão"
+                                  style={{ padding: "3px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>✕</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {sugestoesLista.length === 0 && (
+                          <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhuma sugestão para as linhas pendentes deste extrato.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : abaSistema !== "conferencia" ? (
                   <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ minWidth: 760, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: abaSistema === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
@@ -3050,7 +3187,7 @@ function ConciliacaoInner() {
                       {linhasFiltradas.map(l => {
                         const isAtiva = linhaAtiva?.id === l.id;
                         const bate = linhaBateComSelecao(l);
-                        const sug = !l.conciliado && l.sugestao_lancamento_id ? lancamentos.find(x => x.id === l.sugestao_lancamento_id) : undefined;
+                        const sug = !l.conciliado ? sugestoesMap.get(l.id) : undefined;
                         const o = ORIGEM_META[l.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
                         const reg = l.regra_id ? regras.find(r => r.id === l.regra_id) : undefined;
                         return (
@@ -3077,8 +3214,8 @@ function ConciliacaoInner() {
                               )}
                               {sug && (
                                 <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                                  title={l.sugestao_motivo ? `Confirmar porque: ${l.sugestao_motivo}` : undefined}>
-                                  Sugestão: {sug.descricao} · {fmtBRL(valorRestante(sug))}{l.sugestao_motivo ? ` · ${l.sugestao_motivo}` : ""}
+                                  title={sug.motivos.length ? `Confirmar porque: ${sug.motivos.join("; ")}` : undefined}>
+                                  Sugestão: {sug.row.lote ? `Borderô · ${sug.row.comps.length} títulos` : fornecedorDe(sug.row.l)}{sug.motivos.length ? ` · ${sug.motivos.join("; ")}` : ""}
                                 </div>
                               )}
                             </div>
@@ -3107,9 +3244,9 @@ function ConciliacaoInner() {
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                                   {sug && !isAtiva && (
                                     <div style={{ display: "flex", gap: 4 }}>
-                                      <button disabled={salvando} onClick={() => aceitarSugestoes([l])}
+                                      <button disabled={salvando} onClick={() => aceitarPares([{ linha: l, ids: sug.ids, nivel: sug.nivel }])}
                                         style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>Aceitar</button>
-                                      <button disabled={salvando} onClick={() => ignorarSugestao(l)} title="Descartar a sugestão"
+                                      <button disabled={salvando} onClick={() => ignorarSugestao(l.id)} title="Descartar a sugestão"
                                         style={{ padding: "3px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>✕</button>
                                     </div>
                                   )}

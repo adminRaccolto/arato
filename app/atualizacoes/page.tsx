@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-n",
+    data: "21/09/2026",
+    titulo: "Conciliação: aba Sugeridos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Nova aba \"Sugeridos\" na lista de CP/CR da conciliação: mostra só os pares que o sistema encontrou (mesmo valor e data próxima), com a linha do OFX ao lado, incluindo borderôs inteiros. Um clique em Aceitar concilia (e baixa, se ainda estiver aberto); \"Aceitar todas\" resolve tudo de uma vez. Ao abrir um extrato com sugestões, a aba já vem na frente." },
+      { tipo: "melhoria", texto: "As sugestões agora são calculadas na hora, com os dados atuais, em vez de ficarem gravadas na importação — por isso acompanham o que você baixa ou concilia durante o trabalho." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-m",
     data: "21/09/2026",
     titulo: "Conciliação: borderô conciliado como unidade",
