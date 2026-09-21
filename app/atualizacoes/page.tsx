@@ -12,6 +12,7 @@ const RELEASES = [
     modulos: ["Estoque"],
     itens: [
       { tipo: "correcao", texto: "No lançamento de abastecimento, o seletor de Safra / Ciclo listava só os ciclos da fazenda que estava ativa, escondendo ciclos das outras fazendas do cliente. Agora lista os ciclos de todas as fazendas do cliente (com o nome da fazenda ao lado quando há mais de uma)." },
+      { tipo: "correcao", texto: "Na mesma tela, as bombas e tanques também passaram a ser as de todas as fazendas do cliente (antes só as da fazenda ativa, e o histórico de outras fazendas não conseguia devolver o estoque ao excluir). O abastecimento, a baixa do estoque e a conta a pagar são gravados na fazenda da bomba escolhida, e o combustível debitado é o da mesma fazenda da bomba." },
     ],
     onde: "Estoque → Abastecimento",
   },

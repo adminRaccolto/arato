@@ -33,7 +33,7 @@ type Abastecimento = {
   created_at: string;
 };
 
-type InsumoCombo = { id: string; nome: string; estoque: number; custo_medio: number; unidade: string };
+type InsumoCombo = { id: string; fazenda_id?: string; nome: string; estoque: number; custo_medio: number; unidade: string };
 
 // ─── Estilos utilitários ───────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" };
@@ -66,6 +66,8 @@ export default function AbastecimentoPage() {
   const [insumos,      setInsumos]      = useState<InsumoCombo[]>([]);
   const [historico,    setHistorico]    = useState<Abastecimento[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [fazNomes,     setFazNomes]     = useState<Map<string, string>>(new Map());
+  const sufFaz = (id?: string | null) => (fazNomes.size > 1 && id ? ` · ${fazNomes.get(id) ?? ""}` : "");
 
   // Filtros
   const [filtroBomba,   setFiltroBomba]   = useState("");
@@ -97,18 +99,23 @@ export default function AbastecimentoPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
-    const [b, m, f] = await Promise.all([
-      listarBombas(fazendaId),
+    const idsConta = fazendaIds?.length ? fazendaIds : [fazendaId];
+    // Bombas, máquinas e funcionários são do CLIENTE (todas as fazendas da conta), não da fazenda ativa
+    const [b, m, f, fz] = await Promise.all([
+      supabase.from("bombas_combustivel").select("*").in("fazenda_id", idsConta).order("nome")
+        .then(({ data, error }) => { if (error) throw error; return (data ?? []) as BombaCombustivel[]; }),
       listarMaquinas(fazendaId),
-      listarFuncionarios(fazendaIds?.length ? fazendaIds : [fazendaId]),
+      listarFuncionarios(idsConta),
+      supabase.from("fazendas").select("id,nome").in("id", idsConta),
     ]);
+    setFazNomes(new Map(((fz.data ?? []) as { id: string; nome: string }[]).map(x => [x.id, x.nome])));
     setBombas(b);
     setMaquinas(m);
     setFuncionarios(f);
 
     // Insumos de combustível cadastrados
     const { data: ins } = await supabase.from("insumos")
-      .select("id, nome, estoque, custo_medio, unidade")
+      .select("id, fazenda_id, nome, estoque, custo_medio, unidade")
       .in("fazenda_id", fazendaIds)
       .eq("categoria", "combustivel")
       .order("nome");
@@ -148,15 +155,20 @@ export default function AbastecimentoPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  // O combustível da bomba é o insumo da MESMA fazenda da bomba (o estoque é físico, por propriedade)
+  const insumoDaBomba = (bomba: BombaCombustivel) => {
+    const bate = (i: InsumoCombo) =>
+      i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
+      bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0]);
+    return insumos.find(i => bate(i) && i.fazenda_id === bomba.fazenda_id) ?? insumos.find(bate);
+  };
+
   // ─── Auto-fill custo médio + gerar CP ao selecionar bomba ────────────────────
   useEffect(() => {
     if (!fBomba) return;
     const bomba = bombas.find(b => b.id === fBomba);
     if (!bomba) return;
-    const insumo = insumos.find(i =>
-      i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
-      bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
-    );
+    const insumo = insumoDaBomba(bomba);
     if (insumo?.custo_medio) setFValUnit(String(insumo.custo_medio.toFixed(4)));
     // Auto-set fGerarCP based on bomb type
     if (bomba.consume_estoque === false) {
@@ -267,8 +279,9 @@ export default function AbastecimentoPage() {
     if (!fazendaId) return;
     const total = qtd * vUnit;
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
+    const fazBomba = bomba.fazenda_id || fazendaId;   // o abastecimento pertence à fazenda da bomba
     const payload: Record<string, unknown> = {
-      fazenda_id:      fazendaId,
+      fazenda_id:      fazBomba,
       bomba_id:        fBomba,
       maquina_id:      fDestTipo === "maquina"      ? fMaquina      || null : null,
       funcionario_id:  fDestTipo === "funcionario"  ? fFuncionario  || null : null,
@@ -294,15 +307,12 @@ export default function AbastecimentoPage() {
         .update({ estoque_atual_l: bomba.estoque_atual_l - qtd })
         .eq("id", fBomba);
 
-      const insumo = insumos.find(i =>
-        i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
-        bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
-      );
+      const insumo = insumoDaBomba(bomba);
       if (insumo) {
         const novoEstoque = Math.max(0, insumo.estoque - qtd);
         await supabase.from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
         await supabase.from("movimentacoes_estoque").insert({
-          fazenda_id:      fazendaId,
+          fazenda_id:      fazBomba,
           insumo_id:       insumo.id,
           tipo:            "saida",
           motivo:          "abastecimento",
@@ -318,9 +328,9 @@ export default function AbastecimentoPage() {
     // Gerar CP (opcional)
     let lancId: string | null = null;
     if (fGerarCP) {
-      const ogCombustivel = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.02.099");
+      const ogCombustivel = await resolverOperacaoGerencialPorClassificacao(fazBomba, "2.01.01.02.099");
       const { data: lanc, error: errL } = await supabase.from("lancamentos").insert({
-        fazenda_id:       fazendaId,
+        fazenda_id:       fazBomba,
         tipo:             "pagar",
         descricao:        `Abastecimento ${COMB_LABEL[bomba.combustivel] ?? bomba.combustivel} — ${nomeDestino()}`,
         categoria:        "combustivel",
@@ -463,7 +473,7 @@ export default function AbastecimentoPage() {
               return (
                 <div key={b.id} style={{ border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px", background: baixo ? "#FFF4E5" : "#FAFBFC" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{b.nome}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{b.nome}<span style={{ fontWeight: 400, color: "var(--text-3)" }}>{sufFaz(b.fazenda_id)}</span></div>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: cbg, color: ccl, fontWeight: 600 }}>
                       {COMB_LABEL[b.combustivel] ?? b.combustivel}
                     </span>
@@ -635,7 +645,7 @@ export default function AbastecimentoPage() {
                     <option value="">Selecione a bomba...</option>
                     {bombas.filter(b => b.ativa).map(b => (
                       <option key={b.id} value={b.id}>
-                        {b.nome} — {COMB_LABEL[b.combustivel]} · {fmtNum(b.estoque_atual_l, 0)} L disponíveis
+                        {b.nome}{sufFaz(b.fazenda_id)} — {COMB_LABEL[b.combustivel]} · {fmtNum(b.estoque_atual_l, 0)} L disponíveis
                       </option>
                     ))}
                   </select>
