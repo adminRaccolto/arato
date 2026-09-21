@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-b",
+    data: "22/09/2026",
+    titulo: "Abastecimento: todos os ciclos do cliente",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "No lançamento de abastecimento, o seletor de Safra / Ciclo listava só os ciclos da fazenda que estava ativa, escondendo ciclos das outras fazendas do cliente. Agora lista os ciclos de todas as fazendas do cliente (com o nome da fazenda ao lado quando há mais de uma)." },
+    ],
+    onde: "Estoque → Abastecimento",
+  },
+  {
     versao: "2026.09.22-a",
     data: "22/09/2026",
     titulo: "BI Raccolto: Auditoria por Ano Safra e Ciclo",

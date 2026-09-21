@@ -15,7 +15,7 @@ export interface CascadeValues {
 
 interface Row    { id: string; nome: string }
 interface IeRow  { id: string; inscricao_estadual: string; estado: string; fazenda_id?: string | null; ativa: boolean }
-interface CicloRow extends Row { ano_safra_id: string; cultura?: string; descricao?: string; data_inicio?: string; data_fim?: string }
+interface CicloRow extends Row { fazenda_id?: string; ano_safra_id: string; cultura?: string; descricao?: string; data_inicio?: string; data_fim?: string }
 
 interface Props {
   contaId:           string | null;
@@ -148,12 +148,17 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
   }, [values.fazendaId, contaId]);
 
   // 5. Ciclos quando Fazenda ou Ano Safra muda
+  // Sem o nível "Fazenda" na tela não existe fazenda escolhida: o ciclo é do CLIENTE (conta), então
+  // lista os ciclos de todas as fazendas dele — filtrar pela "fazenda ativa" escondia ciclos das outras.
+  const escopoPorConta = !show.includes("fazenda");
+  const idsEscopo = escopoPorConta && fazendas.length > 0 ? fazendas.map(f => f.id) : values.fazendaId ? [values.fazendaId] : [];
+  const chaveEscopo = idsEscopo.join(",");
   useEffect(() => {
-    if (!values.fazendaId) { setCiclos([]); return; }
-    let q = supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, data_inicio, data_fim").eq("fazenda_id", values.fazendaId);
+    if (idsEscopo.length === 0) { setCiclos([]); return; }
+    let q = supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, data_inicio, data_fim, fazenda_id").in("fazenda_id", idsEscopo);
     if (values.anoSafraId) q = q.eq("ano_safra_id", values.anoSafraId);
     q.order("descricao").then(({ data }) => {
-      const lista = (data ?? []).map(r => ({ id: r.id, nome: r.descricao ?? "", ano_safra_id: r.ano_safra_id, cultura: r.cultura, descricao: r.descricao, data_inicio: r.data_inicio, data_fim: r.data_fim }));
+      const lista = (data ?? []).map(r => ({ id: r.id, nome: r.descricao ?? "", fazenda_id: r.fazenda_id as string, ano_safra_id: r.ano_safra_id, cultura: r.cultura, descricao: r.descricao, data_inicio: r.data_inicio, data_fim: r.data_fim }));
       setCiclos(lista);
       // Auto-seleciona o ciclo ativo pela data atual (só se cicloId ainda não foi escolhido).
       // Também preenche anoSafraId com o ano safra do próprio ciclo — sem isso o
@@ -165,7 +170,8 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
         if (ativo) onChange({ ...values, cicloId: ativo.id, anoSafraId: values.anoSafraId || ativo.ano_safra_id });
       }
     });
-  }, [values.fazendaId, values.anoSafraId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveEscopo, values.anoSafraId]);
 
   function sel(field: keyof CascadeValues, id: string) {
     const reset: Partial<CascadeValues> = {};
@@ -271,7 +277,7 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
                 <option value="">— Selecionar —</option>
                 {ciclosFiltrados.map(c => (
                   <option key={c.id} value={c.id}>
-                    {CULTURAS[c.cultura ?? ""] ?? c.cultura ?? ""}{c.descricao ? ` · ${c.descricao}` : ""}
+                    {CULTURAS[c.cultura ?? ""] ?? c.cultura ?? ""}{c.descricao ? ` · ${c.descricao}` : ""}{escopoPorConta && fazendas.length > 1 ? ` · ${fazendas.find(f => f.id === c.fazenda_id)?.nome ?? ""}` : ""}
                   </option>
                 ))}
               </select>
