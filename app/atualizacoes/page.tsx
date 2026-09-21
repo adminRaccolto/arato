@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-e",
+    data: "21/09/2026",
+    titulo: "NF de Serviços e NF de Produtos com as mesmas Operações Gerenciais",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "A NF de Serviços listava só as operações marcadas como \"permite NF\" (87 classificações) e a NF de Produtos listava todas as despesas que permitem CP/CR (279). Serviços como Domínio/Hospedagem, Deslocamento/Viagem e Assessorias não apareciam na NFS-e. As duas notas (e o lote de NF) agora usam a mesma lista de Contas a Pagar, de todas as fazendas da conta, e o seletor da NF de Serviços ganhou busca por texto." },
+    ],
+    onde: "Compras → NF de Produtos · NF de Serviços",
+  },
+  {
     versao: "2026.09.21-d",
     data: "21/09/2026",
     titulo: "Conciliação Bancária: auditoria completa e correções + Abastecimento de Máquinas no menu",

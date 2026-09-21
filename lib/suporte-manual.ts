@@ -301,6 +301,8 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 ### 8.3 NF de Serviços (NFS-e)
 **Caminho:** Compras & Estoque → Compras → NF de Serviços
 
+**Mesma lista de Operações Gerenciais da NF de Produtos (21/09/2026):** o seletor de Operação Gerencial da NF de Serviços mostrava só as operações marcadas como "permite NF" (cerca de 30% do plano), enquanto a NF de Produtos e Contas a Pagar mostravam todas as despesas que permitem CP/CR — por isso serviços como Domínio/Hospedagem, Deslocamento/Viagem ou Assessorias não apareciam ao lançar uma NFS-e. As duas notas agora usam exatamente a mesma lista (a O.G. escolhida na nota vira a O.G. do CP), buscando em todas as fazendas da conta, e o seletor da NF de Serviços ganhou busca por texto.
+
 Lança notas fiscais de serviços recebidos (NFS-e). Completamente separado da NF de produtos.
 
 **Wizard 3 passos:** Prestador → Serviço (código LC 116/2003, discriminação, valor) → Tributação (ISS, retenções federais: PIS, COFINS, CSLL, IRRF, INSS).

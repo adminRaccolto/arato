@@ -19,7 +19,7 @@ import {
   listarCentrosCustoGeralDaConta,
   listarRegrasClassificacao,
   aplicarRegraClassificacao,
-  listarOperacoesGerenciaisAtivas,
+  listarOperacoesGerenciaisAtivasDaConta,
   verificarExclusaoNf,
   excluirNfEntrada,
   listarMaquinas,
@@ -610,7 +610,7 @@ export default function NfCompraPage() {
 
     // Operações gerenciais (para modal de reclassificação)
     try {
-      const ops = await listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" });
+      const ops = await listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId);
       setReclassOps(ops);
     } catch {}
 
@@ -766,7 +766,7 @@ export default function NfCompraPage() {
   // Carrega OGs ao abrir o modal de lote
   useEffect(() => {
     if (!batchModal || !fazendaId) return;
-    listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" })
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId)
       .then(setBatchOps).catch(() => setBatchOps([]));
   }, [batchModal, fazendaId]);
 

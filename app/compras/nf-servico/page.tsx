@@ -4,7 +4,8 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, CentroCusto, AnoSafra, Empresa, Produtor } from "../../../lib/supabase";
-import { listarPessoas, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivas, listarEmpresasDaConta, listarProdutoresDaConta } from "../../../lib/db";
+import SelectBusca from "../../../components/SelectBusca";
+import { listarPessoas, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivasDaConta, listarEmpresasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 
@@ -231,9 +232,11 @@ export default function NfServicoPage() {
     const as = await listarAnosSafra(fazendaId).catch(() => []);
     setAnos(as);
 
-    // Operações gerenciais (despesas que permitem NF)
+    // Operações gerenciais — MESMA lista da NF de Produtos e de Contas a Pagar (despesa que
+    // permite CP/CR, todas as fazendas da conta). Antes filtrava por "permite NF" e mostrava
+    // só 87 das 279 classificações: a O.G. da NF vira a O.G. do CP, então tem que ser a mesma.
     try {
-      const ops = await listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "notas_fiscais" });
+      const ops = await listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId);
       setOpsGer(ops as OpGerencial[]);
     } catch {}
 
@@ -1428,20 +1431,13 @@ export default function NfServicoPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Operação Gerencial *</label>
-                      <select value={cab.operacao_gerencial_id} onChange={e => setCab(p=>({...p,operacao_gerencial_id:e.target.value}))} style={inp}>
-                        <option value="">Selecionar operação…</option>
-                        {Object.entries(
-                          opsGer.reduce((acc, o) => {
-                            const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
-                            (acc[k] = acc[k] ?? []).push(o);
-                            return acc;
-                          }, {} as Record<string, typeof opsGer>)
-                        ).map(([k, items]) => (
-                          <optgroup key={k} label={k}>
-                            {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
+                      <SelectBusca
+                        value={cab.operacao_gerencial_id}
+                        onChange={id => setCab(p => ({ ...p, operacao_gerencial_id: id }))}
+                        options={opsGer.map(o => ({ value: o.id, label: `${o.classificacao ? `${o.classificacao} — ` : ""}${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
+                        placeholder="Selecionar operação…"
+                        style={inp}
+                      />
                     </div>
                     <div>
                       <label style={lbl}>Centro de Custo</label>
