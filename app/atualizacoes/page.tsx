@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-o",
+    data: "21/09/2026",
+    titulo: "Conciliação: aba Baixados",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A aba \"Conciliados / baixados\" virou \"Baixados\": lista todos os lançamentos baixados no período (data de baixa), com o sinaleiro indicando se já foram conciliados. A aba \"CP/CR abertos\" mostra só o que ainda não foi baixado e a opção \"Incluir baixados\" foi retirada. Para conferir baixados com o OFX, use a aba Conferência." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-n",
     data: "21/09/2026",
     titulo: "Conciliação: aba Sugeridos",

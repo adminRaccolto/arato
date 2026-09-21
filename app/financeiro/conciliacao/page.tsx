@@ -415,7 +415,6 @@ function ConciliacaoInner() {
   const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());   // borderôs expandidos na lista
   const abaAutoRef = useRef<string | null>(null);
   const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
-  const [incluirBaixados, setIncluirBaixados] = useState(false);                  // aba de abertos: também baixados ainda não conciliados
   const [produtoresNomes, setProdutoresNomes] = useState<Map<string, string>>(new Map());
 
   // Período de fetch dos lançamentos (header — antes de importar OFX)
@@ -1773,7 +1772,7 @@ function ConciliacaoInner() {
 
   // Aba 1 — conciliados e baixados (filtro: data de baixa)
   const lancConciliadosLista = lancamentos
-    .filter(l => origemPorLanc.has(l.id) && passaTipo(l) && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento)))
+    .filter(l => (l.status === "baixado" || origemPorLanc.has(l.id)) && passaTipo(l) && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento)))
     .sort((a, b) => (b.data_baixa ?? b.data_vencimento).localeCompare(a.data_baixa ?? a.data_vencimento));
   const linhasConciliados = agruparLotes(lancConciliadosLista);
 
@@ -1796,9 +1795,8 @@ function ConciliacaoInner() {
   // "Incluir baixados": também os já baixados que ainda não foram conciliados (ex.: borderô pago no CP).
   const baseAbertos = lancamentos.filter(l => {
     if (l.status === "cancelado" || !passaTipo(l)) return false;
-    if (l.status !== "baixado") return buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_vencimento);
-    if (!incluirBaixados || l.conciliado || origemPorLanc.has(l.id)) return false;
-    return buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento);
+    if (l.status === "baixado") return false;
+    return buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_vencimento);
   });
   const linhasAbertos = (() => {
     let rows = agruparLotes(baseAbertos);
@@ -1926,7 +1924,7 @@ function ConciliacaoInner() {
     const destaque = modo === "abertos" && (igualAoValorSis(r) || (!linhaAtiva && batem.length > 0));
     const og = origemPorLanc.get(l.id);
     const om = og ? ORIGEM_LANC[og] ?? ORIGEM_LANC.anterior : null;
-    const conciliadoRow = modo === "conciliados" || r.comps.every(c => c.conciliado);
+    const conciliadoRow = r.comps.every(c => c.conciliado || origemPorLanc.has(c.id));
     const expandido = !!lt && lotesAbertos.has(lt.id);
     const vencs = r.comps.map(c => c.data_vencimento).sort();
     const baixas = r.comps.map(c => c.data_baixa).filter(Boolean).sort() as string[];
@@ -2899,7 +2897,7 @@ function ConciliacaoInner() {
                 <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#EEF3F9" : "var(--bg-page)", flexWrap: "wrap" }}>
                   {([
                     ["sugeridos",   `Sugeridos (${sugestoesLista.length})`],
-                    ["conciliados", `Conciliados / baixados (${linhasConciliados.length})`],
+                    ["conciliados", `Baixados (${linhasConciliados.length})`],
                     ["abertos",     `CP/CR abertos (${linhasAbertos.length})`],
                     ["conferencia", `Conferência (${paresConf.length})`],
                   ] as const).map(([k, lbl]) => (
@@ -2932,18 +2930,12 @@ function ConciliacaoInner() {
                       </button>
                     ))}
                   </div>
-                  {abaSistema === "abertos" && (
-                    <label title="Mostra também lançamentos e borderôs já baixados no Contas a Pagar que ainda não foram conciliados com o extrato"
-                      style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
-                      <input type="checkbox" checked={incluirBaixados} onChange={e => setIncluirBaixados(e.target.checked)} /> Incluir baixados
-                    </label>
-                  )}
                   <input placeholder="Buscar fornecedor, descrição ou valor…" value={buscaLanc} onChange={e => setBuscaLanc(e.target.value)}
                     style={{ flex: "1 1 170px", minWidth: 150, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                 </div>}
                 <div style={{ padding: "5px 12px", fontSize: 11, color: "var(--text-3)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
                   {abaSistema === "sugeridos" && "Pares que o sistema encontrou (mesmo valor e data próxima). Confira e aceite — nada é gravado antes disso."}
-                  {abaSistema === "conciliados" && "Lançamentos ligados a linhas deste extrato (baixados automaticamente ou à mão). Período por data de baixa."}
+                  {abaSistema === "conciliados" && "Todos os lançamentos baixados no período (data de baixa). O sinaleiro mostra se já foram conciliados com o extrato; para conferir com o OFX, use a aba Conferência."}
                   {abaSistema === "abertos" && (linhaAtiva
                     ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong style={{ color: linhaAtiva.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
                     : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#1A4870", fontWeight: 700 }}>destaque azul</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento; a busca ignora o período.</>)}
