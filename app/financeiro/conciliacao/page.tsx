@@ -218,14 +218,17 @@ async function syncExtratoTransacoes(
   // ("ON CONFLICT … a second time"); (3) qualquer erro só ia pro console e a tela seguia
   // como se tivesse salvo. Agora: lotes pequenos, erro propaga (retorna false) e o
   // lote nunca regride conciliação se a leitura do estado atual falhou.
+  // primeiro_/ultimo_extrato_id têm FK para extratos_bancarios: só um id que existe lá pode ser
+  // gravado. O id "virtual-…" da visão contínua nunca existe — usá-lo derrubava TODA ação manual.
+  const idExtratoValido = extratoId && !extratoId.startsWith("virtual-") ? extratoId : null;
   const vistos = new Set<string>();
   const unicas = linhas.filter(l => (vistos.has(l.id) ? false : (vistos.add(l.id), true)));
 
   const LOTE = 150;
-  const mapaExistente = new Map<string, { fitid: string; valor: number; conciliado: boolean; lancamento_id: string | null; lancamento_ids: string[] | null; lancamento_desc: string | null; lancamento_valor: number | null; primeiro_extrato_id: string | null; origem_vinculo?: string | null; confianca?: string | null; regra_id?: string | null }>();
+  const mapaExistente = new Map<string, { fitid: string; valor: number; conciliado: boolean; lancamento_id: string | null; lancamento_ids: string[] | null; lancamento_desc: string | null; lancamento_valor: number | null; primeiro_extrato_id: string | null; ultimo_extrato_id?: string | null; origem_vinculo?: string | null; confianca?: string | null; regra_id?: string | null }>();
   for (let i = 0; i < unicas.length; i += LOTE) {
     const { data, error } = await supabase.from("extrato_transacoes")
-      .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id" + (COLUNAS_NOVAS ? ", origem_vinculo, confianca, regra_id" : ""))
+      .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id, ultimo_extrato_id" + (COLUNAS_NOVAS ? ", origem_vinculo, confianca, regra_id" : ""))
       .eq("conta_bancaria_id", contaId).in("fitid", unicas.slice(i, i + LOTE).map(l => l.id));
     if (error) { console.error("[syncExtratoTransacoes] leitura", error); return false; }
     for (const e of ((data ?? []) as unknown as Record<string, unknown>[])) mapaExistente.set(e.fitid as string, e as never);
@@ -259,8 +262,8 @@ async function syncExtratoTransacoes(
       lancamento_ids: preservarConciliado ? (ex?.lancamento_ids ?? null) : (l.lancamento_ids ?? null),
       lancamento_desc: preservarConciliado ? (ex?.lancamento_desc ?? null) : (l.lancamento_desc ?? null),
       lancamento_valor: preservarConciliado ? (ex?.lancamento_valor ?? null) : (l.lancamento_valor ?? null),
-      primeiro_extrato_id: ex?.primeiro_extrato_id ?? extratoId,
-      ultimo_extrato_id: extratoId,
+      primeiro_extrato_id: ex?.primeiro_extrato_id ?? idExtratoValido,
+      ultimo_extrato_id: idExtratoValido ?? ex?.ultimo_extrato_id ?? null,
       updated_at: new Date().toISOString(),
       ...(COLUNAS_NOVAS ? {
         origem_vinculo: preservarConciliado ? (ex?.origem_vinculo ?? null) : (l.conciliado ? (l.origem_vinculo ?? "manual") : null),
@@ -766,17 +769,9 @@ function ConciliacaoInner() {
         linhas,
       };
 
-      // 1º passo: gravar as transações (fonte única). Antes as baixas automáticas rodavam
-      // ANTES e, se esta gravação falhasse, ficavam lançamentos baixados sem nenhuma
-      // transação conciliada correspondente ("contas desconciliam") — e a tela seguia
-      // como se tivesse dado certo. Agora falhou aqui = nada é baixado.
-      const okSync = await syncExtratoTransacoes(fazendaId, contaSel, novoExtrato.conta_nome, linhas, novoExtrato.id, "import");
-      if (!okSync) {
-        alert("Não foi possível gravar as transações do extrato. Nada foi baixado nem conciliado — tente importar novamente.");
-        return;
-      }
-
-      // Log de auditoria do import (quem, quando, arquivo original) — não é fonte de dados.
+      // Ordem importa: (1) registro do import em extratos_bancarios — as transações apontam para ele
+      // por FK (primeiro_/ultimo_extrato_id); gravá-las antes derrubava TODO import; (2) transações
+      // (fonte única); (3) só então as baixas. Falhou (1) ou (2) = nada é baixado nem conciliado.
       const ofxPath = `ofx-conciliacao/${fazendaId}/${novoExtrato.id}.ofx`;
       const up = await supabase.storage.from("arquivos").upload(ofxPath, new Blob([texto], { type: "text/plain" }), { upsert: false });
       if (up.error) console.error("[handleOFX] upload OFX", up.error);
@@ -790,7 +785,19 @@ function ConciliacaoInner() {
         usuario_nome:    nomeUsuario ?? null,
         ofx_storage_path: up.error ? null : ofxPath,
       });
-      if (logIns.error) console.error("[handleOFX] log do import", logIns.error);
+      if (logIns.error) {
+        console.error("[handleOFX] registro do import", logIns.error);
+        alert("Não foi possível registrar a importação do extrato. Nada foi baixado nem conciliado — tente importar novamente.");
+        return;
+      }
+      const okSync = await syncExtratoTransacoes(fazendaId, contaSel, novoExtrato.conta_nome, linhas, novoExtrato.id, "import");
+      if (!okSync) {
+        // desfaz o registro do import (e o arquivo) para não deixar um import "fantasma" no histórico
+        await supabase.from("extratos_bancarios").delete().eq("id", novoExtrato.id);
+        if (!up.error) await supabase.storage.from("arquivos").remove([ofxPath]);
+        alert("Não foi possível gravar as transações do extrato. Nada foi baixado nem conciliado — tente importar novamente.");
+        return;
+      }
 
       // Baixa os lançamentos que o auto-match acabou de vincular (autoMatch só marca
       // conciliado e vincula — sem este passo ficavam "em_aberto"; achado real 18/09/2026:

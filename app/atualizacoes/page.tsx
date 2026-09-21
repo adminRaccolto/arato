@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-l",
+    data: "21/09/2026",
+    titulo: "Conciliação: correção do erro ao importar OFX e ao conciliar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Importar um OFX falhava com \"Não foi possível gravar as transações do extrato\": as transações eram gravadas antes do registro da importação, e elas apontam para esse registro por chave estrangeira. Agora o registro da importação é criado primeiro, e é desfeito se a gravação das transações falhar." },
+      { tipo: "correcao", texto: "Conciliar linha a linha (vincular, tesouraria, agrupado, aceitar sugestão) também falhava ao gravar, porque a visão contínua usava um identificador de extrato que não existe no cadastro de importações. Agora o vínculo com o extrato só é gravado quando ele existe." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-j",
     data: "21/09/2026",
     titulo: "NF de Produtos: valor unitário com 5 casas decimais",
