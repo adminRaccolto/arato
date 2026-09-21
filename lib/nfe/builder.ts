@@ -124,8 +124,13 @@ function fmtVal(n: number, casas = 2): string {
 
 // Escapa caracteres proibidos em conteúdo XML.
 // Todos os textos visíveis devem passar por aqui para evitar documento malformado.
+// O schema da NF-e (TString) recusa espaço no início/fim e quebra de linha no texto (SEFAZ 215:
+// "The value 'AVENIDA MUTUM ' of element 'xEnder' is not valid"), então o texto é aparado aqui —
+// vale para todos os campos, inclusive os de cadastros com espaço sobrando no fim.
 function escXml(s: string): string {
-  return s
+  return String(s ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .trim()
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

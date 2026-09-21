@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-g",
+    data: "22/09/2026",
+    titulo: "NF-e: espaço sobrando no fim do endereço (SEFAZ 215)",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ rejeitava a NF-e (215, falha no schema) quando algum texto de cadastro — como o endereço da transportadora — tinha espaço sobrando no início ou no fim (ex.: \"AVENIDA MUTUM \"). Agora todos os textos da NF-e são aparados antes de gerar o XML." },
+    ],
+    onde: "Fiscal · Estoque → Transferências → Emitir NF",
+  },
+  {
     versao: "2026.09.22-f",
     data: "22/09/2026",
     titulo: "NF-e: numeração repetida (SEFAZ 539)",
