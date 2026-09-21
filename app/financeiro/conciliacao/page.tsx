@@ -131,7 +131,7 @@ interface OpTesouraria {
   operacao_gerencial_id?: string | null;
 }
 
-interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; }
+interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; fazenda_id?: string | null; }
 
 // Operações padrão idênticas às de app/financeiro/tesouraria/operacoes/page.tsx
 const OPS_TESOURARIA_PADRAO: OpTesouraria[] = [
@@ -390,7 +390,25 @@ function ConciliacaoInner() {
   const [fTes, setFTes]           = useState<FormTesouraria>({ descricao: "", tipo: "pagar", valor: 0, data: "", tipo_op: "__taxa__", og_id: "", conta_origem: "", conta_destino: "" });
   const [savingTes, setSavingTes] = useState(false);
   const [opsCustom, setOpsCustom] = useState<OpTesouraria[]>([]);
-  const [ogsDisponiveis, setOgsDisponiveis] = useState<OgMin[]>([]);
+  // As O.G. existem uma cópia por fazenda: a lista bruta traz todas; o seletor usa uma só por
+  // classificação (preferindo a da fazenda ativa) e, ao gravar, o id é trocado pelo da fazenda
+  // da conta bancária (ogParaFazenda).
+  const [ogsBrutas, setOgsBrutas] = useState<OgMin[]>([]);
+  const ogsDisponiveis = useMemo(() => {
+    const porCls = new Map<string, OgMin>();
+    for (const o of ogsBrutas) {
+      const atual = porCls.get(o.classificacao);
+      const pontos = (x: OgMin) => (x.fazenda_id === fazendaId ? 2 : x.fazenda_id ? 1 : 0);
+      if (!atual || pontos(o) > pontos(atual)) porCls.set(o.classificacao, o);
+    }
+    return Array.from(porCls.values()).sort((a, b) => a.classificacao.localeCompare(b.classificacao));
+  }, [ogsBrutas, fazendaId]);
+  const ogParaFazenda = (ogId: string | null | undefined, fazId: string | null | undefined): string | null => {
+    if (!ogId) return null;
+    const cls = ogsBrutas.find(o => o.id === ogId)?.classificacao;
+    if (!cls || !fazId) return ogId;
+    return ogsBrutas.find(o => o.classificacao === cls && o.fazenda_id === fazId)?.id ?? ogId;
+  };
 
   // Colunas redimensionáveis
   const [colWidths, setColWidths] = useState<number[]>([...COL_INIT]);
@@ -448,7 +466,7 @@ function ConciliacaoInner() {
       // conta_id/globais devolvia ~300 de milhares e o seletor de O.G. da tesouraria
       // vinha sem as contas do cliente (origem dos lançamentos de tarifa/IOF sem O.G.).
       paginar<OgMin>((de, ate) => supabase.from("operacoes_gerenciais")
-        .select("id,classificacao,descricao,tipo")
+        .select("id,classificacao,descricao,tipo,fazenda_id")
         .or([`fazenda_id.in.(${fazendaIds.join(",")})`, "and(fazenda_id.is.null,conta_id.is.null)", ...(contaId ? [`conta_id.eq.${contaId}`] : [])].join(","))
         .neq("inativo", true)
         .order("classificacao").order("id").range(de, ate))
@@ -476,7 +494,7 @@ function ConciliacaoInner() {
     setLancamentos(lData);
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
-    if (gsR.data) setOgsDisponiveis(gsR.data as OgMin[]);
+    if (gsR.data) setOgsBrutas(gsR.data as OgMin[]);
     // "Inconsistências" lia conciliacao_pendencias (tabela legada, nunca limpa): 68% das
     // linhas já estavam conciliadas ou nem existiam mais em extrato_transacoes (fonte
     // única). Só mostra pendência de conta bancária que ainda está pendente de verdade.
@@ -1216,7 +1234,7 @@ function ConciliacaoInner() {
         data_baixa: modalTes.data,
         status: "baixado",
         categoria: opSel?.nome ?? "Tesouraria",
-        operacao_gerencial_id: ogId,
+        operacao_gerencial_id: ogParaFazenda(ogId, contaDoExtrato?.fazenda_id ?? fazendaId),
       })
       .select()
       .single();
@@ -1310,7 +1328,7 @@ function ConciliacaoInner() {
         data_baixa: dataComum,
         status: "baixado",
         categoria: ogSel?.descricao ?? "Conciliação agrupada",
-        operacao_gerencial_id: ogAgrupado || null,
+        operacao_gerencial_id: ogParaFazenda(ogAgrupado, contaDoExtratoAgr?.fazenda_id ?? fazendaId),
         conta_bancaria: extrato.conta_id,
       })
       .select()

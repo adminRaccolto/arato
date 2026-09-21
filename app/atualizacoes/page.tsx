@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-g",
+    data: "21/09/2026",
+    titulo: "Conciliação: Operações Gerenciais não se repetem mais no seletor",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Nas telas de Regras e de Tesouraria da Conciliação, cada Operação Gerencial aparecia uma vez por fazenda (2.811 itens em vez de 382). Agora aparece uma só vez, e ao gravar o lançamento a operação é ligada à fazenda da conta bancária do extrato." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-f",
     data: "21/09/2026",
     titulo: "Conciliação Bancária: regras automáticas e confiança do vínculo",
