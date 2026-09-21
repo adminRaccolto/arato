@@ -9,7 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getSessionUser, validateFazendaAccess } from "../../../../lib/api-auth";
+import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     // Sem esta checagem qualquer requisição anônima podia baixar/conciliar lançamentos
     // de qualquer conta. Exige sessão e que TODO lançamento tocado seja de uma fazenda
     // da conta do usuário (raccotlo passa).
-    const user = await getSessionUser();
+    const user = await getRequestUser(req.headers.get("authorization"));
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const idsTocados = Array.from(new Set([
       ...(body.baixar ?? []).map(b => b.id),
@@ -129,12 +129,28 @@ export async function POST(req: NextRequest) {
       if (r.error) falhas.push(`conciliado=true: ${r.error.message}`);
     }
 
+    // 3b. Borderô (lote de pagamento) conciliado = todos os títulos dele ligados a uma linha
+    if (body.lancamento_ids_conciliados?.length) {
+      const { data: ls } = await sb.from("lancamentos").select("lote_id").in("id", body.lancamento_ids_conciliados).not("lote_id", "is", null);
+      const loteIds = Array.from(new Set((ls ?? []).map(l => l.lote_id as string)));
+      if (loteIds.length) {
+        const r = await sb.from("pagamento_lotes").update({ conciliado: true }).in("id", loteIds);
+        if (r.error) falhas.push(`borderô conciliado: ${r.error.message}`);
+      }
+    }
+
     // 4. Marca lancamentos como conciliado=false (quando desvinculados)
     if (body.lancamento_ids_desconciliados?.length) {
       const r = await sb.from("lancamentos")
         .update({ conciliado: false })
         .in("id", body.lancamento_ids_desconciliados);
       if (r.error) falhas.push(`conciliado=false: ${r.error.message}`);
+    }
+
+    if (body.lancamento_ids_desconciliados?.length) {
+      const { data: ls } = await sb.from("lancamentos").select("lote_id").in("id", body.lancamento_ids_desconciliados).not("lote_id", "is", null);
+      const loteIds = Array.from(new Set((ls ?? []).map(l => l.lote_id as string)));
+      if (loteIds.length) await sb.from("pagamento_lotes").update({ conciliado: false }).in("id", loteIds);
     }
 
     if (falhas.length) {

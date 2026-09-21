@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-m",
+    data: "21/09/2026",
+    titulo: "Conciliação: borderô conciliado como unidade",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A conciliação listava os títulos de um borderô um a um. Agora o borderô é uma linha só (total, quantidade de títulos e \"ver títulos\"), na aba de abertos, na de conciliados e na Conferência. Conciliar o borderô confirma o pagamento com a data e a conta do banco e liga a linha do extrato a todos os títulos; conciliar só parte de um borderô é bloqueado." },
+      { tipo: "novo", texto: "Opção \"Incluir baixados\" na aba de abertos: mostra lançamentos e borderôs já pagos no Contas a Pagar que ainda não foram conciliados." },
+      { tipo: "melhoria", texto: "As chamadas da conciliação à API passaram a enviar o token do navegador, para não falhar com a aba ociosa por sessão expirada." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-l",
     data: "21/09/2026",
     titulo: "Conciliação: correção do erro ao importar OFX e ao conciliar",

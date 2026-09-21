@@ -31,6 +31,19 @@ export async function getSessionUser() {
 }
 
 /**
+ * Usuário da requisição: token Bearer enviado pelo cliente (renovado no navegador — não expira com a aba
+ * ociosa) ou, na falta dele, o cookie de sessão. Retorna null se nenhum for válido.
+ */
+export async function getRequestUser(authHeader?: string | null) {
+  const token = (authHeader ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (token) {
+    const { data: { user } } = await adminClient().auth.getUser(token);
+    if (user) return user;
+  }
+  return getSessionUser();
+}
+
+/**
  * Exige uma sessão de administrador interno para operações globais.
  * Endpoints que administram a instância WhatsApp, por exemplo, não podem ser
  * liberados a clientes somente porque eles possuem uma sessão válida.

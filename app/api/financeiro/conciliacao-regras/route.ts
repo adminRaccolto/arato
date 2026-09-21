@@ -25,7 +25,7 @@ type Body = {
 };
 
 export async function GET(req: NextRequest) {
-  const t = await resolverTenant(new URL(req.url).searchParams.get("conta_id"));
+  const t = await resolverTenant(new URL(req.url).searchParams.get("conta_id"), req.headers.get("authorization"));
   if (!t.ok) return NextResponse.json({ ok: false, error: t.error }, { status: t.status });
   const { data, error } = await adminSb().from("conciliacao_regras").select("*").eq("conta_id", t.contaId).order("created_at", { ascending: false });
   if (tabelaAusente(error)) return NextResponse.json({ ok: true, regras: [], migracao: false });
@@ -53,7 +53,7 @@ async function validarVinculos(b: Body, fazendaIds: string[]): Promise<string | 
 
 export async function POST(req: NextRequest) {
   const b = (await req.json().catch(() => ({}))) as Body;
-  const t = await resolverTenant(b.conta_id);
+  const t = await resolverTenant(b.conta_id, req.headers.get("authorization"));
   if (!t.ok) return NextResponse.json({ ok: false, error: t.error }, { status: t.status });
 
   const texto = (b.texto ?? "").trim();
@@ -98,7 +98,7 @@ async function regraDoTenant(id: string, contaId: string) {
 export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   const b = (await req.json().catch(() => ({}))) as Body;
-  const t = await resolverTenant(b.conta_id);
+  const t = await resolverTenant(b.conta_id, req.headers.get("authorization"));
   if (!t.ok) return NextResponse.json({ ok: false, error: t.error }, { status: t.status });
   if (!id || !(await regraDoTenant(id, t.contaId))) return NextResponse.json({ ok: false, error: "Regra não encontrada" }, { status: 404 });
   const erroVinc = await validarVinculos(b, t.fazendaIds);
@@ -121,7 +121,7 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const sp = new URL(req.url).searchParams;
   const id = sp.get("id");
-  const t = await resolverTenant(sp.get("conta_id"));
+  const t = await resolverTenant(sp.get("conta_id"), req.headers.get("authorization"));
   if (!t.ok) return NextResponse.json({ ok: false, error: t.error }, { status: t.status });
   if (!id || !(await regraDoTenant(id, t.contaId))) return NextResponse.json({ ok: false, error: "Regra não encontrada" }, { status: 404 });
   const { error } = await adminSb().from("conciliacao_regras").delete().eq("id", id);

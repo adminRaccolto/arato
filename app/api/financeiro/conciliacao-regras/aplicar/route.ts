@@ -21,7 +21,7 @@ type Linha = { id: string; fitid: string; data: string; descricao: string; valor
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as { conta_bancaria_id?: string; fitids?: string[]; conta_id?: string };
-  const t = await resolverTenant(body.conta_id);
+  const t = await resolverTenant(body.conta_id, req.headers.get("authorization"));
   if (!t.ok) return NextResponse.json({ ok: false, error: t.error }, { status: t.status });
   if (!body.conta_bancaria_id) return NextResponse.json({ ok: false, error: "conta_bancaria_id é obrigatório" }, { status: 400 });
 

@@ -66,6 +66,21 @@ interface Lancamento {
   conciliado?: boolean;
   moeda?: string;
   pessoa_id?: string | null;
+  lote_id?: string | null;
+}
+
+// Borderô = lote de pagamento do Contas a Pagar (pagamento_lotes + pagamento_lote_itens). Um borderô
+// gera UMA saída no extrato (o total), então é conciliado como unidade — não título a título.
+interface LoteInfo {
+  id: string;
+  status: string;                       // "pendente" (ainda não baixou) | "pago"
+  tipo: "pagar" | "receber";
+  valor_total: number;
+  data_pagamento: string | null;
+  conta_bancaria: string | null;
+  descricao: string | null;
+  conciliado: boolean;
+  itens: { lancamento_id: string; valor_pago: number; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null }[];
 }
 
 interface Extrato {
@@ -167,6 +182,15 @@ function parseOFX(texto: string): LinhaOFX[] {
     linhas.push({ id: fitid, data, descricao: memo, valor: Math.abs(trnAmt), tipo: trnAmt > 0 ? "credito" : "debito", conciliado: false });
   }
   return linhas.sort((a, b) => a.data.localeCompare(b.data));
+}
+
+// fetch com o token de acesso do navegador. As rotas de API validam o usuário, e o cookie de sessão
+// pode estar expirado em aba ociosa (as rotas /api não passam pelo proxy que o renova); o token
+// vindo do cliente Supabase é renovado automaticamente.
+async function authFetch(url: string, init: RequestInit = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return fetch(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
 }
 
 // Paginação segura: PostgREST devolve no máximo 1.000 linhas por consulta e corta o
@@ -387,6 +411,9 @@ function ConciliacaoInner() {
   // Abas do lado do sistema (esquerda): conciliados/baixados · abertos · conferência (largura total)
   const [abaSistema, setAbaSistema]         = useState<"conciliados" | "abertos" | "conferencia">("abertos");
   const [pessoasNomes, setPessoasNomes]     = useState<Map<string, string>>(new Map());
+  const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
+  const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());   // borderôs expandidos na lista
+  const [incluirBaixados, setIncluirBaixados] = useState(false);                  // aba de abertos: também baixados ainda não conciliados
   const [produtoresNomes, setProdutoresNomes] = useState<Map<string, string>>(new Map());
 
   // Período de fetch dos lançamentos (header — antes de importar OFX)
@@ -448,7 +475,7 @@ function ConciliacaoInner() {
     let from = 0;
     while (true) {
       let q = supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id,lote_id")
         .in("fazenda_id", fazIds)
         .not("status", "eq", "cancelado")
         // desempate por id: só data_vencimento é chave não-única e a paginação por range
@@ -504,7 +531,7 @@ function ConciliacaoInner() {
         .then(data => ({ data, error: null }), error => ({ data: null, error })),
       // detecta se a migração Seção 277 já foi executada (colunas novas em extrato_transacoes)
       supabase.from("extrato_transacoes").select("origem_vinculo").limit(1),
-      fetch("/api/financeiro/conciliacao-regras").then(r => r.json()).catch(() => null),
+      authFetch("/api/financeiro/conciliacao-regras").then(r => r.json()).catch(() => null),
       listarPessoasDaConta(fazendaId).catch(() => []),
       contaId ? listarProdutoresDaConta(contaId).catch(() => []) : Promise.resolve([]),
     ]);
@@ -515,6 +542,20 @@ function ConciliacaoInner() {
     setRegras(((regR?.regras ?? []) as RegraConc[]));
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     setLancamentos(lData);
+    // Borderôs (lotes de pagamento) e seus títulos
+    try {
+      const lt = await paginar<Omit<LoteInfo, "itens">>((de, ate) => supabase.from("pagamento_lotes")
+        .select("id,status,tipo,valor_total,data_pagamento,conta_bancaria,descricao,conciliado")
+        .in("fazenda_id", fazendaIds).order("id").range(de, ate) as unknown as PromiseLike<{ data: Omit<LoteInfo, "itens">[] | null; error: { message: string } | null }>);
+      const mapa = new Map<string, LoteInfo>(lt.map(l => [l.id, { ...l, valor_total: Number(l.valor_total), itens: [] }]));
+      const ids = Array.from(mapa.keys());
+      for (let i = 0; i < ids.length; i += 100) {
+        const it = await paginar<{ lote_id: string; lancamento_id: string; valor_pago: number; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null }>((de, ate) => supabase.from("pagamento_lote_itens")
+          .select("lote_id,lancamento_id,valor_pago,valor_multa,valor_juros,valor_desconto").in("lote_id", ids.slice(i, i + 100)).order("id").range(de, ate));
+        for (const x of it) mapa.get(x.lote_id)?.itens.push({ lancamento_id: x.lancamento_id, valor_pago: Number(x.valor_pago), valor_multa: x.valor_multa, valor_juros: x.valor_juros, valor_desconto: x.valor_desconto });
+      }
+      setLotes(mapa);
+    } catch (e) { console.error("[carregar] borderôs", e); }
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
     if (gsR.data) setOgsBrutas(gsR.data as OgMin[]);
@@ -703,7 +744,7 @@ function ConciliacaoInner() {
       // conta_bancaria: o merge SUBSTITUÍA os lançamentos do estado por cópias sem
       // conta, e os baixados sumiam do painel esquerdo até recarregar a página.
       const lancFresh = await paginar<Lancamento>((de, ate) => supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id,lote_id")
         .in("fazenda_id", fazendaIds)
         .not("status", "eq", "cancelado")
         .gte("data_vencimento", iniMatch)
@@ -821,7 +862,7 @@ function ConciliacaoInner() {
 
       if (paraBaixarAuto.length > 0 || definirContaAuto.length > 0 || idsConciliarAuto.length > 0) {
         try {
-          const res = await fetch("/api/financeiro/persistir-extrato", {
+          const res = await authFetch("/api/financeiro/persistir-extrato", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -859,7 +900,7 @@ function ConciliacaoInner() {
         const pendentesFit = linhas.filter(l => !l.conciliado).map(l => l.id);
         for (let i = 0; i < pendentesFit.length; i += 400) {
           try {
-            const r = await fetch("/api/financeiro/conciliacao-regras/aplicar", {
+            const r = await authFetch("/api/financeiro/conciliacao-regras/aplicar", {
               method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ conta_bancaria_id: contaSel, fitids: pendentesFit.slice(i, i + 400) }),
             }).then(x => x.json());
@@ -925,7 +966,7 @@ function ConciliacaoInner() {
       // podia falhar silenciosamente com sessão/JWT expirado (achado real
       // 18/09/2026: "não tem mais como excluir"), mesmo padrão já usado em
       // persistExtrato pro mesmo motivo.
-      const res = await fetch(`/api/financeiro/persistir-extrato?id=${ext.id}`, { method: "DELETE" });
+      const res = await authFetch(`/api/financeiro/persistir-extrato?id=${ext.id}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({ ok: false }));
       if (!res.ok || json?.ok === false) throw new Error(json?.error);
       setExtratos(prev => prev.filter(e => e.id !== ext.id));
@@ -965,7 +1006,7 @@ function ConciliacaoInner() {
     setExtrato(upd);
     setExtratos(prev => prev.map(e => e.id === upd.id ? upd : e));
     try {
-      const res = await fetch("/api/financeiro/persistir-extrato", {
+      const res = await authFetch("/api/financeiro/persistir-extrato", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1037,7 +1078,18 @@ function ConciliacaoInner() {
     if (!linha || idsSel.length === 0 || !extrato || !fazendaId) return;
     const ids = idsSel;
     const selecionados = ids.map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
-    const unico = selecionados.length === 1;
+
+    // Borderô (lote de pagamento do CP): a linha do banco é o TOTAL dele — concilia por inteiro,
+    // nunca só parte dos títulos.
+    const lotesSel = new Map<string, LoteInfo>();
+    for (const l of selecionados) { const lt = loteDe(l); if (lt) lotesSel.set(lt.id, lt); }
+    for (const lt of lotesSel.values()) {
+      if (lt.itens.some(i => !ids.includes(i.lancamento_id))) {
+        alert(`Este lançamento faz parte de um borderô de ${lt.itens.length} título(s) (${fmtBRL(lt.itens.reduce((sm, i) => sm + i.valor_pago, 0))}). A linha do extrato é o total do borderô — selecione o borderô inteiro.`);
+        return;
+      }
+    }
+    const unico = selecionados.length === 1 && lotesSel.size === 0;
 
     // 1 lançamento ↔ 1 linha: lançamento já conciliado com outra linha não pode ser reaproveitado
     // (era como o mesmo CP acabava ligado a várias linhas do extrato). Parcial que já tem a marca
@@ -1064,8 +1116,21 @@ function ConciliacaoInner() {
     //  • parcial → se a linha é o pagamento que já está registrado (valor pago), só vincula;
     //              senão é um novo pagamento: soma ao valor pago (parcial até quitar)
     //  • baixado → só vincula
-    type Plano = { l: Lancamento; baixa: boolean; pago: number; status: "baixado" | "parcial" };
+    type Plano = { l: Lancamento; baixa: boolean; pago: number; status: "baixado" | "parcial"; esp?: number; porLote?: boolean };
     const planos: Plano[] = selecionados.map(l => {
+      // Título de borderô: o valor a cobrir é o do item do borderô. Borderô pendente é baixado pela
+      // confirmação do lote (mesma rota do Contas a Pagar); borderô já pago só vincula.
+      const lt = loteDe(l);
+      const it = lt ? itemDoLote(l) : undefined;
+      if (lt && it) {
+        const esp = Number(it.valor_pago);
+        if (lt.status === "pendente") {
+          const total = Number(l.valor_pago ?? 0) + esp;
+          const desc = Number(it.valor_desconto ?? 0);
+          return { l, baixa: false, porLote: true, esp, pago: Math.round(total * 100) / 100, status: (total + desc >= Number(l.valor) - 0.01 ? "baixado" : "parcial") as "baixado" | "parcial" };
+        }
+        return { l, baixa: false, esp, pago: Number(l.valor_pago ?? l.valor), status: (l.status === "baixado" ? "baixado" : "parcial") as "baixado" | "parcial" };
+      }
       if (l.status === "baixado") return { l, baixa: false, pago: Number(l.valor_pago ?? l.valor), status: "baixado" as const };
       const pagoAntes = Number(l.valor_pago ?? 0);
       if (ehParcial(l) && unico && Math.abs(linha.valor - pagoAntes) <= 0.02) {
@@ -1080,7 +1145,7 @@ function ConciliacaoInner() {
     // (parcial ou total), não diferença; linha MAIOR que o saldo (juros/multa) exige motivo.
     // Vários lançamentos (borderô): a soma precisa bater com a linha, senão exige motivo.
     let justificativa = "";
-    const esperado = unico && planos[0].baixa ? valorRestante(planos[0].l) : planos.reduce((sm, p) => sm + (p.baixa ? valorRestante(p.l) : p.pago), 0);
+    const esperado = unico && planos[0].baixa ? valorRestante(planos[0].l) : planos.reduce((sm, p) => sm + (p.esp ?? (p.baixa ? valorRestante(p.l) : p.pago)), 0);
     const dif = Math.round((linha.valor - esperado) * 100) / 100;
     const excesso = unico && planos[0].baixa ? dif > 0.02 : Math.abs(dif) > 0.02;
     if (excesso) {
@@ -1094,17 +1159,39 @@ function ConciliacaoInner() {
     setSalvando(true);
     const baixas = planos.filter(p => p.baixa);
 
+    // Confirma o pagamento dos borderôs pendentes com a data e a conta do banco (baixa todos os títulos)
+    for (const lt of Array.from(lotesSel.values()).filter(x => x.status === "pendente")) {
+      const r = await authFetch("/api/financeiro/bordero-acao", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "confirmar", lote_id: lt.id, data_pagamento: linha.data, conta_bancaria: extrato.conta_id }),
+      }).then(x => x.json()).catch(() => null);
+      if (!r?.ok) {
+        alert("Não foi possível confirmar o pagamento do borderô: " + (r?.error ?? "erro desconhecido") + ". Nada foi conciliado.");
+        setSalvando(false);
+        carregar();
+        return;
+      }
+    }
+    if (lotesSel.size > 0) {
+      setLotes(prev => {
+        const n = new Map(prev);
+        for (const lt of lotesSel.values()) n.set(lt.id, { ...lt, status: "pago", data_pagamento: lt.status === "pendente" ? linha.data : lt.data_pagamento, conta_bancaria: lt.conta_bancaria ?? extrato.conta_id, conciliado: true });
+        return n;
+      });
+    }
+
     // Atualiza estado local imediatamente (optimistic)
     setLancamentos(prev => prev.map(l => {
       const pl = planos.find(p => p.l.id === l.id);
       if (!pl) return l;
-      return { ...l, ...(pl.baixa ? { status: pl.status, data_baixa: linha.data, valor_pago: pl.pago } : {}), conta_bancaria: extrato.conta_id || l.conta_bancaria, conciliado: true };
+      return { ...l, ...(pl.baixa || pl.porLote ? { status: pl.status, data_baixa: linha.data, valor_pago: pl.pago } : {}), conta_bancaria: extrato.conta_id || l.conta_bancaria, conciliado: true };
     }));
 
     // Vincular à linha OFX
     const primeiro = selecionados[0];
-    const descVinc = ids.length === 1 && primeiro ? primeiro.descricao : `${ids.length} lançamentos (bordero)`;
-    const valorVinc = planos.reduce((sm, p) => sm + (p.baixa ? (p.status === "parcial" && unico ? linha.valor : valorRestante(p.l)) : p.pago), 0);
+    const umLoteInteiro = lotesSel.size === 1 && ids.length === Array.from(lotesSel.values())[0].itens.length;
+    const descVinc = umLoteInteiro ? `Borderô · ${ids.length} título(s)` : ids.length === 1 && primeiro ? primeiro.descricao : `${ids.length} lançamentos (bordero)`;
+    const valorVinc = esperado;
 
     const novasLinhas = extrato.linhas.map(l =>
       l.id === linha.id
@@ -1421,7 +1508,7 @@ function ConciliacaoInner() {
   // ── Regras de conciliação ──────────────────────────────────────────────────
   async function recarregarRegras() {
     try {
-      const r = await fetch("/api/financeiro/conciliacao-regras").then(x => x.json());
+      const r = await authFetch("/api/financeiro/conciliacao-regras").then(x => x.json());
       if (r?.ok) setRegras(r.regras as RegraConc[]);
     } catch { /* mantém as atuais */ }
   }
@@ -1431,7 +1518,7 @@ function ConciliacaoInner() {
     if (!criarRegra.ativo) return null;
     const og = dados.og_id ? ogsDisponiveis.find(o => o.id === dados.og_id) : undefined;
     try {
-      const r = await fetch("/api/financeiro/conciliacao-regras", {
+      const r = await authFetch("/api/financeiro/conciliacao-regras", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           texto: criarRegra.texto, tipo: linha.tipo,
@@ -1451,7 +1538,7 @@ function ConciliacaoInner() {
     const og = ogsDisponiveis.find(o => o.id === fRegra.og_id);
     setSavingRegra(true);
     try {
-      const r = await fetch("/api/financeiro/conciliacao-regras", {
+      const r = await authFetch("/api/financeiro/conciliacao-regras", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           texto: fRegra.texto, tipo: fRegra.tipo, acao: fRegra.acao,
@@ -1468,14 +1555,14 @@ function ConciliacaoInner() {
   }
 
   async function alternarRegra(r: RegraConc) {
-    const res = await fetch(`/api/financeiro/conciliacao-regras?id=${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ativa: !r.ativa }) }).then(x => x.json()).catch(() => null);
+    const res = await authFetch(`/api/financeiro/conciliacao-regras?id=${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ativa: !r.ativa }) }).then(x => x.json()).catch(() => null);
     if (!res?.ok) { alert("Não foi possível alterar a regra."); return; }
     setRegras(prev => prev.map(x => x.id === r.id ? { ...x, ativa: !r.ativa } : x));
   }
 
   async function excluirRegra(r: RegraConc) {
     if (!confirm(`Excluir a regra "${r.texto}"? Lançamentos já criados por ela não são alterados.`)) return;
-    const res = await fetch(`/api/financeiro/conciliacao-regras?id=${r.id}`, { method: "DELETE" }).then(x => x.json()).catch(() => null);
+    const res = await authFetch(`/api/financeiro/conciliacao-regras?id=${r.id}`, { method: "DELETE" }).then(x => x.json()).catch(() => null);
     if (!res?.ok) { alert("Não foi possível excluir a regra."); return; }
     setRegras(prev => prev.filter(x => x.id !== r.id));
   }
@@ -1492,7 +1579,7 @@ function ConciliacaoInner() {
     if (!extrato) return;
     setAplicandoRegras(true);
     try {
-      const r = await fetch("/api/financeiro/conciliacao-regras/aplicar", {
+      const r = await authFetch("/api/financeiro/conciliacao-regras/aplicar", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conta_bancaria_id: extrato.conta_id }),
       }).then(x => x.json());
@@ -1631,12 +1718,48 @@ function ConciliacaoInner() {
     anterior: { label: "Anterior",        bg: "#F1F3F6", cor: "#888" },
   };
 
+  // ── Borderôs (lotes de pagamento do CP) ─────────────────────────────────────
+  // Um borderô gera UMA saída no extrato (o total). Por isso ele é uma linha só nas listas e é
+  // conciliado por inteiro — nunca título a título.
+  const loteDe = (l: Lancamento) => (l.lote_id ? lotes.get(l.lote_id) : undefined);
+  const itemDoLote = (l: Lancamento) => loteDe(l)?.itens.find(i => i.lancamento_id === l.id);
+  // Quanto a linha do banco deve cobrir por este lançamento: no borderô é o valor do item; fora dele, o que falta pagar
+  const valorParaLinha = (l: Lancamento) => { const it = itemDoLote(l); return it ? Number(it.valor_pago) : valorRestante(l); };
+  const compsDoLote = (lt: LoteInfo) => lt.itens.map(i => lancamentos.find(x => x.id === i.lancamento_id)).filter((x): x is Lancamento => !!x);
+  type LinhaSis = { key: string; lote?: LoteInfo; comps: Lancamento[]; l: Lancamento };
+  // Só borderô com 2+ títulos vira linha agrupada; com 1 título continua uma linha normal (a confirmação
+  // do pagamento passa pelo borderô do mesmo jeito)
+  const agruparLotes = (lista: Lancamento[]): LinhaSis[] => {
+    const vistos = new Set<string>();
+    const out: LinhaSis[] = [];
+    for (const l of lista) {
+      const lt = loteDe(l);
+      if (lt && lt.itens.length > 1) {
+        if (vistos.has(lt.id)) continue;
+        vistos.add(lt.id);
+        const comps = compsDoLote(lt);
+        out.push({ key: lt.id, lote: lt, comps: comps.length ? comps : [l], l: comps[0] ?? l });
+      } else out.push({ key: l.id, comps: [l], l });
+    }
+    return out;
+  };
+  const valorLinhaSis = (r: LinhaSis) => (r.lote ? r.comps.reduce((sm, c) => sm + valorParaLinha(c), 0) : valorRestante(r.l));
+  const receberLinhaSis = (r: LinhaSis) => (r.lote ? r.lote.tipo === "receber" : r.l.tipo === "receber");
+  const selecionadaLinhaSis = (r: LinhaSis) => r.comps.length > 0 && r.comps.every(c => lancsSel.has(c.id));
+  const alternarLinhaSis = (r: LinhaSis) => setLancsSel(prev => {
+    const n = new Set(prev);
+    const todos = r.comps.every(c => n.has(c.id));
+    for (const c of r.comps) { if (todos) n.delete(c.id); else n.add(c.id); }
+    return n;
+  });
+
   // Aba 1 — conciliados e baixados (filtro: data de baixa)
-  const lancConciliados = lancamentos
+  const lancConciliadosLista = lancamentos
     .filter(l => origemPorLanc.has(l.id) && passaTipo(l) && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento)))
     .sort((a, b) => (b.data_baixa ?? b.data_vencimento).localeCompare(a.data_baixa ?? a.data_vencimento));
+  const linhasConciliados = agruparLotes(lancConciliadosLista);
 
-  // Índice das linhas PENDENTES do OFX por valor — só para DESTACAR os lançamentos que batem
+  // Índice das linhas PENDENTES do OFX por valor — só para DESTACAR o que bate
   const indicePend = new Map<number, LinhaOFX[]>();
   for (const ln of extrato?.linhas ?? []) {
     if (ln.conciliado) continue;
@@ -1644,28 +1767,34 @@ function ConciliacaoInner() {
     const arr = indicePend.get(k);
     if (arr) arr.push(ln); else indicePend.set(k, [ln]);
   }
-  const linhasQueBatem = (l: Lancamento): LinhaOFX[] => {
-    const alvo = valorRestante(l);
+  const linhasQueBatemValor = (alvo: number, receber: boolean): LinhaOFX[] => {
     const k = Math.round(alvo);
     return [k - 1, k, k + 1].flatMap(x => indicePend.get(x) ?? [])
-      .filter(x => Math.abs(x.valor - alvo) <= 0.02 && ((x.tipo === "credito") === (l.tipo === "receber")));
+      .filter(x => Math.abs(x.valor - alvo) <= 0.02 && ((x.tipo === "credito") === receber));
   };
-  const igualAoValor = (l: Lancamento) => !!linhaAtiva && Math.abs(valorRestante(l) - linhaAtiva.valor) <= 0.02;
+  const igualAoValorSis = (r: LinhaSis) => !!linhaAtiva && Math.abs(valorLinhaSis(r) - linhaAtiva.valor) <= 0.02;
 
-  // Aba 2 — CP/CR abertos e parciais (filtro: data de vencimento; a busca ignora o intervalo)
-  const lancAbertos = (() => {
-    let base = lancamentos.filter(l => l.status !== "baixado" && l.status !== "cancelado" && passaTipo(l)
-      && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_vencimento)));
+  // Aba 2 — CP/CR abertos e parciais (filtro: data de vencimento; a busca ignora o intervalo).
+  // "Incluir baixados": também os já baixados que ainda não foram conciliados (ex.: borderô pago no CP).
+  const baseAbertos = lancamentos.filter(l => {
+    if (l.status === "cancelado" || !passaTipo(l)) return false;
+    if (l.status !== "baixado") return buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_vencimento);
+    if (!incluirBaixados || l.conciliado || origemPorLanc.has(l.id)) return false;
+    return buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento);
+  });
+  const linhasAbertos = (() => {
+    let rows = agruparLotes(baseAbertos);
+    const dataRef = (r: LinhaSis) => r.comps.map(c => c.data_vencimento).sort()[0] ?? r.l.data_vencimento;
     if (linhaAtiva) {
-      base = base.filter(l => (linhaAtiva.tipo === "credito") === (l.tipo === "receber"));
-      return base.sort((x, y) => {
-        const ex = igualAoValor(x) ? 0 : 1, ey = igualAoValor(y) ? 0 : 1;
+      rows = rows.filter(r => (linhaAtiva.tipo === "credito") === receberLinhaSis(r));
+      return rows.sort((x, y) => {
+        const ex = igualAoValorSis(x) ? 0 : 1, ey = igualAoValorSis(y) ? 0 : 1;
         if (ex !== ey) return ex - ey;
-        const dist = (l: Lancamento) => Math.abs(new Date(l.data_vencimento + "T00:00:00").getTime() - new Date(linhaAtiva.data + "T00:00:00").getTime());
+        const dist = (r: LinhaSis) => Math.abs(new Date(dataRef(r) + "T00:00:00").getTime() - new Date(linhaAtiva.data + "T00:00:00").getTime());
         return dist(x) - dist(y);
       });
     }
-    return base.sort((x, y) => x.data_vencimento.localeCompare(y.data_vencimento));
+    return rows.sort((x, y) => dataRef(x).localeCompare(dataRef(y)));
   })();
 
   // Aba 3 — conferência: cada linha conciliada do OFX com os lançamentos a ela ligados
@@ -1681,16 +1810,16 @@ function ConciliacaoInner() {
         const dif = diferencaSoma(x.valor, ls);
         if (Math.abs(dif) > 0.02) alertas.push(`soma dos lançamentos ${fmtBRL(x.valor - dif)} ≠ linha ${fmtBRL(x.valor)}`);
       }
-      return { x, ls, alertas };
+      return { x, ls, alertas, grupos: agruparLotes(ls) };
     })
     .filter(({ x, ls }) => !buscaTxt || bateBusca(`${x.descricao} ${ls.map(l => `${fornecedorDe(l)} ${l.descricao}`).join(" ")}`, x.valor));
 
-  // Lado do OFX: linhas que batem com o(s) lançamento(s) selecionado(s) — só destaque
+  // Lado do OFX: linhas que batem com o(s) lançamento(s)/borderô selecionado(s) — só destaque
   const alvoSelecionado = (() => {
     if (lancsSel.size === 0) return null;
     const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
     if (sel.length === 0) return null;
-    return { valor: sel.reduce((sm, l) => sm + valorRestante(l), 0), receber: sel[0].tipo === "receber" };
+    return { valor: sel.reduce((sm, l) => sm + valorParaLinha(l), 0), receber: sel[0].tipo === "receber" };
   })();
   const linhaBateComSelecao = (x: LinhaOFX) =>
     !!alvoSelecionado && !x.conciliado && (x.tipo === "credito") === alvoSelecionado.receber && Math.abs(x.valor - alvoSelecionado.valor) <= 0.02;
@@ -1701,47 +1830,85 @@ function ConciliacaoInner() {
     : l.status === "vencido" ? { t: "Vencido", bg: "#F1F3F6", c: "#A93226", w: 700 }
     : { t: "Aberto", bg: "#F1F3F6", c: "#333", w: 600 };
 
-  // Linha da tabela do sistema (abas 1 e 2)
+  // Linha da tabela do sistema (abas 1 e 2) — lançamento ou borderô
   const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px";
   const COLS_SIS_CONC    = "78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px 84px";
-  const renderLinhaSistema = (l: Lancamento, i: number, modo: "conciliados" | "abertos") => {
-    const sel = lancsSel.has(l.id);
+  const renderLinhaSistema = (r: LinhaSis, i: number, modo: "conciliados" | "abertos") => {
+    const l = r.l;
+    const lt = r.lote;
+    const sel = selecionadaLinhaSis(r);
     const tb = tipoBaixaMeta(l);
-    const batem = modo === "abertos" ? linhasQueBatem(l) : [];
-    const destaque = modo === "abertos" && (igualAoValor(l) || (!linhaAtiva && batem.length > 0));
+    const alvo = valorLinhaSis(r);
+    const batem = modo === "abertos" ? linhasQueBatemValor(alvo, receberLinhaSis(r)) : [];
+    const destaque = modo === "abertos" && (igualAoValorSis(r) || (!linhaAtiva && batem.length > 0));
     const og = origemPorLanc.get(l.id);
     const om = og ? ORIGEM_LANC[og] ?? ORIGEM_LANC.anterior : null;
+    const conciliadoRow = modo === "conciliados" || r.comps.every(c => c.conciliado);
+    const expandido = !!lt && lotesAbertos.has(lt.id);
+    const vencs = r.comps.map(c => c.data_vencimento).sort();
+    const baixas = r.comps.map(c => c.data_baixa).filter(Boolean).sort() as string[];
+    const valorMostrado = lt ? alvo : Number(modo === "conciliados" ? (l.valor_pago ?? l.valor) : l.valor);
+    const negativo = lt ? lt.tipo === "pagar" : l.tipo === "pagar";
     return (
-      <div key={l.id}
-        onClick={modo === "abertos" ? () => setLancsSel(prev => { const n = new Set(prev); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; }) : undefined}
-        style={{
-          display: "grid", gridTemplateColumns: modo === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, alignItems: "center",
-          padding: "7px 10px", fontSize: 12, borderBottom: i >= 0 ? "0.5px solid var(--bg-tag)" : "none",
-          background: sel ? "#DCE6F2" : destaque ? "#EEF3F9" : "transparent",
-          borderLeft: sel || destaque ? "3px solid #1A4870" : "3px solid transparent",
-          cursor: modo === "abertos" ? "pointer" : "default",
-        }}>
-        {modo === "abertos" && <input type="checkbox" checked={sel} readOnly style={{ accentColor: "#1A4870", cursor: "pointer" }} />}
-        <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</div>
-        <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
-        <div style={{ minWidth: 0 }} title={`${l.descricao}${l.categoria ? " · " + l.categoria : ""}`}>
-          <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {titularDivergente(l) && <span title={`Titular do CP (${produtoresNomes.get(l.produtor_id ?? "") ?? "outro"}) é diferente do titular da conta do extrato — não indica conta errada`} style={{ fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 6, background: "#F1F3F6", color: "#666", marginRight: 5 }}>titular ≠</span>}
-            {fornecedorDe(l)}
+      <div key={r.key} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
+        <div
+          onClick={modo === "abertos" ? () => alternarLinhaSis(r) : undefined}
+          style={{
+            display: "grid", gridTemplateColumns: modo === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, alignItems: "center",
+            padding: "7px 10px", fontSize: 12,
+            background: sel ? "#DCE6F2" : destaque ? "#EEF3F9" : "transparent",
+            borderLeft: sel || destaque ? "3px solid #1A4870" : "3px solid transparent",
+            cursor: modo === "abertos" ? "pointer" : "default",
+          }}>
+          {modo === "abertos" && <input type="checkbox" checked={sel} readOnly style={{ accentColor: "#1A4870", cursor: "pointer" }} />}
+          <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(vencs[0] ?? l.data_vencimento)}</div>
+          <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{lt?.data_pagamento ? fmtDt(lt.data_pagamento) : baixas[0] ? fmtDt(baixas[baixas.length - 1]) : "—"}</div>
+          <div style={{ minWidth: 0 }} title={lt ? `Borderô${lt.descricao ? " · " + lt.descricao : ""} · ${r.comps.length} títulos` : `${l.descricao}${l.categoria ? " · " + l.categoria : ""}`}>
+            <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {lt ? (
+                <>
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#E3EAF3", color: "#1A4870", marginRight: 5 }}>BORDERÔ</span>
+                  {r.comps.length} títulos{lt.descricao ? ` · ${lt.descricao}` : ""}
+                </>
+              ) : (
+                <>
+                  {titularDivergente(l) && <span title={`Titular do CP (${produtoresNomes.get(l.produtor_id ?? "") ?? "outro"}) é diferente do titular da conta do extrato — não indica conta errada`} style={{ fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 6, background: "#F1F3F6", color: "#666", marginRight: 5 }}>titular ≠</span>}
+                  {fornecedorDe(l)}
+                </>
+              )}
+            </div>
+            {lt ? (
+              <button onClick={e => { e.stopPropagation(); setLotesAbertos(prev => { const n = new Set(prev); if (n.has(lt.id)) n.delete(lt.id); else n.add(lt.id); return n; }); }}
+                style={{ background: "none", border: "none", padding: 0, fontSize: 10, color: "#1A4870", cursor: "pointer", textDecoration: "underline" }}>
+                {expandido ? "ocultar títulos" : "ver títulos"}
+              </button>
+            ) : fornecedorDe(l) !== l.descricao && <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>}
+            {modo === "abertos" && batem.length > 0 && (
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870" }}>= valor de {batem.length} linha{batem.length > 1 ? "s" : ""} do OFX ({batem.slice(0, 2).map(b => fmtDt(b.data).slice(0, 5)).join(", ")}{batem.length > 2 ? "…" : ""})</div>
+            )}
           </div>
-          {fornecedorDe(l) !== l.descricao && <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>}
-          {modo === "abertos" && batem.length > 0 && (
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870" }}>= valor de {batem.length} linha{batem.length > 1 ? "s" : ""} do OFX ({batem.slice(0, 2).map(b => fmtDt(b.data).slice(0, 5)).join(", ")}{batem.length > 2 ? "…" : ""})</div>
-          )}
+          <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title="Titular da conta em que foi baixado">{produtorDaBaixa(l)}</div>
+          <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contaNomeDe(lt?.conta_bancaria ?? l.conta_bancaria)}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <Sinal cor={conciliadoRow ? COR_OK : COR_PEND} titulo={conciliadoRow ? "Conciliado" : "Pendente"} />
+            <span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 7px", borderRadius: 6, background: tb.bg, color: tb.c }}>{lt ? (lt.status === "pago" ? "Baixado" : "Aberto") : tb.t}</span>
+          </div>
+          <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+            <div style={{ fontWeight: 700, color: negativo ? COR_NEG : "var(--text-1)" }}>{negativo ? "−" : "+"}{fmtBRL(valorMostrado)}</div>
+            {!lt && ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
+          </div>
+          {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
         </div>
-        <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title="Titular da conta em que foi baixado">{produtorDaBaixa(l)}</div>
-        <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contaNomeDe(l.conta_bancaria)}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Sinal cor={modo === "conciliados" || l.conciliado ? COR_OK : COR_PEND} titulo={modo === "conciliados" || l.conciliado ? "Conciliado" : "Pendente"} /><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 7px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
-        <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-          <div style={{ fontWeight: 700, color: l.tipo === "pagar" ? COR_NEG : "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(modo === "conciliados" ? Number(l.valor_pago ?? l.valor) : Number(l.valor))}</div>
-          {ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
-        </div>
-        {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
+        {lt && expandido && (
+          <div style={{ background: "var(--bg-page)", padding: "4px 10px 6px 44px" }}>
+            {r.comps.map(c => (
+              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11, color: "var(--text-2)", padding: "2px 0" }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmtDt(c.data_vencimento)} · {fornecedorDe(c)}{fornecedorDe(c) !== c.descricao ? ` — ${c.descricao}` : ""}</span>
+                <span style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmtBRL(valorParaLinha(c))}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -2650,8 +2817,8 @@ function ConciliacaoInner() {
                 {/* Abas do sistema */}
                 <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#EEF3F9" : "var(--bg-page)", flexWrap: "wrap" }}>
                   {([
-                    ["conciliados", `Conciliados / baixados (${lancConciliados.length})`],
-                    ["abertos",     `CP/CR abertos (${lancAbertos.length})`],
+                    ["conciliados", `Conciliados / baixados (${linhasConciliados.length})`],
+                    ["abertos",     `CP/CR abertos (${linhasAbertos.length})`],
                     ["conferencia", `Conferência (${paresConf.length})`],
                   ] as const).map(([k, lbl]) => (
                     <button key={k} onClick={() => setAbaSistema(k)}
@@ -2683,6 +2850,12 @@ function ConciliacaoInner() {
                       </button>
                     ))}
                   </div>
+                  {abaSistema === "abertos" && (
+                    <label title="Mostra também lançamentos e borderôs já baixados no Contas a Pagar que ainda não foram conciliados com o extrato"
+                      style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
+                      <input type="checkbox" checked={incluirBaixados} onChange={e => setIncluirBaixados(e.target.checked)} /> Incluir baixados
+                    </label>
+                  )}
                   <input placeholder="Buscar fornecedor, descrição ou valor…" value={buscaLanc} onChange={e => setBuscaLanc(e.target.value)}
                     style={{ flex: "1 1 170px", minWidth: 150, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                 </div>
@@ -2704,15 +2877,15 @@ function ConciliacaoInner() {
                         {abaSistema === "conciliados" && <div>Origem</div>}
                       </div>
                       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-                        {(abaSistema === "abertos" ? lancAbertos : lancConciliados).slice(0, 300).map((l, i) => renderLinhaSistema(l, i, abaSistema))}
-                        {(abaSistema === "abertos" ? lancAbertos : lancConciliados).length === 0 && (
+                        {(abaSistema === "abertos" ? linhasAbertos : linhasConciliados).slice(0, 300).map((l, i) => renderLinhaSistema(l, i, abaSistema))}
+                        {(abaSistema === "abertos" ? linhasAbertos : linhasConciliados).length === 0 && (
                           <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
                             {abaSistema === "abertos" ? "Nenhum CP/CR aberto neste período." : "Nenhum lançamento conciliado neste período."}
                           </div>
                         )}
-                        {(abaSistema === "abertos" ? lancAbertos : lancConciliados).length > 300 && (
+                        {(abaSistema === "abertos" ? linhasAbertos : linhasConciliados).length > 300 && (
                           <div style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, color: "var(--text-3)", borderTop: "0.5px solid var(--bg-tag)" }}>
-                            +{(abaSistema === "abertos" ? lancAbertos : lancConciliados).length - 300} ocultos — use a busca ou reduza o período
+                            +{(abaSistema === "abertos" ? linhasAbertos : linhasConciliados).length - 300} ocultos — use a busca ou reduza o período
                           </div>
                         )}
                       </div>
@@ -2727,22 +2900,50 @@ function ConciliacaoInner() {
                         <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderLeft: "0.5px solid var(--border)" }}>Extrato OFX — linhas utilizadas</div>
                       </div>
                       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-                        {paresConf.map(({ x, ls, alertas }) => {
+                        {paresConf.map(({ x, ls, alertas, grupos }) => {
                           const om = ORIGEM_META[x.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
+                          const GRID_L = "78px minmax(110px,1.5fr) minmax(90px,1fr) 88px 96px";
                           return (
                             <div key={x.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
                                 <div>
                                   {ls.length === 0 && <div style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-3)" }}>{x.lancamento_desc ?? "Lançamento não encontrado"}</div>}
-                                  {ls.map(l => {
+                                  {grupos.map(g => {
+                                    const l = g.l;
                                     const tb = tipoBaixaMeta(l);
+                                    const lt = g.lote;
+                                    const valor = lt ? valorLinhaSis(g) : Number(l.valor_pago ?? l.valor);
+                                    const negativo = lt ? lt.tipo === "pagar" : l.tipo === "pagar";
                                     return (
-                                      <div key={l.id} style={{ display: "grid", gridTemplateColumns: "78px minmax(110px,1.5fr) minmax(90px,1fr) 88px 96px", gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
-                                        <div style={{ color: "var(--text-2)" }}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
-                                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--text-1)" }} title={l.descricao}>{fornecedorDe(l)}</div>
-                                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-2)" }} title="Conta de baixa">{contaNomeDe(l.conta_bancaria)}</div>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Sinal cor={COR_OK} titulo="Conciliado" /><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 6px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
-                                        <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: l.tipo === "pagar" ? COR_NEG : "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(Number(l.valor_pago ?? l.valor))}</div>
+                                      <div key={g.key}>
+                                        <div style={{ display: "grid", gridTemplateColumns: GRID_L, gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
+                                          <div style={{ color: "var(--text-2)" }}>{lt?.data_pagamento ? fmtDt(lt.data_pagamento) : l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
+                                          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--text-1)" }} title={lt ? `Borderô${lt.descricao ? " · " + lt.descricao : ""}` : l.descricao}>
+                                            {lt ? (
+                                              <>
+                                                <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#E3EAF3", color: "#1A4870", marginRight: 5 }}>BORDERÔ</span>
+                                                {g.comps.length} títulos{lt.descricao ? ` · ${lt.descricao}` : ""}
+                                                <button onClick={() => setLotesAbertos(prev => { const n = new Set(prev); if (n.has(lt.id)) n.delete(lt.id); else n.add(lt.id); return n; })}
+                                                  style={{ background: "none", border: "none", padding: 0, marginLeft: 6, fontSize: 10, color: "#1A4870", cursor: "pointer", textDecoration: "underline", fontWeight: 500 }}>
+                                                  {lotesAbertos.has(lt.id) ? "ocultar" : "ver títulos"}
+                                                </button>
+                                              </>
+                                            ) : fornecedorDe(l)}
+                                          </div>
+                                          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-2)" }} title="Conta de baixa">{contaNomeDe(lt?.conta_bancaria ?? l.conta_bancaria)}</div>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Sinal cor={COR_OK} titulo="Conciliado" /><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 6px", borderRadius: 6, background: tb.bg, color: tb.c }}>{lt ? "Baixado" : tb.t}</span></div>
+                                          <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: negativo ? COR_NEG : "var(--text-1)" }}>{negativo ? "−" : "+"}{fmtBRL(valor)}</div>
+                                        </div>
+                                        {lt && lotesAbertos.has(lt.id) && (
+                                          <div style={{ background: "var(--bg-page)", padding: "3px 12px 6px 30px" }}>
+                                            {g.comps.map(c => (
+                                              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11, color: "var(--text-2)", padding: "1px 0" }}>
+                                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmtDt(c.data_vencimento)} · {fornecedorDe(c)}</span>
+                                                <span style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmtBRL(valorParaLinha(c))}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -2777,7 +2978,7 @@ function ConciliacaoInner() {
                 {/* Soma dos selecionados × linha ativa e confirmação (aba de abertos) */}
                 {abaSistema === "abertos" && linhaAtiva && lancsSel.size > 0 && (() => {
                   const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
-                  const esperado = sel.reduce((sm, l) => sm + valorRestante(l), 0);
+                  const esperado = sel.reduce((sm, l) => sm + valorParaLinha(l), 0);
                   const dif = Math.round((linhaAtiva.valor - esperado) * 100) / 100;
                   const parcial = sel.length === 1 && dif < -0.02;
                   const ok = Math.abs(dif) <= 0.02;

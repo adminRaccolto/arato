@@ -1,7 +1,7 @@
 // Resolve o cliente (conta_id) do usuário logado para as rotas de Conciliação.
 // Rotas usam service_role (ignoram RLS), então a autorização é feita aqui.
 import { createClient } from "@supabase/supabase-js";
-import { getSessionUser } from "./api-auth";
+import { getRequestUser } from "./api-auth";
 
 export const adminSb = () =>
   createClient(
@@ -14,8 +14,8 @@ export type Tenant =
   | { ok: true; userId: string; contaId: string; fazendaIds: string[] }
   | { ok: false; status: number; error: string };
 
-export async function resolverTenant(contaIdParam?: string | null): Promise<Tenant> {
-  const user = await getSessionUser();
+export async function resolverTenant(contaIdParam?: string | null, authHeader?: string | null): Promise<Tenant> {
+  const user = await getRequestUser(authHeader);
   if (!user) return { ok: false, status: 401, error: "Não autenticado" };
   const sb = adminSb();
   const { data: perfil } = await sb.from("perfis").select("conta_id, role").eq("user_id", user.id).maybeSingle();
