@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-d",
+    data: "22/09/2026",
+    titulo: "Fiscal: certificado A1 deixava de ser reconhecido",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Corrigida a causa do aviso \"SEFAZ 501: Certificado A1 não configurado\" que voltava mesmo com o certificado enviado: depois de enviar o certificado, a tela guardava o arquivo mas não a senha, e o próximo \"Salvar\" dos Parâmetros Fiscais apagava a senha do banco. Agora o salvamento preserva a senha e o arquivo já gravados, o envio do certificado atualiza a config do cliente em todas as fazendas onde ela existe (antes deixava uma cópia sem senha em outra fazenda) e o emissor procura a senha nas demais cópias antes de falhar." },
+      { tipo: "melhoria", texto: "Em Parâmetros → Fiscal, o selo \"Certificado configurado\" só aparece verde quando arquivo E senha estão salvos; se faltar a senha, aparece um aviso amarelo. A mensagem da SEFAZ 501 agora diz o que falta (arquivo ou senha) e de qual emitente." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → Fiscal",
+  },
+  {
     versao: "2026.09.22-c",
     data: "22/09/2026",
     titulo: "Estoque: opção Todas as fazendas",

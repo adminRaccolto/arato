@@ -126,6 +126,22 @@ export async function buscarConfEmitente(
     }
   }
 
+  // Senha do certificado ausente nesta cópia da config: procura a MESMA config (mesmo módulo) em outra
+  // fazenda do cliente — a config fiscal é do cliente e pode existir em mais de uma fazenda.
+  if (!cfg.cert_a1_senha) {
+    const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+    if (faz?.conta_id) {
+      const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
+      const { data: copias } = await sb().from("configuracoes_modulo").select("config")
+        .in("fazenda_id", (fzs ?? []).map(f => f.id as string)).eq("modulo", moduloKey);
+      const comSenha = (copias ?? []).map(c => c.config as Record<string, string>).find(c => c?.cert_a1_senha);
+      if (comSenha) {
+        cfg.cert_a1_senha = comSenha.cert_a1_senha;
+        if (!cfg.cert_a1_path && comSenha.cert_a1_path) cfg.cert_a1_path = comSenha.cert_a1_path;
+      }
+    }
+  }
+
   // Ambiente global sobrepõe o ambiente do emitente — é o "master switch"
   const ambienteGlobal = globalData?.config?.ambiente as string | undefined;
   return {
@@ -338,7 +354,9 @@ export async function emitirNFe(
   const certPath = confg.cert_a1_path;
   const certSenha = confg.cert_a1_senha;
   if (!certPath || !certSenha)
-    return { sucesso: false, cStat: "501", xMotivo: "Certificado A1 não configurado em Parâmetros → Fiscal" };
+    return { sucesso: false, cStat: "501", xMotivo: !certPath
+      ? `Certificado A1 (arquivo) não enviado para o emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} em Parâmetros → Fiscal`
+      : `A senha do certificado A1 do emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} não está salva. Em Parâmetros → Fiscal, envie o certificado de novo informando a senha` };
 
   // 2. Certificado
   let pfxBuffer: Buffer;
@@ -555,7 +573,9 @@ export async function cancelarNFeEmitida(
   const certPath = confg.cert_a1_path;
   const certSenha = confg.cert_a1_senha;
   if (!certPath || !certSenha)
-    return { sucesso: false, cStat: "501", xMotivo: "Certificado A1 não configurado em Parâmetros → Fiscal" };
+    return { sucesso: false, cStat: "501", xMotivo: !certPath
+      ? `Certificado A1 (arquivo) não enviado para o emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} em Parâmetros → Fiscal`
+      : `A senha do certificado A1 do emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} não está salva. Em Parâmetros → Fiscal, envie o certificado de novo informando a senha` };
 
   let pfxBuffer: Buffer;
   try {

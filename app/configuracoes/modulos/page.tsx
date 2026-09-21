@@ -437,7 +437,7 @@ function ParametrosSistemaContent() {
       // Atualiza cfgs com o caminho correto + recria o registro certificado_a1_*
       const certKey = `certificado_a1_${emitter.id}`;
       setCfgs(prev => {
-        const fiscal = { ...(prev[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: json.storage_path ?? "", cert_a1_vencimento: json.data_vencimento ?? "" };
+        const fiscal = { ...(prev[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: json.storage_path ?? "", cert_a1_senha: st.senha, cert_a1_vencimento: json.data_vencimento ?? "" };
         const meta = { ...(prev[certKey] ?? {} as CfgModulo), storage_path: json.storage_path ?? "", data_vencimento: json.data_vencimento ?? "" };
         return { ...prev, [emitter.moduloKey]: fiscal, [certKey]: meta };
       });
@@ -690,8 +690,26 @@ function ParametrosSistemaContent() {
       if (existente?.fazenda_id) fazendaIdParaSalvar = existente.fazenda_id;
     }
 
+    // O formulário pode estar com uma cópia velha da config (ex.: depois de enviar o certificado,
+    // a tela guardava o caminho mas não a senha). Salvar a cópia velha por cima apagava a senha do
+    // certificado e a NF-e passava a falhar com "Certificado A1 não configurado". Por isso a senha e
+    // o caminho já gravados no banco só são trocados se a tela trouxer um valor novo.
+    let cfgFinal = newCfg;
+    if (modulo.startsWith("fiscal_")) {
+      const { data: atual } = await supabase.from("configuracoes_modulo").select("config")
+        .eq("fazenda_id", fazendaIdParaSalvar).eq("modulo", modulo).maybeSingle();
+      const cfgBanco = (atual?.config ?? {}) as Record<string, unknown>;
+      const herdar: Record<string, unknown> = {};
+      for (const k of ["cert_a1_senha", "cert_a1_path", "cert_a1_vencimento"]) {
+        if (!(newCfg as Record<string, unknown>)[k] && cfgBanco[k]) herdar[k] = cfgBanco[k];
+      }
+      if (Object.keys(herdar).length > 0) {
+        cfgFinal = { ...newCfg, ...herdar } as CfgModulo;
+        setCfgs(prev => ({ ...prev, [modulo]: cfgFinal }));
+      }
+    }
     await supabase.from("configuracoes_modulo").upsert(
-      { fazenda_id: fazendaIdParaSalvar, modulo, config: newCfg, updated_at: new Date().toISOString() },
+      { fazenda_id: fazendaIdParaSalvar, modulo, config: cfgFinal, updated_at: new Date().toISOString() },
       { onConflict: "fazenda_id,modulo" }
     );
     setSalvando(null); setOk(modulo);
@@ -1315,7 +1333,11 @@ function ParametrosSistemaContent() {
                         return (
                           <div style={{ marginBottom: 14, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
                             {/* Status atual */}
-                            {hasCert && !certPathInvalid ? (
+                            {hasCert && !certPathInvalid && !(cfgs[emitter.moduloKey] as Record<string, unknown>)?.cert_a1_senha ? (
+                              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 6, fontSize: 12, color: "#92400E", fontWeight: 600 }}>
+                                Arquivo do certificado enviado, mas a SENHA não está salva — a NF-e não pode ser emitida. Envie o certificado de novo informando a senha (abaixo).
+                              </div>
+                            ) : hasCert && !certPathInvalid ? (
                               <div style={{ marginBottom: 12, padding: "8px 12px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 6, display: "flex", alignItems: "center", gap: 10 }}>
                                 <span style={{ fontSize: 18 }}>✓</span>
                                 <div>

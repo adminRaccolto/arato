@@ -99,26 +99,38 @@ export async function POST(req: Request) {
     const isPJ = digits.length === 14;
     const fiscalModulo = isPJ ? `fiscal_emp_${digits}` : `fiscal_pf_${digits}`;
 
-    // Lê config existente para não sobrescrever outros campos
-    const { data: existente } = await supabase
+    // A config fiscal é do CLIENTE: atualiza a(s) linha(s) que já existem em QUALQUER fazenda da conta
+    // (antes gravava só na fazenda ativa e deixava outra cópia da config sem a senha — o emissor
+    // pegava a cópia sem senha e dava "Certificado A1 não configurado").
+    const { data: fazAtual } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+    let idsConta: string[] = [fazendaId];
+    if (fazAtual?.conta_id) {
+      const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
+      if (fzs?.length) idsConta = fzs.map(f => f.id as string);
+    }
+    const { data: existentes } = await supabase
       .from("configuracoes_modulo")
-      .select("config")
-      .eq("fazenda_id", fazendaId)
-      .eq("modulo", fiscalModulo)
-      .single();
+      .select("fazenda_id, config")
+      .in("fazenda_id", idsConta)
+      .eq("modulo", fiscalModulo);
 
-    const cfgAtual = (existente?.config as Record<string, string>) ?? {};
-    await supabase
-      .from("configuracoes_modulo")
-      .upsert(
-        {
-          fazenda_id: fazendaId,
-          modulo: fiscalModulo,
-          config: { ...cfgAtual, cert_a1_path: path, cert_a1_senha: senha },
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "fazenda_id,modulo" }
-      );
+    const alvos = existentes && existentes.length > 0
+      ? existentes
+      : [{ fazenda_id: fazendaId, config: {} as Record<string, string> }];
+    for (const alvo of alvos) {
+      const cfgAtual = (alvo.config as Record<string, string>) ?? {};
+      await supabase
+        .from("configuracoes_modulo")
+        .upsert(
+          {
+            fazenda_id: alvo.fazenda_id,
+            modulo: fiscalModulo,
+            config: { ...cfgAtual, cert_a1_path: path, cert_a1_senha: senha },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "fazenda_id,modulo" }
+        );
+    }
   }
 
   return NextResponse.json({
