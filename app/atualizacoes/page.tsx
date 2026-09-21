@@ -12,8 +12,9 @@ const RELEASES = [
     modulos: ["Compras"],
     itens: [
       { tipo: "correcao", texto: "A NF de Serviços listava só as operações marcadas como \"permite NF\" (87 classificações) e a NF de Produtos listava todas as despesas que permitem CP/CR (279). Serviços como Domínio/Hospedagem, Deslocamento/Viagem e Assessorias não apareciam na NFS-e. As duas notas (e o lote de NF) agora usam a mesma lista de Contas a Pagar, de todas as fazendas da conta, e o seletor da NF de Serviços ganhou busca por texto." },
+      { tipo: "correcao", texto: "Financeiro → Apoio: o seletor de Operação Gerencial listava receitas e despesas misturadas, só com o nome (sem a classificação) e só da fazenda ativa. Agora usa a mesma lista de Contas a Pagar, filtrada pelo tipo (a pagar = despesa, a receber = receita), com a classificação e busca por texto." },
     ],
-    onde: "Compras → NF de Produtos · NF de Serviços",
+    onde: "Compras → NF de Produtos · NF de Serviços · Financeiro → Apoio",
   },
   {
     versao: "2026.09.21-d",

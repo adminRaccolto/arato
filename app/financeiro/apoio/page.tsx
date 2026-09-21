@@ -7,10 +7,11 @@ import {
   listarPessoasDaConta,
   listarAnosSafra,
   listarTodosCiclos,
-  listarOperacoesGerenciaisAtivas,
+  listarOperacoesGerenciaisAtivasDaConta,
   listarContas,
   listarFazendasDaConta,
 } from "../../../lib/db";
+import SelectBusca from "../../../components/SelectBusca";
 import type { Pessoa, AnoSafra, Ciclo, OperacaoGerencial, ContaBancaria } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -212,7 +213,7 @@ export default function ApoioFinanceiroPage() {
       listarPessoasDaConta(fazAtiva).catch(() => [] as Pessoa[]),
       listarAnosSafra(fazAtiva).catch(() => [] as AnoSafra[]),
       listarTodosCiclos(fazAtiva).catch(() => [] as Ciclo[]),
-      listarOperacoesGerenciaisAtivas(fazAtiva).catch(() => [] as OperacaoGerencial[]),
+      listarOperacoesGerenciaisAtivasDaConta({ permite: "cp_cr" }, fazAtiva).catch(() => [] as OperacaoGerencial[]),
       listarContas(fazAtiva).catch(() => [] as ContaBancaria[]),
     ]).then(([p, a, c, o, cb]) => {
       setPessoas(p);
@@ -1146,7 +1147,7 @@ export default function ApoioFinanceiroPage() {
                   <label style={lbl}>Tipo *</label>
                   <select
                     value={formApoio.tipo}
-                    onChange={(e) => setFormApoio({ ...formApoio, tipo: e.target.value as "pagar" | "receber" })}
+                    onChange={(e) => setFormApoio({ ...formApoio, tipo: e.target.value as "pagar" | "receber", operacao_gerencial_id: "" })}
                     style={{ ...inp, width: "100%" }}
                   >
                     <option value="pagar">Contas a Pagar</option>
@@ -1238,16 +1239,15 @@ export default function ApoioFinanceiroPage() {
                 {/* Operação Gerencial */}
                 <div style={{ gridColumn: "1 / -1" }}>
                   <label style={lbl}>Operação Gerencial</label>
-                  <select
+                  <SelectBusca
                     value={formApoio.operacao_gerencial_id}
-                    onChange={(e) => setFormApoio({ ...formApoio, operacao_gerencial_id: e.target.value })}
+                    onChange={(id) => setFormApoio({ ...formApoio, operacao_gerencial_id: id })}
+                    options={opGerenciais
+                      .filter((o) => o.tipo === (formApoio.tipo === "pagar" ? "despesa" : "receita"))
+                      .map((o) => ({ value: o.id, label: `${o.classificacao ? `${o.classificacao} — ` : ""}${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
+                    placeholder="— Selecione —"
                     style={{ ...inp, width: "100%" }}
-                  >
-                    <option value="">— Selecione —</option>
-                    {opGerenciais.map((o) => (
-                      <option key={o.id} value={o.id}>{o.descricao}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 {/* Categoria */}

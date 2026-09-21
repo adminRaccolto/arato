@@ -776,6 +776,8 @@ Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAM
 ### 19.2 Apoio Financeiro
 **Caminho:** Configurações → Complemento Financeiro → Apoio Financeiro
 
+**Seletor de Operação Gerencial (21/09/2026):** agora mostra a mesma lista de Contas a Pagar, filtrada pelo tipo do lançamento (A Pagar = despesas, A Receber = receitas), com a classificação e busca por texto. Antes misturava receitas e despesas, só com o nome, e só da fazenda ativa. Ao trocar o tipo, a operação escolhida é limpa para não ficar uma operação de receita num lançamento a pagar.
+
 Ferramenta exclusiva Raccolto para projeções e estimativas financeiras. Os lançamentos aparecem no Fluxo de Caixa com badge laranja "Apoio Financeiro" — não entram no sistema oficial.
 
 ### 19.3 Seguros / Apólices
