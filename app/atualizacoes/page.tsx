@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-a",
+    data: "21/09/2026",
+    titulo: "Coluna O.G. do LCDPR ficava em branco em várias linhas",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "No PDF/Excel do LCDPR, a coluna O.G. (Operação Gerencial) aparecia vazia em receitas e despesas que tinham operação vinculada. As operações gerenciais ficam gravadas por fazenda, mas o relatório só buscava as globais da conta (e sem paginar, limitado a 1.000 linhas). Agora busca as operações de todas as fazendas do relatório, com paginação. Lançamentos que realmente não têm operação gerencial (ex.: IOF e tarifas importados do extrato) continuam com \"—\": é preciso classificá-los no Financeiro." },
+    ],
+    onde: "Fiscal → LCDPR → Exportação → PDF/Excel",
+  },
+  {
     versao: "2026.09.18-v",
     data: "18/09/2026",
     titulo: "Correção de cadastro: fazenda Armazem Santa Rita marcada errado como Pessoa Jurídica",

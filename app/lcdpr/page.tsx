@@ -249,7 +249,18 @@ export default function LCDPR() {
       contaId ? sb.from("lcdpr_contador").select("*").eq("conta_id", contaId).maybeSingle() : Promise.resolve({ data: null }),
       listarEmpresasDaConta(ids),
       contaId ? sb.from("contas").select("nome").eq("id", contaId).maybeSingle() : Promise.resolve({ data: null }),
-      sb.from("operacoes_gerenciais").select("id,classificacao,descricao").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`),
+      // OGs ficam gravadas por fazenda_id (conta_id nulo) — filtrar só por conta_id/globais
+      // deixava a coluna O.G. em branco. Paginado: passa de 1.000 linhas.
+      (async () => {
+        const filtro = [`fazenda_id.in.(${ids.join(",")})`, "and(fazenda_id.is.null,conta_id.is.null)", ...(contaId ? [`conta_id.eq.${contaId}`] : [])].join(",");
+        const rows: { id: string; classificacao: string; descricao: string }[] = [];
+        for (let from = 0; ; from += 1000) {
+          const { data } = await sb.from("operacoes_gerenciais").select("id,classificacao,descricao").or(filtro).order("id").range(from, from + 999);
+          rows.push(...((data ?? []) as typeof rows));
+          if (!data || data.length < 1000) break;
+        }
+        return { data: rows };
+      })(),
     ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows, { data: contaRow }, { data: ogRows }]) => {
       setFazDados((fazRows ?? []) as FazLcdpr[]);
       setContaNomeFetch((contaRow as { nome?: string } | null)?.nome ?? null);
