@@ -6,6 +6,21 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-d",
+    data: "21/09/2026",
+    titulo: "Conciliação Bancária: auditoria completa e correções + Abastecimento de Máquinas no menu",
+    modulos: ["Financeiro", "Produção"],
+    itens: [
+      { tipo: "correcao", texto: "Menu Produção: \"Abastecimento de Máquinas\" (e Máquinas e Veículos, Manutenções, Custos por Máquina) não aparecia porque o painel descartava o submenu. Agora há a seção \"Máquinas\" no painel." },
+      { tipo: "correcao", texto: "Conciliação: o casamento automático ligava o mesmo lançamento a várias linhas do extrato (64 casos, 29 entre contas diferentes) e ignorava a conta bancária — principal causa das contas desconciliadas. Agora é um lançamento por linha, respeitando a conta." },
+      { tipo: "correcao", texto: "Conciliação: falhas ao gravar eram engolidas (a tela mostrava conciliado sem estar salvo e, ao recarregar, a conciliação sumia). Import e ações agora gravam primeiro as transações, avisam em caso de falha e revertem a tela. Extratos grandes não perdem mais conciliações nem transações (limite de 1.000 linhas)." },
+      { tipo: "correcao", texto: "Conciliação: lançamentos baixados sumiam do painel esquerdo após importar; aba Inconsistências mostrava linhas já conciliadas; 167 linhas duplicadas de um extrato foram removidas." },
+      { tipo: "correcao", texto: "Lançamentos criados pela conciliação (tarifa, IOF, juros, agrupado) agora exigem Operação Gerencial e nascem com conta bancária, fazenda e titular da conta do extrato. O seletor de O.G. passou a listar as operações do cliente." },
+      { tipo: "correcao", texto: "Dashboard: o botão \"Lançar\" das inconsistências foi trocado por \"Conciliar\" (o atalho criava lançamento sem O.G. e duplicava despesa em linha já conciliada). A rota que grava a conciliação agora exige login e confere a conta do usuário." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária · Produção → Máquinas",
+  },
+  {
     versao: "2026.09.21-c",
     data: "21/09/2026",
     titulo: "Nova Operação Gerencial: Débito ref. a Cota Capital",

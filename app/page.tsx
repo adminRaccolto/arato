@@ -134,7 +134,6 @@ export default function Dashboard() {
     fazenda_id: string;
   }
   const [conciliPend, setConciliPend] = useState<ConciliPendencia[]>([]);
-  const [resolvendo, setResolvendo]   = useState<string | null>(null);
 
   // Busca global
   const [buscaGlobal,      setBuscaGlobal]      = useState("");
@@ -575,54 +574,36 @@ export default function Dashboard() {
     }).catch(() => setLoadAl(false));
 
     // Carrega pendências de conciliação independentemente
-    supabase.from("conciliacao_pendencias")
-      .select("id,conta_nome,conta_id,data,descricao,valor,tipo,fitid,fazenda_id")
-      .in("fazenda_id", fazendaIds)
-      .eq("status", "pendente")
-      .order("data", { ascending: false })
-      .then(({ data }) => { if (data) setConciliPend(data as ConciliPendencia[]); });
+    // conciliacao_pendencias é tabela legada e nunca era limpa quando a linha do extrato
+    // era conciliada por outro caminho — só mostra o que ainda está pendente de verdade em
+    // extrato_transacoes (fonte única), senão o card oferecia "Lançar" em linha já conciliada.
+    (async () => {
+      const [{ data: pend }, vivas] = await Promise.all([
+        supabase.from("conciliacao_pendencias")
+          .select("id,conta_nome,conta_id,data,descricao,valor,tipo,fitid,fazenda_id")
+          .in("fazenda_id", fazendaIds)
+          .eq("status", "pendente")
+          .order("data", { ascending: false }).limit(1000),
+        (async () => {
+          const set = new Set<string>();
+          for (let de = 0; ; de += 1000) {
+            const { data } = await supabase.from("extrato_transacoes")
+              .select("conta_bancaria_id,fitid")
+              .in("fazenda_id", fazendaIds).eq("conciliado", false)
+              .not("conta_bancaria_id", "is", null)
+              .order("id").range(de, de + 999);
+            for (const r of data ?? []) set.add(`${r.conta_bancaria_id}|${r.fitid}`);
+            if (!data || data.length < 1000) break;
+          }
+          return set;
+        })(),
+      ]);
+      setConciliPend(((pend ?? []) as ConciliPendencia[]).filter(p => p.conta_id && vivas.has(`${p.conta_id}|${p.fitid}`)));
+    })();
   }, [fazendaId]);
 
-  // ── Resolve inconsistência de conciliação ────────────────────
-  async function resolverInconsistencia(p: ConciliPendencia, categoria: string) {
-    if (!fazendaId || resolvendo) return;
-    setResolvendo(p.id);
-    try {
-      const isoHoje = new Date().toISOString().slice(0, 10);
-      const tipo = p.tipo === "debito" ? "pagar" : "receber";
-      // Cria lançamento (já baixado) — na fazenda REAL da pendência, não na fazenda
-      // ativa no seletor (podem divergir em conta multi-fazenda)
-      const { data: lanc } = await supabase.from("lancamentos").insert({
-        fazenda_id: p.fazenda_id ?? fazendaId,
-        tipo,
-        descricao: p.descricao,
-        categoria,
-        moeda: "BRL",
-        valor: p.valor,
-        valor_pago: p.valor,
-        data_lancamento: p.data,
-        data_vencimento: p.data,
-        data_baixa: isoHoje,
-        status: "baixado",
-        conta_bancaria: p.conta_id ?? null,
-        auto: false,
-        observacao: `Lançado automaticamente via inconsistência de conciliação (FITID: ${p.fitid})`,
-      }).select("id").single();
-
-      // Marca a inconsistência como resolvida
-      await supabase.from("conciliacao_pendencias").update({
-        status: "resolvido",
-        lancamento_id: lanc?.id ?? null,
-      }).eq("id", p.id);
-
-      setConciliPend(prev => prev.filter(x => x.id !== p.id));
-    } finally {
-      setResolvendo(null);
-    }
-  }
-
   async function ignorarInconsistencia(id: string) {
-    await supabase.from("conciliacao_pendencias").update({ status: "ignorado" }).eq("id", id);
+    await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", id);
     setConciliPend(prev => prev.filter(x => x.id !== id));
   }
 
@@ -821,10 +802,10 @@ export default function Dashboard() {
                   <span style={{ fontSize:13,fontWeight:700,color:p.tipo==="debito"?"#EF4444":"#22C55E",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums" }}>
                     {p.tipo==="debito"?"−":"+"}R$ {p.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
                   </span>
-                  <button disabled={resolvendo===p.id} onClick={() => { const cat=prompt(`Categoria (${p.descricao}):`,p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos"); if(cat!==null) resolverInconsistencia(p,cat||(p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos")); }}
-                    style={{ padding:"4px 10px",background:"rgba(59,130,246,0.15)",color:"#60A5FA",border:"0.5px solid rgba(59,130,246,0.3)",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",opacity:resolvendo===p.id?.6:1,flexShrink:0 }}>
-                    {resolvendo===p.id?"Lançando…":"Lançar"}
-                  </button>
+                  <a href="/financeiro/conciliacao?pendentes=true"
+                    style={{ padding:"4px 10px",background:"rgba(59,130,246,0.15)",color:"#60A5FA",border:"0.5px solid rgba(59,130,246,0.3)",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,textDecoration:"none" }}>
+                    Conciliar
+                  </a>
                   <button onClick={() => ignorarInconsistencia(p.id)} style={{ padding:"4px 9px",background:"rgba(255,255,255,0.04)",color:"var(--text-3)",border:"0.5px solid var(--border)",borderRadius:6,fontSize:11,cursor:"pointer",flexShrink:0 }}>
                     Ignorar
                   </button>

@@ -24,8 +24,11 @@ function extrairGrupos(children: NavChild[]): { label: string; items: NavLink[] 
     if (c.type === "divider") {
       if (atual) grupos.push(atual);
       atual = { label: c.label, items: [] };
-    } else if (atual && c.type !== "subgroup") {
-      atual.items.push(c as NavLink);
+    } else if (atual) {
+      // subgroup dentro de painel não tem onde aparecer — achata os filhos na seção atual
+      // em vez de descartá-los em silêncio (foi assim que "Abastecimento de Máquinas" sumiu).
+      if (c.type === "subgroup") atual.items.push(...c.children);
+      else atual.items.push(c as NavLink);
     }
   }
   if (atual) grupos.push(atual);
@@ -92,15 +95,11 @@ const NAV: NavItem[] = [
       { id: "prod-colheita",      label: "Colheita",                        path: "/lavoura/colheita"                         },
       { id: "prod-rom-producao",  label: "Romaneios de Produção",           path: "/estoque/romaneio-entrada"                 },
       { id: "prod-classificacao", label: "Classificação de Grãos",          path: "/cadastros?tab=padroes_classificacao"      },
-      {
-        type: "subgroup", id: "prod-maquinas-sub", label: "Máquinas",
-        children: [
-          { id: "prod-maquinas",      label: "Máquinas e Veículos",         path: "/cadastros?tab=maquinas"                   },
-          { id: "prod-abastecimento", label: "Abastecimento de Máquinas",   path: "/estoque/abastecimento"                    },
-          { id: "prod-manutencoes",   label: "Manutenções",                 path: "/relatorios/manutencao"                    },
-          { id: "prod-custos-maq",    label: "Custos por Máquina",          path: "/relatorios/manutencao?aba=custos"         },
-        ],
-      },
+      { type: "divider", label: "Máquinas" },
+      { id: "prod-maquinas",      label: "Máquinas e Veículos",         path: "/cadastros?tab=maquinas"                   },
+      { id: "prod-abastecimento", label: "Abastecimento de Máquinas",   path: "/estoque/abastecimento"                    },
+      { id: "prod-manutencoes",   label: "Manutenções",                 path: "/relatorios/manutencao"                    },
+      { id: "prod-custos-maq",    label: "Custos por Máquina",          path: "/relatorios/manutencao?aba=custos"         },
       { type: "divider", label: "Algodão" },
       { id: "alg-safra",          label: "Safra & Operações",               path: "/algodao?aba=safra",      moduleId: "algodao" },
       { id: "alg-bicudo",         label: "Monitoramento de Bicudo",         path: "/algodao?aba=bicudo",     moduleId: "algodao" },

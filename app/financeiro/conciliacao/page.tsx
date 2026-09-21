@@ -7,7 +7,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
-interface ContaBancaria { id: string; nome: string; banco: string; agencia?: string; conta?: string; produtor_id?: string | null }
+interface ContaBancaria { id: string; nome: string; banco: string; agencia?: string; conta?: string; produtor_id?: string | null; fazenda_id?: string }
 
 interface LinhaOFX {
   id: string;
@@ -34,6 +34,8 @@ interface Lancamento {
   categoria?: string;
   conta_bancaria?: string;
   produtor_id?: string | null;
+  conciliado?: boolean;
+  moeda?: string;
 }
 
 interface Extrato {
@@ -144,16 +146,38 @@ function parseOFX(texto: string): LinhaOFX[] {
 // com vários titulares, cada um com contas bancárias próprias). Bloqueio
 // duro aqui: só concilia sozinho quando o titular do CP é o mesmo da conta,
 // ou quando o CP não tem titular preenchido (não dá pra provar divergência).
-function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[], produtorTitularConta?: string | null): LinhaOFX[] {
+//
+// Correção 21/09/2026 (auditoria da Conciliação, todos os clientes): cada linha
+// escolhia seu candidato sem "consumir" o lançamento — o mesmo CP de R$ 5.000
+// ficava ligado a 5 débitos de R$ 5.000 (64 lançamentos ligados a mais de uma
+// linha no banco, 29 deles entre contas bancárias diferentes) e a 2ª, 3ª… linha
+// nunca ganhava lançamento próprio. Agora: (1) 1 lançamento ↔ 1 linha; (2) não
+// reaproveita lançamento já conciliado (flag lancamentos.conciliado ou ligado em
+// extrato_transacoes); (3) lançamento já baixado por OUTRA conta bancária não
+// casa com esta conta.
+interface OpcoesAutoMatch {
+  produtorTitularConta?: string | null;
+  contaBancariaId?: string | null;
+  lancamentosJaVinculados?: Set<string>;   // ids já ligados a alguma linha de extrato
+  fitidsJaConciliados?: Set<string>;       // linhas deste extrato que já estão conciliadas no banco
+}
+function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[], op: OpcoesAutoMatch = {}): LinhaOFX[] {
+  const usados = new Set<string>(op.lancamentosJaVinculados ?? []);
   return linhas.map(linha => {
     if (linha.conciliado) return linha;
+    if (op.fitidsJaConciliados?.has(linha.id)) return linha;
     const dl = new Date(linha.data + "T00:00:00");
     const candidatos = lancamentos.filter(l => {
+      if (usados.has(l.id) || l.conciliado) return false;
+      // linha do OFX é sempre em R$: lançamento em USD/grão nunca casa só por "valor igual"
+      if (l.moeda && l.moeda !== "BRL") return false;
       const vl = l.valor_pago ?? l.valor;
       if (Math.abs(vl - linha.valor) > 0.02) return false;
       if (linha.tipo === "credito" && l.tipo !== "receber") return false;
       if (linha.tipo === "debito"  && l.tipo !== "pagar")   return false;
-      if (produtorTitularConta && l.produtor_id && l.produtor_id !== produtorTitularConta) return false;
+      if (op.produtorTitularConta && l.produtor_id && l.produtor_id !== op.produtorTitularConta) return false;
+      const jaPago = l.status === "baixado" || l.status === "parcial";
+      if (jaPago && op.contaBancariaId && l.conta_bancaria && l.conta_bancaria !== op.contaBancariaId) return false;
       const dr = new Date(((l.data_baixa ?? l.data_vencimento) + "T00:00:00"));
       return Math.abs((dl.getTime() - dr.getTime()) / 86400000) <= 7;
     });
@@ -170,10 +194,28 @@ function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[], produtorTitula
     // Concilia automaticamente: único candidato OU melhor candidato dentro de 2 dias
     if (candidatos.length === 1 || best.diffDays <= 2) {
       const c = best.c;
+      usados.add(c.id);
       return { ...linha, conciliado: true, lancamento_id: c.id, lancamento_ids: [c.id], lancamento_desc: c.descricao, lancamento_valor: c.valor_pago ?? c.valor };
     }
     return linha;
   });
+}
+
+// Paginação segura: PostgREST devolve no máximo 1.000 linhas por consulta e corta o
+// resto SEM erro — várias telas daqui perdiam linhas assim (achado real: contas com
+// >1.000 transações mostravam só as 1.000 mais antigas).
+async function paginar<T>(
+  montar: (de: number, ate: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const PAGE = 1000;
+  const tudo: T[] = [];
+  for (let de = 0; ; de += PAGE) {
+    const { data, error } = await montar(de, de + PAGE - 1);
+    if (error) throw new Error(error.message);
+    tudo.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return tudo;
 }
 
 // ─── Sincronização com extrato_transacoes (fonte única de conciliação) ────────
@@ -198,15 +240,31 @@ async function syncExtratoTransacoes(
   linhas: LinhaOFX[],
   extratoId: string,
   modo: "import" | "acao",
-): Promise<void> {
-  if (!linhas.length || !contaId) return; // sem conta vinculada não dá pra deduplicar (chave exige conta_bancaria_id)
-  const fitids = linhas.map(l => l.id);
-  const { data: existentes } = await supabase.from("extrato_transacoes")
-    .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id")
-    .eq("conta_bancaria_id", contaId).in("fitid", fitids);
-  const mapaExistente = new Map((existentes ?? []).map(e => [e.fitid, e]));
+): Promise<boolean> {
+  if (!linhas.length) return true;
+  if (!contaId) return false; // sem conta vinculada não dá pra deduplicar (chave exige conta_bancaria_id)
 
-  const rows = linhas.map(l => {
+  // Achados da auditoria 21/09/2026: (1) a consulta `.in("fitid", <todos>)` estourava o
+  // limite de URL em extratos grandes; o erro era ignorado, `existentes` vinha vazio e o
+  // upsert seguinte GRAVAVA conciliado=false por cima das conciliações existentes
+  // ("contas desconciliam"); (2) FITID repetido no mesmo lote derruba o upsert inteiro
+  // ("ON CONFLICT … a second time"); (3) qualquer erro só ia pro console e a tela seguia
+  // como se tivesse salvo. Agora: lotes pequenos, erro propaga (retorna false) e o
+  // lote nunca regride conciliação se a leitura do estado atual falhou.
+  const vistos = new Set<string>();
+  const unicas = linhas.filter(l => (vistos.has(l.id) ? false : (vistos.add(l.id), true)));
+
+  const LOTE = 150;
+  const mapaExistente = new Map<string, { fitid: string; valor: number; conciliado: boolean; lancamento_id: string | null; lancamento_ids: string[] | null; lancamento_desc: string | null; lancamento_valor: number | null; primeiro_extrato_id: string | null }>();
+  for (let i = 0; i < unicas.length; i += LOTE) {
+    const { data, error } = await supabase.from("extrato_transacoes")
+      .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id")
+      .eq("conta_bancaria_id", contaId).in("fitid", unicas.slice(i, i + LOTE).map(l => l.id));
+    if (error) { console.error("[syncExtratoTransacoes] leitura", error); return false; }
+    for (const e of data ?? []) mapaExistente.set(e.fitid as string, e as never);
+  }
+
+  const rows = unicas.map(l => {
     const ex = mapaExistente.get(l.id);
     // Alguns bancos (ex: Cresol) não geram FITID estável — é literalmente
     // "data + sequência daquele dia dentro do arquivo", não um id do banco.
@@ -240,8 +298,11 @@ async function syncExtratoTransacoes(
     };
   });
 
-  const { error } = await supabase.from("extrato_transacoes").upsert(rows, { onConflict: "conta_bancaria_id,fitid" });
-  if (error) console.error("[syncExtratoTransacoes]", error);
+  for (let i = 0; i < rows.length; i += LOTE) {
+    const { error } = await supabase.from("extrato_transacoes").upsert(rows.slice(i, i + LOTE), { onConflict: "conta_bancaria_id,fitid" });
+    if (error) { console.error("[syncExtratoTransacoes] gravação", error); return false; }
+  }
+  return true;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -353,10 +414,13 @@ function ConciliacaoInner() {
     let from = 0;
     while (true) {
       let q = supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda")
         .in("fazenda_id", fazIds)
         .not("status", "eq", "cancelado")
+        // desempate por id: só data_vencimento é chave não-única e a paginação por range
+        // pulava/duplicava lançamentos na fronteira das páginas.
         .order("data_vencimento", { ascending: false })
+        .order("id", { ascending: true })
         .range(from, from + PAGE - 1);
       if (filtroData) q = q.gte("data_vencimento", filtroData.de).lte("data_vencimento", filtroData.ate);
       const { data, error } = await q;
@@ -372,37 +436,49 @@ function ConciliacaoInner() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [cR, lData, exR, hR, ogR, gsR, pR, etR] = await Promise.all([
-      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta,produtor_id").in("fazenda_id", fazendaIds).order("nome"),
+      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta,produtor_id,fazenda_id").in("fazenda_id", fazendaIds).order("nome"),
       buscarTodosLancamentosConciliacao(fazendaIds),
-      supabase.from("extratos_bancarios").select("*").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
+      // sem `linhas` (JSON de todas as transações de cada import): a tela só usa o cabeçalho
+      // do log, e o payload inteiro travava o carregamento em contas com muitos imports.
+      supabase.from("extratos_bancarios").select("id,fazenda_id,conta_id,conta_nome,data_importacao,data_inicio,data_fim,total_linhas,conciliados,pendentes,usuario_nome,ofx_storage_path").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
       supabase.from("historico_conciliacao").select("*").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }).limit(200),
       supabase.from("operacoes_tesouraria")
         .select("id,nome,tipo,operacao_gerencial_id")
         .in("fazenda_id", fazendaIds)
         .eq("ativo", true)
         .order("nome"),
-      supabase.from("operacoes_gerenciais")
+      // OGs do cliente ficam gravadas por fazenda_id (conta_id nulo) — filtrar só por
+      // conta_id/globais devolvia ~300 de milhares e o seletor de O.G. da tesouraria
+      // vinha sem as contas do cliente (origem dos lançamentos de tarifa/IOF sem O.G.).
+      paginar<OgMin>((de, ate) => supabase.from("operacoes_gerenciais")
         .select("id,classificacao,descricao,tipo")
-        .or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`)
+        .or([`fazenda_id.in.(${fazendaIds.join(",")})`, "and(fazenda_id.is.null,conta_id.is.null)", ...(contaId ? [`conta_id.eq.${contaId}`] : [])].join(","))
         .neq("inativo", true)
-        .order("classificacao"),
+        .order("classificacao").order("id").range(de, ate))
+        .then(data => ({ data, error: null }), error => ({ data: null, error })),
       supabase.from("conciliacao_pendencias")
         .select("id,fitid,conta_id,conta_nome,data,descricao,valor,tipo,status")
         .in("fazenda_id", fazendaIds)
-        .neq("status", "ignorada")
+        .not("status", "in", "(ignorada,ignorado)")
         .order("data", { ascending: false }),
-      supabase.from("extrato_transacoes")
-        .select("conta_bancaria_id,conta_nome")
+      paginar<{ conta_bancaria_id: string; conta_nome: string | null; fitid: string }>((de, ate) => supabase.from("extrato_transacoes")
+        .select("conta_bancaria_id,conta_nome,fitid")
         .in("fazenda_id", fazendaIds)
         .eq("conciliado", false)
-        .not("conta_bancaria_id", "is", null),
+        .not("conta_bancaria_id", "is", null)
+        .order("id").range(de, ate))
+        .then(data => ({ data, error: null }), error => ({ data: null, error })),
     ]);
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     setLancamentos(lData);
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
     if (gsR.data) setOgsDisponiveis(gsR.data as OgMin[]);
-    if (pR.data) setPendencias(pR.data as Pendencia[]);
+    // "Inconsistências" lia conciliacao_pendencias (tabela legada, nunca limpa): 68% das
+    // linhas já estavam conciliadas ou nem existiam mais em extrato_transacoes (fonte
+    // única). Só mostra pendência de conta bancária que ainda está pendente de verdade.
+    const pendVivas = new Set((etR.data ?? []).map(r => `${r.conta_bancaria_id}|${r.fitid}`));
+    if (pR.data) setPendencias((pR.data as Pendencia[]).filter(p => !p.conta_id || pendVivas.has(`${p.conta_id}|${p.fitid}`)));
     if (etR.data) {
       const mapa = new Map<string, { conta_bancaria_id: string; conta_nome: string; pendentes: number }>();
       for (const row of etR.data as { conta_bancaria_id: string; conta_nome: string | null }[]) {
@@ -418,7 +494,7 @@ function ConciliacaoInner() {
       // mais automaticamente um card isolado a partir daqui; o ponto de
       // entrada agora é o banner de pendências por conta (pendPorConta,
       // agregado de extrato_transacoes) ou a seleção manual de conta+período.
-      setExtratos(exR.data as unknown as Extrato[]);
+      setExtratos((exR.data as unknown as Extrato[]).map(e => ({ ...e, linhas: [] })));
     }
   }, [fazendaId, fazendaIds, contaId, searchParams]);
 
@@ -477,17 +553,19 @@ function ConciliacaoInner() {
     if (!fazendaId || !contaBancariaId || !dataIni || !dataFim) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Paginado: sem isso um período com >1.000 transações vinha cortado em 1.000 —
+      // justamente as MAIS RECENTES sumiam (ordem por data crescente).
+      const data = await paginar<Record<string, unknown>>((de, ate) => supabase
         .from("extrato_transacoes")
         .select("fitid,data,descricao,valor,tipo,conciliado,lancamento_id,lancamento_ids,lancamento_desc,lancamento_valor")
         .eq("conta_bancaria_id", contaBancariaId)
         .in("fazenda_id", fazendaIds)
         .gte("data", dataIni)
         .lte("data", dataFim)
-        .order("data", { ascending: true });
-      if (error) throw error;
+        .order("data", { ascending: true }).order("fitid", { ascending: true })
+        .range(de, ate));
 
-      const linhas: LinhaOFX[] = (data ?? []).map(t => ({
+      const linhas: LinhaOFX[] = data.map(t => ({
         id: t.fitid as string,
         data: t.data as string,
         descricao: t.descricao as string,
@@ -543,151 +621,202 @@ function ConciliacaoInner() {
   async function handleOFX(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !fazendaId) return;
-    // Conta bancária agora é obrigatória pra importar — sem ela, o cheque de
-    // reimportação duplicada (abaixo) não roda e o extrato fica sem
-    // conta_id, dificultando achar depois que foi importado 2x.
+    // Conta bancária é obrigatória pra importar — a chave de deduplicação é conta+FITID.
     if (!contaSel) {
       alert("Selecione a conta bancária antes de importar o OFX.");
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
     setLoading(true);
-    const texto = await file.text();
-    let linhas = parseOFX(texto);
-    if (linhas.length === 0) {
-      alert("Nenhuma transação encontrada no arquivo OFX.");
-      setLoading(false);
-      return;
-    }
-    // Fetch fresco para o período do OFX (±15 dias) — garante lançamentos atualizados
-    const dIniMatch = new Date((linhas[0]?.data ?? hoje()) + "T00:00:00");
-    dIniMatch.setDate(dIniMatch.getDate() - 15);
-    const dFimMatch = new Date((linhas[linhas.length - 1]?.data ?? hoje()) + "T00:00:00");
-    dFimMatch.setDate(dFimMatch.getDate() + 15);
-    const { data: lancFresh } = await supabase.from("lancamentos")
-      .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,produtor_id")
-      .in("fazenda_id", fazendaIds)
-      .not("status", "eq", "cancelado")
-      .gte("data_vencimento", dIniMatch.toISOString().slice(0, 10))
-      .lte("data_vencimento", dFimMatch.toISOString().slice(0, 10));
-    let lancParaMatch = lancamentos;
-    if (lancFresh && lancFresh.length > 0) {
-      const mapa = new Map(lancamentos.map(l => [l.id, l]));
-      for (const l of lancFresh as Lancamento[]) mapa.set(l.id, l);
-      lancParaMatch = Array.from(mapa.values()).sort((a, b) => b.data_vencimento.localeCompare(a.data_vencimento));
-      setLancamentos(lancParaMatch);
-    }
-    const titularContaImport = contas.find(c => c.id === contaSel)?.produtor_id;
-    linhas = autoMatch(linhas, lancParaMatch, titularContaImport);
-    const dataInicio  = linhas[0]?.data ?? hoje();
-    const dataFim     = linhas[linhas.length - 1]?.data ?? hoje();
-    const conciliadoN = linhas.filter(l => l.conciliado).length;
-    const contaObj    = contas.find(c => c.id === contaSel);
+    try {
+      // Bancos como Cresol/BB exportam OFX em Windows-1252: ler como UTF-8 vira "�" na
+      // descrição ("INTEGRALIZA��O") e quebra a busca por texto. Tenta UTF-8 e cai
+      // pra Windows-1252 quando aparece o caractere de substituição.
+      const buf = await file.arrayBuffer();
+      let texto = new TextDecoder("utf-8").decode(buf);
+      if (texto.includes("\uFFFD")) texto = new TextDecoder("windows-1252").decode(buf);
+      let linhas = parseOFX(texto);
+      if (linhas.length === 0) {
+        alert("Nenhuma transação encontrada no arquivo OFX.");
+        return;
+      }
+      // FITID repetido dentro do mesmo arquivo (banco sem id estável) derrubava o
+      // upsert do lote inteiro. Desempata com sufixo determinístico (mesma ordem do
+      // arquivo → mesmo id numa reimportação).
+      const contFit = new Map<string, number>();
+      linhas = linhas.map(l => {
+        const n = (contFit.get(l.id) ?? 0) + 1;
+        contFit.set(l.id, n);
+        return n === 1 ? l : { ...l, id: `${l.id}~${n}` };
+      });
 
-    // Reimportação de período sobreposto agora é segura: extrato_transacoes é
-    // deduplicada por conta+fitid e a sincronização (syncExtratoTransacoes,
-    // modo "import") nunca regride uma transação já conciliada — reimportar
-    // só preenche o que ainda faltava. O bloqueio duro que existia aqui foi
-    // removido porque ele era exatamente a causa da fragmentação reportada
-    // (cada import de período sobreposto virava um card isolado, e contas
-    // conciliadas num import "sumiam" como pendentes no outro). O registro em
-    // extratos_bancarios abaixo continua existindo só como log de auditoria
-    // (usuário, data, arquivo OFX) — não é mais a visão ativa após importar.
-    const novoExtrato: Extrato = {
-      id: `ext-${Date.now()}`,
-      conta_id: contaSel,
-      conta_nome: contaObj?.nome ?? contaSel,
-      data_importacao: hoje(),
-      data_inicio: dataInicio,
-      data_fim: dataFim,
-      total_linhas: linhas.length,
-      conciliados: conciliadoN,
-      pendentes: linhas.length - conciliadoN,
-      linhas,
-    };
+      const dataInicio  = linhas[0]?.data ?? hoje();
+      const dataFim     = linhas[linhas.length - 1]?.data ?? hoje();
+      const dIniMatch = new Date(dataInicio + "T00:00:00");
+      dIniMatch.setDate(dIniMatch.getDate() - 15);
+      const dFimMatch = new Date(dataFim + "T00:00:00");
+      dFimMatch.setDate(dFimMatch.getDate() + 15);
+      const iniMatch = dIniMatch.toISOString().slice(0, 10);
+      const fimMatch = dFimMatch.toISOString().slice(0, 10);
 
-    // Salva OFX bruto no Storage para poder reabrir depois
-    const ofxPath = `ofx-conciliacao/${fazendaId}/${novoExtrato.id}.ofx`;
-    await supabase.storage.from("arquivos").upload(ofxPath, new Blob([texto], { type: "text/plain" }), { upsert: false });
+      // Lançamentos frescos do período do OFX (±15 dias). Antes o select omitia
+      // conta_bancaria: o merge SUBSTITUÍA os lançamentos do estado por cópias sem
+      // conta, e os baixados sumiam do painel esquerdo até recarregar a página.
+      const lancFresh = await paginar<Lancamento>((de, ate) => supabase.from("lancamentos")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda")
+        .in("fazenda_id", fazendaIds)
+        .not("status", "eq", "cancelado")
+        .gte("data_vencimento", iniMatch)
+        .lte("data_vencimento", fimMatch)
+        .order("id").range(de, ate));
+      let lancParaMatch = lancamentos;
+      if (lancFresh.length > 0) {
+        const mapa = new Map(lancamentos.map(l => [l.id, l]));
+        for (const l of lancFresh) mapa.set(l.id, l);
+        lancParaMatch = Array.from(mapa.values()).sort((a, b) => b.data_vencimento.localeCompare(a.data_vencimento));
+        setLancamentos(lancParaMatch);
+      }
 
-    await supabase.from("extratos_bancarios").insert({
-      id: novoExtrato.id, fazenda_id: fazendaId,
-      conta_id: contaSel || null, conta_nome: novoExtrato.conta_nome,
-      data_importacao: novoExtrato.data_importacao,
-      data_inicio: dataInicio, data_fim: dataFim,
-      total_linhas: linhas.length, conciliados: conciliadoN,
-      pendentes: linhas.length - conciliadoN, linhas,
-      usuario_nome:    nomeUsuario ?? null,
-      ofx_storage_path: ofxPath,
-    });
+      // Estado atual do banco: quem já está conciliado (não re-casar) e quais lançamentos
+      // já estão ligados a alguma linha (de qualquer conta) — base do "1 lançamento ↔ 1 linha".
+      const conciliadasNoBanco = await paginar<{ fitid: string; conta_bancaria_id: string | null; lancamento_id: string | null; lancamento_ids: string[] | null }>((de, ate) => supabase.from("extrato_transacoes")
+        .select("fitid,conta_bancaria_id,lancamento_id,lancamento_ids")
+        .in("fazenda_id", fazendaIds).eq("conciliado", true)
+        .gte("data", iniMatch).lte("data", fimMatch)
+        .order("id").range(de, ate));
+      const lancamentosJaVinculados = new Set<string>();
+      const fitidsJaConciliados = new Set<string>();
+      for (const r of conciliadasNoBanco) {
+        for (const id of (r.lancamento_ids?.length ? r.lancamento_ids : r.lancamento_id ? [r.lancamento_id] : [])) lancamentosJaVinculados.add(id);
+        if (r.conta_bancaria_id === contaSel) fitidsJaConciliados.add(r.fitid);
+      }
 
-    // Baixa os lançamentos que o auto-match acabou de vincular — sem isso,
-    // autoMatch() só marcava conciliado=true e vinculava o lancamento_id,
-    // mas NUNCA baixava (status continuava "em_aberto"): achado real em
-    // produção (18/09/2026) — 133 de ~970 transações conciliadas com
-    // lançamento vinculado e ainda "em_aberto", em várias contas/bancos
-    // diferentes, não só Cresol. O botão manual "Conciliar e Baixar" (aba
-    // CP/CR em Aberto) já baixava corretamente — faltava esse mesmo passo
-    // aqui, no caminho automático (que é o caminho que a maioria das
-    // transações realmente segue).
-    const paraBaixarAuto = linhas
-      .filter(l => l.conciliado && (l.lancamento_ids?.length || l.lancamento_id))
-      .flatMap(l => (l.lancamento_ids?.length ? l.lancamento_ids : [l.lancamento_id!]).map(id => ({ id, linha: l })))
-      .reduce((acc, { id, linha }) => {
+      const titularContaImport = contas.find(c => c.id === contaSel)?.produtor_id;
+      linhas = autoMatch(linhas, lancParaMatch, { produtorTitularConta: titularContaImport, contaBancariaId: contaSel, lancamentosJaVinculados, fitidsJaConciliados });
+      const conciliadoN = linhas.filter(l => l.conciliado).length;
+      const contaObj    = contas.find(c => c.id === contaSel);
+
+      const novoExtrato: Extrato = {
+        id: `ext-${Date.now()}`,
+        conta_id: contaSel,
+        conta_nome: contaObj?.nome ?? contaSel,
+        data_importacao: hoje(),
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        total_linhas: linhas.length,
+        conciliados: conciliadoN,
+        pendentes: linhas.length - conciliadoN,
+        linhas,
+      };
+
+      // 1º passo: gravar as transações (fonte única). Antes as baixas automáticas rodavam
+      // ANTES e, se esta gravação falhasse, ficavam lançamentos baixados sem nenhuma
+      // transação conciliada correspondente ("contas desconciliam") — e a tela seguia
+      // como se tivesse dado certo. Agora falhou aqui = nada é baixado.
+      const okSync = await syncExtratoTransacoes(fazendaId, contaSel, novoExtrato.conta_nome, linhas, novoExtrato.id, "import");
+      if (!okSync) {
+        alert("Não foi possível gravar as transações do extrato. Nada foi baixado nem conciliado — tente importar novamente.");
+        return;
+      }
+
+      // Log de auditoria do import (quem, quando, arquivo original) — não é fonte de dados.
+      const ofxPath = `ofx-conciliacao/${fazendaId}/${novoExtrato.id}.ofx`;
+      const up = await supabase.storage.from("arquivos").upload(ofxPath, new Blob([texto], { type: "text/plain" }), { upsert: false });
+      if (up.error) console.error("[handleOFX] upload OFX", up.error);
+      const logIns = await supabase.from("extratos_bancarios").insert({
+        id: novoExtrato.id, fazenda_id: fazendaId,
+        conta_id: contaSel || null, conta_nome: novoExtrato.conta_nome,
+        data_importacao: novoExtrato.data_importacao,
+        data_inicio: dataInicio, data_fim: dataFim,
+        total_linhas: linhas.length, conciliados: conciliadoN,
+        pendentes: linhas.length - conciliadoN, linhas,
+        usuario_nome:    nomeUsuario ?? null,
+        ofx_storage_path: up.error ? null : ofxPath,
+      });
+      if (logIns.error) console.error("[handleOFX] log do import", logIns.error);
+
+      // Baixa os lançamentos que o auto-match acabou de vincular (autoMatch só marca
+      // conciliado e vincula — sem este passo ficavam "em_aberto"; achado real 18/09/2026:
+      // 133 de ~970 transações conciliadas com lançamento ainda em aberto). Também grava a
+      // conta bancária nos já baixados que estavam sem conta (Posição Bancária).
+      const vinculadasAuto = linhas
+        .filter(l => l.conciliado && !fitidsJaConciliados.has(l.id) && (l.lancamento_ids?.length || l.lancamento_id))
+        .flatMap(l => (l.lancamento_ids?.length ? l.lancamento_ids : [l.lancamento_id!]).map(id => ({ id, linha: l })));
+      const paraBaixarAuto = vinculadasAuto.reduce((acc, { id, linha }) => {
         const l = lancParaMatch.find(x => x.id === id);
         if (l && l.status !== "baixado" && l.status !== "parcial" && !acc.some(a => a.id === id)) {
           acc.push({ id, data_baixa: linha.data, valor_pago: l.valor_pago ?? l.valor, conta_bancaria: contaSel || undefined });
         }
         return acc;
       }, [] as { id: string; data_baixa: string; valor_pago: number; conta_bancaria?: string }[]);
+      const definirContaAuto = vinculadasAuto
+        .map(({ id }) => lancParaMatch.find(x => x.id === id))
+        .filter((l): l is Lancamento => !!l && (l.status === "baixado" || l.status === "parcial") && !l.conta_bancaria)
+        .map(l => ({ id: l.id, conta_bancaria: contaSel }));
+      const idsConciliarAuto = Array.from(new Set(vinculadasAuto.map(v => v.id)));
 
-    if (paraBaixarAuto.length > 0) {
-      await fetch("/api/financeiro/persistir-extrato", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: novoExtrato.id,
-          linhas: novoExtrato.linhas,
-          conciliados: novoExtrato.conciliados,
-          pendentes: novoExtrato.pendentes,
-          baixar: paraBaixarAuto,
-        }),
-      }).catch(() => {});
-      setLancamentos(prev => prev.map(l => {
-        const bx = paraBaixarAuto.find(b => b.id === l.id);
-        if (!bx) return l;
-        return { ...l, status: "baixado" as const, data_baixa: bx.data_baixa, valor_pago: bx.valor_pago, conta_bancaria: bx.conta_bancaria ?? l.conta_bancaria };
-      }));
+      if (paraBaixarAuto.length > 0 || definirContaAuto.length > 0 || idsConciliarAuto.length > 0) {
+        try {
+          const res = await fetch("/api/financeiro/persistir-extrato", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: novoExtrato.id,
+              linhas: novoExtrato.linhas,
+              conciliados: novoExtrato.conciliados,
+              pendentes: novoExtrato.pendentes,
+              baixar: paraBaixarAuto,
+              definir_conta: definirContaAuto,
+              lancamento_ids_conciliados: idsConciliarAuto,
+            }),
+          });
+          const json = await res.json().catch(() => ({ ok: false, error: "resposta inválida" }));
+          if (!res.ok || json?.ok === false) {
+            alert(`As transações foram importadas, mas a baixa automática dos lançamentos falhou (${json?.error ?? res.status}). Abra a conciliação e use "Baixar e Conciliar" nas linhas afetadas.`);
+          }
+        } catch (err) {
+          console.error("[handleOFX] baixa automática", err);
+          alert("As transações foram importadas, mas a baixa automática dos lançamentos falhou. Abra a conciliação e use \"Baixar e Conciliar\" nas linhas afetadas.");
+        }
+        setLancamentos(prev => prev.map(l => {
+          const bx = paraBaixarAuto.find(b => b.id === l.id);
+          if (bx) return { ...l, status: "baixado" as const, data_baixa: bx.data_baixa, valor_pago: bx.valor_pago, conta_bancaria: bx.conta_bancaria ?? l.conta_bancaria, conciliado: true };
+          const dc = definirContaAuto.find(d => d.id === l.id);
+          if (dc) return { ...l, conta_bancaria: dc.conta_bancaria, conciliado: true };
+          return idsConciliarAuto.includes(l.id) ? { ...l, conciliado: true } : l;
+        }));
+      }
+
+      const naoConc = linhas.filter(l => !l.conciliado);
+      if (naoConc.length > 0) {
+        const { error: ePend } = await supabase.from("conciliacao_pendencias").upsert(
+          naoConc.map(l => ({
+            fazenda_id: fazendaId, conta_id: contaSel || null,
+            conta_nome: contaObj?.nome ?? null, fitid: l.id,
+            data: l.data, descricao: l.descricao, valor: l.valor,
+            tipo: l.tipo, status: "pendente",
+          })),
+          { onConflict: "fazenda_id,fitid", ignoreDuplicates: true }
+        );
+        if (ePend) console.error("[handleOFX] pendências", ePend);
+      }
+
+      // Fase 3 — abre a visão contínua da conta (não o card isolado deste
+      // import), estendendo o período já filtrado pra cobrir o OFX inteiro.
+      const rangeDe  = periodoFetchDe  && periodoFetchDe  < dataInicio ? periodoFetchDe  : dataInicio;
+      const rangeAte = periodoFetchAte && periodoFetchAte > dataFim    ? periodoFetchAte : dataFim;
+      setPeriodoFetchDe(rangeDe);
+      setPeriodoFetchAte(rangeAte);
+      await carregarExtratoUnificado(contaSel, rangeDe, rangeAte);
+      // banner de pendências, contagens e histórico ficavam desatualizados após o import
+      carregar();
+    } catch (err) {
+      console.error("[handleOFX]", err);
+      alert("Não foi possível importar o OFX: " + (err instanceof Error ? err.message : "erro desconhecido") + ". Tente novamente.");
+    } finally {
+      setLoading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
-
-    const naoConc = linhas.filter(l => !l.conciliado);
-    if (naoConc.length > 0) {
-      await supabase.from("conciliacao_pendencias").upsert(
-        naoConc.map(l => ({
-          fazenda_id: fazendaId, conta_id: contaSel || null,
-          conta_nome: contaObj?.nome ?? null, fitid: l.id,
-          data: l.data, descricao: l.descricao, valor: l.valor,
-          tipo: l.tipo, status: "pendente",
-        })),
-        { onConflict: "fazenda_id,fitid", ignoreDuplicates: true }
-      );
-    }
-
-    // Sincroniza com extrato_transacoes (fonte única). Nunca regride uma
-    // transação já conciliada.
-    await syncExtratoTransacoes(fazendaId, contaSel || null, novoExtrato.conta_nome, linhas, novoExtrato.id, "import");
-
-    setExtratos(prev => [novoExtrato, ...prev]);
-    setLoading(false);
-    if (inputRef.current) inputRef.current.value = "";
-
-    // Fase 3 — abre a visão contínua da conta (não o card isolado deste
-    // import), estendendo o período já filtrado pra cobrir o OFX inteiro.
-    const rangeDe  = periodoFetchDe  && periodoFetchDe  < dataInicio ? periodoFetchDe  : dataInicio;
-    const rangeAte = periodoFetchAte && periodoFetchAte > dataFim    ? periodoFetchAte : dataFim;
-    setPeriodoFetchDe(rangeDe);
-    setPeriodoFetchAte(rangeAte);
-    await carregarExtratoUnificado(contaSel, rangeDe, rangeAte);
   }
 
   // Exclui um extrato importado (uso principal: apagar cópia duplicada de uma
@@ -734,8 +863,15 @@ function ConciliacaoInner() {
       conciliarIds?: string[];
       desconciliarIds?: string[];
       baixar?: { id: string; data_baixa: string; valor_pago: number; conta_bancaria?: string }[];
+      definirConta?: { id: string; conta_bancaria: string }[];
     },
   ): Promise<boolean> {
+    // Estado otimista COM rollback: antes, se a gravação falhasse a tela continuava
+    // mostrando a linha conciliada (só um alert dizia o contrário) e, ao recarregar, a
+    // conciliação "sumia". Agora a falha devolve a tela ao estado anterior.
+    const extratoAnterior = extrato;
+    const extratosAnteriores = extratos;
+    const reverter = () => { setExtrato(extratoAnterior); setExtratos(extratosAnteriores); };
     setExtrato(upd);
     setExtratos(prev => prev.map(e => e.id === upd.id ? upd : e));
     try {
@@ -750,21 +886,30 @@ function ConciliacaoInner() {
           lancamento_ids_conciliados: opts?.conciliarIds,
           lancamento_ids_desconciliados: opts?.desconciliarIds,
           baixar: opts?.baixar,
+          definir_conta: opts?.definirConta,
         }),
       });
       const json = await res.json().catch(() => ({ ok: false }));
       if (!res.ok || json?.ok === false) {
         console.error("[persistExtrato] falhou:", json);
+        reverter();
         return false;
       }
       // Mantém extrato_transacoes (fonte ativa da tela) em dia com toda ação
       // feita aqui (vincular, desvincular, tesouraria, agrupar). Modo "acao":
       // reflete exatamente o que o usuário acabou de decidir, sem comparar
       // com o que já existia.
-      await syncExtratoTransacoes(fazendaId!, upd.conta_id || null, upd.conta_nome, upd.linhas, upd.id, "acao");
+      const okSync = await syncExtratoTransacoes(fazendaId!, upd.conta_id || null, upd.conta_nome, upd.linhas, upd.id, "acao");
+      if (!okSync) {
+        // O lançamento já foi baixado/conciliado pela API, mas extrato_transacoes (o que a
+        // tela lê ao reabrir) não foi atualizada. Repetir a ação é seguro (idempotente).
+        reverter();
+        return false;
+      }
       return true;
     } catch (e) {
       console.error("[persistExtrato]", e);
+      reverter();
       return false;
     }
   }
@@ -835,6 +980,12 @@ function ConciliacaoInner() {
           valor_pago: l.valor_pago ?? l.valor,
           conta_bancaria: extrato.conta_id || undefined,
         })),
+        // já baixado sem conta bancária → grava a conta deste extrato (senão a Posição
+        // Bancária nunca fecha com o extrato: 127 vínculos com conta divergente no banco)
+        definirConta: ids
+          .map(id => lancamentos.find(x => x.id === id))
+          .filter((l): l is Lancamento => !!l && (l.status === "baixado" || l.status === "parcial") && !l.conta_bancaria)
+          .map(l => ({ id: l.id, conta_bancaria: extrato.conta_id })),
       },
     );
 
@@ -875,8 +1026,11 @@ function ConciliacaoInner() {
       }
       const origemNome  = contas.find(c => c.id === fTes.conta_origem)?.nome ?? fTes.conta_origem;
       const destinoNome = contas.find(c => c.id === fTes.conta_destino)?.nome ?? fTes.conta_destino;
+      // Cada perna pertence à fazenda/titular da SUA conta bancária (antes as duas iam pra
+      // fazenda ativa na tela, distorcendo LCDPR/DRE por fazenda em conta multi-fazenda).
+      const cOrigem  = contas.find(c => c.id === fTes.conta_origem);
+      const cDestino = contas.find(c => c.id === fTes.conta_destino);
       const base = {
-        fazenda_id: fazendaId,
         valor: fTes.valor || modalTes.valor,
         valor_pago: fTes.valor || modalTes.valor,
         data_lancamento: fTes.data || modalTes.data,
@@ -890,8 +1044,8 @@ function ConciliacaoInner() {
       const { data: rows, error } = await supabase
         .from("lancamentos")
         .insert([
-          { ...base, tipo: "pagar"   as const, descricao: `Transferência → ${destinoNome}`, conta_bancaria: fTes.conta_origem },
-          { ...base, tipo: "receber" as const, descricao: `Transferência ← ${origemNome}`,  conta_bancaria: fTes.conta_destino },
+          { ...base, fazenda_id: cOrigem?.fazenda_id  ?? fazendaId, produtor_id: cOrigem?.produtor_id  ?? null, tipo: "pagar"   as const, descricao: `Transferência → ${destinoNome}`, conta_bancaria: fTes.conta_origem },
+          { ...base, fazenda_id: cDestino?.fazenda_id ?? fazendaId, produtor_id: cDestino?.produtor_id ?? null, tipo: "receber" as const, descricao: `Transferência ← ${origemNome}`,  conta_bancaria: fTes.conta_destino },
         ])
         .select();
 
@@ -934,10 +1088,23 @@ function ConciliacaoInner() {
     }
 
     // ── Demais operações: cria um único lançamento ─────────────────────────
+    // O.G. obrigatória: era opcional e 64 lançamentos de tarifa/IOF/juros criados aqui
+    // ficaram sem Operação Gerencial (coluna O.G. do LCDPR em branco, DRE sem classificar).
+    if (!ogId) {
+      alert("Selecione a Operação Gerencial do lançamento — ela classifica a despesa/receita no DRE e no LCDPR.");
+      setSavingTes(false);
+      return;
+    }
+    // Sem conta_bancaria o lançamento nascia "solto": a Posição Bancária nunca fechava com
+    // o extrato. Fazenda e titular vêm da conta bancária do extrato, não da fazenda ativa.
+    const contaDoExtrato = contas.find(c => c.id === extrato.conta_id);
     const { data: novoLanc, error } = await supabase
       .from("lancamentos")
       .insert({
-        fazenda_id: fazendaId,
+        fazenda_id: contaDoExtrato?.fazenda_id ?? fazendaId,
+        produtor_id: contaDoExtrato?.produtor_id ?? null,
+        conta_bancaria: extrato.conta_id,
+        origem_lancamento: "tesouraria",
         tipo: fTes.tipo,
         descricao: fTes.descricao || modalTes.descricao,
         valor: fTes.valor || modalTes.valor,
@@ -1017,11 +1184,19 @@ function ConciliacaoInner() {
     const dataComum = linhasSel[0].data;
     const valorTotal = linhasSel.reduce((s, l) => s + l.valor, 0);
     const ogSel = ogsDisponiveis.find(o => o.id === ogAgrupado);
+    if (!ogAgrupado) {
+      alert("Selecione a Operação Gerencial do lançamento agrupado.");
+      setSavingAgrupado(false);
+      return;
+    }
+    const contaDoExtratoAgr = contas.find(c => c.id === extrato.conta_id);
 
     const { data: novoLanc, error } = await supabase
       .from("lancamentos")
       .insert({
-        fazenda_id: fazendaId,
+        fazenda_id: contaDoExtratoAgr?.fazenda_id ?? fazendaId,
+        produtor_id: contaDoExtratoAgr?.produtor_id ?? null,
+        origem_lancamento: "tesouraria",
         tipo: tipoLanc,
         descricao: descAgrupado.trim(),
         valor: valorTotal,
@@ -1157,10 +1332,11 @@ function ConciliacaoInner() {
   const lancFiltrados = lancamentos.filter(l => {
     // Filtro por conta bancária selecionada no header:
     // - baixados/parciais: só mostrar se conta_bancaria === contaSel (já pagos por esse banco)
+    //   ou se ainda estão SEM conta (dá pra ligar e a conta é gravada na conciliação)
     // - em aberto: sempre mostrar (ainda não pagos, podem ser conciliados agora)
     if (contaSel) {
       const pago = l.status === "baixado" || ehParcial(l);
-      if (pago && l.conta_bancaria !== contaSel) return false;
+      if (pago && l.conta_bancaria && l.conta_bancaria !== contaSel) return false;
     }
 
     // Filtro de status

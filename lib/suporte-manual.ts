@@ -695,6 +695,16 @@ Concilia lançamentos do sistema com o extrato OFX importado do banco.
 
 ## MÓDULO 18 — FINANCEIRO → RELATÓRIOS FINANCEIROS
 
+
+**Auditoria e correções da Conciliação (21/09/2026):**
+- **Um lançamento, uma linha:** o casamento automático ao importar o OFX podia ligar o mesmo CP a várias linhas do extrato (ex.: um CP de R$ 5.000 ligado a 5 débitos de R$ 5.000), e as demais linhas nunca ganhavam lançamento — era a principal causa das contas desconciliadas. Agora cada lançamento só casa com uma linha, não casa com lançamento já conciliado, com lançamento já baixado por outra conta bancária, nem com lançamento em dólar/grão.
+- **Extrato não some mais:** a gravação das transações passou a ser o primeiro passo do import (se falhar, nada é baixado e você é avisado); lotes grandes não perdem mais conciliações existentes; a visão da conta lê todas as transações do período (antes cortava em 1.000). Se uma ação não for gravada, a tela volta ao estado anterior em vez de continuar mostrando "conciliado".
+- **Lançamentos do painel esquerdo:** depois de importar, lançamentos já baixados deixavam de aparecer até recarregar a página. Corrigido. Lançamento baixado sem conta bancária agora aparece e recebe a conta do extrato ao ser conciliado.
+- **Aba Inconsistências:** mostra só o que realmente ainda está pendente em alguma conta (antes contava também linhas já conciliadas). O card do Dashboard segue a mesma regra e o botão "Lançar" foi trocado por "Conciliar", que abre esta tela — o atalho criava lançamento sem Operação Gerencial e, em linha já conciliada, duplicava a despesa.
+- **Lançamento criado pela conciliação (tarifa, IOF, juros, agrupado):** agora exige Operação Gerencial e nasce com a conta bancária do extrato, a fazenda e o titular dessa conta.
+- Arquivos OFX em Windows-1252 (Cresol/BB) agora mantêm acentos; FITID repetido no mesmo arquivo não derruba mais o import.
+- Segurança: a rota que grava a conciliação passou a exigir sessão e conferir que os lançamentos são da sua conta.
+
 ### 18.1 Fluxo de Caixa Previsto
 **Caminho:** Financeiro → Relatórios Financeiros → Fluxo de Caixa Previsto
 
