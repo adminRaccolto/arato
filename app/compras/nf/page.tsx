@@ -533,7 +533,6 @@ export default function NfCompraPage() {
   const [savingForn, setSavingForn] = useState(false);
   // Vínculo do CP com um centro de custo — só pra tipo != "insumos" (item de
   // estoque nunca leva CC; ver comentário no bloco de renderização).
-  const [ratearCC, setRatearCC] = useState(false);
   const [ccGlobalMaquinaId, setCcGlobalMaquinaId] = useState("");
   const [bulkOpGer, setBulkOpGer] = useState("");
 
@@ -1479,19 +1478,18 @@ export default function NfCompraPage() {
           setErr(`Item "${it.descricao_nf}": informe o hodômetro/horímetro do veículo — obrigatório pra registrar no histórico de abastecimento.`);
           return;
         }
+        // Manutenção: rateio por frota é opcional (critério do operador). Sem máquina,
+        // o custo entra normalmente no CC de manutenção, só não aparece no relatório
+        // de custo por frota. Linhas em branco são ignoradas; se houver máquina
+        // informada, o rateio precisa somar 100%.
         if (modoDireto === "manutencao") {
-          if (it.maquinas_rateio.length === 0) {
-            setErr(`Item "${it.descricao_nf}": informe ao menos uma máquina no rateio por frota.`);
-            return;
-          }
-          if (it.maquinas_rateio.some(r => !r.maquina_id)) {
-            setErr(`Item "${it.descricao_nf}": selecione a máquina em todas as linhas do rateio por frota, ou remova a linha em branco.`);
-            return;
-          }
-          const totalPct = it.maquinas_rateio.reduce((s, r) => s + (r.percentual || 0), 0);
-          if (Math.abs(totalPct - 100) > 0.01) {
-            setErr(`Item "${it.descricao_nf}": o rateio por frota soma ${totalPct.toFixed(1)}% — precisa somar exatamente 100%.`);
-            return;
+          const preenchidas = it.maquinas_rateio.filter(r => r.maquina_id);
+          if (preenchidas.length > 0) {
+            const totalPct = preenchidas.reduce((s, r) => s + (r.percentual || 0), 0);
+            if (Math.abs(totalPct - 100) > 0.01) {
+              setErr(`Item "${it.descricao_nf}": o rateio por frota soma ${totalPct.toFixed(1)}% — precisa somar exatamente 100%, ou remova as máquinas (opcional).`);
+              return;
+            }
           }
         }
         if (modoDireto === "cc" && !it.centro_custo_id) {
@@ -1575,7 +1573,7 @@ export default function NfCompraPage() {
         // dado deixado de um modo anterior (ex: trocou a OG depois de já ter marcado).
         if (tipo === "custo_direto") {
           if (modoDireto !== "combustivel") { it.maquina_id = ""; it.horimetro = 0; }
-          if (modoDireto !== "manutencao") it.maquinas_rateio = [];
+          it.maquinas_rateio = modoDireto === "manutencao" ? it.maquinas_rateio.filter(r => r.maquina_id) : [];
           if (modoDireto !== "cc") it.centro_custo_id = "";
         }
         // Combustível: bomba vem do cabeçalho; deposito_id não se aplica
@@ -3507,56 +3505,6 @@ export default function NfCompraPage() {
                           style={inp}
                         />
                       </div>
-                      {/* Centro de custo do lançamento (CP) — só é uma tag financeira do
-                          pagamento em si (pra relatório de caixa por CC); nunca decide se um
-                          item vai pro estoque. Itens de estoque nunca levam CC — a apropriação
-                          de custo por talhão/ciclo é no consumo, não na compra. */}
-                      {tipo !== "insumos" && (
-                        <div style={{ gridColumn: "1 / -1" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: ratearCC ? 10 : 0 }}>
-                            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" as const }}>
-                              <input type="checkbox" checked={ratearCC} onChange={e => { setRatearCC(e.target.checked); if (!e.target.checked) { setCab(p=>({...p,centro_custo_id:""})); setCcGlobalMaquinaId(""); } }} />
-                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Vincular a um centro de custo?</span>
-                            </label>
-                            {sugestaoNome && !ratearCC && (
-                              <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>
-                            )}
-                          </div>
-                          {ratearCC && (
-                            <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                                <div>
-                                  <label style={{ ...lbl, marginBottom: 3 }}>Centro de Custo{sugestaoNome && <span style={{ marginLeft: 6, fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>}</label>
-                                  <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); setCcGlobalMaquinaId(""); }} style={inp}>
-                                    <option value="">— selecionar CC —</option>
-                                    {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
-                                  </select>
-                                </div>
-                                {ccManutencao(cab.centro_custo_id) && (
-                                  <div>
-                                    <label style={lbl}>Máquina (manutenção)</label>
-                                    <select value={ccGlobalMaquinaId} onChange={e => setCcGlobalMaquinaId(e.target.value)} style={{ ...inp, background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
-                                      <option value="">🔧 Selecionar máquina</option>
-                                      {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                                    </select>
-                                  </div>
-                                )}
-                              </div>
-                              {/* Aplica o CC escolhido aqui a todos os itens de uma vez — evita
-                                  repetir a mesma seleção item a item quando a NF inteira (ex: NF de
-                                  mercado com 20+ itens) vai pro mesmo centro de custo. Item a item
-                                  continua disponível pra quando algum item precisa de um CC diferente. */}
-                              {cab.centro_custo_id && itens.some(i => i.descricao_nf.trim()) && (
-                                <button
-                                  onClick={() => setItens(prev => prev.map(it => it.descricao_nf.trim() ? { ...it, centro_custo_id: cab.centro_custo_id, maquina_id: ccGlobalMaquinaId || it.maquina_id } : it))}
-                                  style={{ marginTop: 10, padding: "6px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                                  ↓ Aplicar este centro de custo a todos os itens
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
                       <div>
                         <label style={lbl}>Ciclo</label>
                         <select value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
@@ -3765,6 +3713,49 @@ export default function NfCompraPage() {
                       + Item
                     </button>
                   </div>
+
+                  {/* Centro de custo do lançamento (CP) — fica aqui, junto dos itens, pra dar
+                      pra julgar se é apropriação direta vendo o que a NF traz. É só uma tag
+                      financeira do pagamento (relatório de caixa por CC); itens de estoque
+                      nunca levam CC. Sempre ativo — sem checkbox. */}
+                  {tipo !== "insumos" && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                        Centro de custo do lançamento
+                      </div>
+                    <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <label style={{ ...lbl, marginBottom: 3 }}>Centro de Custo{sugestaoNome && <span style={{ marginLeft: 6, fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>}</label>
+                          <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); setCcGlobalMaquinaId(""); }} style={inp}>
+                            <option value="">— selecionar CC —</option>
+                            {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                          </select>
+                        </div>
+                        {ccManutencao(cab.centro_custo_id) && (
+                          <div>
+                            <label style={lbl}>Máquina (manutenção)</label>
+                            <select value={ccGlobalMaquinaId} onChange={e => setCcGlobalMaquinaId(e.target.value)} style={{ ...inp, background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
+                              <option value="">🔧 Selecionar máquina</option>
+                              {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                      {/* Aplica o CC escolhido aqui a todos os itens de uma vez — evita
+                          repetir a mesma seleção item a item quando a NF inteira (ex: NF de
+                          mercado com 20+ itens) vai pro mesmo centro de custo. Item a item
+                          continua disponível pra quando algum item precisa de um CC diferente. */}
+                      {cab.centro_custo_id && itens.some(i => i.descricao_nf.trim()) && (
+                        <button
+                          onClick={() => setItens(prev => prev.map(it => it.descricao_nf.trim() ? { ...it, centro_custo_id: cab.centro_custo_id, maquina_id: ccGlobalMaquinaId || it.maquina_id } : it))}
+                          style={{ marginTop: 10, padding: "6px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                          ↓ Aplicar este centro de custo a todos os itens
+                        </button>
+                      )}
+                    </div>
+                    </div>
+                  )}
 
                   {/* Grid de itens */}
                   <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
@@ -4057,7 +4048,7 @@ export default function NfCompraPage() {
                           const ok = it.maquinas_rateio.length > 0 && Math.abs(totalPct - 100) < 0.01;
                           return (
                             <div style={{ padding: "8px 12px", background: "#FBF0D8", borderTop: "0.5px solid #F6C87A" }}>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: "#7A5A12", marginBottom: 6 }}>🔧 Rateio de custo por frota — informe ao menos uma máquina, somando 100%</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#7A5A12", marginBottom: 6 }}>🔧 Rateio de custo por frota (opcional) — se informar máquinas, some 100%</div>
                               {it.maquinas_rateio.map((r, idx) => (
                                 <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 4, alignItems: "center" }}>
                                   <select value={r.maquina_id} onChange={e => {
@@ -4274,7 +4265,7 @@ export default function NfCompraPage() {
                           <>⛽ Combustível — {itens.filter(i => i.maquina_id && i.descricao_nf.trim()).length}/{itens.filter(i => i.descricao_nf.trim()).length} item(s) com veículo selecionado.</>
                         )}
                         {modoDireto === "manutencao" && (
-                          <>🔧 Manutenção — {itens.filter(i => i.maquinas_rateio.length > 0 && i.descricao_nf.trim()).length}/{itens.filter(i => i.descricao_nf.trim()).length} item(s) com rateio por frota.</>
+                          <>🔧 Manutenção — {itens.filter(i => i.maquinas_rateio.length > 0 && i.descricao_nf.trim()).length}/{itens.filter(i => i.descricao_nf.trim()).length} item(s) com rateio por frota (opcional).</>
                         )}
                         {modoDireto === "cc" && (
                           <>{itens.filter(i => i.centro_custo_id && i.descricao_nf.trim()).length}/{itens.filter(i => i.descricao_nf.trim()).length} item(s) com centro de custo.</>

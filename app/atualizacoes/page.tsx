@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-b",
+    data: "21/09/2026",
+    titulo: "NF de Produtos: Centro de Custo nos Itens e frota opcional na manutenção",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "O seletor de Centro de Custo saiu do Cabeçalho (Passo 1) e agora fica no topo do Passo 2 — Itens, sempre visível, sem o checkbox \"Vincular a um centro de custo?\". Assim dá para decidir o CC vendo os itens da NF. O processo continua o mesmo." },
+      { tipo: "melhoria", texto: "Apropriação Direta de manutenção: apontar a frota (rateio por máquina) no item deixou de ser obrigatório. Sem máquina, o custo entra normalmente no CC de Manutenção de Máquinas, mas não aparece no relatório de custo por frota. Se informar máquinas, o rateio ainda precisa somar 100%." },
+    ],
+    onde: "Compras → NF de Produtos → Passo 2 (Itens)",
+  },
+  {
     versao: "2026.09.21-a",
     data: "21/09/2026",
     titulo: "Coluna O.G. do LCDPR ficava em branco em várias linhas",
