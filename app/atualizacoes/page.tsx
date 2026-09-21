@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-r",
+    data: "21/09/2026",
+    titulo: "Conciliação: OFX filtrado pelos pares",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Nas abas Sugeridos e Inconsistências, a lista do OFX à direita mostra só as linhas que têm par na lista da esquerda, na mesma ordem. Passar o mouse num par destaca a linha correspondente do OFX. A busca do OFX continua valendo por cima. Ao sair das abas, o OFX volta a mostrar tudo." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-q",
     data: "21/09/2026",
     titulo: "Conciliação: filtro e destaque na aba Baixados",

@@ -414,6 +414,7 @@ function ConciliacaoInner() {
   const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
   const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());   // borderôs expandidos na lista
   const [filtroBaixados, setFiltroBaixados] = useState<"todos" | "pendentes" | "conciliados">("todos");
+  const [parHover, setParHover] = useState<string | null>(null);
   const [inconsEscolha, setInconsEscolha] = useState<Map<string, string>>(new Map());
   const abaAutoRef = useRef<string | null>(null);
   const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
@@ -1989,6 +1990,12 @@ function ConciliacaoInner() {
     }
     return out;
   })();
+  // Nas abas Sugeridos e Inconsistências o OFX (direita) mostra só os pares da lista da esquerda, na mesma ordem
+  const paresAba = abaSistema === "sugeridos" ? sugestoesLista.map(x => x.linha.id)
+    : abaSistema === "inconsistencias" ? inconsistenciasLista.map(x => x.linha.id) : null;
+  const linhasOfxVisiveis = paresAba
+    ? paresAba.map(id => linhasFiltradas.find(l => l.id === id)).filter((l): l is LinhaOFX => !!l)
+    : linhasFiltradas;
   const COLS_INC = "70px minmax(120px,1.2fr) minmax(150px,1.6fr) 100px 100px";
 
   const COLS_SUG = "78px 78px minmax(150px,1.6fr) 84px 100px 132px";
@@ -3055,7 +3062,7 @@ function ConciliacaoInner() {
                         {inconsistenciasLista.map(ic => {
                           const r = ic.escolhida, lt = r.lote, neg = ic.linha.tipo === "debito";
                           return (
-                            <div key={ic.linha.id} style={{ display: "grid", gridTemplateColumns: COLS_INC, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
+                            <div key={ic.linha.id} onMouseEnter={() => setParHover(ic.linha.id)} onMouseLeave={() => setParHover(null)} style={{ background: parHover === ic.linha.id ? "#EEF3F9" : "transparent", display: "grid", gridTemplateColumns: COLS_INC, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
                               <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(ic.linha.data)}</div>
                               <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }} title={ic.linha.descricao}>{ic.linha.descricao}</div>
                               <div style={{ minWidth: 0 }}>
@@ -3110,7 +3117,7 @@ function ConciliacaoInner() {
                           const neg = sg.linha.tipo === "debito";
                           const tb = tipoBaixaMeta(l);
                           return (
-                            <div key={sg.linha.id} style={{ display: "grid", gridTemplateColumns: COLS_SUG, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
+                            <div key={sg.linha.id} onMouseEnter={() => setParHover(sg.linha.id)} onMouseLeave={() => setParHover(null)} style={{ background: parHover === sg.linha.id ? "#EEF3F9" : "transparent", display: "grid", gridTemplateColumns: COLS_SUG, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
                               <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(vencs[0] ?? l.data_vencimento)}</div>
                               <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{lt?.data_pagamento ? fmtDt(lt.data_pagamento) : baixas[0] ? fmtDt(baixas[baixas.length - 1]) : "—"}</div>
                               <div style={{ minWidth: 0 }}>
@@ -3295,7 +3302,7 @@ function ConciliacaoInner() {
                   <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
                     <input type="checkbox" checked={filtroPend} onChange={e => setFiltroPend(e.target.checked)} /> Só pendentes
                   </label>
-                  <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{linhasFiltradas.length} de {extrato.total_linhas}</span>
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{linhasOfxVisiveis.length} de {extrato.total_linhas}</span>
                 </div>
 
                 {selecaoMultipla.size > 0 && (
@@ -3321,7 +3328,7 @@ function ConciliacaoInner() {
                       <div>Data pagto.</div><div>Histórico</div><div style={{ textAlign: "right" }}>Valor</div><div>Situação</div><div>Ação</div>
                     </div>
                     <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-                      {linhasFiltradas.map(l => {
+                      {linhasOfxVisiveis.map(l => {
                         const isAtiva = linhaAtiva?.id === l.id;
                         const bate = linhaBateComSelecao(l);
                         const sug = !l.conciliado ? sugestoesMap.get(l.id) : undefined;
@@ -3331,8 +3338,8 @@ function ConciliacaoInner() {
                           <div key={l.id} style={{
                             display: "grid", gridTemplateColumns: COLS_OFX, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12,
                             borderBottom: "0.5px solid var(--bg-tag)",
-                            background: isAtiva ? "#DCE6F2" : bate ? "#EEF3F9" : "transparent",
-                            borderLeft: bate || isAtiva ? "3px solid #1A4870" : "3px solid transparent",
+                            background: isAtiva ? "#DCE6F2" : bate || parHover === l.id ? "#EEF3F9" : "transparent",
+                            borderLeft: bate || isAtiva || parHover === l.id ? "3px solid #1A4870" : "3px solid transparent",
                           }}>
                             <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>
                               {!l.conciliado && (
@@ -3407,7 +3414,7 @@ function ConciliacaoInner() {
                           </div>
                         );
                       })}
-                      {linhasFiltradas.length === 0 && (
+                      {linhasOfxVisiveis.length === 0 && (
                         <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma transação encontrada.</div>
                       )}
                     </div>
