@@ -413,6 +413,7 @@ function ConciliacaoInner() {
   const [pessoasNomes, setPessoasNomes]     = useState<Map<string, string>>(new Map());
   const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
   const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());   // borderôs expandidos na lista
+  const [filtroBaixados, setFiltroBaixados] = useState<"todos" | "pendentes" | "conciliados">("todos");
   const [inconsEscolha, setInconsEscolha] = useState<Map<string, string>>(new Map());
   const abaAutoRef = useRef<string | null>(null);
   const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
@@ -1820,7 +1821,9 @@ function ConciliacaoInner() {
   const lancConciliadosLista = lancamentos
     .filter(l => (l.status === "baixado" || origemPorLanc.has(l.id)) && passaTipo(l) && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento)))
     .sort((a, b) => (b.data_baixa ?? b.data_vencimento).localeCompare(a.data_baixa ?? a.data_vencimento));
-  const linhasConciliados = agruparLotes(lancConciliadosLista);
+  const linhaConciliada = (r: LinhaSis) => r.comps.every(c => c.conciliado || origemPorLanc.has(c.id));
+  const linhasConciliados = agruparLotes(lancConciliadosLista).filter(r =>
+    filtroBaixados === "todos" || (filtroBaixados === "conciliados") === linhaConciliada(r));
 
   // Índice das linhas PENDENTES do OFX por valor — só para DESTACAR o que bate
   const indicePend = new Map<number, LinhaOFX[]>();
@@ -2001,7 +2004,8 @@ function ConciliacaoInner() {
     const destaque = modo === "abertos" && (igualAoValorSis(r) || (!linhaAtiva && batem.length > 0));
     const og = origemPorLanc.get(l.id);
     const om = og ? ORIGEM_LANC[og] ?? ORIGEM_LANC.anterior : null;
-    const conciliadoRow = r.comps.every(c => c.conciliado || origemPorLanc.has(c.id));
+    const conciliadoRow = linhaConciliada(r);
+    const cinza = modo === "conciliados" && conciliadoRow;   // já conciliado: letra em cinza, só o pendente chama atenção
     const expandido = !!lt && lotesAbertos.has(lt.id);
     const vencs = r.comps.map(c => c.data_vencimento).sort();
     const baixas = r.comps.map(c => c.data_baixa).filter(Boolean).sort() as string[];
@@ -2015,6 +2019,7 @@ function ConciliacaoInner() {
             display: "grid", gridTemplateColumns: modo === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, alignItems: "center",
             padding: "7px 10px", fontSize: 12,
             background: sel ? "#DCE6F2" : destaque ? "#EEF3F9" : "transparent",
+            ...(cinza ? { ["--text-1" as string]: "#8A8F98", ["--text-2" as string]: "#9AA0A8", ["--text-3" as string]: "#A8ADB5" } : {}),
             borderLeft: sel || destaque ? "3px solid #1A4870" : "3px solid transparent",
             cursor: modo === "abertos" ? "pointer" : "default",
           }}>
@@ -2052,7 +2057,7 @@ function ConciliacaoInner() {
             <span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 7px", borderRadius: 6, background: tb.bg, color: tb.c }}>{lt ? (lt.status === "pago" ? "Baixado" : "Aberto") : tb.t}</span>
           </div>
           <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-            <div style={{ fontWeight: 700, color: negativo ? COR_NEG : "var(--text-1)" }}>{negativo ? "−" : "+"}{fmtBRL(valorMostrado)}</div>
+            <div style={{ fontWeight: 700, color: negativo && !cinza ? COR_NEG : "var(--text-1)" }}>{negativo ? "−" : "+"}{fmtBRL(valorMostrado)}</div>
             {!lt && ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
           </div>
           {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
@@ -3008,6 +3013,16 @@ function ConciliacaoInner() {
                       </button>
                     ))}
                   </div>
+                  {abaSistema === "conciliados" && (
+                    <div style={{ display: "flex", gap: 3 }} title="Situação da conciliação dos baixados">
+                      {(["todos", "pendentes", "conciliados"] as const).map(t => (
+                        <button key={t} onClick={() => setFiltroBaixados(t)}
+                          style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: filtroBaixados === t ? "#1A4870" : "var(--bg-card)", color: filtroBaixados === t ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
+                          {t === "todos" ? "Todos" : t === "pendentes" ? "Pendentes" : "Conciliados"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <input placeholder="Buscar fornecedor, descrição ou valor…" value={buscaLanc} onChange={e => setBuscaLanc(e.target.value)}
                     style={{ flex: "1 1 170px", minWidth: 150, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                 </div>}

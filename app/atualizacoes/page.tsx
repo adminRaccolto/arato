@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-q",
+    data: "21/09/2026",
+    titulo: "Conciliação: filtro e destaque na aba Baixados",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Na aba Baixados, o que já está conciliado (sinaleiro verde) passa a aparecer com a letra em cinza, deixando em destaque só o que ainda está pendente. Novo filtro Todos / Pendentes / Conciliados na barra da aba." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-p",
     data: "21/09/2026",
     titulo: "Conciliação: aba Inconsistências (baixa na conta errada)",
