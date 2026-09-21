@@ -1325,6 +1325,9 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     conta_debito: "1.1.5.1", conta_credito: "1.1.1.2",
     ref_id: 632,
   }),
+  desp("2.02.01.02.014", "DÉBITO REF. A COTA CAPITAL", {
+    permite_cp_cr: true, custo_absorcao: false,
+  }),
   desp("2.02.01.02.007", "PAGAMENTO DE FINANCIAMENTOS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
     conta_debito: "2.2.1", conta_credito: "1.1.1.2",

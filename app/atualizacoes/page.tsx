@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-c",
+    data: "21/09/2026",
+    titulo: "Nova Operação Gerencial: Débito ref. a Cota Capital",
+    modulos: ["Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "novo", texto: "Nova Operação Gerencial 2.02.01.02.014 — DÉBITO REF. A COTA CAPITAL, para integralização de cotas de capital em cooperativas (ex.: Sicredi \"Plano Int Capital-Cota\"). Já foi criada em todos os planos de contas existentes e entra automaticamente nos novos." },
+      { tipo: "correcao", texto: "Lançamentos sem Operação Gerencial que apareciam com \"—\" na coluna O.G. do LCDPR (IOF, tarifas, juros de cheque, pedágio Sem Parar, seguro Icatu e cota capital) foram classificados." },
+    ],
+    onde: "Cadastros → Operações Gerenciais · Fiscal → LCDPR",
+  },
+  {
     versao: "2026.09.21-b",
     data: "21/09/2026",
     titulo: "NF de Produtos: Centro de Custo nos Itens e frota opcional na manutenção",
