@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-f",
+    data: "22/09/2026",
+    titulo: "NF-e: numeração repetida (SEFAZ 539)",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Corrigido o contador de número da NF-e quando o emitente tem configuração por Inscrição Estadual: o número era incrementado só na configuração base e a leitura pegava o da IE, então o mesmo número voltava a ser usado e a SEFAZ rejeitava com 539 (duplicidade de NF-e, com diferença na chave)." },
+      { tipo: "melhoria", texto: "Se a SEFAZ responder 539 porque o número/série já foi usado por outra nota (por exemplo, emitida por outro sistema antes do Arato), o sistema agora avança sozinho para o próximo número livre, em vez de parar com o erro. Rejeição não consome numeração, então não gera buracos." },
+    ],
+    onde: "Estoque → Transferências → Emitir NF · Fiscal",
+  },
+  {
     versao: "2026.09.22-e",
     data: "22/09/2026",
     titulo: "Transferências: transportadora duplicada a cada salvamento",

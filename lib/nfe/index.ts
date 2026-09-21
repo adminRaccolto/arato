@@ -121,7 +121,12 @@ export async function buscarConfEmitente(
           .eq("fazenda_id", fazendaId)
           .eq("modulo", `${moduloKey}__ie_${ieEscolhida.id}`)
           .maybeSingle();
-        if (cfgIe?.config) Object.assign(cfg, cfgIe.config as Record<string, string>);
+        if (cfgIe?.config) {
+          Object.assign(cfg, cfgIe.config as Record<string, string>);
+          // Guarda de onde veio a config por-IE: o contador de número da NF-e mora nela e precisa ser
+          // incrementado nela também (só incrementar a config base deixava o número repetindo → SEFAZ 539)
+          cfg.__ie_modulo = `${moduloKey}__ie_${ieEscolhida.id}`;
+        }
       }
     }
   }
@@ -221,12 +226,18 @@ async function proximoNumero(
   confg: Record<string, string>
 ): Promise<number> {
   const atual = parseInt(String(confg.numero_inicial ?? "1"));
-  // Incrementa no banco antes de emitir para garantir unicidade
-  await sb()
-    .from("configuracoes_modulo")
-    .update({ config: { ...confg, numero_inicial: String(atual + 1) } })
-    .eq("fazenda_id", fazendaId)
-    .eq("modulo", moduloKey);
+  const proximo = String(atual + 1);
+  // Incrementa no banco antes de emitir. Grava SÓ o contador, em cada linha que o guarda (base e, se
+  // existir, a config por-IE que sobrepõe a base na leitura) — sem regravar a config mesclada inteira.
+  const modulos = [moduloKey, ...(confg.__ie_modulo ? [confg.__ie_modulo] : [])];
+  for (const m of modulos) {
+    const { data: linha } = await sb().from("configuracoes_modulo").select("config")
+      .eq("fazenda_id", fazendaId).eq("modulo", m).maybeSingle();
+    if (!linha) continue;
+    await sb().from("configuracoes_modulo")
+      .update({ config: { ...(linha.config as Record<string, string>), numero_inicial: proximo } })
+      .eq("fazenda_id", fazendaId).eq("modulo", m);
+  }
   return atual;
 }
 
@@ -274,7 +285,8 @@ export async function emitirNFe(
   fazendaId: string,
   moduloKey: string,
   input: Omit<NFeInput, "emitente">,  // emitente vem do banco
-  emitIeOverride?: string             // IE específica do produtor (multi-IE)
+  emitIeOverride?: string,            // IE específica do produtor (multi-IE)
+  tentativa = 0                       // interno: repetições após SEFAZ 539
 ): Promise<ResultadoEmissao> {
 
   // 1. Configuração do emitente
@@ -508,6 +520,14 @@ export async function emitirNFe(
     resposta = await transmitirNFe(xmlAssinado, pem, emitente.uf, emitente.ambiente);
   } catch (e) {
     return { sucesso: false, cStat: "504", xMotivo: `Falha na comunicação SEFAZ: ${e}`, xmlAssinado };
+  }
+
+  // SEFAZ 539 = esse número/série já existe autorizado com OUTRA chave (ex.: nota emitida por outro
+  // sistema ou por contador antes do Arato). Rejeição não consome o número, então avança o contador e
+  // tenta o próximo, até achar um livre (limite de 30 para não ficar em laço).
+  if (resposta.cStat === "539" && tentativa < 30) {
+    console.warn(`[NF-e] 539 no número ${numero} (série ${serie}) — tentando o próximo (tentativa ${tentativa + 1})`);
+    return emitirNFe(fazendaId, moduloKey, input, emitIeOverride, tentativa + 1);
   }
 
   const autorizada = resposta.cStat === "100";
