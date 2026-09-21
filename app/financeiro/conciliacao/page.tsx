@@ -2333,7 +2333,7 @@ function ConciliacaoInner() {
             <div style={{ display: "flex", gap: 8 }}>
               <select value={contaSel} onChange={e => setContaSel(e.target.value)}
                 style={{ padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
-                <option value="">— Conta bancária —</option>
+                <option value="">Todas as contas</option>
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome} · {c.banco}</option>)}
               </select>
               <button onClick={() => inputRef.current?.click()} disabled={loading}
@@ -2855,7 +2855,7 @@ function ConciliacaoInner() {
           <>
             {/* Cabeçalho compacto do extrato */}
             <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "8px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              <button onClick={() => { setExtrato(null); setLinhaAtiva(null); setLancsSel(new Set()); }}
+              <button onClick={() => { setExtrato(null); setContaSel(""); setLinhaAtiva(null); setLancsSel(new Set()); }}
                 style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--text-2)", fontSize: 14, padding: "2px 9px", lineHeight: 1.2 }}>←</button>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{extrato.conta_nome}</div>
