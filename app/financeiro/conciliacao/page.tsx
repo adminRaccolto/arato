@@ -304,10 +304,10 @@ const lblRegra: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "v
 const inpRegra: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" };
 
 const ORIGEM_META: Record<string, { label: string; bg: string; cor: string }> = {
-  regra:    { label: "Regra",         bg: "#E6F0FB", cor: "#1A4870" },
-  exato:    { label: "Exato",         bg: "#E4F6EA", cor: "#166534" },
-  sugestao: { label: "Sugestão aceita", bg: "#FFF3D6", cor: "#8A5A00" },
-  manual:   { label: "Manual",        bg: "#EEEEF2", cor: "#555" },
+  regra:    { label: "Regra",           bg: "#F1F3F6", cor: "#555" },
+  exato:    { label: "Automático",      bg: "#F1F3F6", cor: "#555" },
+  sugestao: { label: "Sugestão aceita", bg: "#F1F3F6", cor: "#555" },
+  manual:   { label: "Manual",          bg: "#F1F3F6", cor: "#555" },
 };
 
 
@@ -1616,11 +1616,11 @@ function ConciliacaoInner() {
     for (const id of (ln.lancamento_ids?.length ? ln.lancamento_ids : ln.lancamento_id ? [ln.lancamento_id] : [])) origemPorLanc.set(id, ln.origem_vinculo ?? "anterior");
   }
   const ORIGEM_LANC: Record<string, { label: string; bg: string; cor: string }> = {
-    exato:    { label: "Automático",      bg: "#E4F6EA", cor: "#166534" },
-    regra:    { label: "Regra",           bg: "#E6F0FB", cor: "#1A4870" },
-    sugestao: { label: "Sugestão aceita", bg: "#FFF3D6", cor: "#8A5A00" },
-    manual:   { label: "Manual",          bg: "#EEEEF2", cor: "#555" },
-    anterior: { label: "Anterior",        bg: "#F3F3F3", cor: "#777" },
+    exato:    { label: "Automático",      bg: "#F1F3F6", cor: "#555" },
+    regra:    { label: "Regra",           bg: "#F1F3F6", cor: "#555" },
+    sugestao: { label: "Sugestão aceita", bg: "#F1F3F6", cor: "#555" },
+    manual:   { label: "Manual",          bg: "#F1F3F6", cor: "#555" },
+    anterior: { label: "Anterior",        bg: "#F1F3F6", cor: "#888" },
   };
 
   // Aba 1 — conciliados e baixados (filtro: data de baixa)
@@ -1688,9 +1688,10 @@ function ConciliacaoInner() {
     !!alvoSelecionado && !x.conciliado && (x.tipo === "credito") === alvoSelecionado.receber && Math.abs(x.valor - alvoSelecionado.valor) <= 0.02;
 
   const tipoBaixaMeta = (l: Lancamento) =>
-    l.status === "baixado" ? { t: "Baixado", bg: "#DCFCE7", c: "#166534" }
-    : ehParcial(l)         ? { t: "Parcial", bg: "#FEF9C3", c: "#A16207" }
-    : { t: "Aberto", bg: l.status === "vencido" ? "#FEE2E2" : "#FEF3C7", c: l.status === "vencido" ? "#DC2626" : "#92400E" };
+    l.status === "baixado" ? { t: "Baixado", bg: "#F1F3F6", c: "#666", w: 500 }
+    : ehParcial(l)         ? { t: "Parcial", bg: "#E3EAF3", c: "#1A4870", w: 700 }
+    : l.status === "vencido" ? { t: "Vencido", bg: "#F1F3F6", c: "#B42318", w: 700 }
+    : { t: "Aberto", bg: "#F1F3F6", c: "#333", w: 600 };
 
   // Linha da tabela do sistema (abas 1 e 2)
   const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 66px 100px";
@@ -1708,8 +1709,8 @@ function ConciliacaoInner() {
         style={{
           display: "grid", gridTemplateColumns: modo === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, alignItems: "center",
           padding: "7px 10px", fontSize: 12, borderBottom: i >= 0 ? "0.5px solid var(--bg-tag)" : "none",
-          background: sel ? "#EBF4FF" : destaque ? "#EDF9F0" : "transparent",
-          borderLeft: sel ? "3px solid #1A4870" : destaque ? "3px solid #16A34A" : "3px solid transparent",
+          background: sel ? "#DCE6F2" : destaque ? "#EEF3F9" : "transparent",
+          borderLeft: sel || destaque ? "3px solid #1A4870" : "3px solid transparent",
           cursor: modo === "abertos" ? "pointer" : "default",
         }}>
         {modo === "abertos" && <input type="checkbox" checked={sel} readOnly style={{ accentColor: "#1A4870", cursor: "pointer" }} />}
@@ -1717,22 +1718,22 @@ function ConciliacaoInner() {
         <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
         <div style={{ minWidth: 0 }} title={`${l.descricao}${l.categoria ? " · " + l.categoria : ""}`}>
           <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {titularDivergente(l) && <span title={`Titular do CP (${produtoresNomes.get(l.produtor_id ?? "") ?? "outro"}) é diferente do titular da conta do extrato — não indica conta errada`} style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#FFF3D6", color: "#8A5A00", marginRight: 5 }}>titular ≠</span>}
+            {titularDivergente(l) && <span title={`Titular do CP (${produtoresNomes.get(l.produtor_id ?? "") ?? "outro"}) é diferente do titular da conta do extrato — não indica conta errada`} style={{ fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 6, background: "#F1F3F6", color: "#666", marginRight: 5 }}>titular ≠</span>}
             {fornecedorDe(l)}
           </div>
           {fornecedorDe(l) !== l.descricao && <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>}
           {modo === "abertos" && batem.length > 0 && (
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#166534" }}>= valor de {batem.length} linha{batem.length > 1 ? "s" : ""} do OFX ({batem.slice(0, 2).map(b => fmtDt(b.data).slice(0, 5)).join(", ")}{batem.length > 2 ? "…" : ""})</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870" }}>= valor de {batem.length} linha{batem.length > 1 ? "s" : ""} do OFX ({batem.slice(0, 2).map(b => fmtDt(b.data).slice(0, 5)).join(", ")}{batem.length > 2 ? "…" : ""})</div>
           )}
         </div>
         <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title="Titular da conta em que foi baixado">{produtorDaBaixa(l)}</div>
         <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contaNomeDe(l.conta_bancaria)}</div>
-        <div><span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
+        <div><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 7px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
         <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-          <div style={{ fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>{fmtBRL(modo === "conciliados" ? Number(l.valor_pago ?? l.valor) : Number(l.valor))}</div>
-          {ehParcial(l) && <div style={{ fontSize: 10, color: "#A16207", fontWeight: 600 }}>saldo {fmtBRL(valorRestante(l))}</div>}
+          <div style={{ fontWeight: 700, color: "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(modo === "conciliados" ? Number(l.valor_pago ?? l.valor) : Number(l.valor))}</div>
+          {ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
         </div>
-        {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 8, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
+        {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
       </div>
     );
   };
@@ -2061,7 +2062,7 @@ function ConciliacaoInner() {
         );
       })()}
 
-      <div style={{ maxWidth: 1700, margin: "0 auto", padding: "18px 20px" }}>
+      <div style={{ maxWidth: extrato ? "none" : 1700, margin: "0 auto", padding: extrato ? "10px 14px" : "18px 20px" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -2596,95 +2597,57 @@ function ConciliacaoInner() {
         {/* ═══ EXTRATO ATIVO — layout lado a lado ═══ */}
         {extrato && (
           <>
-            {/* Cabeçalho do extrato */}
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 18px", marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <button onClick={() => { setExtrato(null); setLinhaAtiva(null); setLancsSel(new Set()); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, padding: 0, lineHeight: 1 }}>←</button>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{extrato.conta_nome}</div>
-                    <div style={{ fontSize: 12, color: "#666" }}>{fmtDt(extrato.data_inicio)} até {fmtDt(extrato.data_fim)} · {extrato.total_linhas} transações</div>
-                  </div>
+            {/* Cabeçalho compacto do extrato */}
+            <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "8px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <button onClick={() => { setExtrato(null); setLinhaAtiva(null); setLancsSel(new Set()); }}
+                style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--text-2)", fontSize: 14, padding: "2px 9px", lineHeight: 1.2 }}>←</button>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{extrato.conta_nome}</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDt(extrato.data_inicio)} até {fmtDt(extrato.data_fim)} · {extrato.total_linhas} transações</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ height: 4, background: "var(--bg-tag)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: "#1A4870", transition: "width 0.3s" }} />
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <div style={{ textAlign: "center", padding: "5px 12px", background: "#DCFCE7", borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700, color: "#16A34A", fontSize: 14 }}>{extrato.conciliados}</div>
-                    <div style={{ fontSize: 10, color: "#16A34A" }}>conciliados</div>
-                  </div>
-                  <div style={{ textAlign: "center", padding: "5px 12px", background: "#FEF3C7", borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700, color: "#92400E", fontSize: 14 }}>{extrato.pendentes}</div>
-                    <div style={{ fontSize: 10, color: "#92400E" }}>pendentes</div>
-                  </div>
-                  <div style={{ textAlign: "center", padding: "5px 12px", background: "var(--bg-page)", borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 14 }}>{pct}%</div>
-                    <div style={{ fontSize: 10, color: "var(--text-3)" }}>conciliado</div>
-                  </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
+                  {extrato.conciliados} conciliadas · {extrato.pendentes} pendentes{sugestoesPend.length > 0 ? ` · ${sugestoesPend.length} sugestões` : ""} · {pct}%
+                  {pct === 100 && " — extrato conciliado por completo"}
                 </div>
               </div>
-              <div style={{ height: 6, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 ? "#16A34A" : "#1A4870", borderRadius: 3, transition: "width 0.3s" }} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {[
-                  { label: "Total Créditos",  valor: totalCreditos, cor: "#16A34A" },
-                  { label: "Total Débitos",    valor: totalDebitos,  cor: "#E24B4A" },
-                  { label: "Saldo do Período", valor: saldo,         cor: saldo >= 0 ? "#111" : "#E24B4A" },
-                ].map(k => (
-                  <div key={k.label} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "8px 12px" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{k.label}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: k.cor }}>{fmtBRL(k.valor)}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Fechamento da conta: extrato x sistema no período coberto pelas linhas */}
-              {fechamento && (
-                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "8px 12px", borderRadius: 8,
-                  background: fechamento.fechada ? "#E4F6EA" : "#FDECEC", border: `0.5px solid ${fechamento.fechada ? "#86D3A0" : "#F2A3A3"}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: fechamento.fechada ? "#166534" : "#991B1B" }}>
-                    {fechamento.fechada ? "✓ Conta fechada" : "Conta não fecha"} · {fmtDt(fechamento.ini)} a {fmtDt(fechamento.fim)}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>
-                    Extrato {fmtBRL(saldo)} · Sistema ({fechamento.qtd} baixa{fechamento.qtd !== 1 ? "s" : ""} nesta conta) {fmtBRL(fechamento.sistema)}
-                    {!fechamento.fechada && <strong style={{ color: "#991B1B" }}> · Diferença {fmtBRL(fechamento.dif)}</strong>}
-                  </div>
+              {fechamento && extrato.pendentes === 0 && (
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>
+                  Fechamento {fmtDt(fechamento.ini)} a {fmtDt(fechamento.fim)}: extrato {fmtBRL(saldo)} · sistema {fmtBRL(fechamento.sistema)}
+                  {fechamento.fechada ? " — fecha" : <strong style={{ color: "#B42318" }}> — diferença {fmtBRL(fechamento.dif)}</strong>}
                 </div>
               )}
-
-              {/* Sugestões e regras */}
-              {(sugestoesPend.length > 0 || (migracaoOk && regras.some(r => r.ativa))) && (
-                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  {sugestoesPend.length > 0 && (
-                    <button onClick={() => aceitarSugestoes(sugestoesPend)} disabled={salvando}
-                      style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", fontSize: 12, fontWeight: 700, cursor: salvando ? "default" : "pointer" }}>
-                      💡 Aceitar todas as sugestões ({sugestoesPend.length})
-                    </button>
-                  )}
-                  {migracaoOk && regras.some(r => r.ativa) && extrato.pendentes > 0 && (
-                    <button onClick={aplicarRegrasNaConta} disabled={aplicandoRegras}
-                      style={{ padding: "6px 14px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 700, cursor: aplicandoRegras ? "default" : "pointer", opacity: aplicandoRegras ? 0.6 : 1 }}>
-                      {aplicandoRegras ? "Aplicando…" : "⚙ Aplicar regras às pendentes"}
-                    </button>
-                  )}
-                </div>
+              {sugestoesPend.length > 0 && (
+                <button onClick={() => aceitarSugestoes(sugestoesPend)} disabled={salvando}
+                  style={{ padding: "5px 12px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, fontWeight: 600, cursor: salvando ? "default" : "pointer" }}>
+                  Aceitar todas as sugestões ({sugestoesPend.length})
+                </button>
+              )}
+              {migracaoOk && regras.some(r => r.ativa) && extrato.pendentes > 0 && (
+                <button onClick={aplicarRegrasNaConta} disabled={aplicandoRegras}
+                  style={{ padding: "5px 12px", borderRadius: 7, border: "0.5px solid #1A4870", background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: aplicandoRegras ? "default" : "pointer", opacity: aplicandoRegras ? 0.6 : 1 }}>
+                  {aplicandoRegras ? "Aplicando…" : "Aplicar regras às pendentes"}
+                </button>
               )}
             </div>
 
             {/* ═══ TELA DIVIDIDA — esquerda: sistema (CP/CR) · direita: extrato OFX ═══ */}
-            <div style={{ display: "grid", gridTemplateColumns: abaSistema === "conferencia" ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 12, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: abaSistema === "conferencia" ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 10, alignItems: "stretch", height: "calc(100vh - 176px)", minHeight: 440 }}>
 
               {/* ─── ESQUERDA: lançamentos do sistema ─────────────────────── */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: `1.5px solid ${linhaAtiva ? "#C9921B" : "var(--border)"}`, overflow: "hidden", minWidth: 0 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 10, border: `1px solid ${linhaAtiva ? "#1A4870" : "var(--border)"}`, overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
                 {/* Abas do sistema */}
-                <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#FBF3E0" : "var(--bg-page)", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#EEF3F9" : "var(--bg-page)", flexWrap: "wrap" }}>
                   {([
                     ["conciliados", `Conciliados / baixados (${lancConciliados.length})`],
                     ["abertos",     `CP/CR abertos (${lancAbertos.length})`],
                     ["conferencia", `Conferência (${paresConf.length})`],
                   ] as const).map(([k, lbl]) => (
                     <button key={k} onClick={() => setAbaSistema(k)}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: `0.5px solid ${abaSistema === k ? "#1A5CB8" : "var(--border)"}`, background: abaSistema === k ? "#1A5CB8" : "var(--bg-card)", color: abaSistema === k ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: abaSistema === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      style={{ padding: "6px 12px", borderRadius: 8, border: `0.5px solid ${abaSistema === k ? "#1A4870" : "var(--border)"}`, background: abaSistema === k ? "#1A4870" : "var(--bg-card)", color: abaSistema === k ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: abaSistema === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap" }}>
                       {lbl}
                     </button>
                   ))}
@@ -2719,20 +2682,20 @@ function ConciliacaoInner() {
                   {abaSistema === "conciliados" && "Lançamentos ligados a linhas deste extrato (baixados automaticamente ou à mão). Período por data de baixa."}
                   {abaSistema === "abertos" && (linhaAtiva
                     ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
-                    : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#166534", fontWeight: 700 }}>verde</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento; a busca ignora o período.</>)}
+                    : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#1A4870", fontWeight: 700 }}>destaque azul</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento; a busca ignora o período.</>)}
                   {abaSistema === "conferencia" && "Cada linha conciliada do OFX com o(s) lançamento(s) ligado(s). Período por data do pagamento no OFX."}
                 </div>
 
                 {/* Conteúdo da aba */}
                 {abaSistema !== "conferencia" ? (
-                  <div style={{ overflowX: "auto" }}>
-                    <div style={{ minWidth: 760 }}>
+                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                    <div style={{ minWidth: 760, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: abaSistema === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
                         {abaSistema === "abertos" && <div />}
                         <div>Vencim.</div><div>Baixa</div><div>Fornecedor / Cliente</div><div>Produtor da baixa</div><div>Conta de baixa</div><div>Tipo</div><div style={{ textAlign: "right" }}>Valor</div>
                         {abaSistema === "conciliados" && <div>Origem</div>}
                       </div>
-                      <div style={{ maxHeight: "calc(100vh - 430px)", minHeight: 300, overflowY: "auto" }}>
+                      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                         {(abaSistema === "abertos" ? lancAbertos : lancConciliados).slice(0, 300).map((l, i) => renderLinhaSistema(l, i, abaSistema))}
                         {(abaSistema === "abertos" ? lancAbertos : lancConciliados).length === 0 && (
                           <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
@@ -2749,13 +2712,13 @@ function ConciliacaoInner() {
                   </div>
                 ) : (
                   /* ── Conferência: sistema × OFX, em pares (largura total) ── */
-                  <div style={{ overflowX: "auto" }}>
-                    <div style={{ minWidth: 980 }}>
+                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                    <div style={{ minWidth: 980, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
-                        <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sistema — baixados e conciliados</div>
-                        <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "#7A5A12", textTransform: "uppercase", letterSpacing: "0.04em", borderLeft: "0.5px solid var(--border)" }}>Extrato OFX — linhas utilizadas</div>
+                        <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sistema — baixados e conciliados</div>
+                        <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderLeft: "0.5px solid var(--border)" }}>Extrato OFX — linhas utilizadas</div>
                       </div>
-                      <div style={{ maxHeight: "calc(100vh - 400px)", minHeight: 300, overflowY: "auto" }}>
+                      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                         {paresConf.map(({ x, ls, alertas }) => {
                           const om = ORIGEM_META[x.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
                           return (
@@ -2770,8 +2733,8 @@ function ConciliacaoInner() {
                                         <div style={{ color: "var(--text-2)" }}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
                                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--text-1)" }} title={l.descricao}>{fornecedorDe(l)}</div>
                                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-2)" }} title="Conta de baixa">{contaNomeDe(l.conta_bancaria)}</div>
-                                        <div><span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 8, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
-                                        <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>{fmtBRL(Number(l.valor_pago ?? l.valor))}</div>
+                                        <div><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 6px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
+                                        <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(Number(l.valor_pago ?? l.valor))}</div>
                                       </div>
                                     );
                                   })}
@@ -2779,8 +2742,8 @@ function ConciliacaoInner() {
                                 <div style={{ borderLeft: "0.5px solid var(--border)", display: "grid", gridTemplateColumns: "78px minmax(120px,1.6fr) 96px 110px 84px", gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
                                   <div style={{ color: "var(--text-2)" }}>{fmtDt(x.data)}</div>
                                   <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }} title={x.descricao}>{x.descricao}</div>
-                                  <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: x.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>{x.tipo === "credito" ? "+" : "−"}{fmtBRL(x.valor)}</div>
-                                  <div><span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 8, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}{x.confianca === "media" ? " · média" : ""}</span></div>
+                                  <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>{x.tipo === "credito" ? "+" : "−"}{fmtBRL(x.valor)}</div>
+                                  <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}{x.confianca === "media" ? " · média" : ""}</span></div>
                                   <div style={{ textAlign: "right" }}>
                                     <button onClick={() => desvincular(x.id)}
                                       style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>Desvincular</button>
@@ -2789,7 +2752,7 @@ function ConciliacaoInner() {
                               </div>
                               {alertas.length > 0 && (
                                 <div style={{ padding: "0 12px 7px", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                  {alertas.map(a => <span key={a} style={{ fontSize: 10, fontWeight: 600, color: "#991B1B", background: "#FDECEC", borderRadius: 6, padding: "1px 7px" }}>⚠ {a}</span>)}
+                                  {alertas.map(a => <span key={a} style={{ fontSize: 10, fontWeight: 600, color: "#B42318", background: "#FDF1F0", borderRadius: 6, padding: "1px 7px" }}>Atenção: {a}</span>)}
                                 </div>
                               )}
                             </div>
@@ -2811,9 +2774,9 @@ function ConciliacaoInner() {
                   const parcial = sel.length === 1 && dif < -0.02;
                   const ok = Math.abs(dif) <= 0.02;
                   return (
-                    <div style={{ padding: "6px 14px", fontSize: 11, display: "flex", justifyContent: "space-between", gap: 8, background: ok ? "#E4F6EA" : parcial ? "#FFF3D6" : "#FDECEC", color: ok ? "#166534" : parcial ? "#8A5A00" : "#991B1B", borderTop: "0.5px solid var(--border)" }}>
+                    <div style={{ padding: "6px 14px", fontSize: 11, display: "flex", justifyContent: "space-between", gap: 8, background: "var(--bg-page)", color: "var(--text-2)", borderTop: "0.5px solid var(--border)" }}>
                       <span>Linha {fmtBRL(linhaAtiva.valor)} · Lançamentos {fmtBRL(esperado)}</span>
-                      <strong>{ok ? "Diferença R$ 0,00" : parcial ? `Baixa parcial — saldo ficará ${fmtBRL(Math.abs(dif))}` : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
+                      <strong style={{ color: ok || parcial ? "var(--text-1)" : "#B42318" }}>{ok ? "Diferença R$ 0,00" : parcial ? `Baixa parcial — saldo ficará ${fmtBRL(Math.abs(dif))}` : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
                     </div>
                   );
                 })()}
@@ -2828,7 +2791,7 @@ function ConciliacaoInner() {
                         style={{ fontSize: 11, padding: "3px 9px", background: "transparent", color: "rgba(255,255,255,0.8)", border: "0.5px solid rgba(255,255,255,0.35)", borderRadius: 6, cursor: "pointer" }}>Cancelar</button>
                       {linhaAtiva && lancsSel.size > 0 && (
                         <button onClick={() => confirmarVinculo()} disabled={salvando}
-                          style={{ fontSize: 11, padding: "3px 12px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, cursor: salvando ? "default" : "pointer", fontWeight: 700 }}>
+                          style={{ fontSize: 11, padding: "3px 12px", background: "#fff", color: "#1A4870", border: "none", borderRadius: 6, cursor: salvando ? "default" : "pointer", fontWeight: 700 }}>
                           {btnConfirmarLabel}
                         </button>
                       )}
@@ -2839,9 +2802,9 @@ function ConciliacaoInner() {
 
               {/* ─── DIREITA: extrato OFX ─────────────────────────────────── */}
               {abaSistema !== "conferencia" && (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden", minWidth: 0 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
                 <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5A12", whiteSpace: "nowrap" }}>Extrato OFX · {fmtDt(extrato.data_inicio)} a {fmtDt(extrato.data_fim)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)", whiteSpace: "nowrap" }}>Extrato OFX · {fmtDt(extrato.data_inicio)} a {fmtDt(extrato.data_fim)}</div>
                   <input placeholder="Buscar descrição ou FITID…" value={busca} onChange={e => setBusca(e.target.value)}
                     style={{ flex: "1 1 130px", minWidth: 110, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                   <input placeholder="Valor…" value={buscaValor} onChange={e => setBuscaValor(e.target.value)}
@@ -2853,7 +2816,7 @@ function ConciliacaoInner() {
                 </div>
 
                 {selecaoMultipla.size > 0 && (
-                  <div style={{ padding: "7px 12px", borderBottom: "0.5px solid var(--border)", background: "#EBF4FF", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ padding: "7px 12px", borderBottom: "0.5px solid var(--border)", background: "#EEF3F9", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     <span style={{ fontSize: 12, color: "#1A4870", fontWeight: 600 }}>
                       {selecaoMultipla.size} linha{selecaoMultipla.size > 1 ? "s" : ""} selecionada{selecaoMultipla.size > 1 ? "s" : ""}
                       {selecaoMultipla.size > 1 && ` · Total ${fmtBRL(Array.from(selecaoMultipla).reduce((sm, id) => sm + (extrato.linhas.find(l => l.id === id)?.valor ?? 0), 0))}`}
@@ -2861,7 +2824,7 @@ function ConciliacaoInner() {
                     <button disabled={selecaoMultipla.size < 2}
                       onClick={() => { setDescAgrupado(""); setOgAgrupado(""); setModalAgrupado(true); }}
                       title={selecaoMultipla.size < 2 ? "Selecione pelo menos 2 linhas" : undefined}
-                      style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #1A5CB8", background: selecaoMultipla.size < 2 ? "var(--bg-card)" : "#1A5CB8", color: selecaoMultipla.size < 2 ? "#1A5CB8" : "#fff", fontSize: 11, fontWeight: 600, cursor: selecaoMultipla.size < 2 ? "default" : "pointer" }}>
+                      style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #1A4870", background: selecaoMultipla.size < 2 ? "var(--bg-card)" : "#1A4870", color: selecaoMultipla.size < 2 ? "#1A4870" : "#fff", fontSize: 11, fontWeight: 600, cursor: selecaoMultipla.size < 2 ? "default" : "pointer" }}>
                       Lançar CP/CR agrupado
                     </button>
                     <button onClick={() => setSelecaoMultipla(new Set())}
@@ -2869,12 +2832,12 @@ function ConciliacaoInner() {
                   </div>
                 )}
 
-                <div style={{ overflowX: "auto" }}>
-                  <div style={{ minWidth: 640 }}>
+                <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div style={{ minWidth: 640, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ display: "grid", gridTemplateColumns: COLS_OFX, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
                       <div>Data pagto.</div><div>Histórico</div><div style={{ textAlign: "right" }}>Valor</div><div>Situação</div><div>Ação</div>
                     </div>
-                    <div style={{ maxHeight: "calc(100vh - 430px)", minHeight: 300, overflowY: "auto" }}>
+                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                       {linhasFiltradas.map(l => {
                         const isAtiva = linhaAtiva?.id === l.id;
                         const bate = linhaBateComSelecao(l);
@@ -2885,8 +2848,8 @@ function ConciliacaoInner() {
                           <div key={l.id} style={{
                             display: "grid", gridTemplateColumns: COLS_OFX, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12,
                             borderBottom: "0.5px solid var(--bg-tag)",
-                            background: isAtiva ? "#FBF3E0" : bate ? "#EDF9F0" : l.conciliado ? "transparent" : "#FFFEF8",
-                            borderLeft: bate ? "3px solid #16A34A" : isAtiva ? "3px solid #C9921B" : "3px solid transparent",
+                            background: isAtiva ? "#DCE6F2" : bate ? "#EEF3F9" : "transparent",
+                            borderLeft: bate || isAtiva ? "3px solid #1A4870" : "3px solid transparent",
                           }}>
                             <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>
                               {!l.conciliado && (
@@ -2904,27 +2867,27 @@ function ConciliacaoInner() {
                                 </div>
                               )}
                               {sug && (
-                                <div style={{ fontSize: 10, color: "#8A5A00", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                                   title={l.sugestao_motivo ? `Confirmar porque: ${l.sugestao_motivo}` : undefined}>
-                                  💡 {sug.descricao} · {fmtBRL(valorRestante(sug))}{l.sugestao_motivo ? ` · ${l.sugestao_motivo}` : ""}
+                                  Sugestão: {sug.descricao} · {fmtBRL(valorRestante(sug))}{l.sugestao_motivo ? ` · ${l.sugestao_motivo}` : ""}
                                 </div>
                               )}
                             </div>
-                            <div style={{ textAlign: "right", whiteSpace: "nowrap", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: l.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
+                            <div style={{ textAlign: "right", whiteSpace: "nowrap", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
                               {l.tipo === "credito" ? "+" : "−"}{fmtBRL(l.valor)}
                             </div>
                             <div>
                               {l.conciliado ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
-                                  <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#DCFCE7", color: "#16A34A", whiteSpace: "nowrap" }}>✓ Conciliado</span>
-                                  <span title={l.confianca ? `Confiança ${l.confianca}` : undefined} style={{ padding: "1px 6px", borderRadius: 8, fontSize: 9, fontWeight: 600, background: o.bg, color: o.cor, whiteSpace: "nowrap" }}>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>✓ Conciliado</span>
+                                  <span title={l.confianca ? `Confiança ${l.confianca}` : undefined} style={{ padding: "1px 6px", borderRadius: 6, fontSize: 9, fontWeight: 500, background: o.bg, color: o.cor, whiteSpace: "nowrap" }}>
                                     {o.label}{reg ? `: ${reg.texto}` : ""}{l.confianca === "media" ? " · média" : ""}
                                   </span>
                                 </div>
                               ) : sug ? (
-                                <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#FFF3D6", color: "#8A5A00", whiteSpace: "nowrap" }}>💡 Sugestão</span>
+                                <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: "#E3EAF3", color: "#1A4870", whiteSpace: "nowrap" }}>Sugestão</span>
                               ) : (
-                                <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#92400E", whiteSpace: "nowrap" }}>Pendente</span>
+                                <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: "0.5px solid #1A4870", color: "#1A4870", whiteSpace: "nowrap" }}>Pendente</span>
                               )}
                             </div>
                             <div>
@@ -2936,7 +2899,7 @@ function ConciliacaoInner() {
                                   {sug && !isAtiva && (
                                     <div style={{ display: "flex", gap: 4 }}>
                                       <button disabled={salvando} onClick={() => aceitarSugestoes([l])}
-                                        style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#16A34A", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>✓ Aceitar</button>
+                                        style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>Aceitar</button>
                                       <button disabled={salvando} onClick={() => ignorarSugestao(l)} title="Descartar a sugestão"
                                         style={{ padding: "3px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>✕</button>
                                     </div>
@@ -2948,7 +2911,7 @@ function ConciliacaoInner() {
                                       if (lancsSel.size > 0) { setLinhaAtiva(l); confirmarVinculo(l); }
                                       else setLinhaAtiva(l);
                                     }}
-                                    style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid #C9921B", background: isAtiva ? "#C9921B" : lancsSel.size > 0 ? "#1A4870" : "#FBF3E0", color: isAtiva || lancsSel.size > 0 ? "#fff" : "#C9921B", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                    style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid #1A4870", background: isAtiva || lancsSel.size > 0 ? "#1A4870" : "#fff", color: isAtiva || lancsSel.size > 0 ? "#fff" : "#1A4870", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
                                     {isAtiva && salvando ? "Salvando…" : isAtiva ? "Cancelar" : lancsSel.size > 0 ? `↗ Vincular (${lancsSel.size})` : "Vincular"}
                                   </button>
                                   {!isAtiva && (
@@ -2971,21 +2934,6 @@ function ConciliacaoInner() {
               )}
             </div>
 
-            {/* Avisos finais */}
-            {extrato.pendentes > 0 && abaSistema !== "conferencia" && (
-              <div style={{ marginTop: 14, background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#7A5A12" }}>
-                <strong>{extrato.pendentes} transações pendentes.</strong> Clique "Vincular CP/CR" em uma linha do extrato e selecione os lançamentos no painel esquerdo. Para bordero, selecione múltiplos. Para tarifas e IOF sem CP/CR, use "+ Tesouraria".
-              </div>
-            )}
-            {pct === 100 && (
-              <div style={{ marginTop: 14, background: "#DCFCE7", border: "0.5px solid #16A34A", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 20 }}>✔</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#14532D" }}>Extrato 100% conciliado</div>
-                  <div style={{ fontSize: 12, color: "#166534" }}>Todas as transações foram associadas.</div>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
