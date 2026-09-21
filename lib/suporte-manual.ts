@@ -263,6 +263,8 @@ Controla o processo de compra de insumos do rascunho até a entrega, gerando aut
 ### 8.2 NF de Produtos
 **Caminho:** Compras & Estoque → Compras → NF de Produtos
 
+**Valor unitário com 5 casas decimais (21/09/2026):** nos itens da NF de Produtos (Associação de produtos, Apropriação Direta, VEF e Remessa) o campo Valor Unitário agora tem 5 casas (ex.: 12,34567), pois preço de insumo e peça costuma ter mais que centavos. O campo funciona como máscara: digite os números em sequência (para 12,50000 digite 1250000). O total do item continua em centavos (quantidade × valor unitário, arredondado a 2 casas). Nas entradas de Apropriação Direta, VEF e Remessa, alterar quantidade ou valor unitário à mão agora atualiza também o total e o que é gravado — antes a edição não chegava ao salvar.
+
 Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no estoque e geração automática de CP.
 
 **Fluxo:** Upload XML (recomendado) ou modo manual → Cabeçalho (fornecedor, CNPJ, número, CFOP, vínculo de atividade, entidade contábil, depósito padrão) → Itens & Processamento (associar produtos ao catálogo).

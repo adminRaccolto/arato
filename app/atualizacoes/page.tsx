@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-j",
+    data: "21/09/2026",
+    titulo: "NF de Produtos: valor unitário com 5 casas decimais",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "O campo Valor Unitário dos itens da NF de Produtos passou a ter 5 casas decimais (Associação de produtos, Apropriação Direta, VEF e Remessa), e a lista de itens também mostra 5 casas. O total do item segue em centavos." },
+      { tipo: "correcao", texto: "Em Apropriação Direta, VEF e Remessa, alterar quantidade ou valor unitário à mão não atualizava o total nem chegava ao que era gravado. Agora atualiza e grava." },
+    ],
+    onde: "Compras → NF de Produtos → Itens",
+  },
+  {
     versao: "2026.09.21-g",
     data: "21/09/2026",
     titulo: "Conciliação: Operações Gerenciais não se repetem mais no seletor",

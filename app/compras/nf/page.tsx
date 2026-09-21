@@ -48,6 +48,9 @@ const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid va
 const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "18px 20px", marginBottom: 16 };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+// Valor unitário aparece com 5 casas (preço de insumo/peça costuma ter mais que centavos); o total continua em centavos.
+const fmtUnit = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 5, maximumFractionDigits: 5 });
+const arred2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
 const CFOP_NATUREZA: Record<string, string> = {
@@ -2235,7 +2238,7 @@ export default function NfCompraPage() {
 
       // Recalcula valor_total a partir dos valores NF originais
       if (patch.qtd_nf !== undefined || patch.vunit_nf !== undefined) {
-        updated.valor_total    = (updated.qtd_nf || 0) * (updated.vunit_nf || 0);
+        updated.valor_total    = arred2((updated.qtd_nf || 0) * (updated.vunit_nf || 0));
         updated.valor_unitario = updated.vunit_nf;
         // Se não há conversão, quantidade catálogo acompanha qtd NF
         if (!updated.conversao_key) {
@@ -2907,7 +2910,7 @@ export default function NfCompraPage() {
                               <td style={{ padding: "8px 10px", color: "var(--text-2)", fontFamily: "monospace" }}>{it.cfop || "—"}</td>
                               <td style={{ padding: "8px 10px", color: "var(--text-2)" }}>{it.unidade_nf || it.unidade}</td>
                               <td style={{ padding: "8px 10px", textAlign: "right", color: "var(--text-1)" }}>{Number(it.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>
-                              <td style={{ padding: "8px 10px", textAlign: "right", color: "var(--text-1)" }}>{fmtBRL(it.valor_unitario)}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", color: "var(--text-1)" }}>{fmtUnit(it.valor_unitario)}</td>
                               <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(it.valor_total)}</td>
                             </tr>
                           ))}
@@ -3879,10 +3882,10 @@ export default function NfCompraPage() {
                             <div style={{ padding: "7px 6px" }}>
                               {temConv ? (
                                 <div style={{ padding: "5px 8px", fontSize: 12, color: "var(--text-3)", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)", textAlign: "right" }}>
-                                  {it.vunit_nf.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                  {fmtUnit(it.vunit_nf)}
                                 </div>
                               ) : (
-                                <InputMonetario value={it.vunit_nf || ""} onChange={v => setItem(it.key, { vunit_nf: v, valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                                <InputMonetario decimais={5} value={it.vunit_nf || ""} onChange={v => setItem(it.key, { vunit_nf: v, valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                               )}
                             </div>
 
@@ -3958,10 +3961,10 @@ export default function NfCompraPage() {
                               <input value={it.unidade_nf} onChange={e => setItem(it.key, { unidade_nf: e.target.value })} placeholder="UN" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <InputNumerico decimais={3} value={it.quantidade || ""} onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <InputNumerico decimais={3} value={it.quantidade || ""} onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0, qtd_nf: parseFloat(v)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <InputMonetario value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <InputMonetario decimais={5} value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v, vunit_nf: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                               {fmtBRL(it.valor_total)}
@@ -4003,10 +4006,10 @@ export default function NfCompraPage() {
                               <input value={it.unidade_nf} onChange={e => setItem(it.key, { unidade_nf: e.target.value })} placeholder="UN" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <InputNumerico decimais={3} value={it.quantidade || ""} onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <InputNumerico decimais={3} value={it.quantidade || ""} onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0, qtd_nf: parseFloat(v)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <InputMonetario value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <InputMonetario decimais={5} value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v, vunit_nf: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                               {fmtBRL(it.valor_total)}
