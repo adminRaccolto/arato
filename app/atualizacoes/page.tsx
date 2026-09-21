@@ -17,6 +17,18 @@ const RELEASES = [
     onde: "Financeiro → Tesouraria → Conciliação Bancária",
   },
   {
+    versao: "2026.09.21-k",
+    data: "21/09/2026",
+    titulo: "Conciliação Bancária: tela dividida ao meio e baixa parcial",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Nova tela de conciliação dividida em 50% sistema e 50% OFX. Lado do sistema com Vencimento, Baixa, Fornecedor/Cliente, Produtor da baixa, Conta de baixa, Tipo e Valor, em três abas: Conciliados/baixados, CP/CR abertos (valores iguais aos do OFX destacados) e Conferência em largura total (pares sistema × OFX com alertas). Lado do OFX com Data de pagamento, Histórico, Valor, Situação e Ação." },
+      { tipo: "melhoria", texto: "Período do lado do sistema: mês corrente por padrão; ao importar/abrir um extrato adota o intervalo do OFX. Baixados filtram por data de baixa e não baixados por data de vencimento; a busca ignora o período." },
+      { tipo: "novo", texto: "Baixa parcial pela conciliação: linha menor que o saldo do CP/CR gera baixa parcial acumulando o valor pago; a linha que completa o saldo quita. Antes a conciliação baixava o lançamento por inteiro." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.21-j",
     data: "21/09/2026",
     titulo: "NF de Produtos: valor unitário com 5 casas decimais",

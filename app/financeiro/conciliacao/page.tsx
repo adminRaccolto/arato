@@ -6,7 +6,7 @@ import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarCentrosCustoGeralDaConta, listarPessoasDaConta } from "../../../lib/db";
+import { listarCentrosCustoGeralDaConta, listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import { avaliarLinhas, escolherRegra, sugerirTextoRegra, diferencaSoma, normalizarTexto, type LancMatch } from "../../../lib/conciliacao-match";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -65,6 +65,7 @@ interface Lancamento {
   produtor_id?: string | null;
   conciliado?: boolean;
   moeda?: string;
+  pessoa_id?: string | null;
 }
 
 interface Extrato {
@@ -297,7 +298,7 @@ const statusMeta = (l: Lancamento): { label: string; bg: string; color: string }
   return { label: "aberto", bg: "#FEF3C7", color: "#92400E" };
 };
 
-const COL_INIT = [80, 320, 130, 110, 260, 150];
+const COLS_OFX = "88px minmax(150px,1fr) 100px 128px 132px";
 
 const lblRegra: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 };
 const inpRegra: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" };
@@ -355,7 +356,6 @@ function ConciliacaoInner() {
   // Visão dentro do extrato aberto: linhas do OFX (padrão) ou CP/CR em aberto
   // cruzadas com o extrato atual (pra achar quem já está no banco mas ainda
   // não foi baixado no sistema).
-  const [abaExtratoView, setAbaExtratoView] = useState<"linhas" | "abertos">("linhas");
 
   // Seleção múltipla de linhas OFX pendentes — pra lançar um único CP/CR
   // agrupado (ex: vários pedágios do mesmo dia) e conciliar todas de uma vez.
@@ -368,9 +368,18 @@ function ConciliacaoInner() {
   // Painel esquerdo — filtros
   const [buscaLanc, setBuscaLanc]           = useState("");
   const [filtroLancTipo, setFiltroLancTipo] = useState<"todos"|"pagar"|"receber">("todos");
-  const [filtroLancStatus, setFiltroLancStatus] = useState<"todos"|"aberto"|"baixado"|"parcial">("todos");
-  const [filtroLancDe, setFiltroLancDe]     = useState<string>("");
-  const [filtroLancAte, setFiltroLancAte]   = useState<string>("");
+  // Intervalo do lado CP/CR. Padrão: o mês completo corrente; ao abrir/importar um extrato adota o
+  // intervalo do OFX. Baixados filtram por data de baixa; não baixados por data de vencimento.
+  const mesCorrente = () => {
+    const d = new Date();
+    return { de: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`, ate: new Date(d.getFullYear(), d.getMonth() + 1, 0).toLocaleDateString("sv-SE") };
+  };
+  const [filtroLancDe, setFiltroLancDe]     = useState<string>(() => mesCorrente().de);
+  const [filtroLancAte, setFiltroLancAte]   = useState<string>(() => mesCorrente().ate);
+  // Abas do lado do sistema (esquerda): conciliados/baixados · abertos · conferência (largura total)
+  const [abaSistema, setAbaSistema]         = useState<"conciliados" | "abertos" | "conferencia">("abertos");
+  const [pessoasNomes, setPessoasNomes]     = useState<Map<string, string>>(new Map());
+  const [produtoresNomes, setProdutoresNomes] = useState<Map<string, string>>(new Map());
 
   // Período de fetch dos lançamentos (header — antes de importar OFX)
   const [periodoFetchDe, setPeriodoFetchDe] = useState<string>(() => {
@@ -414,7 +423,6 @@ function ConciliacaoInner() {
   };
 
   // Colunas redimensionáveis
-  const [colWidths, setColWidths] = useState<number[]>([...COL_INIT]);
 
   // Busca TODOS os lançamentos (não só os 600/1000 mais recentes) — o corte
   // fixo escondia lançamentos mais antigos por completo da conciliação (achado
@@ -432,7 +440,7 @@ function ConciliacaoInner() {
     let from = 0;
     while (true) {
       let q = supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id")
         .in("fazenda_id", fazIds)
         .not("status", "eq", "cancelado")
         // desempate por id: só data_vencimento é chave não-única e a paginação por range
@@ -453,7 +461,7 @@ function ConciliacaoInner() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lData, exR, hR, ogR, gsR, pR, etR, colR, regR] = await Promise.all([
+    const [cR, lData, exR, hR, ogR, gsR, pR, etR, colR, regR, pesR, prodR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta,produtor_id,fazenda_id,conjunta,cotitulares").in("fazenda_id", fazendaIds).order("nome"),
       buscarTodosLancamentosConciliacao(fazendaIds),
       // sem `linhas` (JSON de todas as transações de cada import): a tela só usa o cabeçalho
@@ -489,7 +497,11 @@ function ConciliacaoInner() {
       // detecta se a migração Seção 277 já foi executada (colunas novas em extrato_transacoes)
       supabase.from("extrato_transacoes").select("origem_vinculo").limit(1),
       fetch("/api/financeiro/conciliacao-regras").then(r => r.json()).catch(() => null),
+      listarPessoasDaConta(fazendaId).catch(() => []),
+      contaId ? listarProdutoresDaConta(contaId).catch(() => []) : Promise.resolve([]),
     ]);
+    setPessoasNomes(new Map((pesR as { id: string; nome: string }[]).map(p => [p.id, p.nome])));
+    setProdutoresNomes(new Map((prodR as { id: string; nome: string }[]).map(p => [p.id, p.nome])));
     COLUNAS_NOVAS = !colR.error;
     setMigracaoOk(COLUNAS_NOVAS && regR?.migracao !== false);
     setRegras(((regR?.regras ?? []) as RegraConc[]));
@@ -524,15 +536,13 @@ function ConciliacaoInner() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // Pré-preenche o filtro de período ao carregar um extrato (±15 dias de folga)
+  // Ao abrir/importar um extrato, o intervalo do lado CP/CR passa a ser o intervalo do OFX;
+  // sem extrato aberto, volta ao mês completo corrente. O usuário pode alterar depois.
   useEffect(() => {
-    if (!extrato) { setFiltroLancDe(""); setFiltroLancAte(""); return; }
-    const dIni = new Date(extrato.data_inicio + "T00:00:00");
-    dIni.setDate(dIni.getDate() - 15);
-    const dFim = new Date(extrato.data_fim + "T00:00:00");
-    dFim.setDate(dFim.getDate() + 15);
-    setFiltroLancDe(dIni.toISOString().slice(0, 10));
-    setFiltroLancAte(dFim.toISOString().slice(0, 10));
+    if (!extrato) { const m = mesCorrente(); setFiltroLancDe(m.de); setFiltroLancAte(m.ate); return; }
+    setFiltroLancDe(extrato.data_inicio);
+    setFiltroLancAte(extrato.data_fim);
+    setAbaSistema("abertos");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extrato?.id]);
 
@@ -554,23 +564,6 @@ function ConciliacaoInner() {
     try {
       const data = await buscarTodosLancamentosConciliacao(fazendaIds);
       setLancamentos(data);
-    } finally { setLancRefresh(false); }
-  }
-
-  async function recarregarParaPeriodo(de?: string, ate?: string) {
-    const dFrom = de ?? periodoFetchDe;
-    const dTo   = ate ?? periodoFetchAte;
-    if (!fazendaId || !dFrom || !dTo || lancRefresh) return;
-    setLancRefresh(true);
-    try {
-      const data = await buscarTodosLancamentosConciliacao(fazendaIds, { de: dFrom, ate: dTo });
-      if (data) {
-        setLancamentos(prev => {
-          const mapa = new Map(prev.map(l => [l.id, l]));
-          for (const l of data as Lancamento[]) mapa.set(l.id, l);
-          return Array.from(mapa.values()).sort((a, b) => b.data_vencimento.localeCompare(a.data_vencimento));
-        });
-      }
     } finally { setLancRefresh(false); }
   }
 
@@ -644,18 +637,17 @@ function ConciliacaoInner() {
     }
   }
 
-  // Atalho usado pelo banner de pendências — abre a conta já com um período
-  // largo (6 meses) pra não deixar pendência antiga escondida fora do filtro.
-  function abrirContaPendente(contaBancariaId: string) {
+  // Abre a conciliação da conta com TODO o extrato já importado (do 1º ao último lançamento).
+  async function abrirContaCompleta(contaBancariaId: string) {
     setContaSel(contaBancariaId);
-    const ate = hoje();
-    const d = new Date();
-    d.setMonth(d.getMonth() - 6);
-    const de = d.toISOString().slice(0, 10);
-    setPeriodoFetchDe(de);
-    setPeriodoFetchAte(ate);
-    carregarExtratoUnificado(contaBancariaId, de, ate);
+    const [{ data: ini }, { data: fim }] = await Promise.all([
+      supabase.from("extrato_transacoes").select("data").eq("conta_bancaria_id", contaBancariaId).in("fazenda_id", fazendaIds).order("data", { ascending: true }).limit(1),
+      supabase.from("extrato_transacoes").select("data").eq("conta_bancaria_id", contaBancariaId).in("fazenda_id", fazendaIds).order("data", { ascending: false }).limit(1),
+    ]);
+    if (!ini?.[0] || !fim?.[0]) { alert("Esta conta ainda não tem extrato importado. Use \"Importar OFX\"."); return; }
+    carregarExtratoUnificado(contaBancariaId, ini[0].data as string, fim[0].data as string);
   }
+  const abrirContaPendente = abrirContaCompleta;
 
   // ── Upload OFX ─────────────────────────────────────────────────────────────
   async function handleOFX(e: React.ChangeEvent<HTMLInputElement>) {
@@ -703,7 +695,7 @@ function ConciliacaoInner() {
       // conta_bancaria: o merge SUBSTITUÍA os lançamentos do estado por cópias sem
       // conta, e os baixados sumiam do painel esquerdo até recarregar a página.
       const lancFresh = await paginar<Lancamento>((de, ate) => supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id")
         .in("fazenda_id", fazendaIds)
         .not("status", "eq", "cancelado")
         .gte("data_vencimento", iniMatch)
@@ -895,11 +887,8 @@ function ConciliacaoInner() {
 
       // Fase 3 — abre a visão contínua da conta (não o card isolado deste
       // import), estendendo o período já filtrado pra cobrir o OFX inteiro.
-      const rangeDe  = periodoFetchDe  && periodoFetchDe  < dataInicio ? periodoFetchDe  : dataInicio;
-      const rangeAte = periodoFetchAte && periodoFetchAte > dataFim    ? periodoFetchAte : dataFim;
-      setPeriodoFetchDe(rangeDe);
-      setPeriodoFetchAte(rangeAte);
-      await carregarExtratoUnificado(contaSel, rangeDe, rangeAte);
+      // ao importar, a tela adota o intervalo do OFX importado
+      await carregarExtratoUnificado(contaSel, dataInicio, dataFim);
       // banner de pendências, contagens e histórico ficavam desatualizados após o import
       carregar();
     } catch (err) {
@@ -954,7 +943,7 @@ function ConciliacaoInner() {
     opts?: {
       conciliarIds?: string[];
       desconciliarIds?: string[];
-      baixar?: { id: string; data_baixa: string; valor_pago: number; conta_bancaria?: string }[];
+      baixar?: { id: string; data_baixa: string; valor_pago: number; status?: "baixado" | "parcial"; conta_bancaria?: string }[];
       definirConta?: { id: string; conta_bancaria: string }[];
       moverConta?: { id: string; conta_bancaria: string }[];
     },
@@ -1028,16 +1017,24 @@ function ConciliacaoInner() {
   // linhaParam: usado quando chamado direto do botão OFX (estado ainda não atualizou)
   // idsParam: usado pela aba "CP/CR em Aberto" — evita depender de lancsSel
   // (que teria valor desatualizado se setado no mesmo ciclo de render)
+  // Quanto ainda falta pagar de um lançamento: aberto = valor; parcial = saldo; baixado = o que já foi pago.
+  const valorRestante = (l: Lancamento) =>
+    l.status === "baixado" ? Number(l.valor_pago ?? l.valor)
+    : ehParcial(l) ? Math.max(0, Number(l.valor) - Number(l.valor_pago ?? 0))
+    : Number(l.valor);
+
   async function confirmarVinculo(linhaParam?: LinhaOFX, idsParam?: string[], origem: "manual" | "sugestao" = "manual") {
     const linha = linhaParam ?? linhaAtiva;
     const idsSel = idsParam ?? Array.from(lancsSel);
     if (!linha || idsSel.length === 0 || !extrato || !fazendaId) return;
     const ids = idsSel;
     const selecionados = ids.map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
+    const unico = selecionados.length === 1;
 
     // 1 lançamento ↔ 1 linha: lançamento já conciliado com outra linha não pode ser reaproveitado
-    // (era como o mesmo CP acabava ligado a várias linhas do extrato)
-    const jaConc = selecionados.filter(l => l.conciliado && !extrato.linhas.some(x => x.id === linha.id && (x.lancamento_ids?.includes(l.id) || x.lancamento_id === l.id)));
+    // (era como o mesmo CP acabava ligado a várias linhas do extrato). Parcial que já tem a marca
+    // pode receber outro pagamento.
+    const jaConc = selecionados.filter(l => l.conciliado && !ehParcial(l) && !extrato.linhas.some(x => x.id === linha.id && (x.lancamento_ids?.includes(l.id) || x.lancamento_id === l.id)));
     if (jaConc.length > 0) {
       alert(`"${jaConc[0].descricao}" já está conciliado com outra linha do extrato. Desvincule a outra linha antes de usá-lo aqui.`);
       return;
@@ -1054,42 +1051,56 @@ function ConciliacaoInner() {
       moverConta = outraConta.map(l => ({ id: l.id, conta_bancaria: extrato.conta_id }));
     }
 
-    // Valor: a soma dos lançamentos precisa bater com a linha do banco; diferença só com
-    // justificativa (juros, multa, desconto) — no ERP de referência 96% dos lotes fecham exato.
-    const dif = diferencaSoma(linha.valor, selecionados);
+    // O que cada lançamento recebe com esta linha:
+    //  • aberto  → paga; se a linha é menor que o valor, baixa PARCIAL (acumula o valor pago)
+    //  • parcial → se a linha é o pagamento que já está registrado (valor pago), só vincula;
+    //              senão é um novo pagamento: soma ao valor pago (parcial até quitar)
+    //  • baixado → só vincula
+    type Plano = { l: Lancamento; baixa: boolean; pago: number; status: "baixado" | "parcial" };
+    const planos: Plano[] = selecionados.map(l => {
+      if (l.status === "baixado") return { l, baixa: false, pago: Number(l.valor_pago ?? l.valor), status: "baixado" as const };
+      const pagoAntes = Number(l.valor_pago ?? 0);
+      if (ehParcial(l) && unico && Math.abs(linha.valor - pagoAntes) <= 0.02) {
+        return { l, baixa: false, pago: pagoAntes, status: "parcial" as const };   // pagamento já registrado
+      }
+      const pagaAgora = unico ? linha.valor : valorRestante(l);
+      const total = pagoAntes + pagaAgora;
+      return { l, baixa: true, pago: Math.round(total * 100) / 100, status: total >= Number(l.valor) - 0.01 ? "baixado" as const : "parcial" as const };
+    });
+
+    // Valor: para um único lançamento em aberto/parcial, linha menor ou igual ao saldo é pagamento
+    // (parcial ou total), não diferença; linha MAIOR que o saldo (juros/multa) exige motivo.
+    // Vários lançamentos (borderô): a soma precisa bater com a linha, senão exige motivo.
     let justificativa = "";
-    if (Math.abs(dif) > 0.02) {
-      const resp = window.prompt(`A linha do extrato (${fmtBRL(linha.valor)}) difere dos lançamentos selecionados (${fmtBRL(linha.valor - dif)}) em ${fmtBRL(Math.abs(dif))}.\n\nInforme o motivo da diferença (juros, multa, desconto…) para confirmar:`);
+    const esperado = unico && planos[0].baixa ? valorRestante(planos[0].l) : planos.reduce((sm, p) => sm + (p.baixa ? valorRestante(p.l) : p.pago), 0);
+    const dif = Math.round((linha.valor - esperado) * 100) / 100;
+    const excesso = unico && planos[0].baixa ? dif > 0.02 : Math.abs(dif) > 0.02;
+    if (excesso) {
+      const resp = window.prompt(`A linha do extrato (${fmtBRL(linha.valor)}) difere do esperado (${fmtBRL(esperado)}) em ${fmtBRL(Math.abs(dif))}.\n\nInforme o motivo da diferença (juros, multa, desconto…) para confirmar:`);
       if (!resp || !resp.trim()) return;
       justificativa = resp.trim();
+    } else if (unico && planos[0].baixa && planos[0].status === "parcial") {
+      if (!confirm(`Baixa PARCIAL: a linha (${fmtBRL(linha.valor)}) é menor que o saldo do lançamento (${fmtBRL(esperado)}).\n\nO lançamento fica parcial, com saldo de ${fmtBRL(Number(planos[0].l.valor) - planos[0].pago)}. Confirmar?`)) return;
     }
 
     setSalvando(true);
-
-    // Lançamentos a baixar (somente os que ainda não foram baixados nem parcialmente pagos)
-    // "parcial" = já tem valor_pago registrado; conciliar apenas vincula o OFX, não reprocessa baixa
-    const paraBaixar = selecionados.filter(l => l.status !== "baixado" && l.status !== "parcial");
-    // Baixa com a data do banco; com um único lançamento, o valor pago é o valor REAL do banco
-    // (juros/desconto entram no valor pago em vez de ficar oculto).
-    const valorBaixa = (l: Lancamento) => selecionados.length === 1 ? linha.valor : (l.valor_pago ?? l.valor);
+    const baixas = planos.filter(p => p.baixa);
 
     // Atualiza estado local imediatamente (optimistic)
-    if (paraBaixar.length > 0 || moverConta.length > 0) {
-      setLancamentos(prev => prev.map(l => {
-        if (!ids.includes(l.id)) return l;
-        const baixa = paraBaixar.some(b => b.id === l.id);
-        return { ...l, ...(baixa ? { status: "baixado", data_baixa: linha.data, valor_pago: valorBaixa(l) } : {}), conta_bancaria: extrato.conta_id || l.conta_bancaria, conciliado: true };
-      }));
-    }
+    setLancamentos(prev => prev.map(l => {
+      const pl = planos.find(p => p.l.id === l.id);
+      if (!pl) return l;
+      return { ...l, ...(pl.baixa ? { status: pl.status, data_baixa: linha.data, valor_pago: pl.pago } : {}), conta_bancaria: extrato.conta_id || l.conta_bancaria, conciliado: true };
+    }));
 
     // Vincular à linha OFX
     const primeiro = selecionados[0];
     const descVinc = ids.length === 1 && primeiro ? primeiro.descricao : `${ids.length} lançamentos (bordero)`;
-    const valorVinc = selecionados.reduce((sm, l) => sm + (l.valor_pago ?? l.valor), 0);
+    const valorVinc = planos.reduce((sm, p) => sm + (p.baixa ? (p.status === "parcial" && unico ? linha.valor : valorRestante(p.l)) : p.pago), 0);
 
     const novasLinhas = extrato.linhas.map(l =>
       l.id === linha.id
-        ? { ...l, conciliado: true, lancamento_id: ids[0], lancamento_ids: ids, lancamento_desc: descVinc, lancamento_valor: valorVinc,
+        ? { ...l, conciliado: true, lancamento_id: ids[0], lancamento_ids: ids, lancamento_desc: descVinc, lancamento_valor: unico ? linha.valor : valorVinc,
             origem_vinculo: origem, confianca: origem === "sugestao" ? ("media" as const) : null, regra_id: null, sugestao_lancamento_id: null, sugestao_motivo: null }
         : l
     );
@@ -1099,24 +1110,20 @@ function ConciliacaoInner() {
       { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
       {
         conciliarIds: ids,
-        baixar: paraBaixar.map(l => ({
-          id: l.id,
-          data_baixa: linha.data,
-          valor_pago: valorBaixa(l),
-          conta_bancaria: extrato.conta_id || undefined,
-        })),
+        baixar: baixas.map(p => ({ id: p.l.id, data_baixa: linha.data, valor_pago: p.pago, status: p.status, conta_bancaria: extrato.conta_id || undefined })),
         moverConta,
         // já baixado sem conta bancária → grava a conta deste extrato (senão a Posição
-        // Bancária nunca fecha com o extrato: 127 vínculos com conta divergente no banco)
-        definirConta: selecionados
-          .filter(l => (l.status === "baixado" || l.status === "parcial") && !l.conta_bancaria)
-          .map(l => ({ id: l.id, conta_bancaria: extrato.conta_id })),
+        // Bancária nunca fecha com o extrato)
+        definirConta: planos
+          .filter(p => !p.baixa && (p.l.status === "baixado" || p.l.status === "parcial") && !p.l.conta_bancaria)
+          .map(p => ({ id: p.l.id, conta_bancaria: extrato.conta_id })),
       },
     );
 
     if (!ok) {
       alert("Não foi possível salvar a conciliação — tente novamente. A tela pode estar mostrando um estado que ainda não foi gravado.");
       setSalvando(false);
+      carregar();
       return;
     }
 
@@ -1561,23 +1568,6 @@ function ConciliacaoInner() {
     });
   }
 
-  // ── Resize colunas ─────────────────────────────────────────────────────────
-  function onResizeStart(colIdx: number, startX: number, startW: number) {
-    const onMove = (e: MouseEvent) => {
-      const delta = e.clientX - startX;
-      setColWidths(prev => {
-        const next = [...prev];
-        next[colIdx] = Math.max(50, startW + delta);
-        return next;
-      });
-    };
-    const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  }
 
   // ── Filtros ────────────────────────────────────────────────────────────────
   const linhasFiltradas = (extrato?.linhas ?? []).filter(l => {
@@ -1599,106 +1589,153 @@ function ConciliacaoInner() {
     return true;
   });
 
-  const lancFiltrados = lancamentos.filter(l => {
-    // Filtro por conta bancária selecionada no header:
-    // - baixados/parciais: só mostrar se conta_bancaria === contaSel (já pagos por esse banco)
-    //   ou se ainda estão SEM conta (dá pra ligar e a conta é gravada na conciliação)
-    // - em aberto: sempre mostrar (ainda não pagos, podem ser conciliados agora)
-    if (contaSel) {
-      const pago = l.status === "baixado" || ehParcial(l);
-      if (pago && l.conta_bancaria && l.conta_bancaria !== contaSel) return false;
-    }
+  // ═══ LADO DO SISTEMA (esquerda) — dados derivados ═══════════════════════════
+  const contaNomeDe = (id?: string | null) => (id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—");
+  // "Produtor da baixa" = titular da conta bancária em que o lançamento foi baixado
+  const produtorDaBaixa = (l: Lancamento) => {
+    const c = l.conta_bancaria ? contas.find(x => x.id === l.conta_bancaria) : undefined;
+    return c?.produtor_id ? (produtoresNomes.get(c.produtor_id) ?? "—") : "—";
+  };
+  // Sem fornecedor/cliente cadastrado no lançamento (34% dos baixados), cai na descrição
+  const fornecedorDe = (l: Lancamento) => (l.pessoa_id ? pessoasNomes.get(l.pessoa_id) : undefined) ?? l.descricao;
+  const emIntervalo = (d?: string | null) => !!d && (!filtroLancDe || d >= filtroLancDe) && (!filtroLancAte || d <= filtroLancAte);
+  const passaTipo = (l: Lancamento) => filtroLancTipo === "todos" || l.tipo === filtroLancTipo;
+  const buscaTxt = buscaLanc.trim();
+  const bateBusca = (texto: string, valor: number) => {
+    if (!buscaTxt) return true;
+    const num = parseFloat(buscaTxt.replace(/\./g, "").replace(",", "."));
+    const porValor = !isNaN(num) && (Math.abs(valor - num) < 0.01 || valor.toFixed(2).replace(".", ",").includes(buscaTxt.replace(".", ",")));
+    return porValor || normalizarTexto(texto).includes(normalizarTexto(buscaTxt));
+  };
+  const passaBuscaLanc = (l: Lancamento) => bateBusca(`${fornecedorDe(l)} ${l.descricao} ${l.categoria ?? ""}`, Number(l.valor_pago ?? l.valor));
 
-    // Filtro de status
-    if (filtroLancStatus === "aberto" && !["aberto", "vencido", "em_aberto", "parcial"].includes(l.status)) return false;
-    if (filtroLancStatus === "baixado" && l.status !== "baixado") return false;
-    if (filtroLancStatus === "parcial" && !ehParcial(l)) return false;
-
-    // Filtro de tipo
-    if (filtroLancTipo !== "todos" && l.tipo !== filtroLancTipo) return false;
-
-    // Auto-filtro por tipo do OFX quando linha ativa
-    if (linhaAtiva) {
-      if (linhaAtiva.tipo === "credito" && l.tipo !== "receber") return false;
-      if (linhaAtiva.tipo === "debito"  && l.tipo !== "pagar")   return false;
-    }
-
-    // Filtro de período: usa data_baixa quando disponível, senão data_vencimento
-    if (filtroLancDe || filtroLancAte) {
-      const dataRef = l.data_baixa ?? l.data_vencimento;
-      if (filtroLancDe && dataRef < filtroLancDe) return false;
-      if (filtroLancAte && dataRef > filtroLancAte) return false;
-    }
-
-    // Busca
-    if (buscaLanc) {
-      const q = buscaLanc.toLowerCase();
-      if (!l.descricao.toLowerCase().includes(q) && !l.categoria?.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
-
-  // ── CP/CR em aberto cruzados com o extrato atual (sub-aba "CP/CR em Aberto") ──
-  const cpcrAbertos = lancamentos.filter(l => !["baixado", "cancelado"].includes(l.status));
-
-  // Índice das linhas não conciliadas do extrato por valor arredondado (real
-  // cheio) — antes a busca de correspondência escaneava TODAS as linhas do
-  // extrato pra CADA lançamento em aberto (O(n×m), com criação de Date por
-  // candidato), recalculado sem memoização em toda renderização. Em conta
-  // com histórico grande (extrato contínuo de vários bancos/anos + centenas
-  // de CP/CR em aberto), isso travava/estourava memória da aba (achado real
-  // 18/09/2026, reportado como a tela de conciliação crashando ao recarregar
-  // depois da correção anterior, que tornou a busca ainda mais pesada por
-  // item ao adicionar o filtro de data). Bucket por valor reduz o escaneado
-  // por lançamento de "todo o extrato" para "só as linhas com valor parecido".
-  const indiceExtratoPorValor = useMemo(() => {
-    const m = new Map<number, LinhaOFX[]>();
-    for (const linha of extrato?.linhas ?? []) {
-      if (linha.conciliado) continue;
-      const bucket = Math.round(linha.valor);
-      const arr = m.get(bucket);
-      if (arr) arr.push(linha); else m.set(bucket, [linha]);
-    }
-    return m;
-  }, [extrato]);
-
-  // Antes só casava por valor+tipo, sem checar data — com .find() pegava a
-  // primeira transação do extrato (ordenado por data) com aquele valor,
-  // mesmo quando havia mais de uma com o mesmo valor em datas diferentes
-  // (comum: parcelas recorrentes, várias compras de cartão com valor igual).
-  // Isso sugeria a transação errada — achado real reportado como "valores
-  // aleatórios" na conciliação (18/09/2026). Agora exige estar dentro de uma
-  // janela de 15 dias do vencimento e, entre os candidatos, escolhe o de
-  // data mais próxima — mesmo princípio do autoMatch (import automático),
-  // só com janela maior porque aqui é o usuário confirmando manualmente.
-  function acharCorrespondencia(l: Lancamento): LinhaOFX | undefined {
-    if (!extrato) return undefined;
-    const alvo = l.valor_pago ?? l.valor;
-    const dv = new Date(l.data_vencimento + "T00:00:00").getTime();
-    const baseBucket = Math.round(alvo);
-    const candidatos = [
-      ...(indiceExtratoPorValor.get(baseBucket - 1) ?? []),
-      ...(indiceExtratoPorValor.get(baseBucket) ?? []),
-      ...(indiceExtratoPorValor.get(baseBucket + 1) ?? []),
-    ].filter(linha => {
-      if (Math.abs(linha.valor - alvo) > 0.02) return false;
-      if (l.tipo === "pagar"   && linha.tipo !== "debito")  return false;
-      if (l.tipo === "receber" && linha.tipo !== "credito") return false;
-      const dl = new Date(linha.data + "T00:00:00").getTime();
-      return Math.abs((dl - dv) / 86400000) <= 15;
-    });
-    if (candidatos.length === 0) return undefined;
-    return candidatos.reduce((best, c) => {
-      const diffBest = Math.abs(new Date(best.data + "T00:00:00").getTime() - dv);
-      const diffC    = Math.abs(new Date(c.data    + "T00:00:00").getTime() - dv);
-      return diffC < diffBest ? c : best;
-    });
+  // Lançamentos ligados às linhas do extrato aberto → como foram conciliados
+  const origemPorLanc = new Map<string, string>();
+  for (const ln of extrato?.linhas ?? []) {
+    if (!ln.conciliado) continue;
+    for (const id of (ln.lancamento_ids?.length ? ln.lancamento_ids : ln.lancamento_id ? [ln.lancamento_id] : [])) origemPorLanc.set(id, ln.origem_vinculo ?? "anterior");
   }
+  const ORIGEM_LANC: Record<string, { label: string; bg: string; cor: string }> = {
+    exato:    { label: "Automático",      bg: "#E4F6EA", cor: "#166534" },
+    regra:    { label: "Regra",           bg: "#E6F0FB", cor: "#1A4870" },
+    sugestao: { label: "Sugestão aceita", bg: "#FFF3D6", cor: "#8A5A00" },
+    manual:   { label: "Manual",          bg: "#EEEEF2", cor: "#555" },
+    anterior: { label: "Anterior",        bg: "#F3F3F3", cor: "#777" },
+  };
 
-  const cpcrAbertosComMatch = useMemo(
-    () => cpcrAbertos.filter(l => !!acharCorrespondencia(l)),
-    [cpcrAbertos, indiceExtratoPorValor] // eslint-disable-line react-hooks/exhaustive-deps
-  );
+  // Aba 1 — conciliados e baixados (filtro: data de baixa)
+  const lancConciliados = lancamentos
+    .filter(l => origemPorLanc.has(l.id) && passaTipo(l) && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento)))
+    .sort((a, b) => (b.data_baixa ?? b.data_vencimento).localeCompare(a.data_baixa ?? a.data_vencimento));
+
+  // Índice das linhas PENDENTES do OFX por valor — só para DESTACAR os lançamentos que batem
+  const indicePend = new Map<number, LinhaOFX[]>();
+  for (const ln of extrato?.linhas ?? []) {
+    if (ln.conciliado) continue;
+    const k = Math.round(ln.valor);
+    const arr = indicePend.get(k);
+    if (arr) arr.push(ln); else indicePend.set(k, [ln]);
+  }
+  const linhasQueBatem = (l: Lancamento): LinhaOFX[] => {
+    const alvo = valorRestante(l);
+    const k = Math.round(alvo);
+    return [k - 1, k, k + 1].flatMap(x => indicePend.get(x) ?? [])
+      .filter(x => Math.abs(x.valor - alvo) <= 0.02 && ((x.tipo === "credito") === (l.tipo === "receber")));
+  };
+  const igualAoValor = (l: Lancamento) => !!linhaAtiva && Math.abs(valorRestante(l) - linhaAtiva.valor) <= 0.02;
+
+  // Aba 2 — CP/CR abertos e parciais (filtro: data de vencimento; a busca ignora o intervalo)
+  const lancAbertos = (() => {
+    let base = lancamentos.filter(l => l.status !== "baixado" && l.status !== "cancelado" && passaTipo(l)
+      && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_vencimento)));
+    if (linhaAtiva) {
+      base = base.filter(l => (linhaAtiva.tipo === "credito") === (l.tipo === "receber"));
+      return base.sort((x, y) => {
+        const ex = igualAoValor(x) ? 0 : 1, ey = igualAoValor(y) ? 0 : 1;
+        if (ex !== ey) return ex - ey;
+        const dist = (l: Lancamento) => Math.abs(new Date(l.data_vencimento + "T00:00:00").getTime() - new Date(linhaAtiva.data + "T00:00:00").getTime());
+        return dist(x) - dist(y);
+      });
+    }
+    return base.sort((x, y) => x.data_vencimento.localeCompare(y.data_vencimento));
+  })();
+
+  // Aba 3 — conferência: cada linha conciliada do OFX com os lançamentos a ela ligados
+  const paresConf = (extrato?.linhas ?? [])
+    .filter(x => x.conciliado && (buscaTxt ? true : emIntervalo(x.data)))
+    .map(x => {
+      const ids = x.lancamento_ids?.length ? x.lancamento_ids : x.lancamento_id ? [x.lancamento_id] : [];
+      const ls = ids.map(id => lancamentos.find(l => l.id === id)).filter((l): l is Lancamento => !!l);
+      const alertas: string[] = [];
+      if (ls.length < ids.length) alertas.push("lançamento fora da lista carregada");
+      for (const l of ls) if (extrato && l.conta_bancaria && l.conta_bancaria !== extrato.conta_id) alertas.push(`"${l.descricao.slice(0, 26)}" está baixado em ${contaNomeDe(l.conta_bancaria)}`);
+      if (ls.length === ids.length && ls.length > 0 && !ls.some(ehParcial)) {
+        const dif = diferencaSoma(x.valor, ls);
+        if (Math.abs(dif) > 0.02) alertas.push(`soma dos lançamentos ${fmtBRL(x.valor - dif)} ≠ linha ${fmtBRL(x.valor)}`);
+      }
+      return { x, ls, alertas };
+    })
+    .filter(({ x, ls }) => !buscaTxt || bateBusca(`${x.descricao} ${ls.map(l => `${fornecedorDe(l)} ${l.descricao}`).join(" ")}`, x.valor));
+
+  // Lado do OFX: linhas que batem com o(s) lançamento(s) selecionado(s) — só destaque
+  const alvoSelecionado = (() => {
+    if (lancsSel.size === 0) return null;
+    const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
+    if (sel.length === 0) return null;
+    return { valor: sel.reduce((sm, l) => sm + valorRestante(l), 0), receber: sel[0].tipo === "receber" };
+  })();
+  const linhaBateComSelecao = (x: LinhaOFX) =>
+    !!alvoSelecionado && !x.conciliado && (x.tipo === "credito") === alvoSelecionado.receber && Math.abs(x.valor - alvoSelecionado.valor) <= 0.02;
+
+  const tipoBaixaMeta = (l: Lancamento) =>
+    l.status === "baixado" ? { t: "Baixado", bg: "#DCFCE7", c: "#166534" }
+    : ehParcial(l)         ? { t: "Parcial", bg: "#FEF9C3", c: "#A16207" }
+    : { t: "Aberto", bg: l.status === "vencido" ? "#FEE2E2" : "#FEF3C7", c: l.status === "vencido" ? "#DC2626" : "#92400E" };
+
+  // Linha da tabela do sistema (abas 1 e 2)
+  const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 66px 100px";
+  const COLS_SIS_CONC    = "78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 66px 100px 84px";
+  const renderLinhaSistema = (l: Lancamento, i: number, modo: "conciliados" | "abertos") => {
+    const sel = lancsSel.has(l.id);
+    const tb = tipoBaixaMeta(l);
+    const batem = modo === "abertos" ? linhasQueBatem(l) : [];
+    const destaque = modo === "abertos" && (igualAoValor(l) || (!linhaAtiva && batem.length > 0));
+    const og = origemPorLanc.get(l.id);
+    const om = og ? ORIGEM_LANC[og] ?? ORIGEM_LANC.anterior : null;
+    return (
+      <div key={l.id}
+        onClick={modo === "abertos" ? () => setLancsSel(prev => { const n = new Set(prev); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; }) : undefined}
+        style={{
+          display: "grid", gridTemplateColumns: modo === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, alignItems: "center",
+          padding: "7px 10px", fontSize: 12, borderBottom: i >= 0 ? "0.5px solid var(--bg-tag)" : "none",
+          background: sel ? "#EBF4FF" : destaque ? "#EDF9F0" : "transparent",
+          borderLeft: sel ? "3px solid #1A4870" : destaque ? "3px solid #16A34A" : "3px solid transparent",
+          cursor: modo === "abertos" ? "pointer" : "default",
+        }}>
+        {modo === "abertos" && <input type="checkbox" checked={sel} readOnly style={{ accentColor: "#1A4870", cursor: "pointer" }} />}
+        <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</div>
+        <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
+        <div style={{ minWidth: 0 }} title={`${l.descricao}${l.categoria ? " · " + l.categoria : ""}`}>
+          <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {titularDivergente(l) && <span title={`Titular do CP (${produtoresNomes.get(l.produtor_id ?? "") ?? "outro"}) é diferente do titular da conta do extrato — não indica conta errada`} style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#FFF3D6", color: "#8A5A00", marginRight: 5 }}>titular ≠</span>}
+            {fornecedorDe(l)}
+          </div>
+          {fornecedorDe(l) !== l.descricao && <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>}
+          {modo === "abertos" && batem.length > 0 && (
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#166534" }}>= valor de {batem.length} linha{batem.length > 1 ? "s" : ""} do OFX ({batem.slice(0, 2).map(b => fmtDt(b.data).slice(0, 5)).join(", ")}{batem.length > 2 ? "…" : ""})</div>
+          )}
+        </div>
+        <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title="Titular da conta em que foi baixado">{produtorDaBaixa(l)}</div>
+        <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contaNomeDe(l.conta_bancaria)}</div>
+        <div><span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
+        <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+          <div style={{ fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>{fmtBRL(modo === "conciliados" ? Number(l.valor_pago ?? l.valor) : Number(l.valor))}</div>
+          {ehParcial(l) && <div style={{ fontSize: 10, color: "#A16207", fontWeight: 600 }}>saldo {fmtBRL(valorRestante(l))}</div>}
+        </div>
+        {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 8, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
+      </div>
+    );
+  };
 
   // Titular da conta bancária do extrato aberto — pra comparar com o titular
   // (produtor_id) de cada CP/CR na sugestão manual. Achado real 18/09/2026:
@@ -1712,11 +1749,6 @@ function ConciliacaoInner() {
   function titularDivergente(l: Lancamento): boolean {
     return !!titularContaAtiva && !!l.produtor_id && l.produtor_id !== titularContaAtiva;
   }
-
-  // Contagens para badges do filtro de status
-  const cntAberto  = lancamentos.filter(l => ["aberto","vencido","em_aberto"].includes(l.status)).length;
-  const cntBaixado = lancamentos.filter(l => l.status === "baixado").length;
-  const cntParcial = lancamentos.filter(ehParcial).length;
 
   // Rótulo do botão confirmar
   const todosJaBaixados = Array.from(lancsSel).every(id => {
@@ -1758,10 +1790,6 @@ function ConciliacaoInner() {
     padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11,
     color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap",
     position: "relative", userSelect: "none", background: "var(--bg-page)",
-  };
-  const resizer: React.CSSProperties = {
-    position: "absolute", right: 0, top: 0, bottom: 0, width: 5,
-    cursor: "col-resize", zIndex: 1,
   };
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -2061,54 +2089,6 @@ function ConciliacaoInner() {
           </div>
         </div>
 
-        {/* Seletor de período — controla quais lançamentos são carregados */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "10px 14px" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Período dos lançamentos</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <label style={{ fontSize: 11, color: "var(--text-3)" }}>De</label>
-            <input type="date" value={periodoFetchDe} onChange={e => setPeriodoFetchDe(e.target.value)}
-              style={{ padding: "4px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", background: "var(--bg-card)" }} />
-            <label style={{ fontSize: 11, color: "var(--text-3)" }}>até</label>
-            <input type="date" value={periodoFetchAte} onChange={e => setPeriodoFetchAte(e.target.value)}
-              style={{ padding: "4px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", background: "var(--bg-card)" }} />
-          </div>
-          {/* Atalhos rápidos de mês */}
-          {[
-            { label: "Mês atual", fn: () => {
-              const d = new Date();
-              const de = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
-              const ate = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
-              setPeriodoFetchDe(de); setPeriodoFetchAte(ate); recarregarParaPeriodo(de, ate);
-            }},
-            { label: "Mês anterior", fn: () => {
-              const d = new Date();
-              const mes = d.getMonth() === 0 ? 12 : d.getMonth();
-              const ano = d.getMonth() === 0 ? d.getFullYear()-1 : d.getFullYear();
-              const de = `${ano}-${String(mes).padStart(2,"0")}-01`;
-              const ate = new Date(ano, mes, 0).toISOString().slice(0,10);
-              setPeriodoFetchDe(de); setPeriodoFetchAte(ate); recarregarParaPeriodo(de, ate);
-            }},
-            { label: "Últimos 3 meses", fn: () => {
-              const ate = new Date().toISOString().slice(0,10);
-              const d3 = new Date(); d3.setMonth(d3.getMonth()-3); d3.setDate(1);
-              const de = d3.toISOString().slice(0,10);
-              setPeriodoFetchDe(de); setPeriodoFetchAte(ate); recarregarParaPeriodo(de, ate);
-            }},
-          ].map(({ label, fn }) => (
-            <button key={label} onClick={fn}
-              style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
-              {label}
-            </button>
-          ))}
-          <button onClick={() => recarregarParaPeriodo()} disabled={lancRefresh}
-            style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", cursor: lancRefresh ? "default" : "pointer", fontWeight: 600, opacity: lancRefresh ? 0.6 : 1, whiteSpace: "nowrap" }}>
-            {lancRefresh ? "Carregando…" : "↻ Atualizar"}
-          </button>
-          <span style={{ fontSize: 11, color: "var(--text-3)" }}>
-            {lancamentos.length} lançamento{lancamentos.length !== 1 ? "s" : ""} carregado{lancamentos.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-
         {/* Abas: Extratos / Inconsistências / Histórico */}
         {!extrato && (
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
@@ -2172,11 +2152,11 @@ function ConciliacaoInner() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{contas.find(c => c.id === contaSel)?.nome ?? "—"}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Período: {fmtDt(periodoFetchDe)} até {fmtDt(periodoFetchAte)} — ajustável no filtro acima</div>
+                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Abre todo o extrato já importado desta conta · para conciliar um arquivo novo, use "Importar OFX"</div>
                 </div>
                 <button
-                  onClick={() => carregarExtratoUnificado(contaSel, periodoFetchDe, periodoFetchAte)}
-                  disabled={loading || !periodoFetchDe || !periodoFetchAte}
+                  onClick={() => abrirContaCompleta(contaSel)}
+                  disabled={loading}
                   style={{ padding: "9px 20px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1 }}>
                   {loading ? "Carregando..." : "Ver conciliação →"}
                 </button>
@@ -2691,500 +2671,308 @@ function ConciliacaoInner() {
               )}
             </div>
 
-            {/* Sub-abas dentro do extrato aberto */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              {([
-                ["linhas",  "Linhas do Extrato"],
-                ["abertos", `CP/CR em Aberto${cpcrAbertosComMatch.length > 0 ? ` (${cpcrAbertosComMatch.length} com correspondência)` : ""}`],
-              ] as const).map(([k, lbl]) => (
-                <button key={k} onClick={() => setAbaExtratoView(k)}
-                  style={{
-                    padding: "6px 14px", borderRadius: 8,
-                    border: `0.5px solid ${abaExtratoView === k ? "#1A5CB8" : "var(--border)"}`,
-                    background: abaExtratoView === k ? "#1A5CB8" : "var(--bg-card)",
-                    color: abaExtratoView === k ? "#fff" : "var(--text-2)",
-                    fontSize: 12, fontWeight: abaExtratoView === k ? 700 : 400, cursor: "pointer",
-                  }}>
-                  {lbl}
-                </button>
-              ))}
-            </div>
+            {/* ═══ TELA DIVIDIDA — esquerda: sistema (CP/CR) · direita: extrato OFX ═══ */}
+            <div style={{ display: "grid", gridTemplateColumns: abaSistema === "conferencia" ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 12, alignItems: "start" }}>
 
-            {/* ═══ DOIS PAINÉIS — Linhas do Extrato ═══ */}
-            {abaExtratoView === "linhas" && (
-            <div style={{ display: "grid", gridTemplateColumns: "540px 1fr", gap: 12, alignItems: "start" }}>
-
-              {/* ─── PAINEL ESQUERDO: Lançamentos CP/CR ─────────────────── */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: `1.5px solid ${linhaAtiva ? "#C9921B" : "var(--border)"}`, overflow: "hidden", position: "sticky", top: 20 }}>
-                <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#FBF3E0" : lancsSel.size > 0 ? "#EBF4FF" : "var(--bg-page)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: linhaAtiva ? "#7A5A12" : lancsSel.size > 0 ? "#0B2D50" : "var(--text-1)" }}>
-                      {linhaAtiva
-                        ? `Vinculando ao extrato: ${linhaAtiva.tipo === "debito" ? "−" : "+"}${fmtBRL(linhaAtiva.valor)}`
-                        : lancsSel.size > 0
-                          ? `${lancsSel.size} selecionado${lancsSel.size > 1 ? "s" : ""} — clique "Vincular CP/CR" no extrato`
-                          : "Lançamentos CP / CR"}
-                    </div>
-                    <button onClick={recarregarLancamentos} title="Atualizar lançamentos" disabled={lancRefresh}
-                      style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: lancRefresh ? "default" : "pointer", fontSize: 13, color: "var(--text-2)", padding: "2px 7px", lineHeight: 1, opacity: lancRefresh ? 0.5 : 1 }}>
-                      {lancRefresh ? "…" : "↻"}
+              {/* ─── ESQUERDA: lançamentos do sistema ─────────────────────── */}
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: `1.5px solid ${linhaAtiva ? "#C9921B" : "var(--border)"}`, overflow: "hidden", minWidth: 0 }}>
+                {/* Abas do sistema */}
+                <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#FBF3E0" : "var(--bg-page)", flexWrap: "wrap" }}>
+                  {([
+                    ["conciliados", `Conciliados / baixados (${lancConciliados.length})`],
+                    ["abertos",     `CP/CR abertos (${lancAbertos.length})`],
+                    ["conferencia", `Conferência (${paresConf.length})`],
+                  ] as const).map(([k, lbl]) => (
+                    <button key={k} onClick={() => setAbaSistema(k)}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: `0.5px solid ${abaSistema === k ? "#1A5CB8" : "var(--border)"}`, background: abaSistema === k ? "#1A5CB8" : "var(--bg-card)", color: abaSistema === k ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: abaSistema === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      {lbl}
                     </button>
-                  </div>
-                  {linhaAtiva && (
-                    <div style={{ fontSize: 11, color: "#7A5A12", marginBottom: 6, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {linhaAtiva.descricao} · {fmtDt(linhaAtiva.data)}
-                    </div>
-                  )}
-                  {lancsSel.size > 0 && !linhaAtiva && (
-                    <div style={{ fontSize: 11, color: "#1A4870", marginBottom: 4 }}>
-                      Selecione uma transação no painel do extrato →
-                    </div>
-                  )}
+                  ))}
+                  <button onClick={recarregarLancamentos} title="Atualizar lançamentos" disabled={lancRefresh}
+                    style={{ marginLeft: "auto", background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: lancRefresh ? "default" : "pointer", fontSize: 13, color: "var(--text-2)", padding: "2px 8px", opacity: lancRefresh ? 0.5 : 1 }}>
+                    {lancRefresh ? "…" : "↻"}
+                  </button>
+                </div>
 
-                  {/* Filtro Período */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
-                    <div>
-                      <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 2 }}>DE</label>
-                      <input type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
-                        style={{ width: "100%", padding: "4px 7px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 2 }}>ATÉ</label>
-                      <input type="date" value={filtroLancAte} onChange={e => setFiltroLancAte(e.target.value)}
-                        style={{ width: "100%", padding: "4px 7px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
-                    </div>
-                  </div>
-
-                  {/* Filtro Tipo */}
-                  <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-                    {(["todos","pagar","receber"] as const).map(t => (
+                {/* Intervalo, tipo e busca */}
+                <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Período</span>
+                  <input type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
+                    style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
+                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>até</span>
+                  <input type="date" value={filtroLancAte} onChange={e => setFiltroLancAte(e.target.value)}
+                    style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
+                  <button onClick={() => { setFiltroLancDe(extrato.data_inicio); setFiltroLancAte(extrato.data_fim); }} title="Voltar ao intervalo do OFX aberto"
+                    style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer" }}>Intervalo do OFX</button>
+                  <div style={{ display: "flex", gap: 3, marginLeft: 4 }}>
+                    {(["todos", "pagar", "receber"] as const).map(t => (
                       <button key={t} onClick={() => setFiltroLancTipo(t)}
-                        style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: filtroLancTipo === t ? "#111" : "var(--bg-card)", color: filtroLancTipo === t ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
+                        style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: filtroLancTipo === t ? "#111" : "var(--bg-card)", color: filtroLancTipo === t ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
                         {t === "todos" ? "Todos" : t === "pagar" ? "CP" : "CR"}
                       </button>
                     ))}
                   </div>
-
-                  {/* Filtro Status */}
-                  <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-                    {([
-                      ["todos",   "Todos",    null],
-                      ["aberto",  "Em Aberto", cntAberto],
-                      ["baixado", "Baixados",  cntBaixado],
-                      ["parcial", "Parciais",  cntParcial],
-                    ] as const).map(([k, lbl, cnt]) => (
-                      <button key={k} onClick={() => setFiltroLancStatus(k)}
-                        style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, border: `0.5px solid ${filtroLancStatus === k ? "#1A4870" : "var(--border)"}`, background: filtroLancStatus === k ? "#D5E8F5" : "var(--bg-card)", color: filtroLancStatus === k ? "#0B2D50" : "var(--text-3)", cursor: "pointer", fontWeight: filtroLancStatus === k ? 700 : 400, whiteSpace: "nowrap" }}>
-                        {lbl}{cnt !== null && cnt > 0 ? ` (${cnt})` : ""}
-                      </button>
-                    ))}
-                  </div>
-
-                  <input placeholder="Buscar lançamento..." value={buscaLanc} onChange={e => setBuscaLanc(e.target.value)}
-                    style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                  <input placeholder="Buscar fornecedor, descrição ou valor…" value={buscaLanc} onChange={e => setBuscaLanc(e.target.value)}
+                    style={{ flex: "1 1 170px", minWidth: 150, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
+                </div>
+                <div style={{ padding: "5px 12px", fontSize: 11, color: "var(--text-3)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
+                  {abaSistema === "conciliados" && "Lançamentos ligados a linhas deste extrato (baixados automaticamente ou à mão). Período por data de baixa."}
+                  {abaSistema === "abertos" && (linhaAtiva
+                    ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
+                    : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#166534", fontWeight: 700 }}>verde</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento; a busca ignora o período.</>)}
+                  {abaSistema === "conferencia" && "Cada linha conciliada do OFX com o(s) lançamento(s) ligado(s). Período por data do pagamento no OFX."}
                 </div>
 
-                {/* Soma dos selecionados x linha do extrato (borderô só fecha com diferença zero ou justificada) */}
-                {linhaAtiva && lancsSel.size > 0 && (() => {
-                  const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
-                  const dif = diferencaSoma(linhaAtiva.valor, sel);
-                  const ok = Math.abs(dif) <= 0.02;
-                  return (
-                    <div style={{ padding: "6px 14px", fontSize: 11, display: "flex", justifyContent: "space-between", gap: 8, background: ok ? "#E4F6EA" : "#FFF3D6", color: ok ? "#166534" : "#8A5A00", borderTop: "0.5px solid var(--border)" }}>
-                      <span>Linha {fmtBRL(linhaAtiva.valor)} · Lançamentos {fmtBRL(linhaAtiva.valor - dif)}</span>
-                      <strong>{ok ? "Diferença R$ 0,00" : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
+                {/* Conteúdo da aba */}
+                {abaSistema !== "conferencia" ? (
+                  <div style={{ overflowX: "auto" }}>
+                    <div style={{ minWidth: 760 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: abaSistema === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
+                        {abaSistema === "abertos" && <div />}
+                        <div>Vencim.</div><div>Baixa</div><div>Fornecedor / Cliente</div><div>Produtor da baixa</div><div>Conta de baixa</div><div>Tipo</div><div style={{ textAlign: "right" }}>Valor</div>
+                        {abaSistema === "conciliados" && <div>Origem</div>}
+                      </div>
+                      <div style={{ maxHeight: "calc(100vh - 430px)", minHeight: 300, overflowY: "auto" }}>
+                        {(abaSistema === "abertos" ? lancAbertos : lancConciliados).slice(0, 300).map((l, i) => renderLinhaSistema(l, i, abaSistema))}
+                        {(abaSistema === "abertos" ? lancAbertos : lancConciliados).length === 0 && (
+                          <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
+                            {abaSistema === "abertos" ? "Nenhum CP/CR aberto neste período." : "Nenhum lançamento conciliado neste período."}
+                          </div>
+                        )}
+                        {(abaSistema === "abertos" ? lancAbertos : lancConciliados).length > 300 && (
+                          <div style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, color: "var(--text-3)", borderTop: "0.5px solid var(--bg-tag)" }}>
+                            +{(abaSistema === "abertos" ? lancAbertos : lancConciliados).length - 300} ocultos — use a busca ou reduza o período
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  );
-                })()}
-
-                {/* Barra de confirmação */}
-                {linhaAtiva && lancsSel.size > 0 && (
-                  <div style={{ padding: "8px 14px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>
-                      {lancsSel.size} selecionado{lancsSel.size > 1 ? "s" : ""}{lancsSel.size > 1 ? " (bordero)" : ""}
-                    </span>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setLancsSel(new Set())}
-                        style={{ fontSize: 11, padding: "3px 8px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 6, cursor: "pointer" }}>
-                        Limpar
-                      </button>
-                      <button onClick={() => confirmarVinculo()} disabled={salvando}
-                        style={{ fontSize: 11, padding: "3px 12px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, cursor: salvando ? "default" : "pointer", fontWeight: 700 }}>
-                        {btnConfirmarLabel}
-                      </button>
+                  </div>
+                ) : (
+                  /* ── Conferência: sistema × OFX, em pares (largura total) ── */
+                  <div style={{ overflowX: "auto" }}>
+                    <div style={{ minWidth: 980 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
+                        <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sistema — baixados e conciliados</div>
+                        <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "#7A5A12", textTransform: "uppercase", letterSpacing: "0.04em", borderLeft: "0.5px solid var(--border)" }}>Extrato OFX — linhas utilizadas</div>
+                      </div>
+                      <div style={{ maxHeight: "calc(100vh - 400px)", minHeight: 300, overflowY: "auto" }}>
+                        {paresConf.map(({ x, ls, alertas }) => {
+                          const om = ORIGEM_META[x.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
+                          return (
+                            <div key={x.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+                                <div>
+                                  {ls.length === 0 && <div style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-3)" }}>{x.lancamento_desc ?? "Lançamento não encontrado"}</div>}
+                                  {ls.map(l => {
+                                    const tb = tipoBaixaMeta(l);
+                                    return (
+                                      <div key={l.id} style={{ display: "grid", gridTemplateColumns: "78px minmax(110px,1.5fr) minmax(90px,1fr) 62px 96px", gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
+                                        <div style={{ color: "var(--text-2)" }}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
+                                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--text-1)" }} title={l.descricao}>{fornecedorDe(l)}</div>
+                                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-2)" }} title="Conta de baixa">{contaNomeDe(l.conta_bancaria)}</div>
+                                        <div><span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 8, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
+                                        <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>{fmtBRL(Number(l.valor_pago ?? l.valor))}</div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <div style={{ borderLeft: "0.5px solid var(--border)", display: "grid", gridTemplateColumns: "78px minmax(120px,1.6fr) 96px 110px 84px", gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
+                                  <div style={{ color: "var(--text-2)" }}>{fmtDt(x.data)}</div>
+                                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }} title={x.descricao}>{x.descricao}</div>
+                                  <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: x.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>{x.tipo === "credito" ? "+" : "−"}{fmtBRL(x.valor)}</div>
+                                  <div><span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 8, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}{x.confianca === "media" ? " · média" : ""}</span></div>
+                                  <div style={{ textAlign: "right" }}>
+                                    <button onClick={() => desvincular(x.id)}
+                                      style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>Desvincular</button>
+                                  </div>
+                                </div>
+                              </div>
+                              {alertas.length > 0 && (
+                                <div style={{ padding: "0 12px 7px", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                  {alertas.map(a => <span key={a} style={{ fontSize: 10, fontWeight: 600, color: "#991B1B", background: "#FDECEC", borderRadius: 6, padding: "1px 7px" }}>⚠ {a}</span>)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {paresConf.length === 0 && (
+                          <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhuma linha conciliada neste período.</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Lista de lançamentos */}
-                <div style={{ maxHeight: 520, overflowY: "auto" }}>
-                  {lancFiltrados.slice(0, 100).map((l, i, arr) => {
-                    const isSel = lancsSel.has(l.id);
-                    const sm    = statusMeta(l);
-                    const saldo = ehParcial(l) ? l.valor - (l.valor_pago ?? 0) : null;
-                    // Igual ao sistema de referência: lançamento sem NENHUMA linha
-                    // correspondente no extrato OFX importado fica com fundo cinza —
-                    // mostra de cara o que existe no sistema mas não apareceu no banco
-                    // (pago por outra conta, ainda não baixado, ou divergência real).
-                    const semCorrespondenciaNoExtrato = !extrato.linhas.some(
-                      linha => linha.lancamento_id === l.id || linha.lancamento_ids?.includes(l.id)
-                    );
-                    return (
-                      <div key={l.id}
-                        onClick={() => {
-                          setLancsSel(prev => {
-                            const next = new Set(prev);
-                            if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
-                            return next;
-                          });
-                        }}
-                        style={{
-                          padding: "9px 14px",
-                          borderBottom: i < arr.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
-                          background: isSel ? "#EBF4FF" : semCorrespondenciaNoExtrato ? "#EDEEF0" : "transparent",
-                          borderLeft: isSel ? "3px solid #1A4870" : "3px solid transparent",
-                          cursor: "pointer",
-                          display: "flex", alignItems: "flex-start", gap: 8,
-                        }}>
-                        <input type="checkbox" checked={isSel} readOnly
-                          style={{ marginTop: 2, flexShrink: 0, accentColor: "#1A4870", cursor: "pointer" }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 500, color: titularDivergente(l) ? "var(--text-3)" : "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {titularDivergente(l) && <span title="Titular do CP diferente do titular da conta">≠ </span>}
-                            {l.descricao}
-                          </div>
-                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
-                            {l.tipo === "pagar" ? "CP" : "CR"} · {fmtDt(l.data_vencimento)}
-                            {l.data_baixa ? ` · baixado ${fmtDt(l.data_baixa)}` : ""}
-                            {l.categoria ? ` · ${l.categoria}` : ""}
-                          </div>
-                          {saldo !== null && (
-                            <div style={{ fontSize: 10, color: "#A16207", marginTop: 2, fontWeight: 600 }}>
-                              Saldo pendente: {fmtBRL(saldo)}
-                            </div>
-                          )}
-                          {(l.conciliado || l.status === "baixado" || ehParcial(l)) && (
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 3 }}>
-                              {l.conciliado && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 6, background: "#DCFCE7", color: "#166534", fontWeight: 600 }}>✓ Conciliado</span>}
-                              {(l.status === "baixado" || ehParcial(l)) && (
-                                l.conta_bancaria
-                                  ? <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 6, fontWeight: 600, background: l.conta_bancaria === extrato.conta_id ? "#EEEEF2" : "#FDECEC", color: l.conta_bancaria === extrato.conta_id ? "#555" : "#991B1B" }}>
-                                      {l.conta_bancaria === extrato.conta_id ? "Nesta conta" : `Baixado em ${contas.find(c => c.id === l.conta_bancaria)?.nome ?? "outra conta"}`}
-                                    </span>
-                                  : <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 6, background: "#FFF3D6", color: "#8A5A00", fontWeight: 600 }}>Baixado sem conta</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ flexShrink: 0, textAlign: "right" }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
-                            {fmtBRL(l.valor_pago ?? l.valor)}
-                          </div>
-                          <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 6, background: sm.bg, color: sm.color, display: "inline-block", marginTop: 2, fontWeight: 600 }}>
-                            {sm.label}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {lancFiltrados.length === 0 && (
-                    <div style={{ padding: "24px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum lançamento encontrado</div>
-                  )}
-                  {lancFiltrados.length > 100 && (
-                    <div style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, color: "var(--text-3)", borderTop: "0.5px solid var(--bg-tag)" }}>
-                      +{lancFiltrados.length - 100} ocultos — use a busca para refinar
+                {/* Soma dos selecionados × linha ativa e confirmação (aba de abertos) */}
+                {abaSistema === "abertos" && linhaAtiva && lancsSel.size > 0 && (() => {
+                  const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
+                  const esperado = sel.reduce((sm, l) => sm + valorRestante(l), 0);
+                  const dif = Math.round((linhaAtiva.valor - esperado) * 100) / 100;
+                  const parcial = sel.length === 1 && dif < -0.02;
+                  const ok = Math.abs(dif) <= 0.02;
+                  return (
+                    <div style={{ padding: "6px 14px", fontSize: 11, display: "flex", justifyContent: "space-between", gap: 8, background: ok ? "#E4F6EA" : parcial ? "#FFF3D6" : "#FDECEC", color: ok ? "#166534" : parcial ? "#8A5A00" : "#991B1B", borderTop: "0.5px solid var(--border)" }}>
+                      <span>Linha {fmtBRL(linhaAtiva.valor)} · Lançamentos {fmtBRL(esperado)}</span>
+                      <strong>{ok ? "Diferença R$ 0,00" : parcial ? `Baixa parcial — saldo ficará ${fmtBRL(Math.abs(dif))}` : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
                     </div>
-                  )}
-                </div>
-
-                {(linhaAtiva || lancsSel.size > 0) && (
-                  <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 6 }}>
-                    <button onClick={() => setLancsSel(new Set())}
-                      style={{ flex: 1, padding: "6px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
-                      Limpar seleção
-                    </button>
-                    {linhaAtiva && (
-                      <button onClick={() => { setLinhaAtiva(null); setLancsSel(new Set()); }}
-                        style={{ flex: 1, padding: "6px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
-                        Cancelar vinculação
-                      </button>
-                    )}
+                  );
+                })()}
+                {abaSistema === "abertos" && (linhaAtiva || lancsSel.size > 0) && (
+                  <div style={{ padding: "8px 14px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>
+                      {lancsSel.size} selecionado{lancsSel.size !== 1 ? "s" : ""}{lancsSel.size > 1 ? " (bordero)" : ""}
+                      {!linhaAtiva && " — clique em Vincular numa linha do OFX"}
+                    </span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => { setLancsSel(new Set()); setLinhaAtiva(null); }}
+                        style={{ fontSize: 11, padding: "3px 9px", background: "transparent", color: "rgba(255,255,255,0.8)", border: "0.5px solid rgba(255,255,255,0.35)", borderRadius: 6, cursor: "pointer" }}>Cancelar</button>
+                      {linhaAtiva && lancsSel.size > 0 && (
+                        <button onClick={() => confirmarVinculo()} disabled={salvando}
+                          style={{ fontSize: 11, padding: "3px 12px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, cursor: salvando ? "default" : "pointer", fontWeight: 700 }}>
+                          {btnConfirmarLabel}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* ─── PAINEL DIREITO: Extrato OFX ───────────────────────── */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                {/* Filtros OFX */}
-                <div style={{ padding: "10px 12px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 10, alignItems: "center" }}>
-                  <input placeholder="Buscar por descrição ou FITID..." value={busca} onChange={e => setBusca(e.target.value)}
-                    style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, width: 260, outline: "none" }} />
-                  <input placeholder="Buscar por valor..." value={buscaValor} onChange={e => setBuscaValor(e.target.value)}
-                    style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, width: 130, outline: "none" }} />
+              {/* ─── DIREITA: extrato OFX ─────────────────────────────────── */}
+              {abaSistema !== "conferencia" && (
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden", minWidth: 0 }}>
+                <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5A12", whiteSpace: "nowrap" }}>Extrato OFX · {fmtDt(extrato.data_inicio)} a {fmtDt(extrato.data_fim)}</div>
+                  <input placeholder="Buscar descrição ou FITID…" value={busca} onChange={e => setBusca(e.target.value)}
+                    style={{ flex: "1 1 130px", minWidth: 110, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
+                  <input placeholder="Valor…" value={buscaValor} onChange={e => setBuscaValor(e.target.value)}
+                    style={{ width: 84, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                   <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
-                    <input type="checkbox" checked={filtroPend} onChange={e => setFiltroPend(e.target.checked)} />
-                    Apenas pendentes
+                    <input type="checkbox" checked={filtroPend} onChange={e => setFiltroPend(e.target.checked)} /> Só pendentes
                   </label>
-                  <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
-                    {linhasFiltradas.length} de {extrato.total_linhas} transações
-                  </div>
-                  <button onClick={() => setColWidths([...COL_INIT])} title="Resetar colunas"
-                    style={{ padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, background: "var(--bg-card)", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
-                    ⟳ Colunas
-                  </button>
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{linhasFiltradas.length} de {extrato.total_linhas}</span>
                 </div>
 
-                {/* Barra de ação em lote — lançar CP/CR agrupado a partir de várias linhas
-                    pendentes (ex: vários pedágios do mesmo dia numa única cobrança de CP) */}
                 {selecaoMultipla.size > 0 && (
-                  <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", background: "#EBF4FF", display: "flex", gap: 10, alignItems: "center" }}>
+                  <div style={{ padding: "7px 12px", borderBottom: "0.5px solid var(--border)", background: "#EBF4FF", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     <span style={{ fontSize: 12, color: "#1A4870", fontWeight: 600 }}>
                       {selecaoMultipla.size} linha{selecaoMultipla.size > 1 ? "s" : ""} selecionada{selecaoMultipla.size > 1 ? "s" : ""}
-                      {selecaoMultipla.size > 1 && ` · Total ${fmtBRL(
-                        Array.from(selecaoMultipla).reduce((s, id) => s + (extrato.linhas.find(l => l.id === id)?.valor ?? 0), 0)
-                      )}`}
+                      {selecaoMultipla.size > 1 && ` · Total ${fmtBRL(Array.from(selecaoMultipla).reduce((sm, id) => sm + (extrato.linhas.find(l => l.id === id)?.valor ?? 0), 0))}`}
                     </span>
-                    <button
-                      disabled={selecaoMultipla.size < 2}
+                    <button disabled={selecaoMultipla.size < 2}
                       onClick={() => { setDescAgrupado(""); setOgAgrupado(""); setModalAgrupado(true); }}
                       title={selecaoMultipla.size < 2 ? "Selecione pelo menos 2 linhas" : undefined}
                       style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #1A5CB8", background: selecaoMultipla.size < 2 ? "var(--bg-card)" : "#1A5CB8", color: selecaoMultipla.size < 2 ? "#1A5CB8" : "#fff", fontSize: 11, fontWeight: 600, cursor: selecaoMultipla.size < 2 ? "default" : "pointer" }}>
                       Lançar CP/CR agrupado
                     </button>
                     <button onClick={() => setSelecaoMultipla(new Set())}
-                      style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>
-                      Limpar seleção
-                    </button>
+                      style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>Limpar</button>
                   </div>
                 )}
 
-                {/* Tabela OFX */}
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ tableLayout: "fixed", width: colWidths.reduce((a, b) => a + b, 0), borderCollapse: "collapse", fontSize: 13 }}>
-                    <colgroup>
-                      {colWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        {["Data", "Descrição no Extrato", "Valor", "Situação", "Lançamento Vinculado", "Ação"].map((h, i) => (
-                          <th key={h} style={thStyle}>
-                            {h}
-                            <div style={resizer}
-                              onMouseDown={e => { e.preventDefault(); onResizeStart(i, e.clientX, colWidths[i]); }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#C9921B"; }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                            />
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {linhasFiltradas.map((l, i) => {
+                  <div style={{ minWidth: 640 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: COLS_OFX, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
+                      <div>Data pagto.</div><div>Histórico</div><div style={{ textAlign: "right" }}>Valor</div><div>Situação</div><div>Ação</div>
+                    </div>
+                    <div style={{ maxHeight: "calc(100vh - 430px)", minHeight: 300, overflowY: "auto" }}>
+                      {linhasFiltradas.map(l => {
                         const isAtiva = linhaAtiva?.id === l.id;
+                        const bate = linhaBateComSelecao(l);
+                        const sug = !l.conciliado && l.sugestao_lancamento_id ? lancamentos.find(x => x.id === l.sugestao_lancamento_id) : undefined;
+                        const o = ORIGEM_META[l.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
+                        const reg = l.regra_id ? regras.find(r => r.id === l.regra_id) : undefined;
                         return (
-                          <tr key={l.id} style={{
-                            borderBottom: i < linhasFiltradas.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
-                            background: isAtiva ? "#FBF3E0" : l.conciliado ? "transparent" : "#FFFEF8",
+                          <div key={l.id} style={{
+                            display: "grid", gridTemplateColumns: COLS_OFX, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12,
+                            borderBottom: "0.5px solid var(--bg-tag)",
+                            background: isAtiva ? "#FBF3E0" : bate ? "#EDF9F0" : l.conciliado ? "transparent" : "#FFFEF8",
+                            borderLeft: bate ? "3px solid #16A34A" : isAtiva ? "3px solid #C9921B" : "3px solid transparent",
                           }}>
-                            <td style={{ padding: "9px 10px", color: "var(--text-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>
                               {!l.conciliado && (
-                                <input
-                                  type="checkbox"
-                                  checked={selecaoMultipla.has(l.id)}
-                                  onChange={e => setSelecaoMultipla(prev => {
-                                    const next = new Set(prev);
-                                    if (e.target.checked) next.add(l.id); else next.delete(l.id);
-                                    return next;
-                                  })}
-                                  style={{ marginRight: 6, verticalAlign: "middle", cursor: "pointer" }}
-                                  title="Selecionar pra lançamento agrupado"
-                                />
+                                <input type="checkbox" checked={selecaoMultipla.has(l.id)}
+                                  onChange={e => setSelecaoMultipla(prev => { const n = new Set(prev); if (e.target.checked) n.add(l.id); else n.delete(l.id); return n; })}
+                                  style={{ marginRight: 5, verticalAlign: "middle", cursor: "pointer" }} title="Selecionar para lançamento agrupado" />
                               )}
                               {fmtDt(l.data)}
-                            </td>
-                            <td style={{ padding: "9px 10px", overflow: "hidden" }}>
+                            </div>
+                            <div style={{ minWidth: 0 }} title={`${l.descricao} · FITID ${l.id}`}>
                               <div style={{ fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>
-                              <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.id}</div>
-                            </td>
-                            <td style={{ padding: "9px 10px", whiteSpace: "nowrap", overflow: "hidden" }}>
-                              <span style={{ fontWeight: 700, color: l.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
-                                {l.tipo === "credito" ? "+" : "−"}{fmtBRL(l.valor)}
-                              </span>
-                              <div style={{ fontSize: 10, color: "var(--text-3)" }}>{l.tipo === "credito" ? "Crédito" : "Débito"}</div>
-                            </td>
-                            <td style={{ padding: "9px 10px", overflow: "hidden" }}>
-                              {l.conciliado
-                                ? (() => {
-                                    const o = ORIGEM_META[l.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
-                                    const reg = l.regra_id ? regras.find(r => r.id === l.regra_id) : undefined;
-                                    return (
-                                      <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
-                                        <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#DCFCE7", color: "#16A34A", whiteSpace: "nowrap" }}>✓ Conciliado</span>
-                                        <span title={l.confianca ? `Confiança ${l.confianca}` : undefined} style={{ padding: "1px 7px", borderRadius: 8, fontSize: 10, fontWeight: 600, background: o.bg, color: o.cor, whiteSpace: "nowrap" }}>
-                                          {o.label}{reg ? `: ${reg.texto}` : ""}{l.confianca === "media" ? " · média" : ""}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()
-                                : l.sugestao_lancamento_id
-                                  ? <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#FFF3D6", color: "#8A5A00", whiteSpace: "nowrap" }}>💡 Sugestão</span>
-                                  : <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#FEF3C7", color: "#92400E", whiteSpace: "nowrap" }}>Pendente</span>}
-                            </td>
-                            <td style={{ padding: "9px 10px", overflow: "hidden" }}>
-                              {l.conciliado && l.lancamento_desc ? (
-                                <div>
-                                  <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.lancamento_desc}</div>
-                                  {l.lancamento_valor != null && (
-                                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtBRL(l.lancamento_valor)}</div>
-                                  )}
-                                  {(l.lancamento_ids?.length ?? 0) > 1 && (
-                                    <div style={{ fontSize: 10, color: "#1A4870", marginTop: 1 }}>
-                                      Bordero: {l.lancamento_ids!.length} lançamentos
-                                    </div>
-                                  )}
+                              {l.conciliado && l.lancamento_desc && (
+                                <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  → {l.lancamento_desc}{(l.lancamento_ids?.length ?? 0) > 1 ? ` (bordero ${l.lancamento_ids!.length})` : ""}
                                 </div>
-                              ) : l.sugestao_lancamento_id ? (() => {
-                                const sug = lancamentos.find(x => x.id === l.sugestao_lancamento_id);
-                                return (
-                                  <div>
-                                    <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sug?.descricao ?? "Lançamento sugerido"}</div>
-                                    {sug && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{sug.tipo === "pagar" ? "CP" : "CR"} · {fmtBRL(sug.valor_pago ?? sug.valor)} · venc. {fmtDt(sug.data_vencimento)}</div>}
-                                    {l.sugestao_motivo && <div style={{ fontSize: 10, color: "#8A5A00", marginTop: 1 }}>Confirmar porque: {l.sugestao_motivo}</div>}
-                                  </div>
-                                );
-                              })() : (
-                                <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>
                               )}
-                            </td>
-                            <td style={{ padding: "9px 10px", overflow: "hidden" }}>
+                              {sug && (
+                                <div style={{ fontSize: 10, color: "#8A5A00", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                  title={l.sugestao_motivo ? `Confirmar porque: ${l.sugestao_motivo}` : undefined}>
+                                  💡 {sug.descricao} · {fmtBRL(valorRestante(sug))}{l.sugestao_motivo ? ` · ${l.sugestao_motivo}` : ""}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ textAlign: "right", whiteSpace: "nowrap", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: l.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
+                              {l.tipo === "credito" ? "+" : "−"}{fmtBRL(l.valor)}
+                            </div>
+                            <div>
+                              {l.conciliado ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
+                                  <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#DCFCE7", color: "#16A34A", whiteSpace: "nowrap" }}>✓ Conciliado</span>
+                                  <span title={l.confianca ? `Confiança ${l.confianca}` : undefined} style={{ padding: "1px 6px", borderRadius: 8, fontSize: 9, fontWeight: 600, background: o.bg, color: o.cor, whiteSpace: "nowrap" }}>
+                                    {o.label}{reg ? `: ${reg.texto}` : ""}{l.confianca === "media" ? " · média" : ""}
+                                  </span>
+                                </div>
+                              ) : sug ? (
+                                <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#FFF3D6", color: "#8A5A00", whiteSpace: "nowrap" }}>💡 Sugestão</span>
+                              ) : (
+                                <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#92400E", whiteSpace: "nowrap" }}>Pendente</span>
+                              )}
+                            </div>
+                            <div>
                               {l.conciliado ? (
                                 <button onClick={() => { desvincular(l.id); if (isAtiva) { setLinhaAtiva(null); setLancsSel(new Set()); } }}
-                                  style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                  Desvincular
-                                </button>
+                                  style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>Desvincular</button>
                               ) : (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                  {l.sugestao_lancamento_id && !isAtiva && (
+                                  {sug && !isAtiva && (
                                     <div style={{ display: "flex", gap: 4 }}>
                                       <button disabled={salvando} onClick={() => aceitarSugestoes([l])}
-                                        style={{ padding: "4px 9px", borderRadius: 6, border: "none", background: "#16A34A", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
-                                        ✓ Aceitar
-                                      </button>
+                                        style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#16A34A", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>✓ Aceitar</button>
                                       <button disabled={salvando} onClick={() => ignorarSugestao(l)} title="Descartar a sugestão"
-                                        style={{ padding: "4px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>
-                                        ✕
-                                      </button>
+                                        style={{ padding: "3px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>✕</button>
                                     </div>
                                   )}
-                                  <button
-                                    disabled={salvando}
+                                  <button disabled={salvando}
                                     onClick={() => {
-                                      if (isAtiva) {
-                                        // Cancelar vinculação ativa
-                                        setLinhaAtiva(null);
-                                      } else if (lancsSel.size > 0) {
-                                        // Já tem seleções → conciliar imediatamente
-                                        setLinhaAtiva(l);
-                                        confirmarVinculo(l);
-                                      } else {
-                                        // Ativar modo vinculação
-                                        setLinhaAtiva(l);
-                                        setFiltroLancTipo(l.tipo === "credito" ? "receber" : "pagar");
-                                      }
+                                      if (isAtiva) { setLinhaAtiva(null); return; }
+                                      setAbaSistema("abertos");
+                                      if (lancsSel.size > 0) { setLinhaAtiva(l); confirmarVinculo(l); }
+                                      else setLinhaAtiva(l);
                                     }}
-                                    style={{ padding: "4px 10px", borderRadius: 6, border: `0.5px solid #C9921B`, background: isAtiva ? "#C9921B" : lancsSel.size > 0 ? "#1A4870" : "#FBF3E0", color: isAtiva || lancsSel.size > 0 ? "#fff" : "#C9921B", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
-                                    {isAtiva && salvando ? "Salvando..." : isAtiva ? "Cancelar" : lancsSel.size > 0 ? `↗ Vincular (${lancsSel.size})` : "Vincular CP/CR"}
+                                    style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid #C9921B", background: isAtiva ? "#C9921B" : lancsSel.size > 0 ? "#1A4870" : "#FBF3E0", color: isAtiva || lancsSel.size > 0 ? "#fff" : "#C9921B", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                    {isAtiva && salvando ? "Salvando…" : isAtiva ? "Cancelar" : lancsSel.size > 0 ? `↗ Vincular (${lancsSel.size})` : "Vincular"}
                                   </button>
                                   {!isAtiva && (
                                     <button onClick={() => abrirTesouraria(l)}
-                                      style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                      + Tesouraria
-                                    </button>
+                                      style={{ padding: "2px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>+ Tesouraria</button>
                                   )}
                                 </div>
                               )}
-                            </td>
-                          </tr>
+                            </div>
+                          </div>
                         );
                       })}
                       {linhasFiltradas.length === 0 && (
-                        <tr><td colSpan={6} style={{ padding: "28px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma transação encontrada.</td></tr>
+                        <div style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma transação encontrada.</div>
                       )}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
                 </div>
               </div>
+              )}
             </div>
-            )}
-
-            {/* ═══ CP/CR EM ABERTO — cruza lançamentos ainda não baixados com o extrato atual ═══ */}
-            {abaExtratoView === "abertos" && (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                <div style={{ padding: "10px 14px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 12, color: "var(--text-2)" }}>
-                  Lançamentos ainda não baixados, cruzados por valor com as linhas pendentes deste extrato — conciliar aqui já baixa o lançamento na conta e na data da transação bancária.
-                </div>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr>
-                        {["Vencimento", "Descrição", "Tipo", "Valor", "Correspondência no Extrato", "Ação"].map(h => (
-                          <th key={h} style={thStyle}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cpcrAbertos.map((l, i) => {
-                        const match = acharCorrespondencia(l);
-                        const divergente = match && titularDivergente(l);
-                        return (
-                          <tr key={l.id} style={{ borderBottom: i < cpcrAbertos.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
-                            <td style={{ padding: "9px 10px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
-                            <td style={{ padding: "9px 10px", color: "var(--text-1)" }}>{l.descricao}</td>
-                            <td style={{ padding: "9px 10px" }}>
-                              <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: l.tipo === "pagar" ? "#FCEBEB" : "#E8F5E9", color: l.tipo === "pagar" ? "#791F1F" : "#1A6B3C" }}>
-                                {l.tipo === "pagar" ? "CP" : "CR"}
-                              </span>
-                            </td>
-                            <td style={{ padding: "9px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtBRL(l.valor)}</td>
-                            <td style={{ padding: "9px 10px" }}>
-                              {match ? (
-                                <div>
-                                  <div style={{ fontSize: 12, color: divergente ? "var(--text-3)" : "var(--text-1)" }}>
-                                    {divergente && <span title="Titular do CP diferente do titular da conta">≠ </span>}
-                                    {match.descricao}
-                                  </div>
-                                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtDt(match.data)} · {fmtBRL(match.valor)}</div>
-                                </div>
-                              ) : (
-                                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Sem correspondência neste extrato</span>
-                              )}
-                            </td>
-                            <td style={{ padding: "9px 10px" }}>
-                              {match ? (
-                                <button
-                                  disabled={salvando}
-                                  onClick={() => confirmarVinculo(match, [l.id])}
-                                  style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid #16A34A", background: "#16A34A", color: "#fff", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
-                                  ✓ Conciliar e Baixar
-                                </button>
-                              ) : (
-                                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {cpcrAbertos.length === 0 && (
-                        <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum CP/CR em aberto no período carregado.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
 
             {/* Avisos finais */}
-            {abaExtratoView === "linhas" && extrato.pendentes > 0 && (
+            {extrato.pendentes > 0 && abaSistema !== "conferencia" && (
               <div style={{ marginTop: 14, background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#7A5A12" }}>
                 <strong>{extrato.pendentes} transações pendentes.</strong> Clique "Vincular CP/CR" em uma linha do extrato e selecione os lançamentos no painel esquerdo. Para bordero, selecione múltiplos. Para tarifas e IOF sem CP/CR, use "+ Tesouraria".
               </div>

@@ -21,7 +21,8 @@ const admin = () =>
 type BaixarItem = {
   id: string;
   data_baixa: string;
-  valor_pago: number;
+  valor_pago: number;          // valor pago ACUMULADO final do lançamento (não o incremento)
+  status?: "baixado" | "parcial";  // padrão "baixado"; "parcial" quando ainda resta saldo
   conta_bancaria?: string;
 };
 
@@ -93,14 +94,14 @@ export async function POST(req: NextRequest) {
       const resultados = await Promise.all(
         body.baixar.map(async item => {
           const r = await sb.from("lancamentos").update({
-            status:     "baixado",
+            status:     item.status ?? "baixado",
             data_baixa: item.data_baixa,
             valor_pago: item.valor_pago,
             ...(item.conta_bancaria ? { conta_bancaria: item.conta_bancaria } : {}),
           }).eq("id", item.id);
           if (r.error) return `baixa ${item.id}: ${r.error.message}`;
           await sb.from("parcelas_pagamento")
-            .update({ status: "pago", data_pagamento: item.data_baixa })
+            .update({ status: item.status === "parcial" ? "parcial" : "pago", data_pagamento: item.data_baixa })
             .eq("lancamento_id", item.id);
           return null;
         })
