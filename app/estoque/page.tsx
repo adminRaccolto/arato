@@ -263,7 +263,19 @@ export default function Estoque() {
       setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
     }).catch(() => {});
   }, [fazendaId, contaId]);
-  const fazAtiva = fazTrabalho || fazendaId || "";
+  // "Todas as fazendas" é modo de CONSULTA (posição, movimentações, NFs, terceiros somados); lançar/editar
+  // exige uma fazenda específica, porque o estoque físico é por propriedade.
+  const TODAS = "__todas__";
+  const modoTodas = fazTrabalho === TODAS;
+  const fazAtiva = modoTodas ? (fazendaId || fazendasConta[0]?.id || "") : (fazTrabalho || fazendaId || "");
+  const fazLeitura: string | string[] = modoTodas && fazendasConta.length > 0 ? fazendasConta.map(f => f.id) : fazAtiva;
+  const chaveLeitura = Array.isArray(fazLeitura) ? fazLeitura.join(",") : fazLeitura;
+  const exigeFazenda = () => {
+    if (!modoTodas) return false;
+    alert("Você está vendo Todas as fazendas (somente consulta). Escolha uma fazenda específica no seletor do topo para lançar ou alterar o estoque.");
+    return true;
+  };
+  const nomeFaz = (id?: string | null) => (fazendasConta.length > 1 && id ? fazendasConta.find(f => f.id === id)?.nome ?? "" : "");
 
   const [aba, setAba] = useState<Aba>("posicao");
   const [erro, setErro] = useState<string | null>(null);
@@ -353,7 +365,7 @@ export default function Estoque() {
   const [dataAbertura, setDataAbertura] = useState("2024-01-01");
 
   async function carregarAuditoria() {
-    if (!fazAtiva) return;
+    if (!fazAtiva || exigeFazenda()) return;
     setAuditoriaCarregando(true);
     try {
       const { data: todos } = await supabase
@@ -406,7 +418,7 @@ export default function Estoque() {
   }
 
   async function corrigirSaldoAbertura() {
-    if (!fazAtiva) return;
+    if (!fazAtiva || exigeFazenda()) return;
     const itensPosDiv = auditoriaDados.filter(a => a.divergencia > 0);
     if (itensPosDiv.length === 0) return;
     const ok = confirm(
@@ -455,7 +467,7 @@ export default function Estoque() {
   const [reconcAplicando, setReconcAplicando] = useState(false);
 
   async function verificarReconciliacao() {
-    if (!fazAtiva) return;
+    if (!fazAtiva || exigeFazenda()) return;
     setReconcBuscando(true);
     try {
       // Busca todos os movimentos da fazenda
@@ -540,7 +552,7 @@ export default function Estoque() {
   useEffect(() => {
     if (!fazAtiva) return;
     setErro(null);
-    listarInsumos(fazAtiva).then(setInsumos).catch(e => setErro(e.message));
+    listarInsumos(fazLeitura).then(setInsumos).catch(e => setErro(e.message));
     listarFazendasDaConta(contaId, fazAtiva)
       .then(fzs => {
         const ids = fzs.length > 0 ? fzs.map((f: { id?: string }) => f.id!) : [fazAtiva];
@@ -552,31 +564,32 @@ export default function Estoque() {
     listarBombas(fazAtiva!).then(setBombas).catch(() => {});
     listarMaquinas(fazAtiva).then(setMaquinas).catch(() => {});
     listarPessoas(fazAtiva).then(setPessoas).catch(() => {});
-    listarPASaldos(fazAtiva).then(setPASaldos).catch(() => {});
+    listarPASaldos(fazLeitura).then(setPASaldos).catch(() => {});
     listarCentrosCustoGeral(fazAtiva).then(setCentros).catch(() => {});
     supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
       .or(`fazenda_id.eq.${fazAtiva},fazenda_id.is.null`).eq("inativo", false).eq("tipo", "despesa").order("classificacao")
       .then(({ data }) => setOgsNf((data ?? []) as { id: string; descricao: string; classificacao: string }[]));
-  }, [fazAtiva, contaId]);
+  }, [fazAtiva, chaveLeitura, contaId]);  // eslint-disable-line
 
   useEffect(() => {
     if (!fazAtiva) return;
     if (aba === "movimentacoes") {
-      listarMovimentacoes(fazAtiva).then(setMovs).catch(e => setErro(e.message));
-      listarMovimentacoesPA(fazAtiva).then(setMovsPA).catch(() => {});
+      listarMovimentacoes(fazLeitura).then(setMovs).catch(e => setErro(e.message));
+      listarMovimentacoesPA(fazLeitura).then(setMovsPA).catch(() => {});
     }
-    if (aba === "nf_entrada")    listarNfEntradas(fazAtiva).then(setNfEntradas).catch(e => setErro(e.message));
-    if (aba === "terceiros")     listarEstoqueTerceiros(fazAtiva).then(setTerceiros).catch(e => setErro(e.message));
+    if (aba === "nf_entrada")    listarNfEntradas(fazLeitura).then(setNfEntradas).catch(e => setErro(e.message));
+    if (aba === "terceiros")     listarEstoqueTerceiros(fazLeitura).then(setTerceiros).catch(e => setErro(e.message));
     if (aba === "relatorios" && relTipo === "historico" && relInsumoId) {
-      listarMovimentacoes(fazAtiva, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
+      listarMovimentacoes(fazLeitura, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
     }
     if (aba === "relatorios" && relTipo === "depositos") {
-      listarSaldoPorDeposito(fazAtiva).then(setSaldoPorDeposito).catch(() => {});
+      listarSaldoPorDeposito(fazLeitura).then(setSaldoPorDeposito).catch(() => {});
     }
-  }, [aba, relTipo, fazAtiva]); // eslint-disable-line
+  }, [aba, relTipo, fazAtiva, chaveLeitura]); // eslint-disable-line
 
   // ── Helpers ──
   async function salvar(fn: () => Promise<void>) {
+    if (exigeFazenda()) return;
     try { setSalvando(true); await fn(); } catch (e) {
       const err = e as { message?: string; details?: string; hint?: string; code?: string };
       const msg = [err.message, err.details, err.hint].filter(Boolean).join("\n");
@@ -671,6 +684,7 @@ export default function Estoque() {
 
   // ── NF Passo 1: criar NF ──
   const abrirNovaFf = () => {
+    if (exigeFazenda()) return;
     setFNf({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "", centro_custo_id: "" });
     setItensNf([]);
     setNfCriada(null);
@@ -952,6 +966,7 @@ export default function Estoque() {
                   onChange={e => setFazTrabalho(e.target.value)}
                   style={{ padding: "6px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)" }}
                 >
+                  <option value={TODAS}>Todas as fazendas</option>
                   {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                 </select>
               )}
@@ -1014,9 +1029,9 @@ export default function Estoque() {
                       Excluir {selecionados.size} selecionado{selecionados.size > 1 ? "s" : ""}
                     </button>
                   )}
-                  <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { setModalMov(true); }}>± Movimentar</button>
+                  <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { if (exigeFazenda()) return; setModalMov(true); }}>± Movimentar</button>
                   <button style={{ ...btnE }} onClick={verificarReconciliacao} disabled={reconcBuscando} title="Compara insumos.estoque com a soma das movimentações e corrige divergências">{reconcBuscando ? "Verificando…" : "🔧 Reconciliar"}</button>
-                  <button style={{ ...btnV }} onClick={() => { setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: 0, deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
+                  <button style={{ ...btnV }} onClick={() => { if (exigeFazenda()) return; setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: 0, deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
                 </div>
               </div>
 
@@ -1056,7 +1071,7 @@ export default function Estoque() {
                                   style={{ cursor: "pointer", width: 15, height: 15 }} />
                               </td>
                               <td style={{ padding: "10px 14px" }}>
-                                <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{ins.nome}</div>
+                                <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{ins.nome}{modoTodas && nomeFaz(ins.fazenda_id) ? <span style={{ fontWeight: 400, color: "var(--text-3)" }}> · {nomeFaz(ins.fazenda_id)}</span> : null}</div>
                                 {ins.fabricante && <div style={{ fontSize: 11, color: "#444" }}>{ins.fabricante}</div>}
                                 {(ins.lote || ins.validade) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{ins.lote ? `Lote: ${ins.lote}` : ""}{ins.lote && ins.validade ? " · " : ""}{ins.validade ? `Val: ${ins.validade.split("-").reverse().join("/")}` : ""}</div>}
                               </td>
@@ -1077,7 +1092,7 @@ export default function Estoque() {
                               <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtBRL(ins.valor_unitario)}/{ins.unidade}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center", color: negativo ? "#E24B4A" : "var(--text-1)", fontWeight: 600 }}>{fmtBRL(valorTotal)}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                                <button style={btnE} onClick={() => { setFMov(p => ({ ...p, insumo_id: ins.id, deposito_id: ins.deposito_id ?? "" })); setModalMov(true); }}>± Mov.</button>
+                                <button style={btnE} onClick={() => { if (exigeFazenda()) return; setFMov(p => ({ ...p, insumo_id: ins.id, deposito_id: ins.deposito_id ?? "" })); setModalMov(true); }}>± Mov.</button>
                               </td>
                             </tr>
                           );
@@ -1263,7 +1278,7 @@ export default function Estoque() {
                   ))}
                 </div>
                 <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-2)" }}>{movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
-                <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => setModalMov(true)}>± Nova Movimentação</button>
+                <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { if (exigeFazenda()) return; setModalMov(true); }}>± Nova Movimentação</button>
               </div>
               <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>

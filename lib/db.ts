@@ -339,8 +339,13 @@ export async function atualizarOperacao(id: string, o: Partial<Operacao>): Promi
 // INSUMOS
 // ————————————————————————————————————————
 
-export async function listarInsumos(fazenda_id: string): Promise<Insumo[]> {
-  const { data, error } = await supabase.from("insumos").select("*").eq("fazenda_id", fazenda_id).order("nome");
+// Leituras de estoque aceitam uma fazenda ou várias (modo "Todas as fazendas")
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const filtroFazenda = (q: any, f: string | string[]) =>
+  Array.isArray(f) ? q.in("fazenda_id", f) : q.eq("fazenda_id", f);
+
+export async function listarInsumos(fazenda_id: string | string[]): Promise<Insumo[]> {
+  const { data, error } = await filtroFazenda(supabase.from("insumos").select("*"), fazenda_id).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -460,15 +465,14 @@ export async function excluirInsumos(ids: string[]): Promise<void> {
 // fixo insumos.deposito_id. É a única fonte confiável de "quanto tem de X no
 // depósito Y" — o campo fixo no cadastro nunca reflete transferências entre
 // depósitos nem insumos fisicamente divididos entre dois locais.
-export async function listarSaldoPorDeposito(fazenda_id: string): Promise<{ insumo_id: string; deposito_id: string | null; saldo: number }[]> {
+export async function listarSaldoPorDeposito(fazenda_id: string | string[]): Promise<{ insumo_id: string; deposito_id: string | null; saldo: number }[]> {
   const PAGE = 1000;
   let all: { insumo_id: string; deposito_id: string | null; saldo: number }[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await supabase
+    const { data, error } = await filtroFazenda(supabase
       .from("saldo_insumo_deposito")
-      .select("insumo_id, deposito_id, saldo")
-      .eq("fazenda_id", fazenda_id)
+      .select("insumo_id, deposito_id, saldo"), fazenda_id)
       .range(from, from + PAGE - 1);
     if (error) throw error;
     all = all.concat(data ?? []);
@@ -478,13 +482,13 @@ export async function listarSaldoPorDeposito(fazenda_id: string): Promise<{ insu
   return all;
 }
 
-export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoEstoque[]> {
+export async function listarMovimentacoes(fazenda_id: string | string[], insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoEstoque[]> {
   // Embed nf_entradas(numero) — a coluna nf_entrada nunca foi populada na
   // gravação, então a tela mostrava o UUID de nf_entrada_id (ou tentava
   // "adivinhar" o número fazendo regex em cima do texto da observação, que
   // também guardava o UUID). Resolver pela FK de verdade corrige até o
   // histórico já gravado, sem precisar de backfill.
-  let q = supabase.from("movimentacoes_estoque").select("*, nf_entradas(numero)").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
+  let q = filtroFazenda(supabase.from("movimentacoes_estoque").select("*, nf_entradas(numero)"), fazenda_id).order("data", { ascending: false });
   if (insumo_id) q = q.eq("insumo_id", insumo_id);
   if (dataInicio) q = q.gte("data", dataInicio);
   if (dataFim)    q = q.lte("data", dataFim);
@@ -2296,8 +2300,8 @@ export async function excluirHistoricoManutencao(id: string): Promise<void> {
 // NF ENTRADAS
 // ————————————————————————————————————————
 
-export async function listarNfEntradas(fazenda_id: string): Promise<NfEntrada[]> {
-  const { data, error } = await supabase.from("nf_entradas").select("*").eq("fazenda_id", fazenda_id).order("data_emissao", { ascending: false });
+export async function listarNfEntradas(fazenda_id: string | string[]): Promise<NfEntrada[]> {
+  const { data, error } = await filtroFazenda(supabase.from("nf_entradas").select("*"), fazenda_id).order("data_emissao", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -3241,8 +3245,8 @@ export async function processarDevolucaoCompra(
 // ESTOQUE DE TERCEIROS
 // ————————————————————————————————————————
 
-export async function listarEstoqueTerceiros(fazenda_id: string): Promise<EstoqueTerceiro[]> {
-  const { data, error } = await supabase.from("estoque_terceiros").select("*").eq("fazenda_id", fazenda_id).order("created_at", { ascending: false });
+export async function listarEstoqueTerceiros(fazenda_id: string | string[]): Promise<EstoqueTerceiro[]> {
+  const { data, error } = await filtroFazenda(supabase.from("estoque_terceiros").select("*"), fazenda_id).order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -5893,11 +5897,10 @@ export function isCategoriaPA(categoria: PrincipioAtivo["categoria"]): boolean {
   return PA_CATS_ESTOQUE.has(categoria);
 }
 
-export async function listarPASaldos(fazendaId: string): Promise<PASaldo[]> {
-  const { data, error } = await supabase
+export async function listarPASaldos(fazendaId: string | string[]): Promise<PASaldo[]> {
+  const { data, error } = await filtroFazenda(supabase
     .from("pa_saldos")
-    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade)")
-    .eq("fazenda_id", fazendaId)
+    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade)"), fazendaId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as PASaldo[];
@@ -5979,10 +5982,9 @@ export async function registrarSaidaPA(params: {
   });
 }
 
-export async function listarMovimentacoesPA(fazendaId: string, principioAtivoId?: string): Promise<MovimentacaoPA[]> {
-  let q = supabase.from("movimentacoes_pa")
-    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade), nf_entradas(numero)")
-    .eq("fazenda_id", fazendaId)
+export async function listarMovimentacoesPA(fazendaId: string | string[], principioAtivoId?: string): Promise<MovimentacaoPA[]> {
+  let q = filtroFazenda(supabase.from("movimentacoes_pa")
+    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade), nf_entradas(numero)"), fazendaId)
     .order("data", { ascending: false })
     .order("created_at", { ascending: false });
   if (principioAtivoId) q = q.eq("principio_ativo_id", principioAtivoId) as typeof q;

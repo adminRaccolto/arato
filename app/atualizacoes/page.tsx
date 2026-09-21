@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-c",
+    data: "22/09/2026",
+    titulo: "Estoque: opção Todas as fazendas",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "novo", texto: "O seletor de fazenda do Estoque ganhou a opção \"Todas as fazendas\": a posição de estoque, as movimentações, as NFs de entrada, o estoque de terceiros e os relatórios passam a somar todas as fazendas do cliente (com o nome da fazenda ao lado do item). É um modo de consulta: para lançar movimentação, novo item ou NF, escolha uma fazenda específica, porque o estoque físico é por propriedade." },
+    ],
+    onde: "Estoque → seletor de fazenda (canto superior direito)",
+  },
+  {
     versao: "2026.09.22-b",
     data: "22/09/2026",
     titulo: "Abastecimento: todos os ciclos do cliente",
