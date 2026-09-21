@@ -300,6 +300,14 @@ const statusMeta = (l: Lancamento): { label: string; bg: string; color: string }
 
 const COLS_OFX = "88px minmax(150px,1fr) 100px 128px 132px";
 
+// Cores de status: só número NEGATIVO em vermelho queimado; sinaleiro verde = conciliado, mostarda = pendente
+const COR_NEG  = "#A93226";
+const COR_OK   = "#2E7D4F";
+const COR_PEND = "#C9921B";
+function Sinal({ cor, titulo }: { cor: string; titulo?: string }) {
+  return <span title={titulo} style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: cor, flexShrink: 0 }} />;
+}
+
 const lblRegra: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 };
 const inpRegra: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" };
 
@@ -1690,12 +1698,12 @@ function ConciliacaoInner() {
   const tipoBaixaMeta = (l: Lancamento) =>
     l.status === "baixado" ? { t: "Baixado", bg: "#F1F3F6", c: "#666", w: 500 }
     : ehParcial(l)         ? { t: "Parcial", bg: "#E3EAF3", c: "#1A4870", w: 700 }
-    : l.status === "vencido" ? { t: "Vencido", bg: "#F1F3F6", c: "#B42318", w: 700 }
+    : l.status === "vencido" ? { t: "Vencido", bg: "#F1F3F6", c: "#A93226", w: 700 }
     : { t: "Aberto", bg: "#F1F3F6", c: "#333", w: 600 };
 
   // Linha da tabela do sistema (abas 1 e 2)
-  const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 66px 100px";
-  const COLS_SIS_CONC    = "78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 66px 100px 84px";
+  const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px";
+  const COLS_SIS_CONC    = "78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px 84px";
   const renderLinhaSistema = (l: Lancamento, i: number, modo: "conciliados" | "abertos") => {
     const sel = lancsSel.has(l.id);
     const tb = tipoBaixaMeta(l);
@@ -1728,9 +1736,9 @@ function ConciliacaoInner() {
         </div>
         <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title="Titular da conta em que foi baixado">{produtorDaBaixa(l)}</div>
         <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contaNomeDe(l.conta_bancaria)}</div>
-        <div><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 7px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Sinal cor={modo === "conciliados" || l.conciliado ? COR_OK : COR_PEND} titulo={modo === "conciliados" || l.conciliado ? "Conciliado" : "Pendente"} /><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 7px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
         <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-          <div style={{ fontWeight: 700, color: "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(modo === "conciliados" ? Number(l.valor_pago ?? l.valor) : Number(l.valor))}</div>
+          <div style={{ fontWeight: 700, color: l.tipo === "pagar" ? COR_NEG : "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(modo === "conciliados" ? Number(l.valor_pago ?? l.valor) : Number(l.valor))}</div>
           {ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
         </div>
         {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
@@ -2617,7 +2625,7 @@ function ConciliacaoInner() {
               {fechamento && extrato.pendentes === 0 && (
                 <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                   Fechamento {fmtDt(fechamento.ini)} a {fmtDt(fechamento.fim)}: extrato {fmtBRL(saldo)} · sistema {fmtBRL(fechamento.sistema)}
-                  {fechamento.fechada ? " — fecha" : <strong style={{ color: "#B42318" }}> — diferença {fmtBRL(fechamento.dif)}</strong>}
+                  {fechamento.fechada ? " — fecha" : <strong style={{ color: "#A93226" }}> — diferença {fmtBRL(fechamento.dif)}</strong>}
                 </div>
               )}
               {sugestoesPend.length > 0 && (
@@ -2681,7 +2689,7 @@ function ConciliacaoInner() {
                 <div style={{ padding: "5px 12px", fontSize: 11, color: "var(--text-3)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
                   {abaSistema === "conciliados" && "Lançamentos ligados a linhas deste extrato (baixados automaticamente ou à mão). Período por data de baixa."}
                   {abaSistema === "abertos" && (linhaAtiva
-                    ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
+                    ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong style={{ color: linhaAtiva.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
                     : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#1A4870", fontWeight: 700 }}>destaque azul</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento; a busca ignora o período.</>)}
                   {abaSistema === "conferencia" && "Cada linha conciliada do OFX com o(s) lançamento(s) ligado(s). Período por data do pagamento no OFX."}
                 </div>
@@ -2729,12 +2737,12 @@ function ConciliacaoInner() {
                                   {ls.map(l => {
                                     const tb = tipoBaixaMeta(l);
                                     return (
-                                      <div key={l.id} style={{ display: "grid", gridTemplateColumns: "78px minmax(110px,1.5fr) minmax(90px,1fr) 62px 96px", gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
+                                      <div key={l.id} style={{ display: "grid", gridTemplateColumns: "78px minmax(110px,1.5fr) minmax(90px,1fr) 88px 96px", gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
                                         <div style={{ color: "var(--text-2)" }}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
                                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--text-1)" }} title={l.descricao}>{fornecedorDe(l)}</div>
                                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-2)" }} title="Conta de baixa">{contaNomeDe(l.conta_bancaria)}</div>
-                                        <div><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 6px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
-                                        <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(Number(l.valor_pago ?? l.valor))}</div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Sinal cor={COR_OK} titulo="Conciliado" /><span style={{ fontSize: 10, fontWeight: tb.w, padding: "2px 6px", borderRadius: 6, background: tb.bg, color: tb.c }}>{tb.t}</span></div>
+                                        <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: l.tipo === "pagar" ? COR_NEG : "var(--text-1)" }}>{l.tipo === "receber" ? "+" : "−"}{fmtBRL(Number(l.valor_pago ?? l.valor))}</div>
                                       </div>
                                     );
                                   })}
@@ -2742,7 +2750,7 @@ function ConciliacaoInner() {
                                 <div style={{ borderLeft: "0.5px solid var(--border)", display: "grid", gridTemplateColumns: "78px minmax(120px,1.6fr) 96px 110px 84px", gap: 8, alignItems: "center", padding: "7px 12px", fontSize: 12 }}>
                                   <div style={{ color: "var(--text-2)" }}>{fmtDt(x.data)}</div>
                                   <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }} title={x.descricao}>{x.descricao}</div>
-                                  <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>{x.tipo === "credito" ? "+" : "−"}{fmtBRL(x.valor)}</div>
+                                  <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: x.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{x.tipo === "credito" ? "+" : "−"}{fmtBRL(x.valor)}</div>
                                   <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}{x.confianca === "media" ? " · média" : ""}</span></div>
                                   <div style={{ textAlign: "right" }}>
                                     <button onClick={() => desvincular(x.id)}
@@ -2752,7 +2760,7 @@ function ConciliacaoInner() {
                               </div>
                               {alertas.length > 0 && (
                                 <div style={{ padding: "0 12px 7px", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                  {alertas.map(a => <span key={a} style={{ fontSize: 10, fontWeight: 600, color: "#B42318", background: "#FDF1F0", borderRadius: 6, padding: "1px 7px" }}>Atenção: {a}</span>)}
+                                  {alertas.map(a => <span key={a} style={{ fontSize: 10, fontWeight: 600, color: "#A93226", background: "#FDF1F0", borderRadius: 6, padding: "1px 7px" }}>Atenção: {a}</span>)}
                                 </div>
                               )}
                             </div>
@@ -2776,7 +2784,7 @@ function ConciliacaoInner() {
                   return (
                     <div style={{ padding: "6px 14px", fontSize: 11, display: "flex", justifyContent: "space-between", gap: 8, background: "var(--bg-page)", color: "var(--text-2)", borderTop: "0.5px solid var(--border)" }}>
                       <span>Linha {fmtBRL(linhaAtiva.valor)} · Lançamentos {fmtBRL(esperado)}</span>
-                      <strong style={{ color: ok || parcial ? "var(--text-1)" : "#B42318" }}>{ok ? "Diferença R$ 0,00" : parcial ? `Baixa parcial — saldo ficará ${fmtBRL(Math.abs(dif))}` : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
+                      <strong style={{ color: ok || parcial ? "var(--text-1)" : "#A93226" }}>{ok ? "Diferença R$ 0,00" : parcial ? `Baixa parcial — saldo ficará ${fmtBRL(Math.abs(dif))}` : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
                     </div>
                   );
                 })()}
@@ -2873,21 +2881,21 @@ function ConciliacaoInner() {
                                 </div>
                               )}
                             </div>
-                            <div style={{ textAlign: "right", whiteSpace: "nowrap", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+                            <div style={{ textAlign: "right", whiteSpace: "nowrap", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: l.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>
                               {l.tipo === "credito" ? "+" : "−"}{fmtBRL(l.valor)}
                             </div>
                             <div>
                               {l.conciliado ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
-                                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>✓ Conciliado</span>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}><Sinal cor={COR_OK} />Conciliado</span>
                                   <span title={l.confianca ? `Confiança ${l.confianca}` : undefined} style={{ padding: "1px 6px", borderRadius: 6, fontSize: 9, fontWeight: 500, background: o.bg, color: o.cor, whiteSpace: "nowrap" }}>
                                     {o.label}{reg ? `: ${reg.texto}` : ""}{l.confianca === "media" ? " · média" : ""}
                                   </span>
                                 </div>
                               ) : sug ? (
-                                <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: "#E3EAF3", color: "#1A4870", whiteSpace: "nowrap" }}>Sugestão</span>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}><Sinal cor={COR_PEND} />Sugestão</span>
                               ) : (
-                                <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: "0.5px solid #1A4870", color: "#1A4870", whiteSpace: "nowrap" }}>Pendente</span>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}><Sinal cor={COR_PEND} />Pendente</span>
                               )}
                             </div>
                             <div>
