@@ -5,9 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
+import SelectBusca from "../../../components/SelectBusca";
+import { listarCentrosCustoGeralDaConta, listarPessoasDaConta } from "../../../lib/db";
+import { avaliarLinhas, escolherRegra, sugerirTextoRegra, diferencaSoma, normalizarTexto, type LancMatch } from "../../../lib/conciliacao-match";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
-interface ContaBancaria { id: string; nome: string; banco: string; agencia?: string; conta?: string; produtor_id?: string | null; fazenda_id?: string }
+interface ContaBancaria { id: string; nome: string; banco: string; agencia?: string; conta?: string; produtor_id?: string | null; fazenda_id?: string; conjunta?: boolean | null; cotitulares?: { produtor_id?: string | null }[] | null }
 
 interface LinhaOFX {
   id: string;
@@ -20,7 +23,33 @@ interface LinhaOFX {
   lancamento_ids?: string[];
   lancamento_desc?: string;
   lancamento_valor?: number;
+  // Como foi conciliada e com que confiança (Seção 277). "sugestao_*" = confiança média:
+  // o sistema achou um lançamento provável, mas só concilia com um clique do usuário.
+  origem_vinculo?: "regra" | "exato" | "sugestao" | "manual" | null;
+  confianca?: "alta" | "media" | null;
+  regra_id?: string | null;
+  sugestao_lancamento_id?: string | null;
+  sugestao_motivo?: string | null;
 }
+
+interface RegraConc {
+  id: string;
+  conta_bancaria_id: string | null;
+  texto: string;
+  tipo: "debito" | "credito";
+  acao: "lancar" | "transferencia";
+  operacao_classificacao: string | null;
+  operacao_descricao: string | null;
+  centro_custo_id: string | null;
+  pessoa_id: string | null;
+  conta_destino_id: string | null;
+  ativa: boolean;
+  usos: number;
+}
+
+// A migração Seção 277 (colunas novas em extrato_transacoes) pode ainda não ter sido
+// executada: sem este flag, qualquer select/upsert com as colunas novas derrubaria a tela.
+let COLUNAS_NOVAS = false;
 
 interface Lancamento {
   id: string;
@@ -139,68 +168,6 @@ function parseOFX(texto: string): LinhaOFX[] {
   return linhas.sort((a, b) => a.data.localeCompare(b.data));
 }
 
-// ─── Auto-match ───────────────────────────────────────────────────────────────
-// produtorTitularConta: titular (produtor_id) da conta bancária do extrato —
-// achado real 18/09/2026: sem essa checagem, um CP do produtor A podia casar
-// automaticamente com o extrato do produtor B só porque o valor bateu (conta
-// com vários titulares, cada um com contas bancárias próprias). Bloqueio
-// duro aqui: só concilia sozinho quando o titular do CP é o mesmo da conta,
-// ou quando o CP não tem titular preenchido (não dá pra provar divergência).
-//
-// Correção 21/09/2026 (auditoria da Conciliação, todos os clientes): cada linha
-// escolhia seu candidato sem "consumir" o lançamento — o mesmo CP de R$ 5.000
-// ficava ligado a 5 débitos de R$ 5.000 (64 lançamentos ligados a mais de uma
-// linha no banco, 29 deles entre contas bancárias diferentes) e a 2ª, 3ª… linha
-// nunca ganhava lançamento próprio. Agora: (1) 1 lançamento ↔ 1 linha; (2) não
-// reaproveita lançamento já conciliado (flag lancamentos.conciliado ou ligado em
-// extrato_transacoes); (3) lançamento já baixado por OUTRA conta bancária não
-// casa com esta conta.
-interface OpcoesAutoMatch {
-  produtorTitularConta?: string | null;
-  contaBancariaId?: string | null;
-  lancamentosJaVinculados?: Set<string>;   // ids já ligados a alguma linha de extrato
-  fitidsJaConciliados?: Set<string>;       // linhas deste extrato que já estão conciliadas no banco
-}
-function autoMatch(linhas: LinhaOFX[], lancamentos: Lancamento[], op: OpcoesAutoMatch = {}): LinhaOFX[] {
-  const usados = new Set<string>(op.lancamentosJaVinculados ?? []);
-  return linhas.map(linha => {
-    if (linha.conciliado) return linha;
-    if (op.fitidsJaConciliados?.has(linha.id)) return linha;
-    const dl = new Date(linha.data + "T00:00:00");
-    const candidatos = lancamentos.filter(l => {
-      if (usados.has(l.id) || l.conciliado) return false;
-      // linha do OFX é sempre em R$: lançamento em USD/grão nunca casa só por "valor igual"
-      if (l.moeda && l.moeda !== "BRL") return false;
-      const vl = l.valor_pago ?? l.valor;
-      if (Math.abs(vl - linha.valor) > 0.02) return false;
-      if (linha.tipo === "credito" && l.tipo !== "receber") return false;
-      if (linha.tipo === "debito"  && l.tipo !== "pagar")   return false;
-      if (op.produtorTitularConta && l.produtor_id && l.produtor_id !== op.produtorTitularConta) return false;
-      const jaPago = l.status === "baixado" || l.status === "parcial";
-      if (jaPago && op.contaBancariaId && l.conta_bancaria && l.conta_bancaria !== op.contaBancariaId) return false;
-      const dr = new Date(((l.data_baixa ?? l.data_vencimento) + "T00:00:00"));
-      return Math.abs((dl.getTime() - dr.getTime()) / 86400000) <= 7;
-    });
-    if (candidatos.length === 0) return linha;
-    // Score: proximidade de data (dias × 10) + penalidade de status (0=baixado, 1=outros)
-    const scored = candidatos
-      .map(c => {
-        const dr = new Date(((c.data_baixa ?? c.data_vencimento) + "T00:00:00"));
-        const diffDays = Math.abs((dl.getTime() - dr.getTime()) / 86400000);
-        return { c, diffDays, score: diffDays * 10 + (c.status === "baixado" ? 0 : 1) };
-      })
-      .sort((a, b) => a.score - b.score);
-    const best = scored[0];
-    // Concilia automaticamente: único candidato OU melhor candidato dentro de 2 dias
-    if (candidatos.length === 1 || best.diffDays <= 2) {
-      const c = best.c;
-      usados.add(c.id);
-      return { ...linha, conciliado: true, lancamento_id: c.id, lancamento_ids: [c.id], lancamento_desc: c.descricao, lancamento_valor: c.valor_pago ?? c.valor };
-    }
-    return linha;
-  });
-}
-
 // Paginação segura: PostgREST devolve no máximo 1.000 linhas por consulta e corta o
 // resto SEM erro — várias telas daqui perdiam linhas assim (achado real: contas com
 // >1.000 transações mostravam só as 1.000 mais antigas).
@@ -255,13 +222,13 @@ async function syncExtratoTransacoes(
   const unicas = linhas.filter(l => (vistos.has(l.id) ? false : (vistos.add(l.id), true)));
 
   const LOTE = 150;
-  const mapaExistente = new Map<string, { fitid: string; valor: number; conciliado: boolean; lancamento_id: string | null; lancamento_ids: string[] | null; lancamento_desc: string | null; lancamento_valor: number | null; primeiro_extrato_id: string | null }>();
+  const mapaExistente = new Map<string, { fitid: string; valor: number; conciliado: boolean; lancamento_id: string | null; lancamento_ids: string[] | null; lancamento_desc: string | null; lancamento_valor: number | null; primeiro_extrato_id: string | null; origem_vinculo?: string | null; confianca?: string | null; regra_id?: string | null }>();
   for (let i = 0; i < unicas.length; i += LOTE) {
     const { data, error } = await supabase.from("extrato_transacoes")
-      .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id")
+      .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id" + (COLUNAS_NOVAS ? ", origem_vinculo, confianca, regra_id" : ""))
       .eq("conta_bancaria_id", contaId).in("fitid", unicas.slice(i, i + LOTE).map(l => l.id));
     if (error) { console.error("[syncExtratoTransacoes] leitura", error); return false; }
-    for (const e of data ?? []) mapaExistente.set(e.fitid as string, e as never);
+    for (const e of ((data ?? []) as unknown as Record<string, unknown>[])) mapaExistente.set(e.fitid as string, e as never);
   }
 
   const rows = unicas.map(l => {
@@ -295,6 +262,13 @@ async function syncExtratoTransacoes(
       primeiro_extrato_id: ex?.primeiro_extrato_id ?? extratoId,
       ultimo_extrato_id: extratoId,
       updated_at: new Date().toISOString(),
+      ...(COLUNAS_NOVAS ? {
+        origem_vinculo: preservarConciliado ? (ex?.origem_vinculo ?? null) : (l.conciliado ? (l.origem_vinculo ?? "manual") : null),
+        confianca: preservarConciliado ? (ex?.confianca ?? null) : (l.conciliado ? (l.confianca ?? null) : null),
+        regra_id: preservarConciliado ? (ex?.regra_id ?? null) : (l.conciliado ? (l.regra_id ?? null) : null),
+        sugestao_lancamento_id: l.conciliado || preservarConciliado ? null : (l.sugestao_lancamento_id ?? null),
+        sugestao_motivo: l.conciliado || preservarConciliado ? null : (l.sugestao_motivo ?? null),
+      } : {}),
     };
   });
 
@@ -320,7 +294,17 @@ const statusMeta = (l: Lancamento): { label: string; bg: string; color: string }
   return { label: "aberto", bg: "#FEF3C7", color: "#92400E" };
 };
 
-const COL_INIT = [80, 320, 110, 90, 260, 135];
+const COL_INIT = [80, 320, 130, 110, 260, 150];
+
+const lblRegra: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 };
+const inpRegra: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" };
+
+const ORIGEM_META: Record<string, { label: string; bg: string; cor: string }> = {
+  regra:    { label: "Regra",         bg: "#E6F0FB", cor: "#1A4870" },
+  exato:    { label: "Exato",         bg: "#E4F6EA", cor: "#166534" },
+  sugestao: { label: "Sugestão aceita", bg: "#FFF3D6", cor: "#8A5A00" },
+  manual:   { label: "Manual",        bg: "#EEEEF2", cor: "#555" },
+};
 
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -341,10 +325,23 @@ function ConciliacaoInner() {
   // (fonte única e contínua) em vez da lista fragmentada de extratos_bancarios.
   const [pendPorConta, setPendPorConta] = useState<{ conta_bancaria_id: string; conta_nome: string; pendentes: number }[]>([]);
   const [loading, setLoading]         = useState(false);
-  const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico"|"inconsistencias">(() => searchParams.get("pendentes") === "true" ? "inconsistencias" : "extrato");
+  const [abaAtiva, setAbaAtiva]       = useState<"extrato"|"historico"|"inconsistencias"|"regras">(() => searchParams.get("pendentes") === "true" ? "inconsistencias" : "extrato");
   const [historico, setHistorico]     = useState<HistoricoConciliacao[]>([]);
   const [expandedHist, setExpandedHist] = useState<string | null>(null);
   const [pendencias, setPendencias]   = useState<Pendencia[]>([]);
+  const [regras, setRegras]           = useState<RegraConc[]>([]);
+  // "Criar regra desta linha" no modal de tesouraria
+  const [criarRegra, setCriarRegra]   = useState<{ ativo: boolean; texto: string; escopo: "conta" | "todas" }>({ ativo: false, texto: "", escopo: "todas" });
+  // Aba Regras
+  const [ccLista, setCcLista]         = useState<{ id: string; codigo?: string | null; nome: string; parent_id?: string | null }[]>([]);
+  const [pessoasLista, setPessoasLista] = useState<{ id: string; nome: string }[]>([]);
+  const [pendGlobais, setPendGlobais] = useState<{ descricao: string; tipo: string; conta_bancaria_id: string }[]>([]);
+  const FORM_REGRA_VAZIO = { id: "", texto: "", tipo: "debito" as "debito" | "credito", conta_bancaria_id: "", acao: "lancar" as "lancar" | "transferencia", og_id: "", centro_custo_id: "", pessoa_id: "", conta_destino_id: "" };
+  const [fRegra, setFRegra]           = useState(FORM_REGRA_VAZIO);
+  const [savingRegra, setSavingRegra] = useState(false);
+  const [aplicandoRegras, setAplicandoRegras] = useState(false);
+  const [resumoImport, setResumoImport] = useState<null | { total: number; jaConciliadas: number; exatas: number; porRegra: number; sugestoes: number; pendentes: number; semOG: number; falhas: number }>(null);
+  const [migracaoOk, setMigracaoOk]   = useState(true);
   const [subInconsist, setSubInconsist] = useState<"com_conta"|"sem_conta">("com_conta");
 
   const [contaSel, setContaSel]     = useState<string>("");
@@ -435,8 +432,8 @@ function ConciliacaoInner() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const [cR, lData, exR, hR, ogR, gsR, pR, etR] = await Promise.all([
-      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta,produtor_id,fazenda_id").in("fazenda_id", fazendaIds).order("nome"),
+    const [cR, lData, exR, hR, ogR, gsR, pR, etR, colR, regR] = await Promise.all([
+      supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta,produtor_id,fazenda_id,conjunta,cotitulares").in("fazenda_id", fazendaIds).order("nome"),
       buscarTodosLancamentosConciliacao(fazendaIds),
       // sem `linhas` (JSON de todas as transações de cada import): a tela só usa o cabeçalho
       // do log, e o payload inteiro travava o carregamento em contas com muitos imports.
@@ -468,7 +465,13 @@ function ConciliacaoInner() {
         .not("conta_bancaria_id", "is", null)
         .order("id").range(de, ate))
         .then(data => ({ data, error: null }), error => ({ data: null, error })),
+      // detecta se a migração Seção 277 já foi executada (colunas novas em extrato_transacoes)
+      supabase.from("extrato_transacoes").select("origem_vinculo").limit(1),
+      fetch("/api/financeiro/conciliacao-regras").then(r => r.json()).catch(() => null),
     ]);
+    COLUNAS_NOVAS = !colR.error;
+    setMigracaoOk(COLUNAS_NOVAS && regR?.migracao !== false);
+    setRegras(((regR?.regras ?? []) as RegraConc[]));
     if (cR.data) setContas(cR.data as ContaBancaria[]);
     setLancamentos(lData);
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
@@ -511,6 +514,17 @@ function ConciliacaoInner() {
     setFiltroLancAte(dFim.toISOString().slice(0, 10));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extrato?.id]);
+
+  // Aba Regras: listas de centro de custo/pessoa e as pendências atuais (pra "quantas linhas pega")
+  useEffect(() => {
+    if (abaAtiva !== "regras" || !fazendaId) return;
+    listarCentrosCustoGeralDaConta(fazendaId).then(l => setCcLista(l as never)).catch(() => {});
+    listarPessoasDaConta(fazendaId).then(l => setPessoasLista((l as { id: string; nome: string }[]).map(p => ({ id: p.id, nome: p.nome })))).catch(() => {});
+    paginar<{ descricao: string; tipo: string; conta_bancaria_id: string }>((de, ate) => supabase.from("extrato_transacoes")
+      .select("descricao,tipo,conta_bancaria_id").in("fazenda_id", fazendaIds).eq("conciliado", false).not("conta_bancaria_id", "is", null).order("id").range(de, ate))
+      .then(setPendGlobais).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abaAtiva, fazendaId]);
 
   const [lancRefresh, setLancRefresh] = useState(false);
   async function recarregarLancamentos() {
@@ -557,13 +571,13 @@ function ConciliacaoInner() {
       // justamente as MAIS RECENTES sumiam (ordem por data crescente).
       const data = await paginar<Record<string, unknown>>((de, ate) => supabase
         .from("extrato_transacoes")
-        .select("fitid,data,descricao,valor,tipo,conciliado,lancamento_id,lancamento_ids,lancamento_desc,lancamento_valor")
+        .select("fitid,data,descricao,valor,tipo,conciliado,lancamento_id,lancamento_ids,lancamento_desc,lancamento_valor" + (COLUNAS_NOVAS ? ",origem_vinculo,confianca,regra_id,sugestao_lancamento_id,sugestao_motivo" : ""))
         .eq("conta_bancaria_id", contaBancariaId)
         .in("fazenda_id", fazendaIds)
         .gte("data", dataIni)
         .lte("data", dataFim)
         .order("data", { ascending: true }).order("fitid", { ascending: true })
-        .range(de, ate));
+        .range(de, ate) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>);
 
       const linhas: LinhaOFX[] = data.map(t => ({
         id: t.fitid as string,
@@ -576,6 +590,11 @@ function ConciliacaoInner() {
         lancamento_ids: (t.lancamento_ids as string[]) ?? undefined,
         lancamento_desc: (t.lancamento_desc as string) ?? undefined,
         lancamento_valor: t.lancamento_valor != null ? Number(t.lancamento_valor) : undefined,
+        origem_vinculo: (t.origem_vinculo as LinhaOFX["origem_vinculo"]) ?? null,
+        confianca: (t.confianca as LinhaOFX["confianca"]) ?? null,
+        regra_id: (t.regra_id as string) ?? null,
+        sugestao_lancamento_id: (t.sugestao_lancamento_id as string) ?? null,
+        sugestao_motivo: (t.sugestao_motivo as string) ?? null,
       }));
       const contaObj = contas.find(c => c.id === contaBancariaId);
       const conciliadoN = linhas.filter(l => l.conciliado).length;
@@ -691,10 +710,30 @@ function ConciliacaoInner() {
         if (r.conta_bancaria_id === contaSel) fitidsJaConciliados.add(r.fitid);
       }
 
-      const titularContaImport = contas.find(c => c.id === contaSel)?.produtor_id;
-      linhas = autoMatch(linhas, lancParaMatch, { produtorTitularConta: titularContaImport, contaBancariaId: contaSel, lancamentosJaVinculados, fitidsJaConciliados });
+      const contaObj = contas.find(c => c.id === contaSel);
+      // Confiança do casamento (proposta aprovada 21/09/2026): só "alta" concilia e baixa
+      // sozinha; "média" vira sugestão (um clique); o resto fica pendente para as regras/manual.
+      const titulares = [contaObj?.produtor_id, ...(contaObj?.cotitulares ?? []).map(c => c.produtor_id)].filter(Boolean) as string[];
+      const novasLinhas = linhas.filter(l => !fitidsJaConciliados.has(l.id));
+      const aval = avaliarLinhas(
+        novasLinhas.map(l => ({ id: l.id, data: l.data, valor: l.valor, tipo: l.tipo, descricao: l.descricao })),
+        lancParaMatch as LancMatch[],
+        { conta: contaSel ? { id: contaSel, titulares } : null, lancamentosJaVinculados },
+      );
+      let nAlta = 0;
+      linhas = linhas.map(l => {
+        const a = aval.get(l.id);
+        if (!a?.lancamento) return l;
+        const c = a.lancamento;
+        if (a.nivel === "alta") {
+          nAlta++;
+          return { ...l, conciliado: true, lancamento_id: c.id, lancamento_ids: [c.id], lancamento_desc: c.descricao, lancamento_valor: Number(c.valor_pago ?? c.valor), origem_vinculo: "exato" as const, confianca: "alta" as const };
+        }
+        // sem a migração Seção 277 não há onde guardar a sugestão: a linha simplesmente fica pendente
+        if (a.nivel === "media" && COLUNAS_NOVAS) return { ...l, sugestao_lancamento_id: c.id, sugestao_motivo: a.motivos.join("; ") };
+        return l;
+      });
       const conciliadoN = linhas.filter(l => l.conciliado).length;
-      const contaObj    = contas.find(c => c.id === contaSel);
 
       const novoExtrato: Extrato = {
         id: `ext-${Date.now()}`,
@@ -787,7 +826,35 @@ function ConciliacaoInner() {
         }));
       }
 
-      const naoConc = linhas.filter(l => !l.conciliado);
+      // Regras de conciliação (tarifa, IOF, juros, aplicação…): cada linha ainda pendente cujo
+      // histórico casa com uma regra vira lançamento já classificado. Roda no servidor.
+      const aplicadosPorRegra = new Set<string>();
+      let semOGRegras = 0, falhasRegras = 0;
+      if (migracaoOk && regras.some(r => r.ativa)) {
+        const pendentesFit = linhas.filter(l => !l.conciliado).map(l => l.id);
+        for (let i = 0; i < pendentesFit.length; i += 400) {
+          try {
+            const r = await fetch("/api/financeiro/conciliacao-regras/aplicar", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ conta_bancaria_id: contaSel, fitids: pendentesFit.slice(i, i + 400) }),
+            }).then(x => x.json());
+            if (r?.ok) {
+              for (const f of (r.fitidsAplicados ?? []) as string[]) aplicadosPorRegra.add(f);
+              semOGRegras += r.semOG ?? 0; falhasRegras += r.nFalhas ?? 0;
+            } else { falhasRegras++; console.error("[handleOFX] regras", r); }
+          } catch (err) { falhasRegras++; console.error("[handleOFX] regras", err); }
+        }
+      }
+      const sugeridas = linhas.filter(l => !l.conciliado && l.sugestao_lancamento_id && !aplicadosPorRegra.has(l.id)).length;
+      setResumoImport({
+        total: linhas.length,
+        jaConciliadas: linhas.filter(l => fitidsJaConciliados.has(l.id)).length,
+        exatas: nAlta, porRegra: aplicadosPorRegra.size, sugestoes: sugeridas,
+        pendentes: Math.max(0, linhas.filter(l => !l.conciliado && !fitidsJaConciliados.has(l.id)).length - aplicadosPorRegra.size - sugeridas),
+        semOG: semOGRegras, falhas: falhasRegras,
+      });
+
+      const naoConc = linhas.filter(l => !l.conciliado && !aplicadosPorRegra.has(l.id));
       if (naoConc.length > 0) {
         const { error: ePend } = await supabase.from("conciliacao_pendencias").upsert(
           naoConc.map(l => ({
@@ -864,6 +931,7 @@ function ConciliacaoInner() {
       desconciliarIds?: string[];
       baixar?: { id: string; data_baixa: string; valor_pago: number; conta_bancaria?: string }[];
       definirConta?: { id: string; conta_bancaria: string }[];
+      moverConta?: { id: string; conta_bancaria: string }[];
     },
   ): Promise<boolean> {
     // Estado otimista COM rollback: antes, se a gravação falhasse a tela continuava
@@ -887,6 +955,7 @@ function ConciliacaoInner() {
           lancamento_ids_desconciliados: opts?.desconciliarIds,
           baixar: opts?.baixar,
           definir_conta: opts?.definirConta,
+          mover_conta: opts?.moverConta,
         }),
       });
       const json = await res.json().catch(() => ({ ok: false }));
@@ -934,38 +1003,69 @@ function ConciliacaoInner() {
   // linhaParam: usado quando chamado direto do botão OFX (estado ainda não atualizou)
   // idsParam: usado pela aba "CP/CR em Aberto" — evita depender de lancsSel
   // (que teria valor desatualizado se setado no mesmo ciclo de render)
-  async function confirmarVinculo(linhaParam?: LinhaOFX, idsParam?: string[]) {
+  async function confirmarVinculo(linhaParam?: LinhaOFX, idsParam?: string[], origem: "manual" | "sugestao" = "manual") {
     const linha = linhaParam ?? linhaAtiva;
     const idsSel = idsParam ?? Array.from(lancsSel);
     if (!linha || idsSel.length === 0 || !extrato || !fazendaId) return;
-    setSalvando(true);
     const ids = idsSel;
+    const selecionados = ids.map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
+
+    // 1 lançamento ↔ 1 linha: lançamento já conciliado com outra linha não pode ser reaproveitado
+    // (era como o mesmo CP acabava ligado a várias linhas do extrato)
+    const jaConc = selecionados.filter(l => l.conciliado && !extrato.linhas.some(x => x.id === linha.id && (x.lancamento_ids?.includes(l.id) || x.lancamento_id === l.id)));
+    if (jaConc.length > 0) {
+      alert(`"${jaConc[0].descricao}" já está conciliado com outra linha do extrato. Desvincule a outra linha antes de usá-lo aqui.`);
+      return;
+    }
+
+    // Conta correta: lançamento baixado em OUTRA conta bancária só entra aqui se o usuário
+    // confirmar mover a baixa para a conta deste extrato.
+    const outraConta = selecionados.filter(l => (l.status === "baixado" || ehParcial(l)) && l.conta_bancaria && l.conta_bancaria !== extrato.conta_id);
+    let moverConta: { id: string; conta_bancaria: string }[] = [];
+    if (outraConta.length > 0) {
+      const nomeConta = (id?: string) => contas.find(c => c.id === id)?.nome ?? "outra conta";
+      const lista = outraConta.slice(0, 3).map(l => `• ${l.descricao} — baixado em ${nomeConta(l.conta_bancaria)}`).join("\n");
+      if (!confirm(`${outraConta.length === 1 ? "Este lançamento foi baixado" : "Estes lançamentos foram baixados"} em outra conta bancária:\n${lista}\n\nMover a baixa para ${extrato.conta_nome}?`)) return;
+      moverConta = outraConta.map(l => ({ id: l.id, conta_bancaria: extrato.conta_id }));
+    }
+
+    // Valor: a soma dos lançamentos precisa bater com a linha do banco; diferença só com
+    // justificativa (juros, multa, desconto) — no ERP de referência 96% dos lotes fecham exato.
+    const dif = diferencaSoma(linha.valor, selecionados);
+    let justificativa = "";
+    if (Math.abs(dif) > 0.02) {
+      const resp = window.prompt(`A linha do extrato (${fmtBRL(linha.valor)}) difere dos lançamentos selecionados (${fmtBRL(linha.valor - dif)}) em ${fmtBRL(Math.abs(dif))}.\n\nInforme o motivo da diferença (juros, multa, desconto…) para confirmar:`);
+      if (!resp || !resp.trim()) return;
+      justificativa = resp.trim();
+    }
+
+    setSalvando(true);
 
     // Lançamentos a baixar (somente os que ainda não foram baixados nem parcialmente pagos)
     // "parcial" = já tem valor_pago registrado; conciliar apenas vincula o OFX, não reprocessa baixa
-    const paraBaixar = ids
-      .map(id => lancamentos.find(x => x.id === id))
-      .filter(l => l && l.status !== "baixado" && l.status !== "parcial") as Lancamento[];
+    const paraBaixar = selecionados.filter(l => l.status !== "baixado" && l.status !== "parcial");
+    // Baixa com a data do banco; com um único lançamento, o valor pago é o valor REAL do banco
+    // (juros/desconto entram no valor pago em vez de ficar oculto).
+    const valorBaixa = (l: Lancamento) => selecionados.length === 1 ? linha.valor : (l.valor_pago ?? l.valor);
 
     // Atualiza estado local imediatamente (optimistic)
-    if (paraBaixar.length > 0) {
+    if (paraBaixar.length > 0 || moverConta.length > 0) {
       setLancamentos(prev => prev.map(l => {
-        if (!ids.includes(l.id) || l.status === "baixado") return l;
-        return { ...l, status: "baixado", data_baixa: linha.data, valor_pago: l.valor_pago ?? l.valor, conta_bancaria: extrato.conta_id || l.conta_bancaria };
+        if (!ids.includes(l.id)) return l;
+        const baixa = paraBaixar.some(b => b.id === l.id);
+        return { ...l, ...(baixa ? { status: "baixado", data_baixa: linha.data, valor_pago: valorBaixa(l) } : {}), conta_bancaria: extrato.conta_id || l.conta_bancaria, conciliado: true };
       }));
     }
 
     // Vincular à linha OFX
-    const primeiro = lancamentos.find(l => l.id === ids[0]);
+    const primeiro = selecionados[0];
     const descVinc = ids.length === 1 && primeiro ? primeiro.descricao : `${ids.length} lançamentos (bordero)`;
-    const valorVinc = ids.reduce((s, id) => {
-      const l = lancamentos.find(x => x.id === id);
-      return s + (l ? (l.valor_pago ?? l.valor) : 0);
-    }, 0);
+    const valorVinc = selecionados.reduce((sm, l) => sm + (l.valor_pago ?? l.valor), 0);
 
     const novasLinhas = extrato.linhas.map(l =>
       l.id === linha.id
-        ? { ...l, conciliado: true, lancamento_id: ids[0], lancamento_ids: ids, lancamento_desc: descVinc, lancamento_valor: valorVinc }
+        ? { ...l, conciliado: true, lancamento_id: ids[0], lancamento_ids: ids, lancamento_desc: descVinc, lancamento_valor: valorVinc,
+            origem_vinculo: origem, confianca: origem === "sugestao" ? ("media" as const) : null, regra_id: null, sugestao_lancamento_id: null, sugestao_motivo: null }
         : l
     );
     const conciliadoN = novasLinhas.filter(l => l.conciliado).length;
@@ -977,14 +1077,14 @@ function ConciliacaoInner() {
         baixar: paraBaixar.map(l => ({
           id: l.id,
           data_baixa: linha.data,
-          valor_pago: l.valor_pago ?? l.valor,
+          valor_pago: valorBaixa(l),
           conta_bancaria: extrato.conta_id || undefined,
         })),
+        moverConta,
         // já baixado sem conta bancária → grava a conta deste extrato (senão a Posição
         // Bancária nunca fecha com o extrato: 127 vínculos com conta divergente no banco)
-        definirConta: ids
-          .map(id => lancamentos.find(x => x.id === id))
-          .filter((l): l is Lancamento => !!l && (l.status === "baixado" || l.status === "parcial") && !l.conta_bancaria)
+        definirConta: selecionados
+          .filter(l => (l.status === "baixado" || l.status === "parcial") && !l.conta_bancaria)
           .map(l => ({ id: l.id, conta_bancaria: extrato.conta_id })),
       },
     );
@@ -998,8 +1098,8 @@ function ConciliacaoInner() {
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
         .update({ status: "resolvido", lancamento_id: ids[0] })
-        .eq("fazenda_id", fazendaId).eq("fitid", linha.id);
-      registrarHistorico(linha, "conciliado", ids, descVinc);
+        .eq("fazenda_id", fazendaId).eq("fitid", linha.id).eq("conta_id", extrato.conta_id);
+      registrarHistorico(linha, "conciliado", ids, justificativa ? `${descVinc} · diferença justificada: ${justificativa}` : descVinc);
     }
 
     setLinhaAtiva(null);
@@ -1082,6 +1182,8 @@ function ConciliacaoInner() {
           .eq("fazenda_id", fazendaId).eq("fitid", modalTes.id);
         registrarHistorico(modalTes, "conciliado", ids, desc);
       }
+      const erroRegraT = await criarRegraDaLinha(modalTes, { acao: "transferencia", conta_destino_id: modalTes.tipo === "debito" ? fTes.conta_destino : fTes.conta_origem });
+      if (erroRegraT) alert("Lançamento conciliado, mas a regra não foi criada: " + erroRegraT);
       setModalTes(null);
       setSavingTes(false);
       return;
@@ -1152,6 +1254,8 @@ function ConciliacaoInner() {
       registrarHistorico(modalTes, "conciliado", ids, desc);
     }
 
+    const erroRegra = await criarRegraDaLinha(modalTes, { acao: "lancar", og_id: ogId ?? undefined });
+    if (erroRegra) alert("Lançamento conciliado, mas a regra não foi criada: " + erroRegra);
     setModalTes(null);
     setSavingTes(false);
   }
@@ -1274,9 +1378,150 @@ function ConciliacaoInner() {
     }
   }
 
+  // ── Regras de conciliação ──────────────────────────────────────────────────
+  async function recarregarRegras() {
+    try {
+      const r = await fetch("/api/financeiro/conciliacao-regras").then(x => x.json());
+      if (r?.ok) setRegras(r.regras as RegraConc[]);
+    } catch { /* mantém as atuais */ }
+  }
+
+  // Cria a regra a partir de uma linha classificada à mão ("sempre fazer isso para textos como…")
+  async function criarRegraDaLinha(linha: LinhaOFX, dados: { acao: "lancar" | "transferencia"; og_id?: string; conta_destino_id?: string }): Promise<string | null> {
+    if (!criarRegra.ativo) return null;
+    const og = dados.og_id ? ogsDisponiveis.find(o => o.id === dados.og_id) : undefined;
+    try {
+      const r = await fetch("/api/financeiro/conciliacao-regras", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          texto: criarRegra.texto, tipo: linha.tipo,
+          acao: dados.acao,
+          conta_bancaria_id: criarRegra.escopo === "conta" ? extrato?.conta_id : null,
+          operacao_classificacao: og?.classificacao ?? null, operacao_descricao: og?.descricao ?? null,
+          conta_destino_id: dados.conta_destino_id ?? null,
+        }),
+      }).then(x => x.json());
+      if (!r?.ok) return r?.error ?? "erro desconhecido";
+      recarregarRegras();
+      return null;
+    } catch (e) { return e instanceof Error ? e.message : "erro desconhecido"; }
+  }
+
+  async function salvarRegraForm() {
+    const og = ogsDisponiveis.find(o => o.id === fRegra.og_id);
+    setSavingRegra(true);
+    try {
+      const r = await fetch("/api/financeiro/conciliacao-regras", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          texto: fRegra.texto, tipo: fRegra.tipo, acao: fRegra.acao,
+          conta_bancaria_id: fRegra.conta_bancaria_id || null,
+          operacao_classificacao: og?.classificacao ?? null, operacao_descricao: og?.descricao ?? null,
+          centro_custo_id: fRegra.centro_custo_id || null, pessoa_id: fRegra.pessoa_id || null,
+          conta_destino_id: fRegra.conta_destino_id || null,
+        }),
+      }).then(x => x.json());
+      if (!r?.ok) { alert("Não foi possível salvar a regra: " + (r?.error ?? "erro desconhecido")); return; }
+      setFRegra(FORM_REGRA_VAZIO);
+      await recarregarRegras();
+    } finally { setSavingRegra(false); }
+  }
+
+  async function alternarRegra(r: RegraConc) {
+    const res = await fetch(`/api/financeiro/conciliacao-regras?id=${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ativa: !r.ativa }) }).then(x => x.json()).catch(() => null);
+    if (!res?.ok) { alert("Não foi possível alterar a regra."); return; }
+    setRegras(prev => prev.map(x => x.id === r.id ? { ...x, ativa: !r.ativa } : x));
+  }
+
+  async function excluirRegra(r: RegraConc) {
+    if (!confirm(`Excluir a regra "${r.texto}"? Lançamentos já criados por ela não são alterados.`)) return;
+    const res = await fetch(`/api/financeiro/conciliacao-regras?id=${r.id}`, { method: "DELETE" }).then(x => x.json()).catch(() => null);
+    if (!res?.ok) { alert("Não foi possível excluir a regra."); return; }
+    setRegras(prev => prev.filter(x => x.id !== r.id));
+  }
+
+  // Quantas linhas PENDENTES (de todas as contas) uma regra pegaria hoje
+  function contarBatidas(r: RegraConc): number {
+    const alvo = ` ${normalizarTexto(r.texto)} `;
+    return pendGlobais.filter(l => l.tipo === r.tipo && (!r.conta_bancaria_id || r.conta_bancaria_id === l.conta_bancaria_id)
+      && ` ${normalizarTexto(l.descricao)} `.includes(alvo)).length;
+  }
+
+  // Aplica as regras às pendentes da conta aberta (o mesmo que roda no import)
+  async function aplicarRegrasNaConta() {
+    if (!extrato) return;
+    setAplicandoRegras(true);
+    try {
+      const r = await fetch("/api/financeiro/conciliacao-regras/aplicar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conta_bancaria_id: extrato.conta_id }),
+      }).then(x => x.json());
+      if (!r?.ok) { alert("Não foi possível aplicar as regras: " + (r?.error ?? "erro desconhecido")); return; }
+      if (r.migracao === false) { alert("Execute a migração Seção 277 no Supabase para usar regras de conciliação."); return; }
+      alert(`${r.aplicadas ?? 0} linha(s) conciliada(s) por regra` + (r.semOG ? ` · ${r.semOG} regra(s) sem a O.G. cadastrada nesta fazenda` : "") + (r.nFalhas ? ` · ${r.nFalhas} falha(s)` : ""));
+      await carregarExtratoUnificado(extrato.conta_id, extrato.data_inicio, extrato.data_fim);
+      carregar();
+    } finally { setAplicandoRegras(false); }
+  }
+
+  // ── Sugestões (confiança média) ───────────────────────────────────────────
+  // Em lote e numa única gravação: aceitar várias em sequência, cada uma sobre o `extrato` do
+  // momento, faria a 2ª sobrescrever a 1ª (a conciliação anterior voltava a pendente).
+  async function aceitarSugestoes(alvo: LinhaOFX[]) {
+    if (!extrato || !fazendaId || alvo.length === 0) return;
+    setSalvando(true);
+    const usados = new Set<string>();
+    const aceitas: { linha: LinhaOFX; l: Lancamento }[] = [];
+    const puladas: string[] = [];
+    for (const linha of alvo) {
+      const l = linha.sugestao_lancamento_id ? lancamentos.find(x => x.id === linha.sugestao_lancamento_id) : undefined;
+      if (!l) { puladas.push(`${fmtDt(linha.data)} ${linha.descricao.slice(0, 30)}: lançamento não encontrado`); continue; }
+      if (l.conciliado || usados.has(l.id)) { puladas.push(`${l.descricao.slice(0, 30)}: já conciliado com outra linha`); continue; }
+      if ((l.status === "baixado" || ehParcial(l)) && l.conta_bancaria && l.conta_bancaria !== extrato.conta_id) { puladas.push(`${l.descricao.slice(0, 30)}: baixado em outra conta`); continue; }
+      usados.add(l.id); aceitas.push({ linha, l });
+    }
+    if (aceitas.length === 0) { setSalvando(false); alert("Nenhuma sugestão pôde ser aceita:\n" + puladas.slice(0, 5).join("\n")); return; }
+
+    const ids = new Set(aceitas.map(a => a.linha.id));
+    const novasLinhas = extrato.linhas.map(x => {
+      const a = aceitas.find(y => y.linha.id === x.id);
+      return a ? { ...x, conciliado: true, lancamento_id: a.l.id, lancamento_ids: [a.l.id], lancamento_desc: a.l.descricao, lancamento_valor: x.valor,
+        origem_vinculo: "sugestao" as const, confianca: "media" as const, sugestao_lancamento_id: null, sugestao_motivo: null } : x;
+    });
+    const conciliadoN = novasLinhas.filter(x => x.conciliado).length;
+    const abertas = aceitas.filter(a => a.l.status !== "baixado" && a.l.status !== "parcial");
+    const ok = await persistExtrato(
+      { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
+      {
+        conciliarIds: aceitas.map(a => a.l.id),
+        baixar: abertas.map(a => ({ id: a.l.id, data_baixa: a.linha.data, valor_pago: a.linha.valor, conta_bancaria: extrato.conta_id })),
+        definirConta: aceitas.filter(a => (a.l.status === "baixado" || ehParcial(a.l)) && !a.l.conta_bancaria).map(a => ({ id: a.l.id, conta_bancaria: extrato.conta_id })),
+      },
+    );
+    setSalvando(false);
+    if (!ok) { alert("Não foi possível salvar as conciliações — tente novamente."); return; }
+    setLancamentos(prev => prev.map(l => {
+      const a = aceitas.find(y => y.l.id === l.id);
+      if (!a) return l;
+      const baixa = abertas.some(b => b.l.id === l.id);
+      return { ...l, conciliado: true, conta_bancaria: extrato.conta_id, ...(baixa ? { status: "baixado", data_baixa: a.linha.data, valor_pago: a.linha.valor } : {}) };
+    }));
+    for (const a of aceitas) registrarHistorico(a.linha, "conciliado", [a.l.id], a.l.descricao);
+    if (puladas.length) alert(`${aceitas.length} aceita(s). ${puladas.length} não pôde(ram) ser aceita(s):\n` + puladas.slice(0, 5).join("\n"));
+    void ids;
+  }
+
+  async function ignorarSugestao(linha: LinhaOFX) {
+    if (!extrato) return;
+    const novasLinhas = extrato.linhas.map(x => x.id === linha.id ? { ...x, sugestao_lancamento_id: null, sugestao_motivo: null } : x);
+    const ok = await persistExtrato({ ...extrato, linhas: novasLinhas });
+    if (!ok) alert("Não foi possível descartar a sugestão — tente novamente.");
+  }
+
   // ── Abrir modal tesouraria ─────────────────────────────────────────────────
   function abrirTesouraria(linha: LinhaOFX) {
     setModalTes(linha);
+    setCriarRegra({ ativo: false, texto: sugerirTextoRegra(linha.descricao), escopo: "todas" });
     const opPadrao = linha.tipo === "credito" ? "__resgate__" : "__taxa__";
     setFTes({
       descricao: linha.descricao,
@@ -1458,7 +1703,30 @@ function ConciliacaoInner() {
   const totalCreditos = (extrato?.linhas ?? []).filter(l => l.tipo === "credito").reduce((s, l) => s + l.valor, 0);
   const totalDebitos  = (extrato?.linhas ?? []).filter(l => l.tipo === "debito").reduce((s, l) => s + l.valor, 0);
   const saldo         = totalCreditos - totalDebitos;
-  const pct           = extrato ? Math.round((extrato.conciliados / extrato.total_linhas) * 100) : 0;
+  const pct           = extrato && extrato.total_linhas > 0 ? Math.round((extrato.conciliados / extrato.total_linhas) * 100) : 0;
+
+  // Sugestões (confiança média) ainda não aceitas nem descartadas
+  const sugestoesPend = (extrato?.linhas ?? []).filter(l => !l.conciliado && l.sugestao_lancamento_id);
+
+  // Fechamento da conta: movimento líquido do extrato x movimento líquido baixado no sistema
+  // NESTA conta, no período coberto pelas linhas. Diferença zero = conta fechada.
+  const fechamento = (() => {
+    if (!extrato || extrato.linhas.length === 0) return null;
+    const datas = extrato.linhas.map(l => l.data).sort();
+    const ini = datas[0], fim = datas[datas.length - 1];
+    let sistema = 0, qtd = 0;
+    for (const l of lancamentos) {
+      if (!(l.status === "baixado" || ehParcial(l))) continue;
+      if (l.conta_bancaria !== extrato.conta_id) continue;
+      if (l.moeda && l.moeda !== "BRL") continue;
+      const dt = l.data_baixa ?? l.data_vencimento;
+      if (dt < ini || dt > fim) continue;
+      sistema += (l.tipo === "receber" ? 1 : -1) * Number(l.valor_pago ?? l.valor);
+      qtd++;
+    }
+    const dif = Math.round((saldo - sistema) * 100) / 100;
+    return { ini, fim, sistema, qtd, dif, fechada: Math.abs(dif) < 0.01 };
+  })();
 
   // ─── Estilos compartilhados ────────────────────────────────────────────────
   const thStyle: React.CSSProperties = {
@@ -1577,27 +1845,49 @@ function ConciliacaoInner() {
               </div>
 
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Vínculo Fiscal — Plano de Contas</label>
-                <select
-                  value={fTes.og_id}
-                  onChange={e => setFTes(f => ({ ...f, og_id: e.target.value }))}
-                  style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${fTes.og_id ? "#16A34A" : "var(--border)"}`, borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
-                  <option value="">— Sem vínculo (não impacta DRE/LCDPR)</option>
-                  <optgroup label="Receitas">
-                    {ogsDisponiveis.filter(g => g.tipo === "receita").map(g => (
-                      <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Despesas">
-                    {ogsDisponiveis.filter(g => g.tipo === "despesa").map(g => (
-                      <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
-                    ))}
-                  </optgroup>
-                </select>
-                {fTes.og_id && (
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação Gerencial *</label>
+                <div style={{ marginTop: 4 }}>
+                  {fTes.tipo_op === "__transferencia__" ? (
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>Transferência entre contas próprias não tem O.G. (não entra no LCDPR nem no DRE).</div>
+                  ) : (
+                    <SelectBusca
+                      value={fTes.og_id}
+                      onChange={id => setFTes(f => ({ ...f, og_id: id }))}
+                      options={ogsDisponiveis
+                        .filter(g => g.tipo === (fTes.tipo === "pagar" ? "despesa" : "receita"))
+                        .map(g => ({ value: g.id, label: `${g.classificacao} — ${g.descricao}`, group: (g.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
+                      placeholder="Selecionar operação…"
+                      style={{ width: "100%", padding: "7px 10px", border: `0.5px solid ${fTes.og_id ? "#16A34A" : "var(--border)"}`, borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                    />
+                  )}
+                </div>
+                {fTes.og_id && fTes.tipo_op !== "__transferencia__" && (
                   <div style={{ marginTop: 3, fontSize: 10, color: "#16A34A" }}>✓ Lançamento impactará DRE, LCDPR e SPED ECD</div>
                 )}
               </div>
+
+              {migracaoOk && (
+                <div style={{ background: criarRegra.ativo ? "#E6F0FB" : "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "9px 12px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--text-1)", cursor: "pointer" }}>
+                    <input type="checkbox" checked={criarRegra.ativo} onChange={e => setCriarRegra(c => ({ ...c, ativo: e.target.checked }))} />
+                    Fazer o mesmo sempre que o extrato disser algo como isto
+                  </label>
+                  {criarRegra.ativo && (
+                    <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Texto que identifica (palavras contidas no histórico)</div>
+                        <input value={criarRegra.texto} onChange={e => setCriarRegra(c => ({ ...c, texto: e.target.value }))}
+                          style={{ width: "100%", padding: "6px 9px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                      </div>
+                      <select value={criarRegra.escopo} onChange={e => setCriarRegra(c => ({ ...c, escopo: e.target.value as "conta" | "todas" }))}
+                        style={{ padding: "6px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, background: "var(--bg-card)" }}>
+                        <option value="todas">Todas as contas</option>
+                        <option value="conta">Só esta conta</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</label>
@@ -1610,11 +1900,44 @@ function ConciliacaoInner() {
                   style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button onClick={salvarTesouraria} disabled={savingTes || fTes.valor <= 0 || (fTes.tipo_op === "__transferencia__" ? (!fTes.conta_origem || !fTes.conta_destino) : !fTes.descricao)}
+                <button onClick={salvarTesouraria} disabled={savingTes || fTes.valor <= 0 || (fTes.tipo_op === "__transferencia__" ? (!fTes.conta_origem || !fTes.conta_destino) : (!fTes.descricao || !fTes.og_id))}
                   style={{ flex: 2, padding: "9px", border: "none", borderRadius: 8, background: savingTes ? "#999" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingTes ? "default" : "pointer" }}>
                   {savingTes ? "Salvando..." : "✓ Salvar e Conciliar"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Resumo da importação ───────────────────────────────────────────── */}
+      {resumoImport && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 460, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", padding: "20px 22px" }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Importação concluída</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2, marginBottom: 14 }}>{resumoImport.total} transações no arquivo{resumoImport.jaConciliadas > 0 ? ` · ${resumoImport.jaConciliadas} já estavam conciliadas` : ""}</div>
+            {[
+              { n: resumoImport.porRegra,  label: "conciliadas por regra",           dica: "lançadas e classificadas automaticamente", cor: "#1A4870", bg: "#E6F0FB" },
+              { n: resumoImport.exatas,    label: "conciliadas por casamento exato", dica: "valor, conta, titular e data conferem",   cor: "#166534", bg: "#E4F6EA" },
+              { n: resumoImport.sugestoes, label: "sugestões para revisar",          dica: "um clique confirma (aceitar todas está no topo)", cor: "#8A5A00", bg: "#FFF3D6" },
+              { n: resumoImport.pendentes, label: "pendentes",                        dica: "sem lançamento correspondente",           cor: "#92400E", bg: "#FEF3C7" },
+            ].map(x => (
+              <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", borderRadius: 8, background: x.bg, marginBottom: 6 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: x.cor, minWidth: 44, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{x.n}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: x.cor }}>{x.label}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>{x.dica}</div>
+                </div>
+              </div>
+            ))}
+            {(resumoImport.semOG > 0 || resumoImport.falhas > 0) && (
+              <div style={{ fontSize: 12, color: "#991B1B", background: "#FDECEC", borderRadius: 8, padding: "8px 12px", marginTop: 8 }}>
+                {resumoImport.semOG > 0 && <div>{resumoImport.semOG} linha(s) casaram com regra, mas a O.G. da regra não existe na fazenda desta conta — ficaram pendentes.</div>}
+                {resumoImport.falhas > 0 && <div>{resumoImport.falhas} falha(s) ao aplicar regras — ficaram pendentes.</div>}
+              </div>
+            )}
+            <div style={{ textAlign: "right", marginTop: 14 }}>
+              <button onClick={() => setResumoImport(null)} style={{ padding: "8px 22px", border: "none", borderRadius: 8, background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Revisar</button>
             </div>
           </div>
         </div>
@@ -1766,6 +2089,7 @@ function ConciliacaoInner() {
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             {([
               ["extrato",         "Extratos OFX"],
+              ["regras",          `Regras${regras.length > 0 ? ` (${regras.length})` : ""}`],
               ["inconsistencias", `Inconsistências${pendencias.length > 0 ? ` (${pendencias.length})` : ""}`],
               ["historico",       `Histórico (${extratos.length})`],
             ] as const).map(([k, lbl]) => (
@@ -1831,6 +2155,127 @@ function ConciliacaoInner() {
                   style={{ padding: "9px 20px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1 }}>
                   {loading ? "Carregando..." : "Ver conciliação →"}
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ ABA REGRAS ═══ */}
+        {!extrato && abaAtiva === "regras" && (
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "18px 20px", marginBottom: 20 }}>
+            {!migracaoOk && (
+              <div style={{ background: "#FFF3D6", border: "0.5px solid #E8C36A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#8A5A00", marginBottom: 14 }}>
+                Para usar regras e a confiança do vínculo, execute a migração <strong>Seção 277</strong> (final do arquivo <code>supabase_migrations.sql</code>) no Supabase SQL Editor.
+              </div>
+            )}
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>Regras de conciliação</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 14, lineHeight: 1.5 }}>
+              Quando o histórico do extrato contém o texto da regra, o Arato cria o lançamento já classificado (Operação Gerencial, centro de custo, pessoa) e concilia sozinho — ideal para IOF, tarifas, juros e aplicações. As regras valem para todas as contas ou só para uma.
+              Dica: você também cria regras direto da linha do extrato, em <em>+ Tesouraria → Criar regra</em>.
+            </div>
+
+            {/* Nova regra */}
+            <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "2fr 1fr 1.4fr 1.2fr", gap: 10, alignItems: "end" }}>
+              <div>
+                <label style={lblRegra}>Texto no histórico do extrato</label>
+                <input value={fRegra.texto} onChange={e => setFRegra(f => ({ ...f, texto: e.target.value }))} placeholder="Ex.: cobranca de iof"
+                  style={inpRegra} />
+              </div>
+              <div>
+                <label style={lblRegra}>Natureza</label>
+                <select value={fRegra.tipo} onChange={e => setFRegra(f => ({ ...f, tipo: e.target.value as "debito" | "credito", og_id: "" }))} style={inpRegra}>
+                  <option value="debito">Débito (saída)</option>
+                  <option value="credito">Crédito (entrada)</option>
+                </select>
+              </div>
+              <div>
+                <label style={lblRegra}>Conta bancária</label>
+                <select value={fRegra.conta_bancaria_id} onChange={e => setFRegra(f => ({ ...f, conta_bancaria_id: e.target.value }))} style={inpRegra}>
+                  <option value="">Todas as contas</option>
+                  {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lblRegra}>O que fazer</label>
+                <select value={fRegra.acao} onChange={e => setFRegra(f => ({ ...f, acao: e.target.value as "lancar" | "transferencia" }))} style={inpRegra}>
+                  <option value="lancar">Lançar e conciliar</option>
+                  <option value="transferencia">Transferência entre contas</option>
+                </select>
+              </div>
+              {fRegra.acao === "lancar" ? (
+                <>
+                  <div style={{ gridColumn: "1 / 3" }}>
+                    <label style={lblRegra}>Operação Gerencial *</label>
+                    <SelectBusca value={fRegra.og_id} onChange={id => setFRegra(f => ({ ...f, og_id: id }))}
+                      options={ogsDisponiveis.filter(g => g.tipo === (fRegra.tipo === "debito" ? "despesa" : "receita")).map(g => ({ value: g.id, label: `${g.classificacao} — ${g.descricao}`, group: (g.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
+                      placeholder="Selecionar operação…" style={inpRegra} />
+                  </div>
+                  <div>
+                    <label style={lblRegra}>Centro de custo</label>
+                    <select value={fRegra.centro_custo_id} onChange={e => setFRegra(f => ({ ...f, centro_custo_id: e.target.value }))} style={inpRegra}>
+                      <option value="">Sem centro de custo</option>
+                      {ccLista.filter(c => !ccLista.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lblRegra}>Pessoa (favorecido)</label>
+                    <select value={fRegra.pessoa_id} onChange={e => setFRegra(f => ({ ...f, pessoa_id: e.target.value }))} style={inpRegra}>
+                      <option value="">Nenhuma</option>
+                      {pessoasLista.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <div style={{ gridColumn: "1 / 3" }}>
+                  <label style={lblRegra}>Conta da outra ponta *</label>
+                  <select value={fRegra.conta_destino_id} onChange={e => setFRegra(f => ({ ...f, conta_destino_id: e.target.value }))} style={inpRegra}>
+                    <option value="">— Selecione —</option>
+                    {contas.filter(c => c.id !== fRegra.conta_bancaria_id).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+              )}
+              <div style={{ gridColumn: "3 / 5", textAlign: "right" }}>
+                <button onClick={salvarRegraForm}
+                  disabled={savingRegra || !migracaoOk || normalizarTexto(fRegra.texto).length < 3 || (fRegra.acao === "lancar" ? !fRegra.og_id : !fRegra.conta_destino_id)}
+                  style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: (savingRegra || !migracaoOk || normalizarTexto(fRegra.texto).length < 3 || (fRegra.acao === "lancar" ? !fRegra.og_id : !fRegra.conta_destino_id)) ? 0.5 : 1 }}>
+                  {savingRegra ? "Salvando…" : "+ Salvar regra"}
+                </button>
+              </div>
+            </div>
+
+            {/* Lista */}
+            {regras.length === 0 ? (
+              <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: 12, padding: "14px 0" }}>Nenhuma regra ainda.</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr>{["Ativa", "Texto", "Natureza", "Conta", "Ação", "Centro de custo / Pessoa", "Usos", "Pega hoje", ""].map(h => (
+                      <th key={h} style={{ ...thStyle, position: "static" }}>{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {regras.map(r => (
+                      <tr key={r.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", opacity: r.ativa ? 1 : 0.5 }}>
+                        <td style={{ padding: "8px 10px" }}><input type="checkbox" checked={r.ativa} onChange={() => alternarRegra(r)} style={{ cursor: "pointer" }} /></td>
+                        <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-1)" }}>{r.texto}</td>
+                        <td style={{ padding: "8px 10px", color: r.tipo === "debito" ? "#E24B4A" : "#16A34A" }}>{r.tipo === "debito" ? "Débito" : "Crédito"}</td>
+                        <td style={{ padding: "8px 10px", color: "var(--text-2)" }}>{r.conta_bancaria_id ? (contas.find(c => c.id === r.conta_bancaria_id)?.nome ?? "—") : "Todas"}</td>
+                        <td style={{ padding: "8px 10px", color: "var(--text-2)" }}>
+                          {r.acao === "lancar" ? `${r.operacao_classificacao ?? ""} — ${r.operacao_descricao ?? ""}` : `Transferência ↔ ${contas.find(c => c.id === r.conta_destino_id)?.nome ?? "—"}`}
+                        </td>
+                        <td style={{ padding: "8px 10px", color: "var(--text-3)" }}>
+                          {[ccLista.find(c => c.id === r.centro_custo_id)?.nome, pessoasLista.find(p => p.id === r.pessoa_id)?.nome].filter(Boolean).join(" · ") || "—"}
+                        </td>
+                        <td style={{ padding: "8px 10px", color: "var(--text-3)" }}>{r.usos}</td>
+                        <td style={{ padding: "8px 10px", color: "var(--text-3)" }}>{contarBatidas(r)} pendente(s)</td>
+                        <td style={{ padding: "8px 10px" }}>
+                          <button onClick={() => excluirRegra(r)} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15 }}>×</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -2187,6 +2632,38 @@ function ConciliacaoInner() {
                   </div>
                 ))}
               </div>
+
+              {/* Fechamento da conta: extrato x sistema no período coberto pelas linhas */}
+              {fechamento && (
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "8px 12px", borderRadius: 8,
+                  background: fechamento.fechada ? "#E4F6EA" : "#FDECEC", border: `0.5px solid ${fechamento.fechada ? "#86D3A0" : "#F2A3A3"}` }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: fechamento.fechada ? "#166534" : "#991B1B" }}>
+                    {fechamento.fechada ? "✓ Conta fechada" : "Conta não fecha"} · {fmtDt(fechamento.ini)} a {fmtDt(fechamento.fim)}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>
+                    Extrato {fmtBRL(saldo)} · Sistema ({fechamento.qtd} baixa{fechamento.qtd !== 1 ? "s" : ""} nesta conta) {fmtBRL(fechamento.sistema)}
+                    {!fechamento.fechada && <strong style={{ color: "#991B1B" }}> · Diferença {fmtBRL(fechamento.dif)}</strong>}
+                  </div>
+                </div>
+              )}
+
+              {/* Sugestões e regras */}
+              {(sugestoesPend.length > 0 || (migracaoOk && regras.some(r => r.ativa))) && (
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {sugestoesPend.length > 0 && (
+                    <button onClick={() => aceitarSugestoes(sugestoesPend)} disabled={salvando}
+                      style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", fontSize: 12, fontWeight: 700, cursor: salvando ? "default" : "pointer" }}>
+                      💡 Aceitar todas as sugestões ({sugestoesPend.length})
+                    </button>
+                  )}
+                  {migracaoOk && regras.some(r => r.ativa) && extrato.pendentes > 0 && (
+                    <button onClick={aplicarRegrasNaConta} disabled={aplicandoRegras}
+                      style={{ padding: "6px 14px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 700, cursor: aplicandoRegras ? "default" : "pointer", opacity: aplicandoRegras ? 0.6 : 1 }}>
+                      {aplicandoRegras ? "Aplicando…" : "⚙ Aplicar regras às pendentes"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Sub-abas dentro do extrato aberto */}
@@ -2282,6 +2759,19 @@ function ConciliacaoInner() {
                     style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
                 </div>
 
+                {/* Soma dos selecionados x linha do extrato (borderô só fecha com diferença zero ou justificada) */}
+                {linhaAtiva && lancsSel.size > 0 && (() => {
+                  const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
+                  const dif = diferencaSoma(linhaAtiva.valor, sel);
+                  const ok = Math.abs(dif) <= 0.02;
+                  return (
+                    <div style={{ padding: "6px 14px", fontSize: 11, display: "flex", justifyContent: "space-between", gap: 8, background: ok ? "#E4F6EA" : "#FFF3D6", color: ok ? "#166534" : "#8A5A00", borderTop: "0.5px solid var(--border)" }}>
+                      <span>Linha {fmtBRL(linhaAtiva.valor)} · Lançamentos {fmtBRL(linhaAtiva.valor - dif)}</span>
+                      <strong>{ok ? "Diferença R$ 0,00" : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
+                    </div>
+                  );
+                })()}
+
                 {/* Barra de confirmação */}
                 {linhaAtiva && lancsSel.size > 0 && (
                   <div style={{ padding: "8px 14px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2346,6 +2836,18 @@ function ConciliacaoInner() {
                           {saldo !== null && (
                             <div style={{ fontSize: 10, color: "#A16207", marginTop: 2, fontWeight: 600 }}>
                               Saldo pendente: {fmtBRL(saldo)}
+                            </div>
+                          )}
+                          {(l.conciliado || l.status === "baixado" || ehParcial(l)) && (
+                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 3 }}>
+                              {l.conciliado && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 6, background: "#DCFCE7", color: "#166534", fontWeight: 600 }}>✓ Conciliado</span>}
+                              {(l.status === "baixado" || ehParcial(l)) && (
+                                l.conta_bancaria
+                                  ? <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 6, fontWeight: 600, background: l.conta_bancaria === extrato.conta_id ? "#EEEEF2" : "#FDECEC", color: l.conta_bancaria === extrato.conta_id ? "#555" : "#991B1B" }}>
+                                      {l.conta_bancaria === extrato.conta_id ? "Nesta conta" : `Baixado em ${contas.find(c => c.id === l.conta_bancaria)?.nome ?? "outra conta"}`}
+                                    </span>
+                                  : <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 6, background: "#FFF3D6", color: "#8A5A00", fontWeight: 600 }}>Baixado sem conta</span>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2487,8 +2989,21 @@ function ConciliacaoInner() {
                             </td>
                             <td style={{ padding: "9px 10px", overflow: "hidden" }}>
                               {l.conciliado
-                                ? <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#DCFCE7", color: "#16A34A", whiteSpace: "nowrap" }}>✓ Conciliado</span>
-                                : <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#FEF3C7", color: "#92400E", whiteSpace: "nowrap" }}>Pendente</span>}
+                                ? (() => {
+                                    const o = ORIGEM_META[l.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
+                                    const reg = l.regra_id ? regras.find(r => r.id === l.regra_id) : undefined;
+                                    return (
+                                      <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
+                                        <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#DCFCE7", color: "#16A34A", whiteSpace: "nowrap" }}>✓ Conciliado</span>
+                                        <span title={l.confianca ? `Confiança ${l.confianca}` : undefined} style={{ padding: "1px 7px", borderRadius: 8, fontSize: 10, fontWeight: 600, background: o.bg, color: o.cor, whiteSpace: "nowrap" }}>
+                                          {o.label}{reg ? `: ${reg.texto}` : ""}{l.confianca === "media" ? " · média" : ""}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()
+                                : l.sugestao_lancamento_id
+                                  ? <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#FFF3D6", color: "#8A5A00", whiteSpace: "nowrap" }}>💡 Sugestão</span>
+                                  : <span style={{ padding: "3px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: "#FEF3C7", color: "#92400E", whiteSpace: "nowrap" }}>Pendente</span>}
                             </td>
                             <td style={{ padding: "9px 10px", overflow: "hidden" }}>
                               {l.conciliado && l.lancamento_desc ? (
@@ -2503,7 +3018,16 @@ function ConciliacaoInner() {
                                     </div>
                                   )}
                                 </div>
-                              ) : (
+                              ) : l.sugestao_lancamento_id ? (() => {
+                                const sug = lancamentos.find(x => x.id === l.sugestao_lancamento_id);
+                                return (
+                                  <div>
+                                    <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sug?.descricao ?? "Lançamento sugerido"}</div>
+                                    {sug && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{sug.tipo === "pagar" ? "CP" : "CR"} · {fmtBRL(sug.valor_pago ?? sug.valor)} · venc. {fmtDt(sug.data_vencimento)}</div>}
+                                    {l.sugestao_motivo && <div style={{ fontSize: 10, color: "#8A5A00", marginTop: 1 }}>Confirmar porque: {l.sugestao_motivo}</div>}
+                                  </div>
+                                );
+                              })() : (
                                 <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>
                               )}
                             </td>
@@ -2515,6 +3039,18 @@ function ConciliacaoInner() {
                                 </button>
                               ) : (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  {l.sugestao_lancamento_id && !isAtiva && (
+                                    <div style={{ display: "flex", gap: 4 }}>
+                                      <button disabled={salvando} onClick={() => aceitarSugestoes([l])}
+                                        style={{ padding: "4px 9px", borderRadius: 6, border: "none", background: "#16A34A", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                        ✓ Aceitar
+                                      </button>
+                                      <button disabled={salvando} onClick={() => ignorarSugestao(l)} title="Descartar a sugestão"
+                                        style={{ padding: "4px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>
+                                        ✕
+                                      </button>
+                                    </div>
+                                  )}
                                   <button
                                     disabled={salvando}
                                     onClick={() => {

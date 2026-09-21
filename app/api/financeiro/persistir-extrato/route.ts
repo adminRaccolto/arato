@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
       // Lançamentos já baixados que ainda não tinham conta bancária: grava a conta do
       // extrato, senão a Posição Bancária nunca fecha com o extrato.
       definir_conta?: { id: string; conta_bancaria: string }[];
+      // Lançamento baixado em OUTRA conta que o usuário confirmou mover para a conta do extrato.
+      mover_conta?: { id: string; conta_bancaria: string }[];
     };
 
     if (!body.id) {
@@ -55,6 +57,7 @@ export async function POST(req: NextRequest) {
     const idsTocados = Array.from(new Set([
       ...(body.baixar ?? []).map(b => b.id),
       ...(body.definir_conta ?? []).map(d => d.id),
+      ...(body.mover_conta ?? []).map(d => d.id),
       ...(body.lancamento_ids_conciliados ?? []),
       ...(body.lancamento_ids_desconciliados ?? []),
     ]));
@@ -109,6 +112,12 @@ export async function POST(req: NextRequest) {
     for (const d of body.definir_conta ?? []) {
       const r = await sb.from("lancamentos").update({ conta_bancaria: d.conta_bancaria }).eq("id", d.id).is("conta_bancaria", null);
       if (r.error) falhas.push(`conta ${d.id}: ${r.error.message}`);
+    }
+
+    // 2c. Mover a baixa para a conta do extrato (confirmado pelo usuário na tela)
+    for (const d of body.mover_conta ?? []) {
+      const r = await sb.from("lancamentos").update({ conta_bancaria: d.conta_bancaria }).eq("id", d.id);
+      if (r.error) falhas.push(`mover conta ${d.id}: ${r.error.message}`);
     }
 
     // 3. Marca lancamentos como conciliado=true (quando vinculados)

@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.21-f",
+    data: "21/09/2026",
+    titulo: "Conciliação Bancária: regras automáticas e confiança do vínculo",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Aba Regras na Conciliação: quando o histórico do extrato contém um texto (IOF, tarifa, juros, cota capital, pedágio…), o Arato cria o lançamento já classificado (Operação Gerencial, centro de custo, pessoa) ou a transferência entre contas e concilia sozinho. Dá para criar a regra direto da linha, em + Tesouraria." },
+      { tipo: "novo", texto: "Confiança do casamento: alta (valor, conta, titular e data conferem, candidato único) concilia e baixa sozinha; média vira sugestão de um clique (\"Aceitar\" / \"Aceitar todas\"); lançamento já conciliado ou baixado em outra conta fica bloqueado. Cada linha mostra a origem: Regra, Exato, Sugestão aceita ou Manual." },
+      { tipo: "novo", texto: "Resumo ao importar (por regra, exatas, sugestões, pendentes), indicador de fechamento da conta (extrato × sistema), soma conferida ao ligar vários lançamentos a uma linha (diferença exige motivo) e aviso ao mover a baixa de uma conta para outra." },
+      { tipo: "melhoria", texto: "Baixa pela conciliação usa a data e o valor reais do banco. Requer a migração Seção 277; sem ela a tela continua funcionando como antes, sem regras nem sugestões." },
+    ],
+    onde: "Financeiro → Tesouraria → Conciliação Bancária → Regras",
+  },
+  {
     versao: "2026.09.21-e",
     data: "21/09/2026",
     titulo: "NF de Serviços e NF de Produtos com as mesmas Operações Gerenciais",

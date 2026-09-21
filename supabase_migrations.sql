@@ -13246,3 +13246,50 @@ CREATE POLICY "aplic_adiant_all" ON aplicacoes_adiantamento FOR ALL
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 277 — Conciliação Bancária: regras por texto do extrato + confiança do vínculo
+-- (2026-09-21) — idempotente
+-- ============================================================
+
+-- Regras de conciliação: texto do histórico do extrato → como lançar (O.G., centro de custo,
+-- pessoa) ou para qual conta transferir. Escopo: conta (tenant); conta_bancaria_id NULL = todas
+-- as contas bancárias do cliente. A O.G. é guardada pela CLASSIFICAÇÃO (as O.G. existem
+-- duplicadas por fazenda) e resolvida na fazenda da conta bancária na hora de aplicar.
+CREATE TABLE IF NOT EXISTS conciliacao_regras (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id               UUID NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  conta_bancaria_id      UUID REFERENCES contas_bancarias(id) ON DELETE CASCADE,
+  texto                  TEXT NOT NULL,
+  texto_norm             TEXT NOT NULL,
+  tipo                   TEXT NOT NULL CHECK (tipo IN ('debito','credito')),
+  acao                   TEXT NOT NULL DEFAULT 'lancar' CHECK (acao IN ('lancar','transferencia')),
+  operacao_classificacao TEXT,
+  operacao_descricao     TEXT,
+  centro_custo_id        UUID REFERENCES centros_custo(id) ON DELETE SET NULL,
+  pessoa_id              UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  conta_destino_id       UUID REFERENCES contas_bancarias(id) ON DELETE SET NULL,
+  ativa                  BOOLEAN NOT NULL DEFAULT true,
+  usos                   INTEGER NOT NULL DEFAULT 0,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_conciliacao_regras
+  ON conciliacao_regras (conta_id, COALESCE(conta_bancaria_id, '00000000-0000-0000-0000-000000000000'::uuid), tipo, texto_norm);
+
+ALTER TABLE conciliacao_regras ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "conc_regras_select" ON conciliacao_regras;
+-- leitura pelo tenant; escrita só via API (service_role) — evita 42501 por JWT expirado
+CREATE POLICY "conc_regras_select" ON conciliacao_regras FOR SELECT
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+-- Como cada linha do extrato foi conciliada e com que confiança; sugestões (confiança média)
+ALTER TABLE extrato_transacoes
+  ADD COLUMN IF NOT EXISTS origem_vinculo         TEXT CHECK (origem_vinculo IN ('regra','exato','sugestao','manual')),
+  ADD COLUMN IF NOT EXISTS confianca              TEXT CHECK (confianca IN ('alta','media')),
+  ADD COLUMN IF NOT EXISTS regra_id               UUID REFERENCES conciliacao_regras(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS sugestao_lancamento_id UUID REFERENCES lancamentos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS sugestao_motivo        TEXT;
+
+NOTIFY pgrst, 'reload schema';
