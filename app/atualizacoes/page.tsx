@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-a",
+    data: "22/09/2026",
+    titulo: "BI Raccolto: Auditoria por Ano Safra e Ciclo",
+    modulos: ["BI Raccolto"],
+    itens: [
+      { tipo: "novo", texto: "Nova aba \"Auditoria Safra / Ciclo\" no BI Raccolto: lista, num só lugar, tudo o que o cliente lançou — financeiro (CP/CR, tesouraria, consórcio, NFs, cédulas), operações agrícolas, abastecimentos, movimentações de estoque, pedidos de compra e contratos de grãos — com o ano safra e o ciclo de cada registro. Filtros por Ano Safra, Ciclo, tipo de lançamento e busca; opções \"sem ano safra\" e \"sem ciclo\" para achar o que ficou sem vínculo; resumo por origem e exportação em XLSX." },
+    ],
+    onde: "BI Raccolto → Auditoria Safra / Ciclo",
+  },
+  {
     versao: "2026.09.21-r",
     data: "21/09/2026",
     titulo: "Conciliação: OFX filtrado pelos pares",

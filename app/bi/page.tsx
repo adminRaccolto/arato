@@ -11,6 +11,7 @@ import { rodarChecksController } from "../../lib/controller-checks";
 import type { ControllerAlerta } from "../../lib/supabase";
 import { HedgePainel } from "../comercial/hedge/page";
 import { AuditoriaClassificacaoPainel } from "../auditoria/classificacao/page";
+import { AuditoriaSafraCicloPainel } from "../auditoria/safra-ciclo/page";
 
 // ── Tipos ─────────────────────────────────────────────────────
 interface Fazenda    { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number; raccolto_acesso?: boolean }
@@ -286,7 +287,7 @@ function BarraHorizontal({ value, max, color, label, sub }: { value: number; max
   );
 }
 
-type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "evolucao" | "controller" | "hedge" | "auditoria_classif";
+type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "evolucao" | "controller" | "hedge" | "auditoria_classif" | "auditoria_safra";
 
 // ── Controller: constantes ────────────────────────────────────
 type Severidade = ControllerAlerta["severidade"];
@@ -1048,6 +1049,7 @@ export default function BI() {
     { key: "controller",      label: "Auditoria", badge: alertasCriticos > 0 ? alertasCriticos : (alertasAtivos > 0 ? alertasAtivos : undefined) },
     { key: "hedge",           label: "Proteção de Margem" },
     { key: "auditoria_classif", label: "Auditoria de Classificação" },
+    { key: "auditoria_safra",   label: "Auditoria Safra / Ciclo" },
   ];
 
   const inputSt: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
@@ -5354,6 +5356,9 @@ export default function BI() {
 
         {/* ── ABA AUDITORIA DE CLASSIFICAÇÃO ────────────────── */}
         {aba === "auditoria_classif" && <AuditoriaClassificacaoPainel embedded />}
+
+        {/* ── ABA AUDITORIA POR ANO SAFRA E CICLO ───────────── */}
+        {aba === "auditoria_safra" && <AuditoriaSafraCicloPainel embedded />}
 
       </div>
 
