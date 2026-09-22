@@ -534,6 +534,10 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
 
+**Correção 23/09/2026 — Veículo e Motorista apareciam vazios no seletor:** a lista de veículos e motoristas carregava com a fazenda ainda não totalmente resolvida (mesmo tipo de atraso já corrigido em outras telas) e nunca recarregava depois — o seletor ficava vazio mesmo com veículo/motorista cadastrados. Corrigido.
+
+**Novo 23/09/2026 — Veículo e Motorista preenchem sozinhos a partir do CT-e vinculado:** ao marcar o primeiro CT-e em "CT-e Vinculados", se os campos Veículo e Motorista ainda estiverem vazios, eles são preenchidos automaticamente com o veículo/motorista já usados naquele CT-e — não precisa selecionar de novo uma informação que já está no CT-e.
+
 **Correção 23/09/2026 — Série e próximo número configurados em Parâmetros → MDF-e não apareciam ao emitir:** a tela de emissão nunca lia os Parâmetros MDF-e por emitente — sempre sugeria série "1" e um contador próprio, baseado só nos MDF-e já criados no sistema, ignorando totalmente a série e o número configurados. Corrigido: ao abrir "+ Emitir MDF-e", o número e a série agora vêm dos Parâmetros MDF-e do emitente (o maior entre o que já foi criado aqui e o próximo número configurado), e a UF de Início/Fim padrão também é herdada de lá.
 
 ### 13.4 Transportadoras / Veículos

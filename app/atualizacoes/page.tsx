@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-i",
+    data: "23/09/2026",
+    titulo: "MDF-e: Veículo/Motorista vazios no seletor + preenchimento automático via CT-e",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Os seletores de Veículo e Motorista apareciam vazios ao emitir MDF-e, mesmo com veículos/motoristas cadastrados — a lista carregava antes da fazenda estar totalmente resolvida e nunca recarregava depois. Corrigido." },
+      { tipo: "novo", texto: "Ao marcar o primeiro CT-e em \"CT-e Vinculados\", se Veículo e Motorista ainda estiverem vazios, eles são preenchidos automaticamente com o que já foi usado naquele CT-e." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.23-h",
     data: "23/09/2026",
     titulo: "Pedidos de Compra: salvar apagava e recriava todos os itens",

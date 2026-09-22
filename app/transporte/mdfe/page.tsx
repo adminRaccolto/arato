@@ -261,7 +261,12 @@ interface Mdfe {
   created_at?: string;
 }
 
-interface CteMin { id: string; numero_cte: string; serie: string; chave_acesso?: string | null; remetente_nome: string; destinatario_nome: string; valor_frete: number; status: string; }
+interface CteMin {
+  id: string; numero_cte: string; serie: string; chave_acesso?: string | null;
+  remetente_nome: string; destinatario_nome: string; valor_frete: number; status: string;
+  veiculo_id?: string | null; veiculo_placa?: string | null;
+  motorista_id?: string | null; motorista_nome?: string | null; motorista_cpf?: string | null;
+}
 interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; rntrc?: string; }
 
@@ -332,7 +337,7 @@ export default function MdfePage() {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
       supabase.from("veiculos").select("id, placa, tipo, rntrc, num_eixos").in("fazenda_id", fazendaIds).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
     ]);
@@ -369,7 +374,8 @@ export default function MdfePage() {
     }
 
     setProximoNr(String(Math.max(maxLocal + 1, numeroInicialConfig)));
-  }, [fazendaId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazendaId, fazendaIds.join(",")]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -479,11 +485,22 @@ export default function MdfePage() {
   }
 
   // ── Toggle CT-e vinculado ────────────────────────────────
+  // Ao marcar o primeiro CT-e (veículo/motorista do MDF-e ainda vazios), herda veículo e
+  // motorista de lá — essa informação já foi preenchida na emissão do CT-e, não faz sentido
+  // digitar de novo. Se o veículo/motorista do CT-e não estiver mais cadastrado (só ficou o
+  // texto no CT-e), preenche pelo menos o texto pra referência.
   function toggleCte(id: string) {
-    setForm(f => ({
-      ...f,
-      cte_ids: f.cte_ids.includes(id) ? f.cte_ids.filter(c => c !== id) : [...f.cte_ids, id],
-    }));
+    setForm(f => {
+      const marcando = !f.cte_ids.includes(id);
+      const cteIds = marcando ? [...f.cte_ids, id] : f.cte_ids.filter(c => c !== id);
+      let extra: Partial<typeof f> = {};
+      if (marcando && !f.veiculo_id && !f.motorista_id) {
+        const c = ctes.find(x => x.id === id);
+        if (c?.veiculo_id && veiculos.some(v => v.id === c.veiculo_id)) extra = { ...extra, veiculo_id: c.veiculo_id };
+        if (c?.motorista_id && motoristas.some(m => m.id === c.motorista_id)) extra = { ...extra, motorista_id: c.motorista_id };
+      }
+      return { ...f, cte_ids: cteIds, ...extra };
+    });
   }
 
   // ── Salvar ───────────────────────────────────────────────
