@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-r",
+    data: "22/09/2026",
+    titulo: "NF de Produtos: ICMS Desonerado",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "novo", texto: "Novo campo \"ICMS Deson.\" no painel de Impostos Adicionados: cobre o caso de notas (comuns em fornecedores exportadores/armazéns alfandegados) em que o Valor Total é MENOR que o Valor Total dos Produtos — uma redução/isenção de ICMS que o emitente reconhece na própria nota, sem ser desconto comercial nem os impostos já rastreados. Lido automaticamente do XML (<ICMSTot><vICMSDeson>) e subtraído do total, igual ao campo Desconto." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-q",
     data: "22/09/2026",
     titulo: "Fiscal: Parâmetros salvava sem avisar quando falhava",

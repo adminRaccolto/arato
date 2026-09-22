@@ -1279,6 +1279,7 @@ export type NfEntrada = {
   valor_fcp_st?: number;
   valor_difal?: number;
   valor_desconto?: number;
+  valor_icms_deson?: number;   // ICMS desonerado (<ICMSTot><vICMSDeson>) — reduz o total abaixo do valor dos produtos
   xml_storage_path?: string;
   processado_por?: string;
   created_at?: string;

@@ -13307,3 +13307,16 @@ ALTER TABLE nf_entrada_itens
   ADD COLUMN IF NOT EXISTS valor_icms_st  NUMERIC(14,2);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 279 — ICMS Desonerado (<ICMSTot><vICMSDeson>) em NF de Produtos
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Redução/isenção do ICMS reconhecida pelo próprio emitente na nota (comum em operações de
+-- exportação/armazém alfandegado com benefício fiscal) — reduz o Valor Total da NF abaixo do
+-- Valor Total dos Produtos, sem ser desconto comercial nem nenhum dos outros impostos já rastreados
+-- (IPI/ST/FCP-ST/DIFAL). Achado real: NF da CJ Selecta S/A com produtos R$ 84.070,98 e total
+-- R$ 80.540,00 — diferença de R$ 3.530,98 não explicada por nenhum campo até então lido.
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS valor_icms_deson NUMERIC(14,2);
+
+NOTIFY pgrst, 'reload schema';

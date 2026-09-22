@@ -546,6 +546,10 @@ export default function NfCompraPage() {
     valor_fcp_st:  "",
     valor_difal:   "",
     valor_desconto:"",
+    // Redução/isenção do ICMS reconhecida pelo próprio emitente na nota (<ICMSTot><vICMSDeson>) —
+    // comum em operações de exportação/armazém alfandegado com benefício fiscal. Reduz o total da
+    // NF abaixo do valor dos produtos, sem ser desconto comercial nem nenhum dos impostos acima.
+    valor_icms_deson: "",
   });
   // Listas de ano safra e ciclo para o formulário
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
@@ -991,7 +995,7 @@ export default function NfCompraPage() {
       ie_produtor: "",
       vinculo_atividade: "rural" as const,
       entidade_contabil: "pf" as const,
-      valor_ipi: "", valor_st: "", valor_fcp_st: "", valor_difal: "", valor_desconto: "",
+      valor_ipi: "", valor_st: "", valor_fcp_st: "", valor_difal: "", valor_desconto: "", valor_icms_deson: "",
     });
     setBulkOpGer("");
     setItens([ITEM_VAZIO()]);
@@ -1058,6 +1062,7 @@ export default function NfCompraPage() {
       valor_fcp_st:   String((nf as Record<string,unknown>).valor_fcp_st   ?? ""),
       valor_difal:    String((nf as Record<string,unknown>).valor_difal    ?? ""),
       valor_desconto: String((nf as Record<string,unknown>).valor_desconto ?? ""),
+      valor_icms_deson: String((nf as Record<string,unknown>).valor_icms_deson ?? ""),
     });
     // Carregar itens existentes
     let itensCarregadosDoBd = false;
@@ -1157,6 +1162,7 @@ export default function NfCompraPage() {
       const vFCPSTTot = getTot("vFCPST");
       const vDifalTot = getTot("vICMSUFDest");  // DIFAL devido à UF de destino
       const vDescTot  = getTot("vDesc");
+      const vIcmsDesonTot = getTot("vICMSDeson");
       const chNFe   = doc.querySelector("chNFe, infNFe")?.getAttribute("Id")?.replace(/^NFe/, "") ?? "";
       const enderEmit = emit?.querySelector("enderEmit");
       const xMun    = enderEmit?.querySelector("xMun")?.textContent ?? "";
@@ -1213,6 +1219,7 @@ export default function NfCompraPage() {
         valor_fcp_st:  vFCPSTTot > 0 ? String(vFCPSTTot) : p.valor_fcp_st,
         valor_difal:   vDifalTot > 0 ? String(vDifalTot) : p.valor_difal,
         valor_desconto: vDescTot > 0 ? String(vDescTot)  : p.valor_desconto,
+        valor_icms_deson: vIcmsDesonTot > 0 ? String(vIcmsDesonTot) : p.valor_icms_deson,
         natureza: natOp,
         // Destinatário da NF (nossa fazenda — preenchido se presente no XML)
         nome_destinatario: destNome || p.nome_destinatario,
@@ -1374,7 +1381,7 @@ export default function NfCompraPage() {
       cfop:                  cab.cfop         || undefined,
       data_emissao:          cab.data_emissao,
       data_entrada:          cab.data_entrada || undefined,
-      valor_total:           (parseFloat(cab.valor_total)||0) + (parseFloat(cab.valor_ipi)||0) + (parseFloat(cab.valor_st)||0) + (parseFloat(cab.valor_fcp_st)||0) + (parseFloat(cab.valor_difal)||0) - (parseFloat(cab.valor_desconto)||0),
+      valor_total:           (parseFloat(cab.valor_total)||0) + (parseFloat(cab.valor_ipi)||0) + (parseFloat(cab.valor_st)||0) + (parseFloat(cab.valor_fcp_st)||0) + (parseFloat(cab.valor_difal)||0) - (parseFloat(cab.valor_desconto)||0) - (parseFloat(cab.valor_icms_deson)||0),
       natureza:              cab.natureza     || undefined,
       status:                "pendente",
       origem:                orig,
@@ -1398,6 +1405,7 @@ export default function NfCompraPage() {
       valor_fcp_st:          parseFloat(cab.valor_fcp_st) || 0,
       valor_difal:           parseFloat(cab.valor_difal)  || 0,
       valor_desconto:        parseFloat(cab.valor_desconto) || 0,
+      valor_icms_deson:      parseFloat(cab.valor_icms_deson) || 0,
     };
     try {
       let nf: NfEntrada;
@@ -3474,13 +3482,14 @@ export default function NfCompraPage() {
                       Impostos Adicionados ao Total
                       <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 8 }}>Deixe em branco se não houver</span>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
                       {([
                         ["IPI",    "valor_ipi",     "Imp. Produtos Industrializados"],
                         ["ST",     "valor_st",      "Substituição Tributária ICMS"],
                         ["FCP-ST", "valor_fcp_st",  "Fundo de Combate à Pobreza"],
                         ["DIFAL",  "valor_difal",   "Diferencial de Alíquota"],
                         ["Desconto","valor_desconto","Desconto (−)"],
+                        ["ICMS Deson.","valor_icms_deson","ICMS Desonerado (−) — redução/isenção reconhecida pelo emitente, comum em exportação/armazém alfandegado"],
                       ] as [string, keyof typeof cab, string][]).map(([label, field, tooltip]) => (
                         <div key={field} title={tooltip}>
                           <label style={{ ...lbl, color: "#92400E" }}>{label}</label>
@@ -3495,8 +3504,9 @@ export default function NfCompraPage() {
                       const vFcp    = parseFloat(cab.valor_fcp_st)   || 0;
                       const vDifal  = parseFloat(cab.valor_difal)    || 0;
                       const vDesc   = parseFloat(cab.valor_desconto) || 0;
-                      const total   = vProd + vIpi + vSt + vFcp + vDifal - vDesc;
-                      const temExtra = vIpi + vSt + vFcp + vDifal + vDesc > 0;
+                      const vDeson  = parseFloat(cab.valor_icms_deson) || 0;
+                      const total   = vProd + vIpi + vSt + vFcp + vDifal - vDesc - vDeson;
+                      const temExtra = vIpi + vSt + vFcp + vDifal + vDesc + vDeson > 0;
                       if (!temExtra) return null;
                       return (
                         <div style={{ marginTop: 12, paddingTop: 10, borderTop: "0.5px solid #FCD34D", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -3507,6 +3517,7 @@ export default function NfCompraPage() {
                             {vFcp   > 0 && ` + FCP-ST ${vFcp.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
                             {vDifal > 0 && ` + DIFAL ${vDifal.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
                             {vDesc  > 0 && ` − Desconto ${vDesc.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
+                            {vDeson > 0 && ` − ICMS Deson. ${vDeson.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
                           </div>
                           <div style={{ fontSize: 15, fontWeight: 700, color: "#92400E" }}>
                             = Total {total.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
