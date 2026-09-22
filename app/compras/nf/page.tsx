@@ -4602,13 +4602,6 @@ export default function NfCompraPage() {
                 </div>
               </div>
 
-              {/* Info */}
-              <div style={{ background: "#FCEBEB20", border: "0.5px solid #FCBCBC", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#791F1F", marginBottom: 16 }}>
-                Informe a <strong>quantidade a devolver</strong> por item, na unidade de estoque (mesma da coluna "Unidade" — já convertida, se o item teve conversão ao processar a NF). Apenas itens com quantidade &gt; 0 serão incluídos.
-                Ao ser autorizada, a devolução irá: <strong>debitar o estoque</strong> + criar uma <strong>Conta a Receber</strong> (fornecedor deve restituir o valor).
-                Itens com "NF original" abaixo do nome foram convertidos ao processar — use essa referência pra conferir contra a nota do fornecedor.
-              </div>
-
               {/* Grid de itens */}
               {devItens.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "30px 20px", color: "var(--text-3)", fontSize: 13 }}>
