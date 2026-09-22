@@ -76,12 +76,35 @@ export async function GET(req: NextRequest) {
 
   const xmlContent = await xmlBlob.text();
 
+  // 2b. Logo do cliente — nunca era usado no DANFE (a biblioteca suporta, mas ninguém passava o
+  // caminho). Resolve a conta pela fazenda emissora e baixa a logo (Supabase Storage ou qualquer
+  // URL pública) num Buffer — pdfkit aceita Buffer no lugar do "path" apesar do nome do parâmetro.
+  let logoBuffer: Buffer | undefined;
+  try {
+    let fzIdLogo = fazenda_id || null;
+    if (!fzIdLogo) {
+      const { data: nfFaz } = await db.from("notas_fiscais").select("fazenda_id").eq("chave_acesso", chave).maybeSingle();
+      fzIdLogo = (nfFaz?.fazenda_id as string | undefined) ?? null;
+    }
+    if (fzIdLogo) {
+      const { data: faz } = await db.from("fazendas").select("conta_id").eq("id", fzIdLogo).maybeSingle();
+      if (faz?.conta_id) {
+        const { data: conta } = await db.from("contas").select("logo_url").eq("id", faz.conta_id).maybeSingle();
+        if (conta?.logo_url) {
+          const imgRes = await fetch(conta.logo_url as string);
+          if (imgRes.ok) logoBuffer = Buffer.from(await imgRes.arrayBuffer());
+        }
+      }
+    }
+  } catch { /* sem logo — DANFE sai sem logo, igual sempre saiu até aqui */ }
+
   // 3. Gera o DANFE em PDF
   try {
     const { gerarPDF } = await import("nfe-danfe-pdf");
 
     const pdfDoc = await gerarPDF(xmlContent, {
       cancelada: nfStatus === "cancelada",
+      ...(logoBuffer ? { pathLogo: logoBuffer as unknown as string } : {}),
     });
 
     // Converte o PDFDocument (stream) em Buffer.

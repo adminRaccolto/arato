@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-v",
+    data: "22/09/2026",
+    titulo: "DANFE: logo do cliente nunca aparecia",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O DANFE (PDF da NF-e) nunca incluía a logo do cliente, mesmo quando cadastrada em Configurações → Aparência — a biblioteca de geração do PDF suporta logo, mas o sistema nunca passava a imagem pra ela. Corrigido em nível de sistema: o DANFE agora busca a logo da conta automaticamente. Sem logo cadastrada, o DANFE sai igual a antes." },
+    ],
+    onde: "Fiscal · qualquer NF-e emitida pelo sistema",
+  },
+  {
     versao: "2026.09.22-u",
     data: "22/09/2026",
     titulo: "NF-e: Devolução rejeitada por finalidade da nota",
