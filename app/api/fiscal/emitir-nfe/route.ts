@@ -16,10 +16,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
       fazenda_id: string;
       modulo_key: string;   // "fiscal_pf_xxx" ou "fiscal_emp_yyy" — escolha explícita (ex: seletor de emitente na tela)
-      cpf_cnpj_hint?: string; // CPF/CNPJ do titular fiscal real da operação — tem prioridade sobre modulo_key
-                              // quando informado (ex: devolução/remessa: o produtor dono da NF de origem, não
-                              // "o primeiro módulo fiscal que aparecer", que é arbitrário numa fazenda com vários
-                              // emitentes configurados — ver lib/nfe/resolver-emitente.ts).
+      produtor_id_hint?: string; // id do produtor titular real da operação — preferido sobre cpf_cnpj_hint:
+                                 // não depende de uma busca assíncrona no cliente ter terminado a tempo (o CPF
+                                 // digitado sim — achado real: clicar em Emitir antes dela terminar mandava o
+                                 // hint vazio e caía no titular padrão da fazenda, uma pessoa errada).
+      cpf_cnpj_hint?: string;    // CPF/CNPJ do titular fiscal — usado só se produtor_id_hint não resolver
       emit_ie_override?: string;  // IE específica do produtor (quando tem múltiplas IEs)
       destinatario: {
         nome: string;
@@ -85,8 +86,8 @@ export async function POST(req: NextRequest) {
     // o modulo_key explícito de quem chamou (ex: seletor de emitente da tela de NF-e); só cai no
     // default da fazenda se nenhum dos dois vier preenchido.
     let moduloKey = body.modulo_key || "";
-    if (body.cpf_cnpj_hint) {
-      try { moduloKey = await resolverModuloKey(body.fazenda_id, body.cpf_cnpj_hint) || moduloKey; } catch { /* mantém modulo_key */ }
+    if (body.produtor_id_hint || body.cpf_cnpj_hint) {
+      try { moduloKey = await resolverModuloKey(body.fazenda_id, body.cpf_cnpj_hint, undefined, body.produtor_id_hint) || moduloKey; } catch { /* mantém modulo_key */ }
     }
     if (!moduloKey) {
       try { moduloKey = await resolverModuloKey(body.fazenda_id, undefined); } catch { /* buscarConfEmitente ainda tenta o fallback interno dela */ }

@@ -452,9 +452,6 @@ export async function emitirNFe(
     return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}` };
   }
 
-  // 3. Próximo número (reservado de forma atômica)
-  const numero = await proximoNumero(fazendaId, moduloKey, confg);
-
   const cpfCnpjEmit = (confg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
   const isCPFEmit   = cpfCnpjEmit.length === 11;
 
@@ -464,6 +461,9 @@ export async function emitirNFe(
   //   890–899: NF-e avulsa Fisco Estadual   ← NUNCA usar aqui (causa cStat 502)
   //   970–989: NF-e avulsa Fisco Federal    ← NUNCA usar aqui
   //   900–919 / 990–999: reservados
+  // Validado ANTES de reservar o número — reservar primeiro gastava numeração de verdade em
+  // tentativas que iam falhar por configuração (achado real: número saltando de 5558 pra 5563 em
+  // 5 tentativas que só davam erro de série, nenhuma delas chegando a transmitir).
   const serieConfg = parseInt(confg.serie_nfe ?? "0", 10);
   if (isCPFEmit && (isNaN(serieConfg) || serieConfg < 920 || serieConfg > 969)) {
     return {
@@ -480,6 +480,9 @@ export async function emitirNFe(
     };
   }
   const serie = String(serieConfg).padStart(3, "0");
+
+  // 3. Próximo número (reservado de forma atômica) — só depois da configuração validada
+  const numero = await proximoNumero(fazendaId, moduloKey, confg);
 
   const emitente: EmitenteCfg = {
     cpf_cnpj:       cpfCnpjEmit,

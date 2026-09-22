@@ -460,6 +460,7 @@ export default function NfCompraPage() {
         body: JSON.stringify({
           fazenda_id:   remessaModal.fazenda_id,
           modulo_key:      fiscalModulos[0]?.modulo ?? "",   // fallback — o servidor prefere cpf_cnpj_hint quando resolvível
+          produtor_id_hint: remessaModal.produtor_id,
           cpf_cnpj_hint:   remessaCpfHint,
           destinatario: {
             nome:           dest.nome,
@@ -2266,6 +2267,7 @@ export default function NfCompraPage() {
           // (na fazenda certa) estando completo.
           fazenda_id:   devNfOrig.fazenda_id,
           modulo_key:      fiscalModulos[0].modulo,   // fallback — o servidor prefere cpf_cnpj_hint quando resolvível
+          produtor_id_hint: devNfOrig.produtor_id,
           cpf_cnpj_hint:   devCpfHint,
           destinatario: {
             nome:     devNfOrig.emitente_nome,

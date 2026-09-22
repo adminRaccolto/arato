@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-x",
+    data: "22/09/2026",
+    titulo: "NF-e: emitente errado por corrida assíncrona na Devolução/Remessa",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Devolução, Remessa e Retorno de Remessa resolviam o emitente certo buscando o CPF do produtor numa consulta em segundo plano — clicar em \"Emitir\" antes dela terminar caía no titular padrão da fazenda (pessoa errada), reproduzindo \"Série inválida\" mesmo com a série certa já configurada em outro emitente. Corrigido: agora usa o ID do produtor, disponível na hora, sem depender dessa busca." },
+      { tipo: "correcao", texto: "A reserva do próximo número da NF-e passou a acontecer só depois de validar a série — antes, tentativas que falhavam por configuração ainda gastavam um número de verdade, criando buracos na numeração." },
+    ],
+    onde: "Fiscal · Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-w",
     data: "22/09/2026",
     titulo: "NF de Produtos: editar nota processada exige Estornar primeiro",

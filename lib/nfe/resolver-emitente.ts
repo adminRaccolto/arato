@@ -71,13 +71,23 @@ export async function resolverModuloKeyFiscal(
   return cfgs && cfgs.length > 0 ? cfgs[0].modulo : "";
 }
 
-// Combina os dois: prefere o CPF/CNPJ explícito quando informado e existir config pra ele;
-// cai no default da fazenda caso contrário.
+// Combina os três, nessa ordem de preferência: ID do produtor (mais confiável — não depende de uma
+// busca assíncrona no cliente ter terminado a tempo, como o CPF/CNPJ digitado dependia; achado real:
+// clicar em "Emitir Devolução" antes da busca de CPF terminar mandava o hint vazio e caía no titular
+// padrão da fazenda, uma pessoa errada), CPF/CNPJ explícito, e por último o default da fazenda.
 export async function resolverModuloKey(
   fazendaId: string,
   cpfCnpjHint?: string | null,
   adm: SupabaseClient = sb(),
+  produtorIdHint?: string | null,
 ): Promise<string> {
+  if (produtorIdHint) {
+    const { data: prod } = await adm.from("produtores").select("cpf_cnpj").eq("id", produtorIdHint).maybeSingle();
+    if (prod?.cpf_cnpj) {
+      const porId = await resolverModuloKeyPorCpfCnpj(fazendaId, prod.cpf_cnpj, adm);
+      if (porId) return porId;
+    }
+  }
   if (cpfCnpjHint) {
     const porCpf = await resolverModuloKeyPorCpfCnpj(fazendaId, cpfCnpjHint, adm);
     if (porCpf) return porCpf;

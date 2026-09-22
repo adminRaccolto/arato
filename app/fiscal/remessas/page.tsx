@@ -41,6 +41,7 @@ export default function RemessasLogisticasPage() {
   const [retOk,        setRetOk]        = useState<{chave: string; numero: string} | null>(null);
   const [fiscalMods,   setFiscalMods]   = useState<Array<{modulo: string; config: Record<string,string>}>>([]);
   const [retCpfHint,   setRetCpfHint]    = useState<string | undefined>(undefined);
+  const [retProdutorId, setRetProdutorId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!contaId) return;
@@ -75,9 +76,11 @@ export default function RemessasLogisticasPage() {
     // CPF/CNPJ do produtor dono da NF de compra original — quem responde fiscalmente pelo retorno,
     // não "o primeiro módulo fiscal que aparecer" (a fazenda pode ter vários emitentes configurados).
     setRetCpfHint(undefined);
+    setRetProdutorId(undefined);
     if (r.nf_entrada_id) {
       const { data: nfOrig } = await supabase.from("nf_entradas").select("produtor_id").eq("id", r.nf_entrada_id).maybeSingle();
       if (nfOrig?.produtor_id) {
+        setRetProdutorId(nfOrig.produtor_id);
         const { data: prod } = await supabase.from("produtores").select("cpf_cnpj").eq("id", nfOrig.produtor_id).maybeSingle();
         setRetCpfHint(prod?.cpf_cnpj ?? undefined);
       }
@@ -113,6 +116,7 @@ export default function RemessasLogisticasPage() {
         body: JSON.stringify({
           fazenda_id:   modalRetorno.fazenda_id ?? fazendaId,
           modulo_key:      fiscalMods[0]?.modulo ?? "",   // fallback — o servidor prefere cpf_cnpj_hint quando resolvível
+          produtor_id_hint: retProdutorId,
           cpf_cnpj_hint:   retCpfHint,
           destinatario: {
             nome:           modalRetorno.destinatario_nome,
