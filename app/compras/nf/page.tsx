@@ -2158,7 +2158,11 @@ export default function NfCompraPage() {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id:   fazendaId,
+          // A NF de origem pode ser de qualquer fazenda do cliente (a lista carrega fazendaIds inteiro)
+          // — nunca a "fazendaId" ativa da sessão, senão o emissor busca config e cadastro de Pessoas
+          // na fazenda errada e falha com "IBGE do destinatário não informado" mesmo o cadastro certo
+          // (na fazenda certa) estando completo.
+          fazenda_id:   devNfOrig.fazenda_id,
           modulo_key:   fiscalModulos[0].modulo,
           destinatario: {
             nome:     devNfOrig.emitente_nome,
@@ -2179,7 +2183,7 @@ export default function NfCompraPage() {
       }
       const serieReal = res.chave.substring(22, 25).replace(/^0+(?=\d)/, "") || "0";
       await processarDevolucaoCompra(
-        fazendaId,
+        devNfOrig.fazenda_id,
         devNfOrig.id,
         res.numero ?? "",
         serieReal,
