@@ -865,11 +865,12 @@ export default function ComprasPage() {
         const novo = await criarPedidoCompra(payload);
         pedidoId = novo.id;
       }
-      const itensSalvar: Omit<PedidoCompraItem, "id" | "created_at" | "valor_total">[] = itens
+      const itensSalvar: (Omit<PedidoCompraItem, "id" | "created_at" | "valor_total"> & { id?: string })[] = itens
         .filter(it => it.nome_item.trim() || it.insumo_id)
         .map(it => {
           const ins = insumos.find(i => i.id === it.insumo_id);
           return {
+            id: it.id,
             pedido_id: pedidoId, fazenda_id: fidPedido,
             tipo_item: it.tipo_item,
             insumo_id: it.insumo_id || undefined,

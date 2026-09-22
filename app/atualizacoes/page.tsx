@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-h",
+    data: "23/09/2026",
+    titulo: "Pedidos de Compra: salvar apagava e recriava todos os itens",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Salvar um Pedido de Compra apagava todos os itens dele e recriava com IDs novos, mesmo sem mudar nada numa linha específica. Quando uma NF já tinha associado um item a uma linha exata do pedido, e o pedido fosse salvo de novo nesse meio tempo, esse vínculo ficava apontando pra um ID que não existia mais — \"Processar\" a NF quebrava com erro de banco (\"foreign key constraint nf_entrada_itens_pedido_item_id_fkey\"). Corrigido: salvar o pedido agora preserva o ID de cada item que já existia. Se travou nisso antes da correção, feche e reabra a NF (ou reselecione o produto na linha) pra reassociar." },
+    ],
+    onde: "Compras & Estoque → Compras → Pedidos de Compra",
+  },
+  {
     versao: "2026.09.23-g",
     data: "23/09/2026",
     titulo: "CT-e autorizado na SEFAZ voltava pra \"Rascunho\" (achado grave)",

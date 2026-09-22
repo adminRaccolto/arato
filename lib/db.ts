@@ -4664,11 +4664,40 @@ export async function listarPedidoCompraItens(pedido_id: string): Promise<Pedido
   return data ?? [];
 }
 
-export async function salvarPedidoCompraItens(pedido_id: string, fazenda_id: string, itens: Omit<PedidoCompraItem, "id" | "created_at" | "valor_total">[]): Promise<void> {
-  await supabase.from("pedidos_compra_itens").delete().eq("pedido_id", pedido_id);
-  if (itens.length === 0) return;
-  const { error } = await supabase.from("pedidos_compra_itens").insert(itens.map(i => ({ ...i, pedido_id, fazenda_id })));
-  if (error) throw error;
+// Achado real 23/09/2026: apagar tudo e reinserir gerava um `id` NOVO pra cada item TODA VEZ
+// que o pedido era salvo, mesmo sem mudar nada na linha — qualquer vínculo externo capturado
+// antes desse resave (ex.: NF de compra associada a um item específico via `pedido_item_id`)
+// ficava apontando pra um id que não existia mais, e o Salvar da NF quebrava com
+// "violates foreign key constraint nf_entrada_itens_pedido_item_id_fkey". Corrigido: agora só
+// insere os itens novos (sem id) e atualiza os existentes (com id) no lugar — o id de um item
+// que já existia antes do resave continua o mesmo depois. Itens removidos pelo usuário (id
+// antigo que não está mais na lista nova) são apagados só esses, não o pedido inteiro.
+export async function salvarPedidoCompraItens(
+  pedido_id: string,
+  fazenda_id: string,
+  itens: (Omit<PedidoCompraItem, "id" | "created_at" | "valor_total"> & { id?: string })[],
+): Promise<void> {
+  const { data: existentes } = await supabase.from("pedidos_compra_itens").select("id").eq("pedido_id", pedido_id);
+  const idsExistentes = new Set((existentes ?? []).map(r => r.id as string));
+  const idsMantidos = new Set(itens.filter(i => i.id).map(i => i.id as string));
+  const idsRemover = [...idsExistentes].filter(id => !idsMantidos.has(id));
+
+  if (idsRemover.length > 0) {
+    await supabase.from("pedidos_compra_itens").delete().in("id", idsRemover);
+  }
+
+  const novos = itens.filter(i => !i.id).map(({ id: _id, ...i }) => ({ ...i, pedido_id, fazenda_id }));
+  if (novos.length > 0) {
+    const { error } = await supabase.from("pedidos_compra_itens").insert(novos);
+    if (error) throw error;
+  }
+
+  const atualizar = itens.filter(i => i.id);
+  for (const i of atualizar) {
+    const { id, ...patch } = i;
+    const { error } = await supabase.from("pedidos_compra_itens").update({ ...patch, pedido_id, fazenda_id }).eq("id", id as string);
+    if (error) throw error;
+  }
 }
 
 export async function atualizarPedidoCompraItem(id: string, patch: Partial<PedidoCompraItem>): Promise<void> {
