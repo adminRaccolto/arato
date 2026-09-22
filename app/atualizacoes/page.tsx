@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-e",
+    data: "23/09/2026",
+    titulo: "CT-e: novo CFOP 5352 disponível",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Adicionado o CFOP 5352 (Transporte a estabelecimento industrial, intraestadual) na lista de CFOPs do CT-e. O 5353 é o de estabelecimento comercial (intraestadual) — a descrição inicial estava trocada e foi corrigida." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-d",
     data: "23/09/2026",
     titulo: "CT-e/MDF-e: parâmetros do emitente eram fragmentados por fazenda",

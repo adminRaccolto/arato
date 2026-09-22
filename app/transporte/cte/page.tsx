@@ -100,7 +100,8 @@ const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> 
 
 const CFOPS_CTE = [
   { cfop: "6353", desc: "Transporte a estabelecimento comercial" },
-  { cfop: "5353", desc: "Transporte a estab. industrial (intraestadual)" },
+  { cfop: "5352", desc: "Transporte a estab. industrial (intraestadual)" },
+  { cfop: "5353", desc: "Transporte a estab. comercial (intraestadual)" },
   { cfop: "6354", desc: "Prestação de transporte a produtor rural" },
   { cfop: "5354", desc: "Transporte a produtor rural (intraestadual)" },
   { cfop: "6932", desc: "Prestação de serviço de transporte — operações de exportação" },
