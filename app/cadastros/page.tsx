@@ -984,6 +984,9 @@ function CadastrosInner() {
           municipio_ibge:  d.ibge       ?? p.municipio_ibge ?? "",
           estado:          d.uf         ?? p.estado,
         }));
+      } else if (fProd.municipio) {
+        const ibge = await resolverIbgePorMunicipio(fProd.municipio, fProd.estado);
+        if (ibge) setFProd(p => ({ ...p, municipio_ibge: ibge }));
       }
     } catch { /* silencioso — usuário preenche manualmente */ }
     finally { setBuscandoCep(false); }
@@ -1007,6 +1010,9 @@ function CadastrosInner() {
           municipio_ibge: d.ibge       ?? p.municipio_ibge ?? "",
           estado:         d.uf         ?? p.estado,
         }));
+      } else if (newIE.municipio) {
+        const ibge = await resolverIbgePorMunicipio(newIE.municipio, newIE.estado);
+        if (ibge) setNewIE(p => ({ ...p, municipio_ibge: ibge }));
       }
     } catch { /* silencioso — usuário preenche manualmente */ }
   };
@@ -1026,6 +1032,12 @@ function CadastrosInner() {
           municipio_ibge: d.ibge       ?? x.municipio_ibge ?? "",
           estado:         d.uf         ?? x.estado,
         } : x));
+      } else {
+        const atual = prodIEs[idx];
+        if (atual?.municipio) {
+          const ibge = await resolverIbgePorMunicipio(atual.municipio, atual.estado);
+          if (ibge) setProdIEs(prev => prev.map((x, j) => j === idx ? { ...x, municipio_ibge: ibge } : x));
+        }
       }
     } catch { /* silencioso — usuário preenche manualmente */ }
   };
@@ -1800,6 +1812,22 @@ function CadastrosInner() {
     }
     setModalPes(false);
   });
+  // Fallback quando o CEP não resolve o IBGE (CEP inexistente/errado na base dos Correios, mas o
+  // nome do município veio certo — ex: da Receita Federal): consulta a API oficial do IBGE por
+  // nome + UF. Usado depois de qualquer tentativa por CEP falhar.
+  async function resolverIbgePorMunicipio(municipio: string, uf: string): Promise<string | null> {
+    if (!municipio.trim() || !uf.trim()) return null;
+    try {
+      const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+      if (!r.ok) return null;
+      const lista = await r.json() as { id: number; nome: string }[];
+      const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const alvo = norm(municipio);
+      const achado = lista.find(m => norm(m.nome) === alvo);
+      return achado ? String(achado.id) : null;
+    } catch { return null; }
+  }
+
   const buscarCnpjPes = async () => {
     const raw = fPes.cpf_cnpj.replace(/\D/g, "");
     if (raw.length !== 14) return;
@@ -1814,6 +1842,19 @@ function CadastrosInner() {
         || (Array.isArray(d.inscricoes_estaduais) && d.inscricoes_estaduais[0]?.numero)
         || "";
       const im = d.inscricao_municipal || d.im || "";
+      // BrasilAPI (Receita Federal) não devolve o código IBGE — resolve pelo CEP (ViaCEP) e,
+      // se o CEP não existir na base dos Correios, pelo nome do município (API do IBGE).
+      let ibgeResolvido = "";
+      if (cepRaw.length === 8) {
+        try {
+          const rv = await fetch(`https://viacep.com.br/ws/${cepRaw}/json/`);
+          const dv = await rv.json();
+          if (!dv.erro && dv.ibge) ibgeResolvido = dv.ibge;
+        } catch { /* segue pro fallback por nome */ }
+      }
+      if (!ibgeResolvido && d.municipio) {
+        ibgeResolvido = (await resolverIbgePorMunicipio(d.municipio, d.uf || "MT")) ?? "";
+      }
       setFPes(p => ({
         ...p,
         nome: d.razao_social || p.nome,
@@ -1822,6 +1863,7 @@ function CadastrosInner() {
         complemento: d.complemento || "",
         bairro: d.bairro || "",
         municipio: d.municipio || "",
+        municipio_ibge: ibgeResolvido || p.municipio_ibge,
         estado: d.uf || "MT",
         cep: cepRaw.length === 8 ? `${cepRaw.slice(0,5)}-${cepRaw.slice(5)}` : cepRaw,
         email: d.email || p.email,
@@ -1842,7 +1884,15 @@ function CadastrosInner() {
       const r = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
       if (!r.ok) return;
       const d = await r.json();
-      if (d.erro) return;
+      if (d.erro) {
+        // CEP não existe na base dos Correios (acontece com CEPs genéricos/antigos vindos da Receita
+        // Federal) — se já houver um município digitado, tenta resolver o IBGE só pelo nome.
+        if (fPes.municipio) {
+          const ibge = await resolverIbgePorMunicipio(fPes.municipio, fPes.estado);
+          if (ibge) setFPes(p => ({ ...p, municipio_ibge: ibge }));
+        }
+        return;
+      }
       setFPes(p => ({ ...p, logradouro: d.logradouro || "", bairro: d.bairro || "", municipio: d.localidade || "", municipio_ibge: d.ibge || "", estado: d.uf || "MT" }));
     } catch {}
   };

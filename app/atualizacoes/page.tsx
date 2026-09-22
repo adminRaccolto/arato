@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-l",
+    data: "22/09/2026",
+    titulo: "Cadastros: Código IBGE não era preenchido pelo \"Buscar\" e falhava com CEP inválido",
+    modulos: ["Cadastros", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O botão \"Buscar\" (consulta CNPJ na Receita Federal) em Pessoas nunca preenchia o Código IBGE do município — agora resolve pelo CEP encontrado e, se esse CEP não existir na base dos Correios (ViaCEP), pelo nome do município direto na API do IBGE. Mesma correção aplicada ao digitar o CEP à mão (Pessoas, Produtores e Inscrições Estaduais): antes, um CEP que a Receita reconhece mas os Correios não deixava o campo vazio sem aviso." },
+      { tipo: "melhoria", texto: "A emissão de NF-e ganhou o mesmo fallback por nome do município (além do já existente por CEP), reduzindo o \"SEFAZ 505: Código IBGE do destinatário não informado\" quando o cadastro tem um CEP que a Receita aceita mas os Correios não." },
+    ],
+    onde: "Cadastros → Pessoas / Produtores · Fiscal",
+  },
+  {
     versao: "2026.09.22-k",
     data: "22/09/2026",
     titulo: "NF-e: IBGE do destinatário resolvido pelo CEP",

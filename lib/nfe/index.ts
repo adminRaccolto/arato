@@ -391,7 +391,27 @@ export async function emitirNFe(
           }
         }
       }
-    } catch { /* ViaCEP fora do ar — segue sem o fallback, cai no erro CFG normal abaixo */ }
+    } catch { /* ViaCEP fora do ar — segue pro próximo fallback */ }
+  }
+
+  // Fallback 4: o CEP em si pode não existir na base dos Correios (comum em dados vindos da Receita
+  // Federal), mas o nome do município costuma estar certo — resolve pela API oficial do IBGE.
+  if (!input.destinatario.municipio_ibge && input.destinatario.municipio_nome) {
+    try {
+      const ufBusca = (input.destinatario.uf || "MT").toUpperCase();
+      const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${ufBusca}/municipios`);
+      if (r.ok) {
+        const lista = await r.json() as { id: number; nome: string }[];
+        const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const alvo = norm(input.destinatario.municipio_nome);
+        const achado = lista.find(m => norm(m.nome) === alvo);
+        if (achado) {
+          const ibge = String(achado.id);
+          input = { ...input, destinatario: { ...input.destinatario, municipio_ibge: ibge } };
+          if (pessoaSemIbgeId) await sb().from("pessoas").update({ municipio_ibge: ibge }).eq("id", pessoaSemIbgeId);
+        }
+      }
+    } catch { /* API do IBGE fora do ar — segue sem o fallback, cai no erro CFG normal abaixo */ }
   }
 
   const certPath = confg.cert_a1_path;
