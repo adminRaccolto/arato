@@ -294,7 +294,7 @@ function envelopeCTe(xmlAssinado: string): string {
 }
 
 // ─── Relay via Supabase Edge Function (IP brasileiro) ────────────────────────
-async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise<string> {
+async function soapPostViaEdge(url: string, body: string, pem: PemPair, soapAction = SOAP_ACTION): Promise<string> {
   const supabaseUrl = process.env.SUPABASE_SEFAZ_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const edgeFnUrl   = `${supabaseUrl}/functions/v1/cte-transmit`;
   const edgeSecret  = process.env.EDGE_BEARER_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -311,7 +311,7 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
       soapBody:    body,
       certPem:     pem.certChain ?? pem.cert,
       keyPem:      pem.key,
-      soapAction:  SOAP_ACTION,
+      soapAction,
       soapVersion: "1.2",
     }),
   });
@@ -551,7 +551,10 @@ export async function consultarSituacaoCTe(
     MG: "31", MS: "50", MT: "51", PA: "15", PB: "25", PE: "26", PI: "22", PR: "41", RJ: "33", RN: "24",
     RO: "11", RR: "14", RS: "43", SC: "42", SE: "28", SP: "35", TO: "17",
   }[ufNormalizada] ?? chave.slice(0, 2));
-  const resp = await soapPost(
+  // Alguns servidores SEFAZ-MT respondem a esta consulta com chunked HTTP
+  // inválido para o parser do Node. O relay Deno já usado pela integração
+  // fiscal lê a resposta de forma compatível e mantém o mTLS.
+  const resp = await soapPostViaEdge(
     endpointConsultaCTe(ufNormalizada, ambiente),
     envelopeConsultaCTe(chave, ambiente, cuf),
     pem,
