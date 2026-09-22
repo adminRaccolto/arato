@@ -172,6 +172,32 @@ const ENDPOINTS: Record<Ambiente, Record<Autorizador, string>> = {
   },
 };
 
+// Registro de eventos (cancelamento, CC-e, etc.) usa um serviço próprio e
+// payload XML sem compactação. As UFs atendidas por SVRS/SVSP compartilham os
+// mesmos endpoints dos respectivos autorizadores.
+const EVENT_ENDPOINTS: Record<Ambiente, Record<Autorizador, string>> = {
+  producao: {
+    MT:   "https://cte.sefaz.mt.gov.br/ctews2/services/CTeRecepcaoEventoV4",
+    MS:   "https://producao.cte.ms.gov.br/ws/CTeRecepcaoEventoV4",
+    MG:   "https://cte.fazenda.mg.gov.br/cte/services/CTeRecepcaoEventoV4",
+    PR:   "https://cte.fazenda.pr.gov.br/cte4/CTeRecepcaoEventoV4",
+    RS:   "https://cte.svrs.rs.gov.br/ws/CTeRecepcaoEventoV4/CTeRecepcaoEventoV4.asmx",
+    SP:   "https://nfe.fazenda.sp.gov.br/CTeWS/WS/CTeRecepcaoEventoV4.asmx",
+    SVRS: "https://cte.svrs.rs.gov.br/ws/CTeRecepcaoEventoV4/CTeRecepcaoEventoV4.asmx",
+    SVSP: "https://nfe.fazenda.sp.gov.br/CTeWS/WS/CTeRecepcaoEventoV4.asmx",
+  },
+  homologacao: {
+    MT:   "https://homologacao.sefaz.mt.gov.br/ctews2/services/CTeRecepcaoEventoV4",
+    MS:   "https://homologacao.cte.ms.gov.br/ws/CTeRecepcaoEventoV4",
+    MG:   "https://hcte.fazenda.mg.gov.br/cte/services/CTeRecepcaoEventoV4",
+    PR:   "https://homologacao.cte.fazenda.pr.gov.br/cte4/CTeRecepcaoEventoV4",
+    RS:   "https://cte-homologacao.svrs.rs.gov.br/ws/CTeRecepcaoEventoV4/CTeRecepcaoEventoV4.asmx",
+    SP:   "https://homologacao.nfe.fazenda.sp.gov.br/CTeWS/WS/CTeRecepcaoEventoV4.asmx",
+    SVRS: "https://cte-homologacao.svrs.rs.gov.br/ws/CTeRecepcaoEventoV4/CTeRecepcaoEventoV4.asmx",
+    SVSP: "https://homologacao.nfe.fazenda.sp.gov.br/CTeWS/WS/CTeRecepcaoEventoV4.asmx",
+  },
+};
+
 function endpoint(ufEmitente: string, ambiente: Ambiente): string {
   const uf = ufEmitente.trim().toUpperCase();
   const autorizador = AUTORIZADOR_POR_UF[uf];
@@ -184,6 +210,8 @@ function endpoint(ufEmitente: string, ambiente: Ambiente): string {
 // ─── SOAP ─────────────────────────────────────────────────────────────────────
 const SOAP_ACTION = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/cteRecepcao";
 const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4";
+const EVENT_SOAP_ACTION = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoEventoV4/cteRecepcaoEvento";
+const EVENT_SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoEventoV4";
 
 
 // ─── Compactação e envelope CT-e 4.00 ────────────────────────────────────────
@@ -323,7 +351,7 @@ async function soapPostViaEdge(url: string, body: string, pem: PemPair): Promise
 // ─── SOAP direto via https.request (Node.js, gru1 = São Paulo) ───────────────
 // Usa CA bundle ICP-Brasil hardcoded para verificar o servidor SEFAZ.
 // O IP de saída do Vercel gru1 é aceito pelo SEFAZ — sem bloqueio de firewall.
-function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
+function soapPost(url: string, body: string, pem: PemPair, soapAction = SOAP_ACTION): Promise<string> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const bodyBuffer = Buffer.from(body, "utf8");
@@ -334,8 +362,8 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
       path:     u.pathname + u.search,
       method:   "POST",
       headers: {
-        "Content-Type":   `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
-        "SOAPAction":     `"${SOAP_ACTION}"`,
+        "Content-Type":   `application/soap+xml; charset=utf-8; action="${soapAction}"`,
+        "SOAPAction":     `"${soapAction}"`,
         "Content-Length": bodyBuffer.length,
       },
       cert: pem.certChain ?? pem.cert,
@@ -362,7 +390,7 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
 
 // ─── Parser de resposta ───────────────────────────────────────────────────────
 function tagVal(xml: string, tag: string): string {
-  const m = xml.match(new RegExp(`<${tag}[^>]*>([^<]*)<\/${tag}>`));
+  const m = xml.match(new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([^<]*)<\/(?:[^:>]+:)?${tag}>`));
   return m ? m[1] : "";
 }
 
@@ -410,7 +438,7 @@ function parseResposta(soapResp: string): RespostaCTe {
   const cStat    = tagVal(soapResp, "cStat");
   const xMotivo  = tagVal(soapResp, "xMotivo");
   const protocolo = tagVal(soapResp, "nProt");
-  const dhRecbto  = tagVal(soapResp, "dhRecbto");
+  const dhRecbto  = tagVal(soapResp, "dhRecbto") || tagVal(soapResp, "dhRegEvento");
   const chave     = tagVal(soapResp, "chCTe");
   const xmlProtMatch = soapResp.match(/<cteProc[\s\S]*?<\/cteProc>/)
     ?? soapResp.match(/<protCTe[\s\S]*?<\/protCTe>/);
@@ -447,4 +475,48 @@ export async function transmitirCTe(
   const resp = await soapPost(ep, soapBody, pem);
 
   return parseResposta(resp);
+}
+
+function envelopeEventoCTe(eventoXmlAssinado: string, cuf: string): string {
+  const body = eventoXmlAssinado.replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
+  return `<?xml version="1.0" encoding="utf-8"?>` +
+    `<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">` +
+      `<soap12:Header><cteCabecMsg xmlns="${EVENT_SOAP_NS}"><cUF>${cuf}</cUF><versaoDados>4.00</versaoDados></cteCabecMsg></soap12:Header>` +
+      `<soap12:Body><cteDadosMsg xmlns="${EVENT_SOAP_NS}">${body}</cteDadosMsg></soap12:Body>` +
+    `</soap12:Envelope>`;
+}
+
+function parseRespostaEventoCTe(soapResp: string): RespostaCTe {
+  const infEvento = soapResp.match(/<(?:[^:>]+:)?infEvento\b[^>]*>[\s\S]*?<\/(?:[^:>]+:)?infEvento>/)?.[0];
+  if (!infEvento) return parseResposta(soapResp);
+  const cStat = tagVal(infEvento, "cStat");
+  const xMotivo = tagVal(infEvento, "xMotivo");
+  if (!cStat) return parseResposta(soapResp);
+  return {
+    sucesso: cStat === "135",
+    cStat,
+    xMotivo,
+    protocolo: tagVal(infEvento, "nProt") || undefined,
+    dhRecbto: tagVal(infEvento, "dhRegEvento") || undefined,
+    chave: tagVal(infEvento, "chCTe") || undefined,
+  };
+}
+
+export async function transmitirEventoCTe(
+  eventoXmlAssinado: string,
+  pem: PemPair,
+  uf: string,
+  ambiente: Ambiente,
+): Promise<RespostaCTe> {
+  const ufNormalizada = uf.trim().toUpperCase();
+  const autorizador = AUTORIZADOR_POR_UF[ufNormalizada];
+  if (!autorizador) throw new Error(`UF do emitente inválida ou não mapeada: "${uf}"`);
+  const endpointEvento = EVENT_ENDPOINTS[ambiente][autorizador];
+  const cuf = ufNormalizada === "" ? "51" : ({
+    AC: "12", AL: "27", AM: "13", AP: "16", BA: "29", CE: "23", DF: "53", ES: "32", GO: "52", MA: "21",
+    MG: "31", MS: "50", MT: "51", PA: "15", PB: "25", PE: "26", PI: "22", PR: "41", RJ: "33", RN: "24",
+    RO: "11", RR: "14", RS: "43", SC: "42", SE: "28", SP: "35", TO: "17",
+  }[ufNormalizada] ?? "51");
+  const resp = await soapPost(endpointEvento, envelopeEventoCTe(eventoXmlAssinado, cuf), pem, EVENT_SOAP_ACTION);
+  return parseRespostaEventoCTe(resp);
 }

@@ -76,6 +76,10 @@ interface Cte {
   nfe_chave?: string | null;
   carregamento_id?: string | null;
   xml_url?: string | null;
+  protocolo_autorizacao?: string | null;
+  protocolo_cancelamento?: string | null;
+  data_cancelamento?: string | null;
+  motivo_cancelamento?: string | null;
   status: StatusCte;
   observacao?: string | null;
   created_at?: string;
@@ -346,6 +350,7 @@ function CtePageInner() {
   const [modal, setModal]     = useState(false);
   const [cteEdit, setCteEdit] = useState<Cte | null>(null);
   const [saving, setSaving]   = useState(false);
+  const [cancelando, setCancelando] = useState(false);
   const [err, setErr]         = useState("");
   // IEs múltiplas por CPF/CNPJ
   const [remetenteSelUI,  setRemetenteSelUI]  = useState("");
@@ -917,9 +922,54 @@ function CtePageInner() {
   }
 
   async function cancelar(c: Cte) {
-    if (!confirm("Cancelar este CT-e?")) return;
-    await supabase.from("ctes").update({ status: "cancelado" }).eq("id", c.id);
-    await carregar();
+    if (cancelando) return;
+    const justificativa = prompt(
+      `Cancelar oficialmente o CT-e ${c.numero_cte}/${c.serie} na SEFAZ.\n\n` +
+      "Informe a justificativa (mínimo de 15 caracteres):",
+    );
+    if (justificativa === null) return;
+    if (justificativa.trim().length < 15) {
+      alert("A justificativa deve conter pelo menos 15 caracteres — exigência da SEFAZ.");
+      return;
+    }
+    if (!confirm("O evento será transmitido agora para a SEFAZ. Confirma o cancelamento?")) return;
+
+    setCancelando(true);
+    try {
+      const enviar = async (protocoloAutorizacao?: string | null) => {
+        const res = await fetch("/api/fiscal/cancelar-cte", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fazenda_id: fazendaId,
+            cte_id: c.id,
+            emitente_cnpj: c.emitente_cnpj,
+            chave_acesso: c.chave_acesso,
+            protocolo_autorizacao: protocoloAutorizacao,
+            justificativa,
+          }),
+        });
+        return res.json() as Promise<{ sucesso?: boolean; cStat?: string; xMotivo?: string; protocolo?: string }>;
+      };
+      let data = await enviar(c.protocolo_autorizacao);
+      // Para documentos antigos cujo XML não esteja mais no Storage, permite
+      // usar o nProt exibido na consulta do Portal da SEFAZ sem sair do fluxo.
+      if (!data.sucesso && data.cStat === "PROTOCOLO_AUSENTE") {
+        const protocolo = prompt("Informe o protocolo de autorização (15 dígitos), disponível na consulta do CT-e na SEFAZ:");
+        if (protocolo === null) return;
+        data = await enviar(protocolo);
+      }
+      if (!data.sucesso) {
+        alert(`Cancelamento não confirmado pela SEFAZ.\n\ncStat ${data.cStat ?? "—"}: ${data.xMotivo ?? "Sem detalhe"}\n\nA situação local não foi alterada.`);
+        return;
+      }
+      alert(`✓ CT-e cancelado oficialmente na SEFAZ.\nProtocolo do evento: ${data.protocolo ?? "—"}`);
+      await carregar();
+    } catch (e) {
+      alert("Falha ao solicitar o cancelamento à SEFAZ: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setCancelando(false);
+    }
   }
 
   // ── Filtrar ──────────────────────────────────────────────
@@ -1136,8 +1186,13 @@ function CtePageInner() {
                             </button>
                           )}
                           {c.status === "autorizado" && (
-                            <button onClick={() => cancelar(c)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
-                              Cancelar
+                            <button disabled={cancelando} onClick={() => cancelar(c)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: cancelando ? "wait" : "pointer", fontSize: 11, color: "#791F1F", opacity: cancelando ? .65 : 1 }}>
+                              {cancelando ? "Cancelando…" : "Cancelar"}
+                            </button>
+                          )}
+                          {c.status === "cancelado" && !c.protocolo_cancelamento && !c.data_cancelamento && (
+                            <button disabled={cancelando} onClick={() => cancelar(c)} title="Este CT-e foi cancelado apenas no sistema. Envie agora o evento oficial à SEFAZ." style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FFF4E5", cursor: cancelando ? "wait" : "pointer", fontSize: 11, color: "#9A3412", opacity: cancelando ? .65 : 1 }}>
+                              Regularizar SEFAZ
                             </button>
                           )}
                         </div>

@@ -13333,3 +13333,17 @@ ALTER TABLE ctes
   ADD COLUMN IF NOT EXISTS xml_url TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Seção 281 — rastreabilidade do cancelamento oficial de CT-e
+-- O evento 110111 exige o nProt de autorização e só o aceite da SEFAZ pode
+-- mudar o CT-e para cancelado. Mantemos ambos os protocolos e a justificativa
+-- para auditoria e para impedir um simples cancelamento apenas local.
+-- ══════════════════════════════════════════════════════════════════════════
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS protocolo_autorizacao TEXT,
+  ADD COLUMN IF NOT EXISTS protocolo_cancelamento TEXT,
+  ADD COLUMN IF NOT EXISTS data_cancelamento TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT;
+
+NOTIFY pgrst, 'reload schema';

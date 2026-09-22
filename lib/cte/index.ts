@@ -12,6 +12,7 @@ import { createHash }  from "crypto";
 import { buildCTe }     from "./builder";
 import { assinarCTe }   from "./signer";
 import { transmitirCTe } from "./transmitter";
+import { cancelarCTe as registrarCancelamentoCTe } from "./evento";
 import { pfxParaPem }   from "../nfe/signer";
 import { resolverConfigCTe } from "./config";
 import type { CTeInput, EmitenteCTe } from "./builder";
@@ -101,6 +102,94 @@ export interface ResultadoEmissaoCTe {
 export interface EmitirCTeOptions {
   emitente_cnpj?: string | null;
   cte_id?:        string | null; // ID do registro em `ctes` — atualizado com service_role após autorização
+}
+
+export interface CancelarCTeOptions {
+  cte_id: string;
+  emitente_cnpj?: string | null;
+  chave_acesso: string;
+  protocolo_autorizacao?: string | null;
+  justificativa: string;
+}
+
+async function protocoloDoXmlAutorizado(fazendaId: string, chave: string): Promise<string | null> {
+  const path = `${fazendaId}/cte_emitidos/${chave}.xml`;
+  const { data, error } = await sb().storage.from("arquivos").download(path);
+  if (error || !data) return null;
+  const xml = await data.text();
+  // O XML autorizado contém <infProt> com o protocolo da autorização. Não
+  // usa o primeiro nProt do documento para evitar confundir um evento futuro.
+  const infProt = xml.match(/<infProt\b[^>]*>[\s\S]*?<\/infProt>/i)?.[0] ?? "";
+  return infProt.match(/<nProt[^>]*>(\d{15})<\/nProt>/i)?.[1] ?? null;
+}
+
+/** Registra na SEFAZ o evento 110111 e só então espelha o cancelamento local. */
+export async function cancelarCTeEmitido(
+  fazendaId: string,
+  options: CancelarCTeOptions,
+) {
+  const chave = options.chave_acesso.replace(/\D/g, "");
+  if (chave.length !== 44) {
+    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "CT-e não possui uma chave de acesso válida." };
+  }
+  if (options.justificativa.trim().length < 15) {
+    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "A justificativa deve conter pelo menos 15 caracteres." };
+  }
+
+  const resolved = await resolverConfigCTe(fazendaId, options.emitente_cnpj);
+  if (!resolved || !resolved.cteConfigEncontrada) {
+    return { sucesso: false, cStat: "CONFIGURACAO", xMotivo: "Configuração CT-e do emitente não encontrada." };
+  }
+  const confg = resolved.cteConfig;
+  const fiscal = resolved.fiscalConfig;
+  const certPath = confg.cert_a1_path ?? fiscal.cert_a1_path;
+  const certSenha = confg.cert_a1_senha ?? fiscal.cert_a1_senha;
+  if (!certPath || !certSenha) {
+    return { sucesso: false, cStat: "CERTIFICADO", xMotivo: "Certificado A1 não configurado para este emitente." };
+  }
+
+  // CT-es emitidos antes desta correção não tinham o protocolo persistido;
+  // recuperamos do XML autorizado que o próprio sistema arquiva no Storage.
+  const protocolo = options.protocolo_autorizacao?.replace(/\D/g, "")
+    || await protocoloDoXmlAutorizado(fazendaId, chave);
+  if (!protocolo) {
+    return {
+      sucesso: false,
+      cStat: "PROTOCOLO_AUSENTE",
+      xMotivo: "Protocolo de autorização não encontrado. Consulte o CT-e no portal SEFAZ e informe/registre o protocolo antes de cancelar.",
+    };
+  }
+
+  try {
+    const pem = pfxParaPem(await carregarPfx(certPath), certSenha);
+    const emitente = fiscal.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits;
+    const resultado = await registrarCancelamentoCTe(pem, {
+      chave,
+      protocolo,
+      cpfCnpjEmitente: emitente,
+      uf: fiscal.uf_emitente ?? confg.uf_emitente ?? "MT",
+      ambiente: (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
+      justificativa: options.justificativa,
+    });
+    if (!resultado.sucesso) return resultado;
+
+    const update = {
+      status: "cancelado",
+      protocolo_autorizacao: protocolo,
+      protocolo_cancelamento: resultado.protocolo ?? null,
+      data_cancelamento: resultado.dataRegistro ?? new Date().toISOString(),
+      motivo_cancelamento: options.justificativa.trim(),
+    };
+    const { error } = await sb().from("ctes").update(update).eq("id", options.cte_id);
+    if (error) {
+      console.error("[cancelarCTe] SEFAZ confirmou, mas falhou ao persistir no banco:", error);
+      return { ...resultado, sucesso: false, cStat: "PERSISTENCIA", xMotivo: "SEFAZ confirmou o cancelamento, mas o sistema não conseguiu gravar o retorno. Não reenvie; contate o suporte com a chave do CT-e." };
+    }
+    return resultado;
+  } catch (error) {
+    console.error("[cancelarCTe]", error);
+    return { sucesso: false, cStat: "ERRO_TECNICO", xMotivo: String(error) };
+  }
 }
 
 // ─── Função principal ────────────────────────────────────────────────────────
@@ -222,13 +311,14 @@ export async function emitirCTe(
     const payloadUpdate = {
       status:       resposta.sucesso ? "autorizado" : "rascunho",
       chave_acesso: built.chave,
+      protocolo_autorizacao: resposta.protocolo ?? null,
       xml_url:      xmlUrl ?? null,
       numero_cte:   String(built.numero),
     };
     const { error: updErr } = await sb().from("ctes").update(payloadUpdate).eq("id", options.cte_id);
     if (updErr?.code === "PGRST204") {
-      const { xml_url: _xu, ...semXmlUrl } = payloadUpdate;
-      const retry = await sb().from("ctes").update(semXmlUrl).eq("id", options.cte_id);
+      const { xml_url: _xu, protocolo_autorizacao: _pa, ...semColunasNovas } = payloadUpdate;
+      const retry = await sb().from("ctes").update(semColunasNovas).eq("id", options.cte_id);
       if (retry.error) console.error("[emitirCTe] falha ao gravar status autorizado (retry sem xml_url):", retry.error);
     } else if (updErr) {
       console.error("[emitirCTe] falha ao gravar status autorizado:", updErr);
