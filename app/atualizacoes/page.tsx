@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-i",
+    data: "22/09/2026",
+    titulo: "Devolução: Estornar remove o registro",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Estornar uma NF de devolução voltava o registro para \"pendente\", e ele ficava parado na lista principal como se fosse uma NF de entrada normal esperando \"Processar\" — o que nunca acontece, pois devolução só é criada pronta pelo botão Devolver. Agora Estornar remove o registro por completo." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-h",
     data: "22/09/2026",
     titulo: "NF de Produtos: Devolução vira NF-e real",

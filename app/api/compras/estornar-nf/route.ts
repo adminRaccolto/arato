@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
     await sb.from("lancamentos").delete().eq("nf_entrada_id", nf_id);
     const { data: nfRow } = await sb
       .from("nf_entradas")
-      .select("lancamento_id, pedido_compra_id")
+      .select("lancamento_id, pedido_compra_id, tipo_entrada")
       .eq("id", nf_id)
       .single();
 
@@ -200,6 +200,15 @@ export async function POST(req: NextRequest) {
 
     // 6. Itens → depois status para pendente e desvincular do pedido de compra
     await sb.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_id);
+
+    // Devolução de compra não tem fluxo de "reprocessar" — ela só existe pronta (criada pelo botão
+    // Devolver). Voltar para "pendente" a deixava na lista principal como se fosse uma NF de entrada
+    // esperando processamento, o que nunca vai acontecer. Estornar uma devolução remove o registro.
+    if (nfRow?.tipo_entrada === "devolucao_compra") {
+      const { error: errDel } = await sb.from("nf_entradas").delete().eq("id", nf_id);
+      if (errDel) throw new Error(`Erro ao excluir devolução: ${errDel.message}`);
+      return NextResponse.json({ ok: true });
+    }
 
     const { error: errStatus } = await sb
       .from("nf_entradas")
