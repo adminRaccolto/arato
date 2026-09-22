@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
+import SelectBusca from "../../../components/SelectBusca";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
@@ -346,6 +347,7 @@ function CtePageInner() {
   const [saving, setSaving]   = useState(false);
   const [err, setErr]         = useState("");
   // IEs múltiplas por CPF/CNPJ
+  const [remetenteSelUI,  setRemetenteSelUI]  = useState("");
   const [iesRemetente,    setIesRemetente]    = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
   const [iesDestinatario, setIesDestinatario] = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
 
@@ -450,6 +452,8 @@ function CtePageInner() {
   function abrirNovo() {
     setCteEdit(null);
     setForm({ ...FORM_VAZIO(), numero_cte: proximoNr });
+    setRemetenteSelUI("");
+    setIesRemetente([]);
     setErr("");
     setModal(true);
   }
@@ -475,6 +479,8 @@ function CtePageInner() {
       veiculo_id: c.veiculo_id ?? "", motorista_id: c.motorista_id ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
     });
+    setRemetenteSelUI("");
+    setIesRemetente([]);
     setErr("");
     setModal(true);
   }
@@ -505,26 +511,47 @@ function CtePageInner() {
     return buscarIesPorProdutorId(prod.id);
   }
 
-  // ── Auto-fill remetente (usa produtores) ────────────────
-  async function selecionarRemetente(id: string) {
-    const prod = produtores.find(p => p.id === id);
-    const ies = await buscarIesPorProdutorId(id);
-    setIesRemetente(ies);
-    setForm(f => ({
-      ...f,
-      // NUNCA grava o id do produtor aqui — ctes.remetente_id referencia pessoas(id), não
-      // produtores(id) (migration Seção original). Escrever o id do produtor aqui violava a FK e
-      // travava o "Salvar" com "insert or update... violates foreign key constraint
-      // ctes_remetente_id_fkey" toda vez que o remetente vinha do atalho de Produtores — o atalho
-      // é só pra preencher nome/CNPJ/IE/endereço rápido, nunca grava vínculo de produtor no CT-e.
-      remetente_id: "",
-      remetente_nome: prod?.nome ?? "",
-      remetente_cnpj: prod?.cpf_cnpj ?? "",
-      remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (prod?.inscricao_est ?? ""),
-      municipio_origem: prod?.municipio ?? f.municipio_origem,
-      uf_origem: prod?.estado ?? f.uf_origem,
-      ibge_origem: prod?.municipio_ibge ?? f.ibge_origem,
-    }));
+  // ── Auto-fill remetente — atalho combinado (Produtores + Pessoas/terceiros) ──
+  // ctes.remetente_id só aceita pessoas(id) (FK ctes_remetente_id_fkey). Quando o atalho vem de
+  // Produtores, os campos são só preenchidos por conveniência e remetente_id fica vazio (o
+  // remetente é gravado como texto livre); quando vem de Pessoas, o id é válido e é gravado.
+  async function selecionarRemetenteCombo(v: string) {
+    setRemetenteSelUI(v);
+    if (!v) {
+      setIesRemetente([]);
+      setForm(f => ({ ...f, remetente_id: "" }));
+      return;
+    }
+    const [tipo, id] = v.split(":");
+    if (tipo === "produtor") {
+      const prod = produtores.find(p => p.id === id);
+      const ies = await buscarIesPorProdutorId(id);
+      setIesRemetente(ies);
+      setForm(f => ({
+        ...f,
+        remetente_id: "",
+        remetente_nome: prod?.nome ?? "",
+        remetente_cnpj: prod?.cpf_cnpj ?? "",
+        remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (prod?.inscricao_est ?? ""),
+        municipio_origem: prod?.municipio ?? f.municipio_origem,
+        uf_origem: prod?.estado ?? f.uf_origem,
+        ibge_origem: prod?.municipio_ibge ?? f.ibge_origem,
+      }));
+    } else if (tipo === "pessoa") {
+      const p = pessoas.find(p => p.id === id);
+      const ies = await buscarIesPorCpfCnpj(p?.cpf_cnpj);
+      setIesRemetente(ies);
+      setForm(f => ({
+        ...f,
+        remetente_id: id,
+        remetente_nome: p?.nome ?? "",
+        remetente_cnpj: p?.cpf_cnpj ?? "",
+        remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (p?.inscricao_est ?? ""),
+        municipio_origem: p?.municipio ?? f.municipio_origem,
+        uf_origem: p?.estado ?? f.uf_origem,
+        ibge_origem: p?.municipio_ibge ?? f.ibge_origem,
+      }));
+    }
   }
 
   // ── Auto-fill destinatário (usa pessoas) ────────────────
@@ -1210,11 +1237,17 @@ function CtePageInner() {
               {/* ── Remetente ── */}
               <div style={divider}>Remetente</div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Selecionar Remetente (Produtores cadastrados)</label>
-                <select value={form.remetente_id} onChange={e => selecionarRemetente(e.target.value)} style={inp}>
-                  <option value="">— Selecionar —</option>
-                  {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
-                </select>
+                <label style={lbl}>Selecionar Remetente (Produtores ou Pessoas/terceiros cadastrados)</label>
+                <SelectBusca
+                  value={remetenteSelUI}
+                  onChange={v => selecionarRemetenteCombo(v)}
+                  placeholder="— Selecionar —"
+                  options={[
+                    ...produtores.map(p => ({ value: `produtor:${p.id}`, label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}`, group: "Produtores cadastrados" })),
+                    ...pessoas.map(p => ({ value: `pessoa:${p.id}`, label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}`, group: "Pessoas cadastradas (terceiros)" })),
+                  ]}
+                  style={inp}
+                />
               </div>
               <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Razão Social / Nome</label>

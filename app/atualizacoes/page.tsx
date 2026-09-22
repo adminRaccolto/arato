@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-b",
+    data: "23/09/2026",
+    titulo: "CT-e: Remetente agora traz Pessoas (terceiros), não só Produtores",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "O atalho \"Selecionar Remetente\" listava só os Produtores cadastrados — um frete cujo remetente era um terceiro (não o produtor dono da fazenda, ex: outra transportadora, um armazém) não achava a pessoa na busca. Agora o campo combina Produtores e Pessoas cadastradas num único seletor com busca por texto, separados em dois grupos." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-a",
     data: "23/09/2026",
     titulo: "CT-e: Salvar travava ao escolher Remetente por Produtor; IBGE e busca por chave",
