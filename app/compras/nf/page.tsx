@@ -376,6 +376,7 @@ export default function NfCompraPage() {
     qtdOriginal: number; // saldo em unidade de ESTOQUE (bate com movimentacoes_estoque) — referência do saldo disponível pra devolver
     qtdOriginalNF?: number;    // quantidade como emitida na NF do fornecedor — só exibição/conferência
     unidadeOriginalNF?: string; // unidade original da NF — só exibição/conferência
+    ncm?: string;         // NCM do item, herdado da NF original — necessário para emitir a NF-e de devolução
   }
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
@@ -2086,6 +2087,11 @@ export default function NfCompraPage() {
     setDevVenc("");
     // CFOP padrão: 5201 (intraestadual) — ajustável pelo usuário
     setDevCfop("5201");
+    // Configuração fiscal da fazende de origem — a devolução emite uma NF-e de verdade (saída, de
+    // volta ao fornecedor), não só um registro interno. Sem ela, a devolução fica bloqueada.
+    supabase.from("configuracoes_modulo").select("modulo, config")
+      .eq("fazenda_id", nf.fazenda_id).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%")
+      .then(r => setFiscalModulos((r.data ?? []) as Array<{ modulo: string; config: Record<string, string> }>));
     // Carrega os itens da NF original
     try {
       const itensDB = await listarNfEntradaItens(nf.id);
@@ -2100,6 +2106,7 @@ export default function NfCompraPage() {
           qtdOriginal:         i.quantidade,
           qtdOriginalNF:       i.qtd_nf ?? undefined,
           unidadeOriginalNF:   i.unidade_nf ?? undefined,
+          ncm:                 i.ncm ?? undefined,
           quantidade_devolver: 0,
           valor_unitario:      i.valor_unitario,
           valor_total:         0,
@@ -2112,6 +2119,9 @@ export default function NfCompraPage() {
   }
 
   // ── Confirmar devolução ───────────────────────────────────
+  // Emite a NF-e de devolução DE VERDADE na SEFAZ (saída, de volta ao fornecedor — CFOP 5201/6201)
+  // antes de gravar qualquer coisa no sistema: sem NF-e autorizada não há como o caminhão sair com a
+  // mercadoria de forma regular, então nada é escriturado se a SEFAZ rejeitar.
   async function confirmarDevolucao() {
     if (!fazendaId || !devNfOrig) return;
     const itensParaDevolver = devItens.filter(i => i.quantidade_devolver > 0);
@@ -2124,16 +2134,55 @@ export default function NfCompraPage() {
         setDevErr(`Quantidade de "${i.descricao_produto}" excede o original (${i.qtdOriginal} ${i.unidade}).`);
         return;
       }
+      if (!i.ncm) {
+        setDevErr(`"${i.descricao_produto}" está sem NCM na NF original — corrija o cadastro do insumo antes de devolver.`);
+        return;
+      }
+    }
+    if (!fiscalModulos[0]) {
+      setDevErr("Nenhuma configuração fiscal encontrada para esta fazenda em Parâmetros → Fiscal. Configure o emitente antes de devolver.");
+      return;
     }
     setDevSaving(true);
     setDevErr("");
     try {
-      const numeroNovo = `DEV-${devNfOrig.numero}`;
+      const itensNfe = itensParaDevolver.map(i => ({
+        descricao:      i.descricao_produto,
+        ncm:             i.ncm!,
+        cfop:            devCfop,
+        unidade:         i.unidade.toUpperCase(),
+        quantidade:      i.quantidade_devolver,
+        valor_unitario:  i.valor_unitario,
+      }));
+      const resp = await fetch("/api/fiscal/emitir-nfe", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id:   fazendaId,
+          modulo_key:   fiscalModulos[0].modulo,
+          destinatario: {
+            nome:     devNfOrig.emitente_nome,
+            cpf_cnpj: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
+          },
+          itens:    itensNfe,
+          natureza: "Devolução de Compra",
+          inf_cpl:  `Devolução referente à NF ${devNfOrig.numero}/${devNfOrig.serie}${devNfOrig.chave_acesso ? ` — chave ${devNfOrig.chave_acesso}` : ""}.${devObs ? ` ${devObs}` : ""}`,
+          frete:    "9",
+          nfe_ref:  devNfOrig.chave_acesso || undefined,
+          tipo:     "1",
+        }),
+      });
+      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
+      if (!res.sucesso || !res.chave) {
+        setDevErr(`SEFAZ ${res.cStat}: ${res.xMotivo}`);
+        return;
+      }
+      const serieReal = res.chave.substring(22, 25).replace(/^0+(?=\d)/, "") || "0";
       await processarDevolucaoCompra(
         fazendaId,
         devNfOrig.id,
-        numeroNovo,
-        devNfOrig.serie,
+        res.numero ?? "",
+        serieReal,
         devCfop,
         devNfOrig.emitente_nome,
         devNfOrig.emitente_cnpj,
@@ -2141,6 +2190,7 @@ export default function NfCompraPage() {
         devData,
         devVenc || undefined,
         itensParaDevolver,
+        { chave_acesso: res.chave, protocolo: res.protocolo },
       );
       await carregar();
       setDevModal(false);
@@ -4451,8 +4501,8 @@ export default function NfCompraPage() {
 
               {/* Info */}
               <div style={{ background: "#FCEBEB20", border: "0.5px solid #FCBCBC", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#791F1F", marginBottom: 16 }}>
-                Informe a <strong>quantidade a devolver</strong> por item, na unidade de estoque (mesma da coluna "Unidade" — já convertida, se o item teve conversão ao processar a NF). Apenas itens com quantidade &gt; 0 serão incluídos.
-                A devolução irá: <strong>debitar o estoque</strong> + criar uma <strong>Conta a Receber</strong> (fornecedor deve restituir o valor).
+Isto emite uma <strong>NF-e de verdade, transmitida à SEFAZ</strong> (natureza "Devolução de Compra", CFOP 5201/6201) — é o documento que deve acompanhar o caminhão até o fornecedor. Informe a <strong>quantidade a devolver</strong> por item, na unidade de estoque (mesma da coluna "Unidade" — já convertida, se o item teve conversão ao processar a NF). Apenas itens com quantidade &gt; 0 serão incluídos.
+                Ao ser autorizada, a devolução irá: <strong>debitar o estoque</strong> + criar uma <strong>Conta a Receber</strong> (fornecedor deve restituir o valor).
                 Itens com "NF original" abaixo do nome foram convertidos ao processar — use essa referência pra conferir contra a nota do fornecedor.
               </div>
 

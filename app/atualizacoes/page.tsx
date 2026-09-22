@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-h",
+    data: "22/09/2026",
+    titulo: "NF de Produtos: Devolução vira NF-e real",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "O botão \"Devolver\" em Compras → NF de Produtos criava só um registro interno (numeração \"DEV-...\", sem XML nem DANFE) — a mercadoria saía da fazenda sem NF-e válida acompanhando o transporte. Agora emite uma NF-e de devolução de compra de verdade, transmitida à SEFAZ (mesmo emissor usado nas Transferências e na Remessa Logística); se a SEFAZ rejeitar, nada é gravado no estoque ou no financeiro." },
+      { tipo: "novo", texto: "Depois de autorizada, a devolução ganha o botão DANFE na lista, como as demais notas." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-g",
     data: "22/09/2026",
     titulo: "NF-e: espaço sobrando no fim do endereço (SEFAZ 215)",

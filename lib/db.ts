@@ -3128,6 +3128,7 @@ export async function processarDevolucaoCompra(
   data_emissao:    string,
   data_vencimento: string | undefined,
   itens:           ItemDevolucao[],
+  fiscal?:         { chave_acesso: string; protocolo?: string },  // NF-e real já autorizada na SEFAZ
 ): Promise<NfEntrada> {
   const valorTotal = itens.reduce((s, i) => s + i.valor_total, 0);
 
@@ -3152,6 +3153,7 @@ export async function processarDevolucaoCompra(
       origem:        "manual",
       tipo_entrada:  "devolucao_compra",
       nf_origem_id,
+      chave_acesso:  fiscal?.chave_acesso ?? null,
     })
     .select()
     .single();
