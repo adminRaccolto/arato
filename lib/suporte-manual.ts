@@ -530,6 +530,8 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
 
+**Correção 23/09/2026 — Série e próximo número configurados em Parâmetros → MDF-e não apareciam ao emitir:** a tela de emissão nunca lia os Parâmetros MDF-e por emitente — sempre sugeria série "1" e um contador próprio, baseado só nos MDF-e já criados no sistema, ignorando totalmente a série e o número configurados. Corrigido: ao abrir "+ Emitir MDF-e", o número e a série agora vêm dos Parâmetros MDF-e do emitente (o maior entre o que já foi criado aqui e o próximo número configurado), e a UF de Início/Fim padrão também é herdada de lá.
+
 ### 13.4 Transportadoras / Veículos
 **Caminho:** Comercial & Logística → Fretes e Transporte → Transportadoras / Veículos
 

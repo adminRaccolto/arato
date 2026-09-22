@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-f",
+    data: "23/09/2026",
+    titulo: "MDF-e: série e próximo número configurados não apareciam ao emitir",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A tela \"+ Emitir MDF-e\" sempre sugeria série \"1\" e um número baseado só nos MDF-e já criados no sistema, ignorando totalmente a série e o próximo número configurados em Parâmetros → MDF-e. Corrigido: o número e a série agora vêm dos Parâmetros do emitente (o maior entre o já usado aqui e o configurado), e a UF de Início/Fim padrão também é herdada de lá." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.23-e",
     data: "23/09/2026",
     titulo: "CT-e: novo CFOP 5352 disponível",

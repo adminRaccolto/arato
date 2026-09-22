@@ -286,6 +286,7 @@ export default function MdfePage() {
   const [motoristas,setMotoristas]= useState<MotoristaMin[]>([]);
   const [empresaCpfCnpj, setEmpresaCpfCnpj] = useState("");
   const [empresaNome,    setEmpresaNome]    = useState("");
+  const [mdfeConfig,     setMdfeConfig]     = useState<Record<string, string>>({});
 
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState("");
@@ -298,9 +299,9 @@ export default function MdfePage() {
   const [proximoNr, setProximoNr] = useState("1");
 
   const FORM_VAZIO = () => ({
-    numero_mdfe: proximoNr, serie: "1", data_emissao: hoje(),
-    uf_inicio: "MT", municipio_inicio: "",
-    uf_fim: "MT",
+    numero_mdfe: proximoNr, serie: mdfeConfig.serie_mdfe || "1", data_emissao: hoje(),
+    uf_inicio: mdfeConfig.uf_ini || "MT", municipio_inicio: "",
+    uf_fim: mdfeConfig.uf_fim || "MT",
     percurso_ufs: [] as string[],
     veiculo_id: "", motorista_id: "",
     peso_total_kg: 0, valor_total_carga: 0,
@@ -345,16 +346,29 @@ export default function MdfePage() {
     setCtes(cd ?? []);
     setVeiculos(vd ?? []);
     setMotoristas(mot ?? []);
-    // cpf_cnpj do contratante (primeira empresa ativa da fazenda)
-    supabase.from("empresas").select("cpf_cnpj, razao_social, nome").in("fazenda_id", fazendaIds).limit(1).single()
-      .then(({ data }) => {
-        if (data?.cpf_cnpj) setEmpresaCpfCnpj(data.cpf_cnpj);
-        if (data) setEmpresaNome(data.razao_social ?? data.nome ?? "");
-      });
-    if (raw.length > 0) {
-      const maxNr = Math.max(...raw.map((m: Mdfe) => parseInt(m.numero_mdfe) || 0));
-      setProximoNr(String(maxNr + 1));
+
+    const maxLocal = raw.length > 0 ? Math.max(...raw.map((m: Mdfe) => parseInt(m.numero_mdfe) || 0)) : 0;
+
+    // cpf_cnpj do contratante (primeira empresa ativa da conta) + parâmetros salvos em
+    // Parâmetros → MDF-e (série, próximo número, UFs padrão) pra esse emitente — sem isso a
+    // tela nunca lia o que foi configurado lá e sempre sugeria série "1" e o próprio contador
+    // interno (baseado só nos MDF-e já criados aqui), ignorando o número real combinado.
+    const { data: emp } = await supabase.from("empresas").select("cpf_cnpj, razao_social, nome")
+      .in("fazenda_id", fazendaIds).limit(1).single();
+    if (emp?.cpf_cnpj) setEmpresaCpfCnpj(emp.cpf_cnpj);
+    if (emp) setEmpresaNome(emp.razao_social ?? emp.nome ?? "");
+
+    let numeroInicialConfig = 0;
+    if (emp?.cpf_cnpj) {
+      const digits = emp.cpf_cnpj.replace(/\D/g, "");
+      const { data: cfgRows } = await supabase.from("configuracoes_modulo").select("config")
+        .in("fazenda_id", fazendaIds).eq("modulo", `mdfe_emp_${digits}`);
+      const cfg = (cfgRows ?? []).map(r => r.config as Record<string, string>).find(c => c?.serie_mdfe || c?.numero_inicial) ?? {};
+      setMdfeConfig(cfg);
+      numeroInicialConfig = parseInt(cfg.numero_inicial ?? "0") || 0;
     }
+
+    setProximoNr(String(Math.max(maxLocal + 1, numeroInicialConfig)));
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
