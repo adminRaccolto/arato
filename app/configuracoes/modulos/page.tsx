@@ -657,11 +657,16 @@ function ParametrosSistemaContent() {
   const salvar = async (modulo: string) => {
     if (!fazendaId) return;
     setSalvando(modulo);
-    await supabase.from("configuracoes_modulo").upsert(
+    const { error } = await supabase.from("configuracoes_modulo").upsert(
       { fazenda_id: fazendaId, modulo, config: cfgs[modulo] ?? {}, updated_at: new Date().toISOString() },
       { onConflict: "fazenda_id,modulo" }
     );
-    setSalvando(null); setOk(modulo);
+    setSalvando(null);
+    // Sem checar o erro, uma sessão ociosa (JWT expirado, RLS 42501) fazia a tela mostrar "✓ Salvo"
+    // mesmo sem gravar nada — o usuário via o campo preenchido e achava que estava tudo certo, mas
+    // o valor nunca chegava ao banco (achado real: série de NF-e "salva" na tela, ausente no banco).
+    if (error) { alert(`Não foi possível salvar — sua sessão pode ter expirado. Atualize a página e tente de novo.\n\n${error.message}`); return; }
+    setOk(modulo);
     setTimeout(() => setOk(null), 2500);
   };
 
@@ -709,11 +714,15 @@ function ParametrosSistemaContent() {
         setCfgs(prev => ({ ...prev, [modulo]: cfgFinal }));
       }
     }
-    await supabase.from("configuracoes_modulo").upsert(
+    const { error } = await supabase.from("configuracoes_modulo").upsert(
       { fazenda_id: fazendaIdParaSalvar, modulo, config: cfgFinal, updated_at: new Date().toISOString() },
       { onConflict: "fazenda_id,modulo" }
     );
-    setSalvando(null); setOk(modulo);
+    setSalvando(null);
+    // Mesmo motivo do salvar() acima — sem isso, sessão ociosa fazia a tela mostrar "✓ Salvo" com
+    // nada gravado no banco (é assim que a série/número de NF-e por IE "sumia").
+    if (error) { alert(`Não foi possível salvar — sua sessão pode ter expirado. Atualize a página e tente de novo.\n\n${error.message}`); return; }
+    setOk(modulo);
     setTimeout(() => setOk(null), 2500);
   };
 

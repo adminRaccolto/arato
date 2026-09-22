@@ -88,20 +88,42 @@ export async function buscarConfEmitente(
     const digitsFmt = digits.length === 11
       ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
       : digits;
+    // TODOS os cadastros de produtor com esse CPF — não só o primeiro. O mesmo CPF pode ter mais
+    // de um registro em "produtores" (ex.: "FULANO" e "FULANO E OUTROS — CONDOMÍNIO X", mesma
+    // pessoa em arranjos de propriedade diferentes), cada um com suas próprias IEs — pegar só o
+    // primeiro cadastro escondia as IEs (e a série/número configurados) do(s) outro(s).
     const { data: prodRows } = await sb()
       .from("produtores")
       .select("id")
-      .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`)
-      .limit(1);
-    const produtorId = prodRows?.[0]?.id as string | undefined;
-    if (produtorId) {
+      .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`);
+    const produtorIds = (prodRows ?? []).map(p => p.id as string);
+    if (produtorIds.length > 0) {
       const { data: ies } = await sb()
         .from("produtor_inscricoes_estaduais")
         .select("id, inscricao_estadual, fazenda_id, ativa, cep, logradouro, numero, complemento, bairro, municipio, municipio_ibge")
-        .eq("produtor_id", produtorId)
+        .in("produtor_id", produtorIds)
         .eq("ativa", true);
       const iesAtivas = ies ?? [];
-      const ieEscolhida = iesAtivas.find(i => i.fazenda_id === fazendaId) ?? iesAtivas[0];
+      // Busca a config de cada IE de uma vez, pra escolher a IE certa — não só "a primeira vinculada
+      // à fazenda" (que pode não ter nada configurado), e sim a que tem série/número de verdade.
+      const configsPorIe = new Map<string, Record<string, string>>();
+      if (iesAtivas.length > 0) {
+        const { data: cfgsIe } = await sb()
+          .from("configuracoes_modulo")
+          .select("modulo, config")
+          .eq("fazenda_id", fazendaId)
+          .in("modulo", iesAtivas.map(i => `${moduloKey}__ie_${i.id}`));
+        for (const row of cfgsIe ?? []) {
+          const ieId = (row.modulo as string).split("__ie_")[1];
+          if (ieId) configsPorIe.set(ieId, row.config as Record<string, string>);
+        }
+      }
+      const temSerie = (ie: typeof iesAtivas[number]) => !!configsPorIe.get(ie.id)?.serie_nfe;
+      const ieEscolhida =
+        iesAtivas.find(i => i.fazenda_id === fazendaId && temSerie(i)) ??  // fazenda certa + configurada
+        iesAtivas.find(temSerie) ??                                       // qualquer uma configurada
+        iesAtivas.find(i => i.fazenda_id === fazendaId) ??                // fazenda certa, sem config ainda
+        iesAtivas[0];
       if (ieEscolhida) {
         if (!cfg.ie_emitente) cfg.ie_emitente = ieEscolhida.inscricao_estadual;
         // Endereço da IE é o do imóvel/estabelecimento ESPECÍFICO dessa
@@ -115,14 +137,9 @@ export async function buscarConfEmitente(
         if (ieEscolhida.numero)         cfg.numero = ieEscolhida.numero;
         if (ieEscolhida.complemento)    cfg.complemento = ieEscolhida.complemento;
         if (ieEscolhida.bairro)         cfg.bairro = ieEscolhida.bairro;
-        const { data: cfgIe } = await sb()
-          .from("configuracoes_modulo")
-          .select("config")
-          .eq("fazenda_id", fazendaId)
-          .eq("modulo", `${moduloKey}__ie_${ieEscolhida.id}`)
-          .maybeSingle();
-        if (cfgIe?.config) {
-          Object.assign(cfg, cfgIe.config as Record<string, string>);
+        const cfgIeConfig = configsPorIe.get(ieEscolhida.id);
+        if (cfgIeConfig) {
+          Object.assign(cfg, cfgIeConfig);
           // Guarda de onde veio a config por-IE: o contador de número da NF-e mora nela e precisa ser
           // incrementado nela também (só incrementar a config base deixava o número repetindo → SEFAZ 539)
           cfg.__ie_modulo = `${moduloKey}__ie_${ieEscolhida.id}`;

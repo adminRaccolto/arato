@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-q",
+    data: "22/09/2026",
+    titulo: "Fiscal: Parâmetros salvava sem avisar quando falhava",
+    modulos: ["Fiscal", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Em Parâmetros → Fiscal, o botão \"Salvar Parâmetros\" (config geral e config por Inscrição Estadual) não checava se o salvamento deu certo — com a sessão ociosa (mesmo problema já corrigido antes em outras telas), a tela mostrava \"✓ Salvo\" mesmo quando nada era gravado no banco. Era por isso que a Série da NF-e aparecia preenchida na tela e o sistema emitia \"Série "" inválida\" na hora de emitir: nunca tinha sido salva de verdade. Agora, se o salvamento falhar, aparece um aviso pedindo para atualizar a página." },
+      { tipo: "correcao", texto: "Corrigido em nível de sistema (não só neste caso): quando o mesmo CPF tem mais de um cadastro de produtor (ex.: \"Fulano\" e \"Fulano e Outros — Armazém X\", situação comum em propriedades de mais de um dono), o emissor de NF-e olhava só o primeiro cadastro e suas IEs, ignorando as IEs do(s) outro(s) — mesmo que a IE certa, com série configurada, estivesse lá. Agora olha todos os cadastros do CPF e prefere a IE que já tem série configurada." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → Fiscal",
+  },
+  {
     versao: "2026.09.22-p",
     data: "22/09/2026",
     titulo: "NF de Produtos: ICMS retido (Substituição Tributária)",
