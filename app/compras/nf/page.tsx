@@ -1382,6 +1382,20 @@ export default function NfCompraPage() {
       setErr("Preencha Número, Emitente e Data de Emissão.");
       return null;
     }
+    // Guard: uma NF já processada não pode ser editada por aqui — isso reabria o status dela
+    // ("pendente") sem passar pelo Estornar, deixando estoque/financeiro já lançados enquanto o
+    // cabeçalho mudava por baixo. Confere local e no banco (estado local pode estar desatualizado).
+    if (nfEdit?.status === "processada") {
+      setErr("Esta NF já foi processada. Estorne antes de editar (reverte estoque e financeiro), edite e processe de novo.");
+      return null;
+    }
+    if (nfEdit) {
+      const { data: nfAtual } = await supabase.from("nf_entradas").select("status").eq("id", nfEdit.id).single();
+      if (nfAtual?.status === "processada") {
+        setErr("Esta NF já foi processada. Estorne antes de editar (reverte estoque e financeiro), edite e processe de novo.");
+        return null;
+      }
+    }
     const payload: Omit<NfEntrada, "id" | "created_at"> = {
       fazenda_id:            fazendaId,
       numero:                cab.numero,
@@ -2894,13 +2908,10 @@ export default function NfCompraPage() {
                                       </button>
                                     )}
 
-                                    {/* Processada: editar + devolver + remessa + reclassificar + estornar */}
-                                    {nf.status === "processada" && (
-                                      <button onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
-                                        style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
-                                        Editar NF
-                                      </button>
-                                    )}
+                                    {/* Processada: devolver + remessa + reclassificar + estornar — SEM editar direto.
+                                        Editar uma NF processada exige Estornar primeiro (reverte estoque e financeiro):
+                                        sem isso, salvar o cabeçalho voltava o status pra "pendente" por baixo, sem
+                                        avisar, e o guard de processarNF() nunca disparava (o status já tinha mudado). */}
                                     {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>

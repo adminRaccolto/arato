@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-w",
+    data: "22/09/2026",
+    titulo: "NF de Produtos: editar nota processada exige Estornar primeiro",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "O botão \"Editar NF\" ainda aparecia em notas já processadas, e editar o cabeçalho voltava o status da NF pra \"pendente\" sem avisar e sem passar pelo Estornar — deixando o estoque e o financeiro já lançados desencontrados do cabeçalho, que tinha mudado por baixo. Se a NF fosse processada de novo nesse estado, o lançamento e a movimentação de estoque eram apagados e recriados sem o aviso de segurança disparar (ele checava um status que já tinha sido trocado). Removido o botão para NF processada — agora o fluxo é Estornar (reverte estoque e financeiro) → editar → Processar de novo." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-v",
     data: "22/09/2026",
     titulo: "DANFE: logo do cliente nunca aparecia",
