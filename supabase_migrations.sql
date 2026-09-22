@@ -13293,3 +13293,17 @@ ALTER TABLE extrato_transacoes
   ADD COLUMN IF NOT EXISTS sugestao_motivo        TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 278 — ICMS retido (Substituição Tributária) por item de NF de Produtos
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Lido do XML na importação: CST/CSOSN do ICMS de cada item e, quando presente, o valor do
+-- ICMS-ST cobrado pelo fornecedor. Informativo — o valor já está embutido em valor_total (é
+-- o que a NF cobra); não gera lançamento nem cálculo próprio. Usado pra sinalizar na tela de
+-- Itens & Processamento quais itens já tiveram o ICMS retido na origem.
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS cst_icms       TEXT,
+  ADD COLUMN IF NOT EXISTS icms_retido    BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS valor_icms_st  NUMERIC(14,2);
+
+NOTIFY pgrst, 'reload schema';

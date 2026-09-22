@@ -1382,6 +1382,12 @@ export type NfEntradaItem = {
   // maquinas.horimetro_atual, igual ao abastecimento pela bomba em Estoque.
   horimetro?: number;
   alerta_preco: boolean;
+  // ICMS retido na origem (Substituição Tributária), lido do XML da NF — CST/CSOSN do item e o
+  // valor do ICMS-ST, quando informado pelo fornecedor. Informativo: o valor já está embutido em
+  // valor_total (é o que a NF cobra); não gera lançamento próprio.
+  cst_icms?: string;
+  icms_retido?: boolean;
+  valor_icms_st?: number;
   created_at?: string;
 };
 

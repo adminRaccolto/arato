@@ -2348,6 +2348,15 @@ export async function limparNfEntradaItens(nf_entrada_id: string): Promise<void>
 
 export async function criarNfEntradaItem(i: Omit<NfEntradaItem, "id" | "created_at">): Promise<NfEntradaItem> {
   const { data, error } = await supabase.from("nf_entrada_itens").insert(i).select().single();
+  // PGRST204 = coluna não existe no cache do schema — enquanto a migration das colunas de ICMS
+  // retido (cst_icms/icms_retido/valor_icms_st) não roda em todo ambiente, insere sem elas em vez
+  // de bloquear o processamento da NF inteira (mesmo padrão de criarAnoSafra acima).
+  if (error?.code === "PGRST204") {
+    const { cst_icms: _a, icms_retido: _b, valor_icms_st: _c, ...semIcmsSt } = i;
+    const retry = await supabase.from("nf_entrada_itens").insert(semIcmsSt).select().single();
+    if (retry.error) throw retry.error;
+    return retry.data;
+  }
   if (error) throw error;
   return data;
 }

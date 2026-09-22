@@ -221,6 +221,13 @@ interface ItemRascunho {
   maquinas_rateio: { maquina_id: string; percentual: number }[];
   // Apropriação Direta — hodômetro/horímetro do veículo, só no modo combustível.
   horimetro: number;
+  // ICMS retido na origem (Substituição Tributária) — lido do XML, item a item (CST 10/30/60/70
+  // no regime normal; CSOSN 201/202/203/500 no Simples Nacional). Informativo: o valor do ICMS-ST
+  // já está embutido no valor_total do item (é isso que a NF do fornecedor cobra); não gera
+  // lançamento nem cálculo próprio — só sinaliza pra quem está processando.
+  cst_icms: string;
+  icms_retido: boolean;
+  valor_icms_st: number;
 }
 
 interface PedidoMin { id: string; nr_pedido?: string; numero?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; ano_safra_id?: string; ciclo_id?: string; data_vencimento?: string; }
@@ -236,6 +243,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   tipo_apropiacao: "estoque",
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
   maquinas_rateio: [], horimetro: 0,
+  cst_icms: "", icms_retido: false, valor_icms_st: 0,
 });
 
 type Etapa = "cabecalho" | "itens";
@@ -900,6 +908,9 @@ export default function NfCompraPage() {
             lotes_semente: Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome: i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto: !!i.principio_ativo_id,
+            cst_icms: (i as Record<string, unknown>).cst_icms as string ?? "",
+            icms_retido: !!(i as Record<string, unknown>).icms_retido,
+            valor_icms_st: (i as Record<string, unknown>).valor_icms_st as number ?? 0,
           };
         }));
         // Atualiza nfEdit com destinatário preenchido pelo re-sync
@@ -1085,6 +1096,9 @@ export default function NfCompraPage() {
             maquina_id:         i.maquina_id          ?? "",
             centro_custo_id:    i.centro_custo_id     ?? "",
             maquinas_rateio:    Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
+            cst_icms:           (i as Record<string, unknown>).cst_icms as string ?? "",
+            icms_retido:        !!(i as Record<string, unknown>).icms_retido,
+            valor_icms_st:      (i as Record<string, unknown>).valor_icms_st as number ?? 0,
             horimetro:          i.horimetro ?? 0,
             lotes_semente:      Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
@@ -1134,6 +1148,15 @@ export default function NfCompraPage() {
       const dhEmi   = ide?.querySelector("dhEmi")?.textContent ?? "";
       const natOp   = ide?.querySelector("natOp")?.textContent ?? "";
       const vNF     = total?.querySelector("vNF")?.textContent ?? "0";
+      // Totais de impostos do <ICMSTot> — hoje esses campos eram só manuais (o usuário tinha que
+      // digitar), então uma NF com ICMS-ST/IPI/DIFAL processava sem esses valores se ninguém lembrasse.
+      const getTot = (tag: string) => parseFloat(total?.querySelector(tag)?.textContent ?? "0") || 0;
+      const vProdTot = getTot("vProd");   // total dos produtos, SEM os impostos — é o que preenche "Valor Total" (o painel de impostos soma por cima)
+      const vSTTot   = getTot("vST");     // ICMS retido por Substituição Tributária
+      const vIPITot  = getTot("vIPI");
+      const vFCPSTTot = getTot("vFCPST");
+      const vDifalTot = getTot("vICMSUFDest");  // DIFAL devido à UF de destino
+      const vDescTot  = getTot("vDesc");
       const chNFe   = doc.querySelector("chNFe, infNFe")?.getAttribute("Id")?.replace(/^NFe/, "") ?? "";
       const enderEmit = emit?.querySelector("enderEmit");
       const xMun    = enderEmit?.querySelector("xMun")?.textContent ?? "";
@@ -1181,7 +1204,15 @@ export default function NfCompraPage() {
         emitente_municipio: xMun,
         emitente_estado: ufEmit,
         data_emissao: dhEmi ? dhEmi.substring(0, 10) : p.data_emissao,
-        valor_total: vNF,
+        // Antes usava vNF (total FINAL, já com impostos embutidos) — o painel de "Impostos
+        // Adicionados" soma por cima do Valor Total, então usar vNF fazia contar o ST/IPI/DIFAL
+        // duas vezes na hora de salvar. vProd (produtos, sem impostos) é o valor certo aqui.
+        valor_total: vProdTot > 0 ? String(vProdTot) : vNF,
+        valor_ipi:     vIPITot   > 0 ? String(vIPITot)   : p.valor_ipi,
+        valor_st:      vSTTot    > 0 ? String(vSTTot)    : p.valor_st,
+        valor_fcp_st:  vFCPSTTot > 0 ? String(vFCPSTTot) : p.valor_fcp_st,
+        valor_difal:   vDifalTot > 0 ? String(vDifalTot) : p.valor_difal,
+        valor_desconto: vDescTot > 0 ? String(vDescTot)  : p.valor_desconto,
         natureza: natOp,
         // Destinatário da NF (nossa fazenda — preenchido se presente no XML)
         nome_destinatario: destNome || p.nome_destinatario,
@@ -1261,6 +1292,19 @@ export default function NfCompraPage() {
 
           const fatorDeriv = qCom > 0 ? qtdCatalogo / qCom : 1;
 
+          // ICMS do item — o filho de <imposto><ICMS> tem nome dinâmico (ICMS00, ICMS10, ICMS60,
+          // ICMSSN101, ICMSSN500...); CST é do regime normal, CSOSN do Simples Nacional. CSTs que
+          // indicam ICMS já retido/recolhido por Substituição Tributária: 10, 30, 60, 70 (normal) e
+          // 201, 202, 203, 500 (Simples). vICMSST é o valor do imposto retido, quando informado.
+          const icmsBlock = det.querySelector("imposto ICMS") ?? det.getElementsByTagName("ICMS")[0];
+          const icmsFilho = icmsBlock?.firstElementChild ?? null;
+          const cstTxt   = icmsFilho ? getTag(icmsFilho, "CST") : "";
+          const csosnTxt = icmsFilho ? getTag(icmsFilho, "CSOSN") : "";
+          const cstIcms  = cstTxt || csosnTxt;
+          const CSTS_ST_RETIDO = ["10", "30", "60", "70", "201", "202", "203", "500"];
+          const icmsRetido = CSTS_ST_RETIDO.includes(cstIcms);
+          const vIcmsSt = icmsFilho ? parseFloat(getTag(icmsFilho, "vICMSST") || "0") || 0 : 0;
+
           // tenta regra específica de item; fallback para regra do header
           const regraItem = aplicarRegraClassificacao(regrasClass, cnpj, xNome, NCM, CFOP, xProd) ?? regraHeader;
           return {
@@ -1280,6 +1324,7 @@ export default function NfCompraPage() {
             deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
             maquinas_rateio: [], horimetro: 0,
+            cst_icms: cstIcms, icms_retido: icmsRetido, valor_icms_st: vIcmsSt,
           };
         }));
       }
@@ -1629,6 +1674,11 @@ export default function NfCompraPage() {
           lotes_semente:       it.lotes_semente?.length ? it.lotes_semente : undefined,
           lote_semente:        it.lotes_semente?.length === 1 ? it.lotes_semente[0].numero : undefined,
           alerta_preco:        false,
+          // ICMS retido (ST) do XML — só enviado quando detectado, mesmo padrão de "não travar em
+          // fazenda sem a migration nova" já usado acima pra maquinas_rateio/horimetro.
+          cst_icms:            it.cst_icms || undefined,
+          icms_retido:         it.icms_retido || undefined,
+          valor_icms_st:       it.valor_icms_st || undefined,
         };
         await criarNfEntradaItem(itemPayload);
       }
@@ -3885,6 +3935,12 @@ export default function NfCompraPage() {
                                 placeholder="Descrição na NF"
                                 style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
                               />
+                              {it.icms_retido && (
+                                <div title={`CST/CSOSN ${it.cst_icms}${it.valor_icms_st ? ` · ICMS-ST na NF: ${it.valor_icms_st.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}` : ""}`}
+                                  style={{ fontSize: 10, display: "inline-flex", alignItems: "center", gap: 4, alignSelf: "flex-start", background: "#FEF3C7", color: "#92400E", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>
+                                  ICMS retido (ST) — CST {it.cst_icms}
+                                </div>
+                              )}
                               {it.pa_auto && it.pa_nome ? (
                                 <div style={{ fontSize: 10, display: "flex", alignItems: "center", gap: 4, color: "#111111" }}>
                                   <span style={{ background: "#E8E8E8", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>PA</span>

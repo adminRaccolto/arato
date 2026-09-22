@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-p",
+    data: "22/09/2026",
+    titulo: "NF de Produtos: ICMS retido (Substituição Tributária)",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Corrigido um erro de base na importação de XML: o campo \"Valor Total\" recebia o total FINAL da NF (já com IPI/ST/DIFAL embutidos), mas o painel de \"Impostos Adicionados\" soma esses valores por cima — preencher os dois contava o imposto duas vezes. Agora \"Valor Total\" recebe só o valor dos produtos." },
+      { tipo: "novo", texto: "Os totais de IPI, ST, FCP-ST, DIFAL e Desconto agora são lidos automaticamente do XML (antes eram só manuais). Cada item da NF passa a mostrar um selo \"ICMS retido (ST)\" quando o CST/CSOSN dele indica que o ICMS já foi recolhido por Substituição Tributária pelo fornecedor — informativo, não muda o processamento." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-o",
     data: "22/09/2026",
     titulo: "NF-e: emissor escolhia o emitente fiscal ao acaso",
