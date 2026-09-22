@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-t",
+    data: "22/09/2026",
+    titulo: "NF de Produtos: ICMS Desonerado descontava em dobro ao reabrir a NF",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Reabrir uma NF já salva (principalmente importadas via SIEG) e preencher o ICMS Deson. subtraía o valor duas vezes — o campo \"Valor Produtos\" recarregava o total já líquido gravado antes, e o painel de impostos subtraía de novo por cima. Corrigido: \"Valor Produtos\" volta a carregar o valor bruto de verdade (salvo separadamente, ou reconstruído pela soma dos itens quando a NF é antiga demais pra ter esse dado)." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-s",
     data: "22/09/2026",
     titulo: "NF de Produtos: custo do item passa a refletir o valor a pagar",

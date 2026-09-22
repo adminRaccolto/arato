@@ -1039,7 +1039,14 @@ export default function NfCompraPage() {
       cfop: nf.cfop ?? "",
       data_emissao: nf.data_emissao,
       data_entrada: nf.data_entrada ?? new Date().toISOString().split("T")[0],
-      valor_total: String(nf.valor_total),
+      // "Valor Produtos" precisa ser o BRUTO (o painel de impostos soma/subtrai por cima pra
+      // chegar no valor líquido salvo em nf.valor_total). NFs processadas depois da correção têm
+      // valor_produtos salvo separadamente (bruto de verdade); NFs mais antigas ou importadas via
+      // SIEG nunca tiveram esse campo preenchido — nesse caso cai em nf.valor_total (histórico:
+      // podia já ser líquido), e é corrigido de novo abaixo assim que os itens carregam (a soma dos
+      // itens é sempre bruta, não importa a origem). Achado real: reabrir uma NF assim e preencher
+      // ICMS Deson subtraía o desconto DUAS vezes (nf.valor_total já vinha líquido).
+      valor_total: String(nf.valor_produtos || nf.valor_total),
       natureza: nf.natureza ?? "",
       pedido_compra_id: nf.pedido_compra_id ?? "",
       operacao_gerencial_id: nf.operacao_gerencial_id ?? "",
@@ -1110,6 +1117,13 @@ export default function NfCompraPage() {
             pa_auto:  !!i.principio_ativo_id,
           };
         }));
+        // Sem valor_produtos confiável no cabeçalho (NF antiga ou importada via SIEG, que nunca
+        // preencheu essa coluna): reconstrói o bruto pela soma dos itens, que é sempre o valor de
+        // produto de cada linha — não importa a origem da NF.
+        if (!nf.valor_produtos) {
+          const somaItensBruto = itensDB.reduce((s, i) => s + (i.valor_total || 0), 0);
+          if (somaItensBruto > 0) setCab(p => ({ ...p, valor_total: String(somaItensBruto) }));
+        }
       }
     } catch { /* falha silenciosa — tenta XML abaixo */ }
 
@@ -4382,7 +4396,7 @@ export default function NfCompraPage() {
                         { label: "Vencimento CP",     value: cab.data_vencimento_cp ? fmtData(cab.data_vencimento_cp) : "Não informado" },
                         { label: "Pedido vinculado",  value: cab.pedido_compra_id ? (pedidos.find(p=>p.id===cab.pedido_compra_id)?.nr_pedido ?? "Sim") : "Não" },
                         { label: "Itens",             value: `${itens.filter(i=>i.descricao_nf.trim()).length} item(s)` },
-                        { label: "Valor total",       value: fmtBRL(parseFloat(cab.valor_total)||0) },
+                        { label: "Valor produtos",    value: fmtBRL(parseFloat(cab.valor_total)||0) },
                       ].map(({ label, value }) => (
                         <div key={label}>
                           <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>{label}</div>
