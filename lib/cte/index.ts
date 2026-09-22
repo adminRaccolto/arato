@@ -183,7 +183,21 @@ export async function cancelarCTeEmitido(
     const { error } = await sb().from("ctes").update(update).eq("id", options.cte_id);
     if (error) {
       console.error("[cancelarCTe] SEFAZ confirmou, mas falhou ao persistir no banco:", error);
-      return { ...resultado, sucesso: false, cStat: "PERSISTENCIA", xMotivo: "SEFAZ confirmou o cancelamento, mas o sistema não conseguiu gravar o retorno. Não reenvie; contate o suporte com a chave do CT-e." };
+      // A migration de rastreabilidade pode ainda não ter sido aplicada. Como
+      // a SEFAZ já homologou o evento, o status local precisa refletir isso
+      // mesmo sem as colunas novas; nunca devemos sugerir reenviar o evento.
+      const { error: retryError } = await sb()
+        .from("ctes")
+        .update({ status: "cancelado" })
+        .eq("id", options.cte_id);
+      if (!retryError) {
+        return {
+          ...resultado,
+          xMotivo: "Cancelamento homologado pela SEFAZ. Os dados de auditoria serão gravados após aplicar a migration pendente.",
+        };
+      }
+      console.error("[cancelarCTe] falha também ao gravar status cancelado:", retryError);
+      return { ...resultado, sucesso: false, cStat: "PERSISTENCIA", xMotivo: "SEFAZ confirmou o cancelamento, mas o sistema não conseguiu sincronizar o status local. Não reenvie o evento; contate o suporte com a chave do CT-e." };
     }
     return resultado;
   } catch (error) {
