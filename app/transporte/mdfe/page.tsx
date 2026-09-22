@@ -266,6 +266,7 @@ interface CteMin {
   remetente_nome: string; destinatario_nome: string; valor_frete: number; status: string;
   veiculo_id?: string | null; veiculo_placa?: string | null;
   motorista_id?: string | null; motorista_nome?: string | null; motorista_cpf?: string | null;
+  peso_bruto_kg?: number | null; valor_mercadoria?: number | null;
 }
 interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; rntrc?: string; }
@@ -337,8 +338,11 @@ export default function MdfePage() {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
-      supabase.from("veiculos").select("id, placa, tipo, rntrc, num_eixos").in("fazenda_id", fazendaIds).eq("ativo", true),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
+      // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
+      // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
+      supabase.from("veiculos").select("id, placa, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
     ]);
     const raw = md ?? [];
@@ -493,12 +497,22 @@ export default function MdfePage() {
     setForm(f => {
       const marcando = !f.cte_ids.includes(id);
       const cteIds = marcando ? [...f.cte_ids, id] : f.cte_ids.filter(c => c !== id);
+      const c = ctes.find(x => x.id === id);
       let extra: Partial<typeof f> = {};
       if (marcando && !f.veiculo_id && !f.motorista_id) {
-        const c = ctes.find(x => x.id === id);
         if (c?.veiculo_id && veiculos.some(v => v.id === c.veiculo_id)) extra = { ...extra, veiculo_id: c.veiculo_id };
         if (c?.motorista_id && motoristas.some(m => m.id === c.motorista_id)) extra = { ...extra, motorista_id: c.motorista_id };
       }
+      // Peso e Valor da Carga também já estão no CT-e — soma ao marcar, subtrai ao desmarcar,
+      // pra somar mais de um CT-e no mesmo MDF-e sem precisar digitar de novo.
+      const pesoCte  = c?.peso_bruto_kg    ?? 0;
+      const valorCte = c?.valor_mercadoria ?? 0;
+      const sinal = marcando ? 1 : -1;
+      extra = {
+        ...extra,
+        peso_total_kg:      Math.max(0, f.peso_total_kg      + sinal * pesoCte),
+        valor_total_carga:  Math.max(0, f.valor_total_carga  + sinal * valorCte),
+      };
       return { ...f, cte_ids: cteIds, ...extra };
     });
   }

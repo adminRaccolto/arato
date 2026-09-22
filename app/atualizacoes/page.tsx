@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-m",
+    data: "23/09/2026",
+    titulo: "MDF-e: Veículo continuava vazio + Peso/Valor da Carga agora herdam do CT-e",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A lista de Veículos ao emitir MDF-e continuava vazia mesmo depois da correção anterior — a consulta pedia uma coluna (num_eixos) que nunca existiu na tabela, o SELECT inteiro falhava e a lista vinha sempre vazia. Motorista funcionava normal porque não tinha esse erro. Corrigido." },
+      { tipo: "novo", texto: "\"Peso Total (kg)\" e \"Valor Total da Carga (R$)\" agora somam automaticamente ao marcar um CT-e em \"CT-e Vinculados\" — soma mais de um se marcar vários, desmarcar subtrai de volta." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.23-l",
     data: "23/09/2026",
     titulo: "CT-e: frete isento de ICMS sempre rejeitava (grupo XML errado)",
