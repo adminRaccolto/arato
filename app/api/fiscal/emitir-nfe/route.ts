@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { emitirNFe } from "../../../../lib/nfe/index";
+import { resolverModuloKey } from "../../../../lib/nfe/resolver-emitente";
 import type { NFeInput } from "../../../../lib/nfe/builder";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 
@@ -14,7 +15,11 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       fazenda_id: string;
-      modulo_key: string;   // "fiscal_pf_xxx" ou "fiscal_emp_yyy"
+      modulo_key: string;   // "fiscal_pf_xxx" ou "fiscal_emp_yyy" — escolha explícita (ex: seletor de emitente na tela)
+      cpf_cnpj_hint?: string; // CPF/CNPJ do titular fiscal real da operação — tem prioridade sobre modulo_key
+                              // quando informado (ex: devolução/remessa: o produtor dono da NF de origem, não
+                              // "o primeiro módulo fiscal que aparecer", que é arbitrário numa fazenda com vários
+                              // emitentes configurados — ver lib/nfe/resolver-emitente.ts).
       emit_ie_override?: string;  // IE específica do produtor (quando tem múltiplas IEs)
       destinatario: {
         nome: string;
@@ -73,7 +78,18 @@ export async function POST(req: NextRequest) {
       tipo:     body.tipo ?? "1",
     };
 
-    const resultado = await emitirNFe(body.fazenda_id, body.modulo_key, input, body.emit_ie_override);
+    // cpf_cnpj_hint (quando informado) tem prioridade sobre modulo_key — é o titular fiscal real
+    // da operação, mais confiável que "o primeiro módulo que a tela encontrou". Sem hint, respeita
+    // o modulo_key explícito de quem chamou (ex: seletor de emitente da tela de NF-e); só cai no
+    // default da fazenda se nenhum dos dois vier preenchido.
+    let moduloKey = body.modulo_key || "";
+    if (body.cpf_cnpj_hint) {
+      try { moduloKey = await resolverModuloKey(body.fazenda_id, body.cpf_cnpj_hint) || moduloKey; } catch { /* mantém modulo_key */ }
+    }
+    if (!moduloKey) {
+      try { moduloKey = await resolverModuloKey(body.fazenda_id, undefined); } catch { /* buscarConfEmitente ainda tenta o fallback interno dela */ }
+    }
+    const resultado = await emitirNFe(body.fazenda_id, moduloKey, input, body.emit_ie_override);
 
     return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
   } catch (err) {

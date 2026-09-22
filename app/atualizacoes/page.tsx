@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-o",
+    data: "22/09/2026",
+    titulo: "NF-e: emissor escolhia o emitente fiscal ao acaso",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Corrigido em nível de sistema (não só na tela de Devolução): Devolução de Compra, Remessa Logística e Retorno de Remessa escolhiam o emitente fiscal pegando \"o primeiro módulo cadastrado\" para a fazenda — numa fazenda com vários emitentes configurados, podia cair em qualquer um, inclusive um sem a senha do certificado salva, mesmo o certificado certo estando configurado. Agora essas três emissões resolvem o emitente pelo produtor dono da NF de origem, o mesmo mecanismo já usado nas Transferências desde 21/09." },
+    ],
+    onde: "Fiscal · Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-n",
     data: "22/09/2026",
     titulo: "Pessoas (fornecedores/clientes) agora é do cliente, comum a todas as fazendas",

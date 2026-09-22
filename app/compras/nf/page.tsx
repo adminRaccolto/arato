@@ -380,6 +380,7 @@ export default function NfCompraPage() {
   }
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
+  const [devCpfHint, setDevCpfHint] = useState<string | undefined>(undefined);  // CPF/CNPJ do produtor dono da NF — resolve o emitente certo, não "o primeiro que aparecer"
   const [devItens,   setDevItens]   = useState<DevItem[]>([]);
   const [devCfop,    setDevCfop]    = useState("5201");
   const [devData,    setDevData]    = useState(new Date().toISOString().split("T")[0]);
@@ -397,6 +398,7 @@ export default function NfCompraPage() {
   const [remessaErro,     setRemessaErro]     = useState("");
   const [remessaOk,       setRemessaOk]       = useState<{chave: string; numero: string} | null>(null);
   const [fiscalModulos,   setFiscalModulos]   = useState<Array<{modulo: string; config: Record<string,string>}>>([]);
+  const [remessaCpfHint,  setRemessaCpfHint]  = useState<string | undefined>(undefined);
 
   async function abrirRemessa(nf: NfEntrada) {
     setRemessaModal(nf);
@@ -404,6 +406,7 @@ export default function NfCompraPage() {
     setRemessaObs("");
     setRemessaErro("");
     setRemessaOk(null);
+    setRemessaCpfHint(undefined);
     const [itens, fmods] = await Promise.all([
       listarNfEntradaItens(nf.id).catch(() => [] as NfEntradaItem[]),
       supabase
@@ -415,6 +418,11 @@ export default function NfCompraPage() {
     ]);
     setRemessaItens(itens.filter(i => i.tipo_apropiacao === "estoque" || i.tipo_apropiacao === "maquinario" || i.tipo_apropiacao === "direto"));
     setFiscalModulos(fmods);
+    // CPF/CNPJ do produtor dono da NF — quem responde fiscalmente pela remessa (mesmo motivo da devolução)
+    if (nf.produtor_id) {
+      supabase.from("produtores").select("cpf_cnpj").eq("id", nf.produtor_id).maybeSingle()
+        .then(r => setRemessaCpfHint(r.data?.cpf_cnpj ?? undefined));
+    }
   }
 
   async function emitirRemessaLogistica() {
@@ -443,7 +451,8 @@ export default function NfCompraPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fazenda_id:   remessaModal.fazenda_id,
-          modulo_key:   fiscalModulos[0]?.modulo ?? "",
+          modulo_key:      fiscalModulos[0]?.modulo ?? "",   // fallback — o servidor prefere cpf_cnpj_hint quando resolvível
+          cpf_cnpj_hint:   remessaCpfHint,
           destinatario: {
             nome:           dest.nome,
             cpf_cnpj:       (dest.cpf_cnpj ?? "").replace(/\D/g, "") || undefined,
@@ -2092,6 +2101,13 @@ export default function NfCompraPage() {
     supabase.from("configuracoes_modulo").select("modulo, config")
       .eq("fazenda_id", nf.fazenda_id).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%")
       .then(r => setFiscalModulos((r.data ?? []) as Array<{ modulo: string; config: Record<string, string> }>));
+    // CPF/CNPJ do produtor dono da NF de origem — quem responde fiscalmente pela devolução;
+    // uma fazenda pode ter vários emitentes configurados, não vale pegar "o primeiro" ao acaso.
+    setDevCpfHint(undefined);
+    if (nf.produtor_id) {
+      supabase.from("produtores").select("cpf_cnpj").eq("id", nf.produtor_id).maybeSingle()
+        .then(r => setDevCpfHint(r.data?.cpf_cnpj ?? undefined));
+    }
     // Carrega os itens da NF original
     try {
       const itensDB = await listarNfEntradaItens(nf.id);
@@ -2163,7 +2179,8 @@ export default function NfCompraPage() {
           // na fazenda errada e falha com "IBGE do destinatário não informado" mesmo o cadastro certo
           // (na fazenda certa) estando completo.
           fazenda_id:   devNfOrig.fazenda_id,
-          modulo_key:   fiscalModulos[0].modulo,
+          modulo_key:      fiscalModulos[0].modulo,   // fallback — o servidor prefere cpf_cnpj_hint quando resolvível
+          cpf_cnpj_hint:   devCpfHint,
           destinatario: {
             nome:     devNfOrig.emitente_nome,
             cpf_cnpj: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,

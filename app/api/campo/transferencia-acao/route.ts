@@ -2,73 +2,10 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { emitirNFe, buscarConfEmitente, cancelarNFeEmitida } from "../../../../lib/nfe/index";
+import { resolverModuloKeyPorCpfCnpj, resolverModuloKeyFiscal } from "../../../../lib/nfe/resolver-emitente";
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge que precisa de Node
 export const dynamic = "force-dynamic";
-
-// Resolve moduloKey a partir de um CPF/CNPJ EXPLÍCITO (override por transferência
-// — campo "CNPJ/CPF Emitente", editável, ver cpf_cnpj_origem). A fazenda é só o
-// local físico do estoque; quem responde fiscalmente por uma transferência
-// específica é uma decisão por operação, não o titular padrão da fazenda. Só
-// retorna a chave se a config realmente existir pra essa fazenda — senão quem
-// chamou cai no default (resolverModuloKeyFiscal).
-async function resolverModuloKeyPorCpfCnpj(
-  adm: SupabaseClient,
-  fazendaId: string,
-  cpfCnpj: string,
-): Promise<string | null> {
-  const digits = cpfCnpj.replace(/\D/g, "");
-  if (!digits) return null;
-  const key = `${digits.length === 14 ? "fiscal_emp_" : "fiscal_pf_"}${digits}`;
-  const { data: cfg } = await adm
-    .from("configuracoes_modulo")
-    .select("modulo")
-    .eq("fazenda_id", fazendaId)
-    .eq("modulo", key)
-    .maybeSingle();
-  return cfg ? key : null;
-}
-
-// Resolve qual config fiscal (fiscal_pf_*/fiscal_emp_*) usar pra uma fazenda
-// QUANDO NÃO HÁ override explícito (cpf_cnpj_origem/cpf_cnpj_destino) na
-// transferência — funciona como default/sugestão, nunca como restrição.
-// Antes disso, o "qualquer módulo fiscal da fazenda" (.limit(1) sem ORDER BY)
-// pegava uma config aleatória entre vários produtores/empresas cadastrados na
-// mesma fazenda — uma fazenda com 5+ emitentes configurados podia cair ora
-// num ora noutro a cada emissão, inclusive num que nunca teve a senha do
-// certificado preenchida, mesmo com o certificado CERTO configurado e visível
-// na tela. fazendas.cpf_cnpj_fiscal é o titular fiscal PADRÃO dessa fazenda
-// (arquitetura de Entidade Contábil por Fazenda) — usa ele primeiro; cai no
-// "qualquer um" só se a fazenda não tiver isso configurado.
-async function resolverModuloKeyFiscal(
-  adm: SupabaseClient,
-  fazendaId: string,
-): Promise<string> {
-  const { data: faz } = await adm
-    .from("fazendas")
-    .select("cpf_cnpj_fiscal, entidade_contabil")
-    .eq("id", fazendaId)
-    .maybeSingle();
-  const digits = ((faz?.cpf_cnpj_fiscal as string | null) ?? "").replace(/\D/g, "");
-  if (digits) {
-    const prefix = faz?.entidade_contabil === "pj" || digits.length === 14 ? "fiscal_emp_" : "fiscal_pf_";
-    const key = `${prefix}${digits}`;
-    const { data: cfg } = await adm
-      .from("configuracoes_modulo")
-      .select("modulo")
-      .eq("fazenda_id", fazendaId)
-      .eq("modulo", key)
-      .maybeSingle();
-    if (cfg) return key;
-  }
-  const { data: cfgs } = await adm
-    .from("configuracoes_modulo")
-    .select("modulo")
-    .eq("fazenda_id", fazendaId)
-    .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
-    .limit(1);
-  return cfgs && cfgs.length > 0 ? cfgs[0].modulo : "";
-}
 
 export async function POST(request: NextRequest) {
   const adm = createClient(
@@ -133,9 +70,9 @@ export async function POST(request: NextRequest) {
         const fazIdCancel = t.fazenda_origem_id as string;
         let moduloKeyCancel = (t.nf_modulo_key as string | null) ?? "";
         if (!moduloKeyCancel && t.cpf_cnpj_origem) {
-          moduloKeyCancel = (await resolverModuloKeyPorCpfCnpj(adm, fazIdCancel, t.cpf_cnpj_origem as string)) ?? "";
+          moduloKeyCancel = (await resolverModuloKeyPorCpfCnpj(fazIdCancel, t.cpf_cnpj_origem as string, adm)) ?? "";
         }
-        if (!moduloKeyCancel) moduloKeyCancel = await resolverModuloKeyFiscal(adm, fazIdCancel);
+        if (!moduloKeyCancel) moduloKeyCancel = await resolverModuloKeyFiscal(fazIdCancel, adm);
         if (!moduloKeyCancel) {
           return NextResponse.json({ ok: false, error: "Configuração fiscal do emitente não encontrada para cancelar esta NF-e." }, { status: 422 });
         }
@@ -204,9 +141,9 @@ export async function POST(request: NextRequest) {
       const fazId = t.fazenda_origem_id as string;
       let moduloKey: string = body.modulo_key ?? "";
       if (!moduloKey && t.cpf_cnpj_origem) {
-        moduloKey = (await resolverModuloKeyPorCpfCnpj(adm, fazId, t.cpf_cnpj_origem as string)) ?? "";
+        moduloKey = (await resolverModuloKeyPorCpfCnpj(fazId, t.cpf_cnpj_origem as string, adm)) ?? "";
       }
-      if (!moduloKey) moduloKey = await resolverModuloKeyFiscal(adm, fazId);
+      if (!moduloKey) moduloKey = await resolverModuloKeyFiscal(fazId, adm);
 
       if (!moduloKey) {
         // Sem config fiscal → só atualiza status (sem NF-e real)
@@ -236,7 +173,7 @@ export async function POST(request: NextRequest) {
       // em vez de reaproveitar a do emitente. moduloKey pode ser diferente
       // (ex: origem é fiscal_pf_X, destino é fiscal_emp_Y).
       const fazDestId = t.fazenda_destino_id as string;
-      const moduloKeyDest = await resolverModuloKeyFiscal(adm, fazDestId);
+      const moduloKeyDest = await resolverModuloKeyFiscal(fazDestId, adm);
       const confDest = moduloKeyDest ? await buscarConfEmitente(fazDestId, moduloKeyDest) : null;
       const { data: fazDestRow } = await adm.from("fazendas").select("nome").eq("id", fazDestId).single();
       if (!confDest && !(t.cpf_cnpj_destino || t.ie_destino)) {
