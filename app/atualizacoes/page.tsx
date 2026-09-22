@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-y",
+    data: "22/09/2026",
+    titulo: "Devolução de Compra: valor não considerava desconto da NF original",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "A devolução calculava o valor a devolver pelo preço cheio de cada item, ignorando qualquer desconto ou acréscimo do total da NF original (a tela não tem campo pra informar isso). Agora o valor por item sai ajustado na mesma proporção do desconto/acréscimo da nota — com um aviso no modal mostrando o percentual aplicado, quando houver." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos → Devolver",
+  },
+  {
     versao: "2026.09.22-x",
     data: "22/09/2026",
     titulo: "NF-e: emitente errado por corrida assíncrona na Devolução/Remessa",

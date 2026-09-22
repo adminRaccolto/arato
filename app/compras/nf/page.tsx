@@ -389,6 +389,7 @@ export default function NfCompraPage() {
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
   const [devCpfHint, setDevCpfHint] = useState<string | undefined>(undefined);  // CPF/CNPJ do produtor dono da NF — resolve o emitente certo, não "o primeiro que aparecer"
+  const [devFatorDesconto, setDevFatorDesconto] = useState(1);  // valor líquido da NF ÷ soma bruta dos itens — aplicado ao valor devolvido
   const [devItens,   setDevItens]   = useState<DevItem[]>([]);
   const [devCfop,    setDevCfop]    = useState("5201");
   const [devData,    setDevData]    = useState(new Date().toISOString().split("T")[0]);
@@ -2198,6 +2199,15 @@ export default function NfCompraPage() {
     // Carrega os itens da NF original
     try {
       const itensDB = await listarNfEntradaItens(nf.id);
+      // O valor de cada item na NF é o BRUTO (o que o fornecedor cobrou por aquele produto); o que
+      // deve ser devolvido/ressarcido é o LÍQUIDO — mesmo princípio já aplicado ao custo de estoque
+      // (achado real: NF com desconto de R$ 12,50 devolvia pelo valor cheio do item, sem desconto,
+      // e a tela nem tem campo pra informar desconto/acréscimo à parte). Reconstrói o fator pela soma
+      // dos itens (sempre bruta) contra o valor líquido da NF — não confia em valor_produtos do
+      // cabeçalho, que pode estar desatualizado em NFs antigas/importadas antes dessa correção.
+      const somaItensGross = itensDB.reduce((s, i) => s + (i.valor_total || 0), 0);
+      const fatorDesconto = somaItensGross > 0 && nf.valor_total > 0 ? nf.valor_total / somaItensGross : 1;
+      setDevFatorDesconto(fatorDesconto);
       const devs: DevItem[] = itensDB
         .filter(i => i.insumo_id && i.tipo_apropiacao === "estoque")
         .map(i => ({
@@ -2211,7 +2221,7 @@ export default function NfCompraPage() {
           unidadeOriginalNF:   i.unidade_nf ?? undefined,
           ncm:                 i.ncm ?? undefined,
           quantidade_devolver: 0,
-          valor_unitario:      i.valor_unitario,
+          valor_unitario:      i.valor_unitario * fatorDesconto,
           valor_total:         0,
         }));
       setDevItens(devs);
@@ -4581,6 +4591,11 @@ export default function NfCompraPage() {
                 <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                   NF de origem: <strong>{devNfOrig.numero}/{devNfOrig.serie}</strong> · {devNfOrig.emitente_nome} · {fmtBRL(devNfOrig.valor_total)}
                 </div>
+                {Math.abs(devFatorDesconto - 1) > 0.001 && (
+                  <div style={{ fontSize: 11, color: "#7A4300", marginTop: 4 }} title="A NF original teve desconto/acréscimo no total em relação à soma dos itens — o valor devolvido por item já sai ajustado nessa mesma proporção.">
+                    Valor por item ajustado em {((devFatorDesconto - 1) * 100).toFixed(1)}% pro rata do {devFatorDesconto < 1 ? "desconto" : "acréscimo"} da NF original
+                  </div>
+                )}
               </div>
               <button onClick={() => setDevModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 16 }}>×</button>
             </div>
