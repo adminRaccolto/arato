@@ -364,7 +364,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <vBC>${baseCalc}</vBC>
           <pICMS>${p2(input.aliquota_icms)}</pICMS>
           <vICMS>${valorICMS}</vICMS>
-        </ICMS00>` : `<ICMS40><CST>40</CST></ICMS40>`}
+        </ICMS00>` : `<ICMS45><CST>40</CST></ICMS45>`}
       </ICMS>
       <vTotTrib>0.00</vTotTrib>
     </imp>

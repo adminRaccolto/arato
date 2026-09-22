@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-l",
+    data: "23/09/2026",
+    titulo: "CT-e: frete isento de ICMS sempre rejeitava (grupo XML errado)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Todo CT-e com alíquota de ICMS 0% (isento) falhava com \"cStat 215: Falha no Schema XML\" — o XML usava o grupo <ICMS40>, que não existe no schema do CT-e (diferente da NF-e). Corrigido pra usar <ICMS45> (Isento/Não Tributado/Diferido), com o CST \"40\" dentro. Validado contra o schema oficial da SEFAZ." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-k",
     data: "23/09/2026",
     titulo: "CT-e: Cód. IBGE de Destino às vezes vinha igual ao da Origem",
