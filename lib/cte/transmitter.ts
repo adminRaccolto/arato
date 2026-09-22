@@ -212,6 +212,8 @@ const SOAP_ACTION = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4/c
 const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoSincV4";
 const EVENT_SOAP_ACTION = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoEventoV4/cteRecepcaoEvento";
 const EVENT_SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeRecepcaoEventoV4";
+const CONSULTA_SOAP_ACTION = "http://www.portalfiscal.inf.br/cte/wsdl/CTeConsultaV4/cteConsultaCT";
+const CONSULTA_SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeConsultaV4";
 
 
 // ─── Compactação e envelope CT-e 4.00 ────────────────────────────────────────
@@ -486,6 +488,21 @@ function envelopeEventoCTe(eventoXmlAssinado: string, cuf: string): string {
     `</soap12:Envelope>`;
 }
 
+function endpointConsultaCTe(uf: string, ambiente: Ambiente): string {
+  const autorizador = AUTORIZADOR_POR_UF[uf];
+  if (!autorizador) throw new Error(`UF do emitente inválida ou não mapeada: "${uf}"`);
+  return ENDPOINTS[ambiente][autorizador].replace(/CTeRecepcaoSincV4/g, "CTeConsultaV4");
+}
+
+function envelopeConsultaCTe(chave: string, ambiente: Ambiente, cuf: string): string {
+  const tpAmb = ambiente === "producao" ? "1" : "2";
+  return `<?xml version="1.0" encoding="utf-8"?>` +
+    `<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">` +
+      `<soap12:Header><cteCabecMsg xmlns="${CONSULTA_SOAP_NS}"><cUF>${cuf}</cUF><versaoDados>4.00</versaoDados></cteCabecMsg></soap12:Header>` +
+      `<soap12:Body><cteDadosMsg xmlns="${CONSULTA_SOAP_NS}"><consSitCTe versao="4.00" xmlns="http://www.portalfiscal.inf.br/cte"><tpAmb>${tpAmb}</tpAmb><xServ>CONSULTAR</xServ><chCTe>${chave}</chCTe></consSitCTe></cteDadosMsg></soap12:Body>` +
+    `</soap12:Envelope>`;
+}
+
 function parseRespostaEventoCTe(soapResp: string): RespostaCTe {
   const infEvento = soapResp.match(/<(?:[^:>]+:)?infEvento\b[^>]*>[\s\S]*?<\/(?:[^:>]+:)?infEvento>/)?.[0];
   if (!infEvento) return parseResposta(soapResp);
@@ -519,4 +536,26 @@ export async function transmitirEventoCTe(
   }[ufNormalizada] ?? "51");
   const resp = await soapPost(endpointEvento, envelopeEventoCTe(eventoXmlAssinado, cuf), pem, EVENT_SOAP_ACTION);
   return parseRespostaEventoCTe(resp);
+}
+
+/** Consulta a situação oficial de um CT-e; usada para confirmar um evento duplicado. */
+export async function consultarSituacaoCTe(
+  chave: string,
+  pem: PemPair,
+  uf: string,
+  ambiente: Ambiente,
+): Promise<RespostaCTe> {
+  const ufNormalizada = uf.trim().toUpperCase();
+  const cuf = ({
+    AC: "12", AL: "27", AM: "13", AP: "16", BA: "29", CE: "23", DF: "53", ES: "32", GO: "52", MA: "21",
+    MG: "31", MS: "50", MT: "51", PA: "15", PB: "25", PE: "26", PI: "22", PR: "41", RJ: "33", RN: "24",
+    RO: "11", RR: "14", RS: "43", SC: "42", SE: "28", SP: "35", TO: "17",
+  }[ufNormalizada] ?? chave.slice(0, 2));
+  const resp = await soapPost(
+    endpointConsultaCTe(ufNormalizada, ambiente),
+    envelopeConsultaCTe(chave, ambiente, cuf),
+    pem,
+    CONSULTA_SOAP_ACTION,
+  );
+  return parseResposta(resp);
 }

@@ -1,7 +1,7 @@
 /** Cancelamento oficial de CT-e (evento 110111). */
 import { assinarXmlPorId, type PemPair } from "../nfe/signer";
 import { gerarDhEmi } from "../nfe/builder";
-import { transmitirEventoCTe } from "./transmitter";
+import { consultarSituacaoCTe, transmitirEventoCTe } from "./transmitter";
 
 export interface CancelamentoCTeInput {
   chave: string;
@@ -62,8 +62,28 @@ export async function cancelarCTe(pem: PemPair, input: CancelamentoCTeInput): Pr
   const { xml, id } = montarEventoCancelamentoCTe(input);
   const assinado = assinarXmlPorId(xml, pem, id);
   const resposta = await transmitirEventoCTe(assinado, pem, input.uf, input.ambiente);
-  // 135 registra e vincula o evento. 218 também é seguro para sincronizar o
-  // banco: a própria SEFAZ confirma que o CT-e já estava cancelado.
+  // 135 registra e vincula o evento. Para 218 a SEFAZ confirma que já está
+  // cancelado. Já 631 só informa duplicidade: consultamos a situação oficial
+  // antes de refletir qualquer alteração no banco local.
+  if (resposta.cStat === "631") {
+    const situacao = await consultarSituacaoCTe(input.chave, pem, input.uf, input.ambiente);
+    if (situacao.cStat !== "101") {
+      return {
+        sucesso: false,
+        cStat: resposta.cStat,
+        xMotivo: `${resposta.xMotivo} A consulta posterior confirmou cStat ${situacao.cStat ?? "—"}: ${situacao.xMotivo}.`,
+      };
+    }
+    const protocoloDuplicado = resposta.xMotivo.match(/\[nProt:\s*(\d{15})\]/i)?.[1];
+    const dataDuplicada = resposta.xMotivo.match(/\[dhRegEvento:\s*([^\]]+)\]/i)?.[1];
+    return {
+      sucesso: true,
+      cStat: resposta.cStat,
+      xMotivo: "Evento de cancelamento já registrado e CT-e confirmado como cancelado na SEFAZ.",
+      protocolo: protocoloDuplicado,
+      dataRegistro: dataDuplicada,
+    };
+  }
   const sucesso = resposta.cStat === "135" || resposta.cStat === "218";
   return {
     sucesso,
