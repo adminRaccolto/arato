@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       frete?: "0" | "1" | "2" | "9";
       nfe_ref?: string;
       tipo?: "0" | "1";
+      fin_nfe?: "1" | "2" | "3" | "4";  // 1=normal, 2=complementar, 3=ajuste, 4=devolução
     };
 
     if (!body.fazenda_id || !body.itens?.length) {
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       frete:    body.frete ?? "9",
       nfe_ref:  body.nfe_ref,
       tipo:     body.tipo ?? "1",
+      finNFe:   body.fin_nfe ?? "1",
     };
 
     // cpf_cnpj_hint (quando informado) tem prioridade sobre modulo_key — é o titular fiscal real

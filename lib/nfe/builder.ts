@@ -70,6 +70,9 @@ export interface NFeInput {
   frete?: "0" | "1" | "2" | "9"; // 0=emitente, 1=dest, 2=3rd, 9=sem
   nfe_ref?: string;       // chave da NF-e referenciada (devolução/complemento)
   tipo?: "0" | "1";       // 1=saída (padrão), 0=entrada
+  finNFe?: "1" | "2" | "3" | "4";  // 1=normal (padrão), 2=complementar, 3=ajuste, 4=devolução —
+                                    // SEFAZ rejeita (328) uma NF com CFOP de devolução (5201/6201/
+                                    // 5202/6202 etc.) se finNFe não for "4"
   transportadora?: TransportadoraCfg;
 }
 
@@ -522,7 +525,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <tpEmis>1</tpEmis>
       <cDV>${cDV}</cDV>
       <tpAmb>${tpAmb}</tpAmb>
-      <finNFe>1</finNFe>
+      <finNFe>${input.finNFe ?? "1"}</finNFe>
       <indFinal>${indIEDest === "9" ? "1" : "0"}</indFinal>
       <indPres>0</indPres>
       <procEmi>0</procEmi>

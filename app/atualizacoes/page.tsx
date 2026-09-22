@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-u",
+    data: "22/09/2026",
+    titulo: "NF-e: Devolução rejeitada por finalidade da nota",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "O emissor de NF-e nunca preenchia o campo de finalidade da nota (sempre \"normal\") — a SEFAZ rejeita (328) qualquer NF-e com CFOP de devolução (5201/5202/6201/6202) se a finalidade não for marcada como devolução. Corrigido no emissor (suporta qualquer finalidade, não só devolução) e ligado na Devolução de Compra." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos → Devolver",
+  },
+  {
     versao: "2026.09.22-t",
     data: "22/09/2026",
     titulo: "NF de Produtos: ICMS Desonerado descontava em dobro ao reabrir a NF",

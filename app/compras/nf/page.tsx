@@ -2263,6 +2263,7 @@ export default function NfCompraPage() {
           frete:    "9",
           nfe_ref:  devNfOrig.chave_acesso || undefined,
           tipo:     "1",
+          fin_nfe:  "4",   // devolução — SEFAZ rejeita (328) CFOP de devolução sem essa finalidade
         }),
       });
       const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
