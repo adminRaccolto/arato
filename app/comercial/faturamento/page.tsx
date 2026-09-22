@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
   criarNotaFiscal, atualizarStatusNFe,
-  listarProdutoresDaConta, listarPessoas, listarContratos,
+  listarProdutoresDaConta, listarPessoasDaConta, listarContratos,
   listarFazendasDaConta, listarIEsDoProdutor, listarAnosSafra,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
@@ -225,7 +225,7 @@ function FaturamentoInner() {
     Promise.all([
       listarFazendasDaConta(contaId, fazendaId),  // todas as fazendas da conta
       listarProdutoresDaConta(contaId ?? "", fazendaId ?? ""),
-      listarPessoas(fazendaId ?? ""),
+      listarPessoasDaConta(fazendaId ?? ""),
       listarContratos(fazendaId ?? ""),
       listarAnosSafra(fazendaId ?? ""),
       supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId ?? "").eq("categoria","produto_agricola").order("nome"),

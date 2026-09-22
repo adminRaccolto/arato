@@ -16,7 +16,7 @@ import {
   processarNfEntrada, estornarNfProcessamento,
   listarCentrosCustoGeral,
   listarEstoqueTerceiros,
-  listarPessoas, criarPessoa,
+  listarPessoasDaConta, criarPessoa,
   registrarLog,
   listarPASaldos,
   listarMovimentacoesPA,
@@ -563,7 +563,7 @@ export default function Estoque() {
       .catch(() => setInsumosSementeConta([]));
     listarBombas(fazAtiva!).then(setBombas).catch(() => {});
     listarMaquinas(fazAtiva).then(setMaquinas).catch(() => {});
-    listarPessoas(fazAtiva).then(setPessoas).catch(() => {});
+    listarPessoasDaConta(fazAtiva).then(setPessoas).catch(() => {});
     listarPASaldos(fazLeitura).then(setPASaldos).catch(() => {});
     listarCentrosCustoGeral(fazAtiva).then(setCentros).catch(() => {});
     supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")

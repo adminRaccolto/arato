@@ -983,6 +983,8 @@ Despesas agrupadas por Operação Gerencial.
 
 Cadastro de compradores, fornecedores, transportadoras, arrendantes e outras entidades externas (CNPJ/CPF, IE, PIX, dados bancários, subcategoria).
 
+**Cadastro é do cliente, não da fazenda (22/09/2026):** um fornecedor ou cliente cadastrado numa fazenda aparece nas telas de todas as fazendas do mesmo cliente. Ao cadastrar, o sistema confere o CPF/CNPJ em todas as fazendas antes de criar — se já existir, pergunta se quer usar o cadastro existente em vez de criar um novo.
+
 ### 23.2 Produtores
 **Caminho:** Configurações → Cadastros → Produtores
 

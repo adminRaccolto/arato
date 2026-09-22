@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, CentroCusto, AnoSafra, Empresa, Produtor } from "../../../lib/supabase";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarPessoas, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivasDaConta, listarEmpresasDaConta, listarProdutoresDaConta } from "../../../lib/db";
+import { listarPessoasDaConta, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivasDaConta, listarEmpresasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 
@@ -218,7 +218,7 @@ export default function NfServicoPage() {
     } catch {}
 
     // Pessoas
-    const pes = await listarPessoas(fazendaId).catch(() => []);
+    const pes = await listarPessoasDaConta(fazendaId).catch(() => []);
     setPessoas(pes);
 
     // Centros de custo — achado real: buscava só na fazenda ativa; centros de

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-n",
+    data: "22/09/2026",
+    titulo: "Pessoas (fornecedores/clientes) agora é do cliente, comum a todas as fazendas",
+    modulos: ["Cadastros", "Financeiro", "Compras", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastrar um fornecedor ou cliente numa fazenda e depois usar outra fazenda do mesmo cliente criava um cadastro novo com o mesmo CPF/CNPJ, em vez de reaproveitar o existente — a checagem de duplicado olhava só a fazenda ativa. Agora olha a conta inteira, como já acontece com Produtor." },
+      { tipo: "melhoria", texto: "5 telas passaram a listar Pessoas de todas as fazendas do cliente, em vez de só da fazenda ativa: NF de Serviços, Adiantamentos, Faturamento, Estoque e o seletor de frota em Parâmetros do Sistema." },
+    ],
+    onde: "Cadastros → Pessoas",
+  },
+  {
     versao: "2026.09.22-m",
     data: "22/09/2026",
     titulo: "Auditoria: mais telas usando a fazenda certa em vez da fazenda ativa",

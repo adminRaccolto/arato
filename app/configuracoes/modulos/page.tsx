@@ -603,8 +603,9 @@ function ParametrosSistemaContent() {
     supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setTransportadoras(data));
     supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setVeiculos(data));
     supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setMotoristas(data));
-    supabase.from("pessoas").select("id, nome, cpf_cnpj").eq("fazenda_id", fazendaId).order("nome").then(({ data }) => data && setPessoasFrota(data as PessoaMin[]));
-  }, [fazendaId]);
+    // Pessoa é do cliente inteiro, não só da fazenda ativa
+    supabase.from("pessoas").select("id, nome, cpf_cnpj").in("fazenda_id", contaFazendaIds.length ? contaFazendaIds : [fazendaId]).order("nome").then(({ data }) => data && setPessoasFrota(data as PessoaMin[]));
+  }, [fazendaId, contaFazendaIds]);
 
   // Resolve contaId: usa direto se disponível, senão busca da fazenda (admin Raccolto ou backfill pendente)
   useEffect(() => {

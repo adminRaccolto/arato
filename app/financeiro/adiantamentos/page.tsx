@@ -6,7 +6,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import {
   listarAdiantamentos, criarAdiantamento, cancelarAdiantamento,
   aplicarAdiantamento, listarAplicacoesAdiantamento,
-  listarPessoas, listarContas, listarAnosSafra, listarFazendasDaConta,
+  listarPessoasDaConta, listarContas, listarAnosSafra, listarFazendasDaConta,
 } from "../../../lib/db";
 import type {
   AdiantamentoFornecedor, AdiantamentoAplicacao,
@@ -107,7 +107,7 @@ export default function AdiantamentosPage() {
     setCarregando(true);
     Promise.all([
       listarAdiantamentos(fazAtiva),
-      listarPessoas(fazAtiva),
+      listarPessoasDaConta(fazAtiva),
       listarContas(fazAtiva),
       listarAnosSafra(fazAtiva),
     ]).then(([a, p, c, s]) => {

@@ -1525,8 +1525,12 @@ export async function criarPessoa(p: Omit<Pessoa, "id" | "created_at">): Promise
     const docFmt = docRaw.length === 14
       ? docRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
       : docRaw.length === 11 ? docRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : docRaw;
+    // Comparado na CONTA inteira, não só na fazenda de destino — o cadastro de Pessoa é do
+    // cliente, comum a todas as fazendas dele (mesma regra já aplicada a Produtores). Sem isso,
+    // o mesmo fornecedor/cliente ganhava um cadastro novo a cada fazenda diferente usada.
+    const idsConta = await resolverFazendaIdsDaConta(p.fazenda_id);
     const { data: existenteList } = await supabase.from("pessoas")
-      .select("*").eq("fazenda_id", p.fazenda_id)
+      .select("*").in("fazenda_id", idsConta.length ? idsConta : [p.fazenda_id])
       .or(`cpf_cnpj.eq.${docRaw},cpf_cnpj.eq.${docFmt}`)
       .order("created_at", { ascending: true })
       .limit(1);
