@@ -50,6 +50,7 @@ import { seedOperacoesGerenciais } from "../../lib/seedOperacoesGerenciais";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import ProdutorCombo from "../../components/ProdutorCombo";
+import SelectBusca from "../../components/SelectBusca";
 import type {
   Fazenda as FazendaDB, Talhao, Arrendamento,
   Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
@@ -3215,10 +3216,8 @@ function CadastrosInner() {
                       {/* Fazenda */}
                       <div>
                         <label style={lbl}>Fazenda *</label>
-                        <select style={inp} value={fBenf.fazenda_id} onChange={e => setFBenf(x => ({ ...x, fazenda_id: e.target.value }))}>
-                          <option value="">— Selecionar —</option>
-                          {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                        </select>
+                        <SelectBusca style={inp} value={fBenf.fazenda_id} onChange={v => setFBenf(x => ({ ...x, fazenda_id: v }))}
+                          placeholder="— Selecionar —" options={fazendas.map(f => ({ value: f.id!, label: f.nome }))} />
                       </div>
                       {/* Nome e Tipo */}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -3527,10 +3526,8 @@ function CadastrosInner() {
                           </div>
 
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                            {fld("Fazenda vinculada", <select style={inp} value={fBem.fazenda_id} onChange={e => setFBem(p => ({ ...p, fazenda_id: e.target.value }))}>
-                              <option value="">— Selecione —</option>
-                              {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                            </select>)}
+                            {fld("Fazenda vinculada", <SelectBusca style={inp} value={fBem.fazenda_id} onChange={v => setFBem(p => ({ ...p, fazenda_id: v }))}
+                              placeholder="— Selecione —" options={fazendas.map(f => ({ value: f.id!, label: f.nome }))} />)}
                             {fld("Observações", <input style={inp} value={fBem.observacao} onChange={e => setFBem(p => ({ ...p, observacao: e.target.value }))} />)}
                           </div>
 
@@ -3874,10 +3871,8 @@ function CadastrosInner() {
                         </div>
                         <div>
                           <label style={lbl}>Depósito padrão</label>
-                          <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
-                            <option value="">— Selecione —</option>
-                            {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                          </select>
+                          <SelectBusca style={inp} value={fIns.deposito_id} onChange={v => setFIns(p => ({ ...p, deposito_id: v }))}
+                            placeholder="— Selecione —" options={depositos.filter(d => d.ativo).map(d => ({ value: d.id, label: d.nome }))} />
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
@@ -5046,12 +5041,8 @@ function CadastrosInner() {
                       {!isComb && (
                         <div>
                           <label style={lbl}>Depósito padrão</label>
-                          <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
-                            <option value="">— Selecione —</option>
-                            {depositos.filter(d => d.ativo).map(d => (
-                              <option key={d.id} value={d.id}>{d.nome}</option>
-                            ))}
-                          </select>
+                          <SelectBusca style={inp} value={fIns.deposito_id} onChange={v => setFIns(p => ({ ...p, deposito_id: v }))}
+                            placeholder="— Selecione —" options={depositos.filter(d => d.ativo).map(d => ({ value: d.id, label: d.nome }))} />
                         </div>
                       )}
                       {/* Estoque atual — bloqueado em edição */}
@@ -5376,10 +5367,8 @@ function CadastrosInner() {
                       {/* Depósito e estoque */}
                       <div>
                         <label style={lbl}>Depósito / Armazém padrão</label>
-                        <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
-                          <option value="">— Selecione —</option>
-                          {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                        </select>
+                        <SelectBusca style={inp} value={fIns.deposito_id} onChange={v => setFIns(p => ({ ...p, deposito_id: v }))}
+                          placeholder="— Selecione —" options={depositos.filter(d => d.ativo).map(d => ({ value: d.id, label: d.nome }))} />
                       </div>
                       <div>
                         <label style={lbl}>Estoque atual</label>
@@ -5623,10 +5612,8 @@ function CadastrosInner() {
                       </div>
                       <div>
                         <label style={lbl}>Depósito padrão</label>
-                        <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
-                          <option value="">— Selecione —</option>
-                          {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                        </select>
+                        <SelectBusca style={inp} value={fIns.deposito_id} onChange={v => setFIns(p => ({ ...p, deposito_id: v }))}
+                          placeholder="— Selecione —" options={depositos.filter(d => d.ativo).map(d => ({ value: d.id, label: d.nome }))} />
                       </div>
                       {fIns.subgrupo === "Peças e Manutenção" && (
                         <>
@@ -7002,10 +6989,8 @@ function CadastrosInner() {
                 {/* Fazenda */}
                 <div style={{ gridColumn: "1 / -1" }}>
                   <label style={lbl}>Fazenda *</label>
-                  <select style={inp} value={fConta.fazenda_id} onChange={e => setFConta(p => ({ ...p, fazenda_id: e.target.value }))}>
-                    <option value="">— Selecionar —</option>
-                    {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                  </select>
+                  <SelectBusca style={inp} value={fConta.fazenda_id} onChange={v => setFConta(p => ({ ...p, fazenda_id: v }))}
+                    placeholder="— Selecionar —" options={fazendas.map(f => ({ value: f.id!, label: f.nome }))} />
                 </div>
 
                 {/* Nome */}
@@ -7018,10 +7003,8 @@ function CadastrosInner() {
                 {empresas.length > 0 && (
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label style={lbl}>Empresa vinculada</label>
-                    <select style={inp} value={fConta.empresa_id} onChange={e => setFConta(p => ({ ...p, empresa_id: e.target.value }))}>
-                      <option value="">— Sem vínculo (fazenda) —</option>
-                      {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social ?? e.nome ?? e.id}</option>)}
-                    </select>
+                    <SelectBusca style={inp} value={fConta.empresa_id} onChange={v => setFConta(p => ({ ...p, empresa_id: v }))}
+                      placeholder="— Sem vínculo (fazenda) —" options={empresas.map(e => ({ value: e.id, label: e.razao_social ?? e.nome ?? e.id }))} />
                   </div>
                 )}
 
@@ -7031,16 +7014,15 @@ function CadastrosInner() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div style={{ gridColumn: "1 / -1" }}>
                       <label style={lbl}>Titular Principal (Produtor) *</label>
-                      <select style={inp} value={fConta.titular_produtor_id} onChange={e => setFConta(p => ({ ...p, titular_produtor_id: e.target.value }))}>
-                        <option value="">— Selecione o titular —</option>
-                        {produtores.map(p => {
+                      <SelectBusca style={inp} value={fConta.titular_produtor_id} onChange={v => setFConta(p => ({ ...p, titular_produtor_id: v }))}
+                        placeholder="— Selecione o titular —"
+                        options={produtores.map(p => {
                           const doc = (p.cpf_cnpj ?? "").replace(/\D/g, "");
                           const docFmt = doc.length === 11
                             ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
                             : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-                          return <option key={p.id} value={p.id}>{p.nome}{doc ? ` — ${docFmt}` : ""}</option>;
-                        })}
-                      </select>
+                          return { value: p.id, label: `${p.nome}${doc ? ` — ${docFmt}` : ""}` };
+                        })} />
                       {fConta.titular_produtor_id && (() => {
                         const prod = produtores.find(p => p.id === fConta.titular_produtor_id);
                         const doc = (prod?.cpf_cnpj ?? "").replace(/\D/g, "");
@@ -7147,16 +7129,13 @@ function CadastrosInner() {
                 {/* Banco select */}
                 <div style={{ gridColumn: "1 / 3" }}>
                   <label style={lbl}>Banco *</label>
-                  <select style={inp} value={fConta.banco_id}
-                    onChange={e => {
-                      const b = bancos.find(x => x.id === e.target.value);
-                      setFConta(p => ({ ...p, banco_id: e.target.value, banco: b?.nome_curto ?? "" }));
-                    }}>
-                    <option value="">— Selecione o banco —</option>
-                    {bancos.map(b => (
-                      <option key={b.id} value={b.id}>{b.codigo_compe} · {b.nome_curto} — {b.nome}</option>
-                    ))}
-                  </select>
+                  <SelectBusca style={inp} value={fConta.banco_id}
+                    onChange={v => {
+                      const b = bancos.find(x => x.id === v);
+                      setFConta(p => ({ ...p, banco_id: v, banco: b?.nome_curto ?? "" }));
+                    }}
+                    placeholder="— Selecione o banco —"
+                    options={bancos.map(b => ({ value: b.id, label: `${b.codigo_compe} · ${b.nome_curto} — ${b.nome}` }))} />
                 </div>
 
                 {/* Código COMPE */}
@@ -7448,19 +7427,12 @@ function CadastrosInner() {
                             <div><label style={lbl}>Código IBGE do município (obrigatório pra emitir NF-e com essa IE)</label><input style={inp} value={ie.municipio_ibge ?? ""} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, municipio_ibge: e.target.value} : x))} placeholder="7 dígitos" /></div>
                             <div>
                               <label style={lbl}>Fazenda ou Empresa vinculada</label>
-                              <select style={inp} value={vincIEValue(ie)} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, ...parseVincIE(e.target.value)} : x))}>
-                                <option value="">Nenhuma</option>
-                                {fazendas.length > 0 && (
-                                  <optgroup label="Fazendas">
-                                    {fazendas.map(f => <option key={f.id} value={`faz:${f.id}`}>{f.nome}</option>)}
-                                  </optgroup>
-                                )}
-                                {prodEmpresas.length > 0 && (
-                                  <optgroup label="Empresas (PJ)">
-                                    {prodEmpresas.map(e => <option key={e.id} value={`emp:${e.id}`}>{e.nome}</option>)}
-                                  </optgroup>
-                                )}
-                              </select>
+                              <SelectBusca style={inp} value={vincIEValue(ie)} onChange={v => setProdIEs(p => p.map((x,j) => j===i ? {...x, ...parseVincIE(v)} : x))}
+                                placeholder="Nenhuma"
+                                options={[
+                                  ...fazendas.map(f => ({ value: `faz:${f.id}`, label: f.nome, group: "Fazendas" })),
+                                  ...prodEmpresas.map(e => ({ value: `emp:${e.id}`, label: e.nome, group: "Empresas (PJ)" })),
+                                ]} />
                             </div>
                           </div>
                         </td>
@@ -7505,19 +7477,12 @@ function CadastrosInner() {
                 </div>
                 <div>
                   <label style={lbl}>Fazenda ou Empresa vinculada</label>
-                  <select style={inp} value={vincIEValue(newIE)} onChange={e => setNewIE(p => ({ ...p, ...parseVincIE(e.target.value) }))}>
-                    <option value="">Nenhuma</option>
-                    {fazendas.length > 0 && (
-                      <optgroup label="Fazendas">
-                        {fazendas.map(f => <option key={f.id} value={`faz:${f.id}`}>{f.nome}</option>)}
-                      </optgroup>
-                    )}
-                    {prodEmpresas.length > 0 && (
-                      <optgroup label="Empresas (PJ)">
-                        {prodEmpresas.map(e => <option key={e.id} value={`emp:${e.id}`}>{e.nome}</option>)}
-                      </optgroup>
-                    )}
-                  </select>
+                  <SelectBusca style={inp} value={vincIEValue(newIE)} onChange={v => setNewIE(p => ({ ...p, ...parseVincIE(v) }))}
+                    placeholder="Nenhuma"
+                    options={[
+                      ...fazendas.map(f => ({ value: `faz:${f.id}`, label: f.nome, group: "Fazendas" })),
+                      ...prodEmpresas.map(e => ({ value: `emp:${e.id}`, label: e.nome, group: "Empresas (PJ)" })),
+                    ]} />
                 </div>
                 <button
                   disabled={!newIE.inscricao_estadual.trim()}
@@ -8111,16 +8076,14 @@ function CadastrosInner() {
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                             <div>
                               <label style={lbl}>Proprietário / Locador</label>
-                              <select style={inp} value={a.proprietario_id} onChange={e => {
-                                const pid = e.target.value;
+                              <SelectBusca style={inp} value={a.proprietario_id} onChange={pid => {
                                 const pnome = pessoas.find(p => p.id === pid)?.nome ?? "";
                                 setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,proprietario_id:pid,proprietario_nome:pnome} : x));
-                              }}>
-                                <option value="">Selecione a pessoa…</option>
-                                {pessoas
+                              }}
+                                placeholder="Selecione a pessoa…"
+                                options={pessoas
                                   .filter(p => p.subcategorias?.includes("Arrendante"))
-                                  .map(p => <option key={p.id} value={p.id}>{p.cpf_cnpj ? `${p.cpf_cnpj} — ` : ""}{p.nome} ({p.tipo.toUpperCase()})</option>)}
-                              </select>
+                                  .map(p => ({ value: p.id, label: `${p.cpf_cnpj ? `${p.cpf_cnpj} — ` : ""}${p.nome} (${p.tipo.toUpperCase()})` }))} />
                             </div>
                             <div>
                               <label style={lbl}>Área arrendada (ha)</label>
@@ -8845,10 +8808,8 @@ function CadastrosInner() {
             {!fCiclo.is_auxiliar && (
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Produto colhido neste ciclo *</label>
-                <select style={inp} value={fCiclo.produto_agricola_id} onChange={e => setFCiclo(p => ({ ...p, produto_agricola_id: e.target.value }))}>
-                  <option value="">— selecione o produto que vai para o estoque —</option>
-                  {insumosPA.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                </select>
+                <SelectBusca style={inp} value={fCiclo.produto_agricola_id} onChange={v => setFCiclo(p => ({ ...p, produto_agricola_id: v }))}
+                  placeholder="— selecione o produto que vai para o estoque —" options={insumosPA.map(i => ({ value: i.id, label: `${i.nome} (${i.unidade})` }))} />
                 {insumosPA.length === 0 && (
                   <div style={{ fontSize:11, color:"#C9921B", marginTop:4 }}>
                     Nenhum produto agrícola cadastrado. Vá em Cadastros → Insumos e crie os produtos (Soja Convencional, Soja Transgênica, Milho, etc.) com categoria <strong>Produto Agrícola</strong>.
@@ -8911,22 +8872,20 @@ function CadastrosInner() {
             <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
               Fazenda *
             </div>
-            <select
-              style={{ width: "100%", padding: "9px 12px", borderRadius: 7, border: "1px solid #93C5FD", fontSize: 14, fontWeight: 600, color: "#0D0D0D", background: "var(--bg-card)", cursor: editCiclo ? "not-allowed" : "pointer" }}
+            <SelectBusca
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 7, border: "1px solid #93C5FD", fontSize: 14, fontWeight: 600, color: "#0D0D0D", background: "var(--bg-card)" }}
               value={cicloFazendaId}
               disabled={!!editCiclo}
-              onChange={async e => {
-                const fid = e.target.value;
+              placeholder="— selecionar fazenda —"
+              options={fazendas.map(fz => ({ value: fz.id!, label: fz.nome }))}
+              onChange={async fid => {
                 setCicloFazendaId(fid);
                 setCicloTalhoes({});
                 setOcupado({});
                 await carregarTalhoesDeFazenda(fid);
                 if (fCiclo.data_inicio && fCiclo.data_fim) await calcularOcupacao(fCiclo.data_inicio, fCiclo.data_fim, editCiclo?.id, fid);
               }}
-            >
-              <option value="">— selecionar fazenda —</option>
-              {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-            </select>
+            />
             {editCiclo
               ? <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>Fazenda não pode ser alterada em um ciclo existente.</div>
               : !cicloFazendaId && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>Selecione a fazenda antes de continuar.</div>}
@@ -9052,10 +9011,8 @@ function CadastrosInner() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Fazenda *</label>
-                <select style={inp} value={fMaq.fazenda_id} onChange={e => setFMaq(p => ({ ...p, fazenda_id: e.target.value }))}>
-                  <option value="">— Selecionar —</option>
-                  {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
+                <SelectBusca style={inp} value={fMaq.fazenda_id} onChange={v => setFMaq(p => ({ ...p, fazenda_id: v }))}
+                  placeholder="— Selecionar —" options={fazendas.map(f => ({ value: f.id!, label: f.nome }))} />
               </div>
               <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} value={fMaq.nome} onChange={e => setFMaq(p => ({ ...p, nome: e.target.value }))} /></div>
               <div>
@@ -9099,10 +9056,8 @@ function CadastrosInner() {
               <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" }}>Proprietário e Aquisição</div>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Proprietário (para o IR)</label>
-                <select style={inp} value={fMaq.proprietario_id} onChange={e => setFMaq(p => ({ ...p, proprietario_id: e.target.value }))}>
-                  <option value="">— selecione —</option>
-                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                </select>
+                <SelectBusca style={inp} value={fMaq.proprietario_id} onChange={v => setFMaq(p => ({ ...p, proprietario_id: v }))}
+                  placeholder="— selecione —" options={pessoas.map(p => ({ value: p.id, label: `${p.nome}${p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}` }))} />
               </div>
               <div><label style={lbl}>Nº da NF de Aquisição</label><input style={inp} placeholder="Ex: 000.123456" value={fMaq.nr_nf_aquisicao} onChange={e => setFMaq(p => ({ ...p, nr_nf_aquisicao: e.target.value }))} /></div>
               <div><label style={lbl}>Data de Aquisição</label><input style={inp} type="date" value={fMaq.data_aquisicao} onChange={e => setFMaq(p => ({ ...p, data_aquisicao: e.target.value }))} /></div>
@@ -9124,10 +9079,9 @@ function CadastrosInner() {
               </div>
               <div style={{ gridColumn: "2/4" }}>
                 <label style={lbl}>Contrato de Financiamento</label>
-                <select style={inp} value={fMaq.contrato_financiamento_id} onChange={e => setFMaq(p => ({ ...p, contrato_financiamento_id: e.target.value }))}>
-                  <option value="">— selecione —</option>
-                  {contratsFinanc.map(c => <option key={c.id} value={c.id}>{c.descricao}{c.numero_documento ? ` — Nº ${c.numero_documento}` : ""} ({c.credor})</option>)}
-                </select>
+                <SelectBusca style={inp} value={fMaq.contrato_financiamento_id} onChange={v => setFMaq(p => ({ ...p, contrato_financiamento_id: v }))}
+                  placeholder="— selecione —"
+                  options={contratsFinanc.map(c => ({ value: c.id, label: `${c.descricao}${c.numero_documento ? ` — Nº ${c.numero_documento}` : ""} (${c.credor})` }))} />
               </div>
               {fMaq.status_financiamento === "quitado" && (
                 <div>
@@ -9157,10 +9111,8 @@ function CadastrosInner() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={lbl}>Fazenda *</label>
-              <select style={inp} value={fBomba.fazenda_id} onChange={e => { const v = e.target.value; setFBomba(p => ({ ...p, fazenda_id: v, insumo_id: "" })); carregarInsumosCombDaFazenda(v); }}>
-                <option value="">— Selecionar —</option>
-                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              <SelectBusca style={inp} value={fBomba.fazenda_id} onChange={v => { setFBomba(p => ({ ...p, fazenda_id: v, insumo_id: "" })); carregarInsumosCombDaFazenda(v); }}
+                placeholder="— Selecionar —" options={fazendas.map(f => ({ value: f.id!, label: f.nome }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome / Localização *</label><input style={inp} placeholder="Ex: Bomba 1 — Pátio Principal" value={fBomba.nome} onChange={e => setFBomba(p => ({ ...p, nome: e.target.value }))} /></div>
             <div>
@@ -9192,10 +9144,8 @@ function CadastrosInner() {
             </div>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={lbl}>Insumo vinculado (almoxarifado)</label>
-              <select style={inp} value={fBomba.insumo_id} onChange={e => setFBomba(p => ({ ...p, insumo_id: e.target.value }))}>
-                <option value="">— Sem vínculo —</option>
-                {insumosComb.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
-              </select>
+              <SelectBusca style={inp} value={fBomba.insumo_id} onChange={v => setFBomba(p => ({ ...p, insumo_id: v }))}
+                placeholder="— Sem vínculo —" options={insumosComb.map(i => ({ value: i.id, label: i.nome }))} />
               <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
                 Ao abastecer com esta bomba, o sistema debitará automaticamente o estoque do insumo selecionado. Cadastre o combustível em Insumos → categoria Combustível antes de vincular.
               </div>
@@ -9330,10 +9280,8 @@ function CadastrosInner() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={lbl}>Fazenda *</label>
-              <select style={inp} value={fCC.fazenda_id} onChange={e => setFCC(p => ({ ...p, fazenda_id: e.target.value }))}>
-                <option value="">— selecionar —</option>
-                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              <SelectBusca style={inp} value={fCC.fazenda_id} onChange={v => setFCC(p => ({ ...p, fazenda_id: v }))}
+                placeholder="— selecionar —" options={fazendas.map(f => ({ value: f.id!, label: f.nome }))} />
             </div>
             <div><label style={lbl}>Código</label><input style={inp} placeholder="Ex: 1.1.01" value={fCC.codigo} onChange={e => setFCC(p => ({ ...p, codigo: e.target.value }))} /></div>
             <div>
@@ -9347,10 +9295,9 @@ function CadastrosInner() {
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} placeholder="Ex: Lavoura — Soja — Talhão 3" value={fCC.nome} onChange={e => setFCC(p => ({ ...p, nome: e.target.value }))} /></div>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={lbl}>Centro Pai (opcional)</label>
-              <select style={inp} value={fCC.parent_id} onChange={e => setFCC(p => ({ ...p, parent_id: e.target.value }))}>
-                <option value="">— Nenhum (raiz) —</option>
-                {centrosCusto.filter(c => (!editCC || c.id !== editCC.id) && (!fCC.fazenda_id || c.fazenda_id === fCC.fazenda_id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
-              </select>
+              <SelectBusca style={inp} value={fCC.parent_id} onChange={v => setFCC(p => ({ ...p, parent_id: v }))}
+                placeholder="— Nenhum (raiz) —"
+                options={centrosCusto.filter(c => (!editCC || c.id !== editCC.id) && (!fCC.fazenda_id || c.fazenda_id === fCC.fazenda_id)).map(c => ({ value: c.id, label: `${c.codigo ? `${c.codigo} — ` : ""}${c.nome}` }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "10px 12px", background: fCC.manutencao_maquinas ? "#E8F5E9" : "var(--bg-page)", border: `0.5px solid ${fCC.manutencao_maquinas ? "#86EFAC" : "var(--border)"}`, borderRadius: 8 }}>
@@ -10050,10 +9997,8 @@ function CadastrosInner() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={lbl}>Fazenda *</label>
-              <select style={inp} value={fDep.fazenda_id} onChange={e => setFDep(p => ({ ...p, fazenda_id: e.target.value }))}>
-                <option value="">— Selecione a fazenda —</option>
-                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              <SelectBusca style={inp} value={fDep.fazenda_id} onChange={v => setFDep(p => ({ ...p, fazenda_id: v }))}
+                placeholder="— Selecione a fazenda —" options={fazendas.map(f => ({ value: f.id!, label: f.nome }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} placeholder="Ex: Armazém 1 — Sede" value={fDep.nome} onChange={e => setFDep(p => ({ ...p, nome: e.target.value }))} /></div>
             <div>
@@ -10071,10 +10016,8 @@ function CadastrosInner() {
             {(fDep.tipo === "armazem_terceiro" || fDep.tipo === "terceiro") && (
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Pessoa vinculada (armazém/cooperativa)</label>
-                <select style={inp} value={fDep.pessoa_id} onChange={e => setFDep(p => ({ ...p, pessoa_id: e.target.value }))}>
-                  <option value="">— sem vínculo —</option>
-                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                <SelectBusca style={inp} value={fDep.pessoa_id} onChange={v => setFDep(p => ({ ...p, pessoa_id: v }))}
+                  placeholder="— sem vínculo —" options={pessoas.map(p => ({ value: p.id, label: p.nome }))} />
                 <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>Vinculando a uma pessoa, o depósito aparece automaticamente ao selecioná-la no Romaneio de Entrada.</div>
               </div>
             )}
@@ -10201,19 +10144,14 @@ function CadastrosInner() {
                 </div>
                 <div>
                   <label style={lbl}>Empresa vinculada</label>
-                  <select style={inp} value={fFunc.empresa_id} onChange={e => setFFunc(p => ({ ...p, empresa_id: e.target.value }))}>
-                    <option value="">— Produtor rural (sem empresa) —</option>
-                    {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social ?? e.nome ?? e.id}</option>)}
-                  </select>
+                  <SelectBusca style={inp} value={fFunc.empresa_id} onChange={v => setFFunc(p => ({ ...p, empresa_id: v }))}
+                    placeholder="— Produtor rural (sem empresa) —" options={empresas.map(e => ({ value: e.id, label: e.razao_social ?? e.nome ?? e.id }))} />
                 </div>
                 <div>
                   <label style={lbl}>Centro de Custo</label>
-                  <select style={inp} value={fFunc.centro_custo_id} onChange={e => setFFunc(p => ({ ...p, centro_custo_id: e.target.value }))}>
-                    <option value="">— Sem vínculo —</option>
-                    {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => (
-                      <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
-                    ))}
-                  </select>
+                  <SelectBusca style={inp} value={fFunc.centro_custo_id} onChange={v => setFFunc(p => ({ ...p, centro_custo_id: v }))}
+                    placeholder="— Sem vínculo —"
+                    options={centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => ({ value: c.id, label: `${c.codigo ? `${c.codigo} — ` : ""}${c.nome}` }))} />
                 </div>
                 <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 8 }}>
                   <input type="checkbox" id="funcAtivo" checked={fFunc.ativo} onChange={e => setFFunc(p => ({ ...p, ativo: e.target.checked }))} />
@@ -10947,10 +10885,8 @@ function CadastrosInner() {
                 </div>
                 <div>
                   <label style={lbl}>Produtor vinculado (sócio/titular)</label>
-                  <select style={inp} value={fEmp.produtor_id} onChange={e => setFEmp(p => ({ ...p, produtor_id: e.target.value }))}>
-                    <option value="">— nenhum —</option>
-                    {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                  </select>
+                  <SelectBusca style={inp} value={fEmp.produtor_id} onChange={v => setFEmp(p => ({ ...p, produtor_id: v }))}
+                    placeholder="— nenhum —" options={produtores.map(p => ({ value: p.id, label: p.nome }))} />
                 </div>
                 <div style={{ borderTop: "0.5px solid var(--border-table)", gridColumn: "1/-1", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em" }}>CONTATO</div>
                 <div>

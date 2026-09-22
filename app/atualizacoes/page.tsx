@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-z",
+    data: "22/09/2026",
+    titulo: "Cadastros: busca por texto em seletores de catálogo grande",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "27 seletores de Cadastros que carregam catálogos grandes (Pessoas, Produtores, Empresas, Fazendas, Insumos, Depósitos, Centros de Custo, Bancos, Contratos de Financiamento) passaram a ter busca por texto — digite parte do nome pra filtrar, em vez de rolar uma lista longa. Seletores pequenos (status, tipo, UF, categoria) não mudaram — busca ali só atrapalharia. Primeira etapa de uma revisão em todo o sistema; mais telas seguem em sessões futuras." },
+    ],
+    onde: "Cadastros (todas as abas)",
+  },
+  {
     versao: "2026.09.22-y",
     data: "22/09/2026",
     titulo: "Devolução de Compra: valor não considerava desconto da NF original",
