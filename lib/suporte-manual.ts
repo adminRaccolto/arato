@@ -871,6 +871,8 @@ NF-e de remessa para armazéns e depósitos (CFOP 5905/6905).
 
 Gerencia o certificado A1 usado para assinar NF-e. Alerta de vencimento 30/15/7/1 dia antes.
 
+**Correção 22/09/2026 — CT-e falhava com "Certificado A1 não configurado no módulo CT-e nem no Fiscal" mesmo com o certificado aparecendo configurado:** quando um mesmo CNPJ (ex: uma transportadora terceira, cadastrada como Empresa) é usado como emitente de CT-e em mais de uma fazenda do mesmo cliente, o upload do certificado só salvava a senha no módulo Fiscal das fazendas que **já tinham** passado pelo cadastro Fiscal daquele CNPJ antes — uma fazenda que só usava o CNPJ no CT-e (nunca no Fiscal/NF-e) ficava com o certificado "aparecendo" na tela (o metadado genérico existe), mas sem a senha salva pra essa fazenda específica, e a emissão falhava. Corrigido: o upload agora também alcança toda fazenda da conta que referencia esse CNPJ como emitente de CT-e, mesmo sem cadastro Fiscal prévio. **Se isso já aconteceu com algum certificado antes desta correção, reenvie o arquivo uma vez em Fiscal → Certificado Digital (ou em Parâmetros → CT-e → "Gerenciar em Fiscal") pra propagar a senha corretamente pra todas as fazendas.**
+
 ---
 
 ## MÓDULO 21 — FISCAL → OBRIGAÇÕES

@@ -114,16 +114,28 @@ export async function POST(req: Request) {
       .in("fazenda_id", idsConta)
       .eq("modulo", fiscalModulo);
 
-    const alvos = existentes && existentes.length > 0
-      ? existentes
-      : [{ fazenda_id: fazendaId, config: {} as Record<string, string> }];
-    for (const alvo of alvos) {
-      const cfgAtual = (alvo.config as Record<string, string>) ?? {};
+    // Também alcança fazendas da conta que usam este CNPJ como emitente de CT-e (transportadora
+    // de terceiro prestando serviço pra mais de uma fazenda do cliente) mas nunca passaram pelo
+    // cadastro Fiscal com este documento — sem isso, a fazenda tinha o certificado "aparecendo
+    // configurado" (metadado genérico certificado_a1_*) mas sem senha, e a emissão de CT-e falhava
+    // com "Certificado A1 não configurado no módulo CT-e nem no Fiscal".
+    const { data: cteRows } = await supabase
+      .from("configuracoes_modulo")
+      .select("fazenda_id")
+      .in("fazenda_id", idsConta)
+      .eq("modulo", `cte_emp_${digits}`);
+
+    const cfgPorFazenda = new Map<string, Record<string, string>>();
+    (existentes ?? []).forEach(e => cfgPorFazenda.set(e.fazenda_id, (e.config as Record<string, string>) ?? {}));
+    const idsAlvo = new Set<string>([fazendaId, ...cfgPorFazenda.keys(), ...(cteRows ?? []).map(r => r.fazenda_id)]);
+
+    for (const fid of idsAlvo) {
+      const cfgAtual = cfgPorFazenda.get(fid) ?? {};
       await supabase
         .from("configuracoes_modulo")
         .upsert(
           {
-            fazenda_id: alvo.fazenda_id,
+            fazenda_id: fid,
             modulo: fiscalModulo,
             config: { ...cfgAtual, cert_a1_path: path, cert_a1_senha: senha },
             updated_at: new Date().toISOString(),

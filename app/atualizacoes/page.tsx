@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-c",
+    data: "23/09/2026",
+    titulo: "Certificado A1: senha não propagava pra toda fazenda que usa o CNPJ no CT-e",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Emitir CT-e falhava com \"Certificado A1 não configurado no módulo CT-e nem no Fiscal\" mesmo com o certificado aparecendo configurado na tela — acontecia quando o mesmo CNPJ (ex: uma transportadora terceira) é emitente de CT-e em mais de uma fazenda do cliente, mas só passou pelo cadastro Fiscal/NF-e em uma delas. O upload do certificado agora salva a senha em toda fazenda da conta que usa esse CNPJ, não só nas que já tinham cadastro Fiscal prévio. Certificados afetados por esse bug precisam ser reenviados uma vez pra corrigir os já existentes." },
+    ],
+    onde: "Fiscal → Emissão e Controle → Certificado Digital",
+  },
+  {
     versao: "2026.09.23-b",
     data: "23/09/2026",
     titulo: "CT-e: Remetente agora traz Pessoas (terceiros), não só Produtores",
