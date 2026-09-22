@@ -512,7 +512,12 @@ function CtePageInner() {
     setIesRemetente(ies);
     setForm(f => ({
       ...f,
-      remetente_id: id,
+      // NUNCA grava o id do produtor aqui — ctes.remetente_id referencia pessoas(id), não
+      // produtores(id) (migration Seção original). Escrever o id do produtor aqui violava a FK e
+      // travava o "Salvar" com "insert or update... violates foreign key constraint
+      // ctes_remetente_id_fkey" toda vez que o remetente vinha do atalho de Produtores — o atalho
+      // é só pra preencher nome/CNPJ/IE/endereço rápido, nunca grava vínculo de produtor no CT-e.
+      remetente_id: "",
       remetente_nome: prod?.nome ?? "",
       remetente_cnpj: prod?.cpf_cnpj ?? "",
       remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (prod?.inscricao_est ?? ""),
@@ -645,17 +650,90 @@ function CtePageInner() {
     );
     if (ibgeMt) return ibgeMt[1];
 
-    // Fallback: ViaCEP por nome de cidade
+    // Fallback: API oficial de municípios do IBGE por UF — cobre qualquer cidade do Brasil, não só
+    // as pré-cadastradas acima. (O fallback anterior chamava o ViaCEP com uma URL que nunca
+    // funciona nesse formato — o endpoint de busca por nome exige também um logradouro.)
     try {
-      const enc = encodeURIComponent(cidade.trim());
-      const r = await fetch(`https://viacep.com.br/ws/${uf}/${enc}/json/`);
+      const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
       if (r.ok) {
-        const arr = await r.json() as Array<{ ibge?: string }>;
-        if (Array.isArray(arr) && arr[0]?.ibge) return arr[0].ibge;
+        const lista = await r.json() as { id: number; nome: string }[];
+        const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+        const achado = lista.find(m => norm(m.nome) === chave);
+        if (achado) return String(achado.id);
       }
     } catch { /* ignora falha de rede */ }
 
-    return "0000000"; // último recurso — SEFAZ irá rejeitar; usuário precisa corrigir cidade
+    return ""; // não achou — deixa em branco (com aviso na tela) em vez de mandar um código que a SEFAZ rejeita
+  }
+
+  // ── Buscar NF-e pela chave e preencher o formulário ─────
+  // O campo "Chave da NF-e" só guardava o texto pra imprimir no DACTE — nunca buscava nada. Reaproveita
+  // a mesma rota que a NF de Produtos usa pra reparar NFs sem itens (Storage do SIEG, com fallback SEFAZ).
+  const [buscandoNfe, setBuscandoNfe] = useState(false);
+  const [nfeBuscaErro, setNfeBuscaErro] = useState("");
+  async function buscarNfePelaChave() {
+    if (!fazendaId) return;
+    const chave = form.nfe_chave.replace(/\D/g, "");
+    if (chave.length !== 44) { setNfeBuscaErro("A chave precisa ter 44 dígitos."); return; }
+    setBuscandoNfe(true);
+    setNfeBuscaErro("");
+    try {
+      const res = await fetch("/api/nfe/xml-por-chave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazendaId, chaveAcesso: chave, ambiente: "producao" }),
+      });
+      const json = await res.json() as { ok?: boolean; xmlCompleto?: string; erro?: string };
+      if (!json.ok || !json.xmlCompleto) { setNfeBuscaErro(json.erro || "NF-e não encontrada — confira a chave ou se o XML foi sincronizado (SIEG) ou está disponível na SEFAZ."); return; }
+
+      const doc = new DOMParser().parseFromString(json.xmlCompleto, "text/xml");
+      const getTag = (parent: Element | Document, tag: string) =>
+        parent.querySelector(tag)?.textContent ?? parent.getElementsByTagName(tag)[0]?.textContent ?? "";
+      const emit = doc.querySelector("emit") ?? doc.getElementsByTagName("emit")[0];
+      const dest = doc.querySelector("dest") ?? doc.getElementsByTagName("dest")[0];
+      const enderEmit = emit?.querySelector("enderEmit") ?? emit?.getElementsByTagName("enderEmit")[0];
+      const enderDest = dest?.querySelector("enderDest") ?? dest?.getElementsByTagName("enderDest")[0];
+      let dets = Array.from(doc.querySelectorAll("det"));
+      if (dets.length === 0) dets = Array.from(doc.getElementsByTagName("det"));
+      const prod = dets[0]?.querySelector("prod") ?? dets[0]?.getElementsByTagName("prod")[0];
+      const vol = doc.querySelector("transp vol") ?? doc.getElementsByTagName("vol")[0];
+      const vNF = parseFloat(getTag(doc, "vNF")) || 0;
+
+      const municipioOrigem = enderEmit ? getTag(enderEmit, "xMun") : "";
+      const ufOrigemXml     = enderEmit ? getTag(enderEmit, "UF")   : "";
+      const municipioDest   = enderDest ? getTag(enderDest, "xMun") : "";
+      const ufDestXml       = enderDest ? getTag(enderDest, "UF")   : "";
+
+      setForm(f => ({
+        ...f,
+        remetente_id: "", remetente_nome: emit ? getTag(emit, "xNome") : f.remetente_nome,
+        remetente_cnpj: emit ? (getTag(emit, "CNPJ") || getTag(emit, "CPF")) : f.remetente_cnpj,
+        destinatario_id: "", destinatario_nome: dest ? getTag(dest, "xNome") : f.destinatario_nome,
+        destinatario_cnpj: dest ? (getTag(dest, "CNPJ") || getTag(dest, "CPF")) : f.destinatario_cnpj,
+        municipio_origem: municipioOrigem || f.municipio_origem,
+        uf_origem:        ufOrigemXml     || f.uf_origem,
+        municipio_destino: municipioDest  || f.municipio_destino,
+        uf_destino:        ufDestXml      || f.uf_destino,
+        produto_descricao: prod ? (getTag(prod, "xProd") || f.produto_descricao) : f.produto_descricao,
+        ncm:                prod ? (getTag(prod, "NCM")   || f.ncm)              : f.ncm,
+        peso_bruto_kg:      vol ? (parseFloat(getTag(vol, "pesoB")) || f.peso_bruto_kg)   : f.peso_bruto_kg,
+        peso_liquido_kg:    vol ? (parseFloat(getTag(vol, "pesoL")) || f.peso_liquido_kg) : f.peso_liquido_kg,
+        valor_mercadoria:   vNF || f.valor_mercadoria,
+      }));
+      // IBGE da origem/destino, na mesma lógica dos campos manuais
+      if (municipioOrigem && !form.ibge_origem) {
+        const ibge = await buscarIbge(municipioOrigem, ufOrigemXml || form.uf_origem);
+        if (ibge) setForm(f => ({ ...f, ibge_origem: ibge }));
+      }
+      if (municipioDest && !form.ibge_destino) {
+        const ibge = await buscarIbge(municipioDest, ufDestXml || form.uf_destino);
+        if (ibge) setForm(f => ({ ...f, ibge_destino: ibge }));
+      }
+    } catch (e) {
+      setNfeBuscaErro(`Erro ao buscar a NF-e: ${e}`);
+    } finally {
+      setBuscandoNfe(false);
+    }
   }
 
   // ── Autorizar — transmissão real SEFAZ ──────────────────
@@ -1199,7 +1277,9 @@ function CtePageInner() {
               <div style={divider}>Percurso</div>
               <div>
                 <label style={lbl}>Município de Origem</label>
-                <input value={form.municipio_origem} onChange={e => setForm(f => ({ ...f, municipio_origem: e.target.value }))} style={inp} placeholder="Nova Mutum" />
+                <input value={form.municipio_origem} onChange={e => setForm(f => ({ ...f, municipio_origem: e.target.value }))}
+                  onBlur={async e => { const v = e.target.value.trim(); if (v && !form.ibge_origem) { const ibge = await buscarIbge(v, form.uf_origem); if (ibge) setForm(f => ({ ...f, ibge_origem: ibge })); } }}
+                  style={inp} placeholder="Nova Mutum" />
               </div>
               <div>
                 <label style={lbl}>UF Origem</label>
@@ -1214,7 +1294,9 @@ function CtePageInner() {
               <div style={{ gridColumn: "4 / 5" }} />
               <div>
                 <label style={lbl}>Município de Destino</label>
-                <input value={form.municipio_destino} onChange={e => setForm(f => ({ ...f, municipio_destino: e.target.value }))} style={inp} placeholder="Rondonópolis" />
+                <input value={form.municipio_destino} onChange={e => setForm(f => ({ ...f, municipio_destino: e.target.value }))}
+                  onBlur={async e => { const v = e.target.value.trim(); if (v && !form.ibge_destino) { const ibge = await buscarIbge(v, form.uf_destino); if (ibge) setForm(f => ({ ...f, ibge_destino: ibge })); } }}
+                  style={inp} placeholder="Rondonópolis" />
               </div>
               <div>
                 <label style={lbl}>UF Destino</label>
@@ -1300,7 +1382,15 @@ function CtePageInner() {
               <div style={divider}>Vínculo</div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Chave de Acesso da NF-e Referenciada (opcional)</label>
-                <input value={form.nfe_chave} onChange={e => setForm(f => ({ ...f, nfe_chave: e.target.value }))} style={inp} placeholder="44 dígitos da chave da NF-e (espaços são ignorados)" maxLength={60} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={form.nfe_chave} onChange={e => setForm(f => ({ ...f, nfe_chave: e.target.value }))} style={{ ...inp, flex: 1 }} placeholder="44 dígitos da chave da NF-e (espaços são ignorados)" maxLength={60} />
+                  <button type="button" onClick={buscarNfePelaChave} disabled={buscandoNfe || form.nfe_chave.replace(/\D/g, "").length !== 44}
+                    style={{ padding: "0 16px", background: buscandoNfe ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: buscandoNfe ? "default" : "pointer", whiteSpace: "nowrap", opacity: form.nfe_chave.replace(/\D/g, "").length !== 44 ? 0.5 : 1 }}>
+                    {buscandoNfe ? "Buscando…" : "🔍 Buscar dados da NF-e"}
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Preenche remetente, destinatário, município, produto e valor a partir do XML — confira antes de emitir.</div>
+                {nfeBuscaErro && <div style={{ fontSize: 11, color: "#A93226", marginTop: 4 }}>{nfeBuscaErro}</div>}
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Observação</label>

@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-a",
+    data: "23/09/2026",
+    titulo: "CT-e: Salvar travava ao escolher Remetente por Produtor; IBGE e busca por chave",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "\"Salvar\" o CT-e falhava com erro de banco (\"violates foreign key constraint ctes_remetente_id_fkey\") sempre que o Remetente vinha do atalho \"Selecionar Remetente (Produtores cadastrados)\" — o atalho gravava o id do produtor num campo que só aceita id de Pessoa. Corrigido: o atalho agora só preenche nome/CNPJ/IE/endereço, sem travar o salvamento." },
+      { tipo: "correcao", texto: "Os campos Cód. IBGE de Origem e Destino nunca preenchiam sozinhos, mesmo com o Município digitado — a busca automática existia no código mas nunca era chamada. Agora preenche ao sair do campo de Município." },
+      { tipo: "novo", texto: "Botão \"🔍 Buscar dados da NF-e\" ao lado da Chave de Acesso: busca o XML da nota e preenche Remetente, Destinatário, Município de Origem/Destino, Produto, NCM e Valor da Mercadoria." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.22-z",
     data: "22/09/2026",
     titulo: "Cadastros: busca por texto em seletores de catálogo grande",

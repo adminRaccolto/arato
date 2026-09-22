@@ -515,6 +515,14 @@ Gerencia acertos financeiros com transportadores autônomos (TAC/ANTT).
 
 Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
+**Frete para terceiros (a fazenda só transporta, a carga não é dela):** os campos "Selecionar Remetente (Produtores cadastrados)" e "Selecionar Destinatário (Pessoas cadastradas)" são só um atalho pra preencher rápido quando uma das partes já está no cadastro — não travam a nota no produtor. Logo abaixo de cada um tem Razão Social/Nome, CNPJ/CPF e Inscrição Estadual soltos e editáveis: pra um frete de terceiro para terceiro (nenhum dos dois é o produtor dono da fazenda), digite os dados de quem envia e de quem recebe direto nesses campos, sem usar o atalho de seleção. Quem emite o CT-e é sempre a fazenda (a transportadora), isso não muda.
+
+**Correção 22/09/2026 — "Salvar" travava com erro de banco ao escolher Remetente pelo atalho de Produtores:** desde que esse atalho passou a usar a lista de Produtores, ele gravava o id do produtor no campo que só aceita id de Pessoa — toda vez que o remetente vinha desse atalho, salvar o CT-e falhava com "violates foreign key constraint ctes_remetente_id_fkey". Corrigido: o atalho de Produtores agora só preenche nome/CNPJ/IE/endereço, sem gravar vínculo de produtor no CT-e.
+
+**Correção 22/09/2026 — Código IBGE de Origem/Destino não preenchia:** os campos de município tinham a busca automática do IBGE pronta no código, mas nunca eram chamados — agora, ao sair do campo de Município (Origem ou Destino), o sistema busca o código sozinho (cidades de MT mais comuns direto; qualquer outra cidade do Brasil pela API oficial do IBGE).
+
+**Novo 22/09/2026 — "🔍 Buscar dados da NF-e" pela chave de acesso:** ao lado do campo "Chave de Acesso da NF-e Referenciada", um botão busca o XML da nota (no Storage do SIEG ou, se não tiver, direto na SEFAZ) e preenche automaticamente Remetente, Destinatário, Município de Origem/Destino, Produto, NCM e Valor da Mercadoria — sempre revise antes de emitir.
+
 ### 13.3 MDF-e — Manifesto de Cargas
 **Caminho:** Comercial & Logística → Fretes e Transporte → MDF-e
 
