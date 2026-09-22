@@ -2515,17 +2515,30 @@ export async function processarNfEntrada(
   // qualquer coisa nova — não depende de o chamador lembrar de limpar direito.
   await limparMovimentacoesEFinanceiroDaNf(nfId);
 
+  // Fator que ajusta o custo de cada item pro que será REALMENTE pago: valorTotal (o parâmetro,
+  // já líquido de IPI/ST/FCP-ST/DIFAL/Desconto/ICMS Desonerado do cabeçalho — é o que vira Conta a
+  // Pagar) dividido pela soma bruta dos itens (que é só o valor dos produtos, sem esses ajustes).
+  // Sem isso, o custo do insumo no estoque (e o custo de manutenção/abastecimento) ficava sempre
+  // pelo valor bruto do produto, mesmo quando a nota tinha um ajuste que muda o valor de verdade
+  // desembolsado — achado real: NF da CJ Selecta, produtos R$ 84.070,98, duplicata R$ 80.540,00.
+  const somaItensValorTotal = itens.reduce((s, i) => s + (i.valor_total || 0), 0);
+  const fatorAjuste = somaItensValorTotal > 0 && valorTotal > 0 ? valorTotal / somaItensValorTotal : 1;
+
   for (const item of itens) {
     if (!item.id) {
       throw new Error(`Item "${item.descricao_produto}" sem id — não é seguro gravar movimentação de estoque sem vínculo com a NF. Recarregue a NF e tente novamente.`);
     }
-    // Custo por unidade do catálogo — sempre derivado do total monetário da NF dividido pela
+    // Valor do item já ajustado pra bater com o que a NF realmente cobra no total — usado em todo
+    // cálculo de custo abaixo (estoque, manutenção, abastecimento). item.valor_total (bruto, o
+    // valor de produto da NF) continua intocado no registro fiscal do item.
+    const valorItemAjustado = item.valor_total * fatorAjuste;
+    // Custo por unidade do catálogo — sempre derivado do total monetário AJUSTADO dividido pela
     // quantidade já convertida (armazenada em catalog units). Cobre dois cenários:
     //   a) BAG→KG automático: fator=1, mas valor_unitario ainda é R$/bag → total/kg_qty é correto
     //   b) Fator manual: quantidade_db = qNF × fator → total / (qNF × fator) = vUnit / fator
     const custoUnitarioCatalogo = item.quantidade > 0
-      ? item.valor_total / item.quantidade
-      : item.valor_unitario;
+      ? valorItemAjustado / item.quantidade
+      : item.valor_unitario * fatorAjuste;
 
     // ── Defensivo/Fertilizante/Inoculante → estoque por Princípio Ativo ─
     if (item.tipo_apropiacao === "estoque" && item.principio_ativo_id) {
@@ -2561,7 +2574,7 @@ export async function processarNfEntrada(
         // sum(qtd_lote × custo_ajustado) = valor_total_item — sem alterar o que é pago.
         const totalPesoLotes = lotesComPeso.reduce((s, l) => s + (l.quantidade_kg ?? 0), 0);
         const custoAjustado = totalPesoLotes > 0
-          ? item.valor_total / totalPesoLotes
+          ? valorItemAjustado / totalPesoLotes
           : custoUnitarioCatalogo;
         for (const lote of lotesComPeso) {
           // Cada lote pode ser de uma variedade diferente da do item (a NF pode trazer mais
@@ -2616,7 +2629,7 @@ export async function processarNfEntrada(
         data:                dataEntrada,
         tipo:                "corretiva",
         descricao:           item.descricao_produto,
-        custo:               item.valor_total,
+        custo:               valorItemAjustado,
         nf_entrada_item_id:  item.id,
       });
     }
@@ -2633,7 +2646,7 @@ export async function processarNfEntrada(
           data:                dataEntrada,
           tipo:                "corretiva",
           descricao:           `${item.descricao_produto} (${r.percentual}% ratado)`,
-          custo:               item.valor_total * (r.percentual / 100),
+          custo:               valorItemAjustado * (r.percentual / 100),
           nf_entrada_item_id:  item.id,
         });
       }
@@ -2650,8 +2663,8 @@ export async function processarNfEntrada(
         bomba_id:            null,
         maquina_id:          item.maquina_id,
         quantidade_l:        item.quantidade,
-        valor_unitario:      item.valor_unitario,
-        valor_total:         item.valor_total,
+        valor_unitario:      item.quantidade > 0 ? valorItemAjustado / item.quantidade : item.valor_unitario * fatorAjuste,
+        valor_total:         valorItemAjustado,
         horimetro:           item.horimetro ?? null,
         data:                dataEntrada,
         observacao:          `NF ${nfId} — Apropriação Direta (${emitente})`,

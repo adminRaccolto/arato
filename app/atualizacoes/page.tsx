@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-s",
+    data: "22/09/2026",
+    titulo: "NF de Produtos: custo do item passa a refletir o valor a pagar",
+    modulos: ["Compras", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "O custo do insumo no estoque, o custo de manutenção de máquina e o valor do abastecimento direto eram sempre calculados pelo valor bruto dos produtos da NF — nunca consideravam IPI, ST, FCP-ST, DIFAL, Desconto ou ICMS Desonerado do cabeçalho. Agora esses custos são ajustados proporcionalmente ao Valor Total da NF (o valor real da duplicata/fatura a pagar). O valor da NF gravado em cada item continua o original, só o custo interno é corrigido." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-r",
     data: "22/09/2026",
     titulo: "NF de Produtos: ICMS Desonerado",
