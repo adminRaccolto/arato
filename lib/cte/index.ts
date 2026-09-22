@@ -135,7 +135,10 @@ export async function emitirCTe(
   const pem = pfxParaPem(pfxBuffer, certSenha);
 
   // 4. Número sequencial
-  const numero = await proximoNumero(fazendaId, resolved.cteModulo, confg);
+  // Incrementa o número sequencial na fazenda onde o registro cte_emp_* REALMENTE está gravado
+  // (resolved.cteFazendaId) — pode ser diferente da fazenda que está emitindo agora, já que os
+  // parâmetros do emitente são compartilhados pela conta inteira, não duplicados por fazenda.
+  const numero = await proximoNumero(resolved.cteFazendaId, resolved.cteModulo, confg);
 
   const emitente: EmitenteCTe = {
     cpf_cnpj:       fc.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits,

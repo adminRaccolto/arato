@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-d",
+    data: "23/09/2026",
+    titulo: "CT-e/MDF-e: parâmetros do emitente eram fragmentados por fazenda",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Causa raiz do erro \"Certificado A1 não configurado\" no CT-e: os parâmetros de um emitente (série, próximo número, RNTRC, certificado) gravavam um registro novo e isolado toda vez que os \"Parâmetros → CT-e\"/\"MDF-e\" eram salvos numa fazenda diferente da que já tinha o registro — a mesma transportadora terminava com série/número desencontrados e o certificado só \"existindo\" numa das cópias. Corrigido: agora reaproveita o registro já existente em qualquer fazenda da conta, e a emissão do CT-e busca a configuração e o certificado em toda a conta, não só na fazenda que está emitindo." },
+    ],
+    onde: "Fiscal → Parâmetros do Sistema → CT-e / MDF-e",
+  },
+  {
     versao: "2026.09.23-c",
     data: "23/09/2026",
     titulo: "Certificado A1: senha não propagava pra toda fazenda que usa o CNPJ no CT-e",

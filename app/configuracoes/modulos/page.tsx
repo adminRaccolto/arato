@@ -676,16 +676,18 @@ function ParametrosSistemaContent() {
     setSalvando(modulo);
     setCfgs(prev => ({ ...prev, [modulo]: newCfg }));
 
-    // Config fiscal (fiscal_global, fiscal_pf_*, fiscal_emp_*) é do cliente
-    // inteiro, não da fazenda ativa — mas a coluna fazenda_id é NOT NULL e o
-    // upsert usa onConflict (fazenda_id, modulo). Sem isso, editar um emitente
-    // com uma fazenda ativa diferente da que criou o registro original inseria
-    // uma linha NOVA e duplicada em vez de atualizar a existente (causa real do
-    // bug "sumiram os parâmetros fiscais" — a leitura conta-wide pegava a linha
-    // errada/mais antiga). Reaproveita a fazenda_id do registro já existente
-    // (se houver, em qualquer fazenda da conta) em vez de sempre usar a ativa.
+    // Config fiscal (fiscal_global, fiscal_pf_*, fiscal_emp_*) e os parâmetros de CT-e/MDF-e por
+    // emitente (cte_emp_*, mdfe_emp_*) são da EMPRESA/cliente inteiro, NUNCA da fazenda ativa — mas
+    // a coluna fazenda_id é NOT NULL e o upsert usa onConflict (fazenda_id, modulo). Sem isso,
+    // editar um emitente com uma fazenda ativa diferente da que criou o registro original inseria
+    // uma linha NOVA e duplicada em vez de atualizar a existente. Foi exatamente essa falha que
+    // fez a Muriana (uma transportadora terceira, sem nenhuma ligação com as fazendas do cliente)
+    // terminar com série/número de CT-e DIFERENTES e desencontrados dependendo de qual fazenda
+    // estava ativa no momento de salvar — a fazenda ativa nunca deveria decidir onde esse dado mora.
+    // Reaproveita a fazenda_id do registro já existente (se houver, em qualquer fazenda da conta)
+    // em vez de sempre usar a ativa.
     let fazendaIdParaSalvar = fazendaId;
-    if (modulo.startsWith("fiscal_") && contaFazendaIds.length > 0) {
+    if ((modulo.startsWith("fiscal_") || modulo.startsWith("cte_emp_") || modulo.startsWith("mdfe_emp_")) && contaFazendaIds.length > 0) {
       const { data: existente } = await supabase
         .from("configuracoes_modulo")
         .select("fazenda_id")
@@ -2169,7 +2171,7 @@ function ParametrosSistemaContent() {
                           );
                         })()}
 
-                        <button onClick={() => salvar(mk)} disabled={salvando === mk}
+                        <button onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                           {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
                         </button>
@@ -2276,7 +2278,7 @@ function ParametrosSistemaContent() {
                           </div>
                         </div>
 
-                        <button onClick={() => salvar(mk)} disabled={salvando === mk}
+                        <button onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                           {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
                         </button>
