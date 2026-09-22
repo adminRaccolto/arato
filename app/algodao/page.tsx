@@ -193,9 +193,11 @@ export default function AlgodaoPage() {
         return;
       }
 
-      // caminho 2: via anos_safra (fallback caso fazenda_id em ciclos esteja NULL)
-      const { data: anos } = await supabase
-        .from("anos_safra").select("id").eq("fazenda_id", fazendaId);
+      // caminho 2: via anos_safra (fallback caso fazenda_id em ciclos esteja NULL). Ano Safra é do
+      // cliente inteiro (Seção 254) — busca por conta_id primeiro.
+      const { data: anos } = contaId
+        ? await supabase.from("anos_safra").select("id").eq("conta_id", contaId)
+        : await supabase.from("anos_safra").select("id").eq("fazenda_id", fazendaId);
       const anoIds = (anos ?? []).map((a: { id: string }) => a.id);
       if (anoIds.length === 0) { setCiclos([]); setCicloSel(""); return; }
       const { data } = await supabase

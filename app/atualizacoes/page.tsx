@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-m",
+    data: "22/09/2026",
+    titulo: "Auditoria: mais telas usando a fazenda certa em vez da fazenda ativa",
+    modulos: ["Fiscal", "Configurações", "Financeiro", "Lavoura", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Continuação da correção de hoje: mais pontos que buscavam Produtor, Pessoa ou Ano Safra só na fazenda ativa da sessão, em vez de em toda a conta do cliente. Corrigidos: Configurações → Importação (Máquinas, Arrendamentos, Funcionários e checagem de Pessoa duplicada), o dropdown de Produtor no upload do Certificado A1 (Fiscal e Configurações), e o carregamento de Ano Safra em Consórcios, Algodão, Operação Aérea e Estoque de Grãos." },
+    ],
+    onde: "Vários módulos",
+  },
+  {
     versao: "2026.09.22-l",
     data: "22/09/2026",
     titulo: "Cadastros: Código IBGE não era preenchido pelo \"Buscar\" e falhava com CEP inválido",

@@ -239,8 +239,11 @@ export default function ConsorciosPage() {
   // Carrega anos/ciclos quando o modal de consórcio abre
   useEffect(() => {
     if (!modalConsor || !fazendaId) return;
+    // Ano Safra é do cliente inteiro, não da fazenda (Seção 254) — sem isso, um cliente cuja fazenda
+    // ativa nunca recebeu Ano Safra própria (todas criadas noutra fazenda da mesma conta) via o select vazio.
     Promise.all([
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
+      contaId ? supabase.from("anos_safra").select("id, descricao").eq("conta_id", contaId).order("descricao", { ascending: false })
+              : supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
       supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("descricao"),
     ]).then(([{ data: anos }, { data: cics }]) => {
       setAnosRat((anos ?? []) as { id: string; descricao: string }[]);

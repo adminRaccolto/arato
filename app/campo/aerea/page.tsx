@@ -84,9 +84,13 @@ export default function CampoAereaPage() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
+    // Ano Safra é do cliente inteiro, não da fazenda (Seção 254)
+    const anosQ = contaId
+      ? supabase.from("anos_safra").select("id, descricao").eq("conta_id", contaId).order("descricao", { ascending: false })
+      : supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false });
     const [{ data: tal }, { data: anos }, { data: cic }, { data: ins }, { data: emp }] = await Promise.all([
       supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
+      anosQ,
       supabase.from("ciclos").select("id, cultura, descricao, data_inicio, data_fim, ano_safra_id, ano_safra:anos_safra(descricao)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("insumos").select("id, nome, unidade_medida, custo_medio")
         .eq("fazenda_id", fazendaId)

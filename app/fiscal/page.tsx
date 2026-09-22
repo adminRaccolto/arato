@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor, ProdutorIE, Pessoa } from "../../lib/supabase";
@@ -978,7 +978,10 @@ function FiscalInner() {
   useEffect(() => {
     if (!fazendaId) return;
     carregar();
-    listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
+    // Produtor é do cliente inteiro, não da fazenda ativa (Seção 116/19) — senão o dropdown de
+    // certificado A1 fica vazio numa fazenda cujo produtor foi cadastrado com outra "fazenda de origem".
+    (contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutores(fazendaId))
+      .then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
     // Carrega fazendas da conta (para transferência)
     listarFazendasDaConta(contaId, fazendaId)
       .then(fzs => setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome, municipio: f.municipio ?? undefined, estado: f.estado ?? undefined }))))

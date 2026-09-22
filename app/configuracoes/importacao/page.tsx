@@ -1446,7 +1446,7 @@ function ImportacaoInner() {
     // Duplicados já existentes no banco
     if (fazendaId) {
       const { data: existentes } = await supabase
-        .from("pessoas").select("cpf_cnpj").eq("fazenda_id", fazendaId);
+        .from("pessoas").select("cpf_cnpj").in("fazenda_id", fazendaIds);
       const cpfsExistentes = new Set(
         (existentes ?? [])
           .map((p: { cpf_cnpj: string | null }) => (p.cpf_cnpj ?? "").replace(/\D/g, ""))
@@ -2318,7 +2318,7 @@ function ImportacaoInner() {
     let ok = 0, erros = 0, duplicados = 0;
 
     // Mapas de resolução de FK (CPF/CNPJ → id)
-    const { data: pessoasDB } = await supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+    const { data: pessoasDB } = await supabase.from("pessoas").select("id, cpf_cnpj").in("fazenda_id", fazendaIds);
     const pessoaMap: Record<string, string> = {};
     (pessoasDB ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
       if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
@@ -2380,7 +2380,7 @@ function ImportacaoInner() {
     if (!fazendaId || !arrendamentosRows.length) return;
     setLoadingArrendamentos(true);
     let ok = 0, erros = 0, duplicados = 0;
-    const { data: pessoas } = await supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+    const { data: pessoas } = await supabase.from("pessoas").select("id, cpf_cnpj").in("fazenda_id", fazendaIds);
     const pessoaMap: Record<string, string> = {};
     (pessoas ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
       if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
@@ -2946,7 +2946,7 @@ function ImportacaoInner() {
     let ok = 0, erros = 0, duplicados = 0;
 
     // Mapeia CPF/CNPJ de produtor → produtor_id
-    const { data: produtoresDB } = await supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+    const { data: produtoresDB } = await supabase.from("produtores").select("id, cpf_cnpj").in("fazenda_id", fazendaIds);
     const produtorMap: Record<string, string> = {};
     (produtoresDB ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
       if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;

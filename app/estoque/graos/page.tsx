@@ -177,9 +177,13 @@ export default function EstoqueGraosPage() {
   // ── Carga base ──────────────────────────────────────────────────────────────
   const carregarBase = useCallback(async () => {
     if (!fazAtiva) return;
+    // Ano Safra é do cliente inteiro, não da fazenda (Seção 254)
+    const anosQ = contaId
+      ? supabase.from("anos_safra").select("id, descricao").eq("conta_id", contaId).order("descricao", { ascending: false })
+      : supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazAtiva).order("descricao", { ascending: false });
     const [{ data: dep }, { data: anos }, { data: cic }, { data: cfg }] = await Promise.all([
       supabase.from("depositos").select("id, nome, tipo").eq("fazenda_id", fazAtiva).order("nome"),
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazAtiva).order("descricao", { ascending: false }),
+      anosQ,
       supabase.from("ciclos").select("id, cultura, ano_safra_id").eq("fazenda_id", fazAtiva).order("created_at", { ascending: false }),
       supabase.from("parametros_armazenagem").select("*").eq("fazenda_id", fazAtiva).order("created_at"),
     ]);
