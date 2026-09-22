@@ -4501,7 +4501,7 @@ export default function NfCompraPage() {
 
               {/* Info */}
               <div style={{ background: "#FCEBEB20", border: "0.5px solid #FCBCBC", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#791F1F", marginBottom: 16 }}>
-Isto emite uma <strong>NF-e de verdade, transmitida à SEFAZ</strong> (natureza "Devolução de Compra", CFOP 5201/6201) — é o documento que deve acompanhar o caminhão até o fornecedor. Informe a <strong>quantidade a devolver</strong> por item, na unidade de estoque (mesma da coluna "Unidade" — já convertida, se o item teve conversão ao processar a NF). Apenas itens com quantidade &gt; 0 serão incluídos.
+                Informe a <strong>quantidade a devolver</strong> por item, na unidade de estoque (mesma da coluna "Unidade" — já convertida, se o item teve conversão ao processar a NF). Apenas itens com quantidade &gt; 0 serão incluídos.
                 Ao ser autorizada, a devolução irá: <strong>debitar o estoque</strong> + criar uma <strong>Conta a Receber</strong> (fornecedor deve restituir o valor).
                 Itens com "NF original" abaixo do nome foram convertidos ao processar — use essa referência pra conferir contra a nota do fornecedor.
               </div>

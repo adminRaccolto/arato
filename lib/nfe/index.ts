@@ -334,6 +334,7 @@ export async function emitirNFe(
     }
   }
 
+  let pessoaSemIbgeId: string | null = null;
   // Fallback 2: destinatário é uma Pessoa/fornecedor — busca no cadastro de
   // Pessoas pelo CPF/CNPJ. Compara raw + formatado, limit(1)+array — cadastros
   // com máscara não batiam no match exato por dígitos (mesma classe de bug da
@@ -345,11 +346,14 @@ export async function emitirNFe(
       : digits.length === 11 ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : digits;
     const { data: pessList } = await sb()
       .from("pessoas")
-      .select("municipio_ibge, municipio, estado, cep")
+      .select("id, municipio_ibge, municipio, estado, cep")
       .eq("fazenda_id", fazendaId)
       .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`)
       .limit(1);
     const pess = pessList?.[0] ?? null;
+    // Cadastro achado mas sem IBGE gravado: guarda o id pra tentar resolver via CEP (fallback 3) e
+    // já corrigir o cadastro, em vez de só falhar a emissão com "cMun do destinatário inválido".
+    if (pess && !pess.municipio_ibge && pess.cep) pessoaSemIbgeId = pess.id;
     if (pess?.municipio_ibge) {
       input = {
         ...input,
@@ -361,6 +365,33 @@ export async function emitirNFe(
         },
       };
     }
+  }
+
+  // Fallback 3: CEP tem o IBGE embutido no CEP do Correios (base ViaCEP) mesmo quando o cadastro
+  // (Pessoa/IE) nunca teve o campo preenchido — evita bloquear a emissão por um campo que o
+  // sistema pode resolver sozinho. Corrige o cadastro da Pessoa junto, pra não repetir a consulta.
+  if (!input.destinatario.municipio_ibge && input.destinatario.cep) {
+    try {
+      const cepDigits = input.destinatario.cep.replace(/\D/g, "");
+      if (cepDigits.length === 8) {
+        const r = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+        const via = await r.json() as { ibge?: string; localidade?: string; uf?: string; erro?: boolean };
+        if (!via.erro && via.ibge) {
+          input = {
+            ...input,
+            destinatario: {
+              ...input.destinatario,
+              municipio_ibge: via.ibge,
+              municipio_nome: input.destinatario.municipio_nome || via.localidade || undefined,
+              uf:             input.destinatario.uf             || via.uf          || undefined,
+            },
+          };
+          if (pessoaSemIbgeId) {
+            await sb().from("pessoas").update({ municipio_ibge: via.ibge, municipio: via.localidade, estado: via.uf }).eq("id", pessoaSemIbgeId);
+          }
+        }
+      }
+    } catch { /* ViaCEP fora do ar — segue sem o fallback, cai no erro CFG normal abaixo */ }
   }
 
   const certPath = confg.cert_a1_path;

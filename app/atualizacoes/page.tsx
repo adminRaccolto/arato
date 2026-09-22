@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-k",
+    data: "22/09/2026",
+    titulo: "NF-e: IBGE do destinatário resolvido pelo CEP",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ rejeitava a emissão (505, IBGE do destinatário não informado) quando o cadastro da Pessoa ou da Inscrição Estadual tinha o CEP preenchido mas nunca o código IBGE. Agora o sistema consulta o CEP no ViaCEP na hora da emissão e corrige o cadastro sozinho, sem precisar reabrir a tela de Pessoas para salvar de novo." },
+      { tipo: "melhoria", texto: "Removido o aviso fixo sobre a devolução emitir NF-e real — informação já dada pelo botão \"Emitir Devolução\"." },
+    ],
+    onde: "Fiscal · Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.22-j",
     data: "22/09/2026",
     titulo: "Importação: produtor/pessoa não encontrado em fazenda diferente da de origem",
