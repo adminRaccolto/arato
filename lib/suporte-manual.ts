@@ -534,6 +534,8 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
 
+**Correção 23/09/2026 — SEFAZ rejeitava com "cStat 215: Falha no Schema XML" sem aviso prévio:** a validação local antes de transmitir só checava o Código IBGE do Remetente — o IBGE do Percurso (Início/Fim, exigido pelo schema do CT-e independente do remetente) e do Destinatário não eram checados. Se a busca automática de IBGE falhasse silenciosamente pra qualquer um desses (rede instável no momento, nome de cidade), o XML saía com o campo vazio e só a SEFAZ barrava, com uma mensagem genérica que não dizia qual campo faltava. Corrigido: agora os 3 grupos (Remetente, Destinatário, Percurso Início/Fim) são checados antes de transmitir, e o aviso mostra exatamente qual está faltando. **Se travou nisso antes da correção, simplesmente clique em "Autorizar SEFAZ" de novo** — a busca de IBGE roda de novo na hora, geralmente resolve sozinha.
+
 **Correção 23/09/2026 — Veículo e Motorista apareciam vazios no seletor:** a lista de veículos e motoristas carregava com a fazenda ainda não totalmente resolvida (mesmo tipo de atraso já corrigido em outras telas) e nunca recarregava depois — o seletor ficava vazio mesmo com veículo/motorista cadastrados. Corrigido.
 
 **Novo 23/09/2026 — Veículo e Motorista preenchem sozinhos a partir do CT-e vinculado:** ao marcar o primeiro CT-e em "CT-e Vinculados", se os campos Veículo e Motorista ainda estiverem vazios, eles são preenchidos automaticamente com o veículo/motorista já usados naquele CT-e — não precisa selecionar de novo uma informação que já está no CT-e.

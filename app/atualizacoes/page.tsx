@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-j",
+    data: "23/09/2026",
+    titulo: "CT-e: validação de IBGE agora cobre Percurso e Destinatário",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "\"Autorizar SEFAZ\" podia rejeitar com \"cStat 215: Falha no Schema XML\" sem nenhum aviso prévio — a checagem local só validava o Código IBGE do Remetente, não o do Percurso (Início/Fim) nem o do Destinatário. Se a busca automática de IBGE falhasse silenciosamente pra qualquer um desses, o XML ia pra SEFAZ com o campo vazio. Corrigido: os 3 grupos agora são checados antes de transmitir, com aviso apontando exatamente qual está faltando. Se travou nisso antes, clique em \"Autorizar SEFAZ\" de novo." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-i",
     data: "23/09/2026",
     titulo: "MDF-e: Veículo/Motorista vazios no seletor + preenchimento automático via CT-e",

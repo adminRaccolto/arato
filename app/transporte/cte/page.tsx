@@ -842,17 +842,26 @@ function CtePageInner() {
       observacao:         c.observacao  ?? undefined,
     };
 
-    // Validação local: campos críticos para o XML do CT-e
-    const camposCriticos: Record<string, string | undefined> = {
-      municipio_ibge: payload.remetente?.municipio_ibge,
-      municipio_nome: payload.remetente?.municipio_nome,
-      uf:             payload.remetente?.uf,
-    };
-    const faltantes = Object.entries(camposCriticos)
-      .filter(([, valor]) => !String(valor ?? "").trim() || valor === "0000000")
-      .map(([campo]) => campo);
+    // Validação local: campos críticos para o XML do CT-e. Achado real 23/09/2026: só o IBGE do
+    // remetente era validado aqui — o do PERCURSO (cMunIni/cMunFim, <ide> do CT-e) e o do
+    // destinatário não eram, então quando buscarIbge() falhava silenciosamente pra qualquer um
+    // desses (rede instável, nome de cidade sem acento certo), o XML saía com o campo vazio e a
+    // SEFAZ rejeitava com "cStat 215: Falha no Schema XML" — mensagem genérica, sem apontar o
+    // campo, e só depois de já ter tentado transmitir.
+    const ibgeInvalido = (v?: string) => !String(v ?? "").trim() || v === "0000000";
+    const gruposIbge: { label: string; ibge?: string; nome?: string; uf?: string }[] = [
+      { label: "Remetente",                 ibge: payload.remetente?.municipio_ibge,    nome: payload.remetente?.municipio_nome,    uf: payload.remetente?.uf },
+      { label: "Destinatário",             ibge: payload.destinatario?.municipio_ibge, nome: payload.destinatario?.municipio_nome, uf: payload.destinatario?.uf },
+      { label: "Percurso — Início",        ibge: payload.municipio_ini_ibge,           nome: payload.municipio_ini_nome,           uf: payload.uf_ini },
+      { label: "Percurso — Fim",           ibge: payload.municipio_fim_ibge,           nome: payload.municipio_fim_nome,           uf: payload.uf_fim },
+    ];
+    const faltantes = gruposIbge.filter(g => ibgeInvalido(g.ibge) || !String(g.nome ?? "").trim() || !String(g.uf ?? "").trim());
     if (faltantes.length) {
-      alert(`Não foi possível determinar o município do remetente.\n\nCampos ausentes: ${faltantes.join(", ")}\n\nPreencha o campo "Cód. IBGE Origem" diretamente neste CT-e ou cadastre o município correto no cadastro do remetente.`);
+      alert(
+        `Não foi possível determinar o(s) município(s) abaixo — a SEFAZ rejeitaria com "Falha no Schema XML":\n\n` +
+        faltantes.map(g => `• ${g.label}: ${g.nome || "(sem nome)"} / ${g.uf || "(sem UF)"} — IBGE ${g.ibge || "ausente"}`).join("\n") +
+        `\n\nPreencha o(s) campo(s) "Cód. IBGE" correspondente(s) diretamente neste CT-e, ou corrija o cadastro do remetente/destinatário.`
+      );
       return;
     }
 
