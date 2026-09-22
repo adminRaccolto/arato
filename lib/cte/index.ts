@@ -211,15 +211,28 @@ export async function emitirCTe(
   }
 
   // 9. Atualizar registro `ctes` com service_role_key (evita falha silenciosa por JWT expirado no cliente)
+  // Achado real 23/09/2026: a coluna xml_url nunca existiu em `ctes` (só em `notas_fiscais`) — o
+  // update falhava com PGRST204 SEMPRE, em SILÊNCIO (catch vazio), então TODO CT-e autorizado de
+  // verdade na SEFAZ (chave real gerada) nunca gravava "autorizado" aqui — a tela piscava
+  // "Autorizado" (update otimista local) e voltava pra "Rascunho" assim que recarregava do banco.
+  // Corrigido: tenta com xml_url; se a coluna não existir (schema sem a migration ainda), reenvia
+  // sem ela; e loga se mesmo assim falhar, em vez de engolir o erro — um CT-e autorizado na SEFAZ
+  // que não vira "autorizado" no banco é risco real de reemissão duplicada.
   if (options.cte_id) {
-    try {
-      await sb().from("ctes").update({
-        status:       resposta.sucesso ? "autorizado" : "rascunho",
-        chave_acesso: built.chave,
-        xml_url:      xmlUrl ?? null,
-        numero_cte:   String(built.numero),
-      }).eq("id", options.cte_id);
-    } catch { /* best-effort — cliente ainda faz o update como fallback */ }
+    const payloadUpdate = {
+      status:       resposta.sucesso ? "autorizado" : "rascunho",
+      chave_acesso: built.chave,
+      xml_url:      xmlUrl ?? null,
+      numero_cte:   String(built.numero),
+    };
+    const { error: updErr } = await sb().from("ctes").update(payloadUpdate).eq("id", options.cte_id);
+    if (updErr?.code === "PGRST204") {
+      const { xml_url: _xu, ...semXmlUrl } = payloadUpdate;
+      const retry = await sb().from("ctes").update(semXmlUrl).eq("id", options.cte_id);
+      if (retry.error) console.error("[emitirCTe] falha ao gravar status autorizado (retry sem xml_url):", retry.error);
+    } else if (updErr) {
+      console.error("[emitirCTe] falha ao gravar status autorizado:", updErr);
+    }
   }
 
   return {

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-g",
+    data: "23/09/2026",
+    titulo: "CT-e autorizado na SEFAZ voltava pra \"Rascunho\" (achado grave)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A tabela de CT-e nunca teve a coluna xml_url, mas o sistema tentava gravar nela toda vez que autorizava — o erro era descartado em silêncio e o CT-e nunca virava \"Autorizado\" no banco mesmo quando a SEFAZ realmente autorizava. A tela piscava \"Autorizado\" e voltava pra \"Rascunho\". Risco real: reemitir o mesmo frete gerava dois CT-e's autorizados de verdade pra mesma carga. Corrigido — a gravação não depende mais dessa coluna. Se isso já aconteceu, verifique no Portal da SEFAZ-MT se não ficou CT-e duplicado pro mesmo frete." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-f",
     data: "23/09/2026",
     titulo: "MDF-e: série e próximo número configurados não apareciam ao emitir",

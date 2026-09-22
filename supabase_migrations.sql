@@ -13320,3 +13320,16 @@ ALTER TABLE nf_entradas
   ADD COLUMN IF NOT EXISTS valor_icms_deson NUMERIC(14,2);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 280 — xml_url em ctes
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A coluna nunca existiu (só em notas_fiscais) — o código de autorização (lib/cte/index.ts)
+-- sempre tentava gravar nela, o update falhava com PGRST204 em silêncio, e TODO CT-e autorizado
+-- de verdade na SEFAZ nunca virava "autorizado" no banco (a tela piscava e voltava pra rascunho).
+-- O código já tem um retry sem essa coluna pra não travar antes dessa migration rodar, mas rodar
+-- garante que o link do XML autorizado fique salvo (mesmo padrão de notas_fiscais.xml_url).
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS xml_url TEXT;
+
+NOTIFY pgrst, 'reload schema';
