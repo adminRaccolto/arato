@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-k",
+    data: "23/09/2026",
+    titulo: "CT-e: Cód. IBGE de Destino às vezes vinha igual ao da Origem",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Ao usar \"🔍 Buscar dados da NF-e\", em alguns casos o Cód. IBGE do Destino saía preenchido com o mesmo código da Origem — a leitura do XML usava seletor CSS, que pode casar com o elemento errado em XML com namespace, sem dar erro. Corrigido: a leitura agora usa só busca por nome de tag." },
+      { tipo: "novo", texto: "Os campos \"Cód. IBGE Origem/Destino\" ganharam um botão 🔄 — força buscar de novo pelo Município, mesmo se o campo já tiver um valor (a busca automática só roda sozinha quando o campo está vazio)." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-j",
     data: "23/09/2026",
     titulo: "CT-e: validação de IBGE agora cobre Percurso e Destinatário",

@@ -715,16 +715,18 @@ function CtePageInner() {
       if (!json.ok || !json.xmlCompleto) { setNfeBuscaErro(json.erro || "NF-e não encontrada — confira a chave ou se o XML foi sincronizado (SIEG) ou está disponível na SEFAZ."); return; }
 
       const doc = new DOMParser().parseFromString(json.xmlCompleto, "text/xml");
-      const getTag = (parent: Element | Document, tag: string) =>
-        parent.querySelector(tag)?.textContent ?? parent.getElementsByTagName(tag)[0]?.textContent ?? "";
-      const emit = doc.querySelector("emit") ?? doc.getElementsByTagName("emit")[0];
-      const dest = doc.querySelector("dest") ?? doc.getElementsByTagName("dest")[0];
-      const enderEmit = emit?.querySelector("enderEmit") ?? emit?.getElementsByTagName("enderEmit")[0];
-      const enderDest = dest?.querySelector("enderDest") ?? dest?.getElementsByTagName("enderDest")[0];
-      let dets = Array.from(doc.querySelectorAll("det"));
-      if (dets.length === 0) dets = Array.from(doc.getElementsByTagName("det"));
-      const prod = dets[0]?.querySelector("prod") ?? dets[0]?.getElementsByTagName("prod")[0];
-      const vol = doc.querySelector("transp vol") ?? doc.getElementsByTagName("vol")[0];
+      // getElementsByTagName por nome local — não usa querySelector aqui: XML com namespace
+      // default (comum em NF-e/CT-e) faz o CSS selector falhar ou, pior, casar com o elemento
+      // errado sem erro nenhum — achado real: <dest><enderDest> saindo com o município do
+      // <emit><enderEmit> às vezes, contaminando o Destino com o IBGE da Origem.
+      const getTag = (parent: Element | Document, tag: string) => parent.getElementsByTagName(tag)[0]?.textContent ?? "";
+      const emit = doc.getElementsByTagName("emit")[0];
+      const dest = doc.getElementsByTagName("dest")[0];
+      const enderEmit = emit?.getElementsByTagName("enderEmit")[0];
+      const enderDest = dest?.getElementsByTagName("enderDest")[0];
+      const dets = Array.from(doc.getElementsByTagName("det"));
+      const prod = dets[0]?.getElementsByTagName("prod")[0];
+      const vol = doc.getElementsByTagName("vol")[0];
       const vNF = parseFloat(getTag(doc, "vNF")) || 0;
 
       const municipioOrigem = enderEmit ? getTag(enderEmit, "xMun") : "";
@@ -1332,7 +1334,18 @@ function CtePageInner() {
               </div>
               <div>
                 <label style={lbl}>Cód. IBGE Origem {form.ibge_origem ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
-                <input value={form.ibge_origem} onChange={e => setForm(f => ({ ...f, ibge_origem: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" maxLength={7} />
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input value={form.ibge_origem} onChange={e => setForm(f => ({ ...f, ibge_origem: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" maxLength={7} />
+                  {/* Digitar direto neste campo sempre vale — este botão é só um atalho pra buscar de novo
+                      pelo nome do município quando o código já preenchido estiver errado (a busca
+                      automática só roda sozinha se o campo estiver vazio, pra não sobrescrever o que
+                      você já digitou). */}
+                  <button type="button" title="Buscar de novo pelo Município de Origem"
+                    onClick={async () => { const ibge = await buscarIbge(form.municipio_origem, form.uf_origem); if (ibge) setForm(f => ({ ...f, ibge_origem: ibge })); else alert("Município não encontrado — confira o nome digitado."); }}
+                    style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
+                    🔄
+                  </button>
+                </div>
               </div>
               <div style={{ gridColumn: "4 / 5" }} />
               <div>
@@ -1349,7 +1362,14 @@ function CtePageInner() {
               </div>
               <div>
                 <label style={lbl}>Cód. IBGE Destino {form.ibge_destino ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
-                <input value={form.ibge_destino} onChange={e => setForm(f => ({ ...f, ibge_destino: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5107602" maxLength={7} />
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input value={form.ibge_destino} onChange={e => setForm(f => ({ ...f, ibge_destino: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5107602" maxLength={7} />
+                  <button type="button" title="Buscar de novo pelo Município de Destino"
+                    onClick={async () => { const ibge = await buscarIbge(form.municipio_destino, form.uf_destino); if (ibge) setForm(f => ({ ...f, ibge_destino: ibge })); else alert("Município não encontrado — confira o nome digitado."); }}
+                    style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
+                    🔄
+                  </button>
+                </div>
               </div>
               <div style={{ gridColumn: "4 / 5" }} />
 
