@@ -1744,7 +1744,7 @@ function ImportacaoInner() {
     const [pessoasRes, opGerRes, produtoresRes] = await Promise.all([
       supabase.from("pessoas").select("id, cpf_cnpj, fazenda_id").in("fazenda_id", ids),
       supabase.from("operacoes_gerenciais").select("id, descricao, fazenda_id").in("fazenda_id", ids),
-      supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
+      supabase.from("produtores").select("id, cpf_cnpj").in("fazenda_id", ids),
     ]);
     // Maps globais (qualquer fazenda da conta)
     const pessoaMap: Record<string, string> = {};
@@ -2050,14 +2050,14 @@ function ImportacaoInner() {
       if (r.credor_cpf_cnpj?.trim()) {
         const docNum = r.credor_cpf_cnpj.replace(/\D/g, "");
         const { data: p } = await supabase.from("pessoas").select("id")
-          .eq("fazenda_id", fazendaId).ilike("cpf_cnpj", `%${docNum}%`).limit(1).maybeSingle();
+          .in("fazenda_id", fazendaIds).ilike("cpf_cnpj", `%${docNum}%`).limit(1).maybeSingle();
         pessoaId = p?.id ?? null;
       }
       // Resolve produtor_id para o contrato financeiro
       let produtorIdFin: string | null = null;
       if (r.produtor_cpf_cnpj?.trim()) {
         const docNumP = r.produtor_cpf_cnpj.replace(/\D/g, "");
-        const { data: prd } = await supabase.from("produtores").select("id").eq("fazenda_id", fazendaId).ilike("cpf_cnpj", `%${docNumP}%`).limit(1).maybeSingle();
+        const { data: prd } = await supabase.from("produtores").select("id").in("fazenda_id", fazendaIds).ilike("cpf_cnpj", `%${docNumP}%`).limit(1).maybeSingle();
         produtorIdFin = prd?.id ?? null;
       }
       const valorFin  = parseBRNum(r.valor_financiado || (r as unknown as Record<string,string>).valor_total || "0");
@@ -2449,10 +2449,11 @@ function ImportacaoInner() {
     let ok = 0, erros = 0, duplicados = 0, atualizados = 0;
 
     const [pessoasRes, produtoresRes, safrasRes, ciclosRes] = await Promise.all([
-      supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
-      supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
-      supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId),
-      supabase.from("ciclos").select("id, descricao").eq("fazenda_id", fazendaId),
+      supabase.from("pessoas").select("id, cpf_cnpj").in("fazenda_id", fazendaIds),
+      supabase.from("produtores").select("id, cpf_cnpj").in("fazenda_id", fazendaIds),
+      contaId ? supabase.from("anos_safra").select("id, descricao").eq("conta_id", contaId)
+              : supabase.from("anos_safra").select("id, descricao").in("fazenda_id", fazendaIds),
+      supabase.from("ciclos").select("id, descricao").in("fazenda_id", fazendaIds),
     ]);
     const pessoaMap: Record<string, string> = {};
     (pessoasRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => { if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id; });
@@ -2562,7 +2563,7 @@ function ImportacaoInner() {
       const { data: exist } = await supabase
         .from("produtores")
         .select("cpf_cnpj, inscricao_est")
-        .eq("fazenda_id", fazendaId);
+        .in("fazenda_id", fazendaIds);
       const existSet = new Set<string>();
       (exist ?? []).forEach((p: { cpf_cnpj: string | null; inscricao_est: string | null }) => {
         const cpf = (p.cpf_cnpj || "").replace(/\D/g, "");

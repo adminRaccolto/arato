@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.22-j",
+    data: "22/09/2026",
+    titulo: "Importação: produtor/pessoa não encontrado em fazenda diferente da de origem",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Em Configurações → Importação, os assistentes de Contratos Financeiros, Contratos de Venda e CP/CR buscavam o produtor e a pessoa (fornecedor/comprador) só na fazenda ativa. Num cliente com mais de uma fazenda, se o produtor foi cadastrado com a primeira fazenda dele (ex.: \"Fazenda Guasca\") e a importação era feita com outra fazenda ativa (ex.: \"Fazenda Herança J7\"), o produtor não era encontrado e a linha importava sem vínculo. Agora a busca cobre todas as fazendas do cliente." },
+    ],
+    onde: "Configurações → Importação",
+  },
+  {
     versao: "2026.09.22-i",
     data: "22/09/2026",
     titulo: "Devolução: Estornar remove o registro",
