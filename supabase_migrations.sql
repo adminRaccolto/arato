@@ -13515,3 +13515,21 @@ ALTER TABLE transferencias_estoque
   ADD COLUMN IF NOT EXISTS veiculo_uf_placa TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 288 — CT-e: Situação Tributária ICMS explícita (CST 00/40/41/51)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Achado real 23/09/2026: o CT-e sempre saía com ICMS tributado (CST 00, base de
+-- cálculo + alíquota 12% padrão) porque não existia nenhum campo de situação
+-- tributária no formulário nem em Parâmetros — só um seletor de alíquota, que
+-- nunca zerava o imposto mesmo quando a prestação deveria ser isenta/diferida.
+-- Agora o CST é explícito por CT-e (00/40/41/51) e configurável como padrão por
+-- emitente em Parâmetros → Fiscal → CT-e (cst_icms_padrao, dentro do JSONB de
+-- configuracoes_modulo — não precisa de coluna nova pra isso).
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS cst_icms TEXT CHECK (cst_icms IN ('00','40','41','51'));
+
+COMMENT ON COLUMN ctes.cst_icms IS
+  'Situação Tributária do ICMS no CT-e: 00 = tributação normal (usa base_calc_icms/aliquota_icms/valor_icms); 40 = isenta; 41 = não tributada; 51 = diferimento — nesses três últimos o XML usa o grupo ICMS45 (só a tag CST, sem base nem valor). NULL em CT-e antigos = tratado como "00" se aliquota_icms>0, senão "40" (heurística antiga preservada em lib/cte/builder.ts e no app).';
+
+NOTIFY pgrst, 'reload schema';

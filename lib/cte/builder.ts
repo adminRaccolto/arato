@@ -60,6 +60,7 @@ export interface CTeInput {
   peso_liquido_kg:  number;
   valor_mercadoria: number;
   aliquota_icms:    number;   // ex: 12
+  cst_icms?:        "00" | "40" | "41" | "51"; // situação tributária ICMS — default "00" se alíquota>0, senão "40"
   veiculo_placa:    string;
   veiculo_renavam?: string;
   motorista_nome:   string;
@@ -291,6 +292,8 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
 
   const baseCalc  = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
+  // CST explícito tem prioridade; sem CST informado, mantém a heurística antiga (compatibilidade)
+  const cstIcms   = input.cst_icms || (input.aliquota_icms > 0 ? "00" : "40");
 
   const naturezaLimpa = (limparTextoSefaz(input.natureza ?? "").slice(0, 60).trim())
     || "PRESTACAO DE SERVICO DE TRANSPORTE";
@@ -359,12 +362,12 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     </vPrest>
     <imp>
       <ICMS>
-        ${input.aliquota_icms > 0 ? `<ICMS00>
+        ${cstIcms === "00" ? `<ICMS00>
           <CST>00</CST>
           <vBC>${baseCalc}</vBC>
           <pICMS>${p2(input.aliquota_icms)}</pICMS>
           <vICMS>${valorICMS}</vICMS>
-        </ICMS00>` : `<ICMS45><CST>40</CST></ICMS45>`}
+        </ICMS00>` : `<ICMS45><CST>${cstIcms}</CST></ICMS45>`}
       </ICMS>
       <vTotTrib>0.00</vTotTrib>
     </imp>

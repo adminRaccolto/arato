@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-au",
+    data: "23/09/2026",
+    titulo: "CT-e: Situação Tributária ICMS configurável (não saía mais tributado sem precisar)",
+    modulos: ["Transporte", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "CT-e não tinha nenhuma configuração de situação tributária de ICMS — só um seletor de alíquota com padrão fixo em 12%, então todo CT-e novo nascia tributado (base de cálculo + valor de ICMS) mesmo quando a prestação deveria sair isenta ou diferida. Novo campo \"Situação Tributária ICMS\" no formulário, com as opções reais do schema do CT-e: 00 (Tributação normal), 40 (Isenta), 41 (Não tributada), 51 (Diferimento). Fora do \"00\", o CT-e sai sem base de cálculo nem valor de ICMS — no XML transmitido e no DACTE impresso." },
+      { tipo: "melhoria", texto: "Parâmetros → Fiscal → CT-e ganhou o campo \"Situação Tributária ICMS Padrão\" por emitente — configure uma vez o que é normal pra aquele CNPJ (ex.: diferido) e todo CT-e novo dessa transportadora já nasce com essa situação marcada." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e) · Configurações → Parâmetros do Sistema → CT-e",
+  },
+  {
     versao: "2026.09.23-at",
     data: "23/09/2026",
     titulo: "CT-e: endereço de outra IE do produtor · Transferência: valor zerado na NF · Replicar transferência",

@@ -63,6 +63,7 @@ interface Cte {
   valor_frete: number;
   base_calc_icms: number;
   aliquota_icms: number;
+  cst_icms?: "00" | "40" | "41" | "51" | null;
   valor_icms: number;
   emitente_id?: string | null;
   emitente_razao_social?: string | null;
@@ -118,6 +119,15 @@ const CFOPS_CTE = [
 
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
 
+// Situação Tributária do ICMS no CT-e (grupo <imp><ICMS>): CST 00 = tributação normal (usa alíquota);
+// CST 40/41/51 usam o grupo ICMS45 — só a tag <CST>, sem base de cálculo nem valor.
+const CST_ICMS_OPCOES: { valor: "00" | "40" | "41" | "51"; label: string }[] = [
+  { valor: "00", label: "00 — Tributação normal (com ICMS)" },
+  { valor: "40", label: "40 — Isenta" },
+  { valor: "41", label: "41 — Não tributada" },
+  { valor: "51", label: "51 — Diferimento (ICMS diferido)" },
+];
+
 // ─────────────────────────────────────────────────────────────
 // DACTE — Documento Auxiliar do CT-e Modelo 57
 // ─────────────────────────────────────────────────────────────
@@ -141,8 +151,13 @@ function imprimirDacte(c: Cte, logoUrl?: string | null) {
   };
 
   // Situação tributária do ICMS — mesma regra do builder do CT-e (lib/cte/builder.ts):
-  // alíquota > 0 → CST 00 (tributação normal); alíquota = 0 → CST 40 (isenção), grupo ICMS45.
-  const situacaoTrib = c.aliquota_icms > 0 ? "00 - Tributação normal ICMS" : "40 - ICMS isenção";
+  // c.cst_icms explícito (00/40/41/51); CT-e's antigos sem o campo caem na heurística por alíquota.
+  const cstIcmsDacte = c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40");
+  const SITUACAO_TRIB_LABEL: Record<string, string> = {
+    "00": "00 - Tributação normal ICMS", "40": "40 - ICMS isenção",
+    "41": "41 - ICMS não tributado", "51": "51 - ICMS diferido",
+  };
+  const situacaoTrib = SITUACAO_TRIB_LABEL[cstIcmsDacte] ?? cstIcmsDacte;
 
   const tomadorPessoa =
     c.tomador_tipo === "destinatario"
@@ -322,9 +337,9 @@ table.mini td{padding:0}
   <!-- Impostos -->
   <div class="grid">
     ${campo("SITUAÇÃO TRIBUTÁRIA", situacaoTrib, 2)}
-    ${campo("BASE DE CALCULO", brl(c.base_calc_icms), 1)}
-    ${campo("ALÍQ ICMS", c.aliquota_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), 1)}
-    ${campo("VALOR ICMS", brl(c.valor_icms), 1)}
+    ${campo("BASE DE CALCULO", cstIcmsDacte === "00" ? brl(c.base_calc_icms) : "—", 1)}
+    ${campo("ALÍQ ICMS", cstIcmsDacte === "00" ? c.aliquota_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "—", 1)}
+    ${campo("VALOR ICMS", cstIcmsDacte === "00" ? brl(c.valor_icms) : "0,00", 1)}
     ${campo("% RED. BC ICMS", "", 1)}
     ${campo("ICMS ST", "", 1)}
   </div>
@@ -488,14 +503,15 @@ function CtePageInner() {
     peso_bruto_kg: 0, peso_liquido_kg: 0,
     valor_mercadoria: 0, valor_frete: 0,
     aliquota_icms: "12",
+    cst_icms: "00" as "00" | "40" | "41" | "51",
     veiculo_id: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
     nfe_chave: "", observacao: "",
   });
   const [form, setForm] = useState(FORM_VAZIO());
 
-  // Calculados
-  const baseCalcIcms   = form.valor_frete || 0;
-  const valorIcms      = +(baseCalcIcms * (parseFloat(form.aliquota_icms) / 100)).toFixed(2);
+  // Calculados — só há base de cálculo/ICMS quando a situação tributária é 00 (tributação normal)
+  const baseCalcIcms   = form.cst_icms === "00" ? (form.valor_frete || 0) : 0;
+  const valorIcms       = form.cst_icms === "00" ? +(baseCalcIcms * (parseFloat(form.aliquota_icms) / 100)).toFixed(2) : 0;
 
   // ── Carregar ─────────────────────────────────────────────
   const carregar = useCallback(async () => {
@@ -603,6 +619,7 @@ function CtePageInner() {
       peso_bruto_kg: c.peso_bruto_kg ?? 0, peso_liquido_kg: c.peso_liquido_kg ?? 0,
       valor_mercadoria: c.valor_mercadoria ?? 0, valor_frete: c.valor_frete ?? 0,
       aliquota_icms: String(c.aliquota_icms),
+      cst_icms: (c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40")) as "00" | "40" | "41" | "51",
       veiculo_id: c.veiculo_id ?? "", motorista_id: c.motorista_id ?? "",
       motorista_nome: c.motorista_nome ?? "", motorista_cpf: c.motorista_cpf ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
@@ -854,7 +871,8 @@ function CtePageInner() {
         valor_mercadoria: form.valor_mercadoria || 0,
         valor_frete: form.valor_frete || 0,
         base_calc_icms: baseCalcIcms,
-        aliquota_icms: parseFloat(form.aliquota_icms) || 0,
+        aliquota_icms: form.cst_icms === "00" ? (parseFloat(form.aliquota_icms) || 0) : 0,
+        cst_icms: form.cst_icms,
         valor_icms: valorIcms,
         veiculo_id: form.veiculo_id || null,
         veiculo_placa: veiculo?.placa ?? "",
@@ -1079,6 +1097,7 @@ function CtePageInner() {
       peso_liquido_kg:    c.peso_liquido_kg,
       valor_mercadoria:   c.valor_mercadoria,
       aliquota_icms:      c.aliquota_icms,
+      cst_icms:           c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40"),
       veiculo_placa:      c.veiculo_placa,
       motorista_nome:     c.motorista_nome,
       motorista_cpf:      c.motorista_cpf ?? "",
@@ -1505,7 +1524,11 @@ function CtePageInner() {
                         const maxExistente = ctes
                           .filter(c => c.emitente_cnpj === emp?.cpf_cnpj && c.serie === serieCfg)
                           .reduce((max, c) => Math.max(max, parseInt(c.numero_cte) || 0), 0);
-                        setForm(f => ({ ...f, serie: serieCfg, numero_cte: String(Math.max(numInicial, maxExistente + 1)) }));
+                        // CST ICMS padrão também vem de Parâmetros (mesma lógica da NF-e) — sem
+                        // isso todo CT-e novo nascia com CST 00 (tributação normal) mesmo quando o
+                        // emitente deveria sair diferido/isento. Achado real 23/09/2026.
+                        const cstPadrao = (cfg.cst_icms_padrao as "00" | "40" | "41" | "51" | undefined) || "00";
+                        setForm(f => ({ ...f, serie: serieCfg, numero_cte: String(Math.max(numInicial, maxExistente + 1)), cst_icms: cstPadrao }));
                       }}
                       style={{ ...inp, borderColor: !form.emitente_id ? "#E9C97B" : undefined }}
                     >
@@ -1789,15 +1812,31 @@ function CtePageInner() {
                 <InputMonetario value={form.valor_frete} onChange={v => setForm(f => ({ ...f, valor_frete: v }))} style={inp} />
               </div>
               <div>
-                <label style={lbl}>Alíquota ICMS (%)</label>
-                <select value={form.aliquota_icms} onChange={e => setForm(f => ({ ...f, aliquota_icms: e.target.value }))} style={inp}>
-                  {["7","12","17","0"].map(a => <option key={a} value={a}>{a}%</option>)}
+                <label style={lbl}>Situação Tributária ICMS</label>
+                <select value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value as "00" | "40" | "41" | "51" }))} style={inp}>
+                  {CST_ICMS_OPCOES.map(o => <option key={o.valor} value={o.valor}>{o.label}</option>)}
                 </select>
               </div>
-              <div>
-                <label style={lbl}>Valor ICMS (calculado)</label>
-                <div style={{ ...inp, background: "var(--bg-card)", color: "#111111", fontWeight: 600 }}>{fmtBRL(valorIcms)}</div>
-              </div>
+              {form.cst_icms === "00" ? (
+                <>
+                  <div>
+                    <label style={lbl}>Alíquota ICMS (%)</label>
+                    <select value={form.aliquota_icms} onChange={e => setForm(f => ({ ...f, aliquota_icms: e.target.value }))} style={inp}>
+                      {["7","12","17","0"].map(a => <option key={a} value={a}>{a}%</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Valor ICMS (calculado)</label>
+                    <div style={{ ...inp, background: "var(--bg-card)", color: "#111111", fontWeight: 600 }}>{fmtBRL(valorIcms)}</div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ gridColumn: "span 2", fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "flex-end", paddingBottom: 8 }}>
+                  {form.cst_icms === "51"
+                    ? "ICMS diferido — sem base de cálculo nem valor de ICMS destacados no CT-e."
+                    : "Sem incidência de ICMS nesta prestação — sem base de cálculo nem valor destacados."}
+                </div>
+              )}
               <div />
 
               {/* ── Vínculo NF-e ── */}
