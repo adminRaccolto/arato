@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-aa",
+    data: "23/09/2026",
+    titulo: "NF-e de Transferência: CFOP de produção própria estava trocado com o de terceiros",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Fiscal → aba Transferência: a opção \"Transferência de Produção do Estabelecimento\" estava marcada com o CFOP 5.152/6.152 — que oficialmente significa \"mercadoria adquirida de terceiros\", não produção própria (o código certo é 5.151/6.151). Toda NF-e de transferência de produção própria emitida por essa tela saía com CFOP e natureza da operação incompatíveis entre si. Corrigido; a opção correta de terceiros (5.152/6.152) foi adicionada separadamente." },
+      { tipo: "correcao", texto: "Estoque → Transferências: a natureza da operação e o texto legal do diferimento de ICMS informado na NF-e (Informações Complementares) estavam sempre fixos como \"produção própria\", mesmo quando o CFOP escolhido na tela era o de mercadoria de terceiros (5152/6152). Agora os dois batem com o CFOP selecionado, e o texto legal do diferimento (Decreto MT n. 4.540/2004) passou a ser incluído automaticamente — antes só ia um texto genérico com número e CFOP da transferência." },
+    ],
+    onde: "Fiscal → Transferência · Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-z",
     data: "23/09/2026",
     titulo: "Catálogo de insumos passa a ser por cliente (conta), não por fazenda",

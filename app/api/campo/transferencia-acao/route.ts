@@ -200,6 +200,17 @@ export async function POST(request: NextRequest) {
 
       // 5. Monta input da NF-e
       const cfop = String(t.cfop ?? "5151").replace(/\D/g, "");
+      // CFOP terminado em 151 = produção do próprio estabelecimento; terminado
+      // em 152 = mercadoria adquirida/recebida de terceiros — a natureza da
+      // operação e o texto legal do diferimento precisam bater com o CFOP
+      // escolhido (antes disso, o texto vinha sempre fixo como "produção
+      // própria" mesmo quando o CFOP selecionado era 5152/6152 — o mesmo tipo
+      // de inconsistência achada numa NF real emitida fora deste módulo).
+      const ehProducaoPropria = cfop.endsWith("151");
+      const naturezaTransf = ehProducaoPropria
+        ? "Transferência de mercadoria de produção própria"
+        : "Transferência de mercadoria adquirida de terceiros";
+      const textoLegalDiferido = "ICMS diferido nos termos do Decreto MT n. 4.540/2004 — transferência entre estabelecimentos do mesmo titular, operação não configura venda. Não incide PIS/COFINS nem Funrural.";
       const itenNfe = itensTransf.map((it, idx) => {
         const ins = insumoMap[it.insumo_id as string] ?? {};
         const valorUnit = Number(ins.custo_medio ?? ins.valor_unitario ?? 1);
@@ -255,8 +266,8 @@ export async function POST(request: NextRequest) {
       const resultado = await emitirNFe(fazId, moduloKey, {
         destinatario: destinatarioDados,
         itens: itenNfe,
-        natureza: "Transferência de mercadoria de produção própria",
-        infCpl:   `Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`,
+        natureza: naturezaTransf,
+        infCpl:   `${textoLegalDiferido} | Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`,
         frete:    (t.frete_conta as "0"|"1"|"2"|"9" | null) ?? "9",
         tipo:     "1",
         transportadora: transportadoraNfe,
