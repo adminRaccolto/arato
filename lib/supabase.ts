@@ -1171,6 +1171,14 @@ export type TransferenciaEstoque = {
   solicitante_nome?: string | null;
   via_app: boolean;
   urgencia: "programado" | "urgente";
+  transportadora_id?: string | null;
+  veiculo_id?: string | null;
+  veiculo_placa?: string | null;      // texto livre — usado quando não bate com nenhum veículo do cadastro
+  veiculo_uf_placa?: string | null;
+  motorista_id?: string | null;
+  motorista_nome?: string | null;     // texto livre — usado quando não bate com nenhum motorista do cadastro
+  motorista_cpf?: string | null;
+  frete_conta?: string | null;
   created_at?: string;
 };
 

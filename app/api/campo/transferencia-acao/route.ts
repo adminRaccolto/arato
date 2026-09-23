@@ -256,11 +256,19 @@ export async function POST(request: NextRequest) {
         if (veic) {
           transportadoraNfe = {
             ...transportadoraNfe,
-            placa:    veic.placa || undefined,
-            uf_placa: veic.uf_placa || undefined,
+            placa:    veic.placa || (t.veiculo_placa as string | undefined) || undefined,
+            uf_placa: veic.uf_placa || (t.veiculo_uf_placa as string | undefined) || undefined,
             rntrc:    transportadoraNfe?.rntrc || veic.rntrc || undefined,
           };
         }
+      } else if (t.veiculo_placa) {
+        // Placa digitada livre, sem cadastro em Veículos — mesmo padrão já
+        // usado pro motorista (CT-e/MDF-e/Expedição/Transferência de Máquinas).
+        transportadoraNfe = {
+          ...transportadoraNfe,
+          placa:    t.veiculo_placa as string,
+          uf_placa: (t.veiculo_uf_placa as string | undefined) || undefined,
+        };
       }
 
       const resultado = await emitirNFe(fazId, moduloKey, {
@@ -456,7 +464,11 @@ export async function POST(request: NextRequest) {
           observacao:          transferencia.observacao ?? null,
           transportadora_id:   transferencia.transportadora_id ?? null,
           veiculo_id:          transferencia.veiculo_id ?? null,
+          veiculo_placa:       transferencia.veiculo_placa ?? null,
+          veiculo_uf_placa:    transferencia.veiculo_uf_placa ?? null,
           motorista_id:        transferencia.motorista_id ?? null,
+          motorista_nome:      transferencia.motorista_nome ?? null,
+          motorista_cpf:       transferencia.motorista_cpf ?? null,
           frete_conta:         transferencia.frete_conta ?? "9",
         })
         .eq("id", tid)

@@ -13501,3 +13501,17 @@ COMMENT ON COLUMN ncm_tributacoes.ibs_cbs_cclasstrib IS
   'cClassTrib do IBS/CBS (6 dígitos, Tabela de Classificação Tributária do Comitê Gestor) — 000001 = tributação integral sem benefício. Conferir com o contador, principalmente pra NCMs com redução (produtos agropecuários).';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 287 — Transferência de Estoque: Placa e Motorista sem exigir cadastro
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Mesmo padrão já aplicado em CT-e, MDF-e, Expedição de Grãos e Transferência
+-- de Máquinas (Seção 283) — ficou de fora dessa tela por engano. Motorista
+-- aceita texto livre (sem cadastro obrigatório); Veículo/Placa também.
+ALTER TABLE transferencias_estoque
+  ADD COLUMN IF NOT EXISTS motorista_nome  TEXT,
+  ADD COLUMN IF NOT EXISTS motorista_cpf   TEXT,
+  ADD COLUMN IF NOT EXISTS veiculo_placa   TEXT,
+  ADD COLUMN IF NOT EXISTS veiculo_uf_placa TEXT;
+
+NOTIFY pgrst, 'reload schema';

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ah",
+    data: "23/09/2026",
+    titulo: "Transferência de Estoque: Placa e Motorista não exigem mais cadastro prévio",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "Estoque → Transferências ficou de fora quando o campo Motorista virou texto livre em CT-e/MDF-e/Expedição/Transferência de Máquinas — corrigido agora. Veículo/Placa e Motorista deixaram de ser seletores fechados: digite e escolha uma sugestão do cadastro, ou digite qualquer placa/nome que não esteja cadastrado, sem precisar passar por Transporte → Cadastros antes." },
+    ],
+    onde: "Estoque → Transferências → Nova Transferência",
+  },
+  {
     versao: "2026.09.23-ag",
     data: "23/09/2026",
     titulo: "Cadastro de Transportadora duplicando — proteção adicionada",

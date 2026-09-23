@@ -132,7 +132,11 @@ export default function TransferenciasEstoquePage() {
     observacao: "",
     transportadoraId: "",
     veiculoId: "",
+    veiculoPlaca: "",
+    veiculoUfPlaca: "",
     motoristaId: "",
+    motoristaNome: "",
+    motoristaCpf: "",
     freteConta: "9",   // 9 = sem frete
     // CNPJ/CPF e IE do emitente (origem) — pré-preenchidos com o titular padrão
     // cadastrado pra fazenda de origem, mas editáveis: a fazenda é só o LOCAL
@@ -477,7 +481,11 @@ export default function TransferenciasEstoquePage() {
         via_app:              false,
         transportadora_id:    transpId,
         veiculo_id:           form.veiculoId || null,
+        veiculo_placa:        form.veiculoPlaca.trim() || null,
+        veiculo_uf_placa:     form.veiculoUfPlaca.trim() || null,
         motorista_id:         form.motoristaId || null,
+        motorista_nome:       form.motoristaNome.trim() || null,
+        motorista_cpf:        form.motoristaCpf.trim() || null,
         frete_conta:          form.freteConta || "9",
       };
       const res = editandoId
@@ -538,7 +546,7 @@ export default function TransferenciasEstoquePage() {
   }
 
   function resetForm() {
-    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", motoristaId: "", freteConta: "9", cpfCnpjOrigem: "", ieOrigem: "", cpfCnpjDestino: "", ieDestino: "", historica: false, nfNumeroHistorico: "", nfSerieHistorico: "", nfChaveHistorico: "", dataEmissaoHistorica: hoje() });
+    setForm({ fazendaOrigemId: fazendaId ?? "", depositoOrigemId: "", fazendaDestinoId: "", depositoDestinoId: "", dataTransferencia: hoje(), cfopSufixo: "152", entradaAutomatica: true, observacao: "", transportadoraId: "", veiculoId: "", veiculoPlaca: "", veiculoUfPlaca: "", motoristaId: "", motoristaNome: "", motoristaCpf: "", freteConta: "9", cpfCnpjOrigem: "", ieOrigem: "", cpfCnpjDestino: "", ieDestino: "", historica: false, nfNumeroHistorico: "", nfSerieHistorico: "", nfChaveHistorico: "", dataEmissaoHistorica: hoje() });
     setItens([{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]);
     setErro(null);
     setEditandoId(null);
@@ -589,7 +597,11 @@ export default function TransferenciasEstoquePage() {
       observacao:        t.observacao ?? "",
       transportadoraId:  (t as unknown as Record<string, string>).transportadora_id ?? "",
       veiculoId:         (t as unknown as Record<string, string>).veiculo_id ?? "",
+      veiculoPlaca:      (t as unknown as Record<string, string>).veiculo_placa ?? "",
+      veiculoUfPlaca:    (t as unknown as Record<string, string>).veiculo_uf_placa ?? "",
       motoristaId:       (t as unknown as Record<string, string>).motorista_id ?? "",
+      motoristaNome:     (t as unknown as Record<string, string>).motorista_nome ?? "",
+      motoristaCpf:      (t as unknown as Record<string, string>).motorista_cpf ?? "",
       freteConta:        (t as unknown as Record<string, string>).frete_conta ?? "9",
       cpfCnpjOrigem:     t.cpf_cnpj_origem ?? "",
       ieOrigem:          t.ie_origem ?? "",
@@ -1121,21 +1133,33 @@ export default function TransferenciasEstoquePage() {
                 </div>
                 <div>
                   <label style={lbl}>Veículo / Placa</label>
-                  <select value={form.veiculoId} onChange={e => setForm(f => ({ ...f, veiculoId: e.target.value }))} style={inp}>
-                    <option value="">— Sem veículo —</option>
-                    {veiculos.map(v => (
-                      <option key={v.id} value={v.id}>{v.placa}{v.tipo ? ` — ${v.tipo}` : ""}</option>
-                    ))}
-                  </select>
+                  {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
+                  <input list="transf-est-veiculos" value={form.veiculoPlaca}
+                    onChange={e => {
+                      const placa = e.target.value;
+                      const achado = veiculos.find(v => v.placa === placa);
+                      setForm(f => ({ ...f, veiculoPlaca: placa, veiculoId: achado?.id ?? "" }));
+                    }}
+                    style={inp} placeholder="Placa do veículo" />
+                  <datalist id="transf-est-veiculos">
+                    {veiculos.map(v => <option key={v.id} value={v.placa} />)}
+                  </datalist>
                 </div>
                 <div>
                   <label style={lbl}>Motorista</label>
-                  <select value={form.motoristaId} onChange={e => setForm(f => ({ ...f, motoristaId: e.target.value }))} style={inp}>
-                    <option value="">— Sem motorista —</option>
+                  {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
+                  <input list="transf-est-motoristas" value={form.motoristaNome}
+                    onChange={e => {
+                      const nome = e.target.value;
+                      const achado = motoristas.find(m => m.nome === nome);
+                      setForm(f => ({ ...f, motoristaNome: nome, motoristaId: achado?.id ?? "", motoristaCpf: achado?.cpf ?? f.motoristaCpf }));
+                    }}
+                    style={inp} placeholder="Nome do motorista" />
+                  <datalist id="transf-est-motoristas">
                     {motoristas.map(m => (
-                      <option key={m.id} value={m.id}>{m.nome}</option>
+                      <option key={m.id} value={m.nome} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label style={lbl}>Frete por conta</label>
