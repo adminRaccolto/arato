@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-as",
+    data: "23/09/2026",
+    titulo: "CT-e: Série/Número não vinham de Parâmetros, prefill incompleto, Destinatário não aceitava Produtor",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Emitir CT-e nunca lia Série/Próx. Número configurados em Parâmetros → Fiscal → CT-e — o formulário sempre usava série \"1\" fixa e calculava o próximo número só pelo maior já emitido, ignorando a configuração por emitente. Corrigido: ao escolher a Transportadora Emitente, Série e Próx. Número são resolvidos automaticamente a partir do CNPJ configurado." },
+      { tipo: "correcao", texto: "Abrir CT-e a partir de uma NF (Fiscal → Monitor de Notas Emitidas → botão \"CT-e / MDF-e\") não preenchia Inscrição Estadual do remetente, CFOP, nem Município/UF/IE do destinatário (esses últimos nunca ficam guardados na NF em si) — agora busca o destinatário no cadastro de Pessoas pelo CNPJ/CPF pra completar esses campos." },
+      { tipo: "correcao", texto: "O seletor de Destinatário só listava Pessoas cadastradas, nunca Produtores — impedindo o caso real de transferência entre duas propriedades/Inscrições Estaduais do MESMO produtor (que já podia ser escolhido como Remetente, mas não como Destinatário). Agora o seletor de Destinatário combina Produtores e Pessoas, igual ao de Remetente." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e) · Fiscal → Monitor de Notas Emitidas",
+  },
+  {
     versao: "2026.09.23-ar",
     data: "23/09/2026",
     titulo: "NF-e saía com a IE certa mas endereço de outra IE do mesmo produtor",

@@ -462,6 +462,7 @@ function CtePageInner() {
   const [err, setErr]         = useState("");
   // IEs múltiplas por CPF/CNPJ
   const [remetenteSelUI,  setRemetenteSelUI]  = useState("");
+  const [destinatarioSelUI, setDestinatarioSelUI] = useState("");
   const [iesRemetente,    setIesRemetente]    = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
   const [iesDestinatario, setIesDestinatario] = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
 
@@ -532,10 +533,11 @@ function CtePageInner() {
     sessionStorage.removeItem("cte_prefill_nfe");
     try {
       const p = JSON.parse(rawStr) as {
-        remetente_nome: string; remetente_cnpj: string;
-        destinatario_nome: string; destinatario_cnpj: string;
+        remetente_nome: string; remetente_cnpj: string; remetente_ie?: string;
+        destinatario_nome: string; destinatario_cnpj: string; destinatario_ie?: string;
         municipio_origem: string; uf_origem: string;
         municipio_destino: string; uf_destino: string;
+        cfop?: string;
         valor_mercadoria: number; nfe_chave: string;
         produto_descricao: string; ncm: string;
         quantidade: number; unidade: string;
@@ -546,12 +548,15 @@ function CtePageInner() {
         numero_cte:        proximoNr,
         remetente_nome:    p.remetente_nome    || f.remetente_nome,
         remetente_cnpj:    p.remetente_cnpj    || f.remetente_cnpj,
+        remetente_ie:      p.remetente_ie      || f.remetente_ie,
         destinatario_nome: p.destinatario_nome || f.destinatario_nome,
         destinatario_cnpj: p.destinatario_cnpj || f.destinatario_cnpj,
+        destinatario_ie:   p.destinatario_ie   || f.destinatario_ie,
         municipio_origem:  p.municipio_origem  || f.municipio_origem,
         uf_origem:         p.uf_origem         || f.uf_origem,
         municipio_destino: p.municipio_destino || f.municipio_destino,
         uf_destino:        p.uf_destino        || f.uf_destino,
+        cfop:              p.cfop              || f.cfop,
         valor_mercadoria:  p.valor_mercadoria  || f.valor_mercadoria,
         nfe_chave:         p.nfe_chave         || f.nfe_chave,
         produto_descricao: p.produto_descricao || f.produto_descricao,
@@ -570,6 +575,8 @@ function CtePageInner() {
     setForm({ ...FORM_VAZIO(), numero_cte: proximoNr });
     setRemetenteSelUI("");
     setIesRemetente([]);
+    setDestinatarioSelUI("");
+    setIesDestinatario([]);
     setErr("");
     setModal(true);
   }
@@ -598,6 +605,8 @@ function CtePageInner() {
     });
     setRemetenteSelUI("");
     setIesRemetente([]);
+    setDestinatarioSelUI("");
+    setIesDestinatario([]);
     setErr("");
     setModal(true);
   }
@@ -671,21 +680,47 @@ function CtePageInner() {
     }
   }
 
-  // ── Auto-fill destinatário (usa pessoas) ────────────────
-  async function selecionarDestinatario(id: string) {
-    const p = pessoas.find(p => p.id === id);
-    const ies = await buscarIesPorCpfCnpj(p?.cpf_cnpj);
-    setIesDestinatario(ies);
-    setForm(f => ({
-      ...f,
-      destinatario_id: id,
-      destinatario_nome: p?.nome ?? "",
-      destinatario_cnpj: p?.cpf_cnpj ?? "",
-      destinatario_ie: ies.length === 1 ? ies[0].inscricao_estadual : (p?.inscricao_est ?? ""),
-      municipio_destino: p?.municipio ?? f.municipio_destino,
-      uf_destino: p?.estado ?? f.uf_destino,
-      ibge_destino: p?.municipio_ibge ?? f.ibge_destino,
-    }));
+  // ── Auto-fill destinatário — Produtores ou Pessoas (mesmo combo do Remetente).
+  // Achado real 23/09/2026: antes só listava Pessoas, então um produtor que já
+  // tinha sido escolhido como Remetente nem aparecia como opção de Destinatário
+  // — impedindo o caso real de transferência entre duas IEs do MESMO produtor.
+  async function selecionarDestinatarioCombo(v: string) {
+    setDestinatarioSelUI(v);
+    if (!v) {
+      setIesDestinatario([]);
+      setForm(f => ({ ...f, destinatario_id: "" }));
+      return;
+    }
+    const [tipo, id] = v.split(":");
+    if (tipo === "produtor") {
+      const prod = produtores.find(p => p.id === id);
+      const ies = await buscarIesPorProdutorId(id);
+      setIesDestinatario(ies);
+      setForm(f => ({
+        ...f,
+        destinatario_id: "",
+        destinatario_nome: prod?.nome ?? "",
+        destinatario_cnpj: prod?.cpf_cnpj ?? "",
+        destinatario_ie: ies.length === 1 ? ies[0].inscricao_estadual : (prod?.inscricao_est ?? ""),
+        municipio_destino: prod?.municipio ?? f.municipio_destino,
+        uf_destino: prod?.estado ?? f.uf_destino,
+        ibge_destino: prod?.municipio_ibge ?? f.ibge_destino,
+      }));
+    } else if (tipo === "pessoa") {
+      const p = pessoas.find(p => p.id === id);
+      const ies = await buscarIesPorCpfCnpj(p?.cpf_cnpj);
+      setIesDestinatario(ies);
+      setForm(f => ({
+        ...f,
+        destinatario_id: id,
+        destinatario_nome: p?.nome ?? "",
+        destinatario_cnpj: p?.cpf_cnpj ?? "",
+        destinatario_ie: ies.length === 1 ? ies[0].inscricao_estadual : (p?.inscricao_est ?? ""),
+        municipio_destino: p?.municipio ?? f.municipio_destino,
+        uf_destino: p?.estado ?? f.uf_destino,
+        ibge_destino: p?.municipio_ibge ?? f.ibge_destino,
+      }));
+    }
   }
 
   function selecionarVeiculo(id: string) {
@@ -1402,7 +1437,7 @@ function CtePageInner() {
                     <label style={lbl}>Selecionar Transportadora Emitente</label>
                     <select
                       value={form.emitente_id}
-                      onChange={e => {
+                      onChange={async e => {
                         const emp = empresasTransp.find(x => x.id === e.target.value);
                         setForm(f => ({
                           ...f,
@@ -1410,6 +1445,26 @@ function CtePageInner() {
                           emitente_razao_social: emp?.razao_social ?? emp?.nome ?? "",
                           emitente_cnpj: emp?.cpf_cnpj ?? "",
                         }));
+                        // Série/Próx. Número vêm de Parâmetros → Fiscal → CT-e (por emitente,
+                        // CNPJ) — antes disso o formulário nunca lia essa configuração e sempre
+                        // usava série "1" fixa + o maior número já emitido +1, ignorando o que
+                        // estava configurado. Achado real 23/09/2026.
+                        const digits = (emp?.cpf_cnpj ?? "").replace(/\D/g, "");
+                        if (!digits) return;
+                        const idsBusca = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
+                        if (idsBusca.length === 0) return;
+                        const { data: cfgRow } = await supabase
+                          .from("configuracoes_modulo").select("config")
+                          .in("fazenda_id", idsBusca).eq("modulo", `cte_emp_${digits}`)
+                          .limit(1).maybeSingle();
+                        const cfg = cfgRow?.config as Record<string, string> | undefined;
+                        if (!cfg) return;
+                        const serieCfg = cfg.serie_cte || "1";
+                        const numInicial = parseInt(cfg.numero_inicial ?? "1") || 1;
+                        const maxExistente = ctes
+                          .filter(c => c.emitente_cnpj === emp?.cpf_cnpj && c.serie === serieCfg)
+                          .reduce((max, c) => Math.max(max, parseInt(c.numero_cte) || 0), 0);
+                        setForm(f => ({ ...f, serie: serieCfg, numero_cte: String(Math.max(numInicial, maxExistente + 1)) }));
                       }}
                       style={{ ...inp, borderColor: !form.emitente_id ? "#E9C97B" : undefined }}
                     >
@@ -1505,11 +1560,17 @@ function CtePageInner() {
               {/* ── Destinatário ── */}
               <div style={divider}>Destinatário</div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Selecionar Destinatário (Pessoas cadastradas)</label>
-                <select value={form.destinatario_id} onChange={e => selecionarDestinatario(e.target.value)} style={inp}>
-                  <option value="">— Selecionar —</option>
-                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome} {p.cpf_cnpj ? `· ${p.cpf_cnpj}` : ""}</option>)}
-                </select>
+                <label style={lbl}>Selecionar Destinatário (Produtores ou Pessoas/terceiros cadastrados)</label>
+                <SelectBusca
+                  value={destinatarioSelUI}
+                  onChange={v => selecionarDestinatarioCombo(v)}
+                  placeholder="— Selecionar —"
+                  options={[
+                    ...produtores.map(p => ({ value: `produtor:${p.id}`, label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}`, group: "Produtores cadastrados" })),
+                    ...pessoas.map(p => ({ value: `pessoa:${p.id}`, label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}`, group: "Pessoas cadastradas (terceiros)" })),
+                  ]}
+                  style={inp}
+                />
               </div>
               <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Razão Social / Nome</label>

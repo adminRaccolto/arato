@@ -1521,18 +1521,39 @@ function FiscalInner() {
     finally { setSalvando(false); }
   };
 
-  function maniTestarNF(nota: NotaFiscal) {
+  async function maniTestarNF(nota: NotaFiscal) {
     const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
     const itens = (nota.itens_json ?? []) as Array<{ item: string; ncm: string; quantidade: number; unidade: string }>;
+
+    // Endereço/IE do destinatário não ficam guardados na NF em si — busca no
+    // cadastro de Pessoas pelo CNPJ/CPF pra não deixar Município/UF/IE de
+    // destino em branco no CT-e (achado real 23/09/2026: CT-e aberto a partir
+    // da NF vinha sem Remetente/Destinatário/outros campos preenchidos).
+    let destMunicipio = "", destUf = "MT", destIe = "";
+    if (nota.cnpj_destinatario && fazendaId) {
+      const digitsDest = nota.cnpj_destinatario.replace(/\D/g, "");
+      const { data: pessoaDest } = await supabase
+        .from("pessoas").select("municipio, estado, inscricao_est")
+        .eq("cpf_cnpj", digitsDest).maybeSingle();
+      if (pessoaDest) {
+        destMunicipio = pessoaDest.municipio ?? "";
+        destUf = pessoaDest.estado ?? "MT";
+        destIe = pessoaDest.inscricao_est ?? "";
+      }
+    }
+
     const prefill = {
       remetente_nome:    String(dj.emit_razao   ?? ""),
       remetente_cnpj:    String(dj.emit_cnpj    ?? ""),
+      remetente_ie:      String(dj.emit_ie      ?? ""),
       destinatario_nome: nota.destinatario       ?? "",
       destinatario_cnpj: nota.cnpj_destinatario  ?? "",
+      destinatario_ie:   destIe,
       municipio_origem:  String(dj.emit_municipio ?? ""),
       uf_origem:         String(dj.emit_uf        ?? "MT"),
-      municipio_destino: String(dj.dest_cidade    ?? ""),
-      uf_destino:        String(dj.dest_uf        ?? "MT"),
+      municipio_destino: destMunicipio,
+      uf_destino:        destUf,
+      cfop:              nota.cfop ?? "",
       valor_mercadoria:  nota.valor_total,
       nfe_chave:         nota.chave_acesso        ?? "",
       produto_descricao: itens[0]?.item           ?? "Soja em Grão",
