@@ -29,23 +29,57 @@ export async function buscarConfEmitente(
   fazendaId: string,
   moduloKey: string   // ex: "fiscal_pf_abc" ou "fiscal_emp_xyz"
 ): Promise<Record<string, string> | null> {
+  // certificado_a1_* precisa ser buscado na conta inteira, não só na fazenda
+  // recebida — o upload (Fiscal → Certificado Digital ou o card de emitente
+  // em Parâmetros → Fiscal) pode ter acontecido com outra fazenda ativa, e o
+  // mesmo titular (CPF/CNPJ) frequentemente emite por mais de uma fazenda do
+  // cliente. Achado real 23/09/2026: certificado reenviado 2x pelo usuário e
+  // a emissão continuava com "Certificado A1 não enviado para o emitente" —
+  // o certificado existia (duplicado, inclusive), só nunca na fazenda exata
+  // que estava emitindo. Mesma classe de bug já corrigida em Transportadoras,
+  // Parâmetros Fiscais por IE e Ano Safra/Ciclo do DRE.
+  const { data: fazRow } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  let fazendaIdsConta = [fazendaId];
+  if (fazRow?.conta_id) {
+    const { data: fzsConta } = await sb().from("fazendas").select("id").eq("conta_id", fazRow.conta_id);
+    if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
+  }
+
   // Carrega em paralelo: config do emitente + ambiente global + todos os certs cadastrados
-  const [emitResult, { data: globalData }, { data: certRows }] = await Promise.all([
-    sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).single(),
+  // Config base do emitente: primeiro tenta na fazenda exata (pode ter dados específicos dela,
+  // ex: endereço); moduloKey em si é o titular (CPF/CNPJ), não a fazenda.
+  const [emitLocalResult, { data: globalData }, { data: certRows }] = await Promise.all([
+    sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).maybeSingle(),
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "fiscal_global").single(),
-    sb().from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId).like("modulo", "certificado_a1_%"),
+    sb().from("configuracoes_modulo").select("modulo, config").in("fazenda_id", fazendaIdsConta).like("modulo", "certificado_a1_%"),
   ]);
 
-  let emitData = emitResult.data;
+  let emitData: { config: unknown } | null = emitLocalResult.data;
 
-  // Fallback: se o modulo_key exato não existe ou está sem CPF, busca qualquer módulo
-  // fiscal válido (com CPF) da mesma fazenda. cert_a1_path é resolvido abaixo separadamente.
+  // Não achou (ou achou incompleto) na fazenda exata — o titular fiscal (CPF/CNPJ, certificado)
+  // é da CONTA, não da fazenda; busca em qualquer fazenda do mesmo cliente antes de desistir.
+  // Achado real 23/09/2026: fazenda sem cadastro fiscal próprio (só o card por-IE, que não carrega
+  // CPF nem certificado) nunca achava a config base, mesmo ela existindo certinha noutra fazenda
+  // do mesmo cliente — cliente reenviou o certificado 2x sem resolver.
+  if (!emitData?.config || !(emitData.config as Record<string,string>).cpf_cnpj_emitente) {
+    const { data: cfgConta } = await sb()
+      .from("configuracoes_modulo").select("config")
+      .in("fazenda_id", fazendaIdsConta).eq("modulo", moduloKey)
+      .not("modulo", "like", "%__ie_%")
+      .limit(1);
+    if (cfgConta && cfgConta.length > 0) emitData = { config: cfgConta[0].config };
+  }
+
+  // Fallback final: se o modulo_key exato não existe em lugar nenhum, busca qualquer módulo
+  // fiscal válido (com CPF) da mesma conta — nunca uma chave por-IE (__ie_), que é um detalhe
+  // interno mesclado mais abaixo, não uma config completa por si só.
   if (!emitData?.config || !(emitData.config as Record<string,string>).cpf_cnpj_emitente) {
     const { data: allMods } = await sb()
-      .from("configuracoes_modulo").select("modulo, config")
-      .eq("fazenda_id", fazendaId)
-      .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-    // Prefere módulo com cert_a1_path; aceita qualquer um com CPF se nenhum tiver cert
+      .from("configuracoes_modulo").select("modulo, config, fazenda_id")
+      .in("fazenda_id", fazendaIdsConta)
+      .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%")
+      .not("modulo", "like", "%__ie_%");
+    // Prefere módulo da própria fazenda com cert_a1_path; senão qualquer um da conta com CPF.
     const comCert = (allMods ?? []).find(r => {
       const c = r.config as Record<string,string>;
       return c?.cpf_cnpj_emitente && c?.cert_a1_path;
@@ -108,10 +142,13 @@ export async function buscarConfEmitente(
       // à fazenda" (que pode não ter nada configurado), e sim a que tem série/número de verdade.
       const configsPorIe = new Map<string, Record<string, string>>();
       if (iesAtivas.length > 0) {
+        // Sem filtro de fazenda_id: o nome do módulo já é único por IE (carrega o id dela), e cada
+        // IE grava na SUA PRÓPRIA fazenda (ver Parâmetros → Fiscal) — que pode ser diferente de
+        // `fazendaId` aqui. Filtrar por fazenda_id só excluía configs válidas de IEs de outras
+        // fazendas do mesmo produtor/cliente.
         const { data: cfgsIe } = await sb()
           .from("configuracoes_modulo")
           .select("modulo, config")
-          .eq("fazenda_id", fazendaId)
           .in("modulo", iesAtivas.map(i => `${moduloKey}__ie_${i.id}`));
         for (const row of cfgsIe ?? []) {
           const ieId = (row.modulo as string).split("__ie_")[1];

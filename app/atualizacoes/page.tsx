@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ap",
+    data: "23/09/2026",
+    titulo: "\"Certificado A1 não enviado\" mesmo com o certificado configurado — corrigido na raiz",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Emitir NF-e podia falhar com \"SEFAZ 501: Certificado A1 (arquivo) não enviado para o emitente\" mesmo com o certificado enviado (e reenviado) em Parâmetros → Fiscal. Causa raiz: certificado/CPF/CNPJ é do PRODUTOR, não da fazenda — mas a resolução de qual configuração fiscal usar buscava só na fazenda exata que estava emitindo. Numa fazenda sem cadastro fiscal PRÓPRIO (só o card de parâmetros por Inscrição Estadual, que não carrega CPF nem certificado), o sistema chegava a \"achar\" esse card por-IE e tratá-lo por engano como se fosse a configuração completa — resultando em uma config sem certificado nenhum, mesmo ele existindo certinho, com senha e tudo, em outra fazenda do mesmo cliente. Corrigido em 3 pontos (lib/nfe/resolver-emitente.ts e lib/nfe/index.ts): a resolução do emitente e a busca do certificado passam a considerar qualquer fazenda do mesmo cliente, e uma configuração por-IE nunca mais é usada como se fosse a principal." },
+    ],
+    onde: "Fiscal → qualquer emissão de NF-e (Contratos, Compras, Expedição, Transferências, Transferência de Máquinas, Devolução, Remessa)",
+  },
+  {
     versao: "2026.09.23-ao",
     data: "23/09/2026",
     titulo: "Varredura de estabilidade — combustível sumindo do cadastro e ciclos sumindo do DRE",
