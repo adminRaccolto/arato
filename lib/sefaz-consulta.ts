@@ -48,54 +48,54 @@ function buildSoapEnvelope(chave: string, cuf: string, ambiente: "1" | "2"): str
 </soap12:Envelope>`;
 }
 
-// ── Carregar certificado do Supabase Storage ───────────────────────────────
-async function carregarCertificado(fazendaId: string): Promise<{ pfxBuffer: Buffer; senha: string } | null> {
+// ── Carregar certificado(s) do Supabase Storage ────────────────────────────
+// Achado real 23/09/2026: a versão antiga pegava o storage_path do PRIMEIRO
+// "certificado_a1_*" encontrado (chave = produtor_id, um metadado só com nome
+// de arquivo — nunca guarda a senha) e a senha do PRIMEIRO "fiscal_pf_*"/
+// "fiscal_emp_*" com cert_a1_senha preenchido — dois "primeiros" resolvidos
+// de forma INDEPENDENTE. Numa fazenda/conta com mais de um emitente com
+// certificado (comum: produtor + transportadora), isso podia combinar o
+// certificado do emitente A com a senha do emitente B — cada senha era
+// individualmente correta, mas o PAR estava errado, e node-forge reporta
+// isso como "senha incorreta" mesmo com a senha realmente certa cadastrada.
+// A fonte confiável já existe: fiscal_pf_*/fiscal_emp_* guarda cert_a1_path
+// e cert_a1_senha NO MESMO registro (gravados juntos por app/api/cert-upload),
+// mesmo padrão usado por buscarConfEmitente (lib/nfe/index.ts) na emissão.
+// Sem saber de antemão qual emitente da conta consultar essa chave específica,
+// tenta cada par válido da conta até um decodificar com sucesso.
+async function carregarCertificados(fazendaId: string): Promise<{ pfxBuffer: Buffer; senha: string }[]> {
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Busca todos os módulos relevantes: certificado_a1_* E fiscal_* (pf e emp)
-  // O cert-upload salva storage_path em certificado_a1_* e cert_a1_senha em fiscal_pf_*/fiscal_emp_*
-  const { data: configs } = await sb.from("configuracoes_modulo")
-    .select("modulo, config")
-    .eq("fazenda_id", fazendaId)
-    .or("modulo.like.certificado_a1%,modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-
-  if (!configs?.length) return null;
-
-  // 1. Pegar storage_path do primeiro certificado_a1_* com storage_path preenchido
-  const certRow = configs.find(r => r.modulo.startsWith("certificado_a1_"));
-  if (!certRow) return null;
-  const certConfig = certRow.config as Record<string, string>;
-  const storagePath = certConfig.storage_path ?? certConfig.cert_a1_path ?? "";
-
-  if (!storagePath) return null;
-
-  // 2. Pegar senha do fiscal_pf_*/fiscal_emp_* correspondente (cert_a1_senha)
-  //    Fallback: cert_senha no próprio certificado_a1_* (legado)
-  let senha = certConfig.cert_senha ?? certConfig.cert_a1_senha ?? "";
-  if (!senha) {
-    const fiscalRow = configs.find(r =>
-      (r.modulo.startsWith("fiscal_pf_") || r.modulo.startsWith("fiscal_emp_")) &&
-      (r.config as Record<string, string>).cert_a1_senha
-    );
-    if (fiscalRow) {
-      senha = (fiscalRow.config as Record<string, string>).cert_a1_senha ?? "";
-    }
+  let fazendaIdsConta = [fazendaId];
+  const { data: fazAtual } = await sb.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if (fazAtual?.conta_id) {
+    const { data: fzsConta } = await sb.from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
+    if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
   }
 
-  if (!senha) return null;
+  const { data: configs } = await sb.from("configuracoes_modulo")
+    .select("modulo, config")
+    .in("fazenda_id", fazendaIdsConta)
+    .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
 
-  // 3. Baixar PFX do Storage
-  const { data: blob, error } = await sb.storage
-    .from("certificados")
-    .download(storagePath);
+  const pares = (configs ?? [])
+    .map(r => r.config as Record<string, string>)
+    .filter(c => c.cert_a1_path && c.cert_a1_senha)
+    .reduce((acc, c) => { // dedup por path — vários registros (um por fazenda da conta) apontam pro mesmo PFX
+      if (!acc.some(p => p.storage_path === c.cert_a1_path)) acc.push({ storage_path: c.cert_a1_path, senha: c.cert_a1_senha });
+      return acc;
+    }, [] as { storage_path: string; senha: string }[]);
 
-  if (error || !blob) return null;
-
-  const pfxBuffer = Buffer.from(await blob.arrayBuffer());
-  return { pfxBuffer, senha };
+  const resultado: { pfxBuffer: Buffer; senha: string }[] = [];
+  for (const par of pares) {
+    const { data: blob, error } = await sb.storage.from("certificados").download(par.storage_path);
+    if (error || !blob) continue;
+    resultado.push({ pfxBuffer: Buffer.from(await blob.arrayBuffer()), senha: par.senha });
+  }
+  return resultado;
 }
 
 // ── Extrair PEM do PFX via node-forge ─────────────────────────────────────
@@ -252,16 +252,21 @@ export async function consultarNfePorChave(
   const tpAmb = ambiente === "producao" ? "1" : "2";
   const endpoint = getEndpoint(cuf, tpAmb);
 
-  // Carregar certificado
-  const cert = await carregarCertificado(fazendaId);
-  if (!cert) return { ok: false, erro: "Certificado A1 não configurado ou senha não cadastrada. Configure em Parâmetros do Sistema → Fiscal." };
+  // Carrega todos os certificados válidos da conta e tenta cada um — não dá pra saber de
+  // antemão qual emitente é o dono da chave sendo consultada (ver comentário em
+  // carregarCertificados). Qualquer um decodificando com sucesso já basta pra autenticar
+  // a consulta via mTLS junto à SEFAZ.
+  const certs = await carregarCertificados(fazendaId);
+  if (!certs.length) return { ok: false, erro: "Nenhum certificado A1 com senha cadastrada encontrado nesta conta. Configure em Parâmetros do Sistema → Fiscal." };
 
-  let pem: { cert: string; key: string };
-  try {
-    pem = pfxParaPem(cert.pfxBuffer, cert.senha);
-  } catch (e) {
-    return { ok: false, erro: "Senha do certificado incorreta. Verifique em Parâmetros do Sistema → Fiscal." };
+  let pem: { cert: string; key: string } | null = null;
+  for (const cert of certs) {
+    try {
+      pem = pfxParaPem(cert.pfxBuffer, cert.senha);
+      break;
+    } catch { /* tenta o próximo certificado da conta */ }
   }
+  if (!pem) return { ok: false, erro: `Nenhum dos ${certs.length} certificado(s) A1 desta conta abriu com a senha cadastrada. Confira em Parâmetros do Sistema → Fiscal.` };
 
   // Montar e enviar SOAP
   const soap = buildSoapEnvelope(chave, cuf, tpAmb);

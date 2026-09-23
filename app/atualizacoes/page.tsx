@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bb",
+    data: "23/09/2026",
+    titulo: "Buscar NF-e por chave: \"senha do certificado incorreta\" mesmo com a senha certa",
+    modulos: ["Transporte", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "\"🔍 Buscar dados da NF-e\" (CT-e) e a consulta de NF-e por chave na SEFAZ combinavam o certificado de UM emitente com a senha de OUTRO emitente da mesma conta — cada um pegava o \"primeiro encontrado\" de forma independente, então numa conta com mais de um certificado (comum: produtor + transportadora) o par podia sair errado mesmo com todas as senhas certas cadastradas, dando \"Senha do certificado incorreta\". Corrigido: agora testa todos os pares certificado+senha da conta (que já vêm corretamente casados) até um funcionar." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e) → Buscar dados da NF-e",
+  },
+  {
     versao: "2026.09.23-ba",
     data: "23/09/2026",
     titulo: "Estoque → Transferências: filtro rápido Todas / NFs Emitidas / Canceladas",
