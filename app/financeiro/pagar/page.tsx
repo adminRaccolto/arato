@@ -796,11 +796,17 @@ function ContasPagarInner() {
   };
 
   // ── Aplicar adiantamento na baixa do CP ─────────────────────
-  const aplicarAdiantNoModal = async (adiant: AdiantamentoFornecedor) => {
+  // Achado real 23/09/2026: o campo mostra um valor sugerido calculado na hora (valorAtual, na
+  // linha que renderiza o botão) enquanto valorAdiantAplicar[adiant.id] continua undefined até o
+  // usuário editar o campo manualmente — clicar em "Aplicar" sem tocar no campo lia direto do
+  // estado (0/undefined), caía no guard abaixo e saía em silêncio, sem alerta nenhum: "clica e não
+  // acontece nada". Corrigido: recebe o valor que está REALMENTE na tela (já com o fallback do
+  // sugerido aplicado), não só o que foi digitado.
+  const aplicarAdiantNoModal = async (adiant: AdiantamentoFornecedor, valorExibido: number) => {
     if (!modalBaixa) return;
     const saldoAdiant = adiant.valor - (adiant.valor_aplicado ?? 0);
     const saldoCp     = Math.max(0, paraBRL(modalBaixa) - (modalBaixa.valor_pago ?? 0));
-    const valor       = valorAdiantAplicar[adiant.id] ?? 0;
+    const valor       = valorExibido || 0;
     if (!valor || valor <= 0) return;
     if (valor > saldoAdiant + 0.01) { alert(`Valor maior que o saldo do adiantamento (${fmtBRL(saldoAdiant)}).`); return; }
     if (valor > saldoCp + 0.01)     { alert(`Valor maior que o saldo devedor do CP (${fmtBRL(saldoCp)}).`); return; }
@@ -2519,7 +2525,7 @@ function ContasPagarInner() {
                       <InputMonetario value={valorAtual} onChange={v => setValorAdiantAplicar(p => ({ ...p, [a.id]: v }))} style={{ ...inp, width: 130, fontSize: 12, padding: "5px 8px" }} />
                       <button
                         disabled={aplicandoAdiant === a.id}
-                        onClick={() => aplicarAdiantNoModal(a)}
+                        onClick={() => aplicarAdiantNoModal(a, valorAtual)}
                         style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 600, cursor: aplicandoAdiant === a.id ? "default" : "pointer", whiteSpace: "nowrap" }}>
                         {aplicandoAdiant === a.id ? "Aplicando…" : "Aplicar"}
                       </button>

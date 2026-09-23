@@ -604,6 +604,8 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 
 **Origem automática (badge azul):** NF Entrada, Plantio (sementes), Pulverização (defensivos), Arrendamento, Pedido Compra, SIEG.
 
+**Correção 23/09/2026 — botão "Aplicar" do adiantamento não fazia nada:** no modal "Registrar pagamento", o campo de valor do adiantamento já vinha preenchido com um valor sugerido (o menor entre saldo do adiantamento e saldo devedor do CP) — mas esse valor só existia na tela, não no estado interno, até o usuário editar o campo manualmente. Clicar em "Aplicar" sem tocar no campo lia o estado vazio, não fazia nada e não mostrava erro nenhum. Corrigido: o botão agora usa o valor que está realmente exibido na tela, sugerido ou digitado.
+
 **Criação manual:** Produtor → Fazenda → Ano Safra → Ciclo → Descrição (*), Valor (*), Moeda (BRL/USD/barter), Vencimento (*), Categoria (*), OG, Centro de Custo, Vínculo de Atividade, Entidade Contábil.
 
 **Aviso de título já lançado (17/09/2026):** ao salvar um lançamento manual com o mesmo fornecedor/cliente (mesma pessoa cadastrada) e o mesmo número de documento de um título já existente (não cancelado) na mesma fazenda, o sistema mostra "Título já lançado" antes de salvar, com botão "OK" (cancela e volta pro formulário) e "Ver documento" (abre o lançamento existente pra conferir). Só funciona quando o fornecedor/cliente está vinculado via cadastro — lançamento sem pessoa vinculada (só descrição em texto livre) não tem como ser comparado. NFs, Pedidos de Compra e parcelas de Contrato Financeiro/Seguro/Consórcio (lançados automaticamente) não passam por esse aviso — já têm seu próprio controle de duplicidade.

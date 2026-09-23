@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-r",
+    data: "23/09/2026",
+    titulo: "Contas a Pagar: botão \"Aplicar\" do adiantamento não fazia nada",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "No modal \"Registrar pagamento\", clicar em \"Aplicar\" no adiantamento sem antes editar o campo (que já vinha com um valor sugerido preenchido) não fazia nada e não mostrava erro — o valor sugerido só existia na tela, não no estado interno do formulário. Corrigido." },
+    ],
+    onde: "Financeiro → Atividade Rural → Contas a Pagar",
+  },
+  {
     versao: "2026.09.23-q",
     data: "23/09/2026",
     titulo: "SIEG: detecção de NF duplicada em outra fazenda + cancelamento pelo emitente",
