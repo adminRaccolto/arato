@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bp",
+    data: "23/09/2026",
+    titulo: "MDF-e: Encerrar por chave + Encerrar passa a transmitir de verdade",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Novo botão \"Encerrar por chave\" na tela de MDF-e: informe a chave (44 dígitos) e o protocolo (15 dígitos) de um MDF-e que ficou aberto na SEFAZ — mesmo emitido em outro sistema — e o Arato transmite o evento oficial de Encerramento com o certificado do emitente da chave. Libera a placa quando a SEFAZ recusa com \"Existe MDF-e não encerrado para esta placa\"." },
+      { tipo: "correcao", texto: "O \"Encerrar\" dos MDF-e da lista era só uma atualização local — nunca era enviado à SEFAZ, então o MDF-e seguia aberto lá e bloqueava novos MDF-e da mesma placa. Agora transmite o encerramento de verdade e só marca \"encerrado\" se a SEFAZ aceitar." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (MDF-e)",
+  },
+  {
     versao: "2026.09.23-bo",
     data: "23/09/2026",
     titulo: "MDF-e: correção de bug introduzido hoje — NF-e do CT-e duplicada como avulsa",

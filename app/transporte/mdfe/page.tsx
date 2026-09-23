@@ -692,22 +692,49 @@ function MdfePageInner() {
   }
 
   // ── Encerrar ─────────────────────────────────────────────
+  // Encerramento REAL na SEFAZ (evento 110112). Antes era só um UPDATE local — nunca transmitia,
+  // então o MDF-e seguia "aberto" na SEFAZ e bloqueava novos MDF-e da mesma placa. 23/09/2026.
   async function encerrar() {
-    if (!modalEnc) return;
+    if (!modalEnc || !fazendaId) return;
     if (!encForm.municipio_encerramento.trim()) { alert("Informe o município de encerramento."); return; }
     setEncSaving(true);
     try {
-      await supabase.from("mdfes").update({
-        status: "encerrado",
-        data_encerramento: encForm.data_encerramento,
-        municipio_encerramento: encForm.municipio_encerramento,
-        uf_encerramento: encForm.uf_encerramento,
-      }).eq("id", modalEnc.id);
+      const cmun = await buscarIbgeMdfe(encForm.municipio_encerramento, encForm.uf_encerramento);
+      if (!cmun) { alert("Município não encontrado — confira o nome digitado."); return; }
+      const res = await fetch("/api/fiscal/encerrar-mdfe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, mdfe_id: modalEnc.id, data_enc: encForm.data_encerramento, uf_enc: encForm.uf_encerramento, cmun_enc: cmun, municipio_enc: encForm.municipio_encerramento }),
+      });
+      const j = await res.json() as { sucesso?: boolean; cStat?: string; xMotivo?: string };
+      if (!j.sucesso) { alert(`Encerramento não aceito pela SEFAZ.\n\n${j.cStat ?? ""} ${j.xMotivo ?? "erro desconhecido"}`); return; }
       await carregar();
       setModalEnc(null);
     } finally {
       setEncSaving(false);
     }
+  }
+
+  // Encerrar por chave — MDF-e que não está no banco (emitido por outro sistema/canal e esquecido
+  // aberto na SEFAZ, bloqueando a placa). Pedido do dono 23/09/2026.
+  const [modalChave, setModalChave] = useState(false);
+  const [chaveForm, setChaveForm] = useState({ chave: "", protocolo: "", data: hoje(), municipio: "", uf: "MT" });
+  const [chaveSaving, setChaveSaving] = useState(false);
+  const [chaveMsg, setChaveMsg] = useState<{ ok: boolean; txt: string } | null>(null);
+  async function encerrarPorChave() {
+    if (!fazendaId) return;
+    setChaveSaving(true); setChaveMsg(null);
+    try {
+      const cmun = await buscarIbgeMdfe(chaveForm.municipio, chaveForm.uf);
+      if (!cmun) { setChaveMsg({ ok: false, txt: "Município não encontrado — confira o nome digitado." }); return; }
+      const res = await fetch("/api/fiscal/encerrar-mdfe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, chave: chaveForm.chave, protocolo: chaveForm.protocolo, data_enc: chaveForm.data, uf_enc: chaveForm.uf, cmun_enc: cmun }),
+      });
+      const j = await res.json() as { sucesso?: boolean; cStat?: string; xMotivo?: string; protocoloEvento?: string };
+      setChaveMsg(j.sucesso
+        ? { ok: true, txt: `✓ MDF-e encerrado na SEFAZ. Protocolo do evento: ${j.protocoloEvento ?? "—"}. A placa está liberada pra um novo MDF-e.` }
+        : { ok: false, txt: `${j.cStat ?? ""} ${j.xMotivo ?? "erro desconhecido"}` });
+    } finally { setChaveSaving(false); }
   }
 
   async function cancelar(m: Mdfe) {
@@ -765,7 +792,10 @@ function MdfePageInner() {
             </select>
           </div>
           <div style={{ flex: 1 }} />
-          <button onClick={abrirNovo} style={btnV}>+ Emitir MDF-e</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => { setChaveMsg(null); setModalChave(true); }} style={btnR} title="Encerra na SEFAZ um MDF-e que ficou aberto e bloqueia a placa (mesmo emitido fora do sistema)">Encerrar por chave</button>
+            <button onClick={abrirNovo} style={btnV}>+ Emitir MDF-e</button>
+          </div>
         </div>
 
         {/* Tabela */}
@@ -1141,6 +1171,30 @@ function MdfePageInner() {
       {/* ══════════════════════════════════════════════════════
           MODAL ENCERRAMENTO
       ══════════════════════════════════════════════════════ */}
+
+      {modalChave && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", padding: 24 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e por chave</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", margin: "4px 0 16px" }}>Para MDF-e que ficou aberto na SEFAZ e bloqueia a placa ("Existe MDF-e não encerrado…") — mesmo emitido em outro sistema. Usa o certificado do emitente que está na chave.</div>
+            <label style={lbl}>Chave de Acesso (44 dígitos)</label>
+            <input value={chaveForm.chave} onChange={e => setChaveForm(f => ({ ...f, chave: e.target.value }))} style={inp} placeholder="Chave do MDF-e não encerrado" />
+            <label style={{ ...lbl, marginTop: 10 }}>Protocolo de Autorização (15 dígitos)</label>
+            <input value={chaveForm.protocolo} onChange={e => setChaveForm(f => ({ ...f, protocolo: e.target.value }))} style={inp} placeholder="Ex: 951260021390502" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10, marginTop: 10 }}>
+              <div><label style={lbl}>Data</label><input type="date" value={chaveForm.data} onChange={e => setChaveForm(f => ({ ...f, data: e.target.value }))} style={inp} /></div>
+              <div><label style={lbl}>Município de encerramento</label><input value={chaveForm.municipio} onChange={e => setChaveForm(f => ({ ...f, municipio: e.target.value }))} style={inp} /></div>
+              <div><label style={lbl}>UF</label><select value={chaveForm.uf} onChange={e => setChaveForm(f => ({ ...f, uf: e.target.value }))} style={inp}>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+            </div>
+            {chaveMsg && <div style={{ marginTop: 12, fontSize: 12, padding: "8px 12px", borderRadius: 8, background: chaveMsg.ok ? "#EAF7EE" : "#FCEBEB", color: chaveMsg.ok ? "#166534" : "#791F1F" }}>{chaveMsg.txt}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button style={btnR} onClick={() => setModalChave(false)}>Fechar</button>
+              <button onClick={encerrarPorChave} disabled={chaveSaving || chaveForm.chave.replace(/\D/g, "").length !== 44 || !chaveForm.municipio.trim()} style={{ ...btnV, opacity: chaveSaving ? .6 : 1 }}>{chaveSaving ? "Encerrando…" : "Encerrar na SEFAZ"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalEnc && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 420, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
