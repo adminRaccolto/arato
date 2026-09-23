@@ -122,11 +122,23 @@ export async function emitirMDFe(
   const { data: m } = await sb().from("mdfes").select("*").eq("id", mdfeId).maybeSingle();
   if (!m) return { sucesso: false, cStat: "500", xMotivo: "MDF-e não encontrado." };
 
-  // 1. Empresa emitente — primeira Empresa cadastrada na conta (mesmo padrão do CT-e quando
-  //    não há hint explícito — o emitente do MDF-e é sempre a própria transportadora/fazenda).
+  // 1. Empresa emitente — resolvida do CT-e vinculado quando existir (é ele quem sabe de
+  //    verdade qual transportadora está fazendo o frete). SEM isso, achado real 23/09/2026: uma
+  //    conta com mais de uma empresa (ex: 2 transportadoras do mesmo grupo) sempre lia
+  //    "a primeira empresa cadastrada" (sem ORDER BY nenhum — na prática arbitrário), então a
+  //    config de Parâmetros → MDF-e configurada numa empresa (ex: Muriana marcada como Carga
+  //    Própria) nunca era lida — a emissão silenciosamente usava outra empresa da conta,
+  //    cuja config de Seguro da Carga continuava incompleta. Só cai no fallback "primeira
+  //    empresa da conta" quando o MDF-e não tem CT-e nenhum vinculado (NF-e avulsas puras).
   const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
   let empresaCnpj: string | undefined;
-  if (faz?.conta_id) {
+  const docs = (typeof m.documentos === "string" ? JSON.parse(m.documentos) : m.documentos) as { tipo: string; chave: string }[] | null;
+  const primeiraCteChave = (docs ?? []).find(d => d.tipo === "cte")?.chave?.replace(/\D/g, "");
+  if (primeiraCteChave) {
+    const { data: cteRow } = await sb().from("ctes").select("emitente_cnpj").eq("chave_acesso", primeiraCteChave).maybeSingle();
+    empresaCnpj = (cteRow?.emitente_cnpj as string | undefined) ?? undefined;
+  }
+  if (!empresaCnpj && faz?.conta_id) {
     const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
     const idsConta = (fzs ?? []).map(f => f.id as string);
     const { data: emp } = await sb().from("empresas").select("cpf_cnpj").in("fazenda_id", idsConta).limit(1).maybeSingle();

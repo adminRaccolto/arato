@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bl",
+    data: "23/09/2026",
+    titulo: "MDF-e: emissão podia ler a config de outra empresa quando a conta tem mais de uma",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Achado real: mesmo configurando \"Carga Própria\" (ou qualquer outro parâmetro) numa transportadora específica, a emissão continuava pedindo Seguro da Carga — porque resolvia o emitente como \"a primeira empresa cadastrada na conta\" (sem nenhuma ordem definida), ignorando qual transportadora realmente emitiu o CT-e vinculado. Numa conta com mais de uma empresa/transportadora (comum: mais de uma transportadora do mesmo grupo), a config lida podia ser de uma empresa completamente diferente da que está no CT-e. Corrigido: a emissão agora resolve o emitente a partir do CT-e vinculado (quem realmente fez o frete); só cai na \"primeira empresa da conta\" quando não há CT-e nenhum vinculado." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (MDF-e)",
+  },
+  {
     versao: "2026.09.23-bk",
     data: "23/09/2026",
     titulo: "MDF-e: opção \"Carga Própria\" dispensa o Seguro da Carga",
