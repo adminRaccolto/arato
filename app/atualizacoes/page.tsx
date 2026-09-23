@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-aj",
+    data: "23/09/2026",
+    titulo: "Busca em Máquinas e Veículos (Cadastros)",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "Cadastros → Máquinas e Veículos ganhou campo de busca (nome, patrimônio, tipo, marca/modelo ou placa) — antes precisava rolar a lista inteira pra achar um item." },
+    ],
+    onde: "Cadastros → Máquinas e Veículos",
+  },
+  {
     versao: "2026.09.23-ai",
     data: "23/09/2026",
     titulo: "Erro ao lançar Abastecimento (\"row-level security policy\") — corrigido",

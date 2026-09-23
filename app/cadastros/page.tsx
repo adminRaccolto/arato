@@ -471,6 +471,7 @@ function CadastrosInner() {
   const [buscaProd, setBuscaProd]     = useState("");
   const [filtroIt, setFiltroIt]       = useState("todos");
   const [buscaIt, setBuscaIt]         = useState("");
+  const [buscaMaq, setBuscaMaq]       = useState("");
   const [modalIns, setModalIns]       = useState(false);
   const [editIns, setEditIns]         = useState<Insumo | null>(null);
   const [fIns, setFIns]               = useState({
@@ -2999,6 +3000,13 @@ function CadastrosInner() {
               <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Máquinas e Veículos <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({maquinas.length})</span></div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="search"
+                    placeholder="Buscar por nome, patrimônio, tipo ou marca/modelo…"
+                    value={buscaMaq}
+                    onChange={e => setBuscaMaq(e.target.value)}
+                    style={{ ...inp, width: 280, fontSize: 12, padding: "6px 10px" }}
+                  />
                   {selMaquinas.size > 0 && (
                     <button
                       style={{ padding: "7px 14px", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
@@ -3033,10 +3041,22 @@ function CadastrosInner() {
                 </thead>
                 <tbody>
                   {maquinas.length === 0 && <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
-                  {maquinas.map((m, i) => {
+                  {(() => {
+                    const maquinasFiltradas = maquinas.filter(m => {
+                      if (!buscaMaq.trim()) return true;
+                      const q = buscaMaq.toLowerCase();
+                      return m.nome.toLowerCase().includes(q) ||
+                        (m.patrimonio ?? "").toLowerCase().includes(q) ||
+                        m.tipo.toLowerCase().includes(q) ||
+                        (m.marca ?? "").toLowerCase().includes(q) ||
+                        (m.modelo ?? "").toLowerCase().includes(q) ||
+                        (m.placa ?? "").toLowerCase().includes(q);
+                    });
+                    if (maquinasFiltradas.length === 0) return <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina encontrada para essa busca</td></tr>;
+                    return maquinasFiltradas.map((m, i) => {
                     const sel = selMaquinas.has(m.id);
                     return (
-                      <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: sel ? "#EEEEEE" : "transparent" }}>
+                      <tr key={m.id} style={{ borderBottom: i < maquinasFiltradas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: sel ? "#EEEEEE" : "transparent" }}>
                         <td style={{ padding: "10px 12px", textAlign: "center" }}>
                           <input type="checkbox" checked={sel}
                             onChange={e => setSelMaquinas(prev => { const s = new Set(prev); e.target.checked ? s.add(m.id) : s.delete(m.id); return s; })}
@@ -3076,7 +3096,8 @@ function CadastrosInner() {
                         </td>
                       </tr>
                     );
-                  })}
+                  });
+                  })()}
                 </tbody>
               </table>
             </div>
