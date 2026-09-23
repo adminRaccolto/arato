@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-am",
+    data: "23/09/2026",
+    titulo: "Parâmetros Fiscais por IE gravavam na fazenda ativa errada",
+    modulos: ["Configurações", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Salvar Série/Próx. Número/CRT/IBS-CBS de uma Inscrição Estadual em Parâmetros → Fiscal gravava sempre na fazenda que estivesse ATIVA na tela no momento de salvar — não necessariamente a fazenda dona daquela IE. Se o usuário tivesse outra fazenda selecionada, a emissão da fazenda certa nunca achava a configuração (\"Configuração fiscal não encontrada\", mesmo com tudo preenchido). Mesma classe do bug já corrigido pra Transportadoras/CT-e (Seção 258) — corrigido agora também aqui: o parâmetro de cada IE grava sempre na fazenda que a IE realmente pertence, pega do próprio cadastro da IE, nunca da fazenda ativa na tela." },
+    ],
+    onde: "Parâmetros → Fiscal → Inscrições Estaduais",
+  },
+  {
     versao: "2026.09.23-al",
     data: "23/09/2026",
     titulo: "Transferência de Estoque: \"NF Emitida\" sem DANFE — status e retry corrigidos",

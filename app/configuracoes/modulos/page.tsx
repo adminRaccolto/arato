@@ -664,11 +664,18 @@ function ParametrosSistemaContent() {
     setCfgs(prev => ({ ...prev, [modulo]: { ...(prev[modulo] ?? {}), [key]: value } }));
   };
 
-  const salvar = async (modulo: string) => {
-    if (!fazendaId) return;
+  // fazendaIdAlvo: pra config que pertence a uma fazenda ESPECÍFICA e conhecida
+  // (ex: parâmetros por IE — a IE já sabe qual fazenda é dela), nunca a fazenda
+  // ativa na tela. Achado real 23/09/2026: salvar Série/Número/CRT/IBS-CBS de
+  // uma IE enquanto outra fazenda estava ativa gravava o registro na fazenda
+  // errada — a emissão da fazenda dona da IE nunca achava a config (mesma
+  // classe do bug da Muriana Transportes, Seção 258).
+  const salvar = async (modulo: string, fazendaIdAlvo?: string) => {
+    const fazAlvo = fazendaIdAlvo ?? fazendaId;
+    if (!fazAlvo) return;
     setSalvando(modulo);
     const { error } = await supabase.from("configuracoes_modulo").upsert(
-      { fazenda_id: fazendaId, modulo, config: cfgs[modulo] ?? {}, updated_at: new Date().toISOString() },
+      { fazenda_id: fazAlvo, modulo, config: cfgs[modulo] ?? {}, updated_at: new Date().toISOString() },
       { onConflict: "fazenda_id,modulo" }
     );
     setSalvando(null);
@@ -965,12 +972,12 @@ function ParametrosSistemaContent() {
     </div>
   );
 
-  const renderFields = (modulo: string, fields: FieldDef[]) => (
+  const renderFields = (modulo: string, fields: FieldDef[], fazendaIdAlvo?: string) => (
     <div>
       {renderFieldsGrid(modulo, fields)}
       <div style={{ marginTop: 20 }}>
         <button
-          onClick={() => salvar(modulo)}
+          onClick={() => salvar(modulo, fazendaIdAlvo)}
           disabled={salvando === modulo}
           style={{ padding: "9px 22px", background: ok === modulo ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
         >
@@ -1233,7 +1240,7 @@ function ParametrosSistemaContent() {
                                     </span>
                                   )}
                                 </div>
-                                {renderFields(key, IE_FISCAL_FIELDS)}
+                                {renderFields(key, IE_FISCAL_FIELDS, ie.fazenda_id ?? undefined)}
                               </div>
                             );
                           })}
