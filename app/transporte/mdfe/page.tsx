@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
@@ -316,8 +317,10 @@ async function buscarIbgeMdfe(cidade: string, uf: string): Promise<string> {
 // ─────────────────────────────────────────────────────────────
 // Componente
 // ─────────────────────────────────────────────────────────────
-export default function MdfePage() {
+function MdfePageInner() {
   const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
+  const searchParams = useSearchParams();
+  const prefillCteApplied = useRef(false);
 
   const [mdfes,     setMdfes]     = useState<Mdfe[]>([]);
   const [ctes,      setCtes]      = useState<CteMin[]>([]);
@@ -416,6 +419,24 @@ export default function MdfePage() {
   }, [fazendaId, fazendaIds.join(",")]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // ── Atalho "🚚 Emitir MDF-e" no CT-e — abre aqui já com o CT-e marcado, sem precisar
+  // repetir a seleção manualmente. Pedido do dono 23/09/2026: emitir o MDF-e sem trocar de
+  // tela depois de transmitir o CT-e. Espera `ctes` carregar antes de aplicar (mesmo padrão
+  // do prefill NF-e→CT-e em app/transporte/cte/page.tsx).
+  useEffect(() => {
+    if (prefillCteApplied.current) return;
+    if (!searchParams.get("from_cte")) return;
+    const cteId = sessionStorage.getItem("mdfe_prefill_cte");
+    if (!cteId) return;
+    if (ctes.length === 0) return; // aguarda carregar() popular a lista
+    const c = ctes.find(x => x.id === cteId);
+    if (!c) return; // CT-e não achado ainda (pode ser query em andamento) — tenta de novo no próximo render
+    prefillCteApplied.current = true;
+    sessionStorage.removeItem("mdfe_prefill_cte");
+    abrirNovo();
+    toggleCte(cteId);
+  }, [ctes, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Abrir modal ──────────────────────────────────────────
   function resetCiot() {
@@ -1169,5 +1190,13 @@ export default function MdfePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MdfePage() {
+  return (
+    <Suspense fallback={null}>
+      <MdfePageInner />
+    </Suspense>
   );
 }

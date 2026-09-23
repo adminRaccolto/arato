@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bh",
+    data: "23/09/2026",
+    titulo: "CT-e ganhou atalho \"🚚 Emitir MDF-e\" — sem trocar de tela",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Todo CT-e autorizado agora tem o botão \"🚚 Emitir MDF-e\" ao lado do DACTE — abre a tela de MDF-e direto com esse CT-e já marcado em \"CT-e Vinculados\" (que por sua vez já preenche Veículo, Motorista, Origem e Chave de NF-e, graças à melhoria anterior). Não precisa mais ir em Transporte → MDF-e e procurar o CT-e na lista." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e)",
+  },
+  {
     versao: "2026.09.23-bg",
     data: "23/09/2026",
     titulo: "MDF-e: marcar o CT-e agora preenche o resto do formulário sozinho",

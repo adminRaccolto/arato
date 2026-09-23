@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import SelectBusca from "../../../components/SelectBusca";
@@ -403,6 +403,7 @@ window.onload = function() {
 function CtePageInner() {
   const { fazendaId, contaId, fazendaIds, logoCliente, podeAcessarPlano } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const prefillApplied = useRef(false);
 
   const [ctes,           setCtes]           = useState<Cte[]>([]);
@@ -1450,6 +1451,15 @@ function CtePageInner() {
                           <button onClick={() => imprimirDacte(c, logoCliente, empresasTransp.find(e => e.id === c.emitente_id)?.rntrc)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                             DACTE
                           </button>
+                          {c.status === "autorizado" && (
+                            <button
+                              title="Emitir MDF-e com esse CT-e já vinculado, sem mudar de tela"
+                              onClick={() => { sessionStorage.setItem("mdfe_prefill_cte", c.id); router.push("/transporte/mdfe?from_cte=1"); }}
+                              style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}
+                            >
+                              🚚 Emitir MDF-e
+                            </button>
+                          )}
                           {c.status !== "cancelado" && (
                             <button onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               Editar

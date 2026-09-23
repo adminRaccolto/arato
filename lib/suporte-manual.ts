@@ -601,6 +601,8 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 **Correção 23/09/2026 — DACTE (impresso) sempre saía com "RNTRC DA EMPRESA" em branco:** o campo existia no layout, mas nunca lia o RNTRC de lugar nenhum — mesmo com o RNTRC certo configurado em Parâmetros → Fiscal → CT-e. Corrigido: o DACTE agora imprime o RNTRC do emitente selecionado.
 
+**Novo 23/09/2026 — atalho "🚚 Emitir MDF-e" direto no CT-e:** todo CT-e autorizado tem esse botão ao lado do DACTE — abre o MDF-e já com esse CT-e marcado em "CT-e Vinculados" (que preenche Veículo, Motorista, Origem e Chave de NF-e sozinho). Não precisa mais ir em Transporte → MDF-e e procurar o CT-e na lista pra vincular na mão.
+
 **Correção 23/09/2026 — SEFAZ rejeitava com "cStat 215: Falha no Schema XML" sem aviso prévio:** a validação local antes de transmitir só checava o Código IBGE do Remetente — o IBGE do Percurso (Início/Fim, exigido pelo schema do CT-e independente do remetente) e do Destinatário não eram checados. Se a busca automática de IBGE falhasse silenciosamente pra qualquer um desses (rede instável no momento, nome de cidade), o XML saía com o campo vazio e só a SEFAZ barrava, com uma mensagem genérica que não dizia qual campo faltava. Corrigido: agora os 3 grupos (Remetente, Destinatário, Percurso Início/Fim) são checados antes de transmitir, e o aviso mostra exatamente qual está faltando. **Se travou nisso antes da correção, simplesmente clique em "Autorizar SEFAZ" de novo** — a busca de IBGE roda de novo na hora, geralmente resolve sozinha.
 
 ### 13.3 MDF-e — Manifesto de Cargas
