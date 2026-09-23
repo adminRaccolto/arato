@@ -993,7 +993,9 @@ Geração de eventos trabalhistas rurais para o eSocial (23 eventos S-1.0).
 ### 21.4 IBS / CBS — 2027
 **Caminho:** Fiscal → Obrigações → IBS / CBS — 2027
 
-Preparação para a Reforma Tributária com vigência em 2027.
+Simulador educativo da Reforma Tributária — cronograma, redução por NCM agro e calculadora de impacto. Não emite nada e não é a configuração real (ver abaixo).
+
+**Destaque real de IBS/CBS na NF-e (corrigido 23/09/2026):** a configuração de verdade fica em **Parâmetros → Fiscal**: o toggle "Destacar IBS/CBS na NF-e" (por CNPJ da empresa, ou por Inscrição Estadual do produtor) liga/desliga, e a **Tabela NCM** define as alíquotas (IBS Estadual %, IBS Municipal %, CBS %, redução % — 60% pra produção rural, 100% pra cesta básica/exportação) e agora também o **CST** e o **cClassTrib** do IBS/CBS por NCM (códigos oficiais da Tabela de Classificação Tributária do Comitê Gestor — vêm com o padrão "000"/"000001" — tributação integral — mas confira com o contador, principalmente nos NCMs com redução). Antes dessa correção a configuração existia mas não tinha nenhum efeito na NF-e real — o gerador de XML nunca implementava o grupo; agora toda NF-e emitida (de qualquer módulo do sistema — Contratos, Compras, Expedição, Transferências etc.) inclui o grupo IBS/CBS automaticamente quando o NCM do item tem alíquota configurada e o toggle está em "Sim".
 
 ### 21.5 Parcerias & Grupos
 **Caminho:** Fiscal → Obrigações → Parcerias & Grupos

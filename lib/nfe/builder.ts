@@ -38,6 +38,21 @@ export interface DestinatarioCfg {
   telefone?: string;
 }
 
+// IBS/CBS (Reforma Tributária — LC 214/2025, NT 2023.001) — grupo opcional por
+// item. Só é preenchido pelo orquestrador (lib/nfe/index.ts) quando a fazenda
+// tem "Destacar IBS/CBS na NF-e" ativo em Parâmetros → Fiscal e o NCM do item
+// tem alíquotas configuradas na Tabela NCM. Alíquotas em % (ex: 0.1 = 0,1%);
+// reducaoPct em % (ex: 60 = 60% de redução, aplicada igualmente aos 3
+// componentes — IBS Estadual, IBS Municipal e CBS).
+export interface IBSCBSItem {
+  cst: string;           // 3 dígitos — Código de Situação Tributária do IBS/CBS
+  cclasstrib: string;    // 6 dígitos — Código de Classificação Tributária
+  ibsEstadualAliq: number;
+  ibsMunicipalAliq: number;
+  cbsAliq: number;
+  reducaoPct?: number;   // 0-100, opcional
+}
+
 export interface ItemNFe {
   codigo: string;
   descricao: string;
@@ -47,6 +62,7 @@ export interface ItemNFe {
   quantidade: number;
   valor_unitario: number;
   valor_desconto?: number;
+  ibsCbs?: IBSCBSItem;
 }
 
 export interface TransportadoraCfg {
@@ -369,6 +385,14 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   let vICMSTotal      = 0;
   let vBCTotal        = 0;
 
+  // Totais IBS/CBS — só viram <IBSCBSTot> no <total> se pelo menos 1 item tiver ibsCbs.
+  let temIBSCBS       = false;
+  let vBCIBSCBSTotal  = 0;
+  let vIBSUFTotal     = 0;
+  let vIBSMunTotal    = 0;
+  let vIBSTotal       = 0;
+  let vCBSTotal       = 0;
+
   const itensXml = itens.map((item, idx) => {
     const vProdBruto = item.quantidade * item.valor_unitario;
     const vDescItem  = item.valor_desconto ?? 0;
@@ -404,6 +428,60 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     const pisXml    = `<PIS><PISNT><CST>07</CST></PISNT></PIS>`;
     const cofinsXml = `<COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>`;
 
+    // IBS/CBS (Reforma Tributária) — grupo <IBSCBS>, schema TTribNFe/TCIBS_NFe
+    // (NT 2023.001, validado contra o XSD oficial nfephp-org/sped-nfe PL_010).
+    // BC = mesma base líquida do produto (vProdLiq); reducaoPct, quando
+    // presente, aplica <gRed> igualmente aos 3 componentes (IBS UF/Mun/CBS).
+    let ibsCbsXml = "";
+    if (item.ibsCbs) {
+      const ic = item.ibsCbs;
+      const vBCIbsCbs = vProdLiq;
+      const red = ic.reducaoPct && ic.reducaoPct > 0 ? ic.reducaoPct : 0;
+      const gRedXml = (pBase: number) => {
+        if (red <= 0) return "";
+        const pEfet = pBase * (1 - red / 100);
+        return `<gRed><pRedAliq>${fmtVal(red, 4)}</pRedAliq><pAliqEfet>${fmtVal(pEfet, 4)}</pAliqEfet></gRed>`;
+      };
+      const pIBSUFEfet  = red > 0 ? ic.ibsEstadualAliq * (1 - red / 100) : ic.ibsEstadualAliq;
+      const pIBSMunEfet = red > 0 ? ic.ibsMunicipalAliq * (1 - red / 100) : ic.ibsMunicipalAliq;
+      const pCBSEfet    = red > 0 ? ic.cbsAliq * (1 - red / 100) : ic.cbsAliq;
+      const vIBSUF  = vBCIbsCbs * pIBSUFEfet / 100;
+      const vIBSMun = vBCIbsCbs * pIBSMunEfet / 100;
+      const vIBS    = vIBSUF + vIBSMun;
+      const vCBS    = vBCIbsCbs * pCBSEfet / 100;
+
+      temIBSCBS      = true;
+      vBCIBSCBSTotal += vBCIbsCbs;
+      vIBSUFTotal    += vIBSUF;
+      vIBSMunTotal   += vIBSMun;
+      vIBSTotal      += vIBS;
+      vCBSTotal      += vCBS;
+
+      ibsCbsXml = `<IBSCBS>
+        <CST>${ic.cst}</CST>
+        <cClassTrib>${ic.cclasstrib}</cClassTrib>
+        <gIBSCBS>
+          <vBC>${fmtVal(vBCIbsCbs)}</vBC>
+          <gIBSUF>
+            <pIBSUF>${fmtVal(ic.ibsEstadualAliq, 4)}</pIBSUF>
+            ${gRedXml(ic.ibsEstadualAliq)}
+            <vIBSUF>${fmtVal(vIBSUF)}</vIBSUF>
+          </gIBSUF>
+          <gIBSMun>
+            <pIBSMun>${fmtVal(ic.ibsMunicipalAliq, 4)}</pIBSMun>
+            ${gRedXml(ic.ibsMunicipalAliq)}
+            <vIBSMun>${fmtVal(vIBSMun)}</vIBSMun>
+          </gIBSMun>
+          <vIBS>${fmtVal(vIBS)}</vIBS>
+          <gCBS>
+            <pCBS>${fmtVal(ic.cbsAliq, 4)}</pCBS>
+            ${gRedXml(ic.cbsAliq)}
+            <vCBS>${fmtVal(vCBS)}</vCBS>
+          </gCBS>
+        </gIBSCBS>
+      </IBSCBS>`;
+    }
+
     return `<det nItem="${idx + 1}">
       <prod>
         <cProd>${pad(idx + 1, 4)}</cProd>
@@ -427,6 +505,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
         <ICMS>${rule.xml(vBC, vProdLiq)}</ICMS>
         ${pisXml}
         ${cofinsXml}
+        ${ibsCbsXml}
       </imposto>
     </det>`;
   }).join("\n");
@@ -579,7 +658,24 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
         <vCOFINS>0.00</vCOFINS>
         <vOutro>0.00</vOutro>
         <vNF>${fmtVal(vNF)}</vNF>
+        ${temIBSCBS ? `<vTotTrib>0.00</vTotTrib>` : ""}
       </ICMSTot>
+      ${temIBSCBS ? `<IBSCBSTot>
+        <vBCIBSCBS>${fmtVal(vBCIBSCBSTotal)}</vBCIBSCBS>
+        <gIBS>
+          <gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>${fmtVal(vIBSUFTotal)}</vIBSUF></gIBSUF>
+          <gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>${fmtVal(vIBSMunTotal)}</vIBSMun></gIBSMun>
+          <vIBS>${fmtVal(vIBSTotal)}</vIBS>
+          <vCredPres>0.00</vCredPres>
+          <vCredPresCondSus>0.00</vCredPresCondSus>
+        </gIBS>
+        <gCBS>
+          <vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>${fmtVal(vCBSTotal)}</vCBS>
+          <vCredPres>0.00</vCredPres>
+          <vCredPresCondSus>0.00</vCredPresCondSus>
+        </gCBS>
+      </IBSCBSTot>
+      <vNFTot>${fmtVal(vNF)}</vNFTot>` : ""}
     </total>
     <transp>
       <modFrete>${frete}</modFrete>

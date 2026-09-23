@@ -32,6 +32,8 @@ interface NcmTributacao {
   ibs_municipal_aliq: number;
   cbs_aliq: number;
   ibs_cbs_reducao_pct: number;
+  ibs_cbs_cst: string;
+  ibs_cbs_cclasstrib: string;
   inf_cpl: string;
 }
 
@@ -191,6 +193,7 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '000', ibs_cbs_cclasstrib: '000001',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010). Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Art. 1º, I da Lei 10.925/2004.",
   },
   {
@@ -202,6 +205,7 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '000', ibs_cbs_cclasstrib: '000001',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010). Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Art. 1º, I da Lei 10.925/2004.",
   },
   {
@@ -213,6 +217,7 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '000', ibs_cbs_cclasstrib: '000001',
     inf_cpl: "Operação não tributada pelo ICMS conforme RICMS/MT. PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
   {
@@ -224,6 +229,7 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '000', ibs_cbs_cclasstrib: '000001',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Base de cálculo reduzida a 61,11% nas interestaduais — Conv. ICMS 100/97. PIS/COFINS: alíquota zero.",
   },
   {
@@ -235,6 +241,7 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '000', ibs_cbs_cclasstrib: '000001',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Base de cálculo reduzida a 61,11% nas interestaduais — Conv. ICMS 100/97. PIS/COFINS: alíquota zero.",
   },
   {
@@ -247,6 +254,7 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '000', ibs_cbs_cclasstrib: '000001',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97 (trigo em grão incluído na Cláusula 1ª, §2°). PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
   {
@@ -259,6 +267,7 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '000', ibs_cbs_cclasstrib: '000001',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
 ];
@@ -374,6 +383,7 @@ const NCM_MODAL_VAZIO: Omit<NcmTributacao, "id"> = {
   cfop_dentro: "", cfop_fora: "",
   ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
   ibs_cbs_reducao_pct: 0,
+  ibs_cbs_cst: "000", ibs_cbs_cclasstrib: "000001",
   inf_cpl: "",
 };
 
@@ -2434,6 +2444,13 @@ function ParametrosSistemaContent() {
               {campo("Efetiva IBS+CBS", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#C9921B" }}>
                 {(((modalNcm.ibs_estadual_aliq ?? 0) + (modalNcm.ibs_municipal_aliq ?? 0) + (modalNcm.cbs_aliq ?? 0)) * (1 - (modalNcm.ibs_cbs_reducao_pct ?? 0) / 100)).toFixed(2)}%
               </div>)}
+            </div>
+            <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "#791F1F" }}>
+              CST e cClassTrib do IBS/CBS são códigos oficiais da Tabela de Classificação Tributária do Comitê Gestor — os valores abaixo são o padrão de "tributação integral" (000/000001) como ponto de partida. <strong>Confirme com o contador antes de confiar, principalmente em NCMs com redução</strong> (o código correto muda conforme o benefício).
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+              {campo("CST IBS/CBS", inp({ value: modalNcm.ibs_cbs_cst ?? "000", maxLength: 3, placeholder: "000", onChange: e => setModalNcm(p => ({ ...p!, ibs_cbs_cst: e.target.value.replace(/\D/g, "").slice(0, 3) })) }))}
+              {campo("cClassTrib", inp({ value: modalNcm.ibs_cbs_cclasstrib ?? "000001", maxLength: 6, placeholder: "000001", onChange: e => setModalNcm(p => ({ ...p!, ibs_cbs_cclasstrib: e.target.value.replace(/\D/g, "").slice(0, 6) })) }))}
             </div>
 
             <div style={{ marginBottom: 16 }}>{secHeader("CFOPs e Texto Complementar")}</div>

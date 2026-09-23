@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-af",
+    data: "23/09/2026",
+    titulo: "NF-e agora destaca IBS/CBS de verdade (Reforma Tributária)",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A configuração \"Destacar IBS/CBS na NF-e\" (Parâmetros → Fiscal) e a Tabela NCM (alíquotas de IBS Estadual/Municipal/CBS + redução) já existiam e salvavam certinho, mas o gerador da NF-e nunca implementava o grupo IBS/CBS de verdade — a configuração não tinha nenhum efeito na nota emitida. Implementado o grupo <IBSCBS> completo (NT 2023.001, LC 214/2025), validado contra o schema oficial da SEFAZ (base de cálculo, alíquotas de IBS Estadual/Municipal/CBS, redução quando configurada, e os totais da NF-e). Passa a valer automaticamente pra toda NF-e emitida pelo sistema, de qualquer módulo — sem precisar mexer em cada tela." },
+      { tipo: "melhoria", texto: "Tabela NCM (Parâmetros → Fiscal) ganhou 2 campos novos: CST e cClassTrib do IBS/CBS — códigos oficiais da Tabela de Classificação Tributária do Comitê Gestor. Vêm com o padrão de \"tributação integral\" (000/000001) pra todo NCM já cadastrado, mas recomendamos confirmar com o contador, principalmente nos NCMs com redução (produtos agropecuários)." },
+    ],
+    onde: "Fiscal → toda emissão de NF-e · Parâmetros → Fiscal → Tabela NCM",
+  },
+  {
     versao: "2026.09.23-ae",
     data: "23/09/2026",
     titulo: "NF de Compras: conversão de unidade errada ao escolher o insumo (ex: L virando ×1000)",

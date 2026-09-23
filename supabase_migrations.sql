@@ -13481,3 +13481,23 @@ COMMENT ON COLUMN transferencias_maquinas.direcao IS
   'saida = nosso bem sai (conserto/transferência/comodato dado). entrada = bem de terceiro chega (comodato recebido/prestador de serviço).';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 286 — IBS/CBS realmente destacado na NF-e emitida (Reforma Tributária)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Achado 23/09/2026: a configuração "Destacar IBS/CBS na NF-e" (Parâmetros →
+-- Fiscal) e a Tabela NCM (alíquotas de IBS Estadual/Municipal/CBS + redução)
+-- já existiam e eram salvas certinho, mas o gerador de XML da NF-e nunca
+-- implementava o grupo <IBSCBS> (NT 2023.001) — a config não tinha efeito
+-- nenhum na nota real. Faltavam só CST e cClassTrib do IBS/CBS por NCM
+-- (códigos oficiais da Tabela de Classificação Tributária do Comitê Gestor).
+ALTER TABLE ncm_tributacoes
+  ADD COLUMN IF NOT EXISTS ibs_cbs_cst TEXT DEFAULT '000',
+  ADD COLUMN IF NOT EXISTS ibs_cbs_cclasstrib TEXT DEFAULT '000001';
+
+COMMENT ON COLUMN ncm_tributacoes.ibs_cbs_cst IS
+  'CST do IBS/CBS (3 dígitos) — 000 = tributação integral. Conferir com o contador antes de confiar cegamente, especialmente pra NCMs com redução/imunidade.';
+COMMENT ON COLUMN ncm_tributacoes.ibs_cbs_cclasstrib IS
+  'cClassTrib do IBS/CBS (6 dígitos, Tabela de Classificação Tributária do Comitê Gestor) — 000001 = tributação integral sem benefício. Conferir com o contador, principalmente pra NCMs com redução (produtos agropecuários).';
+
+NOTIFY pgrst, 'reload schema';

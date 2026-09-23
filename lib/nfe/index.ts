@@ -544,10 +544,42 @@ export async function emitirNFe(
   if (input.infCpl?.trim()) partesInfCpl.push(input.infCpl.trim());
   const infCplFinal = partesInfCpl.filter(Boolean).join(" ") || undefined;
 
+  // IBS/CBS (Reforma Tributária) — só destaca quando "Destacar IBS/CBS na NF-e"
+  // está ativo pro emitente (confg já traz o valor certo, resolvido por CNPJ ou
+  // por IE do produtor conforme o caso — ver buscarConfEmitente acima) E existe
+  // configuração de alíquotas pro NCM do item em Parâmetros → Fiscal → Tabela
+  // NCM. Sem isso configurado, o item simplesmente não leva o grupo (como já
+  // era antes) — nunca bloqueia a emissão por falta de config de IBS/CBS.
+  let itensComIBSCBS = input.itens;
+  if (confg.ibs_cbs_ativo === "sim") {
+    const ncmsDosItens = Array.from(new Set(input.itens.map(i => i.ncm.replace(/\D/g, ""))));
+    const { data: ncmRows } = await sb()
+      .from("ncm_tributacoes")
+      .select("ncm, ibs_estadual_aliq, ibs_municipal_aliq, cbs_aliq, ibs_cbs_reducao_pct, ibs_cbs_cst, ibs_cbs_cclasstrib")
+      .eq("fazenda_id", fazendaId)
+      .in("ncm", ncmsDosItens);
+    const ncmMap = new Map((ncmRows ?? []).map(r => [String(r.ncm).replace(/\D/g, ""), r]));
+    itensComIBSCBS = input.itens.map(item => {
+      const ncmCfg = ncmMap.get(item.ncm.replace(/\D/g, ""));
+      if (!ncmCfg) return item; // sem config pro NCM — emite sem o grupo, não bloqueia
+      return {
+        ...item,
+        ibsCbs: {
+          cst:              ncmCfg.ibs_cbs_cst || "000",
+          cclasstrib:       ncmCfg.ibs_cbs_cclasstrib || "000001",
+          ibsEstadualAliq:  Number(ncmCfg.ibs_estadual_aliq ?? 0),
+          ibsMunicipalAliq: Number(ncmCfg.ibs_municipal_aliq ?? 0),
+          cbsAliq:          Number(ncmCfg.cbs_aliq ?? 0),
+          reducaoPct:       Number(ncmCfg.ibs_cbs_reducao_pct ?? 0),
+        },
+      };
+    });
+  }
+
   // Constrói XML — qualquer exceção aqui se tornava 500; agora vira cStat 505
   let built: ReturnType<typeof buildNFe>;
   try {
-    built = buildNFe({ ...input, emitente, infCpl: infCplFinal });
+    built = buildNFe({ ...input, itens: itensComIBSCBS, emitente, infCpl: infCplFinal });
   } catch (e) {
     return { sucesso: false, cStat: "505", xMotivo: `Erro na construção do XML: ${e}` };
   }
