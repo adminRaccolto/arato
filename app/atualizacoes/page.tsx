@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bo",
+    data: "23/09/2026",
+    titulo: "MDF-e: correção de bug introduzido hoje — NF-e do CT-e duplicada como avulsa",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A melhoria de hoje (\"marcar CT-e preenche o resto sozinho\") tinha um efeito colateral: também copiava a chave de NF-e do CT-e pra \"NF-e Avulsas\" — mas essa NF-e já está referenciada dentro do próprio CT-e, e SEFAZ rejeita com \"Não deve ser informada Nota Fiscal para tipo de emitente Prestador Serviço de Transporte\" quando ela aparece duplicada. Corrigido: marcar um CT-e não mexe mais em NF-e Avulsas — esse campo é só pra NF-e que viaja sem CT-e nenhum. Dois rascunhos afetados (nº 3280 e 3276) já tiveram a duplicidade removida." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (MDF-e)",
+  },
+  {
     versao: "2026.09.23-bn",
     data: "23/09/2026",
     titulo: "MDF-e rejeitado por falta do Contratante do transporte",

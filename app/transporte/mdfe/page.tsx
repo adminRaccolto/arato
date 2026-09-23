@@ -586,24 +586,11 @@ function MdfePageInner() {
         peso_total_kg:      Math.max(0, f.peso_total_kg      + sinal * pesoCte),
         valor_total_carga:  Math.max(0, f.valor_total_carga  + sinal * valorCte),
       };
-      // Chave de NF-e do CT-e — adiciona à lista de NF-e avulsas ao marcar (evita reaproveitar
-      // um slot em branco no meio da lista; ocupa o primeiro vazio se houver), remove ao
-      // desmarcar. Nunca duplica se a chave já estiver na lista (ex: dois CT-e's da mesma NF).
-      if (c?.nfe_chave) {
-        const chaveDigits = c.nfe_chave.replace(/\D/g, "");
-        if (marcando) {
-          if (!f.nfe_chaves.some(ch => ch.replace(/\D/g, "") === chaveDigits)) {
-            const idxVazio = f.nfe_chaves.findIndex(ch => !ch.trim());
-            const novaLista = idxVazio >= 0
-              ? f.nfe_chaves.map((ch, i) => i === idxVazio ? c.nfe_chave! : ch)
-              : [...f.nfe_chaves, c.nfe_chave!];
-            extra = { ...extra, nfe_chaves: novaLista };
-          }
-        } else {
-          const semEla = f.nfe_chaves.filter(ch => ch.replace(/\D/g, "") !== chaveDigits);
-          extra = { ...extra, nfe_chaves: semEla.length > 0 ? semEla : [""] };
-        }
-      }
+      // NUNCA copiar a chave de NF-e do CT-e pra "NF-e Avulsas" — achado real 23/09/2026: uma
+      // NF-e que já está referenciada DENTRO de um CT-e não pode ALSO aparecer como NF-e avulsa
+      // no mesmo MDF-e; SEFAZ rejeita com "Não deve ser informada Nota Fiscal para tipo de
+      // emitente Prestador Serviço de Transporte" (a NF-e avulsa só existe pra carga que viaja
+      // SEM CT-e). Isso chegou a ser adicionado aqui antes e foi removido — não reintroduzir.
       return { ...f, cte_ids: cteIds, ...extra };
     });
   }
