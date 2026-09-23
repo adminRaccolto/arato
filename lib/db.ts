@@ -473,6 +473,33 @@ export async function listarDuplicadosRevisados(contaId: string): Promise<Duplic
   return data ?? [];
 }
 
+// ── Deduplicação por CNPJ/CPF — reaproveitável em qualquer tabela de parceiro
+// de negócio (transportadoras, pessoas, etc.) ────────────────────────────────
+// Mesmo padrão do catálogo de insumos: cadastro compartilhado por conta (todas
+// as fazendas do cliente), busca por documento normalizado (só dígitos).
+export async function buscarRegistroPorDocumentoNaConta(
+  tabela: string,
+  colunaDocumento: string,
+  fazendaId: string,
+  documento: string,
+): Promise<{ id: string } | null> {
+  const digitos = (documento || "").replace(/\D/g, "");
+  if (!digitos) return null;
+
+  let fazendaIds = [fazendaId];
+  const { data: fazAtualRow } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if (fazAtualRow?.conta_id) {
+    const { data: fzsConta } = await supabase.from("fazendas").select("id").eq("conta_id", fazAtualRow.conta_id);
+    if (fzsConta && fzsConta.length > 0) fazendaIds = fzsConta.map((f: { id: string }) => f.id);
+  }
+
+  const { data: existentes } = await supabase.from(tabela).select("*").in("fazenda_id", fazendaIds);
+  const achado = ((existentes ?? []) as Record<string, unknown>[]).find(r =>
+    String(r[colunaDocumento] ?? "").replace(/\D/g, "") === digitos
+  );
+  return achado ? { id: achado.id as string } : null;
+}
+
 export async function marcarDuplicadoRevisado(
   contaId: string,
   chaveNormalizada: string,

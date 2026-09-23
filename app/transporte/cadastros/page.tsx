@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
+import { buscarRegistroPorDocumentoNaConta } from "../../../lib/db";
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -150,6 +151,16 @@ export default function TransporteCadastrosPage() {
     if (pay.id) {
       await supabase.from("transportadoras").update(pay).eq("id", pay.id);
     } else {
+      // Checa duplicado por CNPJ/CPF no catálogo inteiro do cliente antes de criar —
+      // sem isso, cada cadastro novo com o mesmo documento vira um registro separado.
+      const documento = pay.cnpj || pay.cpf || "";
+      const existente = documento ? await buscarRegistroPorDocumentoNaConta("transportadoras", "cnpj", fazendaId, documento) : null;
+      if (existente) {
+        if (!confirm(`Já existe uma transportadora cadastrada com esse CNPJ/CPF. Cadastrar mesmo assim vai criar um duplicado — considere editar a existente. Cadastrar mesmo assim?`)) {
+          setSalvando(false);
+          return;
+        }
+      }
       await supabase.from("transportadoras").insert(pay);
     }
     await carregar();

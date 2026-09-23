@@ -3,7 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import type { ProdutorIE } from "../../../lib/supabase";
-import { listarIEsDeMultiplosProdutores } from "../../../lib/db";
+import { listarIEsDeMultiplosProdutores, buscarRegistroPorDocumentoNaConta } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 
@@ -1862,8 +1862,17 @@ function ParametrosSistemaContent() {
 
   const salvarTransportadora = async () => {
     if (!modalT || !fazendaId) return;
-    if (modalT.id) await supabase.from("transportadoras").update({ ...modalT }).eq("id", modalT.id);
-    else await supabase.from("transportadoras").insert({ ...modalT, fazenda_id: fazendaId, ativa: true });
+    if (modalT.id) {
+      await supabase.from("transportadoras").update({ ...modalT }).eq("id", modalT.id);
+    } else {
+      // Checa duplicado por CNPJ no catálogo inteiro do cliente antes de criar.
+      const cnpj = modalT.cnpj ?? "";
+      const existente = cnpj ? await buscarRegistroPorDocumentoNaConta("transportadoras", "cnpj", fazendaId, cnpj) : null;
+      if (existente && !confirm("Já existe uma transportadora cadastrada com esse CNPJ. Cadastrar mesmo assim vai criar um duplicado — considere editar a existente. Cadastrar mesmo assim?")) {
+        return;
+      }
+      await supabase.from("transportadoras").insert({ ...modalT, fazenda_id: fazendaId, ativa: true });
+    }
     const { data } = await supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId);
     if (data) setTransportadoras(data);
     setModalT(null);

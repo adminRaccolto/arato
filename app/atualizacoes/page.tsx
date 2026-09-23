@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ag",
+    data: "23/09/2026",
+    titulo: "Cadastro de Transportadora duplicando — proteção adicionada",
+    modulos: ["Transporte", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastrar uma transportadora em Transporte → Cadastros ou em Parâmetros → Transportes não checava se já existia uma com o mesmo CNPJ — cada cadastro virava um registro novo, mesmo repetindo o documento. Corrigido nas duas telas: agora avisa antes de criar um duplicado, comparando com o catálogo inteiro do cliente (todas as fazendas). Um caso real de transportadora triplicada foi mesclado num único registro (mantendo o mais completo)." },
+    ],
+    onde: "Transporte → Cadastros · Parâmetros → Transportes",
+  },
+  {
     versao: "2026.09.23-af",
     data: "23/09/2026",
     titulo: "NF-e agora destaca IBS/CBS de verdade (Reforma Tributária)",
