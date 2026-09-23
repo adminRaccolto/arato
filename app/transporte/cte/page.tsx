@@ -87,6 +87,7 @@ interface Cte {
 
 interface VeiculoMin { id: string; placa: string; tipo?: string; cap_kg?: number; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; cnh?: string; }
+interface TransportadoraMin { id: string; razao_social: string; ativa: boolean; }
 interface PessoaMin {
   id: string; nome: string; cpf_cnpj?: string;
   inscricao_est?: string;
@@ -382,6 +383,15 @@ function CtePageInner() {
   const [ctes,           setCtes]           = useState<Cte[]>([]);
   const [veiculos,       setVeiculos]       = useState<VeiculoMin[]>([]);
   const [motoristas,     setMotoristas]     = useState<MotoristaMin[]>([]);
+  const [transportadorasQuick, setTransportadorasQuick] = useState<TransportadoraMin[]>([]);
+
+  // ── Cadastro rápido de Veículo/Motorista sem sair da tela de CT-e ──────────
+  const [modalNovoVeiculo, setModalNovoVeiculo] = useState(false);
+  const [novoVeic, setNovoVeic] = useState({ placa: "", tipo: "", tara_kg: "", cap_kg: "" });
+  const [salvandoVeic, setSalvandoVeic] = useState(false);
+  const [modalNovoMotorista, setModalNovoMotorista] = useState(false);
+  const [novoMot, setNovoMot] = useState({ nome: "", cpf: "", transportadora_id: "" });
+  const [salvandoMot, setSalvandoMot] = useState(false);
   const [pessoas,        setPessoas]        = useState<PessoaMin[]>([]);
   const [produtores,     setProdutores]     = useState<Produtor[]>([]);
   const [empresasTransp, setEmpresasTransp] = useState<EmpresaTransp[]>([]);
@@ -497,6 +507,8 @@ function CtePageInner() {
     setCtes(cd ?? []);
     setVeiculos(vd ?? []);
     setMotoristas(md ?? []);
+    supabase.from("transportadoras").select("id, razao_social, ativa").in("fazenda_id", ids).eq("ativa", true)
+      .then(({ data }) => setTransportadorasQuick(data ?? []));
     setPessoas(todasPessoas);
     setProdutores(todosProdutores ?? []);
     setEmpresasTransp((ed ?? []).sort((a, b) => (a.razao_social ?? a.nome ?? "").localeCompare(b.razao_social ?? b.nome ?? "")));
@@ -678,6 +690,54 @@ function CtePageInner() {
   function selecionarVeiculo(id: string) {
     const v = veiculos.find(v => v.id === id);
     setForm(f => ({ ...f, veiculo_id: id, _placa: v?.placa ?? "" } as typeof f & { _placa: string }));
+  }
+
+  // ── Cadastro rápido de Veículo/Motorista (popup) — pedido do dono 23/09/2026:
+  // não precisar sair da tela de CT-e pra cadastrar transportadora/motorista/veículo novo. Campos
+  // essenciais só — cadastro completo (endereço, CNH detalhada etc.) continua em Cadastros →
+  // Transportadoras/Veículos. Ao salvar, já entra na lista e fica selecionado no CT-e.
+  async function salvarNovoVeiculo() {
+    if (!fazendaId || !novoVeic.placa.trim()) { alert("Placa é obrigatória."); return; }
+    setSalvandoVeic(true);
+    try {
+      const { data, error } = await supabase.from("veiculos").insert({
+        fazenda_id: fazendaId,
+        placa: novoVeic.placa.toUpperCase().trim(),
+        tipo: novoVeic.tipo || null,
+        tara_kg: novoVeic.tara_kg ? parseFloat(novoVeic.tara_kg) : null,
+        cap_kg: novoVeic.cap_kg ? parseFloat(novoVeic.cap_kg) : null,
+        ativo: true,
+      }).select().single();
+      if (error) { alert("Erro ao salvar veículo: " + error.message); return; }
+      setVeiculos(prev => [...prev, { id: data.id, placa: data.placa, tipo: data.tipo, cap_kg: data.cap_kg }]);
+      selecionarVeiculo(data.id);
+      setModalNovoVeiculo(false);
+      setNovoVeic({ placa: "", tipo: "", tara_kg: "", cap_kg: "" });
+    } finally {
+      setSalvandoVeic(false);
+    }
+  }
+
+  async function salvarNovoMotorista() {
+    if (!fazendaId || !novoMot.nome.trim()) { alert("Nome é obrigatório."); return; }
+    setSalvandoMot(true);
+    try {
+      const { data, error } = await supabase.from("motoristas").insert({
+        fazenda_id: fazendaId,
+        nome: novoMot.nome.trim(),
+        cpf: novoMot.cpf.replace(/\D/g, "") || null,
+        transportadora_id: novoMot.transportadora_id || null,
+        tipo: novoMot.transportadora_id ? "clt" : "tac",
+        ativo: true,
+      }).select().single();
+      if (error) { alert("Erro ao salvar motorista: " + error.message); return; }
+      setMotoristas(prev => [...prev, { id: data.id, nome: data.nome, cpf: data.cpf }]);
+      setForm(f => ({ ...f, motorista_id: data.id }));
+      setModalNovoMotorista(false);
+      setNovoMot({ nome: "", cpf: "", transportadora_id: "" });
+    } finally {
+      setSalvandoMot(false);
+    }
   }
 
   // ── Salvar ───────────────────────────────────────────────
@@ -1563,17 +1623,29 @@ function CtePageInner() {
               <div style={divider}>Veículo & Motorista (frota própria — CLT)</div>
               <div style={{ gridColumn: "1 / 3" }}>
                 <label style={lbl}>Veículo</label>
-                <select value={form.veiculo_id} onChange={e => selecionarVeiculo(e.target.value)} style={inp}>
-                  <option value="">— Selecionar —</option>
-                  {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
-                </select>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <select value={form.veiculo_id} onChange={e => selecionarVeiculo(e.target.value)} style={inp}>
+                    <option value="">— Selecionar —</option>
+                    {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
+                  </select>
+                  <button type="button" title="Cadastrar novo veículo sem sair daqui" onClick={() => setModalNovoVeiculo(true)}
+                    style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
+                    + Novo
+                  </button>
+                </div>
               </div>
               <div style={{ gridColumn: "3 / 5" }}>
                 <label style={lbl}>Motorista</label>
-                <select value={form.motorista_id} onChange={e => setForm(f => ({ ...f, motorista_id: e.target.value }))} style={inp}>
-                  <option value="">— Selecionar —</option>
-                  {motoristas.map(m => <option key={m.id} value={m.id}>{m.nome} {m.cpf ? `· ${m.cpf}` : ""}</option>)}
-                </select>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <select value={form.motorista_id} onChange={e => setForm(f => ({ ...f, motorista_id: e.target.value }))} style={inp}>
+                    <option value="">— Selecionar —</option>
+                    {motoristas.map(m => <option key={m.id} value={m.id}>{m.nome} {m.cpf ? `· ${m.cpf}` : ""}</option>)}
+                  </select>
+                  <button type="button" title="Cadastrar novo motorista sem sair daqui" onClick={() => setModalNovoMotorista(true)}
+                    style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
+                    + Novo
+                  </button>
+                </div>
               </div>
 
               {/* ── Valores & ICMS ── */}
@@ -1625,6 +1697,79 @@ function CtePageInner() {
                   {saving ? "Salvando…" : (cteEdit ? "Salvar alterações" : "Salvar CT-e")}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Popup: Novo Veículo (cadastro rápido sem sair do CT-e) ── */}
+      {modalNovoVeiculo && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 420, boxShadow: "0 4px 20px rgba(11,45,80,0.15)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>+ Novo Veículo</div>
+              <button onClick={() => setModalNovoVeiculo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Placa *</label>
+                <input value={novoVeic.placa} onChange={e => setNovoVeic(p => ({ ...p, placa: e.target.value.toUpperCase() }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="ABC1D23" maxLength={7} />
+              </div>
+              <div>
+                <label style={lbl}>Tipo</label>
+                <input value={novoVeic.tipo} onChange={e => setNovoVeic(p => ({ ...p, tipo: e.target.value }))} style={inp} placeholder="Truck, Bitrem…" />
+              </div>
+              <div>
+                <label style={lbl}>Tara (kg)</label>
+                <input value={novoVeic.tara_kg} onChange={e => setNovoVeic(p => ({ ...p, tara_kg: e.target.value.replace(/\D/g, "") }))} style={inp} placeholder="8000" />
+              </div>
+              <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "var(--text-3)" }}>
+                Cadastro completo (proprietário, RNTRC, capacidade em m³ etc.) em Comercial &amp; Logística → Fretes e Transporte → Transportadoras / Veículos.
+              </div>
+            </div>
+            <div style={{ padding: "14px 20px 18px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button style={btnR} onClick={() => setModalNovoVeiculo(false)}>Cancelar</button>
+              <button onClick={salvarNovoVeiculo} disabled={salvandoVeic} style={{ ...btnV, cursor: salvandoVeic ? "default" : "pointer" }}>
+                {salvandoVeic ? "Salvando…" : "Salvar e usar neste CT-e"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Popup: Novo Motorista (cadastro rápido sem sair do CT-e) ── */}
+      {modalNovoMotorista && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 420, boxShadow: "0 4px 20px rgba(11,45,80,0.15)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>+ Novo Motorista</div>
+              <button onClick={() => setModalNovoMotorista(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Nome completo *</label>
+                <input value={novoMot.nome} onChange={e => setNovoMot(p => ({ ...p, nome: e.target.value }))} style={inp} placeholder="João da Silva" />
+              </div>
+              <div>
+                <label style={lbl}>CPF</label>
+                <input value={novoMot.cpf} onChange={e => setNovoMot(p => ({ ...p, cpf: e.target.value }))} style={inp} placeholder="000.000.000-00" />
+              </div>
+              <div>
+                <label style={lbl}>Transportadora {novoMot.transportadora_id ? <span style={{ color: "#16A34A", fontWeight: 700 }}>· CLT</span> : <span style={{ color: "#C9921B", fontWeight: 700 }}>· Autônomo (TAC)</span>}</label>
+                <select value={novoMot.transportadora_id} onChange={e => setNovoMot(p => ({ ...p, transportadora_id: e.target.value }))} style={inp}>
+                  <option value="">— autônomo (TAC) —</option>
+                  {transportadorasQuick.map(t => <option key={t.id} value={t.id}>{t.razao_social}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "var(--text-3)" }}>
+                Cadastro completo (CNH, telefone, e-mail etc.) em Comercial &amp; Logística → Fretes e Transporte → Transportadoras / Veículos.
+              </div>
+            </div>
+            <div style={{ padding: "14px 20px 18px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button style={btnR} onClick={() => setModalNovoMotorista(false)}>Cancelar</button>
+              <button onClick={salvarNovoMotorista} disabled={salvandoMot} style={{ ...btnV, cursor: salvandoMot ? "default" : "pointer" }}>
+                {salvandoMot ? "Salvando…" : "Salvar e usar neste CT-e"}
+              </button>
             </div>
           </div>
         </div>

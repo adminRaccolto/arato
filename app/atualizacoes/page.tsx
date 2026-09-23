@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-v",
+    data: "23/09/2026",
+    titulo: "CT-e: cadastro rápido de Veículo/Motorista sem sair da tela",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "Botão \"+ Novo\" ao lado de Veículo e Motorista abre um popup com os campos essenciais — salva e já fica selecionado no CT-e, sem precisar ir em Cadastros. Cadastro completo continua em Transportadoras / Veículos." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-u",
     data: "23/09/2026",
     titulo: "Motoristas: cadastro não marcava CLT/Autônomo (TAC)",
