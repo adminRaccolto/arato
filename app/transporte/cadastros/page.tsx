@@ -39,6 +39,8 @@ interface Motorista {
   nome: string; cpf?: string;
   cnh_numero?: string; cnh_categoria?: string; cnh_uf?: string; cnh_validade?: string;
   transportadora_id?: string;
+  tipo?: "clt" | "tac";
+  rntrc?: string;
   telefone?: string; email?: string;
   ativo: boolean; obs?: string;
 }
@@ -80,7 +82,7 @@ function Modal({ titulo, onClose, children, width = 720 }: { titulo: string; onC
 }
 
 // ── Campo auxiliar ─────────────────────────────────────────────────────────────
-function Campo({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Campo({ label, required, children }: { label: React.ReactNode; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
       <label style={lbl}>{label}{required && <span style={{ color: "#E24B4A" }}> *</span>}</label>
@@ -171,10 +173,16 @@ export default function TransporteCadastrosPage() {
   };
 
   // ── Salvar Motorista ────────────────────────────────────────────────────────
+  // Achado real 23/09/2026: a tela nunca gravava `tipo` (clt|tac) — a coluna existe no banco (com
+  // DEFAULT 'clt') desde a migration do CIOT, mas o formulário só tinha o campo "Transportadora
+  // (CLT)" (transportadora_id), sem nada tocando em `tipo`. Resultado: TODO motorista cadastrado
+  // ficava com tipo='clt' por padrão, mesmo autônomos — e a seção de CIOT no CT-e/MDF-e (que só
+  // aparece pra tipo='tac') nunca aparecia pra ninguém. Corrigido: deriva `tipo` automaticamente
+  // do mesmo campo que já existe — sem transportadora selecionada = autônomo = TAC.
   const salvarM = async () => {
     if (!fazendaId || !modalM?.nome?.trim()) { alert("Nome é obrigatório."); return; }
     setSalvando(true);
-    const pay = { ...modalM, fazenda_id: fazendaId, ativo: modalM.ativo ?? true };
+    const pay = { ...modalM, fazenda_id: fazendaId, ativo: modalM.ativo ?? true, tipo: modalM.transportadora_id ? "clt" as const : "tac" as const };
     if (pay.id) {
       await supabase.from("motoristas").update(pay).eq("id", pay.id);
     } else {
@@ -679,9 +687,11 @@ export default function TransporteCadastrosPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
-              <Campo label="Transportadora (CLT)">
+              <Campo label={<>Transportadora {modalM.transportadora_id
+                ? <span style={{ color: "#16A34A", fontWeight: 700 }}>· CLT</span>
+                : <span style={{ color: "#C9921B", fontWeight: 700 }}>· Autônomo (TAC)</span>}</>}>
                 <select style={inp} value={modalM.transportadora_id ?? ""} onChange={e => setModalM(p => ({ ...p!, transportadora_id: e.target.value || undefined }))}>
-                  <option value="">— autônomo —</option>
+                  <option value="">— autônomo (TAC — CIOT obrigatório) —</option>
                   {transportadoras.filter(t => t.ativa).map(t => <option key={t.id} value={t.id}>{t.razao_social}</option>)}
                 </select>
               </Campo>

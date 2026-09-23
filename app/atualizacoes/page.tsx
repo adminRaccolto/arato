@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-u",
+    data: "23/09/2026",
+    titulo: "Motoristas: cadastro não marcava CLT/Autônomo (TAC)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A coluna que distingue motorista CLT de Autônomo (TAC) existia no banco, mas o cadastro nunca gravava ela — todo motorista novo ficava marcado como CLT por padrão, mesmo autônomo, e a seção de CIOT no CT-e/MDF-e (só aparece pra TAC) nunca aparecia. Corrigido: agora é automático pelo campo \"Transportadora\" que já existia — sem transportadora selecionada = Autônomo (TAC), mostrado ao lado do campo." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → Transportadoras / Veículos",
+  },
+  {
     versao: "2026.09.23-t",
     data: "23/09/2026",
     titulo: "MDF-e: emissão real na SEFAZ (não era mais simulada)",

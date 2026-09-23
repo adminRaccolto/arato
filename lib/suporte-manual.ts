@@ -569,6 +569,8 @@ Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
 
 Cadastro de transportadoras, veículos (tipos de caminhão) e motoristas. Alerta automático de CNH vencendo.
 
+**Correção 23/09/2026 — motorista sempre ficava marcado como CLT, mesmo autônomo:** a coluna que distingue CLT de TAC (autônomo) já existia no banco, mas a tela de cadastro nunca gravava ela — todo motorista novo entrava com o padrão do banco (CLT), então a seção de CIOT no CT-e/MDF-e (que só aparece pra motorista TAC) nunca aparecia pra ninguém. Corrigido: agora é automático a partir do mesmo campo "Transportadora" que já existia — se você não seleciona nenhuma transportadora, o motorista fica marcado como Autônomo (TAC), e a tela já mostra esse resultado ao lado do campo.
+
 ---
 
 ## MÓDULO 14 — COMERCIAL & LOGÍSTICA → BALANÇA
