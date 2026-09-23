@@ -274,6 +274,14 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
     `</emit>` +
     `<infModal versaoModal="3.00">${rodo}</infModal>` +
     `<infDoc>${infDoc}</infDoc>` +
+    // Seguro da Carga (<seg>) — SEFAZ rejeitava "Seguro da carga é obrigatório para modal
+    // Prestador de Serviço de Transporte no modal rodoviário" (grupo inteiro ausente do XML,
+    // achado real 23/09/2026). respSeg=1 = o próprio emitente do MDF-e é o responsável pelo
+    // seguro — único campo obrigatório nesse caso (schema não exige apólice/seguradora quando
+    // respSeg=1). Sem cadastro de apólice de transporte específico no sistema hoje, esse é o
+    // padrão universalmente válido; se a transportadora tiver apólice própria de carga no
+    // futuro, dá pra estender pra respSeg=2 com xSeg/CNPJ/nApol.
+    `<seg><infResp><respSeg>1</respSeg></infResp></seg>` +
     `<tot>` +
       (qCTe > 0 ? `<qCTe>${qCTe}</qCTe>` : "") +
       (qNFe > 0 ? `<qNFe>${qNFe}</qNFe>` : "") +

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bi",
+    data: "23/09/2026",
+    titulo: "MDF-e rejeitado por falta do grupo Seguro da Carga",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "SEFAZ rejeitava MDF-e com \"Seguro da carga é obrigatório para modal Prestador de Serviço de Transporte no modal rodoviário\" — o grupo inteiro de Seguro da Carga (obrigatório no MDF-e 3.00) nunca era incluído no XML. Corrigido: todo MDF-e agora declara o emitente como responsável pelo seguro (única informação exigida nesse caso pelo schema, sem precisar de apólice/seguradora cadastrada)." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (MDF-e)",
+  },
+  {
     versao: "2026.09.23-bh",
     data: "23/09/2026",
     titulo: "CT-e ganhou atalho \"🚚 Emitir MDF-e\" — sem trocar de tela",
