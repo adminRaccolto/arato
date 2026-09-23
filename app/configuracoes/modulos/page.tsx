@@ -149,6 +149,19 @@ const MDFE_FIELDS: FieldDef[] = [
   { key: "uf_fim",         label: "UF Fim padrão",          type: "text",   placeholder: "PR" },
 ];
 
+// Seguro da Carga (grupo <seg>) — obrigatório no MDF-e 3.00 pro modal rodoviário quando o
+// emitente é Prestador de Serviço de Transporte (ETC/TAC/CTC): SEFAZ exige CNPJ do responsável
+// + nome/CNPJ da seguradora + nº da apólice + nº da averbação, não só "quem é responsável" —
+// achado real 23/09/2026 (rejeições 698 depois 699). É uma apólice fixa por transportadora
+// (RCTR-C, renovada anualmente), não por viagem — por isso mora aqui, não no formulário do
+// MDF-e.
+const MDFE_SEGURO_FIELDS: FieldDef[] = [
+  { key: "seguradora_nome", label: "Nome da Seguradora",             type: "text", placeholder: "Ex: Porto Seguro Cia de Seguros Gerais" },
+  { key: "seguradora_cnpj", label: "CNPJ da Seguradora",             type: "text", placeholder: "00.000.000/0001-00" },
+  { key: "apolice_numero",  label: "Nº da Apólice (RCTR-C)",         type: "text", placeholder: "0000000000" },
+  { key: "averbacao_numero",label: "Nº da Averbação",                type: "text", placeholder: "0000000000" },
+];
+
 const CTE_BASE_FIELDS: FieldDef[] = [
   { key: "ambiente",       label: "Ambiente CT-e",         type: "select", options: ["producao","homologacao"], labels: ["Produção","Homologação"] },
   { key: "serie_cte",      label: "Série CT-e",            type: "text",   placeholder: "001" },
@@ -2308,6 +2321,25 @@ function ParametrosSistemaContent() {
                               value={String(c.uf_fim ?? "")} placeholder="PR"
                               onChange={e => setCfg(mk, "uf_fim", e.target.value)} />
                           </div>
+                        </div>
+
+                        {/* Seguro da Carga (RCTR-C) — SEFAZ rejeita o MDF-e sem isso pro modal
+                            rodoviário quando o emitente é Prestador de Serviço de Transporte
+                            (ETC/TAC/CTC): "Dados do seguro de carga incompletos". Apólice fixa
+                            da transportadora (renovada anualmente), não por viagem — configura
+                            aqui uma vez. Achado real 23/09/2026. */}
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingTop: 4, borderTop: "0.5px solid var(--border)" }}>
+                          Seguro da Carga (RCTR-C) — obrigatório pra transmitir de verdade
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                          {MDFE_SEGURO_FIELDS.map(f => (
+                            <div key={f.key}>
+                              <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
+                              <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                                value={String(c[f.key] ?? "")} placeholder={f.placeholder}
+                                onChange={e => setCfg(mk, f.key, e.target.value)} />
+                            </div>
+                          ))}
                         </div>
 
                         <button onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}

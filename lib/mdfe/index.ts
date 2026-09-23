@@ -214,7 +214,22 @@ export async function emitirMDFe(
     ambiente:       (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
     serie:          confg.serie_mdfe ?? "1",
     numero_mdfe:    0, // preenchido abaixo
+    seguradora_nome:  confg.seguradora_nome,
+    seguradora_cnpj:  confg.seguradora_cnpj,
+    apolice_numero:   confg.apolice_numero,
+    averbacao_numero: confg.averbacao_numero,
   };
+
+  // SEFAZ rejeita o MDF-e rodoviário sem os dados de Seguro da Carga completos — bloqueia aqui
+  // com um aviso claro em vez de gastar uma tentativa real na SEFAZ pra descobrir. Achado real
+  // 23/09/2026 (rejeições 698 depois 699, a segunda só depois do grupo <seg> existir mas com
+  // dados incompletos).
+  if (!emitente.seguradora_nome || !emitente.seguradora_cnpj || !emitente.apolice_numero || !emitente.averbacao_numero) {
+    return {
+      sucesso: false, cStat: "VALIDACAO_LOCAL",
+      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice e Nº da Averbação em Parâmetros → MDF-e, na empresa emitente.",
+    };
+  }
 
   const numero = await proximoNumero(fazendaId, resolved.mdfeModulo, confg);
   emitente.numero_mdfe = numero;

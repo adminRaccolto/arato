@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bj",
+    data: "23/09/2026",
+    titulo: "MDF-e: dados do Seguro da Carga (RCTR-C) completos — Parâmetros ganhou os campos",
+    modulos: ["Transporte", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Depois da correção anterior (grupo Seguro da Carga presente, mas com só \"quem é responsável\"), a SEFAZ seguiu rejeitando com \"Dados do seguro de carga incompletos para o modal rodoviário\" — pro modal rodoviário com emitente Prestador de Serviço de Transporte, a SEFAZ exige TAMBÉM nome/CNPJ da seguradora, nº da apólice e nº da averbação, não só o responsável. Corrigido: Parâmetros → MDF-e ganhou esses 4 campos por emitente (é a apólice RCTR-C da transportadora, renovada anualmente — configura uma vez). Emissão agora bloqueia ANTES de tentar na SEFAZ se algum desses estiver vazio, avisando exatamente o que falta." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → MDF-e · Comercial & Logística → Fretes e Transporte (MDF-e)",
+  },
+  {
     versao: "2026.09.23-bi",
     data: "23/09/2026",
     titulo: "MDF-e rejeitado por falta do grupo Seguro da Carga",

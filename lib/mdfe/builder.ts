@@ -24,6 +24,13 @@ export interface EmitenteMDFe {
   ambiente:       "producao" | "homologacao";
   serie:          string;
   numero_mdfe:    number;
+  // Seguro da Carga (RCTR-C) — SEFAZ rejeita o MDF-e rodoviário sem isso quando o emitente é
+  // Prestador de Serviço de Transporte ("Dados do seguro de carga incompletos", achado real
+  // 23/09/2026). Apólice fixa da transportadora, configurada em Parâmetros → MDF-e.
+  seguradora_nome?:  string;
+  seguradora_cnpj?:  string;
+  apolice_numero?:   string;
+  averbacao_numero?: string;
 }
 
 export interface MunicipioDescarga {
@@ -274,14 +281,25 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
     `</emit>` +
     `<infModal versaoModal="3.00">${rodo}</infModal>` +
     `<infDoc>${infDoc}</infDoc>` +
-    // Seguro da Carga (<seg>) — SEFAZ rejeitava "Seguro da carga é obrigatório para modal
-    // Prestador de Serviço de Transporte no modal rodoviário" (grupo inteiro ausente do XML,
-    // achado real 23/09/2026). respSeg=1 = o próprio emitente do MDF-e é o responsável pelo
-    // seguro — único campo obrigatório nesse caso (schema não exige apólice/seguradora quando
-    // respSeg=1). Sem cadastro de apólice de transporte específico no sistema hoje, esse é o
-    // padrão universalmente válido; se a transportadora tiver apólice própria de carga no
-    // futuro, dá pra estender pra respSeg=2 com xSeg/CNPJ/nApol.
-    `<seg><infResp><respSeg>1</respSeg></infResp></seg>` +
+    // Seguro da Carga (<seg>) — obrigatório no MDF-e 3.00 pro modal rodoviário quando o
+    // emitente é Prestador de Serviço de Transporte. Primeira tentativa (só respSeg=1) foi
+    // rejeitada com "Dados do seguro de carga incompletos" — pra rodoviário/prestador de
+    // serviço, CNPJ do responsável + nome/CNPJ da seguradora + nº apólice + nº averbação são
+    // TODOS obrigatórios, não só "quem é responsável". Achado real 23/09/2026 (rejeições 698
+    // depois 699). respSeg=1 = o próprio emitente é o responsável; CNPJ dele mesmo repetido
+    // aqui (schema exige o documento do responsável dentro de infResp).
+    (() => {
+      const cnpjResp = e.cpf_cnpj.replace(/\D/g, "");
+      const cnpjSeg = (e.seguradora_cnpj ?? "").replace(/\D/g, "");
+      return `<seg>` +
+        `<infResp><respSeg>1</respSeg>${cnpjResp.length === 14 ? `<CNPJ>${cnpjResp}</CNPJ>` : `<CPF>${cnpjResp}</CPF>`}</infResp>` +
+        (e.seguradora_nome || cnpjSeg
+          ? `<infSeg>${e.seguradora_nome ? `<xSeg>${escLimite(e.seguradora_nome, 30)}</xSeg>` : ""}${cnpjSeg ? `<CNPJ>${cnpjSeg}</CNPJ>` : ""}</infSeg>`
+          : "") +
+        (e.apolice_numero ? `<nApol>${esc(e.apolice_numero)}</nApol>` : "") +
+        (e.averbacao_numero ? `<nAver>${esc(e.averbacao_numero)}</nAver>` : "") +
+      `</seg>`;
+    })() +
     `<tot>` +
       (qCTe > 0 ? `<qCTe>${qCTe}</qCTe>` : "") +
       (qNFe > 0 ? `<qNFe>${qNFe}</qNFe>` : "") +
