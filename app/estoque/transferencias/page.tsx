@@ -521,7 +521,13 @@ export default function TransferenciasEstoquePage() {
     try {
       const res = await acao("emitir", t.id);
       if (!res.ok) alert(res.error ?? "Erro ao emitir NF");
-      else await carregar();
+      else {
+        // "ok: true" com aviso = caiu no fallback de novo (config fiscal ainda
+        // ausente) — sem isso o usuário clica em "Tentar Emitir NF-e" e não
+        // percebe que continuou sem gerar NF real nenhuma.
+        if ((res as { aviso?: string }).aviso) alert((res as { aviso?: string }).aviso!);
+        await carregar();
+      }
     } finally { setAcaoId(null); }
   }
 
@@ -770,7 +776,14 @@ export default function TransferenciasEstoquePage() {
                   </td></tr>
                 )}
                 {historico.map(t => {
-                  const st = STATUS_LABEL[t.status] ?? STATUS_LABEL.rascunho;
+                  // "emitida" sem nf_chave = caiu no fallback (sem configuração fiscal
+                  // na fazenda de origem) — o estoque já foi movimentado, mas não existe
+                  // NF-e real nenhuma. Precisa ficar visualmente diferente de "NF Emitida"
+                  // de verdade, senão parece que o DANFE devia existir e não existe.
+                  const semNfReal = t.status === "emitida" && !t.nf_chave;
+                  const st = semNfReal
+                    ? { txt: "Sem NF-e (config. fiscal)", bg: "#FEF3C7", cor: "#92400E" }
+                    : (STATUS_LABEL[t.status] ?? STATUS_LABEL.rascunho);
                   return (
                     <tr key={t.id}>
                       <td style={{ ...td, fontFamily: "monospace", fontSize: 12, color: "#888" }}>{t.numero ?? "—"}</td>
@@ -820,6 +833,16 @@ export default function TransferenciasEstoquePage() {
                             >
                               DANFE
                             </a>
+                          )}
+                          {semNfReal && (
+                            <button
+                              onClick={() => emitirSolicitacao(t)}
+                              disabled={acaoId === t.id}
+                              title="Configure Parâmetros → Fiscal na fazenda de origem antes de tentar de novo"
+                              style={btn("#C9921B")}
+                            >
+                              {acaoId === t.id ? "…" : "Tentar Emitir NF-e"}
+                            </button>
                           )}
                           {t.status === "emitida" && !t.entrada_automatica && (
                             <button onClick={() => confirmarEntrada(t)} disabled={acaoId === t.id} style={btn("#16A34A")}>

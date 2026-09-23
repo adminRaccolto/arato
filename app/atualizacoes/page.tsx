@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-al",
+    data: "23/09/2026",
+    titulo: "Transferência de Estoque: \"NF Emitida\" sem DANFE — status e retry corrigidos",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Quando a fazenda de origem não tem Parâmetros → Fiscal configurado, a transferência ficava marcada \"NF Emitida\" (o estoque é movimentado normalmente) mas nenhuma NF-e real era gerada — sem nenhum aviso visível disso, e sem botão pra tentar de novo depois de configurar o fiscal. Corrigido: esse caso agora aparece com status \"Sem NF-e (config. fiscal)\" em destaque, e ganhou o botão \"Tentar Emitir NF-e\" pra reprocessar depois de configurar — sem duplicar a movimentação de estoque que já tinha sido feita." },
+    ],
+    onde: "Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-ak",
     data: "23/09/2026",
     titulo: "Transferência de Estoque: depósito de terceiro não aparece mais como origem/destino",

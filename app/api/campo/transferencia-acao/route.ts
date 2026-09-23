@@ -134,6 +134,13 @@ export async function POST(request: NextRequest) {
 
       const itensTransf = (t.transferencias_estoque_itens ?? []) as Array<Record<string, unknown>>;
 
+      // Retry: se já passou por aqui antes (status emitida/entrada_confirmada —
+      // inclusive pelo caminho "sem config fiscal" abaixo, que também marca
+      // "emitida"), as movimentações de estoque já foram lançadas. Sem essa
+      // guarda, tentar emitir de novo (ex: depois de configurar o fiscal que
+      // faltava) duplicava a saída/entrada no estoque.
+      const jaProcessado = t.status === "emitida" || t.status === "entrada_confirmada";
+
       // 2. Resolve modulo_key fiscal da fazenda de origem — o CNPJ/CPF Emitente
       // informado manualmente na transferência (cpf_cnpj_origem) tem prioridade
       // sobre o titular padrão da fazenda: a fazenda é só o local do estoque,
@@ -150,8 +157,8 @@ export async function POST(request: NextRequest) {
         await adm.from("transferencias_estoque")
           .update({ status: "emitida", data_emissao: new Date().toISOString() })
           .eq("id", tid);
-        await _criarMovimentacoes(t, itensTransf, adm);
-        return NextResponse.json({ ok: true, aviso: "Configuração fiscal não encontrada — NF-e não emitida. Acesse Parâmetros → Fiscal." });
+        if (!jaProcessado) await _criarMovimentacoes(t, itensTransf, adm);
+        return NextResponse.json({ ok: true, aviso: "Configuração fiscal não encontrada — NF-e não emitida. Acesse Parâmetros → Fiscal e tente novamente." });
       }
 
       // 3. Busca dados dos insumos para montar os itens da NF-e
@@ -346,7 +353,7 @@ export async function POST(request: NextRequest) {
       });
 
       // 7. Movimentações de estoque
-      await _criarMovimentacoes(t, itensTransf, adm);
+      if (!jaProcessado) await _criarMovimentacoes(t, itensTransf, adm);
 
       return NextResponse.json({
         ok: true,
