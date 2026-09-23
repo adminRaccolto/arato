@@ -82,16 +82,17 @@ export interface ResultadoEmissaoMDFe {
 /** Resolve município + IBGE de destino a partir dos CT-e/NF-e vinculados ao MDF-e. */
 async function resolverMunicipiosDescarga(
   documentos: { tipo: string; chave: string }[],
-): Promise<{ municipios: MunicipioDescarga[]; ctesCanceladas: string[] }> {
+): Promise<{ municipios: MunicipioDescarga[]; ctesCanceladas: string[]; contratanteCnpjCpf?: string }> {
   const ctesChaves = documentos.filter(d => d.tipo === "cte").map(d => d.chave.replace(/\D/g, ""));
   const nfeChaves  = documentos.filter(d => d.tipo === "nfe").map(d => d.chave.replace(/\D/g, ""));
 
   const grupos = new Map<string, MunicipioDescarga>();
   const ctesCanceladas: string[] = [];
+  let contratanteCnpjCpf: string | undefined;
 
   if (ctesChaves.length > 0) {
     const { data: ctes } = await sb().from("ctes")
-      .select("chave_acesso, municipio_destino, ibge_destino, status")
+      .select("chave_acesso, municipio_destino, ibge_destino, status, tomador_tipo, remetente_cnpj, destinatario_cnpj")
       .in("chave_acesso", ctesChaves);
     for (const c of ctes ?? []) {
       // CT-e cancelado não pode sustentar um MDF-e — referenciar ele provavelmente também seria
@@ -102,6 +103,16 @@ async function resolverMunicipiosDescarga(
       if (!ibge) continue;
       if (!grupos.has(ibge)) grupos.set(ibge, { municipio_ibge: ibge, municipio_nome: c.municipio_destino, cte_chaves: [], nfe_chaves: [] });
       grupos.get(ibge)!.cte_chaves.push(c.chave_acesso as string);
+      // Contratante do MDF-e (<infContratante>) — a SEFAZ exige o documento de quem contratou o
+      // transporte (rejeição 578: "Informações dos tomadores é obrigatória para esta operação")
+      // pra emitente Prestador de Serviço. Usa o Tomador do Serviço já indicado no CT-e vinculado
+      // (o mesmo campo que já decide se o Remetente ou o Destinatário é quem contratou o frete).
+      // Achado real 23/09/2026.
+      if (!contratanteCnpjCpf) {
+        const tomadorTipo = (c as { tomador_tipo?: string }).tomador_tipo;
+        const doc = tomadorTipo === "destinatario" ? c.destinatario_cnpj : c.remetente_cnpj;
+        if (doc) contratanteCnpjCpf = doc as string;
+      }
     }
   }
 
@@ -112,7 +123,7 @@ async function resolverMunicipiosDescarga(
     if (primeiroGrupo) primeiroGrupo.nfe_chaves.push(chave);
   }
 
-  return { municipios: Array.from(grupos.values()), ctesCanceladas };
+  return { municipios: Array.from(grupos.values()), ctesCanceladas, contratanteCnpjCpf };
 }
 
 export async function emitirMDFe(
@@ -189,7 +200,7 @@ export async function emitirMDFe(
 
   // 5. Municípios de descarga — resolvidos a partir dos CT-e/NF-e vinculados
   const documentos = (typeof m.documentos === "string" ? JSON.parse(m.documentos) : m.documentos) as { tipo: string; chave: string }[];
-  const { municipios: municipiosDescarga, ctesCanceladas } = await resolverMunicipiosDescarga(documentos ?? []);
+  const { municipios: municipiosDescarga, ctesCanceladas, contratanteCnpjCpf } = await resolverMunicipiosDescarga(documentos ?? []);
   if (ctesCanceladas.length > 0) {
     return {
       sucesso: false, cStat: "VALIDACAO_LOCAL",
@@ -261,6 +272,19 @@ export async function emitirMDFe(
     };
   }
 
+  // Contratante do transporte (<infContratante>) — obrigatório pra emitente Prestador de
+  // Serviço (tpEmit=1) ou CT-e Globalizado (tpEmit=3): SEFAZ rejeita com "Informações dos
+  // tomadores é obrigatória para esta operação" (rejeição 578) sem isso. Resolvido a partir do
+  // Tomador do Serviço já indicado no CT-e vinculado — bloqueia localmente se não tiver CT-e
+  // nenhum vinculado nesse caso (não tem de onde tirar o contratante). Carga própria (tpEmit=2)
+  // não precisa disso. Achado real 23/09/2026.
+  if ((emitente.tpEmit === "1" || emitente.tpEmit === "3") && !contratanteCnpjCpf) {
+    return {
+      sucesso: false, cStat: "VALIDACAO_LOCAL",
+      xMotivo: "Não foi possível determinar o Contratante do transporte — vincule pelo menos um CT-e autorizado a este MDF-e (é dali que vem o Tomador do Serviço).",
+    };
+  }
+
   const numero = await proximoNumero(fazendaId, resolved.mdfeModulo, confg);
   emitente.numero_mdfe = numero;
 
@@ -278,6 +302,7 @@ export async function emitirMDFe(
     peso_bruto_kg: m.peso_total_kg || 0,
     valor_carga: m.valor_total_carga || 0,
     observacao: m.observacao ?? undefined,
+    contratante_cnpj_cpf: emitente.tpEmit !== "2" ? contratanteCnpjCpf : undefined,
   };
 
   const built = buildMDFe(input);

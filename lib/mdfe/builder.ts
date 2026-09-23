@@ -73,6 +73,10 @@ export interface MDFeInput {
   peso_bruto_kg:     number;
   valor_carga:       number;
   observacao?:       string;
+  // Contratante do transporte (<infContratante>) — obrigatório pra emitente Prestador de
+  // Serviço (tpEmit=1) ou CT-e Globalizado (tpEmit=3). CPF ou CNPJ de quem contratou o frete
+  // (o Tomador do Serviço do CT-e vinculado). Achado real 23/09/2026.
+  contratante_cnpj_cpf?: string;
 }
 
 export interface MDFeBuiltResult {
@@ -218,8 +222,14 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
   const infCIOT = ciotDigits.length === 12 && ciotDocDigits
     ? `<infCIOT><CIOT>${ciotDigits}</CIOT>${ciotDocDigits.length === 14 ? `<CNPJ>${ciotDocDigits}</CNPJ>` : `<CPF>${ciotDocDigits}</CPF>`}</infCIOT>`
     : "";
-  const infANTT = (rntrc || infCIOT)
-    ? `<infANTT>${rntrc ? `<RNTRC>${rntrc}</RNTRC>` : ""}${infCIOT}</infANTT>`
+  // Contratante do transporte — obrigatório pra Prestador de Serviço/CT-e Globalizado (rejeição
+  // 578: "Informações dos tomadores é obrigatória para esta operação"). Achado real 23/09/2026.
+  const contratanteDigits = (input.contratante_cnpj_cpf ?? "").replace(/\D/g, "");
+  const infContratante = contratanteDigits
+    ? `<infContratante>${contratanteDigits.length === 14 ? `<CNPJ>${contratanteDigits}</CNPJ>` : `<CPF>${contratanteDigits}</CPF>`}</infContratante>`
+    : "";
+  const infANTT = (rntrc || infCIOT || infContratante)
+    ? `<infANTT>${rntrc ? `<RNTRC>${rntrc}</RNTRC>` : ""}${infContratante}${infCIOT}</infANTT>`
     : "";
 
   const condutores = input.condutores.map(c =>

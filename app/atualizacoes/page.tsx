@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bn",
+    data: "23/09/2026",
+    titulo: "MDF-e rejeitado por falta do Contratante do transporte",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "SEFAZ rejeitava com \"Informações dos tomadores é obrigatória para esta operação\" — faltava o grupo Contratante (quem contratou o frete), obrigatório pra emitente Prestador de Serviço. Corrigido: resolvido automaticamente a partir do Tomador do Serviço já indicado no CT-e vinculado — sem precisar cadastrar nada novo." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (MDF-e)",
+  },
+  {
     versao: "2026.09.23-bm",
     data: "23/09/2026",
     titulo: "MDF-e: validação local pra Carga Própria + CT-e vinculado (combinação sempre inválida)",
