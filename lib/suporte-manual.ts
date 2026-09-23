@@ -933,6 +933,12 @@ Gerencia cotas de consórcio com cronograma de parcelas e CPs automáticas.
 
 Lista todas as NF-e emitidas pela fazenda — incluindo NF de venda/faturamento e NF de Transferência entre Fazendas. Status: autorizada, cancelada, denegada. Acesso ao DANFE e XML.
 
+**Novo 23/09/2026 — Carta de Correção Eletrônica (CC-e):** botão "📝 Carta de Correção" em qualquer NF-e autorizada. Corrige um erro que **não** muda valor, tributo, quantidade, dados que identifiquem remetente/destinatário, nem data de emissão/saída — por exemplo, um erro de digitação numa descrição ou observação. Transmite o evento oficial à SEFAZ (tpEvento 110110), mantém o histórico de todas as correções já emitidas pra aquela nota (numeradas automaticamente, nunca reaproveita número) e mostra o protocolo do evento quando aceita. Pra corrigir valor, tributo ou dado das partes, a única opção continua sendo Cancelar (dentro de 24h) e reemitir, ou Emitir Complementar quando aplicável.
+
+**Correção 23/09/2026 — "Cancelar NF-e" era simulado, não cancelava nada de verdade na SEFAZ:** o botão só mostrava um aviso na tela e marcava a nota como cancelada no sistema, sem transmitir o evento de cancelamento — a NF-e continuava autorizada e valendo de verdade do lado de fora, mesmo aparecendo "cancelada" aqui dentro. Corrigido: agora transmite o evento oficial (tpEvento 110111) de verdade, e só marca "cancelada" no sistema se a SEFAZ aceitar. **Se você cancelou alguma NF-e por essa tela antes desta correção, ela nunca foi cancelada de verdade — confira no Portal da SEFAZ-MT; se ainda estiver dentro do prazo de 24h da autorização, cancele de novo agora por aqui.**
+
+**Correção 23/09/2026 — "Imprimir DANFE" tinha layout diferente do DANFE de Estoque → Transferências, e sem a logo do cliente:** essa tela usava um gerador próprio (reconstruído a partir dos dados salvos no banco), diferente do usado em Estoque → Transferências (gerado a partir do XML realmente transmitido à SEFAZ, que já suporta a logo do cliente). Unificado: as duas telas agora imprimem o mesmo DANFE.
+
 ### 20.2 Pendências Fiscais
 **Caminho:** Fiscal → Emissão e Controle → Pendências Fiscais
 

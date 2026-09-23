@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ay",
+    data: "23/09/2026",
+    titulo: "NF-e: Carta de Correção (CC-e), Cancelar NF-e virou real e DANFE unificado com logo",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Novo: Fiscal → Monitor de Notas Emitidas ganhou o botão \"📝 Carta de Correção\" — não existia nenhuma forma de corrigir um dado de uma NF-e já autorizada (só Cancelar ou Emitir Complementar, nenhum dos dois serve pra isso). Transmite o evento oficial de CC-e (tpEvento 110110) à SEFAZ, mantém o histórico de correções já emitidas pra cada nota e numera a sequência automaticamente. Não permite corrigir valor, tributo, quantidade, dados de identificação das partes nem data de emissão/saída — exigência legal da própria CC-e." },
+      { tipo: "correcao", texto: "\"Cancelar NF-e\" no Monitor de Notas Emitidas era simulado — só mostrava um aviso e fechava a tela, sem transmitir cancelamento nenhum à SEFAZ nem atualizar o status no banco; a nota continuava valendo de verdade do lado de fora mesmo marcada como \"cancelada\" aqui. Corrigido: agora transmite o evento oficial de cancelamento e só marca cancelada se a SEFAZ aceitar de verdade. **Se você cancelou alguma NF-e por essa tela antes desta correção, ela nunca foi cancelada de verdade na SEFAZ — confira no Portal da SEFAZ-MT e, se ainda estiver dentro do prazo (24h da autorização), cancele agora por aqui.**" },
+      { tipo: "correcao", texto: "\"Imprimir DANFE\" no Monitor de Notas Emitidas usava um layout próprio (reconstruído a partir dos dados salvos no banco, sem a logo do cliente) diferente do DANFE de Estoque → Transferências (gerado a partir do XML realmente transmitido, com logo). Unificado: agora as duas telas usam o mesmo gerador." },
+    ],
+    onde: "Fiscal / NF-e → Monitor de Notas Emitidas",
+  },
+  {
     versao: "2026.09.23-ax",
     data: "23/09/2026",
     titulo: "Transferência de Estoque: NF-e de destinatário com mais de uma IE saía com endereço errado",

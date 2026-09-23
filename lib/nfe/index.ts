@@ -11,7 +11,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildNFe }        from "./builder";
 import { assinarNFe, pfxParaPem } from "./signer";
 import { transmitirNFe }   from "./transmitter";
-import { cancelarNFe }     from "./evento";
+import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
 
 export type { NFeInput, EmitenteCfg };
@@ -792,5 +792,71 @@ export async function cancelarNFeEmitida(
     };
   } catch (e) {
     return { sucesso: false, cStat: "505", xMotivo: `Erro ao montar/assinar evento de cancelamento: ${e}` };
+  }
+}
+
+export interface ResultadoCorrecao {
+  sucesso: boolean;
+  cStat: string;
+  xMotivo: string;
+  protocoloEvento?: string;
+  nSeqEvento: number;
+  xmlAssinado?: string;
+}
+
+// ─── Emite Carta de Correção Eletrônica (CC-e, tpEvento 110110) — não existia
+// no sistema até 23/09/2026 (achado real: dono precisou corrigir um dado de
+// uma NF-e já autorizada e não tinha como, só "Cancelar" ou "Emitir
+// Complementar", nenhum dos dois serve pra esse caso). Mesmo padrão de
+// certificado/config do cancelamento — reusa a MESMA config/certificado
+// (moduloKey) usada na emissão original.
+export async function corrigirNFeEmitida(
+  fazendaId: string,
+  moduloKey: string,
+  chave: string,
+  textoCorrecao: string,
+  nSeqEvento: number,
+): Promise<ResultadoCorrecao> {
+  const confg = await buscarConfEmitente(fazendaId, moduloKey);
+  if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada`, nSeqEvento };
+
+  const certPath = confg.cert_a1_path;
+  const certSenha = confg.cert_a1_senha;
+  if (!certPath || !certSenha)
+    return { sucesso: false, cStat: "501", nSeqEvento, xMotivo: !certPath
+      ? `Certificado A1 (arquivo) não enviado para o emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} em Parâmetros → Fiscal`
+      : `A senha do certificado A1 do emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} não está salva. Em Parâmetros → Fiscal, envie o certificado de novo informando a senha` };
+
+  let pfxBuffer: Buffer;
+  try {
+    pfxBuffer = await carregarPfx(certPath, fazendaId);
+  } catch (e) {
+    return { sucesso: false, cStat: "502", xMotivo: String(e), nSeqEvento };
+  }
+  let pem: ReturnType<typeof pfxParaPem>;
+  try {
+    pem = pfxParaPem(pfxBuffer, certSenha);
+  } catch (e) {
+    return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}`, nSeqEvento };
+  }
+
+  try {
+    const resultado = await emitirCartaCorrecao(pem, {
+      chave,
+      cpfCnpjEmit: confg.cpf_cnpj_emitente ?? "",
+      uf: confg.uf_emitente ?? "MT",
+      ambiente: (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
+      correcao: textoCorrecao,
+      nSeqEvento,
+    });
+    return {
+      sucesso: resultado.sucesso,
+      cStat: resultado.cStat,
+      xMotivo: resultado.xMotivo,
+      protocoloEvento: resultado.protocolo,
+      nSeqEvento,
+    };
+  } catch (e) {
+    return { sucesso: false, cStat: "505", xMotivo: `Erro ao montar/assinar CC-e: ${e}`, nSeqEvento };
   }
 }

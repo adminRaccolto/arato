@@ -13533,3 +13533,50 @@ COMMENT ON COLUMN ctes.cst_icms IS
   'Situação Tributária do ICMS no CT-e: 00 = tributação normal (usa base_calc_icms/aliquota_icms/valor_icms); 40 = isenta; 41 = não tributada; 51 = diferimento — nesses três últimos o XML usa o grupo ICMS45 (só a tag CST, sem base nem valor). NULL em CT-e antigos = tratado como "00" se aliquota_icms>0, senão "40" (heurística antiga preservada em lib/cte/builder.ts e no app).';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 289 — Carta de Correção Eletrônica (CC-e) + cancelamento real de NF-e
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Achado real 23/09/2026: Fiscal → Monitor de Notas Emitidas não tinha opção
+-- de Carta de Correção nenhuma (só Cancelar/Complementar, nenhum dos dois
+-- serve pra corrigir um dado sem afetar valor/tributo), e o botão "Cancelar
+-- NF-e" dessa tela era SIMULADO — só mostrava um alert() e fechava o modal,
+-- sem transmitir nada de verdade à SEFAZ nem atualizar o status no banco.
+CREATE TABLE IF NOT EXISTS nfe_cartas_correcao (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nota_id          UUID REFERENCES notas_fiscais(id) ON DELETE CASCADE,
+  fazenda_id       UUID NOT NULL REFERENCES fazendas(id),
+  chave_acesso     TEXT NOT NULL,
+  sequencia        INT NOT NULL,          -- nSeqEvento: 1ª CC-e=1, 2ª=2... nunca reaproveita
+  texto_correcao   TEXT NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente','aceita','rejeitada')),
+  cstat            TEXT,
+  xmotivo          TEXT,
+  protocolo_evento TEXT,
+  xml_evento       TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (chave_acesso, sequencia)
+);
+CREATE INDEX IF NOT EXISTS idx_cce_chave ON nfe_cartas_correcao(chave_acesso);
+CREATE INDEX IF NOT EXISTS idx_cce_nota  ON nfe_cartas_correcao(nota_id);
+
+ALTER TABLE nfe_cartas_correcao ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "nfe_cartas_correcao_tenant" ON nfe_cartas_correcao FOR ALL
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  )
+  WITH CHECK (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';

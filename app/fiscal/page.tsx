@@ -526,7 +526,7 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir }: {
   notas: NotaFiscal[];
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
@@ -534,6 +534,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
   onImprimirDanfe?: (n: NotaFiscal) => void;
   onRetransmitir?: (n: NotaFiscal) => void;
   onManifestarNF?: (n: NotaFiscal) => void;
+  onCorrigir?: (n: NotaFiscal) => void;
 }) {
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -633,6 +634,15 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                               style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
                               Emitir Complementar
+                            </button>
+                          )}
+                          {onCorrigir && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onCorrigir(nota); }}
+                              title="Corrigir um dado que não afeta valor, tributo nem identificação das partes"
+                              style={{ padding: "5px 12px", border: "0.5px solid #378ADD", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                            >
+                              📝 Carta de Correção
                             </button>
                           )}
                           {onManifestarNF && (() => {
@@ -889,6 +899,44 @@ function FiscalInner() {
 
   // Formulário Cancelamento
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
+
+  // Carta de Correção (CC-e) — não existia até 23/09/2026
+  const [modalCorrecao,    setModalCorrecao]    = useState<NotaFiscal | null>(null);
+  const [textoCorrecao,    setTextoCorrecao]    = useState("");
+  const [historicoCorrecao, setHistoricoCorrecao] = useState<{ sequencia: number; texto_correcao: string; status: string; xmotivo?: string; created_at: string }[]>([]);
+  const [enviandoCorrecao, setEnviandoCorrecao] = useState(false);
+
+  const abrirModalCorrecao = async (n: NotaFiscal) => {
+    setModalCorrecao(n);
+    setTextoCorrecao("");
+    setHistoricoCorrecao([]);
+    try {
+      const res = await fetch(`/api/fiscal/eventos?nota_id=${n.id}`);
+      const j = await res.json();
+      if (j.ok) setHistoricoCorrecao(j.correcoes ?? []);
+    } catch { /* histórico é só informativo — segue sem ele se falhar */ }
+  };
+
+  const enviarCartaCorrecao = async () => {
+    if (!modalCorrecao || textoCorrecao.trim().length < 15) return;
+    setEnviandoCorrecao(true);
+    try {
+      const res = await fetch("/api/fiscal/eventos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "carta_correcao", nota_id: modalCorrecao.id, correcao: textoCorrecao.trim() }),
+      });
+      const j = await res.json();
+      if (!j.ok) {
+        alert(`Carta de Correção não aceita pela SEFAZ.\n\n${j.cStat ? `SEFAZ ${j.cStat}: ` : ""}${j.xMotivo ?? j.error ?? "erro desconhecido"}`);
+        return;
+      }
+      alert(`✓ Carta de Correção nº ${j.sequencia} registrada na SEFAZ.\nProtocolo do evento: ${j.protocolo ?? "—"}`);
+      setTextoCorrecao("");
+      await abrirModalCorrecao(modalCorrecao);
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : String(e)); }
+    finally { setEnviandoCorrecao(false); }
+  };
 
   // Formulário Complemento
   const [fComp, setFComp] = useState({
@@ -1480,15 +1528,28 @@ function FiscalInner() {
     finally { setSalvando(false); }
   };
 
-  // Solicitar cancelamento
+  // Solicitar cancelamento — achado real 23/09/2026: isso era simulado (só um
+  // alert(), nada transmitido à SEFAZ nem atualizado no banco). Agora chama
+  // /api/fiscal/eventos, que transmite o evento oficial de cancelamento
+  // (tpEvento 110111) de verdade e só marca "cancelada" se a SEFAZ aceitar.
   const solicitarCancelamento = async () => {
-    if (!modalCancelamento || !motivoCancelamento.trim()) return;
+    if (!modalCancelamento || motivoCancelamento.trim().length < 15) return;
     setSalvando(true);
     try {
-      // Atualiza status para cancelada (simulação — integração SEFAZ futura)
-      alert(`Cancelamento solicitado para NF-e ${modalCancelamento.numero}.\nProtocolo será gerado após autorização SEFAZ.`);
+      const res = await fetch("/api/fiscal/eventos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "cancelar", nota_id: modalCancelamento.id, justificativa: motivoCancelamento.trim() }),
+      });
+      const j = await res.json();
+      if (!j.ok) {
+        alert(`Cancelamento não realizado.\n\nSEFAZ ${j.cStat ?? ""}: ${j.xMotivo ?? j.error ?? "erro desconhecido"}`);
+        return;
+      }
+      alert(`✓ NF-e ${modalCancelamento.numero} cancelada na SEFAZ.\nProtocolo do evento: ${j.protocolo ?? "—"}`);
       setMotivoCancelamento("");
       setModalCancelamento(null);
+      await carregar();
     } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
     finally { setSalvando(false); }
   };
@@ -1854,9 +1915,18 @@ function FiscalInner() {
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => { setModalComplemento(n); setAba("complemento"); }}
                     onConsultarSefaz={consultarSefaz}
-                    onImprimirDanfe={n => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")}
+                    // DANFE unificado: usa o mesmo gerador (a partir do XML realmente transmitido,
+                    // com a logo do cliente) já usado em Estoque → Transferências — antes esta tela
+                    // abria /comercial/faturamento/danfe/[id], uma reconstrução independente a partir
+                    // dos dados salvos no banco (não do XML), sem logo, com layout diferente do outro
+                    // lugar. Achado real 23/09/2026. Sem chave de acesso ainda (nota antiga/legado),
+                    // cai no fallback antigo pra não quebrar a impressão.
+                    onImprimirDanfe={n => n.chave_acesso
+                      ? window.open(`/api/fiscal/danfe?chave=${n.chave_acesso}&fazenda_id=${n.fazenda_id}`, "_blank")
+                      : window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")}
                     onRetransmitir={abrirRetransmit}
                     onManifestarNF={maniTestarNF}
+                    onCorrigir={abrirModalCorrecao}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>
@@ -3213,6 +3283,53 @@ function FiscalInner() {
                 style={{ padding: "8px 18px", background: motivoCancelamento.length >= 15 && !salvando ? "#E24B4A" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
               >
                 {salvando ? "Enviando…" : "Solicitar Cancelamento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalCorrecao && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carta de Correção Eletrônica (CC-e)</div>
+            <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
+              <strong>NF-e {modalCorrecao.numero}</strong> — {modalCorrecao.destinatario}<br />
+              {fmtData(modalCorrecao.data_emissao)} · {fmtMoeda(modalCorrecao.valor_total)}
+            </div>
+            <div style={{ background: "#FFF7ED", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#633806", marginBottom: 16 }}>
+              ⚠ A Carta de Correção NÃO pode alterar valor, tributo, quantidade, dados que identifiquem remetente/destinatário, nem a data de emissão/saída — só serve pra regularizar um erro que não afete o cálculo do imposto nem a operação em si (ex: erro de digitação numa descrição, endereço complementar, observação).
+            </div>
+            {historicoCorrecao.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Cartas já emitidas pra esta NF-e</div>
+                {historicoCorrecao.map(c => (
+                  <div key={c.sequencia} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: c.status === "aceita" ? "#EAF7EE" : "#FCEBEB", color: c.status === "aceita" ? "#166534" : "#791F1F", marginBottom: 4 }}>
+                    <strong>Nº {c.sequencia}</strong> ({c.status === "aceita" ? "aceita" : "rejeitada"}) — {c.texto_correcao}
+                    {c.status !== "aceita" && c.xmotivo && <div style={{ marginTop: 2 }}>{c.xmotivo}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelSt}>Texto da correção * <span style={{ color: "var(--text-3)" }}>(15 a 1000 caracteres)</span></label>
+              <textarea
+                style={{ ...inputSt, height: 100, resize: "vertical", fontSize: 12 }}
+                placeholder="Ex: Corrige o endereço complementar do destinatário para 'Galpão 2, fundos'."
+                value={textoCorrecao}
+                onChange={e => setTextoCorrecao(e.target.value)}
+                maxLength={1000}
+              />
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{textoCorrecao.length} caracteres</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => { setModalCorrecao(null); setTextoCorrecao(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
+              <button
+                onClick={enviarCartaCorrecao}
+                disabled={textoCorrecao.trim().length < 15 || enviandoCorrecao}
+                style={{ padding: "8px 18px", background: textoCorrecao.trim().length >= 15 && !enviandoCorrecao ? "#378ADD" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+              >
+                {enviandoCorrecao ? "Enviando…" : "Emitir Carta de Correção"}
               </button>
             </div>
           </div>
