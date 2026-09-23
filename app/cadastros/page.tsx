@@ -4747,7 +4747,12 @@ function CadastrosInner() {
               setEditIns(ins ?? null);
               setFIns(ins ? {
                 nome: ins.nome, categoria: ins.categoria, subgrupo: ins.subgrupo ?? "",
-                cultura_id: "", ncm: "",
+                // NCM digitado nessa tela nunca era carregado de volta ao editar (hardcoded "" aqui) —
+                // reabrir um insumo que já tinha NCM mostrava o campo vazio, e salvar de novo apagava
+                // o que já estava no banco. Achado real 23/09/2026, junto com o bug irmão abaixo (o
+                // NCM nunca era enviado no payload do salvarIns — os dois juntos explicam por que
+                // 1.929 dos 1.959 insumos cadastrados (98%) estavam sem NCM nenhum).
+                cultura_id: "", ncm: ins.ncm ?? "",
                 unidade: ins.unidade, fabricante: ins.fabricante ?? "",
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
@@ -4769,6 +4774,10 @@ function CadastrosInner() {
                   nome:                fIns.nome.trim(),
                   categoria:           fIns.categoria,
                   subgrupo:            fIns.subgrupo || undefined,
+                  // NCM — o campo existia na tela (linha "para match automático de NF") mas nunca
+                  // era enviado aqui, então tudo digitado nele era descartado silenciosamente em
+                  // todo "Salvar". Achado real 23/09/2026.
+                  ncm:                 fIns.ncm.trim() || undefined,
                   unidade:             isComb ? "L" : fIns.unidade,
                   fabricante:          isComb ? undefined : (fIns.fabricante || undefined),
                   estoque:             parseFloat(fIns.estoque) || 0,

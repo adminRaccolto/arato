@@ -1149,6 +1149,8 @@ Cadastro de sementes, fertilizantes, defensivos, corretivos e outros insumos com
 
 **Correção 18/09/2026:** se o salvamento de um item (aqui, em Produtos, ou em Itens Gerais) falhasse por qualquer motivo, a mensagem de erro era escrita atrás do próprio modal aberto — na prática, invisível: parecia que nada tinha acontecido, sem indicar o que deu errado. Corrigido pra mostrar o erro dentro do modal.
 
+**Correção 23/09/2026 (achado grave) — o campo NCM existia na tela mas nunca era salvo de verdade:** "NCM (para match automático de NF)" aparecia no formulário, aceitava digitação, mas ao clicar "Salvar" esse valor nunca era enviado — descartado em silêncio. Reabrir um insumo pra editar também sempre mostrava o campo vazio (mesmo se por acaso já tivesse NCM salvo por outro caminho), e salvar de novo apagava o que já existia. Auditoria no banco confirmou o tamanho do problema: **1.929 de 1.959 insumos cadastrados (98%) estavam sem NCM nenhum.** Corrigido: o campo agora salva e recarrega normalmente. **Consequência que também foi corrigida:** a NF-e de Transferência de Estoque, quando o insumo não tinha NCM (praticamente sempre, por causa desse bug), preenchia sozinha com o NCM de SOJA (1201.90.00) — pra qualquer produto, inclusive defensivo e fertilizante — e documentos reais chegaram a sair assim, autorizados pela SEFAZ. A emissão agora **bloqueia** e avisa exatamente qual produto está sem NCM, em vez de adivinhar. **Ação recomendada:** revise o cadastro de insumos aos poucos e preencha o NCM de cada um (prioridade pros que já foram usados em alguma NF-e de transferência) — sem isso, a emissão pra esse insumo específico vai ficar bloqueada até preencher.
+
 ### 23.6 Itens Gerais
 **Caminho:** Configurações → Cadastros → Itens Gerais
 

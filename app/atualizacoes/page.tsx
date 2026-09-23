@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-az",
+    data: "23/09/2026",
+    titulo: "NCM de insumo nunca era salvo no cadastro — NF-e de transferência saía com NCM de soja pra qualquer produto",
+    modulos: ["Cadastros", "Estoque", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastros → Insumos tinha o campo \"NCM (para match automático de NF)\", mas o que era digitado nele nunca era enviado ao salvar — descartado silenciosamente — e reabrir um insumo pra editar sempre mostrava o campo vazio (mesmo quando havia NCM salvo por outro caminho), apagando o que já existia se salvasse de novo. Auditoria no banco: 1.929 de 1.959 insumos cadastrados (98%) sem NCM nenhum. Corrigido: o campo agora é salvo e recarregado corretamente." },
+      { tipo: "correcao", texto: "Consequência grave do bug acima: a NF-e de Transferência de Estoque, quando o insumo não tinha NCM (quase sempre, por causa do bug acima), preenchia o NCM com \"1201.90.00\" — o código de SOJA — pra QUALQUER produto, inclusive defensivos e fertilizantes. Documentos fiscais reais chegaram a ser transmitidos e autorizados pela SEFAZ com essa classificação errada. Corrigido: a emissão agora **bloqueia** com um aviso claro (\"NCM não cadastrado para: [produto]\") em vez de adivinhar — preencha o NCM em Cadastros → Insumos antes de emitir." },
+    ],
+    onde: "Cadastros → Insumos · Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-ay",
     data: "23/09/2026",
     titulo: "NF-e: Carta de Correção (CC-e), Cancelar NF-e virou real e DANFE unificado com logo",

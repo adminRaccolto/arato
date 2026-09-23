@@ -241,6 +241,24 @@ export async function POST(request: NextRequest) {
         ? "Transferência de mercadoria de produção própria"
         : "Transferência de mercadoria adquirida de terceiros";
       const textoLegalDiferido = "ICMS diferido nos termos do Decreto MT n. 4.540/2004 — transferência entre estabelecimentos do mesmo titular, operação não configura venda. Não incide PIS/COFINS nem Funrural.";
+      // NCM ausente no cadastro do insumo NÃO pode virar "1201.90.00" (soja) — achado real
+      // 23/09/2026: uma transferência de "SAPEK MAX" (defensivo) saiu com NCM de soja na NF-e de
+      // verdade, transmitida e autorizada pela SEFAZ. Auditoria no banco mostrou 1.929 de 1.959
+      // insumos (98%) sem NCM cadastrado — ou seja, praticamente TODA transferência de insumo sem
+      // ser grão vinha saindo com essa classificação fiscal errada, silenciosamente, em documento
+      // fiscal real. Bloqueia a emissão em vez de adivinhar: listar o item errado é reversível,
+      // uma NF-e transmitida com NCM errado não é.
+      const semNcm = itensTransf
+        .map(it => insumoMap[it.insumo_id as string])
+        .filter(ins => !(ins?.ncm as string | undefined)?.replace(/\D/g, ""))
+        .map(ins => String(ins?.nome ?? "item sem nome"));
+      if (semNcm.length > 0) {
+        return NextResponse.json({
+          ok: false,
+          error: `NCM não cadastrado para: ${[...new Set(semNcm)].join(", ")}. Preencha o NCM em Cadastros → Insumos antes de emitir — a NF-e não pode sair com classificação fiscal genérica ou incorreta.`,
+        }, { status: 422 });
+      }
+
       const itenNfe = itensTransf.map((it, idx) => {
         const ins = insumoMap[it.insumo_id as string] ?? {};
         // Prioriza o Custo Unit. digitado pelo usuário NA TRANSFERÊNCIA (it.custo_unitario) —
@@ -255,7 +273,7 @@ export async function POST(request: NextRequest) {
         return {
           codigo:         String(idx + 1).padStart(4, "0"),
           descricao:      String(ins.nome ?? "Produto"),
-          ncm:            String(ins.ncm ?? "1201.90.00").replace(/\D/g, "") || "12019000",
+          ncm:            String(ins.ncm ?? "").replace(/\D/g, ""),
           cfop,
           unidade:        String(ins.unidade ?? "SC"),
           quantidade:     Number(it.quantidade ?? 0),
