@@ -431,6 +431,8 @@ Registra abastecimentos de combustível por máquina, com baixa automática no e
 
 **Cadastros → Combustíveis & Bombas → aba "Combustíveis" aparecendo vazia — corrigido 23/09/2026:** essa sub-aba lista o catálogo de insumos categoria combustível, mas esse catálogo só era carregado quando o usuário passava pelas abas Insumos/Produtos/Itens antes — abrir Combustíveis & Bombas direto (o caminho normal de acesso) sempre mostrava a lista vazia, mesmo com combustível cadastrado de verdade (o cadastro nunca sumia de fato, só não aparecia). Corrigido — a aba carrega o catálogo sozinha agora.
 
+**Cadastros → Combustíveis & Bombas → sub-aba "Bombas" mostrando bomba de outra fazenda — corrigido 23/09/2026:** a lista de bombas sempre seguia a fazenda ativa do momento (a do TopNav), sem nenhum seletor próprio dessa aba — uma bomba cadastrada numa fazenda "somia" da lista sempre que outra fazenda da mesma conta estivesse ativa, mesmo o cadastro estando correto no banco o tempo todo. Corrigido: a aba ganhou um seletor de fazenda próprio (aparece quando a conta tem mais de uma fazenda), que não depende da fazenda ativa. O botão "+ Nova Bomba" já pré-seleciona a fazenda escolhida nesse filtro.
+
 **Erro "row-level security policy" ao salvar — corrigido 23/09/2026:** o lançamento (registrar ou editar) gravava direto pelo navegador e podia falhar com esse erro mesmo com o cadastro certo — sintoma de token de sessão expirado, não de permissão. Passou a usar a rota "/api/campo/abastecimento-acao" (servidor, imune a token expirado) pra toda a escrita: o abastecimento em si, a baixa de estoque na bomba, a baixa no insumo de combustível correspondente e a Conta a Pagar opcional.
 
 ### 9.5 Romaneios de Terceiros

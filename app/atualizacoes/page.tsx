@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bd",
+    data: "23/09/2026",
+    titulo: "Cadastros → Combustíveis & Bombas: lista seguia a fazenda ativa, sem seletor próprio",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "A lista de \"Bombas de Combustível\" sempre mostrava só a fazenda ativa do momento (TopNav) — bombas cadastradas em outra fazenda da mesma conta somiam da lista sem nenhum aviso, mesmo existindo corretamente no banco. Corrigido: a aba ganhou um seletor de fazenda próprio (aparece quando a conta tem mais de uma fazenda), independente da fazenda ativa. \"+ Nova Bomba\" já pré-seleciona a fazenda escolhida no filtro." },
+    ],
+    onde: "Cadastros → Insumos → Combustíveis & Bombas → Bombas",
+  },
+  {
     versao: "2026.09.23-bc",
     data: "23/09/2026",
     titulo: "NF-e de Transferência saía com CST 51 (diferido) — correto é CST 41 (não tributado)",
